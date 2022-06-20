@@ -1090,10 +1090,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
     options.schema = nullptr;
   }
 
+  std::shared_ptr<ComputedValues> computedValues;
+
   if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
     std::shared_ptr<ComputedValues> cv = collection->computedValues();
     if (cv != nullptr && cv->mustRunOnInsert()) {
       LOG_DEVEL << "MUST COMPUTE VALUES!";
+      computedValues = std::move(cv);
     }
   }
 
@@ -1112,6 +1115,15 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
     if (r != TRI_ERROR_NO_ERROR) {
       return Result(r);
+    }
+
+    if (computedValues != nullptr) {
+      VPackBuilder output;
+      output.openObject();
+      computedValues->computeAttributes(*this, value, RunOn::kInsert, output);
+      output.close();
+
+      LOG_DEVEL << "COMPUTED OUTPUT: " << output.slice().toJson();
     }
 
     docResult.clear();

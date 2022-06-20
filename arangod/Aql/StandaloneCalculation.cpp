@@ -28,7 +28,6 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Expression.h"
-#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"

@@ -22,10 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ComputedValues.h"
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AqlValue.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/Expression.h"
+#include "Aql/FixedVarExpressionContext.h"
+#include "Aql/Parser.h"
+#include "Aql/QueryContext.h"
+#include "Aql/QueryString.h"
 #include "Aql/StandaloneCalculation.h"
+#include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -36,27 +47,75 @@
 #include <type_traits>
 #include <unordered_set>
 
+using namespace arangodb::aql;
+
 namespace {
 constexpr std::string_view docParameter("doc");
 
-std::underlying_type<arangodb::ExecuteOn>::type executeOnValue(
-    arangodb::ExecuteOn executeOn) {
-  return static_cast<std::underlying_type<arangodb::ExecuteOn>::type>(
-      executeOn);
+std::underlying_type<arangodb::RunOn>::type runOnValue(arangodb::RunOn runOn) {
+  return static_cast<std::underlying_type<arangodb::RunOn>::type>(runOn);
 }
 
 }  // namespace
 
 namespace arangodb {
 
-ComputedValues::ComputedValue::ComputedValue(std::string_view name,
-                                             std::string_view expression,
-                                             ExecuteOn executeOn,
-                                             bool doOverride)
-    : _name(name),
-      _expression(expression),
-      _executeOn(executeOn),
-      _override(doOverride) {}
+ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
+                                             std::string_view name,
+                                             std::string_view expressionString,
+                                             RunOn runOn, bool doOverride)
+    : _vocbase(vocbase),
+      _name(name),
+      _expressionString(expressionString),
+      _runOn(runOn),
+      _override(doOverride),
+      _queryContext(StandaloneCalculation::buildQueryContext(_vocbase)),
+      _rootNode(nullptr) {
+  Ast* ast = _queryContext->ast();
+
+  auto qs = QueryString(expressionString);
+  Parser parser(*_queryContext, *ast, qs);
+  // will throw if there is any error, but the expression should have been
+  // validated before
+  parser.parse();
+  ast->validateAndOptimize(_queryContext->trxForOptimization());
+
+  // create a temporary variable name, with which the bind parameter will be
+  // replaced with, e.g. @doc -> temp_1. that way we only have to set the value
+  // for the temporary variable during expression calculation, so we can use a
+  // const Ast.
+  ast->scopes()->start(AQL_SCOPE_MAIN);
+  _tempVariable = ast->variables()->createTemporaryVariable();
+
+  _rootNode = ast->traverseAndModify(
+      const_cast<AstNode*>(ast->root()), [&](AstNode* node) {
+        if (node->type == NODE_TYPE_PARAMETER) {
+          // already validated before that only @doc is used as bind parameter
+          TRI_ASSERT(node->getStringView() == ::docParameter);
+          node = ast->createNodeReference(_tempVariable);
+        }
+        return node;
+      });
+
+  ast->scopes()->endCurrent();
+
+  // the AstNode looks like this:
+  // - ROOT
+  //   - RETURN
+  //     - expression
+  TRI_ASSERT(_rootNode->type == NODE_TYPE_ROOT);
+  TRI_ASSERT(_rootNode->numMembers() == 1);
+  TRI_ASSERT(_rootNode->getMember(0)->type == NODE_TYPE_RETURN);
+  TRI_ASSERT(_rootNode->getMember(0)->numMembers() == 1);
+  _rootNode = _rootNode->getMember(0)->getMember(0);
+
+  // build Expression object from Ast
+  _expression = std::make_unique<Expression>(ast, _rootNode);
+  _expression->prepareForExecution();
+  TRI_ASSERT(!_expression->willUseV8());
+  TRI_ASSERT(_expression->canRunOnDBServer(true));
+  TRI_ASSERT(_expression->canRunOnDBServer(false));
+}
 
 ComputedValues::ComputedValue::~ComputedValue() = default;
 
@@ -64,56 +123,87 @@ void ComputedValues::ComputedValue::toVelocyPack(
     velocypack::Builder& result) const {
   result.openObject();
   result.add("name", VPackValue(_name));
-  result.add("expression", VPackValue(_expression));
-  result.add("executeOn", VPackValue(VPackValueType::Array));
-  if (::executeOnValue(_executeOn) & ::executeOnValue(ExecuteOn::kInsert)) {
+  result.add("expression", VPackValue(_expressionString));
+  result.add("runOn", VPackValue(VPackValueType::Array));
+  if (::runOnValue(_runOn) & ::runOnValue(RunOn::kInsert)) {
     result.add(VPackValue("insert"));
   }
-  if (::executeOnValue(_executeOn) & ::executeOnValue(ExecuteOn::kUpdate)) {
+  if (::runOnValue(_runOn) & ::runOnValue(RunOn::kUpdate)) {
     result.add(VPackValue("update"));
   }
-  if (::executeOnValue(_executeOn) & ::executeOnValue(ExecuteOn::kReplace)) {
+  if (::runOnValue(_runOn) & ::runOnValue(RunOn::kReplace)) {
     result.add(VPackValue("replace"));
   }
-  result.close();  // executeOn
+  result.close();  // runOn
   result.add("override", VPackValue(_override));
   result.close();
+}
+
+bool ComputedValues::ComputedValue::mustRunOn(RunOn runOn) const noexcept {
+  return ((::runOnValue(_runOn) & ::runOnValue(runOn)) != 0);
+}
+
+void ComputedValues::ComputedValue::computeAttribute(
+    transaction::Methods& trx, velocypack::Slice input,
+    velocypack::Builder& output) const {
+  TRI_ASSERT(_queryContext != nullptr);
+  TRI_ASSERT(_expression != nullptr);
+
+  AqlFunctionsInternalCache cache;
+
+  FixedVarExpressionContext ctx(trx, *_queryContext, cache);
+  // inject document into temporary variable (@doc)
+  ctx.setVariableValue(_tempVariable, AqlValue(AqlValueHintSliceNoCopy(input)));
+
+  bool mustDestroy;
+  AqlValue result = _expression->execute(&ctx, mustDestroy);
+  AqlValueGuard guard(result, mustDestroy);
+
+  output.add(_name, result.slice());
 }
 
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
                                std::vector<std::string> const& shardKeys,
                                velocypack::Slice params)
-    : _executeOn(ExecuteOn::kNever) {
+    : _runOn(RunOn::kNever) {
   Result res = buildDefinitions(vocbase, shardKeys, params);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  TRI_ASSERT(_executeOn != ExecuteOn::kNever);
+  TRI_ASSERT(_runOn != RunOn::kNever);
 }
 
 ComputedValues::~ComputedValues() = default;
 
 bool ComputedValues::mustRunOnInsert() const noexcept {
-  return mustRunOn(ExecuteOn::kInsert);
+  return mustRunOn(RunOn::kInsert);
 }
 
 bool ComputedValues::mustRunOnUpdate() const noexcept {
-  return mustRunOn(ExecuteOn::kUpdate);
+  return mustRunOn(RunOn::kUpdate);
 }
 
 bool ComputedValues::mustRunOnReplace() const noexcept {
-  return mustRunOn(ExecuteOn::kReplace);
+  return mustRunOn(RunOn::kReplace);
 }
 
-void ComputedValues::computeAttributes(velocypack::Slice input,
-                                       ExecuteOn executeOn,
+void ComputedValues::computeAttributes(transaction::Methods& trx,
+                                       velocypack::Slice input, RunOn runOn,
                                        velocypack::Builder& output) const {
-  TRI_ASSERT(mustRunOn(executeOn));
+  TRI_ASSERT(mustRunOn(runOn));
+
+  for (auto const& it : _values) {
+    if (!it.mustRunOn(runOn)) {
+      continue;
+    }
+
+    it.computeAttribute(trx, input, output);
+  }
 }
 
-bool ComputedValues::mustRunOn(ExecuteOn executeOn) const noexcept {
-  return ((::executeOnValue(_executeOn) & ::executeOnValue(executeOn)) != 0);
+bool ComputedValues::mustRunOn(RunOn runOn) const noexcept {
+  return ((::runOnValue(_runOn) & ::runOnValue(runOn)) != 0);
 }
 
 Result ComputedValues::buildDefinitions(
@@ -159,11 +249,11 @@ Result ComputedValues::buildDefinitions(
       }
     }
 
-    ExecuteOn executeOn = ExecuteOn::kInsert;
+    RunOn runOn = RunOn::kInsert;
 
     VPackSlice on = it.get("on");
     if (on.isArray()) {
-      executeOn = ExecuteOn::kNever;
+      runOn = RunOn::kNever;
 
       for (auto const& onValue : VPackArrayIterator(on)) {
         if (!onValue.isString()) {
@@ -173,17 +263,14 @@ Result ComputedValues::buildDefinitions(
         }
         std::string_view ov = onValue.stringView();
         if (ov == "insert") {
-          executeOn =
-              static_cast<ExecuteOn>(::executeOnValue(executeOn) |
-                                     ::executeOnValue(ExecuteOn::kInsert));
+          runOn = static_cast<RunOn>(::runOnValue(runOn) |
+                                     ::runOnValue(RunOn::kInsert));
         } else if (ov == "update") {
-          executeOn =
-              static_cast<ExecuteOn>(::executeOnValue(executeOn) |
-                                     ::executeOnValue(ExecuteOn::kUpdate));
+          runOn = static_cast<RunOn>(::runOnValue(runOn) |
+                                     ::runOnValue(RunOn::kUpdate));
         } else if (ov == "replace") {
-          executeOn =
-              static_cast<ExecuteOn>(::executeOnValue(executeOn) |
-                                     ::executeOnValue(ExecuteOn::kReplace));
+          runOn = static_cast<RunOn>(::runOnValue(runOn) |
+                                     ::runOnValue(RunOn::kReplace));
         } else {
           return res.reset(
               TRI_ERROR_BAD_PARAMETER,
@@ -192,14 +279,13 @@ Result ComputedValues::buildDefinitions(
         }
       }
 
-      if (executeOn == ExecuteOn::kNever) {
+      if (runOn == RunOn::kNever) {
         return res.reset(TRI_ERROR_BAD_PARAMETER,
                          "invalid 'computedValues' entry: empty on value");
       }
     }
 
-    _executeOn = static_cast<ExecuteOn>(::executeOnValue(_executeOn) |
-                                        ::executeOnValue(executeOn));
+    _runOn = static_cast<RunOn>(::runOnValue(_runOn) | ::runOnValue(runOn));
 
     VPackSlice expression = it.get("expression");
     if (!expression.isString()) {
@@ -209,7 +295,7 @@ Result ComputedValues::buildDefinitions(
     }
 
     // validate the actual expression
-    res.reset(aql::StandaloneCalculation::validateQuery(
+    res.reset(StandaloneCalculation::validateQuery(
         vocbase, expression.stringView(), ::docParameter, ""));
     if (res.fail()) {
       std::string errorMsg = "invalid 'computedValues' entry: ";
@@ -235,9 +321,8 @@ Result ComputedValues::buildDefinitions(
     }
 
     try {
-      _values.emplace_back(ComputedValue{name.stringView(),
-                                         expression.stringView(), executeOn,
-                                         doOverride.getBoolean()});
+      _values.emplace_back(vocbase, name.stringView(), expression.stringView(),
+                           runOn, doOverride.getBoolean());
     } catch (std::exception const& ex) {
       return res.reset(TRI_ERROR_BAD_PARAMETER,
                        "invalid 'computedValues' entry: "s + ex.what());

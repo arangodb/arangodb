@@ -91,7 +91,7 @@ void Expression::variables(VarSet& result) const {
 /// @brief execute the expression
 AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(ctx != nullptr);
-  prepareForExecution(*ctx);
+  prepareForExecution();
 
   TRI_ASSERT(_type != UNPROCESSED);
 
@@ -336,7 +336,7 @@ void Expression::determineType() {
   }
 }
 
-void Expression::initAccessor(ExpressionContext& ctx) {
+void Expression::initAccessor() {
   TRI_ASSERT(_type == ATTRIBUTE_ACCESS);
   TRI_ASSERT(_accessor == nullptr);
 
@@ -358,24 +358,24 @@ void Expression::initAccessor(ExpressionContext& ctx) {
 }
 
 /// @brief prepare the expression for execution
-void Expression::prepareForExecution(ExpressionContext& ctx) {
+void Expression::prepareForExecution() {
   TRI_ASSERT(_type != UNPROCESSED);
 
   switch (_type) {
     case JSON: {
       if (_data == nullptr) {
         // generate a constant value
-        transaction::BuilderLeaser builder(&ctx.trx());
-        _node->toVelocyPackValue(*builder.get());
+        velocypack::Builder builder;
+        _node->toVelocyPackValue(builder);
 
-        _data = new uint8_t[static_cast<size_t>(builder->size())];
-        memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
+        _data = new uint8_t[static_cast<size_t>(builder.size())];
+        memcpy(_data, builder.data(), static_cast<size_t>(builder.size()));
       }
       break;
     }
     case ATTRIBUTE_ACCESS: {
       if (_accessor == nullptr) {
-        initAccessor(ctx);
+        initAccessor();
       }
       break;
     }
