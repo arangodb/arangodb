@@ -28,8 +28,6 @@
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -107,7 +105,7 @@ auto ParallelUnsortedGatherExecutor::produceRows(
   // We cannot have one that we are waiting on, if we are done.
   TRI_ASSERT(!input.isDone() || callSet.empty());
 
-  return {input.state(), NoStats{}, callSet};
+  return {input.state(), NoStats{}, std::move(callSet)};
 }
 
 auto ParallelUnsortedGatherExecutor::skipRowsRange(
@@ -165,5 +163,5 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(
     callSet.calls.emplace_back(AqlCallSet::DepCallPair{
         waitingDep, AqlCallList{upstreamCallSkip(call)}});
   }
-  return {ExecutorState::HASMORE, NoStats{}, skipped, callSet};
+  return {ExecutorState::HASMORE, NoStats{}, skipped, std::move(callSet)};
 }

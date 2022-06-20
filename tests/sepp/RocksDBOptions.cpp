@@ -140,9 +140,10 @@ RocksDBOptions::RocksDBOptions()
           .filterPolicy =
               TableOptions::BloomFilterPolicy{.bitsPerKey = 10,
                                               .useBlockBasedBuilder = true},
-          .formatVersion = 3,
+          .formatVersion = 5,
           .blockAlignDataBlocks = rocksDBTableOptionsDefaults.block_align,
-          .checksum = "crc32c",  // TODO - use enum
+          .checksum = "crc32c",         // TODO - use enum
+          .compressionType = "snappy",  // TODO - use enum
       },
       _options{
           .numThreadsLow = 1,
@@ -282,11 +283,27 @@ rocksdb::Options RocksDBOptions::doGetOptions() const {
   result.use_fsync = _options.useFSync;
 
   // only compress levels >= 2
+  rocksdb::CompressionType ct = [&compressionType =
+                                     _tableOptions.compressionType]() {
+    if (compressionType == "none") {
+      return rocksdb::kNoCompression;
+    } else if (compressionType == "snappy") {
+      return rocksdb::kSnappyCompression;
+    } else if (compressionType == "lz4") {
+      return rocksdb::kLZ4Compression;
+    } else if (compressionType == "lz4hc") {
+      return rocksdb::kLZ4HCCompression;
+    } else {
+      throw std::runtime_error("Unsupported compression type " +
+                               compressionType);
+    }
+  }();
+
   result.compression_per_level.resize(result.num_levels);
   for (int level = 0; level < result.num_levels; ++level) {
     result.compression_per_level[level] =
         (((uint64_t)level >= _options.numUncompressedLevels)
-             ? rocksdb::kSnappyCompression
+             ? ct
              : rocksdb::kNoCompression);
   }
 

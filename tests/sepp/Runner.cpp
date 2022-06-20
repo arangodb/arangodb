@@ -35,6 +35,7 @@
 #include "Basics/overload.h"
 #include "Execution.h"
 #include "Server.h"
+#include "Workloads/GetByPrimaryKey.h"
 #include "Workloads/InsertDocuments.h"
 #include "Workloads/IterateDocuments.h"
 #include "velocypack/Collection.h"
@@ -83,7 +84,11 @@ auto Runner::runBenchmark() -> Report {
 
   std::cout << "Running benchmark...\n";
   auto workload = std::visit(
-      overload{[](workloads::InsertDocuments::Options& opts)
+      overload{[](workloads::GetByPrimaryKey::Options& opts)
+                   -> std::shared_ptr<Workload> {
+                 return std::make_shared<workloads::GetByPrimaryKey>(opts);
+               },
+               [](workloads::InsertDocuments::Options& opts)
                    -> std::shared_ptr<Workload> {
                  return std::make_shared<workloads::InsertDocuments>(opts);
                },

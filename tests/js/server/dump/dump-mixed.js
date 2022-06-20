@@ -52,16 +52,15 @@ jsunity.run(function dump_single_testsuite() {
       // no auth support here
       "testUsers",
       // single server tests that weren't supported in cluster:
-      "testKeygenAutoInc",
       "testTransactionCommit",
       "testTransactionUpdate",
       "testTransactionAbort",
-      
+
       // cluster tests:
       "testDatabaseProperties",
       "testShards",
       "testReplicationFactor",
-      
+
       // enterprise graph tests: (TODO: should they be able to be run in single?)
       "testVertices",
       "testVerticesAqlRead",

@@ -36,7 +36,6 @@ const base = require("fs").join(
 const setup = require(base);
 
 (function () {
-
   setup.cleanup();
   setup.createEmpty();
   setup.createMany();
@@ -44,6 +43,7 @@ const setup = require(base);
   setup.createModifyCollection();
   setup.createMultiShard();
   setup.createPaddedKeyGen();
+  setup.createAutoIncKeyGen();
   setup.createUUIDKeyGen();
   setup.createStrings();
   setup.createPersistent();

@@ -126,7 +126,6 @@ RestStatus RestMetricsHandler::execute() {
                   reinterpret_cast<char const*>(payload->data()),
                   payload->size()));
             }
-            return RestStatus::DONE;
           }));
     }
   }

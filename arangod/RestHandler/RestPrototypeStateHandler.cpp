@@ -94,7 +94,6 @@ RestStatus RestPrototypeStateHandler::handleCreateState(
                 } else {
                   generateError(createResult.result());
                 }
-                return RestStatus::DONE;
               }));
 }
 
@@ -214,7 +213,6 @@ RestStatus RestPrototypeStateHandler::handlePutCompareExchange(
                                                 : rest::ResponseCode::ACCEPTED,
                          result.slice());
             }
-            return RestStatus::DONE;
           }));
 }
 
@@ -257,7 +255,6 @@ RestStatus RestPrototypeStateHandler::handlePostInsert(
                                             ? rest::ResponseCode::OK
                                             : rest::ResponseCode::ACCEPTED,
                                         result.slice());
-                             return RestStatus::DONE;
                            }));
 }
 
@@ -333,7 +330,6 @@ RestStatus RestPrototypeStateHandler::handleGetRequest(
         velocypack::serialize(response, result.get());
         generateOk(rest::ResponseCode::OK, response.slice());
       }
-      return RestStatus::DONE;
     }));
   }
 
@@ -446,7 +442,6 @@ RestStatus RestPrototypeStateHandler::handleGetSnapshot(
                                generateOk(rest::ResponseCode::OK,
                                           result.slice());
                              }
-                             return RestStatus::DONE;
                            }));
 }
 
@@ -511,7 +506,6 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemove(
                                             ? rest::ResponseCode::OK
                                             : rest::ResponseCode::ACCEPTED,
                                         result.slice());
-                             return RestStatus::DONE;
                            }));
 }
 
@@ -560,6 +554,5 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
                                             ? rest::ResponseCode::OK
                                             : rest::ResponseCode::ACCEPTED,
                                         result.slice());
-                             return RestStatus::DONE;
                            }));
 }

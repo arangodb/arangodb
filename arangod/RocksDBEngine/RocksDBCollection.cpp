@@ -1066,7 +1066,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
 }
 
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const slice,
+                                 arangodb::velocypack::Slice slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
   RocksDBTransactionStateGuard transactionStateGuard(
@@ -1083,7 +1083,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   RevisionId revisionId;
-  Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder.get(),
+  Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder,
                                 options.isRestore, revisionId));
   if (res.fail()) {
     return res;
@@ -1238,10 +1238,10 @@ Result RocksDBCollection::performUpdateOrReplace(
   if (isUpdate) {
     res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                                 options.mergeObjects, options.keepNull,
-                                *builder.get(), options.isRestore, revisionId);
+                                *builder, options.isRestore, revisionId);
   } else {
-    res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection,
-                              *builder.get(), options.isRestore, revisionId);
+    res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection, *builder,
+                              options.isRestore, revisionId);
   }
   if (res.fail()) {
     return res;
