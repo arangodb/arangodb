@@ -164,6 +164,33 @@ function createClique(size, vColl, name_prefix, kind = "bidirected") {
     return {vertices, edges};
 }
 
+// Creates a path of length length.
+// The parameter kind has the following meaning:
+//  - "directed" (default):  directed path
+//  - "bidirected": as "directed" but for every edge (v,w), we also have the edge (w,v)
+//  - "alternating": as "directed" but every second edge is inverted
+function createPath(length, vColl, name_prefix, kind = "directed") {
+    let vertices = makeVertices(length, name_prefix);
+    let edges = [];
+    for (let v = 0; v < length - 1; ++v) {
+        switch (kind) {
+            case "directed":
+                edges.push(makeEdge(v, v + 1), name_prefix);
+                break;
+            case "bidirected":
+                edges.push(makeEdge(v, v + 1, vColl, name_prefix));
+                edges.push(makeEdge(v + 1, v, vColl, name_prefix));
+                break;
+            case "alternating":
+                const inverted = v % 2 === 0;
+                edges.push(makeEdge(v + 1, v, vColl, name_prefix, inverted));
+                break;
+        }
+
+    }
+    return {vertices, edges};
+}
+
 // a wrapper to unify the call of createDirectedCycle, createAlternatingCycle, createFullBinaryTree
 function createBidirectedClique(size, vColl, name_prefix) {
     return createClique(size, vColl, name_prefix, "bidirected");
@@ -177,3 +204,4 @@ exports.createFullBinaryTree = createFullBinaryTree;
 exports.createClique = createClique;
 exports.createBidirectedClique = createBidirectedClique;
 exports.createSingleVertex = createSingleVertex;
+exports.createPath = createPath;

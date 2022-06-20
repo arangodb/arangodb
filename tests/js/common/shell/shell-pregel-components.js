@@ -36,6 +36,7 @@ var internal = require("internal");
 var console = require("console");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
+const {makeEdge} = require("../../../../js/common/modules/@arangodb/graph/graphs-generation");
 
 // TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
 const pregelRunSmallInstance = function (algName, graphName, parameters) {
@@ -47,8 +48,84 @@ const pregelRunSmallInstance = function (algName, graphName, parameters) {
     wakeupsLeft--;
     internal.sleep(0.2);
   }
-  return pregel.status(pid);
-}
+  assertEqual(pregel.status(pid).state, "done", "Pregel Job did never succeed.");
+
+  // Now test the result.
+  const query = `
+        FOR v IN ${vColl}
+          COLLECT component = v.result WITH COUNT INTO size
+          SORT size DESC
+          RETURN {component, size}
+      `;
+  return db._query(query).toArray();
+};
+
+// componentsSizes should be an array of distinct sizes for components
+// createComponent should be a function that gets (<number of vertices>, <vertex collection name>, <name_prefix>)
+// and returns {vertices: <array of vertices>, edges: <array of edges>} where the graph induced by vertices and edges
+// is, indeed , a component (of whatever kind)
+const testComponentsAlgorithmOnDisjointComponents = function(componentSizes, createComponent, algorithm_name = "wcc") {
+  // we expect that '_' appears in the string (should it not, return the whole string)
+  const extract_name_prefix = function(v) {
+    return v.substr(0, v.indexOf('_'));
+  };
+
+  // expected components: [2_0, 2_1], [10_0,..., 10_9], [5_0,...,5_4], [23_0,...,23_22]
+  // We need for the test later that all sizes are distinct.
+  // Let's check that we didn't make a mistake.
+  const sortedComponentSizes = componentSizes.sort(function(a, b) { return b - a;});
+  for (let i = 0; i < sortedComponentSizes.size - 1; ++i) {
+    assertNotEqual(sortedComponentSizes[i], sortedComponentSizes[i+1],
+        `Test error: component sizes should be pairwise distinct, instead got ${componentSizes}`);
+  }
+
+  // Produce the graph.
+  for (let i of sortedComponentSizes) {
+    let {vertices, edges} = createComponent(i, vColl, i.toString());
+    db[vColl].save(vertices);
+    db[eColl].save(edges);
+  }
+
+  // Get the result of Pregel's algorithm.
+  const computedComponents = pregelRunSmallInstance(algorithm_name, graphName, { resultField: "result", store: true });
+  // assertEqual(computedComponents.length, sortedComponentSizes.length,
+  //     `We expected ${sortedComponentSizes.length} components, instead got ${JSON.stringify(computedComponents)}`);
+
+  // Test component sizes
+  // Note that query guarantees that computedComponents is sorted
+  // for (let i = 0; i < computedComponents.length; ++i) {
+  //   assertEqual(computedComponents[i].size, sortedComponentSizes[i]);
+  // }
+
+  // Test that components contain correct vertices:
+  //   we saved the components such that a component of size s has vertices
+  //   [`${s}_0`,..., `${s}_${s-1}`].
+  // We use that all sizes are distinct.
+  for (let component of computedComponents) {
+    const componentId = component.component;
+    // get the vertices of the computed component
+    const queryVerticesOfComponent = `
+        FOR v IN ${vColl}
+        FILTER v.result == ${componentId}
+          RETURN v._key
+      `;
+    const verticesOfComponent = db._query(queryVerticesOfComponent).toArray();
+    const sizeOfComponent = component.size;
+    // Test that the name prefixes of vertex names (i.e., `${s}` in `${s}_{i}`) are correct.
+    for (let v of verticesOfComponent) {
+      assertEqual(extract_name_prefix(v), `${sizeOfComponent}`);
+    }
+
+    // Test the second parts of vertex names.
+    // For this, convert vertex keys of the form `${s}_${i}` to i.
+    // We need this to sort them properly, e.g., "23_2" should be < than "23_10".
+    let secondComponentsOfVertices = (verticesOfComponent.map(v => parseInt(v.substr(`${sizeOfComponent}`.length + 1))));
+    secondComponentsOfVertices.sort(function(a, b) { return a - b;});
+    for (let i = 0; i < sizeOfComponent; ++i) {
+      assertEqual(secondComponentsOfVertices[i], i);
+    }
+  }
+};
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
@@ -428,82 +505,137 @@ function wccRegressionTestSuite() {
 function wccTestSuite() {
   'use strict';
 
-  // componentsSizes should be an array of distinct sizes for components
-  // createComponent should be a function that gets (<number of vertices>, <vertex collection name>, <name_prefix>)
-  // and returns {vertices: <array of vertices>, edges: <array of edges>}
-  const testWCCDisjointComponents = function(componentSizes, createComponent) {
-    // we expect that '_' appears in the string (should it not, return the whole string)
-    const extract_name_prefix = function(v) {
-      return v.substr(0, v.indexOf('_'));
-    };
+  return {
 
-    // expected components: [2_0, 2_1], [10_0,..., 10_9], [5_0,...,5_4], [23_0,...,23_22]
-    // We need for the test later that all sizes are distinct.
-    // Let's check that we didn't make a mistake.
-    const sortedComponentSizes = componentSizes.sort(function(a, b) { return b - a;});
-    for (let i = 0; i < sortedComponentSizes.size - 1; ++i) {
-      assertNotEqual(sortedComponentSizes[i], sortedComponentSizes[i+1],
-          `Test error: component sizes should be pairwise distinct, instead got ${componentSizes}`);
-    }
+    setUp: function() {
+      db._create(vColl, { numberOfShards: 4 });
+      db._createEdgeCollection(eColl, {
+        numberOfShards: 4,
+        replicationFactor: 1,
+        shardKeys: ["vertex"],
+        distributeShardsLike: vColl
+      });
 
-    // Produce the graph.
-    for (let i of sortedComponentSizes) {
-      let {vertices, edges} = createComponent(i, vColl, i.toString());
+      graph_module._create(graphName, [graph_module._relation(eColl, vColl, vColl)], []);
+    },
+
+    tearDown: function() {
+      graph_module._drop(graphName, true);
+    },
+
+    testWCCFourDirectedCycles: function() {
+      testComponentsAlgorithmOnDisjointComponents([2, 10, 5, 23], graphGeneration.createDirectedCycle);
+    },
+
+    testWCC20DirectedCycles: function() {
+      let componentSizes = [];
+      // cycles of length smaller than 2 cannot be produced
+      for (let i=2; i<22; ++i) {
+        componentSizes.push(i);
+      }
+      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.createDirectedCycle);
+    },
+
+    testWCC20AlternatingCycles() {
+      let componentSizes = [];
+      // cycles of length smaller than 2 cannot be produced
+      for (let i=2; i<22; ++i) {
+        componentSizes.push(i);
+      }
+      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.createAlternatingCycle);
+    },
+
+    testWCC10BidirectedCliques() {
+      let treeDepths = [];
+      for (let i=120; i<130; ++i) {
+        treeDepths.push(i);
+      }
+      testComponentsAlgorithmOnDisjointComponents(treeDepths, graphGeneration.createBidirectedClique);
+    },
+
+    testWCCOneSingleVertex: function() {
+      let {vertices, edges} = graphGeneration.createSingleVertex("v");
       db[vColl].save(vertices);
       db[eColl].save(edges);
-    }
 
-    // Get the result of Pregel's WCC.
-    const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
-    assertEqual(status.state, "done", "Pregel Job did never succeed.");
+      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
+    },
 
-    // Now test the result.
-    // We expect four components.
-    const query = `
-        FOR v IN ${vColl}
-          COLLECT component = v.result WITH COUNT INTO size
-          SORT size DESC
-          RETURN {component, size}
-      `;
-    const computedComponents = db._query(query).toArray();
-    // assertEqual(computedComponents.length, sortedComponentSizes.length,
-    //     `We expected ${sortedComponentSizes.length} components, instead got ${JSON.stringify(computedComponents)}`);
+    testWCCTwoIsolatedVertices: function() {
+      let isolatedVertex0 = graphGeneration.makeVertex(0, "v");
+      let isolatedVertex1 = graphGeneration.makeVertex(1, "v");
+      const vertices = [isolatedVertex0, isolatedVertex1];
+      db[vColl].save(vertices);
+      const edges = [];
+      db[eColl].save(edges);
 
-    // Test component sizes
-    // Note that query guarantees that computedComponents is sorted
-    // for (let i = 0; i < computedComponents.length; ++i) {
-    //   assertEqual(computedComponents[i].size, sortedComponentSizes[i]);
-    // }
+      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
+      // Both have 20 elements
+      assertEqual(computedComponents[0].size, 1);
+      assertEqual(computedComponents[1].size, 1);
+    },
 
-    // Test that components contain correct vertices:
-    //   we saved the components such that a component of size s has vertices
-    //   [`${s}_0`,..., `${s}_${s-1}`].
-    // We use that all sizes are distinct.
-    for (let component of computedComponents) {
-      const componentId = component.component;
-      // get the vertices of the computed component
-      const queryVerticesOfComponent = `
-        FOR v IN ${vColl}
-        FILTER v.result == ${componentId}
-          RETURN v._key
-      `;
-      const verticesOfComponent = db._query(queryVerticesOfComponent).toArray();
-      const sizeOfComponent = component.size;
-      // Test that the name prefixes of vertex names (i.e., `${s}` in `${s}_{i}`) are correct.
-      for (let v of verticesOfComponent) {
-        assertEqual(extract_name_prefix(v), `${sizeOfComponent}`);
-      }
+    testWCCOneDirectedTree: function()  {
+      const depth = 3;
+      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", false);
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
 
-      // Test the second parts of vertex names.
-      // For this, convert vertex keys of the form `${s}_${i}` to i.
-      // We need this to sort them properly, e.g., "23_2" should be < than "23_10".
-      let secondComponentsOfVertices = (verticesOfComponent.map(v => parseInt(v.substr(`${sizeOfComponent}`.length + 1))));
-      secondComponentsOfVertices.sort(function(a, b) { return a - b;});
-      for (let i = 0; i < sizeOfComponent; ++i) {
-        assertEqual(secondComponentsOfVertices[i], i);
-      }
-    }
+      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
+
+    },
+
+    testWCCOneDepth3AlternatingTree: function() {
+      const depth = 3;
+      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
+    },
+
+    testWCCOneDepth4AlternatingTree: function() {
+      const depth = 4;
+      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
+    },
+
+    testWCCAlternatingTreeAlternatingCycle: function() {
+      // tree
+      const depth = 3;
+      const {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "t", true);
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      // cycle
+      const length = 5;
+      const resultC = graphGeneration.createAlternatingCycle(length, vColl, "c");
+      db[vColl].save(resultC.vertices);
+      db[eColl].save(resultC.edges);
+
+      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 2, `We expected 2 component, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
+      assertEqual(computedComponents[1].size, length);
+    },
+
   };
+}
+
+function sccTestSuite() {
+  'use strict';
 
 
   return {
@@ -524,57 +656,38 @@ function wccTestSuite() {
       graph_module._drop(graphName, true);
     },
 
-    testWCCFourDirectedCycles: function() {
-      testWCCDisjointComponents([2, 10, 5, 23], graphGeneration.createDirectedCycle);
+    testSCCFourDirectedCycles: function() {
+      testComponentsAlgorithmOnDisjointComponents([2, 10, 5, 23], graphGeneration.createDirectedCycle, "scc");
     },
 
-    testWCC20DirectedCycles: function() {
+    testSCC20DirectedCycles: function() {
       let componentSizes = [];
       // cycles of length smaller than 2 cannot be produced
       for (let i=2; i<22; ++i) {
         componentSizes.push(i);
       }
-      testWCCDisjointComponents(componentSizes, graphGeneration.createDirectedCycle);
+      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.createDirectedCycle, "scc");
     },
 
-    testWCC20AlternatingCycles() {
-      let componentSizes = [];
-      // cycles of length smaller than 2 cannot be produced
-      for (let i=2; i<22; ++i) {
-        componentSizes.push(i);
-      }
-      testWCCDisjointComponents(componentSizes, graphGeneration.createAlternatingCycle);
-    },
-
-    testWCC10BidirectedCliques() {
+    testSCC10BidirectedCliques() {
       let treeDepths = [];
       for (let i=120; i<130; ++i) {
         treeDepths.push(i);
       }
-      testWCCDisjointComponents(treeDepths, graphGeneration.createBidirectedClique);
+      testComponentsAlgorithmOnDisjointComponents(treeDepths, graphGeneration.createBidirectedClique, "scc");
     },
 
-    testWCCOneSingleVertex: function() {
+    testSCCOneSingleVertex: function() {
       let {vertices, edges} = graphGeneration.createSingleVertex("v");
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
-      assertEqual(status.state, "done", "Pregel Job did never succeed.");
-
-      // Now test the result.
-      // We expect one component with one element.
-      const query = `
-        FOR v IN ${vColl}
-          COLLECT component = v.result WITH COUNT INTO size
-          RETURN {component, size}
-      `;
-      const computedComponents = db._query(query).toArray();
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
     },
 
-    testWCCTwoIsolatedVertices: function() {
+    testSCCTwoIsolatedVertices: function() {
       let isolatedVertex0 = graphGeneration.makeVertex(0, "v");
       let isolatedVertex1 = graphGeneration.makeVertex(1, "v");
       const vertices = [isolatedVertex0, isolatedVertex1];
@@ -582,98 +695,122 @@ function wccTestSuite() {
       const edges = [];
       db[eColl].save(edges);
 
-
-      const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
-      assertEqual(status.state, "done", "Pregel Job did never succeed.");
-
-      // Now test the result.
-      // We expect four components
-      const query = `
-        FOR v IN ${vColl}
-          COLLECT component = v.result WITH COUNT INTO size
-          RETURN {component, size}
-      `;
-      const computedComponents = db._query(query).toArray();
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
-      // Both have 20 elements
       assertEqual(computedComponents[0].size, 1);
       assertEqual(computedComponents[1].size, 1);
     },
 
-    testWCCOneDirectedTree: function()  {
+    testSCCOneEdge: function() {
+      let vertex0 = graphGeneration.makeVertex(0, "v");
+      let vertex1 = graphGeneration.makeVertex(1, "v");
+      const vertices = [vertex0, vertex1];
+      db[vColl].save(vertices);
+      const edges = [makeEdge(0, 1, vColl, "v")];
+      db[eColl].save(edges);
+
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, 1);
+      assertEqual(computedComponents[1].size, 1);
+    },
+
+    testSCCOneDirected10Path: function() {
+      const length = 10;
+      const {vertices, edges} = graphGeneration.createPath(length, vColl, "v");
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, length,
+          `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
+      for (const component of computedComponents) {
+        assertEqual(component.size, 1);
+      }
+    },
+
+    testSCCOneBidirected10Path: function() {
+      const length = 10;
+      const {vertices, edges} = graphGeneration.createPath(length, vColl, "v", "bidirected");
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 1,
+          `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, length);
+    },
+
+    testSCCOneAlternated10Path: function() {
+      const length = 10;
+      const {vertices, edges} = graphGeneration.createPath(length, vColl, "v", "alternating");
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, length,
+          `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
+      for (const component of computedComponents) {
+        assertEqual(component.size, 1);
+      }
+    },
+
+    testSCCOneDirectedTree: function()  {
+      // Each vertex induces its own strongly connected component.
       const depth = 3;
       let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", false);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      // number of vertices in a full binary tree
+      const numVertices = Math.pow(2, depth + 1) - 1;
+      assertEqual(computedComponents.length, numVertices,
+          `We expected ${numVertices} components, instead got ${JSON.stringify(computedComponents)}`);
 
-      const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
-      assertEqual(status.state, "done", "Pregel Job did never succeed.");
-
-      // Now test the result.
-      // We expect four components
-      const query = `
-        FOR v IN ${vColl}
-          COLLECT component = v.result WITH COUNT INTO size
-          SORT size DESC
-          RETURN {component, size}
-      `;
-      const computedComponents = db._query(query).toArray();
-      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
-
-      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
+      for (const component of computedComponents) {
+        assertEqual(component.size, 1);
+      }
 
     },
 
-    testWCCOneDepth3AlternatingTree: function() {
+    testSCCOneDepth3AlternatingTree: function() {
+      // Each vertex induces its own strongly connected component.
       const depth = 3;
       let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      // number of vertices in a full binary tree
+      const numVertices = Math.pow(2, depth + 1) - 1;
+      assertEqual(computedComponents.length, numVertices,
+          `We expected ${numVertices} component, instead got ${JSON.stringify(computedComponents)}`);
 
-      const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
-      assertEqual(status.state, "done", "Pregel Job did never succeed.");
-
-      // Now test the result.
-      // We expect 1 component
-      const query = `
-        FOR v IN ${vColl}
-          COLLECT component = v.result WITH COUNT INTO size
-          SORT size DESC
-          RETURN {component, size}
-      `;
-      const computedComponents = db._query(query).toArray();
-      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
-
-      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
+      for (const component of computedComponents) {
+        assertEqual(component.size, 1);
+      }
     },
 
-    testWCCOneDepth4AlternatingTree: function() {
+    testSCCOneDepth4AlternatingTree: function() {
       const depth = 4;
+      // Each vertex induces its own strongly connected component.
       let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      // number of vertices in a full binary tree
+      const numVertices = Math.pow(2, depth + 1) - 1;
+      assertEqual(computedComponents.length, numVertices,
+          `We expected ${numVertices} component, instead got ${JSON.stringify(computedComponents)}`);
 
-      const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
-      assertEqual(status.state, "done", "Pregel Job did never succeed.");
-
-      // Now test the result.
-      // We expect 1 component
-      const query = `
-        FOR v IN ${vColl}
-          COLLECT component = v.result WITH COUNT INTO size
-          SORT size DESC
-          RETURN {component, size}
-      `;
-      const computedComponents = db._query(query).toArray();
-      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
-
-      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
+      for (const component of computedComponents) {
+        assertEqual(component.size, 1);
+      }
     },
 
-    testWCCAlternatingTreeAlternatingCycle: function() {
+    testSCCAlternatingTreeAlternatingCycle: function() {
       // tree
       const depth = 3;
       const {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "t", true);
@@ -686,29 +823,20 @@ function wccTestSuite() {
       db[vColl].save(resultC.vertices);
       db[eColl].save(resultC.edges);
 
-      const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
-      assertEqual(status.state, "done", "Pregel Job did never succeed.");
+      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, depth + length,
+          `We expected ${depth + length} components, instead got ${JSON.stringify(computedComponents)}`);
 
-      // Now test the result.
-      // We expect four components
-      const query = `
-        FOR v IN ${vColl}
-          COLLECT component = v.result WITH COUNT INTO size
-          SORT size DESC
-          RETURN {component, size}
-      `;
-      const computedComponents = db._query(query).toArray();
-      assertEqual(computedComponents.length, 2, `We expected 2 component, instead got ${JSON.stringify(computedComponents)}`);
-
-      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
-      assertEqual(computedComponents[1].size, length);
+      for (let component of computedComponents) {
+        assertEqual(component.size, 1);
+      }
     },
 
   };
 }
 
-
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
 jsunity.run(wccTestSuite);
+jsunity.run(sccTestSuite);
 return jsunity.done();
