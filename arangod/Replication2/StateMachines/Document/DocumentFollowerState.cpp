@@ -23,6 +23,7 @@
 
 #include "DocumentCore.h"
 #include "DocumentFollowerState.h"
+#include "DocumentLeaderState.h"
 
 #include <Futures/Future.h>
 

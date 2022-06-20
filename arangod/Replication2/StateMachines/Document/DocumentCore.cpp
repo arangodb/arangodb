@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentCore.h"
+#include "DocumentFollowerState.h"
+#include "DocumentLeaderState.h"
 #include "DocumentStateMachine.h"
 
 using namespace arangodb::replication2::replicated_state::document;

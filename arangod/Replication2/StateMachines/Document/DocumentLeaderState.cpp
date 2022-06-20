@@ -21,12 +21,12 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "DocumentFollowerState.h"
 #include "DocumentLeaderState.h"
 #include "DocumentStateMachine.h"
 #include "Logger/LogContextKeys.h"
 
 #include <Futures/Future.h>
-//#include <velocypack/SharedSlice.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
