@@ -1142,6 +1142,9 @@ Future<OperationResult> transaction::Methods::insertLocal(
     if (!isPrimaryKeyConstraintViolation) {
       // regular insert without overwrite option. the insert itself will check
       // if the primary key already exists
+      // TODO: instead of passing a new docResult into this function,
+      // pass a recycled Builder and use that. collection::insert fills a
+      // Builder anyway
       res = collection->insert(this, value, docResult, options);
     } else {
       // RepSert Case - unique_constraint violated ->  try update, replace or

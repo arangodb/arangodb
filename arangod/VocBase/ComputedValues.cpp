@@ -80,10 +80,13 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
     TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
 
     if (msg == nullptr) {
-      THROW_ARANGO_EXCEPTION(errorCode);
+      THROW_ARANGO_EXCEPTION_MESSAGE(errorCode,
+                                     "computed values runtime error");
     }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, std::string_view(msg));
+    std::string error("computed values runtime error: ");
+    error.append(msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, error);
   }
 
   void failOnWarning(bool value) { _failOnWarning = value; }
@@ -280,19 +283,19 @@ ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
 
 ComputedValues::~ComputedValues() = default;
 
-bool ComputedValues::mustComputeAttribute(std::string_view name,
-                                          RunOn runOn) const noexcept {
+bool ComputedValues::isForceComputedAttribute(std::string_view name,
+                                              RunOn runOn) const noexcept {
   if (runOn == RunOn::kInsert) {
     auto it = _attributesForInsert.find(name);
-    return it == _attributesForInsert.end() || _values[it->second].doOverride();
+    return it != _attributesForInsert.end() && _values[it->second].doOverride();
   }
   if (runOn == RunOn::kUpdate) {
     auto it = _attributesForUpdate.find(name);
-    return it == _attributesForUpdate.end() || _values[it->second].doOverride();
+    return it != _attributesForUpdate.end() && _values[it->second].doOverride();
   }
   if (runOn == RunOn::kReplace) {
     auto it = _attributesForReplace.find(name);
-    return it == _attributesForReplace.end() ||
+    return it != _attributesForReplace.end() &&
            _values[it->second].doOverride();
   }
   TRI_ASSERT(false);

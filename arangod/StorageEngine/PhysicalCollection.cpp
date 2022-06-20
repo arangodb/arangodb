@@ -483,7 +483,7 @@ Result PhysicalCollection::newObjectForInsert(
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&
          key != StaticStrings::ToString)) {
-      if (cv == nullptr || !cv->mustComputeAttribute(key, RunOn::kInsert)) {
+      if (cv == nullptr || !cv->isForceComputedAttribute(key, RunOn::kInsert)) {
         // only add an attribute here if it is not going to be force-calculated
         // by the computed attributes
         builder.add(key, it.value());

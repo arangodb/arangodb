@@ -108,7 +108,8 @@ class ComputedValues {
   bool mustRunOnUpdate() const noexcept;
   bool mustRunOnReplace() const noexcept;
 
-  bool mustComputeAttribute(std::string_view name, RunOn runOn) const noexcept;
+  bool isForceComputedAttribute(std::string_view name,
+                                RunOn runOn) const noexcept;
 
   void computeAttributes(
       transaction::Methods& trx, velocypack::Slice input,
