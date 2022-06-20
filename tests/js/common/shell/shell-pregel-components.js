@@ -48,7 +48,7 @@ const pregelRunSmallInstance = function (algName, graphName, parameters) {
     internal.sleep(0.2);
   }
   return pregel.status(pid);
-}
+};
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
