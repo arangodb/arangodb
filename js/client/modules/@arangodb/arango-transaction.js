@@ -247,6 +247,14 @@ ArangoTransactionCollection.prototype.document = function(id) {
   return this._collection.document(id, opts);
 };
 
+ArangoTransactionCollection.prototype.exists = function(id) {
+  if (!this._transaction.running()) {
+    throwNotRunning();
+  }
+  let opts = { transactionId : this._transaction.id() };
+  return this._collection.exists(id, opts);
+};
+
 ArangoTransactionCollection.prototype.save = 
 ArangoTransactionCollection.prototype.insert = function(data, opts) {
   if (!this._transaction.running()) {
