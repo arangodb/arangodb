@@ -169,31 +169,6 @@ function createBidirectedClique(size, vColl, name_prefix) {
     return createClique(size, vColl, name_prefix, "bidirected");
 }
 
-// for manual testing
-
-// console.log(createDirectedCycle(2, "vertices", "v"));
-// console.log(createDirectedCycle(3, "vertices", "v"));
-// console.log(createAlternatingCycle(2, "vertices", "v"));
-// console.log(createAlternatingCycle(3, "vertices", "v"));
-// console.log(createAlternatingCycle(4, "vertices", "v"));
-// console.log(createFullBinaryTree(0, "vertices", "v", false));
-// console.log(createFullBinaryTree(0, "vertices", "v", false));
-// console.log(createFullBinaryTree(0, "vertices", "v", true));
-// console.log(createFullBinaryTree(1, "vertices", "v", false));
-// console.log(createFullBinaryTree(1, "vertices", "v", true));
-// console.log(createFullBinaryTree(2, "vertices", "v", false));
-// console.log(createFullBinaryTree(2, "vertices", "v", true));
-// console.log(createFullBinaryTree(3, "vertices", "v", false));
-// console.log(createFullBinaryTree(3, "vertices", "v", true));
-// console.log(createClique(0, "vertices", "v", "bidirected"));
-// console.log(createClique(1, "vertices", "v", "bidirected"));
-// console.log(createClique(2, "vertices", "v", "bidirected"));
-// console.log(createClique(3, "vertices", "v", "bidirected"));
-// console.log(createClique(1, "vertices", "v", "linear"));
-// console.log(createClique(2, "vertices", "v", "linear"));
-// console.log(createClique(3, "vertices", "v", "linear"));
-// console.log(createClique(4, "vertices", "v", "linear"));
-
 exports.makeVertex = makeVertex;
 exports.makeEdge = makeEdge;
 exports.createDirectedCycle = createDirectedCycle;
