@@ -524,6 +524,8 @@ struct RandomEnumerator {
             return result;
           }
           if (step->isActive()) {
+            v->outgoing.emplace_back(std::move(transition), step);
+            v->searchIndex = v->outgoing.size();
             auto cycle = decltype(path)();
             {
               // move cycle from `path` to `cycle`
