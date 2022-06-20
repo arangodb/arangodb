@@ -251,11 +251,11 @@
         } else {
           this.createEditGraphModal();
           // hide tab entries
-          // no EnterpriseGraphs in single server mode
+          // no EnterpriseGraphs in the community edition.
           $('#tab-enterpriseGraph').parent().remove();
-          // no SmartGraphs in single server mode
+          // no SmartGraphs in the community edition.
           $('#tab-smartGraph').parent().remove();
-          // no SatelliteGraphs in single server mode
+          // no SatelliteGraphs in the community edition.
           $('#tab-satelliteGraph').parent().remove();
         }
       }
