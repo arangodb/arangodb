@@ -44,10 +44,8 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
     if (tmp < *state || (tmp == 0 && localSuperstep() == 0)) {
       *state = tmp;  // update state
 
-      RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (; edges.hasMore(); ++edges) {
-        Edge<int64_t>* edge = *edges;
-        int64_t val = edge->data() + tmp;
+      for (auto const& edge : getEdges()) {
+        int64_t val = edge.data() + tmp;
         sendMessage(edge, val);
       }
     }

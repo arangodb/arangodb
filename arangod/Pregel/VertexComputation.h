@@ -88,8 +88,8 @@ class VertexContext {
 
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 
-  RangeIterator<Edge<E>> getEdges() const {
-    return _graphStore->edgeIterator(_vertexEntry);
+  std::vector<Edge<E>> const& getEdges() const {
+    return _vertexEntry->getEdges();
   }
 
   void setVertexData(V const& val) {
@@ -131,17 +131,17 @@ class VertexComputation : public VertexContext<V, E, M> {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
   }
 
+  void sendMessage(Edge<E> const& edge, M const& data) {
+    _cache->appendMessage(edge.targetShard(), edge.toKey(), data);
+  }
+
   void sendMessage(PregelID const& pid, M const& data) {
     _cache->appendMessage(pid.shard, std::string_view(pid.key), data);
   }
 
-  /// Send message along outgoing edges to all reachable neighbours
-  /// TODO Multi-receiver messages
   void sendMessageToAllNeighbours(M const& data) {
-    RangeIterator<Edge<E>> edges = this->getEdges();
-    for (; edges.hasMore(); ++edges) {
-      Edge<E> const* edge = *edges;
-      _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+    for (auto const& edge : this->getEdges()) {
+      _cache->appendMessage(edge.targetShard(), edge.toKey(), data);
     }
   }
 

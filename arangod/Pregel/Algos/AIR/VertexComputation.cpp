@@ -278,24 +278,21 @@ greenspun::EvalResult VertexComputation::air_outboundEdges(
   if (res.fail()) {
     return res.error();
   }
-  RangeIterator<Edge<EdgeData>> edgeIter = getEdges();
   VPackArrayBuilder edgesGuard(&result);
 
-  // FIXME: Uglay
-  // FIXME: For needs iterable support!
-  for (; edgeIter.hasMore(); ++edgeIter) {
+  for (auto const& edge : getEdges()) {
     VPackObjectBuilder objGuard(&result);
     result.add(VPackValue("to-pregel-id"));
     {
       VPackObjectBuilder pidGuard(&result);
       result.add(VPackValue("shard"));
-      result.add(VPackValue((*edgeIter)->targetShard()));
+      result.add(VPackValue(edge.targetShard()));
       result.add(VPackValue("key"));
-      result.add(VPackValue((*edgeIter)->toKey()));
+      result.add(VPackValue(edge.toKey()));
     }
 
     result.add(VPackValue("document"));
-    VPackSlice edgeDoc = (*edgeIter)->data()._document.slice();
+    VPackSlice edgeDoc = edge.data()._document.slice();
     result.add(edgeDoc);
   }
 

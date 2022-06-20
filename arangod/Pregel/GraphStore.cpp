@@ -311,29 +311,6 @@ RangeIterator<Vertex<V, E>> GraphStore<V, E>::vertexIterator(size_t i,
                                      numVertices);
 }
 
-template<typename V, typename E>
-RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
-    Vertex<V, E> const* entry) {
-  if (entry->getEdgeCount() == 0) {
-    return RangeIterator<Edge<E>>(_edges, 0, nullptr, 0);
-  }
-
-  size_t i = 0;
-  for (; i < _edges.size(); i++) {
-    if (_edges[i]->begin() <= entry->getEdges() &&
-        entry->getEdges() <= _edges[i]->end()) {
-      break;
-    }
-  }
-
-  TRI_ASSERT(i < _edges.size());
-  TRI_ASSERT(i != _edges.size() - 1 ||
-             _edges[i]->size() >= entry->getEdgeCount());
-  return RangeIterator<Edge<E>>(_edges, i,
-                                static_cast<Edge<E>*>(entry->getEdges()),
-                                entry->getEdgeCount());
-}
-
 namespace {
 template<typename X>
 void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
@@ -401,7 +378,6 @@ void GraphStore<V, E>::loadVertices(
       << (vertexIdRangeStart + numVertices) << ")";
 
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> vertices;
-  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> edges;
 
   std::vector<std::unique_ptr<traverser::EdgeCollectionInfo>>
       edgeCollectionInfos;
@@ -448,7 +424,7 @@ void GraphStore<V, E>::loadVertices(
     for (std::size_t i = 0; i < edgeShards.size(); ++i) {
       auto const& edgeShard = edgeShards[i];
       auto& info = *edgeCollectionInfos[i];
-      loadEdges(trx, *ventry, edgeShard, documentId, edges, numVertices, info);
+      loadEdges(trx, *ventry, edgeShard, documentId, numVertices, info);
     }
     ++_observables.verticesLoaded;
     return true;
@@ -489,58 +465,38 @@ void GraphStore<V, E>::loadVertices(
 
   std::lock_guard<std::mutex> guard(_bufferMutex);
   ::moveAppend(vertices, _vertices);
-  ::moveAppend(edges, _edges);
 
   LOG_PREGEL("6d389", DEBUG)
       << "Pregel worker: done loading from vertex shard " << vertexShard;
 }
 
 template<typename V, typename E>
-void GraphStore<V, E>::loadEdges(
-    transaction::Methods& trx, Vertex<V, E>& vertex, ShardID const& edgeShard,
-    std::string const& documentID,
-    std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
-    uint64_t numVertices, traverser::EdgeCollectionInfo& info) {
+void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
+                                 Vertex<V, E>& vertex, ShardID const& edgeShard,
+                                 std::string const& documentID,
+                                 uint64_t numVertices,
+                                 traverser::EdgeCollectionInfo& info) {
   auto cursor = info.getEdges(documentID);
 
-  TypedBuffer<Edge<E>>* edgeBuff = edges.empty() ? nullptr : edges.back().get();
-
-  auto allocateSpace = [&](size_t keyLen) {
-    if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
-      edges.push_back(
-          createBuffer<Edge<E>>(_feature, *_config, edgeSegmentSize()));
-      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(
-          edgeSegmentSize());
-      edgeBuff = edges.back().get();
-    }
-  };
-
   size_t addedEdges = 0;
-  auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
+  auto buildEdge = [&](std::string_view toValue) -> std::optional<Edge<E>> {
     ++addedEdges;
-    if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "too many edges for vertex");
-    }
-    ++_observables.edgesLoaded;
-    _observables.memoryBytesUsed += sizeof(Edge<E>);
+    Edge<E> newEdge;
 
     auto documentId = DocumentId::create(std::string_view(toValue));
     if (documentId.fail()) {
       LOG_PREGEL("fe72b", ERR) << documentId.errorMessage();
-      return documentId.errorNumber();
+      return std::nullopt;
     }
-    edge->setToKey(documentId.get()._key);
-    TRI_ASSERT(documentId.get()._key.size() <=
-               std::numeric_limits<uint16_t>::max());
+    newEdge.setToKey(documentId.get()._key);
 
     auto shard = _shardResolver->getShard(documentId.get(), _config);
     if (shard.fail()) {
       LOG_PREGEL("ba803", ERR) << shard.errorMessage();
-      return shard.errorNumber();
+      return std::nullopt;
     }
-    edge->setTargetShard(shard.get());
-    return TRI_ERROR_NO_ERROR;
+    newEdge.setTargetShard(shard.get());
+    return newEdge;
   };
 
   if (_graphFormat->estimatedEdgeSize() == 0) {
@@ -552,11 +508,14 @@ void GraphStore<V, E>::loadEdges(
 
           std::string_view toValue =
               covering.at(info.coveringPosition()).stringView();
-          size_t space = toValue.size();
-          allocateSpace(space);
-          Edge<E>* edge = edgeBuff->appendElement();
-          buildEdge(edge, toValue);
-          return true;
+
+          auto newEdge = buildEdge(toValue);
+          if (newEdge.has_value()) {
+            vertex.emplaceEdge(std::move(*newEdge));
+            return true;
+          } else {
+            return false;
+          }
         },
         1000)) { /* continue loading */
       // Might overcount a bit;
@@ -568,15 +527,17 @@ void GraphStore<V, E>::loadEdges(
 
           std::string_view toValue =
               transaction::helpers::extractToFromDocument(slice).stringView();
-          allocateSpace(toValue.size());
-          Edge<E>* edge = edgeBuff->appendElement();
-          auto res = buildEdge(edge, toValue);
-          if (res == TRI_ERROR_NO_ERROR) {
+
+          auto newEdge = buildEdge(toValue);
+          if (newEdge.has_value()) {
+            vertex.emplaceEdge(std::move(*newEdge));
             _graphFormat->copyEdgeData(
                 *trx.transactionContext()->getVPackOptions(), slice,
-                edge->data());
+                newEdge->data_mut());
+            return true;
+          } else {
+            return false;
           }
-          return true;
         },
         1000)) { /* continue loading */
       // Might overcount a bit;

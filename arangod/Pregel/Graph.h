@@ -80,7 +80,8 @@ class Edge {
   void setTargetShard(PregelShard targetShard) { _targetShard = targetShard; }
   PregelShard targetShard() const noexcept { return _targetShard; }
 
-  E& data() noexcept { return _data; }
+  E const& data() const noexcept { return _data; }
+  E& data_mut() noexcept { return _data; }
 };
 
 template<typename V, typename E>
@@ -88,12 +89,7 @@ template<typename V, typename E>
 class Vertex {
   std::string _key;
 
-  // these members are initialized by the GraphStore
-  Edge<E>* _edges;  // uint64_t
-
-  // the number of edges per vertex is limited to 4G.
-  // this should be more than enough
-  uint32_t _edgeCount;  // uint32_t
+  std::vector<Edge<E>> _edges;
 
   // combined uint16_t attribute fusing the active bit
   // and the length of the key in its other 15 bits. we do this
@@ -103,21 +99,14 @@ class Vertex {
   // not. in order to protect us from compilers that don't tightly
   // pack bitfield variables, we validate the size of the struct
   // via static_assert in the constructor of Vertex<V, E>.
-  uint16_t _active : 1;      // uint16_t (shared with _keyLength)
-  uint16_t _keyLength : 15;  // uint16_t (shared with _active)
+  uint16_t _active : 1;
 
-  PregelShard _shard;  // uint16_t
+  PregelShard _shard;
 
-  V _data;  // variable byte size
+  V _data;
 
  public:
-  Vertex() noexcept
-      : _key(),
-        _edges(nullptr),
-        _edgeCount(0),
-        _active(1),
-        _keyLength(0),
-        _shard(InvalidPregelShard) {
+  Vertex() noexcept : _key(), _edges(), _active(1), _shard(InvalidPregelShard) {
     TRI_ASSERT(keyLength() == 0);
     TRI_ASSERT(active());
   }
@@ -126,32 +115,21 @@ class Vertex {
   // so it must not allocate any memory or take ownership
   // of anything
 
-  Edge<E>* getEdges() const noexcept { return _edges; }
+  std::vector<Edge<E>> const& getEdges() const noexcept { return _edges; }
 
   // adds an edge for the vertex. returns the number of edges
   // after the addition. note that the caller must make sure that
   // we don't end up with more than 4GB edges per verte.
-  size_t addEdge(Edge<E>* edge) noexcept {
+  size_t emplaceEdge(Edge<E>&& edge) noexcept {
     // must only be called during initial vertex creation
     TRI_ASSERT(active());
-    TRI_ASSERT(_edgeCount < maxEdgeCount());
+    _edges.emplace_back(std::move(edge));
 
-    if (_edges == nullptr) {
-      _edges = edge;
-    }
-    return static_cast<size_t>(++_edgeCount);
+    return _edges.size();
   }
 
   // returns the number of associated edges
-  size_t getEdgeCount() const noexcept {
-    return static_cast<size_t>(_edgeCount);
-  }
-
-  // maximum number of edges that can be added for each vertex
-  static constexpr size_t maxEdgeCount() {
-    return static_cast<size_t>(
-        std::numeric_limits<decltype(_edgeCount)>::max());
-  }
+  size_t getEdgeCount() const noexcept { return _edges.size(); }
 
   void setActive(bool bb) noexcept {
     _active = bb ? 1 : 0;
