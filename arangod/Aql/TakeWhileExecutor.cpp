@@ -37,41 +37,79 @@ auto TakeWhileExecutorInfos::getInputRegister() const noexcept -> RegisterId {
   return _inputRegister;
 }
 
+auto TakeWhileExecutorInfos::emitFirstFalseLine() const noexcept -> bool {
+  return _emitFirstFalseLine;
+}
+
 TakeWhileExecutor::TakeWhileExecutor(TakeWhileExecutor::Fetcher& fetcher,
                                      TakeWhileExecutor::Infos& infos)
     : _infos(infos) {}
 
-[[nodiscard]] auto TakeWhileExecutor::produceRows(AqlItemBlockInputRange& input,
-                                                  OutputAqlItemRow& output)
+[[nodiscard]] auto TakeWhileExecutor::produceRows(
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TakeWhileStats stats;
-  // TODO Implement correctly instead of pass-through
-  if (input.hasDataRow()) {
-    TRI_ASSERT(!output.isFull());
-    TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    auto const& [state, inputRow] = input.peekDataRow();
+  TRI_IF_FAILURE("FilterExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TakeWhileStats stats{};
 
-    size_t rows = input.countAndSkipAllRemainingDataRows();
-
-    output.fastForwardAllRows(inputRow, rows);
-
-    TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  while (!_stopTaking && inputRange.hasDataRow() && !output.isFull()) {
+    auto const& [state, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    TRI_ASSERT(input);
+    TRI_ASSERT(input.isInitialized());
+    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+      output.copyRow(input);
+      output.advanceRow();
+    } else {
+      _stopTaking = true;
+      if (_infos.emitFirstFalseLine()) {
+        output.copyRow(input);
+        output.advanceRow();
+      }
+      // TODO
+      // stats.incrFiltered();
     }
   }
-  TRI_ASSERT(!input.hasDataRow());
-  // TODO increase stats
-  // stats.incrCounted(output.numRowsWritten());
 
-  return {input.upstreamState(), stats, output.getClientCall()};
+  if (_stopTaking) {
+    auto call = AqlCall{};
+    call.hardLimit = std::size_t(0);
+    return {ExecutorState::DONE, stats, call};
+  }
+  // Just fetch everything from above, allow overfetching
+  return {inputRange.upstreamState(), stats, AqlCall{}};
 }
 
 auto TakeWhileExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                       AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  std::abort();  // TODO
+  // This must never be true: It is used when TAKE WHILE is pushed (partially)
+  // on the DBServers, on these nodes; however, in this situation, skipping
+  // may only happen on the coordinator.
+  TRI_ASSERT(!_infos.emitFirstFalseLine());
+  TakeWhileStats stats{};
+
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
+    auto const [unused, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    TRI_ASSERT(input);
+    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+      call.didSkip(1);
+    } else {
+      _stopTaking = true;
+      // TODO
+      // stats.incrFiltered();
+    }
+  }
+
+  if (_stopTaking) {
+    auto upstreamCall = AqlCall{};
+    upstreamCall.hardLimit = std::size_t(0);
+    return {ExecutorState::DONE, stats, call.getSkipCount(), upstreamCall};
+  }
+  // Just fetch everything from above, allow overfetching
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), AqlCall{}};
 }
 
 }  // namespace arangodb::aql

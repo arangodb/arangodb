@@ -48,6 +48,8 @@ class TakeWhileExecutorInfos {
 
   [[nodiscard]] auto getInputRegister() const noexcept -> RegisterId;
 
+  [[nodiscard]] auto emitFirstFalseLine() const noexcept -> bool;
+
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
   // respectively getInputRegisters().
@@ -94,6 +96,7 @@ class TakeWhileExecutor {
 
  private:
   Infos& _infos;
+  bool _stopTaking = false;
 };
 
 }  // namespace arangodb::aql
