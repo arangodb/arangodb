@@ -228,6 +228,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #else
       _createShaFiles(false),
 #endif
+      _useRangeDeleteInWal(false),
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
       _runningRebuilds(0),
@@ -513,6 +514,17 @@ void RocksDBEngine::collectOptions(
                          arangodb::options::Flags::OnSingle,
                          arangodb::options::Flags::Enterprise));
 #endif
+
+  options
+      ->addOption("--rocksdb.use-range-delete-in-wal",
+                  "enable range delete markers in the write-ahead log (WAL). "
+                  "potentially incompatible with older arangosync versions",
+                  new BooleanParameter(&_useRangeDeleteInWal),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30902);
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
