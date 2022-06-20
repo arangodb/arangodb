@@ -2085,9 +2085,6 @@ Future<OperationResult> getDocumentOnCoordinator(
         if (allowDirtyReads) {
           reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
           headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
-          LOG_DEVEL
-              << "getDocumentOnCoordinator: overriding destination for shard "
-              << it.first << " with server " << reqOpts.overrideDestination;
         }
         futures.emplace_back(network::sendRequestRetry(
             pool, "shard:" + it.first, restVerb, std::move(url),
