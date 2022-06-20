@@ -668,7 +668,9 @@ auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
     return;
   }
   if (plan.participantsConfig.generation ==
-      current.leader->committedParticipantsConfig->generation) {
+          current.leader->committedParticipantsConfig->generation and
+      plan.participantsConfig.config.effectiveWriteConcern !=
+          current.supervision->assumedWriteConcern) {
     // update assumedWriteConcern
     ctx.createAction<SetAssumedWriteConcernAction>(
         plan.participantsConfig.config.effectiveWriteConcern);
