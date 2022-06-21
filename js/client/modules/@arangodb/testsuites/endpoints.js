@@ -81,7 +81,6 @@ class endpointRunner extends tu.runInArangoshRunner {
                                                   this.friendlyName);
     this.instanceManager['arangods'] = [this.instance];
     this.instanceManager.rootDir = this.instance.rootDir;
-    pu.cleanupDBDirectoriesAppend(this.dummyDir);
     
     const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'UnitTests', 'server.pem');
 
@@ -337,7 +336,9 @@ class endpointRunner extends tu.runInArangoshRunner {
       }
       return results;
     }, { failed: 0, shutdown: true });
-    pu.cleanupLastDirectory(this.options);
+    if (this.options.cleanup) {
+      fs.removeDirectoryRecursive(this.dummyDir, true);
+    }
   }
 }
 

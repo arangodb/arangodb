@@ -126,21 +126,20 @@ function runArangodRecovery (params) {
     });
 
     if (useEncryption) {
-      let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
-      if (!fs.exists(keyDir)) {  // needed on win32
-        fs.makeDirectory(keyDir);
+      params.keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+      if (!fs.exists(params.keyDir)) {  // needed on win32
+        fs.makeDirectory(params.keyDir);
       }
-      pu.cleanupDBDirectoriesAppend(keyDir);
         
       const key = '01234567890123456789012345678901';
       
-      let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
+      let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
       fs.write(keyfile, key);
 
       // special handling for encryption-keyfolder tests
       if (params.script.match(/encryption-keyfolder/)) {
-        args['rocksdb.encryption-keyfolder'] = keyDir;
-        process.env["rocksdb-encryption-keyfolder"] = keyDir;
+        args['rocksdb.encryption-keyfolder'] = params.keyDir;
+        process.env["rocksdb-encryption-keyfolder"] = params.keyDir;
       } else {
         args['rocksdb.encryption-keyfile'] = keyfile;
         process.env["rocksdb-encryption-keyfile"] = keyfile;
@@ -254,7 +253,6 @@ function recovery (options) {
   let tempDir = fs.join(fs.getTempPath(), 'recovery_cluster');
   fs.makeDirectoryRecursive(tempDir);
   process.env.TMPDIR = tempDir;
-  pu.cleanupDBDirectoriesAppend(tempDir);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -274,6 +272,7 @@ function recovery (options) {
         setup: true,
         count: count,
         testDir: "",
+        keyDir: "",
         temp_path: fs.join(tempDir, count.toString())
       };
       runArangodRecovery(params);
@@ -312,18 +311,23 @@ function recovery (options) {
         },
         test
       );
-      if (!results[test].status) {
+      if (results[test].status) {
+        fs.removeDirectoryRecursive(params.testDir, true);
+        if (params.keyDir !== "") {
+          fs.removeDirectoryRecursive(params.keyDir);
+        }
+      } else {
         print("Not cleaning up " + params.testDir);
         results.status = false;
-      }
-      else {
-        pu.cleanupLastDirectory(params.options);
       }
     } else {
       if (options.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);
       }
     }
+  }
+  if (options.cleanup && results.status) {
+    fs.removeDirectoryRecursive(tempDir, true);
   }
   process.env.TMPDIR = orgTmp;
   if (count === 0) {

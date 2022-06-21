@@ -182,10 +182,6 @@ function authenticationParameters (options) {
 
   let continueTesting = true;
   let results = {};
-  // we append one cleanup directory for the invoking logic...
-  let dummyDir = fs.join(fs.getTempPath(), 'authentication_dummy');
-  fs.makeDirectory(dummyDir);
-  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   for (let test = 0; test < 3; test++) {
     let cleanup = true;
@@ -263,10 +259,6 @@ function authenticationParameters (options) {
     print(CYAN + 'Shutting down ' + authTestNames[test] + ' test...' + RESET);
     results['shutdown'] = instanceManager.shutdownInstance();
     print(CYAN + 'done with ' + authTestNames[test] + ' test.' + RESET);
-
-    if (cleanup) {
-      pu.cleanupLastDirectory(options);
-    }
   }
 
   print();

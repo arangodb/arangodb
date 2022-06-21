@@ -82,7 +82,7 @@ class instanceManager {
     this.restKeyFile = '';
     this.tcpdump = null;
     this.JWT = null;
-    this.cleanup = options.cleanup;
+    this.cleanup = options.cleanup && options.server === undefined;
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
     }
@@ -876,7 +876,6 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines();
     });
-    pu.cleanupDBDirectoriesRemove(this.rootDir);
     this.cleanup = shutdownSuccess;
     return shutdownSuccess;
   }

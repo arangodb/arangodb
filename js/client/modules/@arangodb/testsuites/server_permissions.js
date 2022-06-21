@@ -231,16 +231,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         }
         shutdownStatus = this.instanceManager.shutdownInstance(false);
         this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
-        this.instanceManager.destructor(this.results.failed === 0);
-        if (!this.results[te].status || !shutdownStatus) {
-          print("Not cleaning up " + this.instanceManager.rootDir);
-          this.results.status = false;
-          this.results[te].status = false;
-          return this.results;
-        }
-        else {
-          pu.cleanupLastDirectory(clonedOpts);
-        }
+        this.instanceManager.destructor(this.results[te].status && shutdownStatus);
       } else {
         if (this.options.extremeVerbosity !== 'silent') {
           print('Skipped ' + te + ' because of ' + filtered.filter);
@@ -265,7 +256,6 @@ function server_secrets(options) {
 
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
-  pu.cleanupDBDirectoriesAppend(secretsDir);
 
   fs.write(fs.join(secretsDir, 'secret1'), 'jwtsecret-1');
   fs.write(fs.join(secretsDir, 'secret2'), 'jwtsecret-2');
@@ -276,7 +266,6 @@ function server_secrets(options) {
   let keyfileDir = fs.join(fs.getTempPath(), 'arango_tls_keyfile');
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectory(keyfileDir);
-  pu.cleanupDBDirectoriesAppend(keyfileDir);
 
   fs.copyFile("./UnitTests/server.pem", keyfileName);
 
@@ -299,7 +288,12 @@ function server_secrets(options) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
   }
-  return new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
+  let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
+  if (rc.status && options.cleanup) {
+    fs.removeDirectoryRecursive(keyfileDir, true);
+    fs.removeDirectoryRecursive(secretsDir, true);
+  }
+  return rc;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

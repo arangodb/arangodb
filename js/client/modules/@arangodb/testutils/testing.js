@@ -541,40 +541,10 @@ function iterateTests(cases, options) {
     result.failed = failed;
     result.status = status;
     results[currentTest] = result;
-
-    if (status && localOptions.cleanup && shutdownSuccess ) {
-      pu.cleanupLastDirectory(localOptions);
-    } else {
-      cleanup = false;
-      print('cleanupdisabled:\n' +
-            pu.getCleanupDBDirectories() + " " +
-            cleanup + ' - ' +
-            globalStatus + ' - ' +
-            pu.serverCrashed + ' - ' +
-            status + ' - ' +
-            localOptions.cleanup + ' - ' +
-            shutdownSuccess + "\n");
-    }
-    //// TODOpu.aggregateFatalErrors(currentTest);
   }
 
   results.status = globalStatus;
   results.crashed = pu.serverCrashed;
-
-  if (options.server === undefined) {
-    if (cleanup && globalStatus && !pu.serverCrashed) {
-      pu.cleanupDBDirectories(options);
-    } else {
-      print('not cleaning up as some tests weren\'t successful:\n' +
-            pu.getCleanupDBDirectories() + " " +
-            cleanup + ' - ' +
-            globalStatus + ' - ' +
-            pu.serverCrashed + ' - ' +
-            localOptions.cleanup + "\n");
-    }
-  } else {
-    print("not cleaning up since we didn't start the server ourselves\n");
-  }
 
   if (options.extremeVerbosity === true) {
     rp.yamlDumpResults(options, results);

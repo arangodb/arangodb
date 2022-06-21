@@ -105,7 +105,6 @@ function arangosh (options) {
     process.env.TEMP = tmp;
     process.env.TMP = tmp;
     fs.makeDirectoryRecursive(process.env.TMPDIR);
-    pu.cleanupDBDirectoriesAppend(tmp);
 
     ////////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
@@ -187,7 +186,9 @@ function arangosh (options) {
       print(rc2);
       print('expect rc: ' + expectedReturnCode);
     }
-
+    if (ret[section]['status'] && options.cleanup) {
+      fs.removeDirectoryRecursive(tmp, true);
+    }
 
     // re-set the environment
     process.env.TMPDIR = tmpPath;

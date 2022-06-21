@@ -78,11 +78,9 @@ function runArangodRecovery (params) {
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
-  let crashLogDir = fs.join(fs.getTempPath(), 'crash');
-  fs.makeDirectoryRecursive(crashLogDir);
-  pu.cleanupDBDirectoriesAppend(crashLogDir);
+  params.crashLogDir = fs.join(fs.getTempPath(), 'crash');
 
-  let crashLog = fs.join(crashLogDir, 'crash.log');
+  let crashLog = fs.join(params.crashLogDir, 'crash.log');
 
   if (params.setup) {
     additionalParams['javascript.script-parameter'] = 'setup';
@@ -111,25 +109,24 @@ function runArangodRecovery (params) {
       'replication.auto-start': 'true',
       'javascript.script': params.script
     });
-      
+    
     args['log.output'] = 'file://' + crashLog;
 
     if (useEncryption) {
-      let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
-      if (!fs.exists(keyDir)) {  // needed on win32
-        fs.makeDirectory(keyDir);
+      params.keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+      if (!fs.exists(params.keyDir)) {  // needed on win32
+        fs.makeDirectory(params.keyDir);
       }
-      pu.cleanupDBDirectoriesAppend(keyDir);
-        
+      
       const key = '01234567890123456789012345678901';
       
-      let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
+      let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
       fs.write(keyfile, key);
 
       // special handling for encryption-keyfolder tests
       if (params.script.match(/encryption-keyfolder/)) {
-        args['rocksdb.encryption-keyfolder'] = keyDir;
-        process.env["rocksdb-encryption-keyfolder"] = keyDir;
+        args['rocksdb.encryption-keyfolder'] = params.keyDir;
+        process.env["rocksdb-encryption-keyfolder"] = params.keyDir;
       } else {
         args['rocksdb.encryption-keyfile'] = keyfile;
         process.env["rocksdb-encryption-keyfile"] = keyfile;
@@ -138,9 +135,9 @@ function runArangodRecovery (params) {
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
     params['instance'] = new inst.instance(params.options,
-                                      inst.instanceRole.single,
-                                      args, {}, 'tcp', params.testDir, '',
-                                      new inst.agencyConfig(params.options, null));
+                                           inst.instanceRole.single,
+                                           args, {}, 'tcp', params.testDir, '',
+                                           new inst.agencyConfig(params.options, null));
 
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
@@ -190,7 +187,6 @@ function recovery (options) {
   let tempDir = fs.join(fs.getTempPath(), 'recovery');
   fs.makeDirectoryRecursive(tempDir);
   process.env.TMPDIR = tempDir;
-  pu.cleanupDBDirectoriesAppend(tempDir);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -215,6 +211,8 @@ function recovery (options) {
           count: count,
           testDir: "",
           stateFile,
+          crashLogDir: "",
+          keyDir: ""          
         };
         runArangodRecovery(params);
 
@@ -251,20 +249,37 @@ function recovery (options) {
         try {
           if (String(fs.readFileSync(stateFile)).length) {
             print('Going into next iteration of recovery test');
-            continue;
+            if (params.options.cleanup) {
+              if (params.crashLogDir !== "") {
+                fs.removeDirectoryRecursive(params.crashLogDir, true);
+              }
+              if (params.keyDir !== "") {
+                fs.removeDirectoryRecursive(params.keyDir, true);
+              }
+              continue;
+            }
           }
         } catch (err) {
         }
         // last iteration. break out of while loop
-        pu.cleanupLastDirectory(params.options);
+        if (params.options.cleanup) {
+          if (params.crashLogDir !== "") {
+            fs.removeDirectoryRecursive(params.crashLogDir, true);
+          }
+          if (params.keyDir !== "") {
+            fs.removeDirectoryRecursive(params.keyDir, true);
+          }
+        }
         break;
       }
-
     } else {
       if (options.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);
       }
     }
+  }
+  if (options.cleanup && results.status) {
+    fs.removeDirectoryRecursive(tempDir, true);
   }
   process.env.TMPDIR = orgTmp;
   if (count === 0) {

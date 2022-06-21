@@ -64,17 +64,16 @@ function runArangodRecovery (params, agencyConfig) {
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
-  let crashLogDir = fs.join(fs.getTempPath(), 'crash');
-  fs.makeDirectoryRecursive(crashLogDir);
-  pu.cleanupDBDirectoriesAppend(crashLogDir);
+  params.crashLogDir = fs.join(fs.getTempPath(), 'crash');
+  fs.makeDirectoryRecursive(params.crashLogDir);
 
-  let crashLog = fs.join(crashLogDir, 'crash.log');
+  let crashLog = fs.join(params.crashLogDir, 'crash.log');
 
   if (params.setup) {
     additionalParams['javascript.script-parameter'] = 'setup';
     try {
       // clean up crash log before next test
-      fs.remove(crashLog);
+      fs.remove(params.crashLogDir);
     } catch (err) {}
 
     params.options.disableMonitor = true;
@@ -91,8 +90,7 @@ function runArangodRecovery (params, agencyConfig) {
       'javascript.script': params.script
     });
 
-    args['log.output'] = 'file://' + crashLog;
-    pu.cleanupDBDirectoriesAppend(params.testDir);
+    args['log.output'] = 'file://' + params.crashLogDir;
     params['instance'] = new inst.instance(params.options,
                                            inst.instanceRole.agent,
                                            args, {}, 'tcp', params.rootDir, '',
@@ -109,7 +107,7 @@ function runArangodRecovery (params, agencyConfig) {
     }
   }
 
-  process.env["crash-log"] = crashLog;
+  process.env["crash-log"] = params.crashLogDir;
   params.instance.pid = pu.executeAndWait(
     binary,
     argv,
@@ -141,7 +139,6 @@ function agencyRestart (options) {
   let tempDir = fs.join(fs.getTempPath(), 'agency-restart');
   fs.makeDirectoryRecursive(tempDir);
   process.env.TMPDIR = tempDir;
-  pu.cleanupDBDirectoriesAppend(tempDir);
 
   for (let i = 0; i < agencyRestartTests.length; ++i) {
     let test = agencyRestartTests[i];
@@ -184,18 +181,21 @@ function agencyRestart (options) {
         },
         test
       );
-      if (!results[test].status) {
+      if (results[test].status && options.cleanup) {
+        fs.removeDirectoryRecursive(params.testDir, true);
+        fs.removeDirectoryRecursive(params.crashLogDir, true);
+      } else {
         print("Not cleaning up " + params.testDir);
-        results.status = false;
-      }
-      else {
-        pu.cleanupLastDirectory(params.options);
+        results.status &= results[test].status;
       }
     } else {
       if (options.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);
       }
     }
+  }
+  if (results.status) {
+    fs.removeDirectoryRecursive(tempDir, true);
   }
   process.env.TMPDIR = orgTmp;
   if (count === 0) {
