@@ -51,7 +51,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
-enum class RunOn : uint8_t {
+enum class ComputeValuesOn : uint8_t {
   kNever = 0,
   kInsert = 1,
   kUpdate = 2,
@@ -62,8 +62,9 @@ class ComputedValues {
   class ComputedValue {
    public:
     ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
-                  std::string_view expressionString, RunOn runOn,
-                  bool doOverride, bool failOnWarning);
+                  std::string_view expressionString,
+                  ComputeValuesOn mustComputeOn, bool doOverride,
+                  bool failOnWarning);
     ComputedValue(ComputedValue const&) = delete;
     ComputedValue& operator=(ComputedValue const&) = delete;
     ComputedValue(ComputedValue&&) = default;
@@ -81,7 +82,7 @@ class ComputedValues {
     TRI_vocbase_t& _vocbase;
     std::string _name;
     std::string _expressionString;
-    RunOn _runOn;
+    ComputeValuesOn _mustComputeOn;
     bool _override;
     bool _failOnWarning;
     std::unique_ptr<aql::QueryContext> _queryContext;
@@ -104,20 +105,20 @@ class ComputedValues {
 
   void toVelocyPack(velocypack::Builder&) const;
 
-  bool mustRunOnInsert() const noexcept;
-  bool mustRunOnUpdate() const noexcept;
-  bool mustRunOnReplace() const noexcept;
+  bool mustComputeValuesOnInsert() const noexcept;
+  bool mustComputeValuesOnUpdate() const noexcept;
+  bool mustComputeValuesOnReplace() const noexcept;
 
   bool isForceComputedAttribute(std::string_view name,
-                                RunOn runOn) const noexcept;
+                                ComputeValuesOn mustComputeOn) const noexcept;
 
-  void computeAttributes(
+  void mergeComputedAttributes(
       transaction::Methods& trx, velocypack::Slice input,
-      containers::FlatHashSet<std::string_view> const& keysWritten, RunOn runOn,
-      velocypack::Builder& output) const;
+      containers::FlatHashSet<std::string_view> const& keysWritten,
+      ComputeValuesOn mustComputeOn, velocypack::Builder& output) const;
 
  private:
-  void computeAttributes(
+  void mergeComputedAttributes(
       containers::FlatHashMap<std::string, std::size_t> const& attributes,
       transaction::Methods& trx, velocypack::Slice input,
       containers::FlatHashSet<std::string_view> const& keysWritten,

@@ -1172,7 +1172,7 @@ arangodb::Result PhysicalCollectionMock::insert(
 
   arangodb::RevisionId revisionId;
   auto res = newObjectForInsert(trx, newSlice, isEdgeCollection, builder,
-                                options.isRestore, revisionId);
+                                options, revisionId);
 
   if (res.fail()) {
     return res;
@@ -1457,15 +1457,13 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
     if (isUpdate) {
       arangodb::Result res = mergeObjectsForUpdate(
-          trx, doc, newSlice, isEdgeCollection, options.mergeObjects,
-          options.keepNull, builder, options.isRestore, revisionId);
+          trx, doc, newSlice, isEdgeCollection, options, builder, revisionId);
       if (res.fail()) {
         return res;
       }
     } else {
-      arangodb::Result res =
-          newObjectForReplace(trx, doc, newSlice, isEdgeCollection, builder,
-                              options.isRestore, revisionId);
+      arangodb::Result res = newObjectForReplace(
+          trx, doc, newSlice, isEdgeCollection, builder, options, revisionId);
       if (res.fail()) {
         return res;
       }

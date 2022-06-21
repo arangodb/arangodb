@@ -40,6 +40,7 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
@@ -208,10 +209,11 @@ RevisionId PhysicalCollection::newRevisionId() const {
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(
-    transaction::Methods*, VPackSlice oldValue, VPackSlice newValue,
-    bool isEdgeCollection, bool mergeObjects, bool keepNull, VPackBuilder& b,
-    bool isRestore, RevisionId& revisionId) const {
-  b.openObject();
+    transaction::Methods* trx, VPackSlice oldValue, VPackSlice newValue,
+    bool isEdgeCollection, OperationOptions const& options,
+    VPackBuilder& builder, RevisionId& revisionId) const {
+  transaction::BuilderLeaser b(trx);
+  b->openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
   VPackSlice idSlice = oldValue.get(StaticStrings::IdString);
@@ -267,26 +269,26 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   // _key, _id, _from, _to, _rev
 
   // _key
-  b.add(StaticStrings::KeyString, keySlice);
+  b->add(StaticStrings::KeyString, keySlice);
 
   // _id
-  b.add(StaticStrings::IdString, idSlice);
+  b->add(StaticStrings::IdString, idSlice);
 
   // _from, _to
   if (isEdgeCollection) {
     TRI_ASSERT(fromSlice.isString());
     TRI_ASSERT(toSlice.isString());
-    b.add(StaticStrings::FromString, fromSlice);
-    b.add(StaticStrings::ToString, toSlice);
+    b->add(StaticStrings::FromString, fromSlice);
+    b->add(StaticStrings::ToString, toSlice);
   }
 
   // _rev
   bool handled = false;
-  if (isRestore) {
+  if (options.isRestore) {
     // copy revision id verbatim
     VPackSlice s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
-      b.add(StaticStrings::RevString, s);
+      b->add(StaticStrings::RevString, s);
       VPackValueLength l;
       char const* p = s.getStringUnchecked(l);
       revisionId = RevisionId::fromString(p, l, false);
@@ -297,7 +299,18 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     // temporary buffer for stringifying revision ids
     char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    b.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
+    b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
+  }
+
+  containers::FlatHashSet<std::string_view> keysWritten;
+
+  std::shared_ptr<ComputedValues> cv;
+  if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
+    cv = _logicalCollection.computedValues();
+    if (cv != nullptr && !cv->mustComputeValuesOnInsert()) {
+      // nothing to be done on insert
+      cv.reset();
+    }
   }
 
   // add other attributes after the system attributes
@@ -320,22 +333,32 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
       if (found == newValues.end()) {
         // use old value
-        b.addUnchecked(key.data(), key.size(), current.value);
-      } else if (mergeObjects && current.value.isObject() &&
+        b->addUnchecked(key, current.value);
+        if (cv != nullptr) {
+          keysWritten.emplace(key);
+        }
+      } else if (options.mergeObjects && current.value.isObject() &&
                  (*found).second.isObject()) {
         // merge both values
         auto& value = (*found).second;
-        if (keepNull || (!value.isNone() && !value.isNull())) {
-          b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-          VPackCollection::merge(b, current.value, value, true, !keepNull);
+        if (options.keepNull || (!value.isNone() && !value.isNull())) {
+          b->add(VPackValue(key, VPackValueType::String));
+          VPackCollection::merge(*b, current.value, value, true,
+                                 !options.keepNull);
+          if (cv != nullptr) {
+            keysWritten.emplace(key);
+          }
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
       } else {
         // use new value
         auto& value = (*found).second;
-        if (keepNull || (!value.isNone() && !value.isNull())) {
-          b.addUnchecked(key.data(), key.size(), value);
+        if (options.keepNull || (!value.isNone() && !value.isNull())) {
+          b->addUnchecked(key, value);
+          if (cv != nullptr) {
+            keysWritten.emplace(key);
+          }
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -346,31 +369,49 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
   // add remaining values that were only in new object
   for (auto const& it : newValues) {
-    VPackSlice const& s = it.second;
+    VPackSlice s = it.second;
     if (s.isNone()) {
       continue;
     }
-    if (!keepNull && s.isNull()) {
+    if (!options.keepNull && s.isNull()) {
       continue;
     }
-    if (!keepNull && s.isObject()) {
-      b.add(VPackValuePair(it.first.data(), it.first.size(),
-                           VPackValueType::String));
-      VPackCollection::merge(b, VPackSlice::emptyObjectSlice(), s, true, true);
+    if (!options.keepNull && s.isObject()) {
+      b->add(VPackValue(it.first));
+      VPackCollection::merge(*b, VPackSlice::emptyObjectSlice(), s, true, true);
     } else {
-      b.addUnchecked(it.first.data(), it.first.size(), s);
+      b->addUnchecked(it.first, s);
+    }
+
+    if (cv != nullptr) {
+      keysWritten.emplace(it.first);
     }
   }
 
-  b.close();
+  b->close();
+
+  if (cv != nullptr) {
+    // add all remaining computed attributes, if we need to
+    cv->mergeComputedAttributes(*trx, b->slice(), keysWritten,
+                                ComputeValuesOn::kUpdate, builder);
+  } else {
+    // add document as is
+    builder.add(b->slice());
+  }
+
   return Result();
 }
 
 /// @brief new object for insert, computes the hash of the key
-Result PhysicalCollection::newObjectForInsert(
-    transaction::Methods* trx, VPackSlice value, bool isEdgeCollection,
-    VPackBuilder& builder, bool isRestore, RevisionId& revisionId) const {
-  builder.openObject();
+Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
+                                              VPackSlice value,
+                                              bool isEdgeCollection,
+                                              VPackBuilder& builder,
+                                              OperationOptions const& options,
+                                              RevisionId& revisionId) const {
+  transaction::BuilderLeaser b(trx);
+
+  b->openObject();
 
   // add system attributes first, in this order:
   // _key, _id, _from, _to, _rev
@@ -378,14 +419,14 @@ Result PhysicalCollection::newObjectForInsert(
   // _key
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
-    TRI_ASSERT(!isRestore);  // need key in case of restore
+    TRI_ASSERT(!options.isRestore);  // need key in case of restore
     auto keyString = _logicalCollection.keyGenerator().generate(value);
 
     if (keyString.empty()) {
       return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
     }
 
-    builder.add(StaticStrings::KeyString, VPackValue(keyString));
+    b->add(StaticStrings::KeyString, VPackValue(keyString));
   } else if (!s.isString()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   } else {
@@ -393,18 +434,18 @@ Result PhysicalCollection::newObjectForInsert(
 
     // validate and track the key just used
     auto res = _logicalCollection.keyGenerator().validate(s.stringView(), value,
-                                                          isRestore);
+                                                          options.isRestore);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
 
-    builder.add(StaticStrings::KeyString, s);
+    b->add(StaticStrings::KeyString, s);
   }
 
   // _id
-  uint8_t* p = builder.add(StaticStrings::IdString,
-                           VPackValuePair(9ULL, VPackValueType::Custom));
+  uint8_t* p = b->add(StaticStrings::IdString,
+                      VPackValuePair(9ULL, VPackValueType::Custom));
 
   *p++ = 0xf3;  // custom type for _id
 
@@ -437,18 +478,19 @@ Result PhysicalCollection::newObjectForInsert(
 
     TRI_ASSERT(fromSlice.isString());
     TRI_ASSERT(toSlice.isString());
-    builder.add(StaticStrings::FromString, fromSlice);
-    builder.add(StaticStrings::ToString, toSlice);
+    b->add(StaticStrings::FromString, fromSlice);
+    b->add(StaticStrings::ToString, toSlice);
   }
 
   // _rev
   bool handled = false;
+  bool isRestore = options.isRestore;
   TRI_IF_FAILURE("Insert::useRev") { isRestore = true; }
   if (isRestore) {
     // copy revision id verbatim
     s = value.get(StaticStrings::RevString);
     if (s.isString()) {
-      builder.add(StaticStrings::RevString, s);
+      b->add(StaticStrings::RevString, s);
       VPackValueLength l;
       char const* str = s.getStringUnchecked(l);
       revisionId = RevisionId::fromString(str, l, false);
@@ -459,20 +501,18 @@ Result PhysicalCollection::newObjectForInsert(
     // temporary buffer for stringifying revision ids
     char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
-  }
-
-  std::shared_ptr<ComputedValues> cv;
-  // TODO!
-  if (true /*!options.isRestore && options.isSynchronousReplicationFrom.empty()*/) {
-    cv = _logicalCollection.computedValues();
-    if (cv != nullptr && !cv->mustRunOnInsert()) {
-      // nothing to be done on insert
-      cv.reset();
-    }
+    b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
   containers::FlatHashSet<std::string_view> keysWritten;
+
+  std::shared_ptr<ComputedValues> cv;
+  if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
+    cv = _logicalCollection.computedValues();
+    if (cv == nullptr || !cv->mustComputeValuesOnInsert()) {
+      cv.reset();
+    }
+  }
 
   // add other attributes after the system attributes
   VPackObjectIterator it(value, true);
@@ -483,60 +523,38 @@ Result PhysicalCollection::newObjectForInsert(
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&
          key != StaticStrings::ToString)) {
-      if (cv == nullptr || !cv->isForceComputedAttribute(key, RunOn::kInsert)) {
-        // only add an attribute here if it is not going to be force-calculated
-        // by the computed attributes
-        builder.add(key, it.value());
-        if (cv != nullptr) {
-          // track which attributes we have produced so that they are not
-          // added again by the computed attributes later.
-          keysWritten.emplace(key);
-        }
+      b->add(key, it.value());
+      if (cv != nullptr) {
+        // track which attributes we have produced so that they are not
+        // added again by the computed attributes later.
+        keysWritten.emplace(key);
       }
     }
     it.next();
   }
 
+  b->close();
+
   if (cv != nullptr) {
     // add all remaining computed attributes, if we need to
-    cv->computeAttributes(*trx, value, keysWritten, RunOn::kInsert, builder);
+    cv->mergeComputedAttributes(*trx, b->slice(), keysWritten,
+                                ComputeValuesOn::kInsert, builder);
+  } else {
+    // add document as is
+    builder.add(b->slice());
   }
-
-  builder.close();
 
   return Result();
-}
-
-/// @brief new object for remove, must have _key set
-void PhysicalCollection::newObjectForRemove(transaction::Methods*,
-                                            VPackSlice oldValue,
-                                            VPackBuilder& builder,
-                                            bool isRestore,
-                                            RevisionId& revisionId) const {
-  // create an object consisting of _key and _rev (in this order)
-  builder.openObject();
-  if (oldValue.isString()) {
-    builder.add(StaticStrings::KeyString, oldValue);
-  } else {
-    VPackSlice s = oldValue.get(StaticStrings::KeyString);
-    TRI_ASSERT(s.isString());
-    builder.add(StaticStrings::KeyString, s);
-  }
-
-  // temporary buffer for stringifying revision ids
-  char ridBuffer[arangodb::basics::maxUInt64StringSize];
-  revisionId = newRevisionId();
-  builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
-  builder.close();
 }
 
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
 Result PhysicalCollection::newObjectForReplace(
     transaction::Methods* trx, VPackSlice oldValue, VPackSlice newValue,
-    bool isEdgeCollection, VPackBuilder& builder, bool isRestore,
-    RevisionId& revisionId) const {
-  builder.openObject();
+    bool isEdgeCollection, VPackBuilder& builder,
+    OperationOptions const& options, RevisionId& revisionId) const {
+  transaction::BuilderLeaser b(trx);
+  b->openObject();
 
   // add system attributes first, in this order:
   // _key, _id, _from, _to, _rev
@@ -544,12 +562,12 @@ Result PhysicalCollection::newObjectForReplace(
   // _key
   VPackSlice s = oldValue.get(StaticStrings::KeyString);
   TRI_ASSERT(!s.isNone());
-  builder.add(StaticStrings::KeyString, s);
+  b->add(StaticStrings::KeyString, s);
 
   // _id
   s = oldValue.get(StaticStrings::IdString);
   TRI_ASSERT(!s.isNone());
-  builder.add(StaticStrings::IdString, s);
+  b->add(StaticStrings::IdString, s);
 
   // _from and _to
   if (isEdgeCollection) {
@@ -565,17 +583,17 @@ Result PhysicalCollection::newObjectForReplace(
 
     TRI_ASSERT(fromSlice.isString());
     TRI_ASSERT(toSlice.isString());
-    builder.add(StaticStrings::FromString, fromSlice);
-    builder.add(StaticStrings::ToString, toSlice);
+    b->add(StaticStrings::FromString, fromSlice);
+    b->add(StaticStrings::ToString, toSlice);
   }
 
   // _rev
   bool handled = false;
-  if (isRestore) {
+  if (options.isRestore) {
     // copy revision id verbatim
     s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
-      builder.add(StaticStrings::RevString, s);
+      b->add(StaticStrings::RevString, s);
       VPackValueLength l;
       char const* p = s.getStringUnchecked(l);
       revisionId = RevisionId::fromString(p, l, false);
@@ -586,15 +604,13 @@ Result PhysicalCollection::newObjectForReplace(
     // temporary buffer for stringifying revision ids
     char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString,
-                revisionId.toValuePair(&ridBuffer[0]));
+    b->add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }
 
   std::shared_ptr<ComputedValues> cv;
-  // TODO!
-  if (true /*!options.isRestore && options.isSynchronousReplicationFrom.empty()*/) {
+  if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
     cv = _logicalCollection.computedValues();
-    if (cv != nullptr && !cv->mustRunOnReplace()) {
+    if (cv != nullptr && !cv->mustComputeValuesOnReplace()) {
       // nothing to be done on insert
       cv.reset();
     }
@@ -611,26 +627,27 @@ Result PhysicalCollection::newObjectForReplace(
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&
          key != StaticStrings::ToString)) {
-      if (cv == nullptr ||
-          !cv->isForceComputedAttribute(key, RunOn::kReplace)) {
-        builder.add(key, it.value());
-        if (cv != nullptr) {
-          // track which attributes we have produced so that they are not
-          // added again by the computed attributes later.
-          keysWritten.emplace(key);
-        }
+      b->add(key, it.value());
+      if (cv != nullptr) {
+        // track which attributes we have produced so that they are not
+        // added again by the computed attributes later.
+        keysWritten.emplace(key);
       }
     }
     it.next();
   }
 
+  b->close();
+
   if (cv != nullptr) {
     // add all remaining computed attributes, if we need to
-    cv->computeAttributes(*trx, newValue, keysWritten, RunOn::kReplace,
-                          builder);
+    cv->mergeComputedAttributes(*trx, b->slice(), keysWritten,
+                                ComputeValuesOn::kReplace, builder);
+  } else {
+    // add document as is
+    builder.add(b->slice());
   }
 
-  builder.close();
   return Result();
 }
 

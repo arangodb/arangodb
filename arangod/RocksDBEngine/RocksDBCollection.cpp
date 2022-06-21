@@ -1083,8 +1083,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   RevisionId revisionId;
-  Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder,
-                                options.isRestore, revisionId));
+  Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder, options,
+                                revisionId));
   if (res.fail()) {
     return res;
   }
@@ -1237,11 +1237,10 @@ Result RocksDBCollection::performUpdateOrReplace(
   transaction::BuilderLeaser builder(trx);
   if (isUpdate) {
     res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                                options.mergeObjects, options.keepNull,
-                                *builder, options.isRestore, revisionId);
+                                options, *builder, revisionId);
   } else {
     res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection, *builder,
-                              options.isRestore, revisionId);
+                              options, revisionId);
   }
   if (res.fail()) {
     return res;

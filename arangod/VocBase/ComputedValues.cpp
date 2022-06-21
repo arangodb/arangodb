@@ -56,8 +56,10 @@ using namespace arangodb::aql;
 namespace {
 constexpr std::string_view docParameter("doc");
 
-std::underlying_type<arangodb::RunOn>::type runOnValue(arangodb::RunOn runOn) {
-  return static_cast<std::underlying_type<arangodb::RunOn>::type>(runOn);
+std::underlying_type<arangodb::ComputeValuesOn>::type mustComputeOnValue(
+    arangodb::ComputeValuesOn mustComputeOn) {
+  return static_cast<std::underlying_type<arangodb::ComputeValuesOn>::type>(
+      mustComputeOn);
 }
 
 class ComputedValuesExpressionContext final : public aql::ExpressionContext {
@@ -154,12 +156,13 @@ namespace arangodb {
 ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
                                              std::string_view name,
                                              std::string_view expressionString,
-                                             RunOn runOn, bool doOverride,
+                                             ComputeValuesOn mustComputeOn,
+                                             bool doOverride,
                                              bool failOnWarning)
     : _vocbase(vocbase),
       _name(name),
       _expressionString(expressionString),
-      _runOn(runOn),
+      _mustComputeOn(mustComputeOn),
       _override(doOverride),
       _failOnWarning(failOnWarning),
       _queryContext(StandaloneCalculation::buildQueryContext(_vocbase)),
@@ -230,17 +233,20 @@ void ComputedValues::ComputedValue::toVelocyPack(
   result.openObject();
   result.add("name", VPackValue(_name));
   result.add("expression", VPackValue(_expressionString));
-  result.add("runOn", VPackValue(VPackValueType::Array));
-  if (::runOnValue(_runOn) & ::runOnValue(RunOn::kInsert)) {
+  result.add("mustComputeOn", VPackValue(VPackValueType::Array));
+  if (::mustComputeOnValue(_mustComputeOn) &
+      ::mustComputeOnValue(ComputeValuesOn::kInsert)) {
     result.add(VPackValue("insert"));
   }
-  if (::runOnValue(_runOn) & ::runOnValue(RunOn::kUpdate)) {
+  if (::mustComputeOnValue(_mustComputeOn) &
+      ::mustComputeOnValue(ComputeValuesOn::kUpdate)) {
     result.add(VPackValue("update"));
   }
-  if (::runOnValue(_runOn) & ::runOnValue(RunOn::kReplace)) {
+  if (::mustComputeOnValue(_mustComputeOn) &
+      ::mustComputeOnValue(ComputeValuesOn::kReplace)) {
     result.add(VPackValue("replace"));
   }
-  result.close();  // runOn
+  result.close();  // mustComputeOn
   result.add("override", VPackValue(_override));
   result.add("failOnWarning", VPackValue(_failOnWarning));
   result.close();
@@ -283,17 +289,17 @@ ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
 
 ComputedValues::~ComputedValues() = default;
 
-bool ComputedValues::isForceComputedAttribute(std::string_view name,
-                                              RunOn runOn) const noexcept {
-  if (runOn == RunOn::kInsert) {
+bool ComputedValues::isForceComputedAttribute(
+    std::string_view name, ComputeValuesOn mustComputeOn) const noexcept {
+  if (mustComputeOn == ComputeValuesOn::kInsert) {
     auto it = _attributesForInsert.find(name);
     return it != _attributesForInsert.end() && _values[it->second].doOverride();
   }
-  if (runOn == RunOn::kUpdate) {
+  if (mustComputeOn == ComputeValuesOn::kUpdate) {
     auto it = _attributesForUpdate.find(name);
     return it != _attributesForUpdate.end() && _values[it->second].doOverride();
   }
-  if (runOn == RunOn::kReplace) {
+  if (mustComputeOn == ComputeValuesOn::kReplace) {
     auto it = _attributesForReplace.find(name);
     return it != _attributesForReplace.end() &&
            _values[it->second].doOverride();
@@ -302,34 +308,37 @@ bool ComputedValues::isForceComputedAttribute(std::string_view name,
   return false;
 }
 
-bool ComputedValues::mustRunOnInsert() const noexcept {
+bool ComputedValues::mustComputeValuesOnInsert() const noexcept {
   return !_attributesForInsert.empty();
 }
 
-bool ComputedValues::mustRunOnUpdate() const noexcept {
+bool ComputedValues::mustComputeValuesOnUpdate() const noexcept {
   return !_attributesForUpdate.empty();
 }
 
-bool ComputedValues::mustRunOnReplace() const noexcept {
+bool ComputedValues::mustComputeValuesOnReplace() const noexcept {
   return !_attributesForReplace.empty();
 }
 
-void ComputedValues::computeAttributes(
+void ComputedValues::mergeComputedAttributes(
     transaction::Methods& trx, velocypack::Slice input,
-    containers::FlatHashSet<std::string_view> const& keysWritten, RunOn runOn,
-    velocypack::Builder& output) const {
-  if (runOn == RunOn::kInsert) {
-    computeAttributes(_attributesForInsert, trx, input, keysWritten, output);
-  } else if (runOn == RunOn::kUpdate) {
-    computeAttributes(_attributesForUpdate, trx, input, keysWritten, output);
-  } else if (runOn == RunOn::kReplace) {
-    computeAttributes(_attributesForReplace, trx, input, keysWritten, output);
+    containers::FlatHashSet<std::string_view> const& keysWritten,
+    ComputeValuesOn mustComputeOn, velocypack::Builder& output) const {
+  if (mustComputeOn == ComputeValuesOn::kInsert) {
+    mergeComputedAttributes(_attributesForInsert, trx, input, keysWritten,
+                            output);
+  } else if (mustComputeOn == ComputeValuesOn::kUpdate) {
+    mergeComputedAttributes(_attributesForUpdate, trx, input, keysWritten,
+                            output);
+  } else if (mustComputeOn == ComputeValuesOn::kReplace) {
+    mergeComputedAttributes(_attributesForReplace, trx, input, keysWritten,
+                            output);
   } else {
     TRI_ASSERT(false);
   }
 }
 
-void ComputedValues::computeAttributes(
+void ComputedValues::mergeComputedAttributes(
     containers::FlatHashMap<std::string, std::size_t> const& attributes,
     transaction::Methods& trx, velocypack::Slice input,
     containers::FlatHashSet<std::string_view> const& keysWritten,
@@ -339,6 +348,26 @@ void ComputedValues::computeAttributes(
   // inject document into temporary variable (@doc)
   ctx.setVariable(nullptr, input);
 
+  output.openObject();
+
+  {
+    // copy over document attributes
+    VPackObjectIterator it(input, true);
+
+    while (it.valid()) {
+      auto const& key = it.key();
+      auto itCompute = attributes.find(key.stringView());
+      if (itCompute == attributes.end() ||
+          !_values[itCompute->second].doOverride()) {
+        output.add(key);
+        output.add(it.value());
+      }
+      it.next();
+    }
+  }
+
+  // now add all the computed attributes
+
   for (auto const& it : attributes) {
     ComputedValue const& cv = _values[it.second];
     if (cv.doOverride() || !keysWritten.contains(cv.name())) {
@@ -347,6 +376,8 @@ void ComputedValues::computeAttributes(
       cv.computeAttribute(ctx, input, output);
     }
   }
+
+  output.close();
 }
 
 Result ComputedValues::buildDefinitions(
@@ -399,11 +430,11 @@ Result ComputedValues::buildDefinitions(
           "invalid 'computedValues' entry: 'override' must be a boolean");
     }
 
-    RunOn runOn = RunOn::kInsert;
+    ComputeValuesOn mustComputeOn = ComputeValuesOn::kInsert;
 
     VPackSlice on = it.get("on");
     if (on.isArray()) {
-      runOn = RunOn::kNever;
+      mustComputeOn = ComputeValuesOn::kNever;
 
       for (auto const& onValue : VPackArrayIterator(on)) {
         if (!onValue.isString()) {
@@ -413,16 +444,19 @@ Result ComputedValues::buildDefinitions(
         }
         std::string_view ov = onValue.stringView();
         if (ov == "insert") {
-          runOn = static_cast<RunOn>(::runOnValue(runOn) |
-                                     ::runOnValue(RunOn::kInsert));
+          mustComputeOn = static_cast<ComputeValuesOn>(
+              ::mustComputeOnValue(mustComputeOn) |
+              ::mustComputeOnValue(ComputeValuesOn::kInsert));
           _attributesForInsert.emplace(n, _values.size());
         } else if (ov == "update") {
-          runOn = static_cast<RunOn>(::runOnValue(runOn) |
-                                     ::runOnValue(RunOn::kUpdate));
+          mustComputeOn = static_cast<ComputeValuesOn>(
+              ::mustComputeOnValue(mustComputeOn) |
+              ::mustComputeOnValue(ComputeValuesOn::kUpdate));
           _attributesForUpdate.emplace(n, _values.size());
         } else if (ov == "replace") {
-          runOn = static_cast<RunOn>(::runOnValue(runOn) |
-                                     ::runOnValue(RunOn::kReplace));
+          mustComputeOn = static_cast<ComputeValuesOn>(
+              ::mustComputeOnValue(mustComputeOn) |
+              ::mustComputeOnValue(ComputeValuesOn::kReplace));
           _attributesForReplace.emplace(n, _values.size());
         } else {
           return res.reset(
@@ -432,14 +466,15 @@ Result ComputedValues::buildDefinitions(
         }
       }
 
-      if (runOn == RunOn::kNever) {
+      if (mustComputeOn == ComputeValuesOn::kNever) {
         return res.reset(TRI_ERROR_BAD_PARAMETER,
                          "invalid 'computedValues' entry: empty on value");
       }
     } else if (on.isNone()) {
       // default is just "insert"
-      runOn = static_cast<RunOn>(::runOnValue(runOn) |
-                                 ::runOnValue(RunOn::kInsert));
+      mustComputeOn = static_cast<ComputeValuesOn>(
+          ::mustComputeOnValue(mustComputeOn) |
+          ::mustComputeOnValue(ComputeValuesOn::kInsert));
       _attributesForInsert.emplace(n, _values.size());
     } else {
       return res.reset(TRI_ERROR_BAD_PARAMETER,
@@ -479,7 +514,8 @@ Result ComputedValues::buildDefinitions(
 
     try {
       _values.emplace_back(vocbase, name.stringView(), expression.stringView(),
-                           runOn, doOverride.getBoolean(), failOnWarning);
+                           mustComputeOn, doOverride.getBoolean(),
+                           failOnWarning);
     } catch (std::exception const& ex) {
       return res.reset(TRI_ERROR_BAD_PARAMETER,
                        "invalid 'computedValues' entry: "s + ex.what());
