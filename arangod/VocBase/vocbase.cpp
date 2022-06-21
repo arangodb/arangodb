@@ -120,7 +120,7 @@ struct arangodb::VocBaseLogManager {
       return iter->second;
     }
     using namespace fmt::literals;
-    throw basics::Exception::fmt(
+    throw basics::Exception::fmtDefault(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
@@ -131,7 +131,7 @@ struct arangodb::VocBaseLogManager {
       return iter->second;
     }
     using namespace fmt::literals;
-    throw basics::Exception::fmt(
+    throw basics::Exception::fmtDefault(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 

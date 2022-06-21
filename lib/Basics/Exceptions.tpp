@@ -28,10 +28,19 @@
 namespace arangodb::basics {
 
 template<typename... Args>
-auto Exception::fmt(SourceLocation location, ErrorCode code, Args&&... args)
-    -> Exception {
+auto Exception::fmtDefault(SourceLocation location, ErrorCode code,
+                           Args&&... args) -> Exception {
   return Exception(code,
                    fmt::format(fmt::runtime(TRI_errno_string(code)),
+                               std::forward<Args>(args)...),
+                   location);
+}
+
+template<typename Fmt, typename... Args>
+auto Exception::fmt(SourceLocation location, ErrorCode code, Fmt&& fmt,
+                    Args&&... args) -> Exception {
+  return Exception(code,
+                   fmt::format(fmt::runtime(std::forward<Fmt>(fmt)),
                                std::forward<Args>(args)...),
                    location);
 }

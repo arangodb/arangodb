@@ -1245,12 +1245,12 @@ double AstNode::getDoubleValue() const {
 }
 
 /// @brief whether or not the node value is trueish
-bool AstNode::isTrue() const {
+bool AstNode::isAlwaysTrue() const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
     bool isValid;
     AstNode const* resolved = Ast::resolveConstAttributeAccess(this, isValid);
-    // TO_BOOL(null) => false, so isTrue(false) => false
-    return isValid ? resolved->isTrue() : false;
+    // TO_BOOL(null) => false, so isAlwaysTrue(false) => false
+    return isValid ? resolved->isAlwaysTrue() : false;
   }
 
   if (type == NODE_TYPE_VALUE) {
@@ -1269,32 +1269,24 @@ bool AstNode::isTrue() const {
   } else if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT) {
     return true;
   } else if (type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    if (getMember(0)->isTrue()) {
-      return true;
-    }
-    return getMember(1)->isTrue();
+    return getMember(0)->isAlwaysTrue() || getMember(1)->isAlwaysTrue();
   } else if (type == NODE_TYPE_OPERATOR_BINARY_AND) {
-    if (!getMember(0)->isTrue()) {
-      return false;
-    }
-    return getMember(1)->isTrue();
+    return getMember(0)->isAlwaysTrue() && getMember(1)->isAlwaysTrue();
   } else if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-    if (getMember(0)->isFalse()) {
-      // ! false => true
-      return true;
-    }
+    // ! false => true
+    return getMember(0)->isAlwaysFalse();
   }
 
   return false;
 }
 
 /// @brief whether or not the node value is falsey
-bool AstNode::isFalse() const {
+bool AstNode::isAlwaysFalse() const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
     bool isValid;
     AstNode const* resolved = Ast::resolveConstAttributeAccess(this, isValid);
-    // TO_BOOL(null) => false, so isFalse(false) => true
-    return isValid ? resolved->isFalse() : true;
+    // TO_BOOL(null) => false, so isAlwaysFalse(false) => true
+    return isValid ? resolved->isAlwaysFalse() : true;
   }
 
   if (type == NODE_TYPE_VALUE) {
@@ -1313,20 +1305,12 @@ bool AstNode::isFalse() const {
   } else if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT) {
     return false;
   } else if (type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    if (!getMember(0)->isFalse()) {
-      return false;
-    }
-    return getMember(1)->isFalse();
+    return getMember(0)->isAlwaysFalse() && getMember(1)->isAlwaysFalse();
   } else if (type == NODE_TYPE_OPERATOR_BINARY_AND) {
-    if (getMember(0)->isFalse()) {
-      return true;
-    }
-    return getMember(1)->isFalse();
+    return getMember(0)->isAlwaysFalse() || getMember(1)->isAlwaysFalse();
   } else if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-    if (getMember(0)->isTrue()) {
-      // ! true => false
-      return true;
-    }
+    // ! true => false
+    return getMember(0)->isAlwaysTrue();
   }
 
   return false;

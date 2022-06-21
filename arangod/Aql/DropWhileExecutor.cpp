@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TakeWhileExecutor.h"
+#include "DropWhileExecutor.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/Stats.h"
@@ -29,94 +29,75 @@
 
 namespace arangodb::aql {
 
-TakeWhileExecutorInfos::TakeWhileExecutorInfos(RegisterId inputRegister,
-                                               bool emitFirstFalseLine)
-    : _inputRegister(inputRegister), _emitFirstFalseLine(emitFirstFalseLine) {}
+DropWhileExecutorInfos::DropWhileExecutorInfos(RegisterId inputRegister)
+    : _inputRegister(inputRegister) {}
 
-auto TakeWhileExecutorInfos::getInputRegister() const noexcept -> RegisterId {
+auto DropWhileExecutorInfos::getInputRegister() const noexcept -> RegisterId {
   return _inputRegister;
 }
 
-auto TakeWhileExecutorInfos::emitFirstFalseLine() const noexcept -> bool {
-  return _emitFirstFalseLine;
-}
-
-TakeWhileExecutor::TakeWhileExecutor(TakeWhileExecutor::Fetcher&,
-                                     TakeWhileExecutor::Infos& infos)
+DropWhileExecutor::DropWhileExecutor(DropWhileExecutor::Fetcher&,
+                                     DropWhileExecutor::Infos& infos)
     : _infos(infos) {}
 
-[[nodiscard]] auto TakeWhileExecutor::produceRows(
-    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+auto DropWhileExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                    OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TakeWhileStats stats{};
+  FilterStats stats{};
 
-  while (!_stopTaking && inputRange.hasDataRow() && !output.isFull()) {
+  while (inputRange.hasDataRow() && !output.isFull()) {
     auto const& [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input);
     TRI_ASSERT(input.isInitialized());
-    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+    if (!_stopDropping) {
+      if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+        stats.incrFiltered();
+      } else {
+        _stopDropping = true;
+      }
+    }
+    if (_stopDropping) {
       output.copyRow(input);
       output.advanceRow();
-    } else {
-      _stopTaking = true;
-      if (_infos.emitFirstFalseLine()) {
-        output.copyRow(input);
-        output.advanceRow();
-      }
-      // TODO count overfetched rows
-      // stats.incrFiltered();
     }
   }
 
-  if (_stopTaking) {
-    auto call = AqlCall{};
-    call.hardLimit = std::size_t(0);
-    return {ExecutorState::DONE, stats, call};
-  }
-  // Just fetch everything from above, allow overfetching
   return {inputRange.upstreamState(), stats, AqlCall{}};
 }
 
-auto TakeWhileExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+auto DropWhileExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                       AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  // This must never be true: It is used when TAKE WHILE is pushed (partially)
-  // on the DBServers, on these nodes; however, in this situation, skipping
-  // may only happen on the coordinator.
-  TRI_ASSERT(!_infos.emitFirstFalseLine());
-  TakeWhileStats stats{};
+  FilterStats stats{};
 
   while (inputRange.hasDataRow() && call.needSkipMore()) {
-    auto const [_, input] =
+    auto const& [_, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input);
     TRI_ASSERT(input.isInitialized());
-    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+    if (!_stopDropping) {
+      if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+        stats.incrFiltered();
+      } else {
+        _stopDropping = true;
+      }
+    }
+    if (_stopDropping) {
       call.didSkip(1);
-    } else {
-      _stopTaking = true;
-      // TODO count overfetched rows
-      // stats.incrFiltered();
     }
   }
 
-  if (_stopTaking) {
-    auto upstreamCall = AqlCall{};
-    upstreamCall.hardLimit = std::size_t(0);
-    return {ExecutorState::DONE, stats, call.getSkipCount(), upstreamCall};
-  }
   // Just fetch everything from above, allow overfetching
   return {inputRange.upstreamState(), stats, call.getSkipCount(), AqlCall{}};
 }
 
-auto TakeWhileExecutor::expectedNumberOfRowsNew(
+auto DropWhileExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  TRI_ASSERT(!_stopTaking);
   if (input.finalState() == MainQueryState::DONE) {
-    // This could be improved by looking for the first false value (if any) in
-    // our input register.
+    // This could be improved (if _stopDropping is not yet true) by looking
+    // for the first false value (if any) in our input register.
     return std::min(call.getLimit(), input.countDataRows());
   }
   // We do not know how many more rows will be returned from upstream.

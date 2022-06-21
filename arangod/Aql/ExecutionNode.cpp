@@ -30,6 +30,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
+#include "Aql/DropWhileExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -99,6 +100,7 @@ constexpr static frozen::unordered_map<int, std::string_view, 34> typeNames = {
     {static_cast<int>(ExecutionNode::SUBQUERY), "SubqueryNode"},
     {static_cast<int>(ExecutionNode::FILTER), "FilterNode"},
     {static_cast<int>(ExecutionNode::TAKE_WHILE), "TakeWhileNode"},
+    {static_cast<int>(ExecutionNode::DROP_WHILE), "DropWhileNode"},
     {static_cast<int>(ExecutionNode::SORT), "SortNode"},
     {static_cast<int>(ExecutionNode::COLLECT), "CollectNode"},
     {static_cast<int>(ExecutionNode::RETURN), "ReturnNode"},
@@ -140,7 +142,7 @@ std::string_view ExecutionNode::getTypeString(NodeType type) {
   }
 
   throw basics::Exception::fmt(ADB_HERE, TRI_ERROR_NOT_IMPLEMENTED,
-                               "missing type {} in TypeNames", type);
+                               "missing NodeType {} in typeNames", type);
 }
 
 /// @brief returns the type name of the node
@@ -2493,11 +2495,62 @@ void TakeWhileNode::doToVelocyPack(velocypack::Builder& builder,
 auto TakeWhileNode::estimateCost() const -> CostEstimate {
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
+  // Make it slightly lower, so the optimizer can prefer to do calculations
+  // after.
+  estimate.estimatedNrItems =
+      std::max<std::size_t>(1, std::size_t(0.8 * estimate.estimatedNrItems));
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 
 void TakeWhileNode::getVariablesUsedHere(VarSet& vars) const {
+  vars.emplace(_inVariable);
+}
+
+DropWhileNode::DropWhileNode(ExecutionPlan* plan, ExecutionNodeId id,
+                             Variable const* inVariable)
+    : ExecutionNode(plan, id), _inVariable(inVariable) {}
+
+ExecutionNode::NodeType DropWhileNode::getType() const { return DROP_WHILE; }
+
+std::unique_ptr<ExecutionBlock> DropWhileNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
+
+  auto registerInfos = createRegisterInfos(RegIdSet{inputRegister}, {});
+  auto executorInfos = DropWhileExecutorInfos(inputRegister);
+  return std::make_unique<ExecutionBlockImpl<DropWhileExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
+}
+
+ExecutionNode* DropWhileNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                    bool withProperties) const {
+  // TODO
+  FATAL_ERROR_EXIT();
+  return nullptr;
+}
+
+void DropWhileNode::doToVelocyPack(velocypack::Builder& builder,
+                                   unsigned int flags) const {
+  // TODO
+  FATAL_ERROR_EXIT();
+}
+
+auto DropWhileNode::estimateCost() const -> CostEstimate {
+  TRI_ASSERT(!_dependencies.empty());
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  // Make it slightly lower, so the optimizer can prefer to do calculations
+  // after.
+  estimate.estimatedNrItems =
+      std::max<std::size_t>(1, std::size_t(0.8 * estimate.estimatedNrItems));
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
+}
+
+void DropWhileNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
 

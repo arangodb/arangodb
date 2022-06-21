@@ -115,9 +115,16 @@ class Exception : public virtual std::exception {
   }
 
   // Include Exceptions.tpp when you want to call this function.
+  // This uses the default message of the passed error code as the format
+  // string.
   template<typename... Args>
-  static auto fmt(SourceLocation location, ErrorCode code, Args&&... args)
-      -> Exception;
+  static auto fmtDefault(SourceLocation location, ErrorCode code,
+                         Args&&... args) -> Exception;
+  // Include Exceptions.tpp when you want to call this function.
+  // The `fmt` argument after the code must be the format string.
+  template<typename Fmt, typename... Args>
+  static auto fmt(SourceLocation location, ErrorCode code, Fmt&& fmt,
+                  Args&&... args) -> Exception;
 
  public:
   [[nodiscard]] char const* what() const noexcept override;

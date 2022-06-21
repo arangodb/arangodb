@@ -1385,7 +1385,7 @@ void arangodb::aql::removeUnnecessaryFiltersRule(
     // filter expression is constant and thus cannot throw
     // we can now evaluate it safely
 
-    if (root->isTrue()) {
+    if (root->isAlwaysTrue()) {
       // filter is always true
       // remove filter node and merge with following node
       toUnlink.emplace(n);

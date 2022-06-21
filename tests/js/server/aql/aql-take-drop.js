@@ -32,6 +32,83 @@ const _ = require('lodash');
 const WHILE = 'WHILE';
 const UNTIL = 'UNTIL';
 
+const aqlTakeDropWhileUntilSyntaxSuite = function () {
+  return {
+    testTakeWhile: function () {
+      const cases = [
+        [`FOR i IN 1..10 TAKE WHILE i < 5 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE WHILE i != 5 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE WHILE ! (i == 5) RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE WHILE NOT (i == 5) RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE WHILE i < 5 AND i < 7 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE WHILE i < 7 AND i < 5 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE WHILE i < 5 OR i < 3 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE WHILE i < 3 OR i < 5 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE WHILE ! IS_STRING(i < 5 ? null : "stop") RETURN i`, _.range(1, 5)],
+      ];
+
+      for ([query, expected] of cases) {
+        const actual = getQueryResults(query);
+        assertEqual(expected, actual, `when executing query '${query}'`);
+      }
+    },
+    testTakeUntil: function () {
+      const cases = [
+        [`FOR i IN 1..10 TAKE UNTIL i >= 5 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE UNTIL i == 5 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE UNTIL ! (i != 5) RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE UNTIL NOT (i != 5) RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE UNTIL i >= 5 OR i >= 7 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE UNTIL i >= 7 OR i >= 5 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE UNTIL i >= 5 AND i >= 3 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE UNTIL i >= 3 AND i >= 5 RETURN i`, _.range(1, 5)],
+        [`FOR i IN 1..10 TAKE UNTIL ! IS_STRING(i >= 5 ? null : "stop") RETURN i`, _.range(1, 5)],
+      ];
+
+      for ([query, expected] of cases) {
+        const actual = getQueryResults(query);
+        assertEqual(expected, actual, `when executing query '${query}'`);
+      }
+    },
+    testDropWhile: function () {
+      const cases = [
+        [`FOR i IN 1..10 DROP WHILE i < 5 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP WHILE i != 5 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP WHILE ! (i == 5) RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP WHILE NOT (i == 5) RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP WHILE i < 5 AND i < 7 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP WHILE i < 7 AND i < 5 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP WHILE i < 5 OR i < 3 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP WHILE i < 3 OR i < 5 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP WHILE ! IS_STRING(i < 5 ? null : "stop") RETURN i`, _.range(5, 11)],
+      ];
+
+      for ([query, expected] of cases) {
+        const actual = getQueryResults(query);
+        assertEqual(expected, actual, `when executing query '${query}'`);
+      }
+    },
+    testDropUntil: function () {
+      const cases = [
+        [`FOR i IN 1..10 DROP UNTIL i >= 5 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP UNTIL i == 5 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP UNTIL ! (i != 5) RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP UNTIL NOT (i != 5) RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP UNTIL i >= 5 OR i >= 7 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP UNTIL i >= 7 OR i >= 5 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP UNTIL i >= 5 AND i >= 3 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP UNTIL i >= 3 AND i >= 5 RETURN i`, _.range(5, 11)],
+        [`FOR i IN 1..10 DROP UNTIL ! IS_STRING(i >= 5 ? null : "stop") RETURN i`, _.range(5, 11)],
+      ];
+
+      for ([query, expected] of cases) {
+        const actual = getQueryResults(query);
+        assertEqual(expected, actual, `when executing query '${query}'`);
+      }
+    },
+  };
+};
+
 const aqlTakeSuite = (whileOrUntil) => function () {
   const negate = whileOrUntil === WHILE ? '' : '!';
   const ucWhileOrUntil = whileOrUntil === WHILE ? 'While' : 'Until';
@@ -68,6 +145,7 @@ const aqlDropSuite = (whileOrUntil) => function () {
   };
 };
 
+jsunity.run(aqlTakeDropWhileUntilSyntaxSuite);
 jsunity.run(aqlTakeSuite(WHILE));
 jsunity.run(aqlTakeSuite(UNTIL));
 // jsunity.run(aqlDropSuite(WHILE));

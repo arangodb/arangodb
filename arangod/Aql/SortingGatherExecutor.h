@@ -108,7 +108,8 @@ class SortingGatherExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = true;
+    // TODO This could be implemented.
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
   using Fetcher = MultiDependencySingleRowFetcher;

@@ -116,9 +116,7 @@ class EnumerateCollectionExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    /* With some more modifications this could be turned to true. Actually the
-   output of this block is input * itemsInCollection */
-    static constexpr bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateCollectionExecutorInfos;

@@ -1017,6 +1017,36 @@ class TakeWhileNode : public ExecutionNode {
   Variable const* _inVariable;
 };
 
+class DropWhileNode : public ExecutionNode {
+  friend class ExecutionBlock;
+
+ public:
+  DropWhileNode(ExecutionPlan* plan, ExecutionNodeId id,
+                Variable const* inVariable);
+
+  /// @brief return the type of the node
+  auto getType() const -> NodeType override;
+
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache)
+      const override;
+
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override;
+
+  void getVariablesUsedHere(VarSet& vars) const override;
+
+ protected:
+  void doToVelocyPack(velocypack::Builder& builder,
+                      unsigned int flags) const override;
+  CostEstimate estimateCost() const override;
+
+ private:
+  /// @brief input variable to read from
+  Variable const* _inVariable;
+};
+
 /// @brief this is an auxilliary struct for processed sort criteria information
 struct SortInformation {
   enum Match {

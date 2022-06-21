@@ -462,6 +462,7 @@ AstNode* Ast::createNodeFilter(AstNode const* expression) {
 /// @brief create an AST takeWhile node
 AstNode* Ast::createNodeTakeWhile(bool isWhile, AstNode const* expression) {
   if (!isWhile) {
+    // TAKE UNTIL instead of TAKE WHILE, so negate the condition:
     expression =
         createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
   }
@@ -475,6 +476,7 @@ AstNode* Ast::createNodeTakeWhile(bool isWhile, AstNode const* expression) {
 /// @brief create an AST dropWhile node
 AstNode* Ast::createNodeDropWhile(bool isWhile, AstNode const* expression) {
   if (!isWhile) {
+    // DROP UNTIL instead of DROP WHILE, so negate the condition:
     expression =
         createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
   }
@@ -3276,7 +3278,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
   if (lhs->isConstant()) {
     // left operand is a constant value
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      if (lhs->isFalse()) {
+      if (lhs->isAlwaysFalse()) {
         // return it if it is falsey
         return lhs;
       }
@@ -3284,7 +3286,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
       // left-operand was trueish, now return right operand
       return rhs;
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      if (lhs->isTrue()) {
+      if (lhs->isAlwaysTrue()) {
         // return it if it is trueish
         return lhs;
       }
@@ -3298,14 +3300,14 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
     if (rhs->isConstant() && lhs->isDeterministic()) {
       // right operand is a constant value
       if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        if (rhs->isFalse()) {
+        if (rhs->isAlwaysFalse()) {
           return createNodeValueBool(false);
         }
 
         // right-operand was trueish, now return just left
         return lhs;
       } else if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-        if (rhs->isTrue()) {
+        if (rhs->isAlwaysTrue()) {
           // return it if it is trueish
           return createNodeValueBool(true);
         }
@@ -3586,7 +3588,7 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
     return node;
   }
 
-  if (condition->isTrue()) {
+  if (condition->isAlwaysTrue()) {
     // condition is always true, replace ternary operation with true part
     return truePart;
   }
@@ -3814,12 +3816,12 @@ AstNode* Ast::optimizeFilter(AstNode* node) {
     return node;
   }
 
-  if (expression->isTrue()) {
+  if (expression->isAlwaysTrue()) {
     // optimize away the filter if it is always true
     return createNodeFilter(createNodeValueBool(true));
   }
 
-  if (expression->isFalse()) {
+  if (expression->isAlwaysFalse()) {
     // optimize away the filter if it is always false
     return createNodeFilter(createNodeValueBool(false));
   }

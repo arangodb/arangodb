@@ -213,7 +213,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
 
         if (name == "bfs") {
           options->mode =
-              value->isTrue()
+              value->isAlwaysTrue()
                   ? arangodb::traverser::TraverserOptions::Order::BFS
                   : arangodb::traverser::TraverserOptions::Order::DFS;
           hasBFS = true;
@@ -941,7 +941,7 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
       if (name == "exclusive") {
         auto value = member->getMember(0);
         TRI_ASSERT(value->isConstant());
-        return value->isTrue();
+        return value->isAlwaysTrue();
       }
     }
   }
@@ -969,17 +969,17 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
         TRI_ASSERT(value->isConstant());
 
         if (name == StaticStrings::WaitForSyncString) {
-          options.waitForSync = value->isTrue();
+          options.waitForSync = value->isAlwaysTrue();
         } else if (name == StaticStrings::SkipDocumentValidation) {
-          options.validate = !value->isTrue();
+          options.validate = !value->isAlwaysTrue();
         } else if (name == StaticStrings::KeepNullString) {
-          options.keepNull = value->isTrue();
+          options.keepNull = value->isAlwaysTrue();
         } else if (name == StaticStrings::MergeObjectsString) {
-          options.mergeObjects = value->isTrue();
+          options.mergeObjects = value->isAlwaysTrue();
         } else if (name == StaticStrings::Overwrite) {
           // legacy: overwrite is set, superseded by overwriteMode
           // default behavior if only "overwrite" is specified
-          if (!options.isOverwriteModeSet() && value->isTrue()) {
+          if (!options.isOverwriteModeSet() && value->isAlwaysTrue()) {
             options.overwriteMode = OperationOptions::OverwriteMode::Replace;
           }
         } else if (name == StaticStrings::OverwriteMode &&
@@ -991,11 +991,11 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
             options.overwriteMode = overwriteMode;
           }
         } else if (name == StaticStrings::IgnoreRevsString) {
-          options.ignoreRevs = value->isTrue();
+          options.ignoreRevs = value->isAlwaysTrue();
         } else if (name == "exclusive") {
-          options.exclusive = value->isTrue();
+          options.exclusive = value->isAlwaysTrue();
         } else if (name == "ignoreErrors") {
-          options.ignoreErrors = value->isTrue();
+          options.ignoreErrors = value->isAlwaysTrue();
         } else {
           if (addWarnings) {
             invalidOptionAttribute(query, "unknown", operationName, name.data(),
@@ -1487,18 +1487,19 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
     en = registerNode(new FilterNode(this, nextId(), v));
   } else {
     // operand is some misc expression
-    if (expression->isTrue()) {
+    if (expression->isAlwaysTrue()) {
       // filter expression is known to be always true, so
       // remove the filter entirely
       return previous;
     }
 
-    // note: if isTrue() is false above, it is not necessarily the case that
-    // isFalse() is true next. The reason is that isTrue() and isFalse() only
-    // return true in case of absolulete certainty. this requires expressions
-    // to be based on query compile-time values only, but it will not work
-    // for expressions that need to be evaluated at query runtime
-    if (expression->isFalse()) {
+    // note: if isAlwaysTrue() is false above, it is not necessarily the case
+    // that isAlwaysFalse() is true next. The reason is that isAlwaysTrue() and
+    // isAlwaysFalse() only return true in case of absolulete certainty. this
+    // requires expressions to be based on query compile-time values only, but
+    // it will not work for expressions that need to be evaluated at query
+    // runtime
+    if (expression->isAlwaysFalse()) {
       // filter expression is known to be always false, so
       // replace the FILTER with a NoResultsNode
       en = registerNode(new NoResultsNode(this, nextId()));
@@ -1529,20 +1530,20 @@ ExecutionNode* ExecutionPlan::fromNodeTakeWhile(ExecutionNode* previous,
     en = registerNode(std::make_unique<TakeWhileNode>(this, nextId(), v));
   } else {
     // operand is some misc expression
-    if (expression->isTrue()) {
-      // filter expression is known to be always true, so
-      // remove the filter entirely
+    if (expression->isAlwaysTrue()) {
+      // expression is known to be always true, so remove the node entirely
       return previous;
     }
 
-    // note: if isTrue() is false above, it is not necessarily the case that
-    // isFalse() is true next. The reason is that isTrue() and isFalse() only
-    // return true in case of absolulete certainty. this requires expressions
-    // to be based on query compile-time values only, but it will not work
-    // for expressions that need to be evaluated at query runtime
-    if (expression->isFalse()) {
-      // filter expression is known to be always false, so
-      // replace the FILTER with a NoResultsNode
+    // note: if isAlwaysTrue() is false above, it is not necessarily the case
+    // that isAlwaysFalse() is true next. The reason is that isAlwaysTrue() and
+    // isAlwaysFalse() only return true in case of absolulete certainty. this
+    // requires expressions to be based on query compile-time values only, but
+    // it will not work for expressions that need to be evaluated at query
+    // runtime
+    if (expression->isAlwaysFalse()) {
+      // expression is known to be always false, so
+      // replace the TAKE WHILE with a NoResultsNode
       en = registerNode(new NoResultsNode(this, nextId()));
     } else {
       auto calc = createTemporaryCalculation(expression, previous);
@@ -1557,7 +1558,45 @@ ExecutionNode* ExecutionPlan::fromNodeTakeWhile(ExecutionNode* previous,
 
 ExecutionNode* ExecutionPlan::fromNodeDropWhile(ExecutionNode* previous,
                                                 AstNode const* node) {
-  std::abort();
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_DROP_WHILE);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  auto expression = node->getMember(0);
+
+  ExecutionNode* en = nullptr;
+
+  if (expression->type == NODE_TYPE_REFERENCE) {
+    // operand is already a variable
+    auto v = static_cast<Variable*>(expression->getData());
+    TRI_ASSERT(v != nullptr);
+    en = registerNode(std::make_unique<DropWhileNode>(this, nextId(), v));
+  } else {
+    // operand is some misc expression
+    if (expression->isAlwaysFalse()) {
+      // expression is known to be always false, so remove the node entirely
+      return previous;
+    }
+
+    // note: if isAlwaysFalse() is false above, it is not necessarily the case
+    // that isAlwaysTrue() is true next. The reason is that isAlwaysTrue() and
+    // isAlwaysFalse() only return true in case of absolulete certainty. this
+    // requires expressions to be based on query compile-time values only, but
+    // it will not work for expressions that need to be evaluated at query
+    // runtime
+    if (expression->isAlwaysTrue()) {
+      // expression is known to be always false, so
+      // replace the DROP WHILE with a NoResultsNode
+      en = registerNode(new NoResultsNode(this, nextId()));
+    } else {
+      auto calc = createTemporaryCalculation(expression, previous);
+      en = registerNode(std::make_unique<DropWhileNode>(this, nextId(),
+                                                        getOutVariable(calc)));
+      previous = calc;
+    }
+  }
+
+  return addDependency(previous, en);
 }
 
 /// @brief create an execution plan element from an AST LET node
@@ -2300,14 +2339,17 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         en = fromNodeKShortestPaths(en, member);
         break;
       }
+
       case NODE_TYPE_FILTER: {
         en = fromNodeFilter(en, member);
         break;
       }
+
       case NODE_TYPE_TAKE_WHILE: {
         en = fromNodeTakeWhile(en, member);
         break;
       }
+
       case NODE_TYPE_DROP_WHILE: {
         en = fromNodeDropWhile(en, member);
         break;

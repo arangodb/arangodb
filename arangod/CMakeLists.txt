@@ -471,7 +471,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/WindowExecutor.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
-)
+  Aql/DropWhileExecutor.cpp Aql/DropWhileExecutor.h)
 
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp

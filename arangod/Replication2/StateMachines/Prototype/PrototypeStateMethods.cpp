@@ -175,7 +175,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
             _vocbase.getReplicatedStateById(id));
     if (stateMachine == nullptr) {
       using namespace fmt::literals;
-      throw basics::Exception::fmt(
+      throw basics::Exception::fmtDefault(
           ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
           "id"_a = id, "type"_a = "PrototypeState");
     }

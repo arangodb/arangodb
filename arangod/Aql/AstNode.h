@@ -347,10 +347,10 @@ struct AstNode {
   void removeFlag(AstNodeFlagType flag) const noexcept;
 
   /// @brief whether or not the node value is trueish
-  bool isTrue() const;
+  bool isAlwaysTrue() const;
 
   /// @brief whether or not the node value is falsey
-  bool isFalse() const;
+  bool isAlwaysFalse() const;
 
   /// @brief whether or not the members of a list node are sorted
   bool isSorted() const noexcept;

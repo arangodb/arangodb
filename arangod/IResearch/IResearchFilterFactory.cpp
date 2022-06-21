@@ -1015,7 +1015,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   bool result;
 
   if (node.isConstant()) {
-    result = node.isTrue();
+    result = node.isAlwaysTrue();
   } else {  // deterministic expression
     ScopedAqlValue value(node);
 

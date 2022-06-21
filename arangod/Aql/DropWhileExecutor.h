@@ -33,29 +33,26 @@ class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class RegisterInfos;
-class TakeWhileStats;
+class FilterStats;
 template<BlockPassthrough>
 class SingleRowFetcher;
 
-class TakeWhileExecutorInfos {
+class DropWhileExecutorInfos {
  public:
-  TakeWhileExecutorInfos(RegisterId inputRegister, bool emitFirstFalseLine);
+  explicit DropWhileExecutorInfos(RegisterId inputRegister);
 
-  TakeWhileExecutorInfos() = delete;
-  TakeWhileExecutorInfos(TakeWhileExecutorInfos&&) = default;
-  TakeWhileExecutorInfos(TakeWhileExecutorInfos const&) = delete;
-  ~TakeWhileExecutorInfos() = default;
+  DropWhileExecutorInfos() = delete;
+  DropWhileExecutorInfos(DropWhileExecutorInfos&&) = default;
+  DropWhileExecutorInfos(DropWhileExecutorInfos const&) = delete;
+  ~DropWhileExecutorInfos() = default;
 
   [[nodiscard]] auto getInputRegister() const noexcept -> RegisterId;
 
-  [[nodiscard]] auto emitFirstFalseLine() const noexcept -> bool;
-
  private:
   RegisterId _inputRegister;
-  bool _emitFirstFalseLine;
 };
 
-class TakeWhileExecutor {
+class DropWhileExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
@@ -64,14 +61,14 @@ class TakeWhileExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = TakeWhileExecutorInfos;
-  using Stats = TakeWhileStats;
+  using Infos = DropWhileExecutorInfos;
+  using Stats = FilterStats;
 
-  TakeWhileExecutor() = delete;
-  TakeWhileExecutor(TakeWhileExecutor&&) = default;
-  TakeWhileExecutor(TakeWhileExecutor const&) = delete;
-  TakeWhileExecutor(Fetcher&, Infos&);
-  ~TakeWhileExecutor() = default;
+  DropWhileExecutor() = delete;
+  DropWhileExecutor(DropWhileExecutor&&) = default;
+  DropWhileExecutor(DropWhileExecutor const&) = delete;
+  DropWhileExecutor(Fetcher&, Infos&);
+  ~DropWhileExecutor() = default;
 
   /**
    * @brief produce the next Rows of Aql Values.
@@ -93,7 +90,7 @@ class TakeWhileExecutor {
 
  private:
   Infos& _infos;
-  bool _stopTaking = false;
+  bool _stopDropping = false;
 };
 
 }  // namespace arangodb::aql

@@ -34,6 +34,7 @@
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
+#include "Aql/DropWhileExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionEngine.h"
@@ -561,8 +562,10 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
       }
     }
 
-    // Non-Passthrough variant, we need to allocate the block ourselfs
+    // Non-Passthrough variant, we need to allocate the block ourselves
     size_t blockSize = ExecutionBlock::DefaultBatchSize;
+    static_assert(hasExpectedNumberOfRowsNew<Executor>::value ==
+                  Executor::Properties::inputSizeRestrictsOutputSize);
     if constexpr (hasExpectedNumberOfRowsNew<Executor>::value) {
       // Only limit the output size if there will be no more
       // data from upstream. Or if we have ordered a SOFT LIMIT.
@@ -688,7 +691,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-              TakeWhileExecutor,
+              TakeWhileExecutor, DropWhileExecutor,
               KShortestPathsExecutor<graph::KShortestPathsFinder>,
               KShortestPathsExecutor<KPathRefactored>,
               KShortestPathsExecutor<KPathRefactoredTracer>,
@@ -2537,6 +2540,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<AccuWindowExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<WindowExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TakeWhileExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<DropWhileExecutor>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
     false, false, arangodb::iresearch::MaterializeType::NotMaterialize>>;

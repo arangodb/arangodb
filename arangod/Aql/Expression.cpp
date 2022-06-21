@@ -1486,7 +1486,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     filterNode = quantifierAndFilterNode->getMember(1);
 
     if (!isBoolean && filterNode->isConstant()) {
-      if (filterNode->isTrue()) {
+      if (filterNode->isAlwaysTrue()) {
         // filter expression is always true
         filterNode = nullptr;
       } else {

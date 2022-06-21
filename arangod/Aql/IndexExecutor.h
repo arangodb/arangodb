@@ -249,7 +249,7 @@ class IndexExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
