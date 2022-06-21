@@ -217,8 +217,7 @@ class FieldIterator {
 #endif
 
   void popLevel();
-  bool pushLevel(VPackSlice value, LevelMeta const& meta, Filter filter,
-                 std::optional<MissingFieldsContainer>&& missing);
+  bool pushLevel(VPackSlice value, LevelMeta const& meta, Filter filter);
   void fieldSeen(std::string& name);
 
   // disallow copy and assign

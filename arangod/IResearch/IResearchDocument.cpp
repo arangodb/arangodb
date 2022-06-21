@@ -333,18 +333,38 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
   return {};
 }
 
+void handleNested(arangodb::iresearch::MissingFieldsMap& map,
+                  arangodb::iresearch::InvertedIndexField const& field) {
+  std::string nestedObjectsPath(field.path());
+  arangodb::iresearch::kludge::mangleNested(nestedObjectsPath);
+  for (auto const& sf : field._fields) {
+    if (!sf._fields.empty()) {
+      handleNested(map, sf);
+    }
+    std::cout << "Nested:" << nestedObjectsPath << "Expect:" << sf.path() << std::endl;
+    map[nestedObjectsPath].emplace(sf.path());
+  }
+}
+
 arangodb::iresearch::MissingFieldsMap gatherMissingFields(
     arangodb::iresearch::InvertedIndexField const& field) {
   arangodb::iresearch::MissingFieldsMap map;
   for (auto const& f : field._fields) {
-    // always monitor on root level to track completely missing hierarchies
-    if (!field._trackListPositions || field.expansion().empty()) {
+    // always monitor on root level plain fields to track completely missing hierarchies
+    if ((!field._trackListPositions || field.expansion().empty())) {
+      std::cout << "ROOT PLAIN:" << f.path() << std::endl;
       map[""].emplace(f.path());
     }
     if (!f.expansion().empty() && !field._trackListPositions) {
       // monitor array subobjects (only non tracking list positions matters)
+      std::cout << f.attributeString() + "[*]" << " Expect:" << f.path() << std::endl;
       map[f.attributeString() + "[*]"].emplace(f.path());
     }
+#ifdef USE_ENTERPRISE
+    if (!f._fields.empty()) {
+      handleNested(map, f);
+    }
+#endif
   }
   return map;
 }
@@ -404,8 +424,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::reset(
   // this is set for root level as general mark.
   _hasNested = MetaTraits::hasNested(linkMeta);
 #endif
-  pushLevel(doc, static_cast<LevelMeta const&>(linkMeta), filter,
-            std::make_optional<MissingFieldsContainer>(_missingFieldsMap[""]));
+  pushLevel(doc, static_cast<LevelMeta const&>(linkMeta), filter);
   next();
 }
 
@@ -610,8 +629,14 @@ bool FieldIterator<IndexMetaStruct, LevelMeta>::setValue(
 template<typename IndexMetaStruct, typename LevelMeta>
 bool FieldIterator<IndexMetaStruct, LevelMeta>::pushLevel(
     VPackSlice value, LevelMeta const& meta,
-    FieldIterator<IndexMetaStruct, LevelMeta>::Filter filter,
-    std::optional<MissingFieldsContainer>&& missing) {
+    FieldIterator<IndexMetaStruct, LevelMeta>::Filter filter) {
+  std::optional<MissingFieldsContainer> missing;
+  {
+    auto missingMapEntry = _missingFieldsMap.find(_nameBuffer);
+    if (missingMapEntry != _missingFieldsMap.end()) {
+      missing = std::make_optional(missingMapEntry->second);
+    }
+  }
   _stack.emplace_back(value, _nameBuffer.size(), meta, filter,
                       LevelType::NORMAL, std::move(missing));
   return true;
@@ -721,7 +746,6 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
       _value._value = irs::bytes_ref::NIL;
       _begin = nullptr;
       _end = nullptr;
-      std::optional<MissingFieldsContainer> missing;
       switch (auto const valueSlice = value.value; valueSlice.type()) {
         case VPackValueType::Null:
           setNullValue(valueSlice);
@@ -739,14 +763,8 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
 #endif
         [[fallthrough]];
         case VPackValueType::Object: {
-          {
-            auto missingMapEntry = _missingFieldsMap.find(_nameBuffer);
-            if (missingMapEntry != _missingFieldsMap.end()) {
-              missing = std::make_optional(missingMapEntry->second);
-            }
-          }
           auto filter = getFilter(valueSlice, *context);
-          bool setAnalyzers = pushLevel(valueSlice, *context, filter, std::move(missing));
+          bool setAnalyzers = pushLevel(valueSlice, *context, filter);
           if (setAnalyzers) {
             auto const& analyzers = context->_analyzers;
             _begin = analyzers.data() + context->_primitiveOffset;
