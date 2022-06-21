@@ -164,10 +164,10 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ uniqueVertices: 'path' } RETURN 1"],
         [prefix + "{ uniqueVertices: 'none' } RETURN 1"],
         [prefix + "{ parallelism: 4 } RETURN 1"],
-        
+        [prefix + "{ maxProjections: 123 } RETURN 1"],
+
         [prefix + "{ indexHint: 'primary' } RETURN 1", "indexHint"],
         [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
-        [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
         [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
         [prefix + "{ defaultWeight: true } RETURN 1", "defaultWeight"],
         [prefix + "{ weightAttribute: ['testi'] } RETURN 1", "weightAttribute"],

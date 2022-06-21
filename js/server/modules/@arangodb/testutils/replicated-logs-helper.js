@@ -237,10 +237,10 @@ const waitForReplicatedLogAvailable = function (id) {
 
 const getServerProcessID = function (serverId) {
   let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
-  // Now look for instanceInfo:
-  let pos = _.findIndex(global.instanceInfo.arangods,
-      x => x.endpoint === endpoint);
-  return global.instanceInfo.arangods[pos].pid;
+  // Now look for instanceManager:
+  let pos = _.findIndex(global.instanceManager.arangods,
+                        x => x.endpoint === endpoint);
+  return global.instanceManager.arangods[pos].pid;
 };
 
 const stopServerImpl = function (serverId) {
