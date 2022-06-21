@@ -519,7 +519,11 @@ void TransactionState::chooseReplicas(std::vector<ShardID> const& shards) {
   }
   auto& cf = _vocbase.server().getFeature<ClusterFeature>();
   auto& ci = cf.clusterInfo();
+#ifdef USE_ENTERPRISE
   ci.getResponsibleServersReadFromFollower(shards, *_chosenReplicas);
+#else
+  _chosenReplicas = ci.getResponsibleServers(shards);
+#endif
 }
 
 ServerID TransactionState::whichReplica(ShardID const& shard) {
