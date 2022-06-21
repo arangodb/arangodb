@@ -1,7 +1,14 @@
 devel
 -----
 
+
 * Issue 15592: Permit `MERGE_RECURSIVE()` to be called with a single argument.
+
+* Fixed issue 16337: arangoimport with `--headers-file` and `--merge-attributes`
+  merges column names instead of row values on the first line of a CSV file.
+
+  Additionally, floating-point numbers are now merged using their standard
+  string representation instead of with a fixed precision of 6 decimal places.
 
 * Now supporting projections on traversals. In AQL Traversal statements like
   FOR v,e,p IN 1..3 OUTBOUND @start GRAPH @graph RETURN v.name
