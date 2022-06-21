@@ -238,7 +238,6 @@ struct AqlValueTraits {
 
 struct QueryContext {
   transaction::Methods* trx{};
-  aql::ExecutionPlan const* plan{};
   aql::Ast* ast{};
   aql::ExpressionContext* ctx{};
   irs::index_reader const* index{};

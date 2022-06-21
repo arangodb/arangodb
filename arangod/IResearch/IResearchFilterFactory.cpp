@@ -506,7 +506,7 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
                                    QueryContext const& ctx,
                                    FilterContext const& filterCtx) {
   auto& exprFilter = filter.add<ByExpression>();
-  exprFilter.init(*ctx.plan, *ctx.ast, const_cast<aql::AstNode&>(node));
+  exprFilter.init(*ctx.ast, const_cast<aql::AstNode&>(node));
   exprFilter.boost(filterCtx.boost);
 }
 

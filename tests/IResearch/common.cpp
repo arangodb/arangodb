@@ -695,7 +695,6 @@ void assertFilterOptimized(
     irs::Or actualFilter;
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx,
-        .plan = plan,
         .ast = plan->getAst(),
         .ctx = exprCtx,
         .index = &irs::sub_reader::empty(),
@@ -779,11 +778,9 @@ void assertExpressionFilter(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
         arangodb::transaction::Options());
 
-    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
     irs::Or expected;
     expected.add<arangodb::iresearch::ByExpression>().init(
-        *dummyPlan, *ast, *expressionExtractor(filterNode));
+        *ast, *expressionExtractor(filterNode));
 
     ExpressionContextMock exprCtx;
     exprCtx.setTrx(&trx);
@@ -791,7 +788,6 @@ void assertExpressionFilter(
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx,
-        .plan = dummyPlan.get(),
         .ast = ast,
         .ctx = &exprCtx,
         .index = &irs::sub_reader::empty(),
@@ -918,10 +914,8 @@ void buildActualFilter(
       mockCtx->setTrx(&trx);
     }
 
-    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx,
-        .plan = dummyPlan.get(),
         .ast = ast,
         .ctx = exprCtx,
         .index = &irs::sub_reader::empty(),
@@ -1018,12 +1012,9 @@ void assertFilter(
       mockCtx->setTrx(&trx);
     }
 
-    auto dummyPlan = tests::planFromQuery(vocbase, "RETURN 1");
-
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx,
-        .plan = dummyPlan.get(),
         .ast = ast,
         .ctx = exprCtx,
         .index = &irs::sub_reader::empty(),

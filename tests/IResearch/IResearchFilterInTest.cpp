@@ -1051,15 +1051,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -1178,15 +1175,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -1306,15 +1300,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -1434,15 +1425,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -1562,15 +1550,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -1676,15 +1661,12 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -4207,15 +4189,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -4341,15 +4320,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -4475,15 +4451,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -4609,15 +4582,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -4744,15 +4714,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -4878,15 +4845,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),
@@ -4995,15 +4959,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
           .trx = &trx,
-          .plan = dummyPlan.get(),
           .ast = ast,
           .ctx = &exprCtx,
           .index = &irs::sub_reader::empty(),

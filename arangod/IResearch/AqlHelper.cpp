@@ -374,14 +374,9 @@ bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
     return true;
   }
 
-  if (!ctx.plan) {  // || !ctx.ctx) {
-    // can't execute expression without `ExecutionPlan`
-    return false;
-  }
+  TRI_ASSERT(ctx.ctx);
 
-  TRI_ASSERT(ctx.ctx);  // FIXME remove, uncomment condition
-
-  if (!ctx.ast) {
+  if (!ctx.ast || !ctx.ctx) {
     // can't execute expression without `AST` and `ExpressionContext`
     return false;
   }
