@@ -891,8 +891,9 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         size_t bufPos = _lineBuffer.length();
         _lineBuffer.appendInteger(num);
         if (!_mergeAttributesInstructions.empty()) {
-          lookUpTableValue = std::string(_lineBuffer.stringBuffer()->_buffer,
-                                         bufPos, _lineBuffer.length() - bufPos);
+          lookUpTableValue =
+              std::string(_lineBuffer.stringBuffer()->_buffer + bufPos,
+                          _lineBuffer.length() - bufPos);
         }
       } catch (...) {
         // conversion failed
@@ -912,7 +913,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
             _lineBuffer.appendDecimal(num);
             if (!_mergeAttributesInstructions.empty()) {
               lookUpTableValue =
-                  std::string(_lineBuffer.stringBuffer()->_buffer, bufPos,
+                  std::string(_lineBuffer.stringBuffer()->_buffer + bufPos,
                               _lineBuffer.length() - bufPos);
             }
             return;
@@ -978,15 +979,15 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
       if (row == _rowsToSkip && !_headersSeen) {
         std::for_each(
             value.begin(), value.end(),
-            [this, key = &key](Step const& attrProperties) {
+            [this, &key](Step const& attrProperties) {
               if (!attrProperties.isLiteral) {
                 if (std::find(_columnNames.begin(), _columnNames.end(),
                               attrProperties.value) == _columnNames.end()) {
                   LOG_TOPIC("ab353", WARN, arangodb::Logger::FIXME)
                       << "In --merge-attributes: No matching value for "
-                         "attribute name "
-                      << attrProperties.value << " to populate attribute "
-                      << *key;
+                         "attribute name '"
+                      << attrProperties.value << "' to populate attribute '"
+                      << key << "'";
                 }
               }
             });
