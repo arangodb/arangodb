@@ -26,6 +26,7 @@ replication_ongoing_global_spec wweight=2 single -- --extraArgs:log.level replic
 replication_static weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
 replication_sync weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
 shell_replication wweight=2 single 
+http_replication weight=500 wweight=2 single
 
 # Misc single server tests
 active_failover single
@@ -91,7 +92,7 @@ export -- --dumpAgencyOnError true
 importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
-http_replication weight=500 wweight=2
+
 http_server weight=750 -- --dumpAgencyOnError true
 server_http -- --dumpAgencyOnError true
 server_parameters weight=1000 -- --dumpAgencyOnError true
