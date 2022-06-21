@@ -181,6 +181,17 @@ function ReplicationSuite() {
       db._dropDatabase(cn);
     },
     
+    tearDownAll: function() {
+      connectToLeader();
+      db._useDatabase("_system");
+      db._dropDatabase(cn);
+      connectToFollower();
+      db._useDatabase("_system");
+      replication.applier.stop();
+      replication.applier.forget();
+      db._dropDatabase(cn);
+    },
+    
     testRandomTransactions: function() {
       let nextId = 0;
       let keys = { [cn]: [], [cn2]: [], [cn3]: [] };

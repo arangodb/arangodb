@@ -30,7 +30,9 @@ let { getEndpointById,
       debugCanUseFailAt,
       debugSetFailAt,
       debugClearFailAt,
-      reconnectRetry
+      reconnectRetry,
+      getCoordinators,
+      getDBServers
     } = require('@arangodb/test-helper');
 const primaryEndpoint = arango.getEndpoint();
 
@@ -51,20 +53,20 @@ function adminClusterSuite() {
   return {
 
     setUp: function () {
-      getEndpointsByType("coordinator").forEach((ep) => debugClearFailAt(ep));
+      getCoordinators().forEach((ep) => debugClearFailAt(ep.endpoint));
     },
 
     tearDown: function () {
-      getEndpointsByType("coordinator").forEach((ep) => debugClearFailAt(ep));
+      getCoordinators().forEach((ep) => debugClearFailAt(ep.endpoint));
     },
 
     testRemoveServerNonExisting: function () {
-      let coords = getEndpointsByType('coordinator');
+      let coords = getCoordinators();
       assertTrue(coords.length > 0);
       
       // this is assumed to be an invalid server id, so the operation must fail
       try {
-        reconnectRetry(coords[0], db._name(), "root", "");
+        reconnectRetry(coords[0].endpoint, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer", new Buffer('"testmann123456"'), {
           "content-type": "application/json"
         });
@@ -75,7 +77,7 @@ function adminClusterSuite() {
     },
 
     testRemoveNonFailedCoordinatorString: function () {
-      let coords = getServersByType('coordinator');
+      let coords = getCoordinators();
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -97,7 +99,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedCoordinatorObject: function () {
-      let coords = getServersByType('coordinator');
+      let coords = getCoordinators();
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -119,7 +121,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedDBServersString: function () {
-      let coords = getServersByType('coordinator');
+      let coords = getCoordinators();
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -128,7 +130,7 @@ function adminClusterSuite() {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
 
-        let dbservers = getServersByType('dbserver');
+        let dbservers = getDBServers();
         assertTrue(dbservers.length > 0);
         dbservers.forEach((dbs) => {
           reconnectRetry(ep, db._name(), "root", "");
@@ -145,7 +147,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedDBServersObject: function () {
-      let coords = getServersByType('coordinator');
+      let coords = getCoordinators();
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -154,7 +156,7 @@ function adminClusterSuite() {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
 
-        let dbservers = getServersByType('dbserver');
+        let dbservers = getDBServers();
         assertTrue(dbservers.length > 0);
         dbservers.forEach((dbs) => {
           reconnectRetry(ep, "_system", "root", "");
@@ -172,7 +174,7 @@ function adminClusterSuite() {
     },
     
     testCleanoutServerStringNonExisting: function () {
-      let coords = getServersByType('coordinator');
+      let coords = getCoordinators();
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -192,7 +194,7 @@ function adminClusterSuite() {
     },
 
     testCleanoutServerObjectNonExisting: function () {
-      let coords = getServersByType('coordinator');
+      let coords = getCoordinators();
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -238,8 +240,9 @@ function adminClusterSuite() {
   };
 }
 
-let ep = getEndpointsByType('coordinator');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+let coords = getCoordinators();
+
+if (coords.length && debugCanUseFailAt(coords[0].endpoint)) {
   // only run when failure tests are available
   jsunity.run(adminClusterSuite);
 }

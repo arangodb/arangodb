@@ -27,8 +27,10 @@
 
 #include <cstdint>
 #include <memory>
-#include <vector>
+#include <string_view>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
 class Index;
@@ -37,7 +39,9 @@ namespace aql {
 
 class Ast;
 struct AstNode;
+struct AttributeNamePath;
 struct Collection;
+class ExecutionNode;
 class IndexHint;
 class SortCondition;
 struct Variable;
@@ -46,6 +50,18 @@ struct NonConstExpressionContainer;
 struct RegisterId;
 
 namespace utils {
+
+// find projection attributes for variable v, starting from node n
+// down to the root node of the plan/subquery.
+// returns true if it is safe to reduce the full document data from
+// "v" to only the projections stored in "attributes". returns false
+// otherwise. if false is returned, the contents of "attributes" must
+// be ignored by the caller.
+// note: this function will not wipe "attributes" if there is already
+// some data in it.
+bool findProjections(ExecutionNode* n, Variable const* v,
+                     std::string_view expectedAttribute,
+                     std::unordered_set<AttributeNamePath>& attributes);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the contents of  root  may be modified by this function if
