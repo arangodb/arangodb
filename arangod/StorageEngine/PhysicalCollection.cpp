@@ -222,7 +222,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  std::unordered_map<std::string_view, VPackSlice> newValues;
+  containers::FlatHashMap<std::string_view, VPackSlice> newValues;
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
@@ -243,7 +243,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.try_emplace(key, current.value);
+        newValues.emplace(key, current.value);
       }
 
       it.next();
@@ -533,7 +533,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods*,
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
 Result PhysicalCollection::newObjectForReplace(
-    transaction::Methods*, VPackSlice oldValue, VPackSlice newValue,
+    transaction::Methods* trx, VPackSlice oldValue, VPackSlice newValue,
     bool isEdgeCollection, VPackBuilder& builder, bool isRestore,
     RevisionId& revisionId) const {
   builder.openObject();
@@ -590,8 +590,45 @@ Result PhysicalCollection::newObjectForReplace(
                 revisionId.toValuePair(&ridBuffer[0]));
   }
 
+  std::shared_ptr<ComputedValues> cv;
+  // TODO!
+  if (true /*!options.isRestore && options.isSynchronousReplicationFrom.empty()*/) {
+    cv = _logicalCollection.computedValues();
+    if (cv != nullptr && !cv->mustRunOnReplace()) {
+      // nothing to be done on insert
+      cv.reset();
+    }
+  }
+
+  containers::FlatHashSet<std::string_view> keysWritten;
+
   // add other attributes after the system attributes
-  TRI_SanitizeObjectWithEdges(newValue, builder);
+  VPackObjectIterator it(newValue, true);
+  while (it.valid()) {
+    std::string_view key(it.key().stringView());
+    // _id, _key, _rev, _from, _to. minimum size here is 3
+    if (key.size() < 3 || key[0] != '_' ||
+        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
+         key != StaticStrings::RevString && key != StaticStrings::FromString &&
+         key != StaticStrings::ToString)) {
+      if (cv == nullptr ||
+          !cv->isForceComputedAttribute(key, RunOn::kReplace)) {
+        builder.add(key, it.value());
+        if (cv != nullptr) {
+          // track which attributes we have produced so that they are not
+          // added again by the computed attributes later.
+          keysWritten.emplace(key);
+        }
+      }
+    }
+    it.next();
+  }
+
+  if (cv != nullptr) {
+    // add all remaining computed attributes, if we need to
+    cv->computeAttributes(*trx, newValue, keysWritten, RunOn::kReplace,
+                          builder);
+  }
 
   builder.close();
   return Result();
