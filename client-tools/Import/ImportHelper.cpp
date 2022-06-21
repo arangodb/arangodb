@@ -985,9 +985,9 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
                               attrProperties.value) == _columnNames.end()) {
                   LOG_TOPIC("ab353", WARN, arangodb::Logger::FIXME)
                       << "In --merge-attributes: No matching value for "
-                         "attribute name "
-                      << attrProperties.value << " to populate attribute "
-                      << key;
+                         "attribute name '"
+                      << attrProperties.value << "' to populate attribute '"
+                      << key << "'";
                 }
               }
             });
