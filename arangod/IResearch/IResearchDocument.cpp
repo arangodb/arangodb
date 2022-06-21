@@ -243,6 +243,9 @@ inline bool acceptAll(std::string& buffer,
 
   buffer.append(key.c_str(), key.size());
   for (auto& nested : context->_fields) {
+    if (nested.toString() == key && !nested._fields.empty()) {
+      return false;
+    }
     auto fullName = nested.path();
     if (fullName.starts_with(buffer)) {
       if (buffer == nested.attributeString()) {
@@ -325,6 +328,26 @@ std::string getDocumentId(irs::string_ref collection, VPackSlice document) {
   return resolved;
 }
 
+arangodb::iresearch::MissingFieldsMap gatherMissingFields(
+    arangodb::iresearch::FieldMeta const&) {
+  return {};
+}
+
+arangodb::iresearch::MissingFieldsMap gatherMissingFields(
+    arangodb::iresearch::InvertedIndexField const& field) {
+  arangodb::iresearch::MissingFieldsMap map;
+  for (auto const& f : field._fields) {
+    // always monitor on root level to track completely missing hierarchies
+    if (!field._trackListPositions || field.expansion().empty()) {
+      map[""].emplace(f.path());
+    }
+    if (!f.expansion().empty() && !field._trackListPositions) {
+      // monitor array subobjects (only non tracking list positions matters)
+      map[f.attributeString() + "[*]"].emplace(f.path());
+    }
+  }
+  return map;
+}
 }  // namespace
 
 namespace arangodb {
@@ -376,13 +399,13 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::reset(
   _disableFlush = false;
   // push the provided 'doc' on stack and initialize current value
   auto const filter = getFilter(doc, static_cast<LevelMeta const&>(linkMeta));
+  _missingFieldsMap = gatherMissingFields(static_cast<LevelMeta const&>(linkMeta));
 #ifdef USE_ENTERPRISE
   // this is set for root level as general mark.
   _hasNested = MetaTraits::hasNested(linkMeta);
-  pushLevel(doc, static_cast<LevelMeta const&>(linkMeta), filter);
-#else
-  _stack.emplace_back(doc, 0, static_cast<LevelMeta const&>(linkMeta), filter);
 #endif
+  pushLevel(doc, static_cast<LevelMeta const&>(linkMeta), filter,
+            std::make_optional<MissingFieldsContainer>(_missingFieldsMap[""]));
   next();
 }
 
@@ -583,6 +606,37 @@ bool FieldIterator<IndexMetaStruct, LevelMeta>::setValue(
   return true;
 }
 
+#ifndef USE_ENTERPRISE
+template<typename IndexMetaStruct, typename LevelMeta>
+bool FieldIterator<IndexMetaStruct, LevelMeta>::pushLevel(
+    VPackSlice value, LevelMeta const& meta,
+    FieldIterator<IndexMetaStruct, LevelMeta>::Filter filter,
+    std::optional<MissingFieldsContainer>&& missing) {
+  _stack.emplace_back(value, _nameBuffer.size(), meta, filter,
+                      LevelType::NORMAL, std::move(missing));
+  return true;
+}
+
+template<typename IndexMetaStruct, typename LevelMeta>
+void FieldIterator<IndexMetaStruct, LevelMeta>::popLevel() {
+  _stack.pop_back();
+}
+#endif
+
+template<typename IndexMetaStruct, typename LevelMeta>
+void FieldIterator<IndexMetaStruct, LevelMeta>::fieldSeen(std::string& name) {
+  if constexpr (!std::is_same_v<InvertedIndexField, LevelMeta>) {
+    return;
+  }
+  auto it = _stack.rbegin();
+  while (it != _stack.rend()) {
+    if (it->missingFields) {
+      it->missingFields->erase(name);
+    }
+    ++it;
+  }
+}
+
 template<typename IndexMetaStruct, typename LevelMeta>
 void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
   TRI_ASSERT(valid());
@@ -621,11 +675,14 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
     while (true) {
       // pop all exhausted iterators
       while (!top().it.next()) {
-#ifdef USE_ENTERPRISE
+        // need to emit "missing" fields as NULLs if index requires so
+        if (top().missingFields && !top().missingFields->empty()) {
+          _nameBuffer = *top().missingFields->begin();
+          fieldSeen(_nameBuffer);
+          setNullValue(VPackSlice::nullSlice());
+          return;
+        }
         popLevel();
-#else
-        _stack.pop_back();
-#endif
         if (!valid()) {
           // reached the end
           return;
@@ -646,23 +703,25 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
         _nameBuffer += NESTING_LEVEL_DELIMITER;
       }
 
-      if (!level.filter(_nameBuffer, context, value)) {
+      auto const filterRes = level.filter(_nameBuffer, context, value);
+      // Filter might decorate name. But even if filter decided
+      // to skip field - we must track it as seen and not emit null
+      // for explicitly discarded values. Like skipping non-array fields 
+      // for expansion fields in the index as the field is definately not
+      // missing.
+      fieldSeen(_nameBuffer);
+      if (!filterRes) {
         continue;
       }
-
-      if constexpr (std::is_same_v<IndexMetaStruct,
-                                   IResearchInvertedIndexMeta>) {
-        if (level.filter == &acceptOnlyObjects) {
-          // Requesting nested document
-          _needDoc = true;
-        }
+      if (level.type == LevelType::NESTED_OBJECTS) {
+        // Requesting nested document
+        _needDoc = true;
       }
-
       _value._storeValues = context->_storeValues;
       _value._value = irs::bytes_ref::NIL;
       _begin = nullptr;
       _end = nullptr;
-
+      std::optional<MissingFieldsContainer> missing;
       switch (auto const valueSlice = value.value; valueSlice.type()) {
         case VPackValueType::Null:
           setNullValue(valueSlice);
@@ -670,29 +729,24 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
         case VPackValueType::Bool:
           setBoolValue(valueSlice);
           return;
-        case VPackValueType::Object:
-        case VPackValueType::Array: {
+        
+        case VPackValueType::Array: 
 #ifdef USE_ENTERPRISE
-          // FIXME: move to setRoot or smth
-          if constexpr (std::is_same_v<IndexMetaStruct,
-                                       IResearchInvertedIndexMeta>) {
-            if (level.isRoot) {
-              _value._root = true;
-              kludge::mangleNested(_nameBuffer);
-              _value._name = _nameBuffer;
-              _value._analyzer.reset();
-              _value._indexFeatures = irs::IndexFeatures::NONE;
-              _value._fieldFeatures = {};
-              return;
+          if (level.type == LevelType::NESTED_ROOT) {
+            setRoot();
+            return;
+          }
+#endif
+        [[fallthrough]];
+        case VPackValueType::Object: {
+          {
+            auto missingMapEntry = _missingFieldsMap.find(_nameBuffer);
+            if (missingMapEntry != _missingFieldsMap.end()) {
+              missing = std::make_optional(missingMapEntry->second);
             }
           }
           auto filter = getFilter(valueSlice, *context);
-          bool setAnalyzers = pushLevel(valueSlice, *context, filter);
-#else
-          bool setAnalyzers = true;
-          _stack.emplace_back(valueSlice, _nameBuffer.size(), *context, false,
-                              getFilter(valueSlice, *context));
-#endif
+          bool setAnalyzers = pushLevel(valueSlice, *context, filter, std::move(missing));
           if (setAnalyzers) {
             auto const& analyzers = context->_analyzers;
             _begin = analyzers.data() + context->_primitiveOffset;

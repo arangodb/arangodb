@@ -3482,6 +3482,10 @@ TEST_F(
             server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
       [](auto& server, auto const& it) {
+        assertField<irs::null_token_stream>(server, *it,
+                                            mangleNull("array[*].subobj.id"));
+      },
+      [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(
             server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
@@ -3495,13 +3499,13 @@ TEST_F(
             server, *it,
             mangleNumeric("array[*].subobj.id"));
       },
-      [](auto& server, auto const& it) {
+       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
-                                            mangleNull("array[*].subobj.id"));
+                                            mangleNull("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
-                                            mangleNull("array[*].id"));
+                                            mangleNull("never_present"));
       }
   };
 
@@ -3616,6 +3620,10 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
       [](auto& server, auto const& it) {
+        assertField<irs::null_token_stream>(server, *it,
+                                            mangleNull("array[*].subobj.id"));
+      },
+      [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(
             server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
@@ -3626,14 +3634,14 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
       [](auto& server, auto const& it) {
         assertField<arangodb::iresearch::GeoJSONAnalyzer>(
             server, *it, "array[*].subobj.id", "my_geo");
-      } ,
+      },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
                                             mangleNull("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
-                                            mangleNull("array[*].subobj.id"));
+                                            mangleNull("never_present"));
       }
   };
 
@@ -3760,9 +3768,27 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"not_keys": { "a":1, "b":2, "c":3}, "some_boost": 10})");
 
+  std::function<AssertInvertedIndexFieldFunc> const assertFields[] = { [](auto& server, auto const& it) {
+    assertField<irs::null_token_stream>(server, *it,
+                                        mangleNull("boost"));
+  },
+    [](auto& server, auto const& it) {
+      assertField<irs::null_token_stream>(server, *it,
+                                          mangleNull("keys"));
+    }
+  };
+
   InvertedIndexFieldIterator it(
       trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
+  size_t fieldIdx{};
+  for (auto& assertField : assertFields) {
+    SCOPED_TRACE(testing::Message("Field Idx: ") << (fieldIdx++));
+    ASSERT_TRUE(it.valid());
+    assertField(server, it);
+    ++it;
+  }
+
   ASSERT_FALSE(it.valid());
 }
 
