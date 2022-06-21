@@ -54,13 +54,24 @@ const testPaths = {
   'restart': [tu.pathForTesting('client/restart')]
 };
 
+class broadcastInstance extends tu.runLocalInArangoshRunner {
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "localArangosh";
+  }
+  postStart() {
+    global.theInstanceManager = this.instanceManager;
+    return { state: true };
+  }
+}
+
 function restart (options) {
   let clonedOpts = _.clone(options);
   clonedOpts.disableClusterMonitor = true;
   clonedOpts.skipLogAnalysis = true;
   clonedOpts.skipReconnect = true;
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
-  global.obj = new tu.runLocalInArangoshRunner(clonedOpts, 'restart', Object.assign(
+  global.obj = new broadcastInstance(clonedOpts, 'restart', Object.assign(
     {},
     tu.testServerAuthInfo, {
       'server.authentication': false

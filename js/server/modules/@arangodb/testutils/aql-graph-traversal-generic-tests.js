@@ -2525,6 +2525,40 @@ function testSmallCircleModeUniqueEdgesNoneUniqueVerticesGlobal(testGraph, mode)
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
+const testProjectionsUsage = (testGraph, mode, useEdges) => {
+  // We will not take a look into the result.
+  // We just need to make sure we get something.
+  // Also we do not require any special graph layout for this test.
+  // it is just testing of Projections take effect.
+  assertTrue(testGraph.hasProjectionPayload());
+  assertNotNull(testGraph.vertex('A'));
+  // NOTE: in the return statement we do a projection on edges or vertices
+  // but keep the other complete. This is to mitigate the side-effect of
+  // the optimizer rule to figure out if one of the two is not used, and
+  // can thereby save memory.
+  const query = `
+    FOR v,e IN 1 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
+    OPTIONS {order: "${mode}"}
+    LET keys = KEYS(${useEdges ? "v" : "e"})
+    RETURN ${useEdges ? "[keys, e._key]" : "[v._key, keys]"}
+  `;
+  const cursor = db._query(query);
+  const memoryOptimized = cursor.getExtra().stats.peakMemoryUsage;
+  const resultsOptimized = cursor.toArray().length;
+  const cursorNotOptimized = db._query(query, {}, {optimizer: {rules: ["-optimize-traversals"]}});
+  const memoryNotOptimized = cursorNotOptimized.getExtra().stats.peakMemoryUsage;
+  const resultsNotOptimized = cursorNotOptimized.toArray().length;
+  assertEqual(resultsOptimized, resultsNotOptimized, `Optimization has altered the result!`);
+  assertTrue(memoryOptimized < memoryNotOptimized, `Projection optimization has not improved the result optimized memory: ${memoryOptimized} is not less than ${memoryNotOptimized}`);
+};
+
+const testSmallCircleBFSProjectionsVertices = testGraph => testProjectionsUsage(testGraph, "bfs", false);
+const testSmallCircleDFSProjectionsVertices = testGraph => testProjectionsUsage(testGraph, "dfs", false);
+const testSmallCircleWeightedProjectionsVertices = testGraph => testProjectionsUsage(testGraph, "weighted", false);
+const testSmallCircleBFSProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "bfs", true);
+const testSmallCircleDFSProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "dfs", true);
+const testSmallCircleWeightedProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "weighted", true);
+
 function testSmallCircleShortestPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
@@ -6067,7 +6101,6 @@ function testEmptyGraphMode(testGraph, mode) {
 
   const res = db._query(query);
   const actualPaths = res.toArray();
-  require('internal').print(actualPaths);
   assertEqual(actualPaths, expectedPaths);
 }
 
@@ -6157,6 +6190,12 @@ const testsByGraph = {
     testSmallCircleWeightedUniqueVerticesUniqueEdgesNone,
     testSmallCircleWeightedUniqueEdgesPathUniqueVerticesGlobal,
     testSmallCircleWeightedUniqueEdgesNoneUniqueVerticesGlobal,
+    testSmallCircleBFSProjectionsVertices,
+    testSmallCircleDFSProjectionsVertices,
+    testSmallCircleWeightedProjectionsVertices,
+    testSmallCircleBFSProjectionsEdges,
+    testSmallCircleDFSProjectionsEdges,
+    testSmallCircleWeightedProjectionsEdges,
     testSmallCircleShortestPath,
     testSmallCircleKPathsOutbound,
     testSmallCircleKPathsAny,
