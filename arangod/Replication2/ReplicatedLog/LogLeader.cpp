@@ -68,6 +68,7 @@
 #include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Metrics/Counter.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "immer/detail/iterator_facade.hpp"
@@ -569,6 +570,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
   auto const payloadSize = std::holds_alternative<LogPayload>(payload)
                                ? std::get<LogPayload>(payload).byteSize()
                                : 0;
+  bool const isMetaLogEntry = std::holds_alternative<LogMetaPayload>(payload);
   auto logEntry = InMemoryLogEntry(
       PersistingLogEntry(TermIndexPair{_self._currentTerm, index},
                          std::move(payload)),
@@ -577,6 +579,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
                                             : InMemoryLogEntry::clock::now());
   this->_inMemoryLog.appendInPlace(_self._logContext, std::move(logEntry));
   _self._logMetrics->replicatedLogInsertsBytes->count(payloadSize);
+  if (isMetaLogEntry) {
+    _self._logMetrics->replicatedLogNumberMetaEntries->count(1);
+  } else {
+    _self._logMetrics->replicatedLogNumberAcceptedEntries->count(1);
+  }
   return index;
 }
 
@@ -626,6 +633,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
 
   TRI_ASSERT(_commitIndex < newIndex)
       << "_commitIndex == " << _commitIndex << ", newIndex == " << newIndex;
+  _self._logMetrics->replicatedLogNumberCommittedEntries->count(
+      newIndex.value - _commitIndex.value);
   _commitIndex = newIndex;
   _lastQuorum = quorum;
 
