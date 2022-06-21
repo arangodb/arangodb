@@ -37,10 +37,8 @@ var console = require("console");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
 
-// TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
-const pregelRunSmallInstance = function (algName, graphName, parameters) {
+const runPregelInstance = function (algName, graphName, parameters, query, maxWaitTimeSecs = 120) {
   const pid = pregel.start("wcc", graphName, parameters);
-  const maxWaitTimeSecs = 120;
   const sleepIntervalSecs = 0.2;
   let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
   while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
@@ -48,18 +46,21 @@ const pregelRunSmallInstance = function (algName, graphName, parameters) {
     internal.sleep(0.2);
   }
   const statusState = pregel.status(pid).state;
-  console.warn(statusState);
   assertEqual(statusState, "done", `Pregel Job did never succeed. Status: ${statusState}`);
+  return db._query(query).toArray();
+};
 
-  // Now test the result.
-  const query = `
+// intended to algName = "wcc" or "scc" (or similar)
+const pregelRunSmallInstanceGetComponents = function (algName, graphName, parameters) {
+    const query = `
         FOR v IN ${vColl}
           COLLECT component = v.result WITH COUNT INTO size
           SORT size DESC
           RETURN {component, size}
       `;
-  return db._query(query).toArray();
+  return runPregelInstance(algName, graphName, parameters, query);
 };
+
 
 // componentsSizes should be an array of distinct sizes for components
 // makeComponent should be a function that gets (<number of vertices>, <vertex collection name>, <name_prefix>)
@@ -88,7 +89,7 @@ const testComponentsAlgorithmOnDisjointComponents = function(componentSizes, mak
   }
 
   // Get the result of Pregel's algorithm.
-  const computedComponents = pregelRunSmallInstance(algorithm_name, graphName, { resultField: "result", store: true });
+  const computedComponents = pregelRunSmallInstanceGetComponents(algorithm_name, graphName, { resultField: "result", store: true });
   // assertEqual(computedComponents.length, sortedComponentSizes.length,
   //     `We expected ${sortedComponentSizes.length} components, instead got ${JSON.stringify(computedComponents)}`);
 
@@ -559,7 +560,7 @@ function wccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
     },
@@ -572,7 +573,7 @@ function wccTestSuite() {
       const edges = [];
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
       // Both have 20 elements
       assertEqual(computedComponents[0].size, 1);
@@ -585,7 +586,7 @@ function wccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
 
@@ -597,7 +598,7 @@ function wccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
     },
@@ -608,7 +609,7 @@ function wccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
     },
@@ -626,7 +627,7 @@ function wccTestSuite() {
       db[vColl].save(resultC.vertices);
       db[eColl].save(resultC.edges);
 
-      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 2, `We expected 2 component, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
       assertEqual(computedComponents[1].size, length);
@@ -653,7 +654,7 @@ function wccTestSuite() {
       };
       db[eColl].save([connectingEdge]);
 
-      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, size0 + size1);
     },
@@ -709,7 +710,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
     },
@@ -722,7 +723,7 @@ function sccTestSuite() {
       const edges = [];
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, 1);
       assertEqual(computedComponents[1].size, 1);
@@ -736,7 +737,7 @@ function sccTestSuite() {
       const edges = [graphGeneration.makeEdge(0, 1, vColl, "v")];
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, 1);
       assertEqual(computedComponents[1].size, 1);
@@ -748,7 +749,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, length,
           `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
       for (const component of computedComponents) {
@@ -762,7 +763,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1,
           `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, length);
@@ -774,7 +775,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, length,
           `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
       for (const component of computedComponents) {
@@ -789,7 +790,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       // number of vertices in a full binary tree
       const numVertices = Math.pow(2, depth + 1) - 1;
       assertEqual(computedComponents.length, numVertices,
@@ -808,7 +809,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       // number of vertices in a full binary tree
       const numVertices = Math.pow(2, depth + 1) - 1;
       assertEqual(computedComponents.length, numVertices,
@@ -826,7 +827,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       // number of vertices in a full binary tree
       const numVertices = Math.pow(2, depth + 1) - 1;
       assertEqual(computedComponents.length, numVertices,
@@ -850,7 +851,7 @@ function sccTestSuite() {
       db[vColl].save(resultC.vertices);
       db[eColl].save(resultC.edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstanceGetComponents("SCC", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, depth + length,
           `We expected ${depth + length} components, instead got ${JSON.stringify(computedComponents)}`);
 
@@ -862,8 +863,105 @@ function sccTestSuite() {
   };
 }
 
-jsunity.run(componentsTestSuite);
-jsunity.run(wccRegressionTestSuite);
-jsunity.run(wccTestSuite);
-jsunity.run(sccTestSuite);
+function labelPropagationTestSuite() {
+  'use strict';
+
+  return {
+
+    setUp: function() {
+      db._create(vColl, { numberOfShards: 4 });
+      db._createEdgeCollection(eColl, {
+        numberOfShards: 4,
+        replicationFactor: 1,
+        shardKeys: ["vertex"],
+        distributeShardsLike: vColl
+      });
+
+      graph_module._create(graphName, [graph_module._relation(eColl, vColl, vColl)], []);
+    },
+
+    tearDown: function() {
+      graph_module._drop(graphName, true);
+    },
+
+    testSCCOneDirectedCycle: function() {
+      const length = 3;
+      const {vertices, edges} = graphGeneration.makeDirectedCycle(length, vColl, "v");
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+      const query = `
+          FOR v in ${vColl}
+          RETURN {"key": v._key, "community": v.community}  
+      `;
+      const result = runPregelInstance("labelpropagation", graphName,
+          {maxGSS: 100, resultField: "community"}, query);
+      assertEqual(result.length, length);
+      for (const value of result) {
+        assertEqual(value.community, 0);
+      }
+    },
+
+    testSCCTwoDisjointDirectedCycles: function() {
+      const length = 3;
+      const {vertices, edges} = graphGeneration.makeDirectedCycle(length, vColl, "v0");
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+      const verticesEdges = graphGeneration.makeDirectedCycle(length, vColl, "v1");
+      db[vColl].save(verticesEdges.vertices);
+      db[eColl].save(verticesEdges.edges);
+
+      const query = `
+          FOR v in ${vColl}
+          COLLECT community = v.community WITH COUNT INTO size
+          SORT size DESC
+          RETURN {community, size}
+      `;
+      const result = runPregelInstance("labelpropagation", graphName,
+          {maxGSS: 100, resultField: "community"}, query);
+      assertEqual(result.length, 2);
+      assertEqual(result[0].size, length);
+      assertEqual(result[1].size, length);
+    },
+
+    testSCCTwoDirectedCyclesConnectedByDirectedEdge: function() {
+      const size = 5;
+      const {vertices, edges} = graphGeneration.makeClique(size, vColl, "v0");
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+      const verticesEdges = graphGeneration.makeClique(size, vColl, "v1");
+      db[vColl].save(verticesEdges.vertices);
+      db[eColl].save(verticesEdges.edges);
+
+      db[eColl].save({
+        _from: `${vColl}/v0_0`,
+        _to: `${vColl}/v1_0`,
+        vertex: `v0_0`
+      });
+
+      // const query = `
+      //     FOR v in ${vColl}
+      //     COLLECT community = v.community WITH COUNT INTO size
+      //     SORT size DESC
+      //     RETURN {community, size}
+      // `;
+      const query = `
+          FOR v in ${vColl}
+          RETURN v.community
+      `;
+      const result = runPregelInstance("labelpropagation", graphName,
+          {maxGSS: 100, resultField: "community"}, query);
+      console.warn(result);
+      assertEqual(result.length, 2);
+      assertEqual(result[0].size, size);
+      assertEqual(result[1].size, size);
+    },
+
+  };
+}
+
+// jsunity.run(componentsTestSuite);
+// jsunity.run(wccRegressionTestSuite);
+// jsunity.run(wccTestSuite);
+// jsunity.run(sccTestSuite);
+jsunity.run(labelPropagationTestSuite);
 return jsunity.done();
