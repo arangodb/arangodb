@@ -28,26 +28,8 @@ const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const request = require("@arangodb/request");
+const { getDBServers } = require('@arangodb/test-helper');
 
-let getServers = function(role) {
-  const isRole = (d) => (d.role.toLowerCase() === role);
-  const endpointToURL = (server) => {
-    let endpoint = server.endpoint;
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  return global.instanceInfo.arangods.filter(isRole)
-                              .map((server) => { 
-                                return { url: endpointToURL(server), id: server.id };
-                              });
-};
 
 function statisticsCollectionsSuite() {
   'use strict';
@@ -81,7 +63,7 @@ function statisticsCollectionsSuite() {
     },
 
     testStatisticsCollectionsOnDBServer: function () {
-      let dbservers = getServers("dbserver");
+      let dbservers = getDBServers();
       dbservers.forEach((server) => {
         let result = request({ method: "GET", url: server.url + "/_api/collection", body: {} });
         assertEqual(200, result.json.code);

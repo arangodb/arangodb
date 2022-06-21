@@ -39,6 +39,7 @@ namespace arangodb::sepp::workloads {
 struct IterateDocuments : Workload {
   struct ThreadOptions {
     std::string collection;
+    bool fillBlockCache{false};
     StoppingCriterion::type stop;
   };
   struct Options;
@@ -58,10 +59,13 @@ struct IterateDocuments : Workload {
 struct IterateDocuments::Options {
   struct Thread {
     std::string collection;
+    bool fillBlockCache{false};
 
     template<class Inspector>
     friend inline auto inspect(Inspector& f, Thread& o) {
-      return f.object(o).fields(f.field("collection", o.collection));
+      return f.object(o).fields(
+          f.field("fillBlockCache", o.fillBlockCache).fallback(f.keep()),
+          f.field("collection", o.collection));
     }
   };
 

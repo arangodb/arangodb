@@ -90,8 +90,7 @@ struct Options {
   /// abort the transaction should the coordinator die or be rebooted.
   /// the server id and reboot id are intentionally empty in single server
   /// case.
-  arangodb::cluster::RebootTracker::PeerState origin = {"",
-                                                        arangodb::RebootId(0)};
+  arangodb::cluster::RebootTracker::PeerState origin;
 };
 
 struct AllowImplicitCollectionsSwitcher {

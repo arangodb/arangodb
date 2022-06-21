@@ -140,7 +140,7 @@ RocksDBOptions::RocksDBOptions()
           .filterPolicy =
               TableOptions::BloomFilterPolicy{.bitsPerKey = 10,
                                               .useBlockBasedBuilder = true},
-          .formatVersion = 3,
+          .formatVersion = 5,
           .blockAlignDataBlocks = rocksDBTableOptionsDefaults.block_align,
           .checksum = "crc32c",         // TODO - use enum
           .compressionType = "snappy",  // TODO - use enum
