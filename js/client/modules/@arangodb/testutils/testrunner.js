@@ -29,6 +29,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const userManager = require("@arangodb/users");
@@ -53,22 +54,29 @@ let usersTests = {
         status: false,
         message: 'failed to fetch the users on the system before the test: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
     return true;
   },
   runCheck: function (obj, te) {
-    if (userManager.all().length !== this.usersCount) {
-      obj.continueTesting = false;
+    try {
+      if (userManager.all().length !== this.usersCount) {
+        obj.results[te] = {
+          status: false,
+          message: 'Cleanup of users missing - found users left over: [ ' +
+            JSON.stringify(userManager.all()) +
+            ' ] - Original test status: ' +
+            JSON.stringify(obj.results[te])
+        };
+        return false;
+      }
+    } catch (x) {
       obj.results[te] = {
         status: false,
-        message: 'Cleanup of users missing - found users left over: [ ' +
-          JSON.stringify(userManager.all()) +
-          ' ] - Original test status: ' +
-          JSON.stringify(obj.results[te])
+        message: 'failed to fetch the users on the system before the test: ' + x.message
       };
+      obj.serverDead = true;
       return false;
     }
     return true;
@@ -90,7 +98,6 @@ let collectionsTest = {
         status: false,
         message: 'failed to fetch the previously available collections: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
@@ -107,7 +114,6 @@ let collectionsTest = {
         status: false,
         message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
       };
-      obj.continueTesting = false;
       return false;
     }
     let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function(name) {
@@ -141,7 +147,6 @@ let viewsTest = {
         status: false,
         message: 'failed to fetch the previously available views: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
@@ -158,7 +163,6 @@ let viewsTest = {
         status: false,
         message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
       };
-      obj.continueTesting = false;
       return false;
     }
     let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function(name) {
@@ -194,7 +198,6 @@ let graphsTest = {
         status: false,
         message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
       };
-      obj.continueTesting = false;
       return false;
     }
     if (graphs && graphs.count() !== obj.graphCount) {
@@ -229,7 +232,6 @@ let databasesTest = {
         status: false,
         message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[te])
       };
-      obj.continueTesting = false;
       return false;
     }
     return true;
@@ -243,9 +245,8 @@ let failurePointsCheck = {
   name: 'failurepoints',
   setUp: function(obj, te) { return true; },
   runCheck: function(obj, te) {
-    let failurePoints = pu.checkServerFailurePoints(obj.instanceInfo);
+    let failurePoints = pu.checkServerFailurePoints(obj.instanceManager);
     if (failurePoints.length > 0) {
-      obj.continueTesting = false;
       obj.results[te] = {
         status: false,
         message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
@@ -281,7 +282,14 @@ class testRunner {
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
-    this.cleanupChecks.push(databasesTest);
+    if (this.options.agency) {
+      // pure agency tests won't need user checks.
+      if (this.options.cluster || this.options.activefailover) {
+        this.cleanupChecks.push(databasesTest);
+      }
+    } else {
+      this.cleanupChecks.push(databasesTest);
+    }
     this.collectionsBefore = [];
     if (checkCollections) {
       this.cleanupChecks.push(collectionsTest);
@@ -295,7 +303,7 @@ class testRunner {
       this.cleanupChecks.push(graphsTest);
     }
     this.cleanupChecks.push();
-
+    this.instanceManager;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -314,7 +322,7 @@ class testRunner {
   // / @brief checks whether the SUT is alive and well:
   // //////////////////////////////////////////////////////////////////////////////
   healthCheck() {
-    if (pu.arangod.check.instanceAlive(this.instanceInfo, this.options) &&
+    if (this.instanceManager.checkInstanceAlive() &&
         this.alive()) {
       return true;
     } else {
@@ -348,7 +356,7 @@ class testRunner {
       this.results['SKIPPED'].message += te;
     }
 
-    this.instanceInfo.exitStatus = 'server is gone.';
+    this.instanceManager.exitStatus = 'server is gone.';
 
   }
 
@@ -357,10 +365,10 @@ class testRunner {
   // //////////////////////////////////////////////////////////////////////////////
   loadClusterTestStabilityInfo(){
     try {
-      if (this.instanceInfo.hasOwnProperty('clusterHealthMonitorFile')) {
+      if (this.instanceManager.hasOwnProperty('clusterHealthMonitorFile')) {
         let status = true;
         let slow = [];
-        let buf = fs.readBuffer(this.instanceInfo.clusterHealthMonitorFile);
+        let buf = fs.readBuffer(this.instanceManager.clusterHealthMonitorFile);
         let lineStart = 0;
         let maxBuffer = buf.length;
 
@@ -402,6 +410,7 @@ class testRunner {
   ////////////////////////////////////////////////////////////////////////////////
   // Main loop - launch the SUT, iterate over testList, shut down
   run(testList) {
+    this.continueTesting = true;
     this.testList = testList;
     if (this.testList.length === 0) {
       print('Testsuite is empty!');
@@ -419,6 +428,11 @@ class testRunner {
     
     let beforeStart = time();
 
+    this.instanceManager = new im.instanceManager(this.options.protocol,
+                                                  this.options,
+                                                  this.serverOptions,
+                                                  this.friendlyName);
+    this.instanceManager.prepareInstance();
     this.customInstanceInfos['preStart'] = this.preStart();
     if (this.customInstanceInfos.preStart.state === false) {
       return {
@@ -430,12 +444,8 @@ class testRunner {
       };
     }
 
-    this.instanceInfo = pu.startInstance(this.options.protocol,
-                                         this.options,
-                                         this.serverOptions,
-                                         this.friendlyName);
-
-    if (this.instanceInfo === false) {
+    this.instanceManager.launchTcpDump("");
+    if (this.instanceManager.launchInstance() === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();
       return {
         setup: {
@@ -444,11 +454,11 @@ class testRunner {
         }
       };
     }
-
+    this.instanceManager.reconnect();
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
-      shutdownStatus = shutdownStatus && pu.shutdownInstance(this.instanceInfo, this.options);
+      shutdownStatus = shutdownStatus && this.instanceManager.shutdownInstance();
       return {
         setup: {
           status: false,
@@ -477,17 +487,21 @@ class testRunner {
         
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
+            this.continueTesting = false;
+            print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            j = this.cleanupChecks.length;
             continue;
           }
         }
         while (first || this.options.loopEternal) {
           if (!this.continueTesting) {
             this.abortTestOnError(te);
+            i = this.testList.length;
             break;
           }
 
           this.preRun(te);
-          pu.getMemProfSnapshot(this.instanceInfo, this.options, this.memProfCounter++);
+          this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
           
           print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
           let reply = this.runOneTest(te);
@@ -501,7 +515,7 @@ class testRunner {
           if (reply.hasOwnProperty('status')) {
             this.results[te] = reply;
             if (!this.options.disableClusterMonitor) {
-              this.results[te]['processStats'] = pu.getDeltaProcessStats(this.instanceInfo);
+              this.results[te]['processStats'] = this.instanceManager.getDeltaProcessStats();
             }
 
             if (this.results[te].status === false) {
@@ -525,7 +539,10 @@ class testRunner {
           if (this.healthCheck()) {
             this.continueTesting = true;
             for (let j = 0; j < this.cleanupChecks.length; j++) {
-              if (!this.continueTesting || this.cleanupChecks[j].runCheck(this, te)) {
+              if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
+                print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                this.continueTesting = false;
+                j = this.cleanupChecks.length;
                 continue;
               }
             }
@@ -568,7 +585,7 @@ class testRunner {
     }
 
     if (this.continueTesting) {
-      pu.getMemProfSnapshot(this.instanceInfo, this.options, this.memProfCounter++);
+      this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
     }
 
     let shutDownStart = time();
@@ -592,7 +609,7 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && pu.shutdownInstance(this.instanceInfo, clonedOpts, forceTerminate);
+    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate);
 
     this.loadClusterTestStabilityInfo();
 
@@ -606,6 +623,7 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print('done.');
     }
+    this.instanceManager.destructor();
     return this.results;
   }
 }
