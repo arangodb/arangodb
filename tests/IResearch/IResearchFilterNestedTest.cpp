@@ -558,12 +558,14 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNone) {
       R"(LET x = 0 FOR d IN myView FILTER d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
       expected, &ctx);
 
-  assertExpressionFilter(
+  assertFilterSuccess(
       vocbase(),
-      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
-  assertExpressionFilter(
+      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
       vocbase(),
-      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
 
   // Same queries, but with BOOST function. Boost value is 1 (default)
 
@@ -580,12 +582,14 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNone) {
       R"(LET x = 0 FOR d IN myView FILTER Boost(d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
       expected, &ctx);
 
-  assertExpressionFilter(
+  assertFilterSuccess(
       vocbase(),
-      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
-  assertExpressionFilter(
+      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
       vocbase(),
-      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
 }
 
 TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNoneBoost) {
@@ -608,6 +612,11 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNoneBoost) {
   filter.boost(1.67f);
 
   ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{0});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
 
   assertFilterSuccess(
       vocbase(),
@@ -620,6 +629,10 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNoneBoost) {
   assertFilterSuccess(
       vocbase(),
       R"(LET x = 0 FOR d IN myView FILTER Boost(d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.67) RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(LET x = 0 FOR d IN myView FILTER Boost(d.array[? x..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.67) RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
@@ -646,6 +659,11 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNoneChildBoost) {
   match = irs::kMatchNone;
 
   ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{0});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
 
   assertFilterSuccess(
       vocbase(),
@@ -658,6 +676,10 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNoneChildBoost) {
   assertFilterSuccess(
       vocbase(),
       R"(LET x = 0 FOR d IN myView FILTER d.array[? x FILTER BooST(CURRENT.foo == 'bar', 1.54) AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(LET x = 0 FOR d IN myView FILTER Boost(d.array[? x..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.67) RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
@@ -686,9 +708,20 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchMin) {
   mergeType = irs::sort::MergeType::kSum;
   match = irs::Match{2};
 
+  ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
+
   assertFilterSuccess(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 2 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
       expected);
 
   // Same query, but with BOOST function. Boost value is 1 (default)
@@ -696,6 +729,10 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchMin) {
   assertFilterSuccess(
       vocbase(),
       R"(FOR d IN myView FILTER boosT(d.array[? 2 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
+      expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER boosT(d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
       expected);
 }
 
@@ -718,9 +755,20 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchMinBoost) {
   match = irs::Match{2};
   filter.boost(1.65f);
 
+  ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
+
   assertFilterSuccess(
       vocbase(),
       R"(FOR d IN myView FILTER boosT(d.array[? 2 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.65) RETURN d)",
+      expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER boosT(d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.65) RETURN d)",
       expected);
 }
 
@@ -741,9 +789,20 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchMinChildBoost) {
   mergeType = irs::sort::MergeType::kSum;
   match = irs::Match{2};
 
+  ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
+
   assertFilterSuccess(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 2 FILTER Boost(CURRENT.foo == 'bar', 1.4) AND Boost(CURRENT.bar == 'baz', 1.2)] RETURN d)",
+      expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER boosT(d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.2) RETURN d)",
       expected);
 }
 
@@ -769,6 +828,14 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRange) {
   match = irs::Match{2, 5};
 
   ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue valueX(arangodb::aql::AqlValueHintInt{2});
+    arangodb::aql::AqlValueGuard guardX(valueX, true);
+    arangodb::aql::AqlValue valueY(arangodb::aql::AqlValueHintInt{5});
+    arangodb::aql::AqlValueGuard guardY(valueY, true);
+    ctx.vars.emplace("x", valueX);
+    ctx.vars.emplace("y", valueY);
+  }
 
   assertFilterSuccess(
       vocbase(),
@@ -777,6 +844,10 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRange) {
   assertFilterSuccess(
       vocbase(),
       R"(let x = 1 FOR d IN myView FILTER d.array[? x..5 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(let y = 5 FOR d IN myView FILTER d.array[? 2..y FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
@@ -792,6 +863,10 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRange) {
   assertFilterSuccess(
       vocbase(),
       R"(let x = 1 FOR d IN myView FILTER BOOST(d.array[? x..5 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(let y = 5 FOR d IN myView FILTER BOOST(d.array[? 2..y FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
@@ -819,6 +894,14 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRangeBoost) {
   filter.boost(2.001f);
 
   ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue valueX(arangodb::aql::AqlValueHintInt{2});
+    arangodb::aql::AqlValueGuard guardX(valueX, true);
+    arangodb::aql::AqlValue valueY(arangodb::aql::AqlValueHintInt{5});
+    arangodb::aql::AqlValueGuard guardY(valueY, true);
+    ctx.vars.emplace("x", valueX);
+    ctx.vars.emplace("y", valueY);
+  }
 
   assertFilterSuccess(
       vocbase(),
@@ -830,7 +913,11 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRangeBoost) {
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
-      R"(let x = 1, y = 5 FOR d IN myView FILTER BOOST(d.array[? x..y FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 2.001) RETURN d)",
+      R"(let y = 5 FOR d IN myView FILTER BOOST(d.array[? 2..y FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 2.001) RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(let x = 2, y = 5 FOR d IN myView FILTER BOOST(d.array[? x..y FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 2.001) RETURN d)",
       expected, &ctx);
 }
 
@@ -849,21 +936,33 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRangeChildBoost) {
           {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
            {std::string_view{barField}, std::string_view{"baz"}, 2.001f}});
   mergeType = irs::sort::MergeType::kSum;
-  match = irs::Match{1, 5};
+  match = irs::Match{2, 5};
 
   ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue valueX(arangodb::aql::AqlValueHintInt{2});
+    arangodb::aql::AqlValueGuard guardX(valueX, true);
+    arangodb::aql::AqlValue valueY(arangodb::aql::AqlValueHintInt{5});
+    arangodb::aql::AqlValueGuard guardY(valueY, true);
+    ctx.vars.emplace("x", valueX);
+    ctx.vars.emplace("y", valueY);
+  }
 
   assertFilterSuccess(
       vocbase(),
-      R"(FOR d IN myView FILTER d.array[? 1..5 FILTER CURRENT.foo == 'bar' AND BooSt(CURRENT.bar == 'baz', 2.001)] RETURN d)",
+      R"(FOR d IN myView FILTER d.array[? 2..5 FILTER CURRENT.foo == 'bar' AND BooSt(CURRENT.bar == 'baz', 2.001)] RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
-      R"(let x = 1 FOR d IN myView FILTER d.array[? x..5 FILTER CURRENT.foo == 'bar' AND BooSt(CURRENT.bar == 'baz', 2.001)] RETURN d)",
+      R"(let x = 2 FOR d IN myView FILTER d.array[? x..5 FILTER CURRENT.foo == 'bar' AND BooSt(CURRENT.bar == 'baz', 2.001)] RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
-      R"(let x = 1, y = 5 FOR d IN myView FILTER d.array[? x..y FILTER CURRENT.foo == 'bar' AND BooSt(CURRENT.bar == 'baz', 2.001)] RETURN d)",
+      R"(let x = 2, y = 5 FOR d IN myView FILTER d.array[? 2..y FILTER CURRENT.foo == 'bar' AND BooSt(CURRENT.bar == 'baz', 2.001)] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(let x = 2, y = 5 FOR d IN myView FILTER d.array[? x..y FILTER CURRENT.foo == 'bar' AND BooSt(CURRENT.bar == 'baz', 2.001)] RETURN d)",
       expected, &ctx);
 }
 
@@ -888,6 +987,11 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchExact) {
   match = irs::Match{2, 2};
 
   ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
 
   assertFilterSuccess(
       vocbase(),
@@ -900,6 +1004,10 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchExact) {
   assertFilterSuccess(
       vocbase(),
       R"(let x = 2 FOR d IN myView FILTER d.array[? x..2 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(let x = 2 FOR d IN myView FILTER d.array[? 2..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
@@ -919,6 +1027,10 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchExact) {
   assertFilterSuccess(
       vocbase(),
       R"(let x = 2 FOR d IN myView FILTER Boost(d.array[? x..2 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(let x = 2 FOR d IN myView FILTER Boost(d.array[? 2..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
@@ -946,6 +1058,11 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchExactBoost) {
   filter.boost(1.76f);
 
   ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
 
   assertFilterSuccess(
       vocbase(),
@@ -961,9 +1078,12 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchExactBoost) {
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
+      R"(let x = 1 FOR d IN myView FILTER Boost(d.array[? 1..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.76) RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
       R"(let x = 1, y = 1 FOR d IN myView FILTER Boost(d.array[? x..y FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.76) RETURN d)",
       expected, &ctx);
-
 }
 
 TEST_F(IResearchFilterNestedTest, NestedFilterMatchExactChildBoost) {
@@ -985,6 +1105,11 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchExactChildBoost) {
   match = irs::Match{32768, 32768};
 
   ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{32768});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
 
   assertFilterSuccess(
       vocbase(),
@@ -997,6 +1122,10 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchExactChildBoost) {
   assertFilterSuccess(
       vocbase(),
       R"(let x = 32768 FOR d IN myView FILTER d.array[? x..32768 FILTER CURRENT.foo == 'bar' AND BOOST(CURRENT.bar == 'baz', 1.700)] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(let x = 32768 FOR d IN myView FILTER d.array[? 32768..x FILTER CURRENT.foo == 'bar' AND BOOST(CURRENT.bar == 'baz', 1.700)] RETURN d)",
       expected, &ctx);
   assertFilterSuccess(
       vocbase(),
@@ -1269,34 +1398,65 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchAnyNested) {
 
 TEST_F(IResearchFilterNestedTest, testParseFailingCases) {
 
+  ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue valueX{arangodb::aql::AqlValueHintInt{-140}};
+    arangodb::aql::AqlValueGuard guard{valueX, true};
+    arangodb::aql::AqlValue valueY{arangodb::aql::AqlValueHintInt{-40}};
+    arangodb::aql::AqlValueGuard guardY{valueY, true};
+    arangodb::aql::AqlValue valueZ{arangodb::aql::AqlValueHintInt{-0}};
+    arangodb::aql::AqlValueGuard guardZ{valueZ, true};
+    ctx.vars.emplace("x", valueX);
+    ctx.vars.emplace("y", valueY);
+    ctx.vars.emplace("z", valueZ);
+  }
+
   // wrong ranges
   assertFilterParseFail(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 2..1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
-
   assertFilterParseFail(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 'range' FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
-
   assertFilterParseFail(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 'range'..1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
-
   assertFilterParseFail(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? -1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
-
   assertFilterParseFail(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? --1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
-
   assertFilterParseFail(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 'range'..1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
-
   assertFilterParseFail(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? -1..5 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(let x = -140 FOR d IN myView FILTER d.array[? x..5 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(let x = -140 FOR d IN myView FILTER d.array[? 1..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(let x = -140, y = -40 FOR d IN myView FILTER d.array[? x..y FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(let x = -140, y = -40 FOR d IN myView FILTER d.array[? y..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(let x = -140, y = -40 FOR d IN myView FILTER d.array[? y..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(let z = -0 FOR d IN myView FILTER d.array[? z..-0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(let z = -0 FOR d IN myView FILTER d.array[? z..z FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertFilterParseFail(
+      vocbase(),
+      R"(let x = -140, z = -0 FOR d IN myView FILTER d.array[? x..z FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
 }
 
 #if USE_ENTERPRISE
