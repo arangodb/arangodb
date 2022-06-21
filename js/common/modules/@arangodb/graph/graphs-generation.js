@@ -188,7 +188,11 @@ function makePath(length, vColl, name_prefix, kind = "directed") {
                 break;
             case "alternating":
                 const inverted = v % 2 === 0;
-                edges.push(makeEdge(v + 1, v, vColl, name_prefix, inverted));
+                if (inverted) {
+                    edges.push(makeEdge(v + 1, v, vColl, name_prefix));
+                } else {
+                    edges.push(makeEdge(v, v + 1, vColl, name_prefix));
+                }
                 break;
         }
 
