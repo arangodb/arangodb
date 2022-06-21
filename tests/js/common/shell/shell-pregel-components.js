@@ -39,7 +39,7 @@ let graphGeneration = require("@arangodb/graph/graphs-generation");
 
 // TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
 const pregelRunSmallInstance = function (algName, graphName, parameters) {
-  const pid = pregel.start("wcc", graphName, parameters);
+  const pid = pregel.start(algName, graphName, parameters);
   const maxWaitTimeSecs = 120;
   const sleepIntervalSecs = 0.2;
   let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
@@ -48,7 +48,6 @@ const pregelRunSmallInstance = function (algName, graphName, parameters) {
     internal.sleep(0.2);
   }
   const statusState = pregel.status(pid).state;
-  console.warn(statusState);
   assertEqual(statusState, "done", `Pregel Job did never succeed. Status: ${statusState}`);
 
   // Now test the result.
@@ -709,7 +708,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
     },
@@ -722,7 +721,7 @@ function sccTestSuite() {
       const edges = [];
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, 1);
       assertEqual(computedComponents[1].size, 1);
@@ -736,7 +735,7 @@ function sccTestSuite() {
       const edges = [graphGeneration.makeEdge(0, 1, vColl, "v")];
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, 1);
       assertEqual(computedComponents[1].size, 1);
@@ -748,7 +747,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, length,
           `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
       for (const component of computedComponents) {
@@ -762,7 +761,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, 1,
           `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
       assertEqual(computedComponents[0].size, length);
@@ -774,7 +773,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       assertEqual(computedComponents.length, length,
           `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
       for (const component of computedComponents) {
@@ -789,7 +788,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       // number of vertices in a full binary tree
       const numVertices = Math.pow(2, depth + 1) - 1;
       assertEqual(computedComponents.length, numVertices,
@@ -808,7 +807,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       // number of vertices in a full binary tree
       const numVertices = Math.pow(2, depth + 1) - 1;
       assertEqual(computedComponents.length, numVertices,
@@ -826,7 +825,7 @@ function sccTestSuite() {
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
       // number of vertices in a full binary tree
       const numVertices = Math.pow(2, depth + 1) - 1;
       assertEqual(computedComponents.length, numVertices,
@@ -850,9 +849,9 @@ function sccTestSuite() {
       db[vColl].save(resultC.vertices);
       db[eColl].save(resultC.edges);
 
-      const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
-      assertEqual(computedComponents.length, depth + length,
-          `We expected ${depth + length} components, instead got ${JSON.stringify(computedComponents)}`);
+      const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, Math.pow(2, depth + 1) - 1 + length,
+          `We expected ${Math.pow(2, depth + 1) - 1 + length} components, instead got ${JSON.stringify(computedComponents)}`);
 
       for (let component of computedComponents) {
         assertEqual(component.size, 1);

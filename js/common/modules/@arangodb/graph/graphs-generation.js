@@ -180,7 +180,7 @@ function makePath(length, vColl, name_prefix, kind = "directed") {
     for (let v = 0; v < length - 1; ++v) {
         switch (kind) {
             case "directed":
-                edges.push(makeEdge(v, v + 1), name_prefix);
+                edges.push(makeEdge(v, v + 1, name_prefix));
                 break;
             case "bidirected":
                 edges.push(makeEdge(v, v + 1, vColl, name_prefix));
