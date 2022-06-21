@@ -31,30 +31,28 @@
 
 namespace arangodb::iresearch {
 
-enum class Consistency {
-  kEventual, kImmediate
-};
+enum class Consistency { kEventual, kImmediate };
 
 class IResearchInvertedIndexSort {
  public:
   IResearchInvertedIndexSort() = default;
   IResearchInvertedIndexSort(const IResearchInvertedIndexSort&) = default;
   IResearchInvertedIndexSort(IResearchInvertedIndexSort&&) = default;
-  IResearchInvertedIndexSort& operator=(const IResearchInvertedIndexSort&) = default;
+  IResearchInvertedIndexSort& operator=(const IResearchInvertedIndexSort&) =
+      default;
   IResearchInvertedIndexSort& operator=(IResearchInvertedIndexSort&&) = default;
 
   bool operator==(IResearchInvertedIndexSort const& rhs) const noexcept {
     return _fields == rhs._fields && _directions == rhs._directions &&
-           std::string_view(_locale.getName()) == std::string_view(rhs._locale.getName());
+           std::string_view(_locale.getName()) ==
+               std::string_view(rhs._locale.getName());
   }
 
   bool operator!=(IResearchInvertedIndexSort const& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  auto sortCompression() const noexcept {
-    return _sortCompression;
-  }
+  auto sortCompression() const noexcept { return _sortCompression; }
 
   void clear() noexcept {
     _fields.clear();
@@ -107,9 +105,7 @@ class IResearchInvertedIndexSort {
     return _directions[i];
   }
 
-  std::string_view Locale() const noexcept {
-    return _locale.getName();
-  }
+  std::string_view Locale() const noexcept { return _locale.getName(); }
 
   size_t memory() const noexcept;
 
@@ -123,8 +119,94 @@ class IResearchInvertedIndexSort {
   icu::Locale _locale;
 };
 
-struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
+struct InvertedIndexField {
+  // FIXME: turn into delegate ctor once attributes are not needed
+  InvertedIndexField()
+      : _includeAllFields(false),
+        _trackListPositions(false),
+        _isArray(false),
+        _overrideValue(false) {}
 
+  InvertedIndexField(std::vector<basics::AttributeName> const& path,
+                     FieldMeta::Analyzer&& a,
+                     std::vector<InvertedIndexField>&& nested,
+                     std::optional<Features>&& features,
+                     std::string&& expression, bool isArray,
+                     bool includeAllFields, bool trackListPositions,
+                     bool overrideValue, bool isPrimitiveAnalyzer,
+                     std::string_view parentName);
+
+  std::string_view path() const noexcept;
+  std::string attributeString() const;
+
+  std::string toString() const;
+
+  std::string const& analyzerName() const noexcept {
+    TRI_ASSERT(_analyzers[0]._pool);
+    return _analyzers[0]._shortName;
+  }
+
+  bool namesMatch(InvertedIndexField const& other) const noexcept;
+
+  bool isIdentical(std::vector<basics::AttributeName> const& path,
+                   irs::string_ref analyzerName) const noexcept;
+
+  FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzers[0]; }
+
+  bool isArray() const noexcept {
+    TRI_ASSERT(!_attribute.empty());
+    return _isArray || _attribute.back().shouldExpand;
+  }
+
+  auto const& attribute() const noexcept { return _attribute; }
+
+  auto const& expansion() const noexcept { return _expansion; }
+
+  auto const& expression() const noexcept { return _expression; }
+
+  auto const& features() const noexcept { return _features; }
+
+  auto trackListPositions() const noexcept { return _trackListPositions; }
+
+  auto includeAllFields() const noexcept { return _includeAllFields; }
+
+  auto overrideValue() const noexcept { return _overrideValue; }
+
+  std::vector<arangodb::basics::AttributeName> combinedName() const;
+
+  /// @brief nested fields
+  std::vector<InvertedIndexField> _fields;
+  /// @brief analyzer to apply. Array to comply with old views definition
+  absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
+  /// @brief override for field features
+  std::optional<Features> _features;
+  /// @brief start point for non primitive analyzers
+  size_t _primitiveOffset{0};
+  /// @brief fields ids storage
+  // Inverted index always needs field ids in order to
+  // execute cross types range queries
+  ValueStorage const _storeValues{ValueStorage::ID};
+  /// @brief parse fields recursively
+  bool _includeAllFields;
+  /// @brief array processing variant
+  bool _trackListPositions;
+
+ private:
+  /// @brief mark that field value is expected to be an array
+  bool _isArray;
+  /// @brief force computed value to override existing value
+  bool _overrideValue;
+  /// @brief attribute path
+  std::vector<basics::AttributeName> _attribute;
+  /// @brief array sub-path in case of expansion (maybe empty)
+  std::vector<basics::AttributeName> _expansion;
+  /// @brief AQL expression to be computed as field value
+  std::string _expression;
+  /// @brief Full mangled path to the value
+  std::string _path;
+};
+
+struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
   IResearchInvertedIndexMeta() = default;
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchInvertedIndexMeta with values from a JSON
@@ -161,132 +243,26 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
             bool writeAnalyzerDefinition,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
-
-  using AnalyzerDefinitions = std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer>;
-
-
-  struct FieldRecord {
-    FieldRecord() : // FIXME: turn into delegate ctor once attributes are not needed
-      _includeAllFields(false),
-      _trackListPositions(false),
-      _isArray(false),
-      _overrideValue(false){}
-
-    FieldRecord(std::vector<basics::AttributeName> const& path,
-                FieldMeta::Analyzer&& a,
-                std::vector<FieldRecord>&& nested,
-                std::optional<Features>&& features, std::string&& expression,
-                bool isArray, bool includeAllFields, bool trackListPositions,
-                bool overrideValue, bool isPrimitiveAnalyzer,
-                std::string_view parentName);
-
-    std::string_view path() const noexcept;
-    std::string attributeString() const;
-
-    std::string toString() const;
-
-    std::string const& analyzerName() const noexcept {
-      TRI_ASSERT(_analyzers[0]._pool);
-      return _analyzers[0]._shortName;
-    }
-
-    bool namesMatch(FieldRecord const& other) const noexcept;
-
-    bool isIdentical(std::vector<basics::AttributeName> const& path,
-                     irs::string_ref analyzerName) const noexcept;
-
-    FieldMeta::Analyzer const& analyzer() const noexcept {
-      return _analyzers[0];
-    }
-
-    bool isArray() const noexcept {
-      TRI_ASSERT(!_attribute.empty());
-      return _isArray || _attribute.back().shouldExpand;
-    }
-
-    auto const& attribute() const noexcept {
-      return _attribute;
-    }
-
-    auto const& expansion() const noexcept {
-      return _expansion;
-    }
-
-    auto const& expression() const noexcept {
-      return _expression;
-    }
-
-    auto const& nested() const noexcept {
-      return _fields;
-    }
-
-    auto const& features() const noexcept {
-      return _features;
-    }
-
-    auto trackListPositions() const noexcept {
-      return _trackListPositions;
-    }
-
-    auto includeAllFields() const noexcept {
-      return _includeAllFields;
-    }
-
-    auto overrideValue() const noexcept {
-      return _overrideValue;
-    }
-
-    std::vector<arangodb::basics::AttributeName> combinedName() const;
-
-    /// @brief nested fields
-    std::vector<FieldRecord> _fields;
-    /// @brief parse fields recursively
-    bool _includeAllFields;
-    /// @brief array processing variant
-    bool _trackListPositions;
-    /// @brief analyzer to apply. Array to comply with old views definition
-    absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
-    /// @brief override for field features
-    std::optional<Features> _features;
-    /// @brief start point for non primitive analyzers
-    size_t  _primitiveOffset{0};
-    /// @brief fields ids storage
-    // Inverted index always needs field ids in order to
-    // execute cross types range queries
-    ValueStorage const _storeValues{ValueStorage::ID};
-   private:
-    /// @brief attribute path
-    std::vector<basics::AttributeName> _attribute;
-    /// @brief array sub-path in case of expansion (maybe empty)
-    std::vector<basics::AttributeName> _expansion;
-    /// @brief AQL expression to be computed as field value
-    std::string _expression;
-    /// @brief mark that field value is expected to be an array
-    bool _isArray;
-    /// @brief force computed value to override existing value
-    bool _overrideValue;
-    /// @brief Full mangled path to the value
-    std::string _path;
-  };
+  using AnalyzerDefinitions =
+      std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer>;
 
   bool operator==(IResearchInvertedIndexMeta const& other) const noexcept;
 
   static bool matchesFieldsDefinition(IResearchInvertedIndexMeta const& meta,
                                       VPackSlice other);
 
-  
-  std::vector<FieldRecord> const& fields() const noexcept {
-      return _fields._fields;
+  std::vector<InvertedIndexField> const& fields() const noexcept {
+    return _fields._fields;
   }
 
+  bool hasNested() const noexcept { return _hasNested; }
+
   /// @brief custom conversion to match FieldIterator expectations
-  operator FieldRecord const&() const noexcept {
-    return _fields;
-  }
+  operator InvertedIndexField const&() const noexcept { return _fields; }
 
   AnalyzerDefinitions _analyzerDefinitions;
 
-  FieldRecord _fields;
+  InvertedIndexField _fields;
   // sort condition associated with the link (primarySort)
   IResearchInvertedIndexSort _sort;
   // stored values associated with the link
@@ -300,5 +276,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
   Consistency _consistency{Consistency::kEventual};
   std::string _defaultAnalyzerName;
   std::optional<Features> _features;
+  bool _hasNested{false};
 };
 }  // namespace arangodb::iresearch

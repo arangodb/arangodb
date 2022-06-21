@@ -374,14 +374,9 @@ bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
     return true;
   }
 
-  if (!ctx.plan) {  // || !ctx.ctx) {
-    // can't execute expression without `ExecutionPlan`
-    return false;
-  }
+  TRI_ASSERT(ctx.ctx);
 
-  TRI_ASSERT(ctx.ctx);  // FIXME remove, uncomment condition
-
-  if (!ctx.ast) {
+  if (!ctx.ast || !ctx.ctx) {
     // can't execute expression without `AST` and `ExpressionContext`
     return false;
   }
@@ -661,12 +656,11 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 }
 
 bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
-                             QueryContext const& ctx, bool allowExpansion) {
+                             QueryContext const& ctx) {
   class AttributeChecker {
    public:
-    AttributeChecker(std::string& str, QueryContext const& ctx,
-                     bool expansion) noexcept
-        : _str{str}, _ctx{ctx}, _expansion{expansion} {}
+    AttributeChecker(std::string& str, QueryContext const& ctx) noexcept
+        : _str{str}, _ctx{ctx}, _expansion{!ctx.isSearchQuery} {}
 
     bool attributeAccess(aql::AstNode const& node) {
       irs::string_ref strValue;
@@ -736,7 +730,7 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
     QueryContext const& _ctx;
     char _buf[21];  // enough to hold all numbers up to 64-bits
     bool _expansion;
-  } builder{name, ctx, allowExpansion};
+  } builder{name, ctx};
 
   aql::AstNode const* head = nullptr;
   return visitAttributeAccess(head, &node, builder) && head &&

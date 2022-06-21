@@ -1845,7 +1845,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0)).ok()));
+    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0), false).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -3683,7 +3683,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1)).ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), false).ok());
       StorageEngineMock::recoveryTickResult = 42;
       EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
                                VPackSlice::noneSlice())
@@ -3691,7 +3691,7 @@ TEST_F(IResearchViewTest, test_remove) {
 
       // apply remove after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3)).ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), false).ok());
 
       EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE(link->commit().ok());

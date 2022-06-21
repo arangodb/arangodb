@@ -48,10 +48,10 @@ class PrimaryKeyFilter final : public irs::filter,
   static irs::type_info type(StorageEngine& engine);
 
   PrimaryKeyFilter(StorageEngine& engine,
-                   arangodb::LocalDocumentId const& value) noexcept
+                   arangodb::LocalDocumentId const& value, bool nested) noexcept
       : irs::filter(PrimaryKeyFilter::type(engine)),
         _pk(DocumentPrimaryKey::encode(value)),
-        _pkSeen(false) {}
+        _pkSeen(false), _nested(nested) {}
 
   virtual irs::doc_iterator::ptr execute(
       irs::sub_reader const& segment, irs::Order const& /*order*/,
@@ -119,6 +119,7 @@ class PrimaryKeyFilter final : public irs::filter,
   mutable PrimaryKeyIterator _pkIterator;
   // true == do not perform further execution (first-match optimization)
   mutable bool _pkSeen;
+  bool _nested;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -137,8 +138,8 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   PrimaryKeyFilterContainer& operator=(PrimaryKeyFilterContainer&&) = default;
 
   PrimaryKeyFilter& emplace(StorageEngine& engine,
-                            arangodb::LocalDocumentId value) {
-    _filters.emplace_back(engine, value);
+                            arangodb::LocalDocumentId value, bool nested) {
+    _filters.emplace_back(engine, value, nested);
 
     return _filters.back();
   }

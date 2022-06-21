@@ -60,6 +60,8 @@ class Methods;  // forward declaration
 
 namespace iresearch {
 
+struct IResearchInvertedIndexMeta;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @returns true if both nodes are equal, false otherwise
 //////////////////////////////////////////////////////////////////////////////
@@ -232,21 +234,19 @@ struct AqlValueTraits {
         return SCOPED_VALUE_TYPE_INVALID;
     }
   }
-};  // AqlValueTraits
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct QueryContext
-////////////////////////////////////////////////////////////////////////////////
 struct QueryContext {
-  transaction::Methods* trx;
-  aql::ExecutionPlan const* plan;
-  aql::Ast* ast;
-  aql::ExpressionContext* ctx;
-  irs::index_reader const* index;
-  aql::Variable const* ref;
-  /// @brief allow optimize away/modify some conditions during filter building
+  transaction::Methods* trx{};
+  aql::Ast* ast{};
+  aql::ExpressionContext* ctx{};
+  irs::index_reader const* index{};
+  aql::Variable const* ref{};
+  // Allow optimize away/modify some conditions during filter building
   FilterOptimization filterOptimization{FilterOptimization::MAX};
-};  // QueryContext
+  // The flag is set when a query is dedicated to a search view
+  bool isSearchQuery{true};
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ScopedAqlValue
@@ -536,7 +536,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
-                             QueryContext const& ctx, bool allowExpansion);
+                             QueryContext const& ctx);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the specified node is correct attribute access node,
@@ -575,7 +575,7 @@ bool nameFromAttributeAccesses(aql::AstNode const* node,
     case aql::NODE_TYPE_INDEXED_ACCESS:
     case aql::NODE_TYPE_EXPANSION:
       if (checkAttributeAccess(node, ref, allowExpansion) &&
-          nameFromAttributeAccess(name, *node, ctx, allowExpansion)) {
+          nameFromAttributeAccess(name, *node, ctx)) {
         if (!visitor(name)) {
           return false;
         }

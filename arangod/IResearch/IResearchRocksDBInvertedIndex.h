@@ -100,7 +100,6 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     IResearchDataStore::afterTruncate(tick, trx);
   }
 
-
   bool matchesDefinition(
       arangodb::velocypack::Slice const& other) const override;
 
@@ -141,17 +140,17 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
     return IResearchDataStore::insert<
-        FieldIterator<IResearchInvertedIndexMeta,
-                      IResearchInvertedIndexMeta::FieldRecord>,
+        FieldIterator<IResearchInvertedIndexMeta, InvertedIndexField>,
         IResearchInvertedIndexMeta>(trx, documentId, doc, meta());
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchDataStore::remove(trx, documentId);
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested());
   }
+
  private:
-  // required for calling initFields() 
+  // required for calling initFields()
   friend class arangodb::iresearch::IResearchRocksDBInvertedIndexFactory;
 
   void initFields() {

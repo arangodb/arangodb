@@ -90,7 +90,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   }
 
   const auto doc = docs->value();
-  _pkIterator.reset(getRemovalBoundary(segment, doc, false), doc);
+  _pkIterator.reset(getRemovalBoundary(segment, doc, _nested), doc);
 
   // optimization, since during:
   // * regular runtime should have at most 1 identical live primary key in the

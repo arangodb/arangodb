@@ -127,8 +127,7 @@ void assertOrder(
 
   // optimization time check
   {
-    arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{.ref = ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
@@ -144,8 +143,6 @@ void assertOrder(
     std::vector<irs::sort::ptr> actual;
     irs::sort::ptr actualScorer;
 
-    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
         arangodb::transaction::Options());
@@ -155,8 +152,8 @@ void assertOrder(
       mockCtx->setTrx(&trx);
     }
 
-    arangodb::iresearch::QueryContext const ctx{
-        &trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, ast, exprCtx,
+                                                &irs::sub_reader::empty(), ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);

@@ -78,8 +78,6 @@ class Methods;  // forward declaration
 namespace arangodb {
 namespace iresearch {
 
-struct IResearchViewMeta;  // forward declaration
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indexed/stored document field adapter for IResearch
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,18 +105,26 @@ struct Field {
 
     return true;
   }
-#ifdef USE_ENTERPRISE
-  bool _root{false};
-#endif
+
   AnalyzerPool::CacheType::ptr _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
   ValueStorage _storeValues;
   irs::features_t _fieldFeatures;
   irs::IndexFeatures _indexFeatures;
+#ifdef USE_ENTERPRISE
+  bool _root{false};
+#endif
 };  // Field
 
-    ////////////////////////////////////////////////////////////////////////////////
+using MissingFieldsContainer = absl::flat_hash_set<std::string_view>;
+// "attribute" names are tmp strings so need to store them here.
+// but "path" is string_view to meta internals so just string_views.
+using MissingFieldsMap = absl::flat_hash_map<std::string, MissingFieldsContainer>;
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack accoring the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,10 +154,7 @@ class FieldIterator {
   }
 
 #ifdef USE_ENTERPRISE
-
-  bool onRootLevel() const noexcept {
-    return _stack.size() <= 1;
-  }
+  bool onRootLevel() const noexcept;
 
   bool hasNested() const noexcept;
 
@@ -173,16 +176,34 @@ class FieldIterator {
   using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
                                          VPackSlice slice);
 
+  enum class LevelType {
+    NORMAL = 0,
+    ROOT = 1,
+    NESTED_ROOT = 2,
+    NESTED_FIELDS = 3,
+    NESTED_OBJECTS = 4
+  };
+
   struct Level {
     Level(velocypack::Slice slice, size_t nameLength, LevelMeta const& meta,
-          bool rootLevel, Filter filter)
-        : it(slice), nameLength(nameLength), meta(&meta), isRoot(rootLevel), filter(filter) {}
+          Filter levelFilter, LevelType levelType,
+          std::optional<arangodb::iresearch::MissingFieldsContainer>&& missingTracker)
+        : it(slice),
+          nameLength(nameLength),
+          meta(&meta),
+          filter(levelFilter),
+          type(levelType),
+          missingFields(missingTracker) {
+    }
 
     Iterator it;
     size_t nameLength;      // length of the name at the current level
     LevelMeta const* meta;  // metadata
-    bool isRoot;
     Filter filter;
+    LevelType type;
+    // TODO(Dronplane): Try to avoid copy.
+    // But it will need to decide how to conveyr "erase" on upper levels.
+    std::optional<MissingFieldsContainer> missingFields;
   };  // Level
 
   Level& top() noexcept {
@@ -192,10 +213,12 @@ class FieldIterator {
 
 #ifdef USE_ENTERPRISE
   using MetaTraits = IndexMetaTraits<LevelMeta>;
+  void setRoot();
+#endif
 
   void popLevel();
   bool pushLevel(VPackSlice value, LevelMeta const& meta, Filter filter);
-#endif
+  void fieldSeen(std::string& name);
 
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
@@ -214,10 +237,12 @@ class FieldIterator {
   AnalyzerIterator _end{};
   std::vector<Level> _stack;
   size_t _prefixLength{};
-  std::string _nameBuffer;  // buffer for field name
-  std::string
-      _valueBuffer;  // need temporary buffer for custom types in VelocyPack
-  VPackBuffer<uint8_t> _buffer;  // buffer for stored values
+  // buffer for field name
+  std::string _nameBuffer;
+  // need temporary buffer for custom types in VelocyPack
+  std::string _valueBuffer;
+  // buffer for stored values
+  VPackBuffer<uint8_t> _buffer;
   arangodb::transaction::Methods* _trx;
   irs::string_ref _collection;
   Field _value;  // iterator's value
@@ -227,8 +252,10 @@ class FieldIterator {
   AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
+
   bool _isDBServer;
   bool _disableFlush;
+  MissingFieldsMap _missingFieldsMap;
  #ifdef USE_ENTERPRISE
   std::vector<std::string> _nestingBuffers;
   bool _needDoc{false};
@@ -263,7 +290,7 @@ class FieldIterator {
 //  bool hasNested() const noexcept {
 //    return valid() &&
 //           std::any_of(_fieldsMeta->_fields._fields.begin(), _fieldsMeta->_fields._fields.end(),
-//                       [](IResearchInvertedIndexMeta::FieldRecord const& f) {
+//                       [](InvertedIndexField const& f) {
 //                         return !f.nested().empty();
 //                       });
 //  }
@@ -306,8 +333,8 @@ class FieldIterator {
 //                                         VPackSlice slice);
 //
 //  size_t _prefixLength{};
-//  IResearchInvertedIndexMeta::FieldRecord const* _begin{nullptr};
-//  IResearchInvertedIndexMeta::FieldRecord const* _end{nullptr};
+//  InvertedIndexField const* _begin{nullptr};
+//  InvertedIndexField const* _end{nullptr};
 //  IResearchInvertedIndexMeta const* _fieldsMeta{nullptr};
 //  Field _value;       // iterator's value
 //  VPackSlice _slice;  // input slice
