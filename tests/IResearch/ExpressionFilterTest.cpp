@@ -517,12 +517,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -591,12 +589,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -665,12 +661,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -760,12 +754,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -856,12 +848,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -951,12 +941,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -1027,12 +1015,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -1098,12 +1084,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -1238,12 +1222,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -1364,12 +1346,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan(
-        arangodb::aql::ExecutionPlan::instantiateFromAst(ast, false));
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*plan, *ast, *expression);
+    filter.init(*ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;

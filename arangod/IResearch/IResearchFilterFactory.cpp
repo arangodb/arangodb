@@ -506,7 +506,7 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
                                    QueryContext const& ctx,
                                    FilterContext const& filterCtx) {
   auto& exprFilter = filter.add<ByExpression>();
-  exprFilter.init(*ctx.plan, *ctx.ast, const_cast<aql::AstNode&>(node));
+  exprFilter.init(*ctx.ast, const_cast<aql::AstNode&>(node));
   exprFilter.boost(filterCtx.boost);
 }
 
@@ -1631,6 +1631,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     FilterContext const subFilterCtx{
         .analyzerProvider = filterCtx.analyzerProvider,
         .analyzer = filterCtx.analyzer,
+        .fields = filterCtx.fields,
         .namePrefix = filterCtx.namePrefix,
         .boost = irs::kNoBoost};  // reset boost
 
@@ -1725,6 +1726,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       FilterContext const subFilterCtx{
           .analyzerProvider = filterCtx.analyzerProvider,
           .analyzer = filterCtx.analyzer,
+          .fields = filterCtx.fields,
           .namePrefix = filterCtx.namePrefix,
           .boost = irs::kNoBoost};  // reset boost
 
@@ -1815,6 +1817,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
   FilterContext const subFilterCtx{
       .analyzerProvider = filterCtx.analyzerProvider,
       .analyzer = filterCtx.analyzer,
+      .fields = filterCtx.fields,
       .namePrefix = filterCtx.namePrefix,
       .boost = irs::kNoBoost};  // reset boost
 
@@ -1967,6 +1970,7 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
       FilterContext const subFilterCtx{
           .analyzerProvider = filterCtx.analyzerProvider,
           .analyzer = filterCtx.analyzer,
+          .fields = filterCtx.fields,
           .namePrefix = filterCtx.namePrefix,
           .boost = irs::kNoBoost};  // reset boost
 
@@ -2114,6 +2118,7 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
   FilterContext const subFilterCtx{
       .analyzerProvider = filterCtx.analyzerProvider,
       .analyzer = filterCtx.analyzer,
+      .fields = filterCtx.fields,
       .namePrefix = filterCtx.namePrefix,
       .boost = irs::kNoBoost};  // reset boost
 
@@ -2198,6 +2203,7 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
   // override analyzer and throw away provider
   FilterContext const subFilterContext{.analyzerProvider = nullptr,
                                        .analyzer = analyzerValue,
+                                       .fields = filterCtx.fields,
                                        .namePrefix = filterCtx.namePrefix,
                                        .boost = filterCtx.boost};
 
@@ -2249,6 +2255,7 @@ Result fromFuncBoost(char const* funcName, irs::boolean_filter* filter,
   FilterContext const subFilterContext{
       .analyzerProvider = filterCtx.analyzerProvider,
       .analyzer = filterCtx.analyzer,
+      .fields = filterCtx.fields,
       .namePrefix = filterCtx.namePrefix,
       .boost = filterCtx.boost * static_cast<float_t>(boostValue)};
 
@@ -2459,6 +2466,7 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
   FilterContext const subFilterCtx{
       .analyzerProvider = filterCtx.analyzerProvider,
       .analyzer = filterCtx.analyzer,
+      .fields = filterCtx.fields,
       .namePrefix = filterCtx.namePrefix};
 
   for (size_t i = 0; i < lastArg; ++i) {

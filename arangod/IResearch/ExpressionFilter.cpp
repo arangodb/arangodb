@@ -228,10 +228,8 @@ namespace iresearch {
 
 size_t ExpressionCompilationContext::hash() const noexcept {
   return irs::hash_combine(
-      irs::hash_combine(
-          irs::hash_combine(1610612741,
-                            arangodb::aql::AstNodeValueHash()(node.get())),
-          plan),
+      irs::hash_combine(1610612741,
+                        arangodb::aql::AstNodeValueHash()(node.get())),
       ast);
 }
 

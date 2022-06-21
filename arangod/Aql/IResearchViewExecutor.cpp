@@ -710,7 +710,6 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   ExecutionPlan const* plan = &infos().plan();
   iresearch::QueryContext const queryCtx{
       .trx = &_trx,
-      .plan = plan,
       .ast = plan->getAst(),
       .ctx = &_ctx,
       .index = _reader.get(),
