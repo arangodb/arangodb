@@ -1008,10 +1008,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
     return {};
   }
 
+  auto const numberOfCompactedEntries =
+      compactionStop.value - _inMemoryLog.getFirstIndex().value;
   auto newLog = _inMemoryLog.release(compactionStop);
   auto res = _self._localFollower->release(compactionStop);
   if (res.ok()) {
     _inMemoryLog = std::move(newLog);
+    _self._logMetrics->replicatedLogNumberCompactedEntries->count(
+        numberOfCompactedEntries);
   }
   LOG_CTX("f1029", TRACE, _self._logContext)
       << "compaction result = " << res.errorMessage();

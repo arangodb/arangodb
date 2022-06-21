@@ -89,7 +89,24 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
                        mock>(metricsFeature)),
       replicatedLogInsertsRtt(
           createMetric<arangodb_replication2_replicated_log_inserts_rtt, mock>(
-              metricsFeature)) {
+              metricsFeature)),
+      replicatedLogNumberAcceptedEntries(
+          createMetric<
+              arangodb_replication2_replicated_log_number_accepted_entries,
+              mock>(metricsFeature)),
+      replicatedLogNumberCommittedEntries(
+          createMetric<
+              arangodb_replication2_replicated_log_number_committed_entries,
+              mock>(metricsFeature)),
+      replicatedLogNumberMetaEntries(
+          createMetric<arangodb_replication2_replicated_log_number_meta_entries,
+                       mock>(metricsFeature)),
+      replicatedLogNumberCompactedEntries(
+          createMetric<
+              arangodb_replication2_replicated_log_number_compacted_entries,
+              mock>(metricsFeature))
+
+{
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   static_assert(!mock);
   static_assert(!std::is_null_pointer_v<MFP>);
