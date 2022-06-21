@@ -1,6 +1,19 @@
 devel
 -----
 
+* Now supporting projections on traversals. In AQL Traversal statements like
+  FOR v,e,p IN 1..3 OUTBOUND @start GRAPH @graph RETURN v.name
+  we will now detect attribute accesses on the data, in above example "v.name"
+  and use it to optimize data-loading, e.g. we will only extract the "name" attribute.
+  This optimization will help if you have large document sizes, but only access small
+  parts of the documents. By default we will only project up to 5 attributes on each
+  vertex, and edge. This limit can be modified by adding OPTIONS {maxProjections: 42}.
+  To identify if your query is using projections the explain output will now contain a
+  hint like `/* vertex (projections: `name`) */`
+  For now only attribute accesses are detected, functions like `KEEP` will not be projected.
+
+* Updated arangosync to v2.11.0-preview-1.
+
 * Change default `format_version` for RocksDB .sst files from 3 to 5.
 
 * Added support for creating autoincrement keys on cluster mode, but only for 
