@@ -118,7 +118,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(
         << leaderId.value_or("<none>");
 
     auto follower =
-        LogFollower::construct(_logContext, _metrics, std::move(id),
+        LogFollower::construct(_logContext, _metrics, _options, std::move(id),
                                std::move(logCore), term, std::move(leaderId));
     _participant = std::static_pointer_cast<ILogParticipant>(follower);
     _metrics->replicatedLogStartedFollowingNumber->operator++();

@@ -474,11 +474,13 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
 
 replicated_log::LogFollower::LogFollower(
     LoggerContext const& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics, ParticipantId id,
-    std::unique_ptr<LogCore> logCore, LogTerm term,
+    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     std::optional<ParticipantId> leaderId,
     replicated_log::InMemoryLog inMemoryLog)
     : _logMetrics(std::move(logMetrics)),
+      _options(std::move(options)),
       _loggerContext(
           logContext.with<logContextKeyLogComponent>("follower")
               .with<logContextKeyLeaderId>(leaderId.value_or("<none>"))
@@ -647,11 +649,12 @@ auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
   return std::move(future);
 }
 
-auto LogFollower::construct(LoggerContext const& loggerContext,
-                            std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-                            ParticipantId id, std::unique_ptr<LogCore> logCore,
-                            LogTerm term, std::optional<ParticipantId> leaderId)
-    -> std::shared_ptr<LogFollower> {
+auto LogFollower::construct(
+    LoggerContext const& loggerContext,
+    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    std::optional<ParticipantId> leaderId) -> std::shared_ptr<LogFollower> {
   auto log = InMemoryLog::loadFromLogCore(*logCore);
 
   auto const lastIndex = log.getLastTermIndexPair();
@@ -663,19 +666,20 @@ auto LogFollower::construct(LoggerContext const& loggerContext,
   }
 
   struct MakeSharedWrapper : LogFollower {
-    MakeSharedWrapper(LoggerContext const& loggerContext,
-                      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-                      ParticipantId id, std::unique_ptr<LogCore> logCore,
-                      LogTerm term, std::optional<ParticipantId> leaderId,
-                      InMemoryLog inMemoryLog)
-        : LogFollower(loggerContext, std::move(logMetrics), std::move(id),
-                      std::move(logCore), term, std::move(leaderId),
-                      std::move(inMemoryLog)) {}
+    MakeSharedWrapper(
+        LoggerContext const& loggerContext,
+        std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+        std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+        ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+        std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog)
+        : LogFollower(loggerContext, std::move(logMetrics), std::move(options),
+                      std::move(id), std::move(logCore), term,
+                      std::move(leaderId), std::move(inMemoryLog)) {}
   };
 
   return std::make_shared<MakeSharedWrapper>(
-      loggerContext, std::move(logMetrics), std::move(id), std::move(logCore),
-      term, std::move(leaderId), std::move(log));
+      loggerContext, std::move(logMetrics), std::move(options), std::move(id),
+      std::move(logCore), term, std::move(leaderId), std::move(log));
 }
 auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
   return _guardedFollowerData.getLockedGuard()->_inMemoryLog;
@@ -695,8 +699,9 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
   auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
-  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
-    // only do a compaction every 1000 entries
+  if (compactionStop <= _inMemoryLog.getFirstIndex() +
+                            _follower._options->_thresholdLogCompaction) {
+    // only do a compaction every _thresholdLogCompaction entries
     LOG_CTX("ebb9f", TRACE, _follower._loggerContext)
         << "won't trigger a compaction, not enough entries. First index = "
         << _inMemoryLog.getFirstIndex();

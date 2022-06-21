@@ -1000,8 +1000,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
   auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d6", TRACE, _self._logContext)
       << "compaction index calculated as " << compactionStop;
-  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
-    // only do a compaction every 1000 entries
+  if (compactionStop <=
+      _inMemoryLog.getFirstIndex() + _self._options->_thresholdLogCompaction) {
+    // only do a compaction every _self._options->_thresholdLogCompaction
+    // entries
     LOG_CTX("ebba0", TRACE, _self._logContext)
         << "won't trigger a compaction, not enough entries. First index = "
         << _inMemoryLog.getFirstIndex();
