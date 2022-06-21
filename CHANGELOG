@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed issue 16337: arangoimport with `--headers-file` and `--merge-attributes`
+  merges column names instead of row values on the first line of a CSV file.
+
+  Additionally, floating-point numbers are now merged using their standard
+  string representation instead of with a fixed precision of 6 decimal places.
+
 * Now supporting projections on traversals. In AQL Traversal statements like
   FOR v,e,p IN 1..3 OUTBOUND @start GRAPH @graph RETURN v.name
   we will now detect attribute accesses on the data, in above example "v.name"
