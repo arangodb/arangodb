@@ -1,0 +1,158 @@
+# test_suite [flags ...] -- [additional-params...]
+# for possible flags and params see
+# scripts/generateJenkinsScripts.py --help-flags
+
+
+# Single Server only Tests
+BackupAuthNoSysTests single
+BackupAuthSysTests single
+BackupNoAuthNoSysTests single
+BackupNoAuthSysTests single
+
+# Upgrade tests
+upgrade_data_3.2.* weight=1000 single
+upgrade_data_3.3.* weight=1000 single
+upgrade_data_3.4.* weight=1000 single
+upgrade_data_3.5.* weight=1000 single
+upgrade_data_3.6.* weight=1000 single
+upgrade_data_3.7.* weight=1000 single
+
+# Single Server Replication Tests
+replication_fuzz weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+replication_ongoing weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+replication_ongoing_frompresent wweight=2 single -- --extraArgs:log.level replication=trace
+replication_ongoing_global weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec wweight=2 single -- --extraArgs:log.level replication=trace
+replication_static weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+replication_sync weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+shell_replication wweight=2 single 
+http_replication weight=500 wweight=2 single
+
+# Misc single server tests
+active_failover single
+agency weight=350 wweight=2 single -- --dumpAgencyOnError true
+agency-restart weight=250 single
+arangobench weight=1000 single
+arangosh single
+authentication weight=1000 single
+endpoints single -- --skipEndpointsIpv6 true
+paths_server weight=500 single
+permissions weight=500 single
+recovery weight=2000 buckets=4 single
+version single
+
+# Shell client tests Single Server
+shell_client weight=500 single suffix=http -- $EncryptionAtRest
+shell_client weight=500 single suffix=http2 -- --http2 true
+shell_client weight=500 single suffix=vst -- --vst true
+
+shell_client_aql weight=500 single suffix=http
+shell_client_aql weight=500 single suffix=http2 -- --http2 true
+shell_client_aql weight=500 single suffix=vst -- --vst true
+shell_client_aql weight=500 single enterprise suffix=encrypt -- --encryptionAtRest true
+
+shell_server_aql weight=750 single buckets=5
+# execute without buckets in single server, but use 5 buckets in cluster
+shell_server weight=1000 single
+
+# C++ unit tests are executed in single env
+gtest weight=1000 single
+# Fuerte tests are executed in single env
+fuerte weight=500 single
+
+
+# Cluster Tests
+
+arangobench weight=1000 cluster -- --dumpAgencyOnError true
+chaos cluster !full -- --dumpAgencyOnError true
+restart weight=1000 cluster -- --dumpAgencyOnError true
+
+load_balancing weight=500 cluster -- --dumpAgencyOnError true
+load_balancing_auth weight=500 cluster -- --dumpAgencyOnError true
+
+replication2_client cluster
+replication2_server cluster -- --dumpAgencyOnError true
+
+resilience_analyzers weight=500 cluster -- --dumpAgencyOnError true
+resilience_failover weight=750 cluster -- --dumpAgencyOnError true
+resilience_move weight=600 cluster -- --dumpAgencyOnError true
+resilience_sharddist cluster -- --dumpAgencyOnError true
+
+recovery_cluster weight=2000 cluster buckets=4 -- --test arangosearch
+
+# different number of buckets in cluster
+shell_server_aql weight=1000 cluster buckets=16 -- --dumpAgencyOnError true
+shell_client weight=500 cluster buckets=5 -- --dumpAgencyOnError true
+shell_server weight=500 cluster buckets=5 -- --dumpAgencyOnError true
+shell_fuzzer weight=500 -- --dumpAgencyOnError true
+
+# Common Tests
+
+export -- --dumpAgencyOnError true
+importing -- --dumpAgencyOnError true
+hot_backup !windows -- --dumpAgencyOnError true
+
+
+http_server weight=750 -- --dumpAgencyOnError true
+server_http -- --dumpAgencyOnError true
+server_parameters weight=1000 -- --dumpAgencyOnError true
+server_permissions weight=1000 -- --dumpAgencyOnError true
+server_secrets weight=500 -- --dumpAgencyOnError true
+ssl_server weight=1000 -- --dumpAgencyOnError true
+
+# Dump Tests
+dump -- --dumpAgencyOnError true
+dump_authentication -- --dumpAgencyOnError true
+dump_encrypted -- --dumpAgencyOnError true
+dump_jwt -- --dumpAgencyOnError true
+dump_maskings -- --dumpAgencyOnError true
+dump_multiple -- --dumpAgencyOnError true
+dump_no_envelope -- --dumpAgencyOnError true
+dump_with_crashes -- --dumpAgencyOnError true
+
+# Audit Tests
+audit_client -- --dumpAgencyOnError true
+audit_server -- --dumpAgencyOnError true
+
+
+# Full Tests Single Server
+audit single full
+authentication_parameters single full weight=1000
+authentication_serve single full weight=1000
+config single full weight=1000
+dfdb single full weight=1000
+foxx_manager single full weight=500
+queryCacheAuthorization single full weight=500
+readOnly single full weight=500
+replication_aql weight=1000 single full
+replication_random weight=1000 single full
+upgrade single full weight=500
+
+# LDAP
+ldaprole !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldaprolesimple !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapsearch !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapsearchsimple !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapdualldap !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapfirstldap !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+ldapsecondldap !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
+
+
+# Full Cluster Tests
+authentication full cluster weight=500 buckets=3 -- --dumpAgencyOnError true
+chaos full cluster weight=9600 -- --dumpAgencyOnError true --skipNightly false
+client_resilience full cluster weight=500 -- --dumpAgencyOnError true
+resilience_analyzers full cluster weight=500 -- --dumpAgencyOnError true
+resilience_failover full cluster weight=750 -- --dumpAgencyOnError true
+resilience_failover_failure full cluster weight=500 -- --dumpAgencyOnError true
+resilience_failover_view full cluster weight=500 -- --dumpAgencyOnError true
+resilience_move_view full cluster weight=750 -- --dumpAgencyOnError true
+resilience_repair full cluster weight=500 -- --dumpAgencyOnError true
+resilience_sharddist full cluster weight=500 -- --dumpAgencyOnError true
+resilience_transactions full cluster weight=500 -- --dumpAgencyOnError true
+shell_client_aql full cluster weight=2500 -- --dumpAgencyOnError true
+wal_cleanup full cluster weight=2500 -- --dumpAgencyOnError true
+
+# Common Full Tests
+communication full weight=1000
+communication_ssl full weight=1000

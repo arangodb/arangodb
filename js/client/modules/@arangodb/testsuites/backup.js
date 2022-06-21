@@ -37,6 +37,7 @@ const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
@@ -45,10 +46,6 @@ const log = (text) => {
 };
 const makePath = (name) => {
   return tu.makePathUnix(tu.pathForTesting(`server/backup/${name}`));
-};
-
-const isAlive = (info, options) => {
-  return pu.arangod.check.instanceAlive(info, options);
 };
 
 const asRoot = {
@@ -97,10 +94,18 @@ class backupTestRunner extends tu.runInArangoshRunner {
       return dumpPath;
     }
 
-    this.instanceInfo = pu.startInstance('tcp', options, _.clone(tu.testServerAuthInfo), 'backup', fs.join(fs.getTempPath(), this.friendlyName));
-    if (this.instanceInfo === false) {
+    this.instanceManager = new im.instanceManager(this.options.protocol,
+                                                  this.options,
+                                                  _.clone(tu.testServerAuthInfo),
+                                                  'backup',
+                                                  fs.join(fs.getTempPath(), this.friendlyName));
+          
+    this.instanceManager.prepareInstance();
+    this.instanceManager.launchTcpDump("");
+    if (!this.instanceManager.launchInstance()) {
       return failPreStartMessage('failed to start dataGenerator server!');
     }
+    this.instanceManager.reconnect();
 
     log('Setting up');
     let path = '';
@@ -115,10 +120,10 @@ class backupTestRunner extends tu.runInArangoshRunner {
       }
 
       log('Create dump _system incl system collections');
-      path = this.instanceInfo.rootDir;
+      path = this.instanceManager.rootDir;
 
       _.defaults(asRoot, options);
-      let dump = pu.run.arangoDumpRestore(asRoot, this.instanceInfo,
+      let dump = pu.run.arangoDumpRestore(asRoot, this.instanceManager,
                                           'dump', '_system', path, syssys,
                                           true, options.coreCheck);
       if (dump.status === false || !this.healthCheck()) {
@@ -130,7 +135,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
 
       log('Create dump _system excl system collections');
 
-      dump = pu.run.arangoDumpRestore(asRoot, this.instanceInfo, 'dump', '_system',
+      dump = pu.run.arangoDumpRestore(asRoot, this.instanceManager, 'dump', '_system',
                                       path, sysNoSys, false, options.coreCheck);
       if (dump.status === false || !this.healthCheck()) {
         log('Dump failed: ' + JSON.stringify(dump));
@@ -145,7 +150,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
 
       if (this.healthCheck()) {
         options = Object.assign({}, options, tu.testServerAuthInfo);
-        if (!pu.shutdownInstance(this.instanceInfo, options)) {
+        if (!this.instanceManager.shutdownInstance()) {
           path = {
             state: false,
             failed: 1,
@@ -153,6 +158,11 @@ class backupTestRunner extends tu.runInArangoshRunner {
             message: "shutdown of dump server failed"
           };
         }
+        this.instanceManager.arangods[0].pid = null;
+        this.instanceManager.arangods[0].exitStatus = null;
+        fs.removeDirectoryRecursive(this.instanceManager.arangods[0].dataDir);
+        fs.makeDirectory(this.instanceManager.arangods[0].dataDir);
+        
       }
       log('done.');
       print();
@@ -188,7 +198,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
   // //////////////////////////////////////////////////////////////////////////////
   postStart(){
     let restore = pu.run.arangoDumpRestore(this.user,
-                                           this.instanceInfo,
+                                           this.instanceManager,
                                            'restore',
                                            '_system',
                                            this.dumpPath,
