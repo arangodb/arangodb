@@ -76,7 +76,7 @@ class IndexCreatorThread final : public Thread {
                      rocksdb::Options const& dbOptions,
                      std::string const& idxPath);
 
-  ~IndexCreatorThread() = default;
+  ~IndexCreatorThread() override;
 
  protected:
   void run() override;

@@ -261,6 +261,8 @@ IndexCreatorThread::IndexCreatorThread(
 #endif
 }
 
+IndexCreatorThread::~IndexCreatorThread() { Thread::shutdown(); }
+
 void IndexCreatorThread::run() {
   auto splitInHalf =
       [](WorkItem const& workItem) -> std::pair<std::pair<uint64_t, uint64_t>,
