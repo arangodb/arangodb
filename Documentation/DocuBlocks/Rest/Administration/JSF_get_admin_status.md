@@ -11,7 +11,7 @@ This is intended for manual use by the support and should
 never be used for monitoring or automatic tests. The results
 are subject to change without notice.
 
-TODO
+<!-- TODO -->
 
 @RESTRETURNCODES
 
@@ -39,7 +39,7 @@ Whether the Foxx API is enabled.
 @RESTREPLYBODY{host,string,required,}
 The hostname.
 
-TODO: see *ServerState*.
+<!-- TODO: see *ServerState*. -->
 
 @RESTREPLYBODY{pid,number,required,}
 The process ID of _arangod_.
@@ -83,13 +83,9 @@ The persisted ID, e. g. `"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a"`.
 The reboot ID.
 *Cluster only* (Agents, Coordinators, and DB-Servers).
 
-!!! TODO !!!
-
 @RESTSTRUCT{state,get_admin_status_server_info,string,required,}
 Always `"SERVING"`.
 *Cluster only* (Coordinators and DB-Servers).
-
-TODO: true?
 
 @RESTSTRUCT{address,get_admin_status_server_info,string,required,}
 The address of the server, e.g. `tcp://[::1]:8530`.
@@ -102,37 +98,39 @@ The server ID, e.g. `"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a"`.
 @RESTREPLYBODY{agency,object,required,get_admin_status_agency}
 Information about the Agency.
 *Cluster only* (Coordinators and DB-Servers).
-TODO
 
 @RESTSTRUCT{agencyComm,get_admin_status_agency,object,required,get_admin_status_agency_comm}
-TODO
+Information about the communication with the Agency.
+*Cluster only* (Coordinators and DB-Servers).
 
 @RESTSTRUCT{endpoints,get_admin_status_agency_comm,array,required,string}
 A list of possible Agency endpoints.
 
 @RESTREPLYBODY{coordinator,object,required,get_admin_status_coordinator}
-Information that only Coordinators will have.
+Information about the Coordinators.
+*Cluster only* (Coordinators)
 
 @RESTSTRUCT{foxxmaster,get_admin_status_coordinator,array,required,string}
-The server ID of the Foxx master.
+The server ID of the Coordinator that is the Foxx master.
 
 @RESTSTRUCT{isFoxxmaster,get_admin_status_coordinator,array,required,string}
-Whether the asked server is the Foxx master.
+Whether the queried Coordinator is the Foxx master.
 
 @RESTREPLYBODY{agent,object,required,get_admin_status_agent}
-Information that only Agents will have.
+Information about the Agents.
+*Cluster only* (Agents)
 
 @RESTSTRUCT{id,get_admin_status_agent,string,required,}
-Server ID of this Agent.
+Server ID of the queried Agent.
 
 @RESTSTRUCT{leaderId,get_admin_status_agent,string,required,}
-Server ID of the leader.
+Server ID of the leading Agent.
 
 @RESTSTRUCT{leading,get_admin_status_agent,boolean,required,}
-Whether the asked Agent is the leader.
+Whether the queried Agent is the leader.
 
 @RESTSTRUCT{endpoint,get_admin_status_agent,string,required,}
-The endpoint of this Agent.
+The endpoint of the queried Agent.
 
 @RESTSTRUCT{term,get_admin_status_agent,number,required,}
 The current term number.
