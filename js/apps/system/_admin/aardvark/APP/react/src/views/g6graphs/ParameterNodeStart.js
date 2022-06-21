@@ -20,6 +20,7 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
           id="graphnodes"
           name="graphnodes"
           autocomplete="off"
+          value={nodeStart}
           onChange={
             (e) => {
               setNodeStart(e.target.value);

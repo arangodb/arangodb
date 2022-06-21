@@ -10,27 +10,27 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
   const [isLoadingData, setIsLoadingData] = useState(false)
 
   const callApi = () => {
-    console.log("urlParameters to use for API call: ", urlParameters);
-      setIsLoadingData(true);
-      onIsLoadingData(true);
+    localStorage.setItem(`${graphName}-gv-urlparameters`, JSON.stringify(urlParameters[0]));
+    setIsLoadingData(true);
+    onIsLoadingData(true);
 
-      $.ajax({
-        type: 'GET',
-        url: arangoHelper.databaseUrl(`/_admin/aardvark/g6graph/${graphName}`),
-        contentType: 'application/json',
-        data: urlParameters[0],
-        success: function (data) {
-          const element = document.getElementById("graph-card");
-          console.log("element: ", element);
-          element.scrollIntoView({ behavior: "smooth" });
-          setIsLoadingData(false);
-          onIsLoadingData(false);
-          onGraphDataLoaded(data);
-        },
-        error: function (e) {
-          arangoHelper.arangoError('Graph', 'Could not load graph.');
-        }
-      });
+    $.ajax({
+      type: 'GET',
+      url: arangoHelper.databaseUrl(`/_admin/aardvark/g6graph/${graphName}`),
+      contentType: 'application/json',
+      data: urlParameters[0],
+      success: function (data) {
+        const element = document.getElementById("graph-card");
+        console.log("element: ", element);
+        element.scrollIntoView({ behavior: "smooth" });
+        setIsLoadingData(false);
+        onIsLoadingData(false);
+        onGraphDataLoaded(data);
+      },
+      error: function (e) {
+        arangoHelper.arangoError('Graph', 'Could not load graph.');
+      }
+    });
   };
   
   return (

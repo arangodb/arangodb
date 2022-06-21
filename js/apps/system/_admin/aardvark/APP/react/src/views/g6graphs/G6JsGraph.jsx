@@ -1,4 +1,4 @@
-/* global arangoHelper, arangoFetch */
+/* global arangoHelper, arangoFetch, $ */
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { GraphView } from './GraphView';
@@ -16,7 +16,14 @@ import ButtonScrollTo from "./ButtonScrollTo";
 import './tooltip.css';
 
 const G6JsGraph = () => {
-  const [urlParameters, setUrlParameters] = React.useState(URLPARAMETERS);
+  const currentUrl = window.location.href;
+  const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
+  let localUrlParameters = URLPARAMETERS;
+  const settingsKey = `${graphName}-gv-urlparameters`;
+  if(localStorage.getItem(settingsKey) !== null) {
+    localUrlParameters = JSON.parse(localStorage.getItem(settingsKey));
+  }
+  const [urlParameters, setUrlParameters] = React.useState(localUrlParameters);
 
   let responseTimesObject = {
     fetchStarted: null,
@@ -51,8 +58,6 @@ const G6JsGraph = () => {
   const [nodesColorAttributes, setNodesColorAttributes] = useState({});
   const [edgesColorAttributes, setEdgesColorAttributes] = useState({});
   const [responseTimes, setResponseTimes] = useState(responseTimesObject);
-  const currentUrl = window.location.href;
-  const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
   let [queryString, setQueryString] = useState(`/_admin/aardvark/g6graph/${graphName}`);
   let [queryMethod, setQueryMethod] = useState("GET");
   let [graphData, setGraphData] = useState(data);
@@ -86,28 +91,42 @@ const G6JsGraph = () => {
 
   const fetchData = useCallback(() => {
     responseTimesObject.fetchStarted = new Date();
-    arangoFetch(arangoHelper.databaseUrl(queryString), {
-      method: queryMethod,
-    })
-    .then(response => response.json())
-    .then(data => {
-      responseTimesObject.fetchFinished = new Date();
-      responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
-      setResponseTimes(responseTimesObject);
-      setVertexCollections(data.settings.vertexCollections);
-      const collectionColors = [];
-      Object.keys(data.settings.vertexCollections)
-      .map((key, i) => {
-        collectionColors[data.settings.vertexCollections[key].name] = "#" + randomColor();
-        return true;
-      });
-      setVertexCollectionsColors(collectionColors);
-      setEdgeCollections(data.settings.edgeCollections);
-      setGraphData(data);
-    })
-    .catch((err) => {
-      arangoHelper.arangoError('Graph', 'Could not load graph.');
-      console.log(err);
+    $.ajax({
+      type: queryMethod,
+      url: arangoHelper.databaseUrl(queryString),
+      contentType: 'application/json',
+      data: urlParameters,
+      success: function (data) {
+        responseTimesObject.fetchFinished = new Date();
+        responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
+        setResponseTimes(responseTimesObject);
+        setVertexCollections(data.settings.vertexCollections);
+        if(data.settings.connectionsMinMax) {
+          setConnectionsMinMax(data.settings.connectionsMinMax);
+        }
+        if(data.settings.nodesColorAttributes) {
+          setNodesColorAttributes(data.settings.nodesColorAttributes);
+        }
+        if(data.settings.nodesSizeMinMax) {
+          setNodesSizeMinMax(data.settings.nodesSizeMinMax);
+        }
+        if(data.settings.edgesColorAttributes) {
+          setEdgesColorAttributes(data.settings.edgesColorAttributes);
+        }
+        const collectionColors = [];
+        Object.keys(data.settings.vertexCollections)
+        .map((key, i) => {
+          collectionColors[data.settings.vertexCollections[key].name] = "#" + randomColor();
+          return true;
+        });
+        setVertexCollectionsColors(collectionColors);
+        setEdgeCollections(data.settings.edgeCollections);
+        setGraphData(data);
+      },
+      error: function (e) {
+        arangoHelper.arangoError('Graph', 'Could not load graph.');
+        console.log(e);
+      }
     });
   }, [queryString]);
 
