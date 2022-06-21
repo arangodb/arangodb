@@ -40,6 +40,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Options.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 
 #if USE_ENTERPRISE
@@ -120,7 +123,11 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   arangodb::RevisionId revisionId = arangodb::RevisionId::none();
   arangodb::velocypack::Builder builder;
   arangodb::OperationOptions options;
-  Result res = physical->newObjectForInsert(nullptr, doc->slice(), false,
+
+  auto trx = std::make_shared<arangodb::transaction::Methods>(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::Options());
+  Result res = physical->newObjectForInsert(trx.get(), doc->slice(), false,
                                             builder, options, revisionId);
   EXPECT_TRUE(res.ok());
   EXPECT_TRUE(revisionId.isSet());

@@ -490,10 +490,11 @@ Result ComputedValues::buildDefinitions(
 
     // validate the actual expression
     res.reset(StandaloneCalculation::validateQuery(
-        vocbase, expression.stringView(), ::docParameter, ""));
+        vocbase, expression.stringView(), ::docParameter,
+        " in computation expression", /*isComputedValue*/ true));
     if (res.fail()) {
       std::string errorMsg = "invalid 'computedValues' entry: ";
-      errorMsg.append(res.errorMessage()).append(" in computation expression");
+      errorMsg.append(res.errorMessage());
       res.reset(TRI_ERROR_BAD_PARAMETER, std::move(errorMsg));
       break;
     }

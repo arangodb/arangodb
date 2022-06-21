@@ -232,7 +232,8 @@ std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
 Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                                             std::string_view queryString,
                                             std::string_view parameterName,
-                                            char const* errorContext) {
+                                            char const* errorContext,
+                                            bool isComputedValue) {
   TRI_ASSERT(errorContext != nullptr);
 
   using namespace std::string_literals;
@@ -248,6 +249,8 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                              /*optimizeNonCacheable*/ false);
     AstNode* astRoot = const_cast<AstNode*>(ast->root());
     TRI_ASSERT(astRoot);
+    TRI_ASSERT(astRoot->type == NODE_TYPE_ROOT);
+
     // Forbid all V8 related stuff as it is not available on DBServers where
     // analyzers run.
     if (ast->willUseV8()) {
@@ -268,22 +271,37 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     }
 
     std::string errorMessage;
+
     // Forbid to use functions that reference analyzers -> problems on recovery
     // as analyzers are not available for querying. Forbid all non-Dbserver
     // runnable functions as it is not available on DBServers where analyzers
     // run.
     arangodb::aql::Ast::traverseReadOnly(
-        ast->root(),
-        [&errorMessage, &parameterName,
-         &errorContext](arangodb::aql::AstNode const* node) -> bool {
+        astRoot,
+        [&errorMessage, &parameterName, &errorContext,
+         isComputedValue](arangodb::aql::AstNode const* node) -> bool {
           TRI_ASSERT(node);
           switch (node->type) {
+            case arangodb::aql::NODE_TYPE_SUBQUERY:
+            case arangodb::aql::NODE_TYPE_FOR:
+            case arangodb::aql::NODE_TYPE_LET: {
+              // these nodes are only ok for analyzer expressions, but
+              // not for computed values
+              if (isComputedValue) {
+                errorMessage = "Node type '";
+                errorMessage.append(node->getTypeString())
+                    .append("' is forbidden")
+                    .append(errorContext);
+                return false;
+              }
+            }
+            // fall-through intentional
+
             // these nodes are ok unconditionally
             case arangodb::aql::NODE_TYPE_ROOT:
-            case arangodb::aql::NODE_TYPE_FOR:
-            case arangodb::aql::NODE_TYPE_LET:
             case arangodb::aql::NODE_TYPE_FILTER:
             case arangodb::aql::NODE_TYPE_ARRAY:
+            case arangodb::aql::NODE_TYPE_ARRAY_FILTER:
             case arangodb::aql::NODE_TYPE_RETURN:
             case arangodb::aql::NODE_TYPE_SORT:
             case arangodb::aql::NODE_TYPE_SORT_ELEMENT:
@@ -309,7 +327,6 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN:
             case arangodb::aql::NODE_TYPE_OPERATOR_TERNARY:
-            case arangodb::aql::NODE_TYPE_SUBQUERY:
             case arangodb::aql::NODE_TYPE_EXPANSION:
             case arangodb::aql::NODE_TYPE_ITERATOR:
             case arangodb::aql::NODE_TYPE_VALUE:
@@ -362,7 +379,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                 return false;
               }
             } break;
-            // by default all is forbidden
+            // by default everything else is forbidden
             default:
               errorMessage = "Node type '";
               errorMessage.append(node->getTypeString())
@@ -372,11 +389,21 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
           }
           return true;
         });
+
+    if (errorMessage.empty() && isComputedValue &&
+        (astRoot->numMembers() != 1 ||
+         astRoot->getMember(0)->type != NODE_TYPE_RETURN)) {
+      // computed values expressions must start with a RETURN statement
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Computation expression needs to start with a RETURN statement"s +
+                  errorContext};
+    }
+
     if (!errorMessage.empty()) {
       return {TRI_ERROR_BAD_PARAMETER, errorMessage};
     }
   } catch (arangodb::basics::Exception const& e) {
-    return {TRI_ERROR_QUERY_PARSE, e.message()};
+    return {TRI_ERROR_QUERY_PARSE, e.message() + errorContext};
   } catch (std::exception const& e) {
     return {TRI_ERROR_QUERY_PARSE, e.what()};
   } catch (...) {
