@@ -47,17 +47,6 @@ struct ReplicatedLogMetricsTest : ReplicatedLogTest {
     return log;
   }
 
-  auto makeDelayedFollower(ParticipantId id, LogTerm term,
-                           ParticipantId leaderId)
-      -> std::shared_ptr<ReplicatedLog> {
-    auto persisted = makeDelayedPersistedLog(LogId{3});
-    auto core = std::make_unique<LogCore>(persisted);
-    auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock,
-                                               _optionsMock, defaultLogger());
-    log->becomeFollower(std::move(id), term, std::move(leaderId));
-    return log;
-  }
-
   MessageId nextMessageId{0};
 };
 
@@ -192,4 +181,55 @@ TEST_F(ReplicatedLogMetricsTest, follower_count_compaction) {
         _logMetricsMock->replicatedLogNumberCompactedEntries->load();
     EXPECT_EQ(compactedCountAfter, compactedCountBefore + 2);
   }
+}
+
+TEST_F(ReplicatedLogMetricsTest, leader_count_compaction) {
+  _optionsMock->_thresholdLogCompaction = 1;  // set compactions to 1
+  auto coreA = makeLogCore(LogId{1});
+
+  auto leaderId = ParticipantId{"leader"};
+  auto leader = createLeaderWithDefaultFlags(leaderId, LogTerm{1},
+                                             std::move(coreA), {}, 1);
+
+  auto const beforeCompaction =
+      _logMetricsMock->replicatedLogNumberCompactedEntries->load();
+  leader->insert(LogPayload::createFromString("first"));
+  auto idx = leader->insert(LogPayload::createFromString("second"));
+  leader->insert(LogPayload::createFromString("third"));
+  auto last = leader->insert(LogPayload::createFromString("forth"));
+  auto f = leader->waitFor(last);
+  ASSERT_TRUE(f.isReady());
+
+  auto res = leader->release(idx);  // now trigger compaction
+  ASSERT_TRUE(res.ok());
+  auto const compactedCountAfter =
+      _logMetricsMock->replicatedLogNumberCompactedEntries->load();
+  EXPECT_EQ(compactedCountAfter, beforeCompaction + 3);
+}
+
+TEST_F(ReplicatedLogMetricsTest, leader_accept_commit_counter) {
+  _optionsMock->_thresholdLogCompaction = 1;  // set compactions to 1
+  auto coreA = makeLogCore(LogId{1});
+
+  auto leaderId = ParticipantId{"leader"};
+  auto leader = createLeaderWithDefaultFlags(leaderId, LogTerm{1},
+                                             std::move(coreA), {}, 1);
+
+  auto const beforeAccept =
+      _logMetricsMock->replicatedLogNumberAcceptedEntries->load();
+  auto const beforeCommit =
+      _logMetricsMock->replicatedLogNumberCommittedEntries->load();
+  leader->insert(LogPayload::createFromString("first"));
+  leader->insert(LogPayload::createFromString("second"));
+  leader->insert(LogPayload::createFromString("third"));
+  auto last = leader->insert(LogPayload::createFromString("forth"));
+  auto f = leader->waitFor(last);
+  ASSERT_TRUE(f.isReady());
+
+  auto const afterAccept =
+      _logMetricsMock->replicatedLogNumberAcceptedEntries->load();
+  auto const afterCommit =
+      _logMetricsMock->replicatedLogNumberCommittedEntries->load();
+  EXPECT_EQ(afterAccept, beforeAccept + 4); // we inserted 4
+  EXPECT_EQ(afterCommit, beforeCommit + 5); // but committed 5
 }
