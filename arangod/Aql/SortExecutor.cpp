@@ -126,7 +126,6 @@ size_t SortExecutorInfos::limit() const noexcept { return _limit; }
 
 SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
     : _infos(infos),
-      _input(nullptr),
       _currentRow(CreateInvalidInputRowHint{}),
       _returnNext(0),
       _memoryUsageForRowIndexes(0) {}

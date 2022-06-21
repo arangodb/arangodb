@@ -149,7 +149,6 @@ class SortExecutor {
   bool _inputReady = false;
   Infos& _infos;
 
-  AqlItemMatrix const* _input;
   InputAqlItemRow _currentRow;
 
   std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
