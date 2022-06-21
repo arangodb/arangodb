@@ -3768,15 +3768,15 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"not_keys": { "a":1, "b":2, "c":3}, "some_boost": 10})");
 
-  std::function<AssertInvertedIndexFieldFunc> const assertFields[] = { [](auto& server, auto const& it) {
+  std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
+    [](auto& server, auto const& it) {
     assertField<irs::null_token_stream>(server, *it,
                                         mangleNull("boost"));
-  },
+    },
     [](auto& server, auto const& it) {
       assertField<irs::null_token_stream>(server, *it,
                                           mangleNull("keys"));
-    }
-  };
+    }};
 
   InvertedIndexFieldIterator it(
       trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
