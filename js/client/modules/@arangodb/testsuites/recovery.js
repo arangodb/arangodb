@@ -34,7 +34,6 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -99,14 +98,26 @@ function runArangodRecovery (params) {
       require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
     }
 
+    params.options.disableMonitor = true;
+    params.testDir = fs.join(params.tempDir, `${params.count}`);
+    pu.cleanupDBDirectoriesAppend(params.testDir);
+    let dataDir = fs.join(params.testDir, 'data');
+    let appDir = fs.join(params.testDir, 'app');
+    let tmpDir = fs.join(params.testDir, 'tmp');
+    fs.makeDirectoryRecursive(params.testDir);
+    fs.makeDirectoryRecursive(dataDir);
+    fs.makeDirectoryRecursive(tmpDir);
+    fs.makeDirectoryRecursive(appDir);
+
+    let args = pu.makeArgs.arangod(params.options, appDir, '', tmpDir);
     // enable development debugging if extremeVerbosity is set
-    let args = {};
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
     }
     args = Object.assign(args, params.options.extraArgs);
     args = Object.assign(args, {
       'rocksdb.wal-file-timeout-initial': 10,
+      'database.directory': fs.join(dataDir + 'db'),
       'server.rest-server': 'false',
       'replication.auto-start': 'true',
       'javascript.script': params.script
@@ -135,17 +146,13 @@ function runArangodRecovery (params) {
         process.env["rocksdb-encryption-keyfile"] = keyfile;
       }
     }
-    params.options.disableMonitor = true;
-    params.testDir = fs.join(params.tempDir, `${params.count}`);
-    params['instance'] = new inst.instance(params.options,
-                                      inst.instanceRole.single,
-                                      args, {}, 'tcp', params.testDir, '',
-                                      new inst.agencyConfig(params.options, null));
 
-    argv = toArgv(Object.assign(params.instance.args, additionalParams));
+    params.args = args;
+
+    argv = toArgv(Object.assign(params.args, additionalParams));
   } else {
     additionalParams['javascript.script-parameter'] = 'recovery';
-    argv = toArgv(Object.assign(params.instance.args, additionalParams));
+    argv = toArgv(Object.assign(params.args, additionalParams));
     
     if (params.options.rr) {
       binary = 'rr';
@@ -161,7 +168,7 @@ function runArangodRecovery (params) {
     argv,
     params.options,
     'recovery',
-    params.instance.rootDir,
+    params.instanceInfo.rootDir,
     !params.setup && params.options.coreCheck);
 }
 
@@ -223,7 +230,7 @@ function recovery (options) {
         params.options.disableMonitor = options.disableMonitor;
         params.setup = false;
         try {
-          tu.writeTestResult(params.instance.args['temp.path'], {
+          tu.writeTestResult(params.args['temp.path'], {
             failed: 1,
             status: false, 
             message: "unable to run recovery test " + test,
@@ -233,7 +240,7 @@ function recovery (options) {
         runArangodRecovery(params);
 
         results[test] = tu.readTestResult(
-          params.instance.args['temp.path'],
+          params.args['temp.path'],
           {
             status: false
           },

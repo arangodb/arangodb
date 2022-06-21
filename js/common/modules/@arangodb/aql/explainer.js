@@ -897,6 +897,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   var lateVariableCallback = function () {
+    require("internal").print("Called");
     return (node) => variableName(node);
   };
 
@@ -1141,15 +1142,15 @@ function processQuery(query, explain, planIndex) {
     return results[0];
   };
 
-  const projections = function (value, attributeName, label) {
-    if (value && value.hasOwnProperty(attributeName) && value[attributeName].length > 0) {
-      let p = value[attributeName].map(function(p) {
+  var projection = function (node) {
+    if (node.projections && node.projections.length > 0) {
+      let p = node.projections.map(function(p) {
         if (Array.isArray(p)) {
           return p.join('`.`', p);
         }
         return p;
       });
-      return ' (' + label + ': `' + p.join('`, `') + '`)';
+      return ', projections: `' + p.join('`, `') + '`';
     }
     return '';
   };
@@ -1247,7 +1248,7 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        const enumAnnotation = annotation('/* full collection scan' + (node.random ? ', random order' : '') + projections(node, 'projections', 'projections') + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} ${node.readOwnWrites ? '; read own writes' : ''} */`);
+        const enumAnnotation = annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} ${node.readOwnWrites ? '; read own writes' : ''} */`);
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + enumAnnotation + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
@@ -1340,7 +1341,7 @@ function processQuery(query, explain, planIndex) {
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
-          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
           '   ' + annotation(indexAnnotation);
 
       case 'TraversalNode':
@@ -1358,29 +1359,21 @@ function processQuery(query, explain, planIndex) {
           if (node.options.hasOwnProperty('produceVertices') && !node.options.produceVertices) {
             parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex optimized away */'));
           } else {
-            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex' + projections(node.options, 'vertexProjections', 'projections') + ' */'));
+            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
           }
         } else {
           parts.push(annotation('/* vertex optimized away */'));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
-          parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge' + projections(node.options, 'edgeProjections', 'projections') + ' */'));
+          parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         if (node.hasOwnProperty('pathOutVariable')) {
           let pathParts = [];
           if (node.options.producePathsVertices) {
-            if (node.hasOwnProperty('vertexOutVariable')) {
-              pathParts.push("vertices");
-            } else {
-              pathParts.push("vertices" + projections(node.options, 'vertexProjections', 'projections'));
-            }
+            pathParts.push("vertices");
           }
           if (node.options.producePathsEdges) {
-            if (node.hasOwnProperty('edgeOutVariable')) {
-              pathParts.push("edges");
-            } else {
-              pathParts.push("edges" + projections(node.options, 'edgeProjections', 'projections'));
-            }
+            pathParts.push("edges");
           }
           if (node.options.producePathsWeights) {
             pathParts.push("weights");

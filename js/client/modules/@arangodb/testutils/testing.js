@@ -78,6 +78,8 @@ let optionsDocumentation = [
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '   - `sleepBeforeShutdown`: let the system rest before terminating it',
   '',
+  '   - `storageEngine`: set to `rocksdb` - defaults to `rocksdb`',
+  '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
   '                   conjunction with `server`.',
@@ -199,7 +201,7 @@ const optionsDefaults = {
   'exceptionCount': 1,
   'sanitizer': false,
   'activefailover': false,
-  'singles': 1,
+  'singles': 2,
   'setInterruptable': ! internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
@@ -217,6 +219,7 @@ const optionsDefaults = {
       global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
       global.ARANGODB_CLIENT_VERSION(true).tsan === 'true'),
   'skipTimeCritical': false,
+  'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
   'testOutputDirectory': 'out',
@@ -546,16 +549,8 @@ function iterateTests(cases, options) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
-      print('cleanupdisabled:\n' +
-            pu.getCleanupDBDirectories() + " " +
-            cleanup + ' - ' +
-            globalStatus + ' - ' +
-            pu.serverCrashed + ' - ' +
-            status + ' - ' +
-            localOptions.cleanup + ' - ' +
-            shutdownSuccess + "\n");
     }
-    //// TODOpu.aggregateFatalErrors(currentTest);
+    pu.aggregateFatalErrors(currentTest);
   }
 
   results.status = globalStatus;
@@ -567,10 +562,7 @@ function iterateTests(cases, options) {
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +
             pu.getCleanupDBDirectories() + " " +
-            cleanup + ' - ' +
-            globalStatus + ' - ' +
-            pu.serverCrashed + ' - ' +
-            localOptions.cleanup + "\n");
+            cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed + "\n");
     }
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");
@@ -596,26 +588,17 @@ function unitTest (cases, options) {
     options = {};
   }
   loadTestSuites(options);
-
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
-  if (options.memprof) {
-    process.env['MALLOC_CONF'] = 'prof:true';
-  }
+
   options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
 
-  if (options.extremeVerbosity) {
-    print(JSON.stringify(options));
-  }
   if (options.failed ||
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);
   }
   if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline();
-  }
-  if (options.activefailover && (options.singles === 1)) {
-    options.singles =  2;
   }
   
   try {
@@ -632,10 +615,6 @@ function unitTest (cases, options) {
         message: err.message
       }]
     };
-  }
-
-  if (options.encryptionAtRest && !pu.isEnterpriseClient) {
-    options.encryptionAtRest = false;
   }
 
   arango.forceJson(options.forceJson);

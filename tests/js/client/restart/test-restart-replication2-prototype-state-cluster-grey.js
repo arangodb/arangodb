@@ -29,7 +29,11 @@ const jsunity = require('jsunity');
 const _ = require('lodash');
 const rh = require('@arangodb/testutils/restart-helper');
 const {db, errors} = require('@arangodb');
-const { getCtrlDBServers } = require('@arangodb/test-helper');
+
+const dbservers = (function () {
+  return global.instanceInfo.arangods.filter((instance) => instance.role === "dbserver").map((x) => x.id);
+}());
+
 
 const retryWithExceptions = function (check) {
   let i = 0, lastError = null;
@@ -70,14 +74,13 @@ function testSuite() {
 
     testRestartDatabaseServers: function () {
       disableMaintenanceMode();
-      const dbServers = getCtrlDBServers();
-      const servers = _.sampleSize(dbServers, 3);
+      const servers = _.sampleSize(dbservers, 3);
       const state = db._createPrototypeState({servers});
       state.write({"foo": "bar"});
 
       const sstatus = getSnapshotStatus(state.id());
 
-      rh.shutdownServers(dbServers);
+      rh.shutdownServers(dbservers);
       rh.restartAllServers();
 
       retryWithExceptions(function () {

@@ -68,18 +68,8 @@ class permissionsRunner extends tu.runInArangoshRunner {
     let filtered = {};
     let rootDir = fs.join(fs.getTempPath(), 'permissions');
     const tests = tu.scanTestPaths(testPaths.permissions, this.options);
-    this.instanceManager = {
-      rootDir: rootDir,
+    this.instanceInfo = {
       endpoint: 'tcp://127.0.0.1:8888',
-      findEndpoint: function() {
-        return 'tcp://127.0.0.1:8888';
-      },
-      getStructure: function() {
-        return {
-          endpoint: 'tcp://127.0.0.1:8888',
-          rootDir: rootDir
-        };
-      }
     };
 
     fs.makeDirectoryRecursive(rootDir);
@@ -88,9 +78,10 @@ class permissionsRunner extends tu.runInArangoshRunner {
         let t = f.split(fs.pathSeparator);
         let testName = t[t.length - 1].replace(/\.js/, '');
         let instanceRoot = fs.join(rootDir, testName);
-        fs.makeDirectoryRecursive(instanceRoot);
-        let testResultJson = fs.join(rootDir, 'testresult.json');;
+        obj.instanceInfo['rootDir'] = instanceRoot;
+        let testResultJson = fs.join(instanceRoot, 'testresult.json');;
         process.env['RESULT'] = testResultJson;
+        fs.makeDirectoryRecursive(instanceRoot);
         pu.cleanupDBDirectoriesAppend(instanceRoot);
 
         let content = fs.read(f);

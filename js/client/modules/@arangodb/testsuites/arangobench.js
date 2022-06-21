@@ -38,7 +38,6 @@ const optionsDocumentation = [
 const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
-const im = require('@arangodb/testutils/instance-manager');
 const internal = require('internal');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -189,7 +188,7 @@ const benchTodos = [{
   'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}',
   'expected-failure': true
 }
-                   ];
+];
 
 function arangobench (options) {
   if (options.skipArangoBench === true) {
@@ -203,18 +202,17 @@ function arangobench (options) {
   }
 
   print(CYAN + 'arangobench tests...' + RESET);
-  let instanceManager = new im.instanceManager('tcp', options, {}, 'arangobench');
-  instanceManager.prepareInstance();
-  instanceManager.launchTcpDump("");
-  if (!instanceManager.launchInstance()) {
+
+  let instanceInfo = pu.startInstance('tcp', options, {}, 'arangobench');
+
+  if (instanceInfo === false) {
     return {
       arangobench: {
         status: false,
-        message: 'failed to launch instance'
+        message: 'failed to start server!'
       }
     };
   }
-  instanceManager.reconnect();
 
   let results = { failed: 0 };
   let continueTesting = true;
@@ -222,7 +220,7 @@ function arangobench (options) {
   for (let i = 0; i < benchTodos.length; i++) {
     const benchTodo = benchTodos[i];
     const name = 'case' + i;
-    const reportfn = fs.join(instanceManager.rootDir, 'report_' + name + '.json');
+    const reportfn = fs.join(instanceInfo.rootDir, 'report_' + name + '.json');
 
     if ((options.skipArangoBenchNonConnKeepAlive) &&
         benchTodo.hasOwnProperty('keep-alive') &&
@@ -234,14 +232,14 @@ function arangobench (options) {
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster || !benchTodo.transaction) {
       if (!continueTesting) {
-        print(RED + 'Skipping ' + JSON.stringify(benchTodo) + ', server is gone.' + RESET);
+        print(RED + 'Skipping ' + benchTodo + ', server is gone.' + RESET);
 
         results[name] = {
           status: false,
-          message: instanceManager.exitStatus
+          message: instanceInfo.exitStatus
         };
 
-        instanceManager.exitStatus = 'server is gone.';
+        instanceInfo.exitStatus = 'server is gone.';
 
         break;
       }
@@ -252,12 +250,12 @@ function arangobench (options) {
       if (options.hasOwnProperty('benchargs')) {
         args = Object.assign(args, options.benchargs);
       }
-      let oneResult = pu.run.arangoBenchmark(options, instanceManager, args, instanceManager.rootDir, options.coreCheck);
+      let oneResult = pu.run.arangoBenchmark(options, instanceInfo, args, instanceInfo.rootDir, options.coreCheck);
       if (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']) {
-        continueTesting = instanceManager.checkInstanceAlive();
+        continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
         if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
           if (internal.db._databases().find(
-            dbName => dbName === benchTodo['server.database']) !== undefined) {
+              dbName => dbName === benchTodo['server.database']) !== undefined) {
             internal.db._dropDatabase(benchTodo['server.database']);
           }
         }
@@ -286,7 +284,7 @@ function arangobench (options) {
 
         if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
           if (internal.db._databases().find(
-            dbName => dbName === benchTodo['server.database']) === undefined) {
+              dbName => dbName === benchTodo['server.database']) === undefined) {
             oneResult.message += " no database was created!";
             oneResult.status = false;
           } else {
@@ -298,16 +296,16 @@ function arangobench (options) {
           content = fs.read(reportfn);
           const jsonResult = JSON.parse(content);
           const haveResultFields = jsonResult.hasOwnProperty('histogram') &&
-                jsonResult.hasOwnProperty('results') &&
-                jsonResult.hasOwnProperty('avg');
+              jsonResult.hasOwnProperty('results') &&
+              jsonResult.hasOwnProperty('avg');
           if (!haveResultFields) {
             oneResult.status = false;
             oneResult.message += "critical fields have been missing in the json result: '" +
-              content + "'";
+                content + "'";
           }
         } catch (x) {
           oneResult.message += "failed to parse json report for '" +
-            reportfn + "' - '" + x.message + "' - content: '" + content;
+              reportfn + "' - '" + x.message + "' - content: '" + content;
           oneResult.status = false;
         }
 
@@ -320,17 +318,17 @@ function arangobench (options) {
           results.status = false;
           results.failed += 1;
         }
-        continueTesting = instanceManager.checkInstanceAlive();
+      continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
 
-        if (oneResult.status !== true && !options.force) {
-          break;
-        }
+      if (oneResult.status !== true && !options.force) {
+        break;
       }
+    }
     }
   }
 
   print(CYAN + 'Shutting down...' + RESET);
-  results['shutdown'] = instanceManager.shutdownInstance();
+  results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
   print(CYAN + 'done.' + RESET);
 
   return results;

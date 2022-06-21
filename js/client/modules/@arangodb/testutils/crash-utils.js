@@ -69,10 +69,8 @@ let GDB_OUTPUT = '';
 function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   let gdbOutputFile = fs.getTempFile();
 
-  let command = 'ulimit -c 0; sleep 10;(';
-  // send some line breaks in case of gdb wanting to paginate...
-  command += 'printf \'\\n\\n\\n\\n' +
-    'set pagination off\\n' +
+  let command = 'ulimit -c 0; (';
+  command += 'printf \'' +
     'set logging file ' + gdbOutputFile + '\\n' +
     'set logging on\\n' +
     'bt\\n' +
@@ -93,15 +91,11 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 
   const args = ['-c', command];
   print(JSON.stringify(args));
-  
+
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
-  if (!fs.exists(gdbOutputFile)) {
-    print("Failed to generate GDB output file?");
-    return "";
-  }
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
   let thisDump = fs.read(gdbOutputFile);
   GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
@@ -148,7 +142,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
   let thisDump = fs.read(lldbOutputFile);
   GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
@@ -293,7 +287,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
   process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   executeExternalAndWait('cdb', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
   // cdb will output to stdout anyways, so we can't turn this off here.
   GDB_OUTPUT += fs.read(cdbOutputFile);
   return 'cdb ' + args.join(' ');
@@ -338,12 +332,12 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     return;
   }
   let message = 'during: ' + checkStr + ': Core dump written; ' +
-      /*
+        /*
         'copying ' + binary + ' to ' +
         storeArangodPath + ' for later analysis.\n' +
-      */
-      'Process facts :\n' +
-      yaml.safeDump(instanceInfo.getStructure()) +
+        */
+        'Process facts :\n' +
+        yaml.safeDump(instanceInfo) +
       'marking build as crashy.';
   pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
 
@@ -384,8 +378,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
         });
       }
       if (!found) {
-        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + RESET);
-        print(RED + 'Directory: ' + JSON.stringify(fs.list('.')));
+        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '"' + RESET);
         return;
       }
     }

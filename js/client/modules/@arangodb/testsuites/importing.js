@@ -35,7 +35,6 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
 
 const testPaths = {
@@ -387,10 +386,9 @@ class importRunner extends tu.runInArangoshRunner {
   }
   
   run() {
-        this.instanceManager = new im.instanceManager('tcp', this.options, {}, 'importing');
-    this.instanceManager.prepareInstance();
-    this.instanceManager.launchTcpDump("");
-    if (!this.instanceManager.launchInstance()) {
+    this.instanceInfo = pu.startInstance('tcp', this.options, {}, 'importing');
+
+    if (this.instanceInfo === false) {
       return {
         'failed': 1,
         'importing': {
@@ -400,8 +398,6 @@ class importRunner extends tu.runInArangoshRunner {
         }
       };
     }
-    this.instanceManager.reconnect();
-
 
     let result = { failed: 0 };
 
@@ -417,10 +413,10 @@ class importRunner extends tu.runInArangoshRunner {
 
       for (let i = 0; i < impTodos.length; i++) {
         const impTodo = impTodos[i];
-        let cfg = pu.createBaseConfig('import', this.options, this.instanceManager);
+        let cfg = pu.createBaseConfig('import', this.options, this.instanceInfo);
         cfg.setWhatToImport(impTodo);
-        cfg.setEndpoint(this.instanceManager.endpoint);
-        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+        cfg.setEndpoint(this.instanceInfo.endpoint);
+        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceInfo.rootDir, this.options.coreCheck);
         result[impTodo.id].failed = 0;
 
         if (impTodo.expectFailure) {
@@ -452,8 +448,7 @@ class importRunner extends tu.runInArangoshRunner {
             exception);
     }
     print('Shutting down...');
-    result['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor();
+    result['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
     print('done.');
     return result;
   }

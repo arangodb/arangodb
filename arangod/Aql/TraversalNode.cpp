@@ -641,13 +641,15 @@ TraversalNode::buildUsedDepthBasedIndexes() const {
   return result;
 }
 
-std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
+std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
     ExecutionEngine& engine,
     std::vector<std::pair<Variable const*, RegisterId>>&&
         filterConditionVariables,
-    std::function<void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
+    std::function<void(bool,
+                       std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
         checkPruneAvailability,
-    std::function<void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
+    std::function<void(bool,
+                       std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
         checkPostFilterAvailability,
     const std::unordered_map<
         TraversalExecutorInfosHelper::OutputName, RegisterId,
@@ -679,14 +681,14 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   // Prune Section
   if (pruneExpression() != nullptr) {
     std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
-    checkPruneAvailability(pruneEvaluator);
+    checkPruneAvailability(true, pruneEvaluator);
     validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
   }
 
   // Post-filter section
   if (postFilterExpression() != nullptr) {
     std::shared_ptr<aql::PruneExpressionEvaluator> postFilterEvaluator;
-    checkPostFilterAvailability(postFilterEvaluator);
+    checkPostFilterAvailability(true, postFilterEvaluator);
     validatorOptions.setPostFilterEvaluator(std::move(postFilterEvaluator));
   }
 
@@ -769,13 +771,8 @@ TraversalNode::getSingleServerBaseProviderOptions(
       usedIndexes{};
   usedIndexes.first = buildUsedIndexes();
   usedIndexes.second = buildUsedDepthBasedIndexes();
-  return {opts->tmpVar(),
-          std::move(usedIndexes),
-          opts->getExpressionCtx(),
-          filterConditionVariables,
-          opts->collectionToShard(),
-          opts->getVertexProjections(),
-          opts->getEdgeProjections()};
+  return {opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
+          filterConditionVariables, opts->collectionToShard()};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -830,7 +827,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
    * PRUNE SECTION
    */
   auto checkPruneAvailability =
-      [&](std::shared_ptr<aql::PruneExpressionEvaluator>& evaluator) {
+      [&](bool refactor,  // TODO [GraphRefactor]: Remove this (refactor)
+          std::shared_ptr<aql::PruneExpressionEvaluator>& evaluator) {
         std::vector<Variable const*> pruneVars;
         getPruneVariables(pruneVars);
         std::vector<RegisterId> pruneRegs;
@@ -863,7 +861,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       };
 
   auto checkPostFilterAvailability =
-      [&](std::shared_ptr<aql::PruneExpressionEvaluator>& evaluator) {
+      [&](bool refactor,
+          std::shared_ptr<aql::PruneExpressionEvaluator>& evaluator) {
         std::vector<Variable const*> postFilterVars;
         getPostFilterVariables(postFilterVars);
         std::vector<RegisterId> postFilterRegs;
@@ -951,10 +950,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     waitForSatelliteIfRequired(&engine);
     if (isSmart() && !isDisjoint()) {
       // Note: Using refactored smart graph cluster engine.
-      return createBlock(engine, std::move(filterConditionVariables),
-                         checkPruneAvailability, checkPostFilterAvailability,
-                         outputRegisterMapping, inputRegister, registerInfos,
-                         engines(), true /*isSmart*/);
+      return createRefactoredBlock(
+          engine, std::move(filterConditionVariables), checkPruneAvailability,
+          checkPostFilterAvailability, outputRegisterMapping, inputRegister,
+          registerInfos, engines(), true /*isSmart*/);
 
     } else {
 #endif
@@ -962,10 +961,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
        * Default Cluster Traverser
        */
       // Note: Using refactored cluster engine.
-      return createBlock(engine, std::move(filterConditionVariables),
-                         checkPruneAvailability, checkPostFilterAvailability,
-                         outputRegisterMapping, inputRegister, registerInfos,
-                         engines());
+      return createRefactoredBlock(
+          engine, std::move(filterConditionVariables), checkPruneAvailability,
+          checkPostFilterAvailability, outputRegisterMapping, inputRegister,
+          registerInfos, engines());
 
 #ifdef USE_ENTERPRISE
     }
@@ -983,10 +982,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   // We need to prepare the variable accesses before we ask the index nodes.
   initializeIndexConditions();
 
-  return createBlock(engine, std::move(filterConditionVariables),
-                     checkPruneAvailability, checkPostFilterAvailability,
-                     outputRegisterMapping, inputRegister, registerInfos,
-                     nullptr);
+  return createRefactoredBlock(
+      engine, std::move(filterConditionVariables), checkPruneAvailability,
+      checkPostFilterAvailability, outputRegisterMapping, inputRegister,
+      registerInfos, nullptr);
 }
 
 /// @brief clone ExecutionNode recursively

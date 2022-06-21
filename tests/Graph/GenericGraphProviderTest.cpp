@@ -75,8 +75,6 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
 
   std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
-  aql::Projections _vertexProjections{};
-  aql::Projections _edgeProjections{};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}
@@ -134,8 +132,7 @@ class GraphProviderTest : public ::testing::Test {
           std::make_pair(
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-          *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
-          _edgeProjections);
+          *_expressionContext.get(), {}, _emptyShardMap);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }

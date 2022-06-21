@@ -69,8 +69,6 @@ class SingleServerProviderTest : public ::testing::Test {
   // Expression Parts
   aql::Variable* _tmpVar{nullptr};
   aql::AstNode* _varNode{nullptr};
-  aql::Projections _vertexProjections{};
-  aql::Projections _edgeProjections{};
 
   std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
 
@@ -116,8 +114,7 @@ class SingleServerProviderTest : public ::testing::Test {
         std::make_pair(
             std::move(usedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-        *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
-        _edgeProjections);
+        *_expressionContext.get(), {}, _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 

@@ -47,7 +47,6 @@ class VariableGenerator;
 }  // namespace aql
 
 namespace graph {
-struct BaseOptions;
 class EdgeCursor;
 struct ShortestPathOptions;
 }  // namespace graph
@@ -87,8 +86,6 @@ class BaseEngine {
   virtual bool produceVertices() const { return true; }
 
   arangodb::aql::EngineId engineId() const noexcept { return _engineId; }
-
-  virtual graph::BaseOptions const& options() const = 0;
 
  protected:
   arangodb::aql::EngineId const _engineId;
@@ -131,8 +128,6 @@ class BaseTraverserEngine : public BaseEngine {
 
   aql::VariableGenerator const* variables() const;
 
-  graph::BaseOptions const& options() const override;
-
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
   std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
@@ -158,8 +153,6 @@ class ShortestPathEngine : public BaseEngine {
                 arangodb::velocypack::Builder&);
 
   EngineType getType() const override { return SHORTESTPATH; }
-
-  graph::BaseOptions const& options() const override;
 
  private:
   void addEdgeData(arangodb::velocypack::Builder& builder, bool backward,

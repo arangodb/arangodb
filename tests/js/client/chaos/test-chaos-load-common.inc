@@ -38,11 +38,16 @@ const {
   deriveTestSuite,
   getEndpointById,
   getServersByType,
-  getCoordinators,
-  getDBServers,
   runParallelArangoshTests,
   waitForShardsInSync
 } = require('@arangodb/test-helper');
+
+const getCoordinators = () => {
+  return getServersByType('coordinator');
+};
+const getDBServers = () => {
+  return getServersByType('dbserver');
+};
 
 const fetchRevisionTree = (serverUrl, shardId) => {
   let result = request({ method: "POST", url: serverUrl + "/_api/replication/batch", body: {ttl : 3600}, json: true });

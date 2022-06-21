@@ -33,7 +33,6 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/testutils/process-utils');
-const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
 
 const testPaths = {
@@ -46,10 +45,10 @@ const testPaths = {
 
 function foxxManager (options) {
   print('foxx_manager tests...');
-  let instanceManager = new im.instanceManager('tcp', options, {}, 'foxx_manager');
-  instanceManager.prepareInstance();
-  instanceManager.launchTcpDump("");
-  if (!instanceManager.launchInstance()) {
+
+  let instanceInfo = pu.startInstance('tcp', options, {}, 'foxx_manager');
+
+  if (instanceInfo === false) {
     return {
       foxx_manager: {
         status: false,
@@ -57,23 +56,21 @@ function foxxManager (options) {
       }
     };
   }
-  instanceManager.reconnect();
 
   let results = {};
 
-  results.update = pu.run.arangoshCmd(options, instanceManager, {
+  results.update = pu.run.arangoshCmd(options, instanceInfo, {
     'configuration': fs.join(pu.CONFIG_DIR, 'foxx-manager.conf')
   }, ['update'], options.coreCheck);
 
   if (results.update.status === true || options.force) {
-    results.search = pu.run.arangoshCmd(options, instanceManager, {
+    results.search = pu.run.arangoshCmd(options, instanceInfo, {
       'configuration': fs.join(pu.CONFIG_DIR, 'foxx-manager.conf')
     }, ['search', 'itzpapalotl'], options.coreCheck);
   }
 
   print('Shutting down...');
-  results['shutdown'] = instanceManager.shutdownInstance();
-  instanceManager.destructor();
+  results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
   print('done.');
 
   return results;

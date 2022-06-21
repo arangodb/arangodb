@@ -47,7 +47,6 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
 const _ = require('lodash');
 const hb = require("@arangodb/hotbackup");
@@ -92,6 +91,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
     super(firstRunOptions, which, serverOptions, false);
     this.serverOptions = serverOptions;
+    this.instanceInfo = {};
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
     this.restartServer = firstRunOptions.cluster !== secondRunOptions.cluster;
@@ -104,13 +104,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.restoreConfig = false;
     this.restoreOldConfig = false;
     this.afterServerStart = afterServerStart;
-    this.instanceManager = null;
   }
 
   bindInstanceInfo(options) {
     if (!this.dumpConfig) {
       // the dump config will only be configured for the first instance.
-      this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceManager);
+      this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceInfo);
       this.dumpConfig.setOutputDirectory('dump');
       this.dumpConfig.setIncludeSystem(true);
       if (this.dumpOptions.hasOwnProperty("maskings")) {
@@ -138,20 +137,20 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
 
     if (!this.restoreConfig) {
-      this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
+      this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
       this.restoreConfig.setInputDirectory('dump', true);
       this.restoreConfig.setIncludeSystem(true);
     } else {
-      this.restoreConfig.setEndpoint(this.instanceManager.endpoint);
+      this.restoreConfig.setEndpoint(this.instanceInfo.endpoint);
     }
     
     if (!this.restoreOldConfig) {
-      this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
+      this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
       this.restoreOldConfig.setInputDirectory('dump', true);
       this.restoreOldConfig.setIncludeSystem(true);
       this.restoreOldConfig.setRootDir(pu.TOP_DIR);
     } else {
-      this.restoreOldConfig.setEndpoint(this.instanceManager.endpoint);
+      this.restoreOldConfig.setEndpoint(this.instanceInfo.endpoint);
     }
     if (this.restoreOptions.hasOwnProperty("threads")) {
       this.restoreConfig.setThreads(this.restoreOptions.threads);
@@ -168,10 +167,10 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.restoreOldConfig.setJwtFile(keyFile);
     }
     this.setOptions();
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
-    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
-    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
-    this.fn = this.afterServerStart(this.instanceManager);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
+    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
+    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
+    this.fn = this.afterServerStart(this.instanceInfo);
   }
   setOptions() {
     if (this.restoreOptions.encrypted) {
@@ -207,10 +206,9 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   startFirstInstance() {
-    this.instanceManager = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which);
-    this.instanceManager.prepareInstance();
-    this.instanceManager.launchTcpDump("");
-    if (!this.instanceManager.launchInstance()) {
+    this.instanceInfo = pu.startInstance('tcp', this.firstRunOptions, this.serverOptions, this.which);
+
+    if (this.instanceInfo === false) {
       let rc =  {
         failed: 1,
       };
@@ -222,8 +220,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
         }};
       return false;
     }
-    this.instanceManager.reconnect();
-
     this.bindInstanceInfo(this.firstRunOptions);
     return true;
   }
@@ -231,14 +227,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   restartInstance() {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
-      this.results['shutdown'] = this.instanceManager.shutdownInstance();
-      this.instanceManager.destructor();
+      this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.firstRunOptions);
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
-      this.instanceManager = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which);
-      this.instanceManager.prepareInstance();
-      this.instanceManager.launchTcpDump("");
-      if (!this.instanceManager.launchInstance()) {
+      this.instanceInfo = pu.startInstance('tcp', this.secondRunOptions, this.serverOptions, this.which);
+
+      if (this.instanceInfo === false) {
         let rc =  {
           failed: 1,
         };
@@ -250,8 +244,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
           }};
         return false;
       }
-      this.instanceManager.reconnect();
       this.bindInstanceInfo(this.secondRunOptions);
+      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
       return true;
 
     }
@@ -260,17 +254,17 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
 
   adjustRestoreToDump() {
     this.restoreOptions = this.dumpOptions;
-    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceManager);
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
   }
 
   isAlive() {
-    return (this.instanceManager !== null) && this.instanceManager.checkInstanceAlive();
+    return pu.arangod.check.instanceAlive(this.instanceInfo, this.firstRunOptions);
   }
 
   getUptime() {
     try {
-      return this.instanceManager.checkUptime();
+      return pu.arangod.check.uptime(this.instanceInfo, this.firstRunOptions);
     } catch (x) {
       print(x); // TODO
       print("uptime continuing anyways");
@@ -287,13 +281,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     if (this.fn !== undefined) {
       fs.remove(this.fn);
     }
-    if (this.instanceManager === null) {
+    if (this.instanceInfo === false) {
       print(RED + 'no instance running. Nothing to stop!' + RESET);
       return this.results;
     }
     print(CYAN + 'Shutting down...' + RESET);
-    this.results['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor();
+    this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.firstRunOptions);
     print(CYAN + 'done.' + RESET);
 
     print();
@@ -324,8 +317,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   dumpFrom(database, separateDir = false) {
     this.print('dump');
     if (separateDir) {
-      if (!fs.exists(fs.join(this.instanceManager.rootDir, 'dump'))) {
-        fs.makeDirectory(fs.join(this.instanceManager.rootDir, 'dump'));
+      if (!fs.exists(fs.join(this.instanceInfo.rootDir, 'dump'))) {
+        fs.makeDirectory(fs.join(this.instanceInfo.rootDir, 'dump'));
       }
       this.dumpConfig.setOutputDirectory('dump' + fs.pathSeparator + database);
     }
@@ -343,8 +336,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       if (!options.hasOwnProperty('fromDir') || typeof options.fromDir !== 'string') {
         options.fromDir = database;
       }
-      if (!fs.exists(fs.join(this.instanceManager.rootDir, 'dump'))) {
-        fs.makeDirectory(fs.join(this.instanceManager.rootDir, 'dump'));
+      if (!fs.exists(fs.join(this.instanceInfo.rootDir, 'dump'))) {
+        fs.makeDirectory(fs.join(this.instanceInfo.rootDir, 'dump'));
       }
       this.restoreConfig.setInputDirectory('dump' + fs.pathSeparator + options.fromDir, true);
     }
@@ -487,7 +480,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let cmds = {
       "label": "testHotBackup"
     };
-    this.results.createHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceManager, "create", cmds, this.instanceManager.rootDir, true);
+    this.results.createHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceInfo, "create", cmds, this.instanceInfo.rootDir, true);
     this.print("done creating backup");
     return this.results.createHotBackup.status;
   }
@@ -519,7 +512,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       "identifier": backupName,
       "max-wait-for-restart": 100.0
     };
-    this.results.restoreHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
+    this.results.restoreHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceInfo, "restore", cmds, this.instanceInfo.rootDir, true);
     this.print("done restoring backup");
     return true;
   }
@@ -822,8 +815,8 @@ function dumpEncrypted (options) {
 
   let c = getClusterStrings(options);
 
-  let afterServerStart = function(instanceManager) {
-    let keyFile = fs.join(instanceManager.rootDir, 'secret-key');
+  let afterServerStart = function(instanceInfo) {
+    let keyFile = fs.join(instanceInfo.rootDir, 'secret-key');
     fs.write(keyFile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
     return keyFile;
   };

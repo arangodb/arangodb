@@ -37,7 +37,6 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const fs = require('fs');
 const tu = require('@arangodb/testutils/test-utils');
-const base64Encode = require('internal').base64Encode;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -50,18 +49,6 @@ const testPaths = {
   audit_server: [tu.pathForTesting('common/audit'), tu.pathForTesting('server/audit')],
   audit_client: [tu.pathForTesting('common/audit'), tu.pathForTesting('client/audit')]
 };
-
-class runBasicOnArangod extends tu.runOnArangodRunner{
-  preRun() {
-    // we force to use auth basic, since tests expect it!
-    this.instanceManager.httpAuthOptions =  {
-      'headers': {
-        'Authorization': 'Basic ' + base64Encode('root:')
-      }
-    };
-    return {state: true};
-  }
-}
 
 function auditLog(onServer) {
   return function(options) {
@@ -91,7 +78,7 @@ function auditLog(onServer) {
     print(CYAN + 'Audit log server tests...' + RESET);
     let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')], options);
     if (onServer) {
-      return new runBasicOnArangod(options, 'audit', serverOptions).run(testCases);
+      return new tu.runOnArangodRunner(options, 'audit', serverOptions).run(testCases);
     } else {
       return new tu.runInArangoshRunner(options, 'audit', serverOptions).run(testCases);
     }

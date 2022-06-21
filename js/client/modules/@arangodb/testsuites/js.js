@@ -91,8 +91,8 @@ function jsDriver (options) {
         enterprise = 'true';
       }
       process.env['ARANGO_VERSION']='30700'; // todo db._version(),
-      process.env['TEST_ARANGODB_URL'] = this.instanceManager.endpoints.join(',');
-      process.env['TEST_ARANGODB_URL_SELF_REACHABLE'] = this.instanceManager.url;
+      process.env['TEST_ARANGODB_URL'] = this.instanceInfo.endpoints.join(',');
+      process.env['TEST_ARANGODB_URL_SELF_REACHABLE'] = this.instanceInfo.url;
       
       // testResultsDir
       let args = [
@@ -158,7 +158,7 @@ function jsDriver (options) {
       results['timeout'] = false;
       results['status'] = totalSuccess;
       results['message'] = totalSuccess?'':'did you remember running yarn in the source?';
-      // this.instanceManager.dumpAgency();
+      // pu.dumpAgency(instanceInfo, options);
       return results;
     }
   }

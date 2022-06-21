@@ -59,7 +59,6 @@ function replication2Server(options) {
   testCases = tu.splitBuckets(options, testCases);
 
   const opts = _.clone(options);
-  opts.cluster = true;
   opts.dbServers = Math.max(opts.dbServers, 6);
 
   return new tu.runOnArangodRunner(opts, 'replication2_server', {

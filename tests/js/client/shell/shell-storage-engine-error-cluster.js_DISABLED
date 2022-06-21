@@ -29,8 +29,7 @@ let arangodb = require('@arangodb');
 let db = arangodb.db;
 let errors = arangodb.errors;
 let { getEndpointById,
-      getCoordinators,
-      getDBServers,
+      getEndpointsByType,
       getServersByType,
       debugCanUseFailAt,
       debugSetFailAt,
@@ -64,8 +63,8 @@ function storageEngineErrorSuite() {
 
   return {
     testStorageEngineError: function () {
-      let coordinators = getCoordinators();
-      let dbservers = getDBServers();
+      let coordinators = getEndpointsByType("coordinator");
+      let dbservers = getServersByType("dbserver");
       assertTrue(dbservers.length > 0);
 
       let res = arango.GET_RAW('/_admin/cluster/health');

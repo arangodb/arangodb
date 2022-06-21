@@ -30,8 +30,9 @@ const pu = require('@arangodb/testutils/process-utils');
 const crypto = require('@arangodb/crypto');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
+const suspendExternal = require("internal").suspendExternal;
+const continueExternal = require("internal").continueExternal;
 const time = require("internal").time;
-const { getCtrlCoordinators } = require('@arangodb/test-helper');
 
 const graphs = require('@arangodb/general-graph');
 
@@ -41,6 +42,10 @@ const en = "UnitTestsEdge";
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
+
+  let getServers = function (role) {
+    return global.obj.instanceInfo.arangods.filter((instance) => instance.role === role);
+  };
 
   let waitForAlive = function (timeout, baseurl, data) {
     let tries = 0, res;
@@ -65,21 +70,44 @@ function testSuite() {
     });
   };
 
+  let suspend = function (servers) {
+    require("console").warn("suspending servers with pid " + servers.map((s) => s.pid).join(", "));
+    servers.forEach(function(server) {
+      assertTrue(suspendExternal(server.pid));
+      server.suspended = true;
+    });
+    require("console").warn("successfully suspended servers with pid " + servers.map((s) => s.pid).join(", "));
+  };
+  
+  let resume = function (servers) {
+    require("console").warn("resuming servers with pid " + servers.map((s) => s.pid).join(", "));
+    servers.forEach(function(server) {
+      assertTrue(continueExternal(server.pid));
+      delete server.suspended;
+    });
+    require("console").warn("successfully resumed servers with pid " + servers.map((s) => s.pid).join(", "));
+  };
+
   return {
     tearDownAll : function() {
       try {
         graphs._drop(gn, true);
       } catch (err) {}
       // Need to restart without authentication for other tests to succeed:
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       let coordinator = coordinators[0];
-      coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
+      let instanceInfo = global.obj.instanceInfo;
+      let newInstanceInfo = {
+        arangods: [ coordinator ],
+        endpoint: instanceInfo.endpoint,
+      };
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
       coordinator.pid = null;
       console.warn("Cleaning up and restarting coordinator without authentication...", coordinator);
-      coordinator.restartOneInstance({
+      let extraOptions = {
         "server.authentication": "false"
-      });
+      };
+      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
       let aliveStatus = waitForAlive(30, coordinator.url, {});
       assertEqual(200, aliveStatus);
     },
@@ -106,17 +134,24 @@ function testSuite() {
       c.insert(docs);
       assertEqual(10, c.count());
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
-      coordinator.exitStatus = null;
-      coordinator.pid = null;
+      let instanceInfo = global.obj.instanceInfo;
 
-      coordinator.restartOneInstance({
+      let newInstanceInfo = {
+        arangods: [ coordinator ],
+        endpoint: instanceInfo.endpoint,
+      };
+
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
+      coordinator.pid = null;
+      assertTrue(shutdownStatus);
+
+      let extraOptions = {
         "server.jwt-secret": jwtSecret
-      });
+      };
+      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
         
       waitForAlive(30, coordinator.url, {});
       

@@ -30,7 +30,6 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -127,22 +126,11 @@ class Projections {
                              IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
 
-  /// @brief serialize the projections to velocypack, under the attribute
-  /// name "projections"
+  /// @brief serialize the projections to velocypack
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
-  /// @brief serialize the projections to velocypack, under a custom
-  /// attribute name
-  void toVelocyPack(arangodb::velocypack::Builder& b,
-                    std::string_view attributeName) const;
 
-  /// @brief build projections from velocypack, looking for the attribute
-  /// name "projections"
+  /// @brief build projections from velocypack
   static Projections fromVelocyPack(arangodb::velocypack::Slice slice);
-
-  /// @brief build projections from velocypack, looking for a custom
-  /// attribute name
-  static Projections fromVelocyPack(arangodb::velocypack::Slice slice,
-                                    std::string_view attributeName);
 
  private:
   /// @brief shared init function

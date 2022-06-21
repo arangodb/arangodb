@@ -194,13 +194,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
               // FOUND. short circuit.
               read++;
               builder.add(v);
-              if (!options().getVertexProjections().empty()) {
-                VPackObjectBuilder guard(&builder);
-                options().getVertexProjections().toVelocyPackFromDocument(
-                    builder, doc, _trx.get());
-              } else {
-                builder.add(doc);
-              }
+              builder.add(doc);
               return true;
             });
         if (res.ok()) {
@@ -296,13 +290,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
           }
           if (_opts->evaluateEdgeExpression(edge, vertex.stringView(), depth,
                                             cursorId)) {
-            if (!options().getEdgeProjections().empty()) {
-              VPackObjectBuilder guard(&builder);
-              options().getEdgeProjections().toVelocyPackFromDocument(
-                  builder, edge, _trx.get());
-            } else {
-              builder.add(edge);
-            }
+            builder.add(edge);
           }
         });
   };
@@ -342,11 +330,6 @@ bool BaseTraverserEngine::produceVertices() const {
 
 aql::VariableGenerator const* BaseTraverserEngine::variables() const {
   return _variables;
-}
-
-graph::BaseOptions const& BaseTraverserEngine::options() const {
-  TRI_ASSERT(_opts != nullptr);
-  return *_opts;
 }
 
 void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
@@ -438,11 +421,6 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
   builder.close();
 }
 
-graph::BaseOptions const& ShortestPathEngine::options() const {
-  TRI_ASSERT(_opts != nullptr);
-  return *_opts;
-}
-
 void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward,
                                      std::string_view v) {
   graph::EdgeCursor* cursor =
@@ -457,13 +435,7 @@ void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward,
         if (edge.isNull()) {
           return;
         }
-        if (!options().getEdgeProjections().empty()) {
-          VPackObjectBuilder guard(&builder);
-          options().getEdgeProjections().toVelocyPackFromDocument(builder, edge,
-                                                                  _trx.get());
-        } else {
-          builder.add(edge);
-        }
+        builder.add(edge);
       });
 }
 

@@ -30,6 +30,7 @@ let internal = require("internal");
 let db = arangodb.db;
 let { getEndpointById,
       getEndpointsByType,
+      getServersByType,
       debugCanUseFailAt,
       debugSetFailAt,
       debugClearFailAt,

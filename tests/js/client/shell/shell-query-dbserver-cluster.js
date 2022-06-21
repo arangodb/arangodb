@@ -30,7 +30,12 @@ const jsunity = require("jsunity");
 const db = require("internal").db;
 const url = require('url');
 const _ = require("lodash");
-const { getDBServers } = require('@arangodb/test-helper');
+        
+function getServers(role) {
+  const matchesRole = (d) => (_.toLower(d.role) === role);
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(matchesRole);
+}
 
 const cn = "UnitTestsQueries";
 const originalEndpoint = arango.getEndpoint();
@@ -76,7 +81,7 @@ function queriesTestSuite () {
       let shardMap = db[cn].shards(true);
       assertEqual(5, Object.keys(shardMap).length, shardMap);
       
-      const dbservers = getDBServers();
+      const dbservers = getServers("dbserver");
       assertTrue(dbservers.length > 0, "no dbservers found");
         
       let totalCount = 0, totalToArray = 0, totalQuery = 0;
@@ -115,7 +120,7 @@ function queriesTestSuite () {
     
     // test executing operations on the DB-Server, without collection
     testDBServerNoCollection: function() {
-      const dbservers = getDBServers();
+      const dbservers = getServers("dbserver");
       assertTrue(dbservers.length > 0, "no dbservers found");
         
       dbservers.forEach(function(dbserver, i) {

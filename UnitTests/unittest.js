@@ -82,8 +82,6 @@ function main (argv) {
     }
 
     print(JSON.stringify(result));
-    killRemainingProcesses(result);
-    print(x.stack);
     throw x;
   }
 

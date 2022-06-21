@@ -35,8 +35,6 @@ const fs = require('fs');
 const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const im = require('@arangodb/testutils/instance-manager');
-const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -79,7 +77,6 @@ function runArangodRecovery (params) {
     'server.statistics': 'false',
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
-    'temp.path': params.temp_path
   };
   
   // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
@@ -98,7 +95,6 @@ function runArangodRecovery (params) {
   // arangosh has different name for parameter :(
   additionalTestParams['javascript.execute'] =  params.script;
   additionalTestParams['javascript.run-main'] = true;
-  additionalTestParams['temp.path'] = params.temp_path;
 
   if (params.setup) {
     additionalTestParams['server.request-timeout'] = '60';
@@ -114,6 +110,7 @@ function runArangodRecovery (params) {
     params.options.disableMonitor = true;
     params.options =  ensureServers(params.options);
     let args = {};
+    args['temp.path'] = params.instanceInfo.rootDir;
     
     // enable development debugging if extremeVerbosity is set
     if (params.options.extremeVerbosity === true) {
@@ -155,54 +152,37 @@ function runArangodRecovery (params) {
 
   if (params.setup) {
     params.args = Object.assign(params.args, additionalParams);
-    params.instanceManager = new im.instanceManager(params.options.protocol,
-                                                    params.options,
-                                                    params.args,
-                                                    fs.join('recovery_cluster',
-                                                            params.count.toString()));
-    params.instanceManager.prepareInstance();
-    params.instanceManager.launchTcpDump("");
-    if (!params.instanceManager.launchInstance()) {
-      return {
-        export: {
-          status: false,
-          message: 'failed to start server!'
-        }
-      };
-    }
+    params.instanceInfo = pu.startInstance(params.options.protocol,
+                                           params.options,
+                                           params.args,
+                                           fs.join('recovery_cluster', params.count.toString()));
   } else {
     print(BLUE + "Restarting cluster " + RESET);
-    params.instanceManager.reStartInstance();
+    pu.reStartInstance(params.options, params.instanceInfo, {});
     let tryCount = 10;
-    while(tryCount > 0 && !params.instanceManager._checkServersGOOD()) {
+    while(tryCount > 0 && !pu.checkServersGOOD(params.instanceInfo)) {
       print(RESET + "Waiting for all servers to go GOOD");
       internal.sleep(3); // give agency time to bootstrap DBServers
       --tryCount;
     }
   }
-  params.instanceManager.reconnect();
   let agentArgs = pu.makeArgs.arangosh(params.options);
-  agentArgs['server.endpoint'] = params.instanceManager.findEndpoint();
+  agentArgs['server.endpoint'] = tu.findEndpoint(params.options, params.instanceInfo);
   if (params.args['log.level']) {
     agentArgs['log.level'] = params.args['log.level'];
   }
-
+  agentArgs['temp.path'] = params.instanceInfo.rootDir;
   Object.assign(agentArgs, additionalTestParams);
-  require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceManager.getStructure());
+  require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceInfo);
   try {
-    pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(agentArgs), params.options, 'arangosh', params.instanceManager.rootDir, false);
+    pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(agentArgs), params.options, 'arangosh', params.instanceInfo.rootDir, false);
   } catch(err) {
     print('Error while launching test:' + err);
-    params.instanceManager.shutdownInstance(false);
-    params.instanceManager.destructor();
+    pu.shutdownInstance(params.instanceInfo, params.options, false);
     return; // without test server test will for sure fail
   }
   if (params.setup) {
-    let dbServers = params.instanceManager.arangods.filter(
-      (a) => {
-        return a.isRole(inst.instanceRole.dbServer) ||
-          a.isRole(inst.instanceRole.coordinator);
-      });
+    let dbServers = params.instanceInfo.arangods.slice().filter((a) => {return a.role === 'dbserver' || a.role === 'coordinator';});
     print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
     dbServers.forEach((arangod) => {
       internal.debugTerminateInstance(arangod.endpoint);
@@ -211,8 +191,7 @@ function runArangodRecovery (params) {
       arangod.pid = 0;
     });
   } else {
-    params.instanceManager.shutdownInstance(false);
-    params.instanceManager.destructor();
+    pu.shutdownInstance(params.instanceInfo, params.options, false);
   }
 }
 
@@ -272,8 +251,7 @@ function recovery (options) {
         script: test,
         setup: true,
         count: count,
-        testDir: "",
-        temp_path: fs.join(tempDir, count.toString())
+        testDir: ""
       };
       runArangodRecovery(params);
 
@@ -282,13 +260,13 @@ function recovery (options) {
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.temp_path, {
+        tu.writeTestResult(params.args['temp.path'], {
           failed: 1,
           status: false, 
           message: "unable to run recovery test " + test,
           duration: -1
         });
-    } catch (er) { print(er);}
+      } catch (er) {}
       try {
         runArangodRecovery(params);
       } catch (err) {
@@ -305,7 +283,7 @@ function recovery (options) {
       }
 
       results[test] = tu.readTestResult(
-        params.temp_path,
+        params.args['temp.path'],
         {
           status: false
         },

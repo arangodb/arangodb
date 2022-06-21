@@ -6,7 +6,6 @@ const _ = require("lodash");
 const fs = require("fs");
 const internal = require("internal");
 const pu = require('@arangodb/testutils/process-utils');
-const im = require('@arangodb/testutils/instance-manager');
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const download = internal.download;
@@ -51,7 +50,7 @@ const optionsDefaults = {
   'exceptionCount': 1,
   'sanitizer': false,
   'activefailover': false,
-  'singles': 1,
+  'singles': 2,
   'sniff': false,
   'sniffDevice': undefined,
   'sniffProgram': undefined,
@@ -209,26 +208,21 @@ function main(argv) {
       print(res);
       return -1;
     }
-    let instanceManager;
+    let instanceInfo;
     if (startServer) {
       // let port = findFreePort();
       options.storageEngine = engine[0];
       options.cluster = engine[2];
       let testname = engine[0] + "-" + "clusterOrNot";
-      instanceManager = new im.instanceManager(options.protocol, options, {}, testname);
-      instanceManager.prepareInstance();
-      instanceManager.launchTcpDump("");
-      if (!instanceManager.launchInstance()) {
-        throw new Error("failed to launch instance!");
-      }
-      instanceManager.reconnect();
-      instanceManager.checkInstanceAlive();
+      print(options)
+      instanceInfo = pu.startInstance(options.protocol, options, {}, testname);
+      print(instanceInfo)
     }
     
     let arangoshArgs = {
       'configuration': fs.join(fs.makeAbsolute(''), 'etc', 'relative', 'arangosh.conf'),
       'server.password': "",
-      'server.endpoint': instanceManager.endpoint,
+      'server.endpoint': instanceInfo.endpoint,
       'javascript.execute': scriptArguments.outputFile
     };
 
@@ -237,8 +231,7 @@ function main(argv) {
     print(internal.toArgv(arangoshArgs));
     res = executeExternalAndWait(pu.ARANGOSH_BIN, internal.toArgv(arangoshArgs));
     if (startServer) {
-      instanceManager.shutdownInstance();
-      instanceManager.destructor();
+      pu.shutdownInstance(instanceInfo, options);
     }
     if (res.exit != 0) {
       throw("generating examples failed - aborting!");

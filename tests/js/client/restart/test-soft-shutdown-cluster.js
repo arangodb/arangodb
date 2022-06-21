@@ -37,9 +37,6 @@ const db = require("internal").db;
 const time = internal.time;
 const wait = internal.wait;
 const statusExternal = internal.statusExternal;
-const {
-  getCtrlCoordinators
-} = require('@arangodb/test-helper');
 
 var graph_module = require("@arangodb/general-graph");
 var EPS = 0.0001;
@@ -60,6 +57,28 @@ function testAlgoCheck(pid) {
   return stats.state !== "running" && stats.state !== "storing";
 }
 
+function getServers(role) {
+  return global.obj.instanceInfo.arangods.filter((instance) => instance.role === role);
+};
+
+function waitForShutdown(arangod, timeout) {
+  let startTime = time();
+  while (true) {
+    if (time() > startTime + timeout) {
+      assertTrue(false, "Instance did not shutdown quickly enough!");
+      return;
+    }
+    let status = statusExternal(arangod.pid, false);
+    console.warn("External status:", status);
+    if (status.status === "TERMINATED") {
+      arangod.exitStatus = status;
+      delete arangod.pid;
+      break;
+    }
+    wait(0.5);
+  }
+};
+
 function waitForAlive(timeout, baseurl, data) {
   let res;
   let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" });
@@ -78,9 +97,8 @@ function waitForAlive(timeout, baseurl, data) {
 function restartInstance(arangod) {
   let options = _.clone(global.obj.options);
   options.skipReconnect = false;
-  arangod.restartOneInstance();
+  pu.reStartInstance(options, global.obj.instanceInfo, {});
   waitForAlive(30, arangod.url, {});
-  arangod.checkArangoConnection(5);
 };
 
 function testSuite() {
@@ -90,11 +108,9 @@ function testSuite() {
     setUp : function() {
       db._drop(cn);
       let collection = db._create(cn, {numberOfShards:2, replicationFactor:2});
-      let docs = [];
       for (let i = 0; i < 10; ++i) {
-        docs.push({Hallo:i});
+        collection.insert({Hallo:i});
       }
-      collection.save(docs);
     },
 
     tearDown : function() {
@@ -102,7 +118,7 @@ function testSuite() {
     },
 
     testSoftShutdownWithoutTraffic : function() {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -115,12 +131,12 @@ function testSuite() {
       assertTrue(status.softShutdownOngoing);
       assertEqual(0, status.AQLcursors);
       assertEqual(0, status.transactions);
-      coordinator.waitForInstanceShutdown(30);
+      waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
 
     testSoftShutdownWithAQLCursor : function() {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -161,12 +177,12 @@ function testSuite() {
       assertEqual(200, next.code);
 
       // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
+      waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
 
     testSoftShutdownWithAQLCursorDeleted : function() {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -210,12 +226,12 @@ function testSuite() {
       assertEqual(202, next.code);
 
       // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
+      waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
 
     testSoftShutdownWithStreamingTrx : function() {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -249,12 +265,12 @@ function testSuite() {
       assertEqual(200, resp.code);
 
       // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
+      waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
 
     testSoftShutdownWithAQLStreamingTrxAborted : function() {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -289,12 +305,12 @@ function testSuite() {
       assertEqual(200, resp.code);
 
       // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
+      waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
 
     testSoftShutdownWithAsyncRequest : function() {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -341,12 +357,12 @@ function testSuite() {
       assertEqual(201, resp.code);
 
       // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
+      waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
 
     testSoftShutdownWithQueuedLowPrio : function() {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -410,7 +426,7 @@ function testSuite() {
       assertTrue(status.allClear);
 
       // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
+      waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
 
@@ -490,7 +506,7 @@ function testSuitePregel() {
     },
 
     testPageRank: function () {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -533,13 +549,13 @@ function testSuitePregel() {
       assertTrue(status.softShutdownOngoing);
 
       // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
+      waitForShutdown(coordinator, 30);
       restartInstance(coordinator);
     },
 
   };
 }
 
-jsunity.run(testSuitePregel);
 jsunity.run(testSuite);
+jsunity.run(testSuitePregel);
 return jsunity.done();

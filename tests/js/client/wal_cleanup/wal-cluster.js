@@ -31,12 +31,12 @@ const jsunity = require("jsunity");
 const db = require("internal").db;
 const url = require('url');
 const _ = require("lodash");
-
-const {
-  getCoordinatorEndpoints,
-  getDBServerEndpoints,
-  getAgentEndpoints
-} = require('@arangodb/test-helper');
+        
+function getServers(role) {
+  const matchesRole = (d) => (_.toLower(d.role) === role);
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(matchesRole);
+}
 
 const cn = "UnitTestsWalCleanup";
 const originalEndpoint = arango.getEndpoint();
@@ -117,9 +117,9 @@ function WalCleanupSuite () {
         }
       };
 
-      const agents = getAgentEndpoints();
+      const agents = getServers('agent');
       assertTrue(agents.length > 0, "no agents found");
-      const agent = agents[0];
+      const agent = agents[0].endpoint;
       require("console").warn("connecting to agent", agent);
       arango.reconnect(agent, "_system", "root", "");
       try {
@@ -138,13 +138,13 @@ function WalCleanupSuite () {
         docs.push({ huge });
       }
         
-      const coordinators = getCoordinatorEndpoints();
+      const coordinators = getServers("coordinator");
       assertTrue(coordinators.length > 0, "no coordinators found");
-      const coordinator = coordinators[0];
+      const coordinator = coordinators[0].endpoint;
       
-      const dbservers = getDBServerEndpoints();
+      const dbservers = getServers("dbserver");
       assertTrue(dbservers.length > 0, "no dbservers found");
-      const dbserver = dbservers[0];
+      const dbserver = dbservers[0].endpoint;
         
       require("console").warn("connecting to dbserver", dbserver);
       
@@ -158,7 +158,7 @@ function WalCleanupSuite () {
       };
       
       let getRanges = function() {
-        arango.reconnect(dbserver, "_system", "root", "", "haxman");
+        arango.reconnect(dbserver, "_system", "root", "");
         return require("@arangodb/replication").logger.tickRanges().filter(function(r) {
           return r.status === 'collected';
         }).map(function(r) {

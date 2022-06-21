@@ -35,7 +35,6 @@ const toArgv = require('internal').toArgv;
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
-const inst = require('@arangodb/testutils/instance');
 
 const testPaths = {
   'upgrade': []
@@ -67,13 +66,26 @@ function upgrade (options) {
 
   const tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
-  let instance = new inst.instance(options,
-                                   inst.instanceRole.single,
-                                   {'database.auto-upgrade': true},
-                                   {}, 'tcp', tmpDataDir, '',
-                                   new inst.agencyConfig(options, null));
+  pu.cleanupDBDirectoriesAppend(tmpDataDir);
 
-  result.upgrade.first = pu.executeAndWait(pu.ARANGOD_BIN, toArgv(instance.args), options, 'upgrade', tmpDataDir, options.coreCheck);
+  const appDir = fs.join(tmpDataDir, 'app');
+  fs.makeDirectoryRecursive(appDir);
+
+  const tmpDir = fs.join(tmpDataDir, 'tmp');
+  fs.makeDirectoryRecursive(tmpDir);
+
+  const port = pu.findFreePort(options.minPort, options.maxPort);
+
+  let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
+  args['server.endpoint'] = 'tcp://127.0.0.1:' + port;
+  args['database.directory'] = fs.join(tmpDataDir, 'data');
+  args['database.auto-upgrade'] = true;
+
+  fs.makeDirectoryRecursive(fs.join(tmpDataDir, 'data'));
+
+  const argv = toArgv(args);
+
+  result.upgrade.first = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir, options.coreCheck);
 
   if (result.upgrade.first.status !== true) {
     result.upgrade.failed = 1;
@@ -83,7 +95,7 @@ function upgrade (options) {
 
   ++result.upgrade.total;
 
-  result.upgrade.second = pu.executeAndWait(pu.ARANGOD_BIN, toArgv(instance.args), options, 'upgrade', tmpDataDir, options.coreCheck);
+  result.upgrade.second = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir, options.coreCheck);
 
   if (result.upgrade.second.status !== true) {
     result.upgrade.failed = 1;

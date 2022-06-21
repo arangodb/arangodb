@@ -200,10 +200,6 @@ class GraphNode : public ExecutionNode {
 
   void initializeIndexConditions() const;
 
-  void setVertexProjections(Projections projections);
-
-  void setEdgeProjections(Projections projections);
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection
