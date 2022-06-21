@@ -1,6 +1,9 @@
 devel
 -----
 
+
+* Issue 15592: Permit `MERGE_RECURSIVE()` to be called with a single argument.
+
 * Fixed issue 16337: arangoimport with `--headers-file` and `--merge-attributes`
   merges column names instead of row values on the first line of a CSV file.
 
