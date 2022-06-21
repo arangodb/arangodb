@@ -27,7 +27,7 @@ namespace arangodb {
 namespace graph {
 
 struct ShortestPathType {
-  enum class Type { KShortestPaths = 0, KPaths = 1 };
+  enum class Type { KShortestPaths = 0, KPaths = 1, AllShortestPaths = 2 };
 
   // no need to create an object of it
   ShortestPathType() = delete;

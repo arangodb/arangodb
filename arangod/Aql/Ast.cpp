@@ -1653,7 +1653,8 @@ AstNode* Ast::createNodeKShortestPaths(
   TRI_ASSERT(outVars->numMembers() == 1);
 
   TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
-             type == arangodb::graph::ShortestPathType::Type::KPaths);
+             type == arangodb::graph::ShortestPathType::Type::KPaths ||
+             type == arangodb::graph::ShortestPathType::Type:AllShortestPaths);
 
   // type: K_SHORTEST_PATH vs. K_PATHS
   TRI_ASSERT(node->numMembers() == 0);

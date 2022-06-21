@@ -1434,7 +1434,8 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   auto const type = static_cast<arangodb::graph::ShortestPathType::Type>(
       node->getMember(0)->getIntValue());
   TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
-             type == arangodb::graph::ShortestPathType::Type::KPaths);
+             type == arangodb::graph::ShortestPathType::Type::KPaths ||
+             type == arangodb::graph::ShortestPathType::Type::AllShortestPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
