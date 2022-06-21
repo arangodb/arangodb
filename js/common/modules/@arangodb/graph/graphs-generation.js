@@ -28,20 +28,12 @@
 // / @author Roman Rabinovich
 // //////////////////////////////////////////////////////////////////////////////
 
-const makeEdge = (from, to, vColl, name_prefix, inverse = false) => {
-    if (!inverse) {
+const makeEdge = (from, to, vColl, name_prefix) => {
         return {
             _from: `${vColl}/${name_prefix}_${from}`,
             _to: `${vColl}/${name_prefix}_${to}`,
             vertex: `${name_prefix}_${from}`
         };
-    } else {
-        return {
-            _from: `${vColl}/${name_prefix}_${to}`,
-            _to: `${vColl}/${name_prefix}_${from}`,
-            vertex: `${name_prefix}_${to}`
-        };
-    }
 };
 
 function makeVertex(name, name_prefix) {
@@ -89,13 +81,19 @@ function makeAlternatingCycle(length, vColl, name_prefix) {
     let vertices = makeVertices(length, name_prefix);
     let edges = [];
     for (let i = 0; i < length - 1; ++i) {
-        const inverse = i % 2 === 0;
-        edges.push(makeEdge(i, i + 1, vColl, name_prefix, inverse));
+        if (i % 2 === 0) {
+            edges.push(makeEdge(i+1, i, vColl, name_prefix));
+        } else {
+            edges.push(makeEdge(i, i + 1, vColl, name_prefix));
+        }
     }
-    const inverted = (length - 1) % 2 === 0;
     // special case: if length == 2, this would produce the edge (1, 0), but it has been already produced above
     if (length > 2) {
-        edges.push(makeEdge(length - 1, 0, vColl, name_prefix, inverted));
+        if ((length - 1) % 2 === 0) {
+            edges.push(makeEdge(0, length - 1, vColl, name_prefix));
+        } else {
+            edges.push(makeEdge(length - 1, 0, vColl, name_prefix));
+        }
     }
     return {vertices, edges};
 }
@@ -121,10 +119,18 @@ function makeFullBinaryTree(treeDepth, vColl, name_prefix, alternating = false) 
     for (let d = 0; d < treeDepth; ++d) {
         let leavesNestLevel = [];
         const inverted = alternating && d % 2 === 0;
-        for (let leaf of leaves) {
-            edges.push(makeEdge(leaf, firstFree, vColl, name_prefix, inverted));
+        for (const leaf of leaves) {
+            if (inverted) {
+                edges.push(makeEdge(firstFree, leaf, vColl, name_prefix));
+            } else {
+                edges.push(makeEdge(leaf, firstFree, vColl, name_prefix));
+            }
             ++firstFree;
-            edges.push(makeEdge(leaf, firstFree, vColl, name_prefix, inverted));
+            if (inverted) {
+                edges.push(makeEdge(firstFree, leaf, vColl, name_prefix));
+            } else {
+                edges.push(makeEdge(leaf, firstFree, vColl, name_prefix));
+            }
             ++firstFree;
             // the last level of vertices is not collected to leavesNestLevel: its vertices have no children
             if (d <= treeDepth - 2) {
