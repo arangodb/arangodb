@@ -474,6 +474,17 @@ class instance {
     return "";
   }
 
+  cleanup() {
+    if ((this.pid !== null) && (this.exitStatus === null)) {
+      print(RED + "killing instance (again?) to make sure we can delete its files!" + RESET);
+      this.terminateInstance();
+    }
+    if (this.options.extremeVerbosity) {
+      print(CYAN + "cleaning up " + this.name + " 's Directory: " + this.rootDir + RESET);
+    }
+    fs.removeDirectoryRecursive(this.rootDir, true);
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////

@@ -115,7 +115,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
-            this.instanceManager.destructor();
+            this.instanceManager.destructor(false);
             throw new Error("failed to launch instance");
           }
           this.instanceManager.reconnect();
@@ -130,7 +130,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             }
           } catch (ex) {
             shutdownStatus = this.instanceManager.shutdownInstance(false);                                     // stop
-            this.instanceManager.destructor();
+            this.instanceManager.destructor(false);
             this.results[te] = {
               status: false,
               messages: 'Warmup of system failed: ' + ex,
@@ -200,7 +200,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               };
               this.results.status = false;
               this.instanceManager.shutdownInstance(true);
-              this.instanceManager.destructor();
+              this.instanceManager.destructor(false);
               return this.results;
             }
           } catch (ex) {
@@ -214,7 +214,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             this.results.shutdown = false;
             this.results.status = false;
             this.instanceManager.shutdownInstance(true);
-            this.instanceManager.destructor();
+            this.instanceManager.destructor(false);
             return this.results;
           }
           if (!failurePoints) {
@@ -231,7 +231,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         }
         shutdownStatus = this.instanceManager.shutdownInstance(false);
         this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
-        this.instanceManager.destructor();
+        this.instanceManager.destructor(this.results.failed === 0);
         if (!this.results[te].status || !shutdownStatus) {
           print("Not cleaning up " + this.instanceManager.rootDir);
           this.results.status = false;

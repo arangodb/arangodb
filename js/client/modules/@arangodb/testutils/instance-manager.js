@@ -82,6 +82,7 @@ class instanceManager {
     this.restKeyFile = '';
     this.tcpdump = null;
     this.JWT = null;
+    this.cleanup = options.cleanup;
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
     }
@@ -93,11 +94,14 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
   }
 
-  destructor() {
+  destructor(cleanup) {
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
     });
     this.stopTcpDump();
+    if (!this.cleanup || !cleanup) {
+      this._cleanup();
+    }
   }
   getStructure() {
     let d = [];
@@ -121,6 +125,7 @@ class instanceManager {
       arangods: d,
       restKeyFile: this.restKeyFile,
       tcpdump: this.tcpdump,
+      cleanup: this.cleanup
     };
   }
   setFromStructure(struct) {
@@ -137,6 +142,7 @@ class instanceManager {
     this.endpoint = struct['endpoint'];
     this.restKeyFile = struct['restKeyFile'];
     this.tcpdump = struct['tcpdump'];
+    this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {
       let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig);
       this.arangods.push(oneArangod);
@@ -153,6 +159,14 @@ class instanceManager {
         }
       });
     }
+  }
+
+  _cleanup() {
+    this.arangods.forEach(instance => { instance.cleanup(); });
+    if (this.options.extremeVerbosity) {
+      print(CYAN + "cleaning up manager's Directory: " + this.rootDir + RESET);
+    }
+    fs.removeDirectoryRecursive(this.rootDir, true);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief prepares all instances required for a deployment
@@ -863,6 +877,7 @@ class instanceManager {
       arangod.readAssertLogLines();
     });
     pu.cleanupDBDirectoriesRemove(this.rootDir);
+    this.cleanup = shutdownSuccess;
     return shutdownSuccess;
   }
 
@@ -1003,6 +1018,7 @@ class instanceManager {
           arangod.killWithCoreDump();
           arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
         });
+        this.cleanup = false;
         throw new Error('cluster startup timed out after 10 minutes!');
       }
     }

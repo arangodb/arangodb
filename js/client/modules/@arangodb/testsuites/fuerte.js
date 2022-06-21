@@ -159,7 +159,7 @@ function gtestRunner(options) {
   print('Shutting down...');
 
   results['shutdown'] = instanceManager.shutdownInstance(false);
-  instanceManager.destructor();
+  instanceManager.destructor(!results.status);
 
   return results;
 }

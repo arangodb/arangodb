@@ -623,7 +623,7 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print('done.');
     }
-    this.instanceManager.destructor();
+    this.instanceManager.destructor(this.results.status);
     return this.results;
   }
 }

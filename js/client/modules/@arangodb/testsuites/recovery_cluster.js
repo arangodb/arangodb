@@ -163,6 +163,7 @@ function runArangodRecovery (params) {
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
     if (!params.instanceManager.launchInstance()) {
+      params.instanceManager.destructor(false);
       return {
         export: {
           status: false,
@@ -194,7 +195,7 @@ function runArangodRecovery (params) {
   } catch(err) {
     print('Error while launching test:' + err);
     params.instanceManager.shutdownInstance(false);
-    params.instanceManager.destructor();
+    params.instanceManager.destructor(false);
     return; // without test server test will for sure fail
   }
   if (params.setup) {
@@ -212,7 +213,7 @@ function runArangodRecovery (params) {
     });
   } else {
     params.instanceManager.shutdownInstance(false);
-    params.instanceManager.destructor();
+    params.instanceManager.destructor(true);
   }
 }
 
