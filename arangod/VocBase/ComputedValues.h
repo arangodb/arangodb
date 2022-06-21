@@ -77,6 +77,7 @@ class ComputedValues {
     std::string_view name() const noexcept;
     bool doOverride() const noexcept;
     bool failOnWarning() const noexcept;
+    aql::Variable const* tempVariable() const noexcept;
 
    private:
     TRI_vocbase_t& _vocbase;
@@ -108,9 +109,6 @@ class ComputedValues {
   bool mustComputeValuesOnInsert() const noexcept;
   bool mustComputeValuesOnUpdate() const noexcept;
   bool mustComputeValuesOnReplace() const noexcept;
-
-  bool isForceComputedAttribute(std::string_view name,
-                                ComputeValuesOn mustComputeOn) const noexcept;
 
   void mergeComputedAttributes(
       transaction::Methods& trx, velocypack::Slice input,

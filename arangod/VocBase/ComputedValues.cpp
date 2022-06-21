@@ -39,6 +39,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
+#include "Basics/debugging.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -54,22 +55,21 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
+// name of bind parameter variable that contains the current document
 constexpr std::string_view docParameter("doc");
 
+// helper function to turn an enum class value into its underlying type
 std::underlying_type<arangodb::ComputeValuesOn>::type mustComputeOnValue(
     arangodb::ComputeValuesOn mustComputeOn) {
   return static_cast<std::underlying_type<arangodb::ComputeValuesOn>::type>(
       mustComputeOn);
 }
 
+// expression context used for calculating computed values inside
 class ComputedValuesExpressionContext final : public aql::ExpressionContext {
  public:
-  explicit ComputedValuesExpressionContext(transaction::Methods& trx,
-                                           AqlFunctionsInternalCache& cache)
-      : ExpressionContext(),
-        _trx(trx),
-        _aqlFunctionsInternalCache(cache),
-        _failOnWarning(false) {}
+  explicit ComputedValuesExpressionContext(transaction::Methods& trx)
+      : ExpressionContext(), _trx(trx), _failOnWarning(false) {}
 
   void registerWarning(ErrorCode errorCode, char const* msg) override {
     if (_failOnWarning) {
@@ -125,28 +125,35 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override {
-    if (doCopy) {
-      return AqlValue(AqlValueHintSliceCopy(_value));
+    auto it = _variables.find(variable);
+    if (it == _variables.end()) {
+      return AqlValue(AqlValueHintNull());
     }
-    return AqlValue(AqlValueHintSliceNoCopy(_value));
+    if (doCopy) {
+      return AqlValue(AqlValueHintSliceCopy(it->second));
+    }
+    return AqlValue(AqlValueHintSliceNoCopy(it->second));
   }
 
-  void setVariable(Variable const* /*variable*/,
+  void setVariable(Variable const* variable,
                    arangodb::velocypack::Slice value) override {
-    _value = value;
+    TRI_ASSERT(variable != nullptr);
+    _variables[variable] = value;
   }
 
   // unregister a temporary variable from the ExpressionContext.
   void clearVariable(Variable const* variable) noexcept override {
-    _value = VPackSlice::noneSlice();
+    TRI_ASSERT(variable != nullptr);
+    _variables.erase(variable);
   }
 
  private:
   transaction::Methods& _trx;
-  AqlFunctionsInternalCache& _aqlFunctionsInternalCache;
+  AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   bool _failOnWarning;
 
-  velocypack::Slice _value;
+  containers::FlatHashMap<Variable const*, arangodb::velocypack::Slice>
+      _variables;
 };
 
 }  // namespace
@@ -264,6 +271,11 @@ bool ComputedValues::ComputedValue::failOnWarning() const noexcept {
   return _failOnWarning;
 }
 
+aql::Variable const* ComputedValues::ComputedValue::tempVariable()
+    const noexcept {
+  return _tempVariable;
+}
+
 void ComputedValues::ComputedValue::computeAttribute(
     ExpressionContext& ctx, velocypack::Slice input,
     velocypack::Builder& output) const {
@@ -289,25 +301,6 @@ ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
 
 ComputedValues::~ComputedValues() = default;
 
-bool ComputedValues::isForceComputedAttribute(
-    std::string_view name, ComputeValuesOn mustComputeOn) const noexcept {
-  if (mustComputeOn == ComputeValuesOn::kInsert) {
-    auto it = _attributesForInsert.find(name);
-    return it != _attributesForInsert.end() && _values[it->second].doOverride();
-  }
-  if (mustComputeOn == ComputeValuesOn::kUpdate) {
-    auto it = _attributesForUpdate.find(name);
-    return it != _attributesForUpdate.end() && _values[it->second].doOverride();
-  }
-  if (mustComputeOn == ComputeValuesOn::kReplace) {
-    auto it = _attributesForReplace.find(name);
-    return it != _attributesForReplace.end() &&
-           _values[it->second].doOverride();
-  }
-  TRI_ASSERT(false);
-  return false;
-}
-
 bool ComputedValues::mustComputeValuesOnInsert() const noexcept {
   return !_attributesForInsert.empty();
 }
@@ -325,12 +318,15 @@ void ComputedValues::mergeComputedAttributes(
     containers::FlatHashSet<std::string_view> const& keysWritten,
     ComputeValuesOn mustComputeOn, velocypack::Builder& output) const {
   if (mustComputeOn == ComputeValuesOn::kInsert) {
+    // insert case
     mergeComputedAttributes(_attributesForInsert, trx, input, keysWritten,
                             output);
   } else if (mustComputeOn == ComputeValuesOn::kUpdate) {
+    // update case
     mergeComputedAttributes(_attributesForUpdate, trx, input, keysWritten,
                             output);
   } else if (mustComputeOn == ComputeValuesOn::kReplace) {
+    // replace case
     mergeComputedAttributes(_attributesForReplace, trx, input, keysWritten,
                             output);
   } else {
@@ -343,15 +339,14 @@ void ComputedValues::mergeComputedAttributes(
     transaction::Methods& trx, velocypack::Slice input,
     containers::FlatHashSet<std::string_view> const& keysWritten,
     velocypack::Builder& output) const {
-  AqlFunctionsInternalCache cache;
-  ComputedValuesExpressionContext ctx(trx, cache);
-  // inject document into temporary variable (@doc)
-  ctx.setVariable(nullptr, input);
+  ComputedValuesExpressionContext ctx(trx);
 
   output.openObject();
 
   {
-    // copy over document attributes
+    // copy over document attributes, one by one, in the same
+    // order (the order is important, because we expect _key, _id and _rev
+    // to be at the front)
     VPackObjectIterator it(input, true);
 
     while (it.valid()) {
@@ -359,6 +354,8 @@ void ComputedValues::mergeComputedAttributes(
       auto itCompute = attributes.find(key.stringView());
       if (itCompute == attributes.end() ||
           !_values[itCompute->second].doOverride()) {
+        // only add these attributes from the original document
+        // that we are not going to overwrite
         output.add(key);
         output.add(it.value());
       }
@@ -367,13 +364,18 @@ void ComputedValues::mergeComputedAttributes(
   }
 
   // now add all the computed attributes
-
   for (auto const& it : attributes) {
     ComputedValue const& cv = _values[it.second];
     if (cv.doOverride() || !keysWritten.contains(cv.name())) {
       // update "failOnWarning" flag for each computation
       ctx.failOnWarning(cv.failOnWarning());
+      // inject document into temporary variable (@doc)
+      ctx.setVariable(cv.tempVariable(), input);
+      // if "computeAttribute" throws, then the operation is
+      // intentionally aborted here. caller has to catch the
+      // exception
       cv.computeAttribute(ctx, input, output);
+      ctx.clearVariable(cv.tempVariable());
     }
   }
 
