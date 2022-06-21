@@ -76,9 +76,7 @@ class IndexCreatorThread final : public Thread {
                      rocksdb::Options const& dbOptions,
                      std::string const& idxPath);
 
-  ~IndexCreatorThread();
-
-  void beginShutdown() override;
+  ~IndexCreatorThread() = default;
 
  protected:
   void run() override;
@@ -203,109 +201,4 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   std::atomic<uint64_t> _docsProcessed;
 };
 
-using WorkItem = std::pair<uint64_t, uint64_t>;
-class SharedWorkEnv {
- public:
-  SharedWorkEnv(std::deque<WorkItem> workItems, uint64_t objectId)
-      : _ranges(std::move(workItems)),
-        _bounds(RocksDBKeyBounds::CollectionDocuments(
-            objectId, _ranges.front().first,
-            _ranges.front().second == UINT64_MAX
-                ? UINT64_MAX
-                : _ranges.front().second + 1)) {}
-
-  Result result() {
-    std::unique_lock<std::mutex> lock(_mtx);
-    return _res;
-  }
-
-  void registerError(Result res) {
-    TRI_ASSERT(res.fail());
-    {
-      std::unique_lock<std::mutex> lock(_mtx);
-      if (_res.ok()) {
-        _res = std::move(res);
-      }
-      _done = true;
-    }
-    _condition.notify_all();
-  }
-
-  bool fetchWorkItem(WorkItem& data) {
-    std::unique_lock<std::mutex> lock(_mtx);
-    while (!_done) {
-      if (!_ranges.empty()) {
-        auto const it = _ranges.begin();
-        data = *it;
-        _ranges.pop_front();
-        return true;
-      }
-      _numWaitingThreads++;
-      if (_numWaitingThreads == RocksDBBuilderIndex::kNumThreads) {
-        _done = true;
-        _numWaitingThreads--;
-        _condition.notify_all();
-        break;
-      }
-      _condition.wait(lock, [&]() { return !_ranges.empty() || _done; });
-      _numWaitingThreads--;
-    }
-    TRI_ASSERT(_done);
-    return false;
-  }
-
-  void enqueueWorkItem(WorkItem item) {
-    {
-      std::unique_lock<std::mutex> lock(_mtx);
-      _ranges.emplace_back(std::move(item));
-    }
-    _condition.notify_one();
-  }
-
-  void incTerminatedThreads() {
-    std::unique_lock<std::mutex> extLock(_mtx);
-    ++_numTerminatedThreads;
-    if (_numTerminatedThreads == RocksDBBuilderIndex::kNumThreads) {
-      _condition.notify_all();
-    }
-  }
-
-  Result getResponse() {
-    std::unique_lock<std::mutex> lock(_mtx);
-    return _res;
-  }
-
-  void waitUntilAllThreadsTerminate() {
-    std::unique_lock<std::mutex> extLock(_mtx);
-    _condition.wait(extLock, [&]() {
-      return _numTerminatedThreads == RocksDBBuilderIndex::kNumThreads;
-    });
-  }
-
-  void postStatistics(ThreadStatistics stats) {
-    std::unique_lock<std::mutex> extLock(_mtx);
-    _threadStatistics.emplace_back(stats);
-  }
-
-  std::vector<ThreadStatistics> const& getThreadStatistics() const {
-    return _threadStatistics;
-  }
-
-  RocksDBKeyBounds const& getBounds() const { return _bounds; }
-
-  rocksdb::Slice const getUpperBound() const {
-    return rocksdb::Slice(_bounds.end());
-  }
-
- private:
-  bool _done = false;
-  size_t _numWaitingThreads = 0;
-  size_t _numTerminatedThreads = 0;
-  std::condition_variable _condition;
-  std::deque<WorkItem> _ranges;
-  Result _res;
-  std::mutex _mtx;
-  std::vector<ThreadStatistics> _threadStatistics;
-  RocksDBKeyBounds _bounds;
-};
 }  // namespace arangodb
