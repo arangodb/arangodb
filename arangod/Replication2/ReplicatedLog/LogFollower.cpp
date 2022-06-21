@@ -25,6 +25,7 @@
 
 #include "Logger/LogContextKeys.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/Counter.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
@@ -269,7 +270,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       static_assert(
           std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
       data->_inMemoryLog = std::move(newInMemoryLog);
-
+      self->_logMetrics->replicatedLogNumberAcceptedEntries->count(
+          req.entries.size());
       LOG_CTX("dd72d", TRACE, data->_follower._loggerContext)
           << "appended " << req.entries.size() << " log entries after "
           << req.prevLogEntry.index
@@ -361,8 +363,11 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
   }
 
   if (_commitIndex < newCommitIndex && !_inMemoryLog.empty()) {
+    auto const oldCommitIndex = _commitIndex;
     _commitIndex =
         std::min(newCommitIndex, _inMemoryLog.back().entry().logIndex());
+    _follower._logMetrics->replicatedLogNumberCommittedEntries->count(
+        _commitIndex.value - oldCommitIndex.value);
     LOG_CTX("1641d", TRACE, _follower._loggerContext)
         << "increment commit index: " << _commitIndex;
     return generateToBeResolved();
@@ -697,11 +702,14 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
         << _inMemoryLog.getFirstIndex();
     return {};
   }
-
+  auto const numberOfCompactedEntries =
+      compactionStop.value - _inMemoryLog.getFirstIndex().value;
   auto newLog = _inMemoryLog.release(compactionStop);
   auto res = _logCore->removeFront(compactionStop).get();
   if (res.ok()) {
     _inMemoryLog = std::move(newLog);
+    _follower._logMetrics->replicatedLogNumberCompactedEntries->count(
+        numberOfCompactedEntries);
   }
   LOG_CTX("f1028", TRACE, _follower._loggerContext)
       << "compaction result = " << res.errorMessage();
