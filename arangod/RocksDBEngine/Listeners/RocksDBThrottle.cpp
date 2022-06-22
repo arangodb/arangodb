@@ -320,8 +320,15 @@ void RocksDBThrottle::ThreadLoop() {
 void RocksDBThrottle::RecalculateThrottle() {
   std::chrono::microseconds tot_micros{0};
   uint64_t tot_bytes = 0;
+  #if defined(__clang__) && __clang_major__ == 13
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+  #endif
   uint64_t tot_keys = 0;
   uint64_t tot_compact = 0;
+  #if defined(__clang__) && __clang_major__ == 13
+    #pragma GCC diagnostic pop
+  #endif
   bool no_data;
 
   int64_t compaction_backlog = ComputeBacklog();

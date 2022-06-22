@@ -121,7 +121,14 @@ class FunctionRef<R(Args...)> {
 
   // To help prevent subtle lifetime bugs, FunctionRef is not assignable.
   // Typically, it should only be used as an argument type.
+  #if defined(__clang__) && __clang_major__ >= 13
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wdeprecated-copy"
+  #endif
   FunctionRef& operator=(const FunctionRef& rhs) = delete;
+  #if defined(__clang__) && __clang_major__ >= 13
+    #pragma GCC diagnostic pop
+  #endif
 
   // Call the underlying object.
   R operator()(Args... args) const {
