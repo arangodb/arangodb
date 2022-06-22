@@ -1,6 +1,10 @@
 devel
 -----
 
+* APM-135: Added multithreading to assigning non-unique indexes to documents,
+  in foreground or background mode. The number of index creation threads 
+  is hardcoded to 2 for now. Improvements for higher parallelism are expected
+  for future versions.
 
 * Issue 15592: Permit `MERGE_RECURSIVE()` to be called with a single argument.
 
