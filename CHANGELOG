@@ -8,6 +8,13 @@ devel
   entries for queries with a large amount of entries in the input not to be 
   held in memory and also for the rocksdb storage to store the entries in order.
 
+* Added Enterprise Graph feature to enterprise version of ArangoDB.
+  The enterprise graph is another graph sharding model that we introduced,
+  it is less strict, and therefore easier to start with, then SmartGraphs,
+  as it does not require a smartGraphAttribute, and allows free choice of
+  vertex _key values. But still maintains performance gains as compared to
+  general-graphs. For more details please check documentation.
+
 * APM-135: Added multithreading to assigning non-unique indexes to documents,
   in foreground or background mode. The number of index creation threads 
   is hardcoded to 2 for now. Improvements for higher parallelism are expected
