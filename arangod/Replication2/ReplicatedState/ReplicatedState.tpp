@@ -247,7 +247,7 @@ auto ReplicatedState<S>::GuardedData::runFollower(
           "follower-manager");
   auto manager = std::make_shared<FollowerStateManager<S>>(
       std::move(loggerCtx), _self.shared_from_this(), std::move(logFollower),
-      std::move(core), std::move(token), _self.factory);
+      std::move(core), std::move(token), _self.factory, _self.metrics);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
@@ -270,7 +270,7 @@ auto ReplicatedState<S>::GuardedData::runLeader(
           "leader-manager");
   auto manager = std::make_shared<LeaderStateManager<S>>(
       std::move(loggerCtx), _self.shared_from_this(), std::move(logLeader),
-      std::move(core), std::move(token), _self.factory);
+      std::move(core), std::move(token), _self.factory, _self.metrics);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
