@@ -33,8 +33,8 @@ class HttpEndpointProvider : public application_features::ApplicationFeature {
 
  protected:
   template<typename Server, typename Impl>
+  // cppcheck-suppress virtualCallInConstructor
   HttpEndpointProvider(Server& server, const Impl&)
-      // cppcheck-suppress virtualCallInConstructor
       : ApplicationFeature(server, Server::template id<HttpEndpointProvider>(),
                            Impl::name()) {}
 
