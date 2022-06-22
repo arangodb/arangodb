@@ -52,6 +52,10 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Sharding/ShardingStrategyEE.h"
+#endif
+
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
 
@@ -440,6 +444,21 @@ bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {
 
 bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+
+#ifdef USE_ENTERPRISE
+  if (_sharding->shardingStrategyName() ==
+      ShardingStrategyEnterpriseHexSmartVertex::NAME) {
+    TRI_ASSERT(isSmart());
+    TRI_ASSERT(type() == TRI_COL_TYPE_DOCUMENT);
+    TRI_ASSERT(!hasSmartGraphAttribute());
+    // if we've a SmartVertex collection sitting inside an EnterpriseGraph
+    // we need to have the key before we can call the "getResponsibleShards"
+    // method because without it, we cannot calculate which shard will be the
+    // responsible one.
+    return true;
+  }
+#endif
+
   // when there is more than 1 shard, or if we do have a satellite
   // collection, we need to create the key on the coordinator.
   return numberOfShards() != 1;
