@@ -146,13 +146,13 @@ struct IRESEARCH_API index_input : public data_input {
   virtual int64_t checksum(size_t offset) const = 0;
 
  private:
-  #if defined(__clang__) && __clang_major__ >= 13
-   #pragma GCC diagnostic push
-   #pragma GCC diagnostic ignored "-Wdeprecated-copy"
+  #if defined(__APPLE__) && __clang_major__ == 13 && __clang_minor__ == 1
+   #pragma clang diagnostic push
+   #pragma clang diagnostic ignored "-Wdeprecated-copy"
   #endif
   index_input& operator=( const index_input& ) = delete;
-  #if defined(__clang__) && __clang_major__ >= 13
-   #pragma GCC diagnostic pop
+  #if defined(__APPLE__) && __clang_major__ == 13 && __clang_minor__ == 1
+   #pragma clang diagnostic pop
   #endif
 }; // index_input
 
