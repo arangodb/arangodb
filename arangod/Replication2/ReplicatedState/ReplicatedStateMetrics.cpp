@@ -25,20 +25,30 @@
 
 #include "Replication2/ReplicatedLog/ReplicatedLogMetricsDeclarations.h"
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/Gauge.h"
 
-using namespace arangodb::replication2::replicated_log;
+DECLARE_GAUGE(arangodb_replication2_replicated_state_number, std::uint64_t,
+              "Number of times a replicated states on this server");
+DECLARE_GAUGE(
+    arangodb_replication2_replicated_state_leader_number, std::uint64_t,
+    "Number of times a replicated states on this server started as a leader");
+DECLARE_GAUGE(
+    arangodb_replication2_replicated_state_follower_number, std::uint64_t,
+    "Number of times a replicated states on this server started as a follower");
+
+using namespace arangodb::replication2::replicated_state;
 
 ReplicatedStateMetrics::ReplicatedStateMetrics(
-    metrics::MetricsFeature& metricsFeature)
-    : ReplicatedStateMetrics(&metricsFeature) {}
+    metrics::MetricsFeature& metricsFeature, std::string_view impl)
+    : ReplicatedStateMetrics(&metricsFeature, impl) {}
 
 template<typename Builder, bool mock>
 auto ReplicatedStateMetrics::createMetric(
-    metrics::MetricsFeature* metricsFeature)
+    metrics::MetricsFeature* metricsFeature, std::string_view impl)
     -> std::shared_ptr<typename Builder::MetricT> {
   TRI_ASSERT((metricsFeature == nullptr) == mock);
   if constexpr (!mock) {
-    return metricsFeature->addShared(Builder{});
+    return metricsFeature->addShared(Builder{}.withLabel("state-impl", impl));
   } else {
     return std::dynamic_pointer_cast<typename Builder::MetricT>(
         Builder{}.build());
@@ -51,25 +61,26 @@ template<
                          std::is_null_pointer_v<MFP>,
                      int>,
     bool mock>
-ReplicatedStateMetrics::ReplicatedStateMetrics(MFP metricsFeature)
+ReplicatedStateMetrics::ReplicatedStateMetrics(MFP metricsFeature,
+                                               std::string_view impl)
     : replicatedStateNumber(
-          createMetric<arangodb_replication2_replicated_log_number, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_state_number, mock>(
+              metricsFeature, impl)),
       replicatedStateNumberLeaders(
-          createMetric<arangodb_replication2_replicated_log_number, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_state_leader_number,
+                       mock>(metricsFeature, impl)),
       replicatedStateNumberFollowers(
-          createMetric<arangodb_replication2_replicated_log_number, mock>(
-              metricsFeature)) {
+          createMetric<arangodb_replication2_replicated_state_follower_number,
+                       mock>(metricsFeature, impl)) {
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   static_assert(!mock);
   static_assert(!std::is_null_pointer_v<MFP>);
 #endif
 }
 
-template arangodb::replication2::replicated_log::ReplicatedStateMetrics::
-    ReplicatedStateMetrics(arangodb::metrics::MetricsFeature*);
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-template arangodb::replication2::replicated_log::ReplicatedStateMetrics::
-    ReplicatedStateMetrics(std::nullptr_t);
-#endif
+template arangodb::replication2::replicated_state::ReplicatedStateMetrics::
+    ReplicatedStateMetrics(arangodb::metrics::MetricsFeature*,
+                           std::string_view);
+
+template arangodb::replication2::replicated_state::ReplicatedStateMetrics::
+    ReplicatedStateMetrics(std::nullptr_t, std::string_view);

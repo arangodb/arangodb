@@ -29,14 +29,16 @@
 #include <cstdint>
 #include <memory>
 
-namespace arangodb::replication2::replicated_log {
+namespace arangodb::replication2::replicated_state {
 
 struct ReplicatedStateMetrics {
-  explicit ReplicatedStateMetrics(metrics::MetricsFeature& metricsFeature);
+  explicit ReplicatedStateMetrics(metrics::MetricsFeature& metricsFeature,
+                                  std::string_view impl);
 
  private:
   template<typename Builder, bool mock = false>
-  static auto createMetric(metrics::MetricsFeature* metricsFeature)
+  static auto createMetric(metrics::MetricsFeature* metricsFeature,
+                           std::string_view impl)
       -> std::shared_ptr<typename Builder::MetricT>;
 
  protected:
@@ -45,12 +47,13 @@ struct ReplicatedStateMetrics {
                                 std::is_null_pointer_v<MFP>,
                             int> = 0,
            bool mock = std::is_null_pointer_v<MFP>>
-  explicit ReplicatedStateMetrics(MFP metricsFeature);
+  explicit ReplicatedStateMetrics(MFP metricsFeature, std::string_view impl);
 
  public:
   std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumber;
   std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumberLeaders;
-  std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumberFollowers;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const
+      replicatedStateNumberFollowers;
 };
 
-}  // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_state

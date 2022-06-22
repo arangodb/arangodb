@@ -93,11 +93,13 @@ auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
 template<typename S>
 ReplicatedState<S>::ReplicatedState(
     std::shared_ptr<replicated_log::ReplicatedLog> log,
-    std::shared_ptr<Factory> factory, LoggerContext loggerContext)
+    std::shared_ptr<Factory> factory, LoggerContext loggerContext,
+    std::shared_ptr<ReplicatedStateMetrics> metrics)
     : factory(std::move(factory)),
       log(std::move(log)),
       guardedData(*this),
-      loggerContext(std::move(loggerContext)) {}
+      loggerContext(std::move(loggerContext)),
+      metrics(std::move(metrics)) {}
 
 template<typename S>
 void ReplicatedState<S>::flush(StateGeneration planGeneration) {
