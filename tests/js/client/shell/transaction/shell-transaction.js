@@ -4886,7 +4886,7 @@ jsunity.run(transactionOverlapSuiteV1);
 jsunity.run(transactionDatabaseSuite);
 
 if (isReplication2Enabled) {
-  let tests = [
+  let suites = [
     transactionRevisionsSuiteV2,
     transactionRollbackSuiteV2,
     transactionInvocationSuiteV2,
@@ -4902,9 +4902,8 @@ if (isReplication2Enabled) {
     transactionOverlapSuiteV2,
   ];
 
-  // Due to the longer time it takes to create a collection, we currently run just a fraction of these tests.
-  for (const test of _.shuffle(tests).slice(0, 3)) {
-    jsunity.run(test);
+  for (const suite of suites) {
+    jsunity.run(suite);
   }
 }
 
