@@ -50,5 +50,5 @@ void replicated_log::WaitForResult::toVelocyPack(
 }
 
 replicated_log::WaitForResult::WaitForResult(velocypack::Slice s)
-  : currentCommitIndex(s.get(StaticStrings::CommitIndex).extract<LogIndex>()),
-    quorum(std::make_shared<QuorumData>(s.get("quorum"))) {}
+    : currentCommitIndex(s.get(StaticStrings::CommitIndex).extract<LogIndex>()),
+      quorum(std::make_shared<QuorumData>(s.get("quorum"))) {}
