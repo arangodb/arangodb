@@ -28,6 +28,8 @@ const jsunity = require('jsunity');
 const helper = require('@arangodb/aql-helper');
 const getQueryResults = helper.getQueryResults;
 const _ = require('lodash');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 
 const WHILE = 'WHILE';
 const UNTIL = 'UNTIL';
@@ -114,15 +116,30 @@ const aqlTakeSuite = (whileOrUntil) => function () {
   const ucWhileOrUntil = whileOrUntil === WHILE ? 'While' : 'Until';
 
   return {
-    [`testTake${ucWhileOrUntil}Simple`]: function () {
-      const query = `
-        FOR i IN 1..1000
-          TAKE ${whileOrUntil} (${negate} (i < 5))
-          RETURN i
-      `;
-      const expected = _.range(1, 5);
-      const actual = getQueryResults(query);
-      assertEqual(expected, actual);
+    [`testTake${ucWhileOrUntil}WithDocs`]: function () {
+      const colName = 'takeCol';
+      try {
+        const col = db._createDocumentCollection(colName, {numberOfShards: 9});
+        col.insert(_.range(1, 200).map(i => ({i})));
+        const query = `
+          FOR d IN ${colName}
+            SORT d.i
+            TAKE ${whileOrUntil} (${negate} (d.i < 100))
+            COLLECT AGGREGATE lo = MIN(d.i), hi = MAX(d.i), n = COUNT()
+            RETURN {lo, hi, n}
+        `;
+        const expected = {
+          lo: 1,
+          hi: 99,
+          n: 99,
+        };
+        const actual = getQueryResults(query);
+        assertEqual([expected], actual);
+      } catch (e) {
+        db._drop(colName);
+        throw e;
+      }
+      db._drop(colName);
     },
   };
 };
@@ -133,14 +150,29 @@ const aqlDropSuite = (whileOrUntil) => function () {
 
   return {
     [`testDrop${ucWhileOrUntil}Simple`]: function () {
-      const query = `
-        FOR i IN 1..1000
-          TAKE ${whileOrUntil} (${negate} (i < 995))
-          RETURN i
-      `;
-      const expected = _.range(995, 1001);
-      const actual = getQueryResults(query);
-      assertEqual(expected, actual);
+      const colName = 'takeCol';
+      try {
+        const col = db._createDocumentCollection(colName, {numberOfShards: 9});
+        col.insert(_.range(1, 200).map(i => ({i})));
+        const query = `
+          FOR d IN ${colName}
+            SORT d.i
+            DROP ${whileOrUntil} (${negate} (d.i < 100))
+            COLLECT AGGREGATE lo = MIN(d.i), hi = MAX(d.i), n = COUNT()
+            RETURN {lo, hi, n}
+        `;
+        const expected = {
+          lo: 100,
+          hi: 199,
+          n: 100,
+        };
+        const actual = getQueryResults(query);
+        assertEqual([expected], actual);
+      } catch (e) {
+        db._drop(colName);
+        throw e;
+      }
+      db._drop(colName);
     },
   };
 };
@@ -148,7 +180,7 @@ const aqlDropSuite = (whileOrUntil) => function () {
 jsunity.run(aqlTakeDropWhileUntilSyntaxSuite);
 jsunity.run(aqlTakeSuite(WHILE));
 jsunity.run(aqlTakeSuite(UNTIL));
-// jsunity.run(aqlDropSuite(WHILE));
-// jsunity.run(aqlDropSuite(UNTIL));
+jsunity.run(aqlDropSuite(WHILE));
+jsunity.run(aqlDropSuite(UNTIL));
 
 return jsunity.done();
