@@ -94,7 +94,7 @@ let optionsDocumentation = [
   '   - `agency`: if set to true agency tests are done',
   '   - `agencySize`: number of agents in agency',
   '   - `agencySupervision`: run supervision in agency',
-  '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
+  '   - `oneTestTimeout`: how long a single js testsuite  should run',
   '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
   '   - `memprof`: take snapshots (requries memprof enabled build)',
   '   - `test`: path to single test to execute for "single" test target, ',
