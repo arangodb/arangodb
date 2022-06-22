@@ -975,7 +975,9 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 
   // add --merge-attributes arguments
   if (!_mergeAttributesInstructions.empty()) {
-    for (auto& [key, value] : _mergeAttributesInstructions) {
+    for (auto const& it : _mergeAttributesInstructions) {
+      auto const& key = it.first;
+      auto const& value = it.second;
       if (row == _rowsToSkip && !_headersSeen) {
         std::for_each(
             value.begin(), value.end(),
