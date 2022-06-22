@@ -100,6 +100,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           clonedOpts['password'] = paramsSecondRun['database.password'];
           paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
         }
+        print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
 
         if (runSetup) {
           delete paramsSecondRun.runSetup;
@@ -120,7 +121,6 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           }
           this.instanceManager.reconnect();
           try {
-            print(BLUE + '================================================================================' + RESET);
             print(CYAN + 'Running Setup of: ' + te + RESET);
             content = `(function(){ const runSetup = true; const getOptions = false; ${fileContent}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF

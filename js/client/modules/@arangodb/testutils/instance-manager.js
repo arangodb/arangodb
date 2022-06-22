@@ -99,7 +99,7 @@ class instanceManager {
       arangod.pm.deregister(arangod.port);
     });
     this.stopTcpDump();
-    if (!this.cleanup || !cleanup) {
+    if (this.cleanup && cleanup) {
       this._cleanup();
     }
   }
