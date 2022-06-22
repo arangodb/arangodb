@@ -270,7 +270,7 @@ class MacTool(object):
     libtoolout = subprocess.Popen(cmd_list, stderr=subprocess.PIPE, env=env)
     _, err = libtoolout.communicate()
     for line in err.splitlines():
-      if not libtool_re.match(line) and not libtool_re5.match(line):
+      if not libtool_re.match(line.decode("utf-8")) and not libtool_re5.match(line.decode("utf-8")):
         print(line, file=sys.stderr)
     # Unconditionally touch the output .a file on the command line if present
     # and the command succeeded. A bit hacky.
