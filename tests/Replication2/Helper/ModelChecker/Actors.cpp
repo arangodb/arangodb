@@ -330,4 +330,30 @@ auto SetLeaderActor::step(AgencyState const& agency) const
   return {SetLeaderInTargetAction(newLeader)};
 }
 
+SetWriteConcernActor::SetWriteConcernActor(size_t newWriteConcern)
+    : newWriteConcern(newWriteConcern) {}
+
+auto SetWriteConcernActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetWriteConcernAction(newWriteConcern)};
+}
+
+SetSoftWriteConcernActor::SetSoftWriteConcernActor(size_t newSoftWriteConcern)
+    : newSoftWriteConcern(newSoftWriteConcern) {}
+
+auto SetSoftWriteConcernActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetSoftWriteConcernAction(newSoftWriteConcern)};
+}
+
+SetBothWriteConcernActor::SetBothWriteConcernActor(size_t newWriteConcern,
+                                                   size_t newSoftWriteConcern)
+    : newWriteConcern(newWriteConcern),
+      newSoftWriteConcern(newSoftWriteConcern) {}
+
+auto SetBothWriteConcernActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetBothWriteConcernAction(newWriteConcern, newSoftWriteConcern)};
+}
+
 }  // namespace arangodb::test

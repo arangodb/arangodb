@@ -252,4 +252,50 @@ auto RemoveLogParticipantAction::toString() const -> std::string {
   return fmt::format("removing participant {}", server);
 }
 
+SetWriteConcernAction::SetWriteConcernAction(size_t newWriteConcern)
+    : newWriteConcern(newWriteConcern) {}
+
+void SetWriteConcernAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.config.writeConcern = newWriteConcern;
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto SetWriteConcernAction::toString() const -> std::string {
+  return fmt::format("setting writeConcern to {}", newWriteConcern);
+}
+
+SetSoftWriteConcernAction::SetSoftWriteConcernAction(size_t newSoftWriteConcern)
+    : newSoftWriteConcern(newSoftWriteConcern) {}
+
+void SetSoftWriteConcernAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.config.softWriteConcern = newSoftWriteConcern;
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto SetSoftWriteConcernAction::toString() const -> std::string {
+  return fmt::format("setting softWriteConcern to {}", newSoftWriteConcern);
+}
+
+SetBothWriteConcernAction::SetBothWriteConcernAction(size_t newWriteConcern,
+                                                     size_t newSoftWriteConcern)
+    : newWriteConcern(newWriteConcern),
+      newSoftWriteConcern(newSoftWriteConcern) {}
+
+void SetBothWriteConcernAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.config.writeConcern = newWriteConcern;
+  target.config.softWriteConcern = newSoftWriteConcern;
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto SetBothWriteConcernAction::toString() const -> std::string {
+  return fmt::format("setting writeConcern to {} and softWriteConcern to {}",
+                     newWriteConcern, newSoftWriteConcern);
+}
+
 }  // namespace arangodb::test

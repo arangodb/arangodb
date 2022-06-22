@@ -110,6 +110,28 @@ struct SetLeaderInTargetAction {
   replication2::ParticipantId newLeader;
 };
 
+struct SetWriteConcernAction {
+  SetWriteConcernAction(size_t newWriteConcern);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  size_t newWriteConcern;
+};
+
+struct SetSoftWriteConcernAction {
+  SetSoftWriteConcernAction(size_t newSoftWriteConcern);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  size_t newSoftWriteConcern;
+};
+
+struct SetBothWriteConcernAction {
+  SetBothWriteConcernAction(size_t newWriteConcern, size_t newSoftWriteConcern);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  size_t newWriteConcern;
+  size_t newSoftWriteConcern;
+};
+
 struct AddLogParticipantAction {
   AddLogParticipantAction(replication2::ParticipantId server);
   void apply(AgencyState& agency) const;
@@ -129,7 +151,9 @@ using AgencyTransition =
                  DBServerSnapshotCompleteAction, DBServerReportTermAction,
                  DBServerCommitConfigAction, KillServerAction,
                  ReplaceServerTargetState, AddLogParticipantAction,
-                 SetLeaderInTargetAction, RemoveLogParticipantAction>;
+                 SetLeaderInTargetAction, RemoveLogParticipantAction,
+                 SetWriteConcernAction, SetSoftWriteConcernAction,
+                 SetBothWriteConcernAction>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test

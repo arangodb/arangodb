@@ -46,7 +46,9 @@ using namespace arangodb;
 using namespace arangodb::test;
 using namespace arangodb::replication2;
 
-struct ReplicatedLogSupervisionSimulationTest : ::testing::Test {
+struct ReplicatedLogSupervisionSimulationTest
+    : ::testing::Test,
+      model_checker::testing::TracedSeedGenerator {
   LogTargetConfig const defaultConfig = {2, 2, false};
   LogId const logId{23};
   ParticipantFlags const defaultFlags{};
@@ -335,11 +337,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
       .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
-      .setTargetParticipant("C", defaultFlags)
-      .setTargetParticipant("D", defaultFlags)
-      .setTargetParticipant("E", defaultFlags)
-      .setTargetParticipant("F", defaultFlags)
-      .setTargetParticipant("G", defaultFlags);
+      .setTargetParticipant("C", defaultFlags);
 
   log.setPlanParticipant("A", defaultFlags)
       .setPlanParticipant("B", defaultFlags)
@@ -348,13 +346,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   log.setPlanLeader("A");
   log.establishLeadership();
 
-  log.acknowledgeTerm("A")
-      .acknowledgeTerm("B")
-      .acknowledgeTerm("C")
-      .acknowledgeTerm("D")
-      .acknowledgeTerm("E")
-      .acknowledgeTerm("F")
-      .acknowledgeTerm("G");
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -383,17 +375,29 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
       AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
 
   auto driver = model_checker::ActorDriver{
-      SupervisionActor{}, SetLeaderActor{"C"}, DBServerActor{"A"},
-      DBServerActor{"B"}, DBServerActor{"C"},  DBServerActor{"D"},
-      DBServerActor{"E"}, DBServerActor{"F"},  DBServerActor{"G"}};
+      SupervisionActor{},          KillLeaderActor{},
+      SetLeaderActor{"C"},         DBServerActor{"A"},
+      DBServerActor{"B"},          DBServerActor{"C"},
+      DBServerActor{"D"},          AddServerActor{"D"},
+      RemoveServerActor{"A"},      SetWriteConcernActor{1},
+      SetSoftWriteConcernActor{3}, SetBothWriteConcernActor{2, 3}};
 
   auto allTests = model_checker::combined{
+      MC_ALWAYS(
+          mcpreds::
+              isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_EVENTUALLY_ALWAYS(mcpreds::serverIsLeader("C"))};
-  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  // Unfortunately the deterministic checker takes too long
+  //  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  //                                              AgencyState,
+  //                                              AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
                                             AgencyState, AgencyTransition>;
 
-  auto result = Engine::run(driver, allTests, initState);
+  auto result =
+      Engine::run(driver, allTests, initState,
+                  {.iterations = 20000, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
+  //  std::cout << result.stats << std::endl;
 }
