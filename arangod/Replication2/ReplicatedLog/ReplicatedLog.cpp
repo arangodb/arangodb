@@ -169,9 +169,8 @@ auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
     _participant = nullptr;
     return res;
   });
-//  auto [core, deferred] = std::move(*_participant).resign();
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(core);
-//  return core;
 }
 
 auto replicated_log::ReplicatedLog::getId() const noexcept -> LogId {

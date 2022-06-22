@@ -34,6 +34,7 @@ class HttpEndpointProvider : public application_features::ApplicationFeature {
  protected:
   template<typename Server, typename Impl>
   HttpEndpointProvider(Server& server, const Impl&)
+  // cppcheck-suppress virtualCallInConstructor
       : ApplicationFeature(server, Server::template id<HttpEndpointProvider>(),
                            Impl::name()) {}
 
