@@ -447,6 +447,9 @@ void RocksDBThrottle::SetThrottle() {
 
     // this routine can get called before _internalRocksDB is set
     if (nullptr != _internalRocksDB) {
+      // execute this under RocksDB's DB mutex
+      rocksdb::InstrumentedMutexLock db_mutex(_internalRocksDB->mutex());
+
       // inform write_controller_ of our new rate
       //  (column_family.cc RecalculateWriteStallConditions() makes assumptions
       //   that could force a divide by zero if _throttleBps is less than four
