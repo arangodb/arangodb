@@ -21,32 +21,31 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "DocumentCore.h"
+#include "DocumentFollowerState.h"
+#include "DocumentLeaderState.h"
 
-#include "DocumentLogEntry.h"
-#include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
+#include <Futures/Future.h>
 
-#include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+using namespace arangodb::replication2::replicated_state::document;
 
-namespace arangodb::replication2::replicated_state::document {
+DocumentFollowerState::DocumentFollowerState(std::unique_ptr<DocumentCore> core)
+    : _core(std::move(core)){};
 
-struct DocumentCore {
-  explicit DocumentCore(
-      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-      LoggerContext loggerContext);
+auto DocumentFollowerState::resign() && noexcept
+    -> std::unique_ptr<DocumentCore> {
+  return std::move(_core);
+}
 
-  LoggerContext const loggerContext;
+auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
+                                            LogIndex) noexcept
+    -> futures::Future<Result> {
+  return {TRI_ERROR_NO_ERROR};
+}
 
-  auto getCollectionId() -> std::string_view;
-
- private:
-  GlobalLogIdentifier _gid;
-  DocumentCoreParameters _params;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+auto DocumentFollowerState::applyEntries(
+    std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
+  return {TRI_ERROR_NO_ERROR};
 };
-}  // namespace arangodb::replication2::replicated_state::document
+
+#include "Replication2/ReplicatedState/ReplicatedState.tpp"
