@@ -307,11 +307,11 @@ struct AssertionConditionalLogger {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define TRI_ASSERT(expr) /*cppcheck-suppress ignoredReturnValue*/                                  \
-  (ADB_LIKELY(expr)) /*cppcheck-suppress ignoredReturnValue*/                                                           \
-      ? (void)nullptr /*cppcheck-suppress ignoredReturnValue*/                                                         \
-      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__, /*cppcheck-suppress ignoredReturnValue*/                \
-                                           ARANGODB_PRETTY_FUNCTION, #expr} & /*cppcheck-suppress ignoredReturnValue*/  \
-            ::arangodb::debug::AssertionLogger::assertionStringStream /*cppcheck-suppress ignoredReturnValue*/
+  (ADB_LIKELY(expr))                                                           \
+      ? (void)nullptr                                                         \
+      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
+                                           ARANGODB_PRETTY_FUNCTION, #expr} & \
+            ::arangodb::debug::AssertionLogger::assertionStringStream
 
 #else
 
