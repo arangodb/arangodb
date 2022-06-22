@@ -36,6 +36,7 @@ const {db} = require("@arangodb");
 const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
   assertTrue(collectionWrapper instanceof CollectionWrapper);
   const runAllSingleDocumentOperationsOnDocuments = (generator) => {
+    const isEnterpriseGraphEdge = collectionWrapper._isEnterpriseGraphEdge;
     const collection = collectionWrapper.rawCollection();
     const cn = collection.name();
     const insertAql = `INSERT
@@ -49,10 +50,19 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
     const replaceAql = `REPLACE @key WITH @updatedDoc IN ${cn} RETURN NEW`;
     const removeAql = `REMOVE @key IN ${cn}`;
     for (const doc of generator) {
-      assertTrue(doc.hasOwnProperty("_key"));
-      let key = doc._key;
+      let key;
+
+      if (!isEnterpriseGraphEdge) {
+        assertTrue(doc.hasOwnProperty("_key"));
+        key = doc._key;
+      }
+
       // create document
       let result = db._query(insertAql, {doc}).toArray();
+      if (isEnterpriseGraphEdge) {
+        assertTrue(result[0].hasOwnProperty("_key"));
+        key = result[0]._key;
+      }
       assertEqual(1, result.length, `Creating document with key ${key}`);
       let rev = result[0]._rev;
 
@@ -97,6 +107,12 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       }
       // Locally apply the patch from before
       let updatedDoc = {...doc, ...patch};
+
+      if (isEnterpriseGraphEdge) {
+        // As in EnterpriseGraphs, the _key cannot be given during creation,
+        // we have to insert it here into our original doc for the replace operation.
+        updatedDoc._key = key;
+      }
 
       const replace = {test2: "testmann2"};
       for (const [key, value] of Object.entries(replace)) {

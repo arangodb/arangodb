@@ -194,6 +194,8 @@ class RocksDBEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
+  std::string idxPath() const { return _idxPath; }
+
   void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(
@@ -498,6 +500,8 @@ class RocksDBEngine final : public StorageEngine {
   std::string _path;
   /// path to arangodb data dir
   std::string _basePath;
+  /// path used for index creation
+  std::string _idxPath;
 
   /// @brief repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;

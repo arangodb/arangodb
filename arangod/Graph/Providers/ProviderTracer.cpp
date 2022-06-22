@@ -210,6 +210,14 @@ transaction::Methods* ProviderTracer<ProviderImpl>::trx() {
 }
 
 template<class ProviderImpl>
+TRI_vocbase_t const& ProviderTracer<ProviderImpl>::vocbase() const {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["vocbase"].addTiming(TRI_microtime() - start); });
+  return _impl.vocbase();
+}
+
+template<class ProviderImpl>
 void ProviderTracer<ProviderImpl>::prepareContext(aql::InputAqlItemRow input) {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
