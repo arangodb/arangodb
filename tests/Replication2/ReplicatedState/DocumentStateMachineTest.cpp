@@ -28,6 +28,7 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

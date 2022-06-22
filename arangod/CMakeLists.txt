@@ -626,6 +626,9 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/StateMachines/Document/DocumentCore.cpp
+  Replication2/StateMachines/Document/DocumentFollowerState.cpp
+  Replication2/StateMachines/Document/DocumentLeaderState.cpp
+  Replication2/StateMachines/Document/DocumentLogEntry.cpp
   Replication2/StateMachines/Document/DocumentStateMachine.cpp
   Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
   Replication2/StateMachines/Document/DocumentStateStrategy.cpp
