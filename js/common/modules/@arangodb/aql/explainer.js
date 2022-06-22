@@ -1742,6 +1742,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
       case 'FilterNode':
         return keyword('FILTER') + ' ' + variableName(node.inVariable);
+      case 'TakeWhileNode':
+        return keyword('TAKE WHILE') + ' ' + variableName(node.inVariable);
+      case 'DropWhileNode':
+        return keyword('DROP WHILE') + ' ' + variableName(node.inVariable);
       case 'AggregateNode': /* old-style COLLECT node */
         return keyword('COLLECT') + ' ' + node.aggregates.map(function (node) {
           return variableName(node.outVariable) + ' = ' + variableName(node.inVariable);
