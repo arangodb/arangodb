@@ -9,5 +9,5 @@ complexity: simple
 exposedBy:
   - dbserver
 description: |
-  Number of compacted log entries. If a log entries was replicated to every participant and has been applied
-  durably, it can be compacted, i.e. deleted.
+  Number of compacted log entries. If log entries have been replicated to every participant and applied
+  durably, they can be compacted, i.e. deleted.

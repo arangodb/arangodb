@@ -9,5 +9,4 @@ complexity: simple
 exposedBy:
   - dbserver
 description: |
-  Number of accepted (not yet committed) log entries. The entries has been inserted in to the log
-  and is actively replicated but a quorum has not yet been reached.
+  The entries have been inserted into the log and are being replicated but a quorum has not yet been reached.
