@@ -1,6 +1,13 @@
 devel
 -----
 
+* Added Enterprise Graph feature to enterprise version of ArangoDB.
+  The enterprise graph is another graph sharding model that we introduced,
+  it is less strict, and therefore easier to start with, then SmartGraphs,
+  as it does not require a smartGraphAttribute, and allows free choice of
+  vertex _key values. But still maintains performance gains as compared to
+  general-graphs. For more details please check documentation.
+
 * Now supporting projections on traversals. In AQL Traversal statements like
   FOR v,e,p IN 1..3 OUTBOUND @start GRAPH @graph RETURN v.name
   we will now detect attribute accesses on the data, in above example "v.name"
