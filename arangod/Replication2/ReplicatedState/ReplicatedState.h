@@ -100,6 +100,7 @@ struct ReplicatedState final
                            std::shared_ptr<Factory> factory,
                            LoggerContext loggerContext,
                            std::shared_ptr<ReplicatedStateMetrics>);
+  ~ReplicatedState() override;
 
   /**
    * Forces to rebuild the state machine depending on the replicated log state.

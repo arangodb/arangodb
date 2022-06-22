@@ -30,6 +30,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Metrics/Gauge.h"
 #include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/LeaderStateManager.h"
@@ -39,12 +40,13 @@
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
 
-#include "Replication2/Streams/LogMultiplexer.tpp"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
-#include "Replication2/ReplicatedState/LeaderStateManager.tpp"
 #include "Replication2/ReplicatedState/FollowerStateManager.tpp"
-#include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
+#include "Replication2/ReplicatedState/LeaderStateManager.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
+#include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
+#include "Replication2/Streams/LogMultiplexer.tpp"
 #include "Logger/LogContextKeys.h"
 
 namespace arangodb::replication2::replicated_state {
@@ -99,7 +101,10 @@ ReplicatedState<S>::ReplicatedState(
       log(std::move(log)),
       guardedData(*this),
       loggerContext(std::move(loggerContext)),
-      metrics(std::move(metrics)) {}
+      metrics(std::move(metrics)) {
+  TRI_ASSERT(this->metrics != nullptr);
+  this->metrics->replicatedStateNumber->fetch_add(1);
+}
 
 template<typename S>
 void ReplicatedState<S>::flush(StateGeneration planGeneration) {
@@ -180,6 +185,11 @@ void ReplicatedState<S>::start(
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
   // execute *after* the lock has been released
   deferred.fire();
+}
+
+template<typename S>
+ReplicatedState<S>::~ReplicatedState() {
+  metrics->replicatedStateNumber->fetch_sub(1);
 }
 
 template<typename S>
