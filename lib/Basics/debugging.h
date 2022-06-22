@@ -315,10 +315,10 @@ struct AssertionConditionalLogger {
 
 #else
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/          \
-  (true) ? ((false) ? (void)(expr) : (void)nullptr)   \
-         : ::arangodb::debug::AssertionNoOpLogger{} & \
-               ::arangodb::debug::NoOpStream {}
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/ /*cppcheck-suppress ignoredReturnValue*/         \
+  (true) ? ((false) ? (void)(expr) : (void)nullptr) /*cppcheck-suppress ignoredReturnValue*/  \
+         : ::arangodb::debug::AssertionNoOpLogger{} & /*cppcheck-suppress ignoredReturnValue*/ \
+               ::arangodb::debug::NoOpStream {} /*cppcheck-suppress ignoredReturnValue*/
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #endif  // #ifndef TRI_ASSERT
