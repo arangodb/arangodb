@@ -262,6 +262,14 @@ arangodb::transaction::Methods* SingleServerProvider<Step>::trx() {
 }
 
 template<class Step>
+TRI_vocbase_t const& SingleServerProvider<Step>::vocbase() const {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->state() != nullptr);
+  TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
+  return _trx.get()->vocbase();
+}
+
+template<class Step>
 arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
   auto t = _stats;
   _stats.clear();
