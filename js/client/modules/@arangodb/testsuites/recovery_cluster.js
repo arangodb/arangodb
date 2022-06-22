@@ -306,7 +306,7 @@ function recovery (options) {
         },
         test
       );
-      params.instanceManager.destructor(true);
+      params.instanceManager.destructor(results[test].status);
       if (results[test].status) {
         fs.removeDirectoryRecursive(params.rootDir, true);
         if (params.keyDir !== "") {
