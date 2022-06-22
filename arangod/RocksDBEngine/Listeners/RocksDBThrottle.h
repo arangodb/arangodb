@@ -38,6 +38,7 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -99,7 +100,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
 
   void SetThrottle();
 
-  int64_t ComputeBacklog();
+  std::pair<int64_t, int64_t> ComputeBacklog();
 
   void RecalculateThrottle();
 
