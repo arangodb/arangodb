@@ -808,8 +808,8 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat("Force killing - sockstat before: ");
         this.killWithCoreDump();
-        this.pid = null;
         this.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
