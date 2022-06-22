@@ -56,6 +56,12 @@ RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(
+    uint64_t collectionObjectId, uint64_t lower, uint64_t upper) {
+  return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId, lower,
+                          upper);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId);
 }
