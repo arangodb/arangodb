@@ -3762,14 +3762,23 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
-  size_t fieldIdx{};
-  for (auto& assertField : assertFields) {
-    SCOPED_TRACE(testing::Message("Field Idx: ") << (fieldIdx++));
-    ASSERT_TRUE(it.valid());
-    assertField(server, it);
+  ASSERT_TRUE(it.valid());
+  auto& field = *it;
+  std::string name(field.name());
+  if (name.starts_with("boost")) {
+    assertFields[0](server, it);
     ++it;
+    ASSERT_TRUE(it.valid());
+    assertFields[1](server, it);
+  } else if (name.starts_with("keys")) {
+    assertFields[1](server, it);
+    ++it;
+    ASSERT_TRUE(it.valid());
+    assertFields[0](server, it);
+  } else {
+    ASSERT_TRUE(false);
   }
-
+  ++it;
   ASSERT_FALSE(it.valid());
 }
 

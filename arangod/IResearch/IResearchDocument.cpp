@@ -333,15 +333,21 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
   return {};
 }
 
-void handleNested(arangodb::iresearch::MissingFieldsMap& map,
+void handleNested(std::string_view parent,
+                  arangodb::iresearch::MissingFieldsMap& map,
                   arangodb::iresearch::InvertedIndexField const& field) {
   std::string nestedObjectsPath(field.path());
+  std::string self;
+  arangodb::iresearch::kludge::mangleNested(self);
+  self += parent;
+  std::cout << "Nested Root:<" << self << "> Expect:" << nestedObjectsPath << std::endl;
+  map[self].emplace(field.path());
   arangodb::iresearch::kludge::mangleNested(nestedObjectsPath);
   for (auto const& sf : field._fields) {
     if (!sf._fields.empty()) {
-      handleNested(map, sf);
+      handleNested(field.path(), map, sf);
     }
-    std::cout << "Nested:" << nestedObjectsPath << "Expect:" << sf.path() << std::endl;
+    std::cout << "Nested: <" << nestedObjectsPath << "> Expect:" << sf.path() << std::endl;
     map[nestedObjectsPath].emplace(sf.path());
   }
 }
@@ -351,18 +357,22 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
   arangodb::iresearch::MissingFieldsMap map;
   for (auto const& f : field._fields) {
     // always monitor on root level plain fields to track completely missing hierarchies
-    if ((!field._trackListPositions || field.expansion().empty())) {
-      std::cout << "ROOT PLAIN:" << f.path() << std::endl;
+    // trackListPositions enabled arrays are excluded as we could never predict if array[12345] will exist
+    // so we do not emit such "nulls". It is not supported in general indexes anyway
+    if ((!field._trackListPositions || field.expansion().empty()) && f._fields.empty()) {
+      std::cout << "ROOT LEVEL:" << f.path() << std::endl;
       map[""].emplace(f.path());
     }
-    if (!f.expansion().empty() && !field._trackListPositions) {
-      // monitor array subobjects (only non tracking list positions matters)
-      std::cout << f.attributeString() + "[*]" << " Expect:" << f.path() << std::endl;
-      map[f.attributeString() + "[*]"].emplace(f.path());
+    // but fo individual objects in array we always could track expected fields and emit "nulls"
+    if (!f.expansion().empty()) {
+      TRI_ASSERT(f._fields.empty());
+      // monitor array subobjects
+      std::cout << "ARRAY:" << f.attributeString() << " Expect:" << f.path() << std::endl;
+      map[f.attributeString()].emplace(f.path());
     }
 #ifdef USE_ENTERPRISE
     if (!f._fields.empty()) {
-      handleNested(map, f);
+      handleNested("", map, f);
     }
 #endif
   }
@@ -702,6 +712,28 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
       while (!top().it.next()) {
         // need to emit "missing" fields as NULLs if index requires so
         if (top().missingFields && !top().missingFields->empty()) {
+          if constexpr (std::is_same_v<IndexMetaStruct,
+                                       IResearchInvertedIndexMeta>) {
+            if (top().type == LevelType::NESTED_FIELDS) {
+              for (auto const& f : *top().missingFields) {
+                std::cout << "MISSING:" << f << std::endl;
+              }
+              std::cout << "HANDLING NESTED:" << *top().missingFields->begin()
+                        << std::endl;
+              auto name = *top().missingFields->begin();
+              top().missingFields->erase(name);
+              acceptOnlyNestingFromKey(_nameBuffer, context, name);
+              pushLevel(VPackSlice::emptyArraySlice(), *context, &acceptOnlyNesting);
+              continue;
+            } else if (top().type == LevelType::NESTED_ROOT) {
+              _nameBuffer = *top().missingFields->begin();
+              std::cout << "HANDLING NESTED ROOT:"
+                        << *top().missingFields->begin() << std::endl;
+              fieldSeen(_nameBuffer);
+              setRoot();
+              return;
+            }
+          }
           _nameBuffer = *top().missingFields->begin();
           fieldSeen(_nameBuffer);
           setNullValue(VPackSlice::nullSlice());
