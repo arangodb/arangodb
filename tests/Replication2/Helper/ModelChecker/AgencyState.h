@@ -51,24 +51,30 @@ struct AgencyState {
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
       velocypack::serialize(builder, x);
-      os << builder.toJson() << std::endl;
+      os << builder.toString() << std::endl;
     };
 
     if (state.replicatedState) {
+      os << "State/Target: ";
       print(state.replicatedState->target);
       if (state.replicatedState->plan) {
+        os << "State/Plan: ";
         print(*state.replicatedState->plan);
       }
       if (state.replicatedState->current) {
+        os << "State/Current: ";
         print(*state.replicatedState->current);
       }
     }
     if (state.replicatedLog) {
+      os << "Log/Target: ";
       print(state.replicatedLog->target);
       if (state.replicatedLog->plan) {
+        os << "Log/Plan: ";
         print(*state.replicatedLog->plan);
       }
       if (state.replicatedLog->current) {
+        os << "Log/Current: ";
         print(*state.replicatedLog->current);
       }
     }
@@ -83,7 +89,7 @@ struct AgencyState {
           builder.add("failed", !ph.notIsFailed);
         }
       }
-      os << builder.toJson() << std::endl;
+      os << builder.toString() << std::endl;
     }
 
     return os;
