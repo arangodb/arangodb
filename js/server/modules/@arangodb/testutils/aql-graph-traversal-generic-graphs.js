@@ -504,7 +504,7 @@ class ProtoGraph {
       const eRel = sgm._relation(en, vn, vn);
 
       return new TestGraph(
-        gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices
+        gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices, this.addProjectionPayload
       );
     });
   }
@@ -528,7 +528,7 @@ class ProtoGraph {
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices);
+      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices, this.addProjectionPayload);
     });
   }
 
