@@ -120,6 +120,10 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
   };
 
   auto allTests = model_checker::combined{
+      MC_ALWAYS(
+          mcpreds::
+              isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),
+
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
@@ -158,6 +162,10 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
   };
 
   auto allTests = model_checker::combined{
+      MC_ALWAYS(
+          mcpreds::
+              isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),
+
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
@@ -200,6 +208,9 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
 
   // TODO predicate that checks participant is there
   auto allTests = model_checker::combined{
+      MC_ALWAYS(
+          mcpreds::
+              isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantPlanned("D")),
       MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantCurrent("D")),
@@ -248,6 +259,9 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
       DBServerActor{"B"}, DBServerActor{"C"}};
 
   auto allTests = model_checker::combined{
+      MC_ALWAYS(
+          mcpreds::
+              isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
@@ -292,6 +306,9 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
       DBServerActor{"B"}, DBServerActor{"C"}};
 
   auto allTests = model_checker::combined{
+      MC_ALWAYS(
+          mcpreds::
+              isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_EVENTUALLY_ALWAYS(mcpreds::serverIsLeader("C"))};
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
@@ -302,21 +319,42 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
   std::cout << result.stats << std::endl;
 }
 
-#if 0
+// need an actor that changes Target config
+//
+// predicate that eventually assumedWriteConcern == effectiveWriteConcern
+//
+// when leader election happens assumedWriteConcern <= last used
+// effectiveWriteConcern
+//
+// we want to observe effective write concern that used by leader actor for
+// commit
+//
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
-      .setTargetParticipant("C", defaultFlags);
+      .setTargetParticipant("C", defaultFlags)
+      .setTargetParticipant("D", defaultFlags)
+      .setTargetParticipant("E", defaultFlags)
+      .setTargetParticipant("F", defaultFlags)
+      .setTargetParticipant("G", defaultFlags);
 
   log.setPlanParticipant("A", defaultFlags)
       .setPlanParticipant("B", defaultFlags)
       .setPlanParticipant("C", defaultFlags);
+
   log.setPlanLeader("A");
   log.establishLeadership();
-  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+
+  log.acknowledgeTerm("A")
+      .acknowledgeTerm("B")
+      .acknowledgeTerm("C")
+      .acknowledgeTerm("D")
+      .acknowledgeTerm("E")
+      .acknowledgeTerm("F")
+      .acknowledgeTerm("G");
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -328,13 +366,26 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   health._health.emplace(
       "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
+  health._health.emplace(
+      "D", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "E", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "F", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "G", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
 
   auto initState =
       AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, SetLeaderActor{"C"}, DBServerActor{"A"},
-      DBServerActor{"B"}, DBServerActor{"C"}};
+      DBServerActor{"B"}, DBServerActor{"C"},  DBServerActor{"D"},
+      DBServerActor{"E"}, DBServerActor{"F"},  DBServerActor{"G"}};
 
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
@@ -346,4 +397,3 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   EXPECT_FALSE(result.failed) << *result.failed;
   std::cout << result.stats << std::endl;
 }
-#endif
