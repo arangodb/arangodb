@@ -194,9 +194,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
   }
 
   if (_returnNext >= _rowIndexes.size()) {
-    _inputReady = false;
-    _inputBlocks.clear();
-    _rowIndexes.clear();
     state = ExecutorState::DONE;
   } else {
     state = ExecutorState::HASMORE;
@@ -231,6 +228,15 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     if (inputBlock != nullptr) {
       _inputBlocks.emplace_back(inputBlock);
     }
+  }
+
+  if (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty()) {
+    // Bail out if called too often,
+    // Bail out on no elements
+    return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
+  }
+
+  if (!_inputReady) {
     consumeInput(inputRange, state);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, 0, upstreamCall};
@@ -241,16 +247,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     }
   }
 
-  if (state == ExecutorState::HASMORE) {
-    return {state, NoStats{}, 0, upstreamCall};
-  }
-
-  if (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty()) {
-    // Bail out if called too often,
-    // Bail out on no elements
-    return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
-  }
-
   while (_returnNext < _rowIndexes.size() && call.shouldSkip()) {
     InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
                           _rowIndexes[_returnNext].second);
@@ -259,9 +255,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   }
 
   if (_returnNext >= _rowIndexes.size()) {
-    _inputReady = false;
-    _rowIndexes.clear();
-    _inputBlocks.clear();
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
