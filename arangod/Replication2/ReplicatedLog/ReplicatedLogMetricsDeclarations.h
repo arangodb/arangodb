@@ -94,4 +94,13 @@ DECLARE_HISTOGRAM(
     arangodb_replication2_replicated_log_inserts_rtt, AppendEntriesRttScale,
     "Histogram of round-trip times of replicated log inserts [us]");
 
+DECLARE_COUNTER(arangodb_replication2_replicated_log_number_accepted_entries,
+                "Number of accepted (not yet committed) log entries");
+DECLARE_COUNTER(arangodb_replication2_replicated_log_number_committed_entries,
+                "Number of committed log entries");
+DECLARE_COUNTER(arangodb_replication2_replicated_log_number_meta_entries,
+                "Number of meta log entries");
+DECLARE_COUNTER(arangodb_replication2_replicated_log_number_compacted_entries,
+                "Number of compacted log entries");
+
 }  // namespace arangodb
