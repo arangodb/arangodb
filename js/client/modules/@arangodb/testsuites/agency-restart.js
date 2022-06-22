@@ -62,35 +62,24 @@ function runArangodRecovery (params, agencyConfig) {
   };
 
   let argv = [];
-
   let binary = pu.ARANGOD_BIN;
-  params.crashLogDir = fs.join(fs.getTempPath(), 'crash');
-  fs.makeDirectoryRecursive(params.crashLogDir);
-
-  let crashLog = fs.join(params.crashLogDir, 'crash.log');
 
   if (params.setup) {
     additionalParams['javascript.script-parameter'] = 'setup';
-    try {
-      // clean up crash log before next test
-      fs.remove(params.crashLogDir);
-    } catch (err) {}
 
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
 
     // enable development debugging if extremeVerbosity is set
-    let args = {};
+    let args = Object.assign({
+      'server.rest-server': 'false',
+      'javascript.script': params.script,
+      'log.output': 'file://' + params.crashLog
+    }, params.options.extraArgs);
+
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
     }
-    args = Object.assign(args, params.options.extraArgs);
-    args = Object.assign(args, {
-      'server.rest-server': 'false',
-      'javascript.script': params.script
-    });
-
-    args['log.output'] = 'file://' + params.crashLogDir;
     params['instance'] = new inst.instance(params.options,
                                            inst.instanceRole.agent,
                                            args, {}, 'tcp', params.rootDir, '',
@@ -107,7 +96,7 @@ function runArangodRecovery (params, agencyConfig) {
     }
   }
 
-  process.env["crash-log"] = params.crashLogDir;
+  process.env["crash-log"] = params.crashLog;
   params.instance.pid = pu.executeAndWait(
     binary,
     argv,
@@ -155,8 +144,12 @@ function agencyRestart (options) {
         script: test,
         setup: true,
         count: count,
-        testDir: ""
+        testDir: "",
+        crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
+        crashLog: ""
       };
+      fs.makeDirectoryRecursive(params.crashLogDir);
+      params.crashLog = fs.join(params.crashLogDir, 'crash.log');
       let agencyConfig = new inst.agencyConfig(options, null);
       runArangodRecovery(params, agencyConfig);
 

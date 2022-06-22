@@ -51,16 +51,7 @@ const testPaths = {
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params) {
-  let useEncryption = false;
-
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      useEncryption = true;
-    }
-  }
-
+function runArangodRecovery (params, useEncryption) {
   let additionalParams= {
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
@@ -78,17 +69,8 @@ function runArangodRecovery (params) {
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
-  params.crashLogDir = fs.join(fs.getTempPath(), 'crash');
-
-  let crashLog = fs.join(params.crashLogDir, 'crash.log');
-
   if (params.setup) {
     additionalParams['javascript.script-parameter'] = 'setup';
-    try {
-      // clean up crash log before next test
-      fs.remove(crashLog);
-    } catch (err) {}
-
 
     // special handling for crash-handler recovery tests
     if (params.script.match(/crash-handler/)) {
@@ -98,26 +80,19 @@ function runArangodRecovery (params) {
     }
 
     // enable development debugging if extremeVerbosity is set
-    let args = {};
-    if (params.options.extremeVerbosity === true) {
-      args['log.level'] = 'development=info';
-    }
-    args = Object.assign(args, params.options.extraArgs);
-    args = Object.assign(args, {
+    let args = Object.assign({
       'rocksdb.wal-file-timeout-initial': 10,
       'server.rest-server': 'false',
       'replication.auto-start': 'true',
-      'javascript.script': params.script
-    });
+      'javascript.script': params.script,
+      'log.output': 'file://' + params.crashLog
+    }, params.options.extraArgs);
     
-    args['log.output'] = 'file://' + crashLog;
+    if (params.options.extremeVerbosity === true) {
+      args['log.level'] = 'development=info';
+    }
 
     if (useEncryption) {
-      params.keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
-      if (!fs.exists(params.keyDir)) {  // needed on win32
-        fs.makeDirectory(params.keyDir);
-      }
-      
       const key = '01234567890123456789012345678901';
       
       let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
@@ -151,7 +126,7 @@ function runArangodRecovery (params) {
   }
   
   process.env["state-file"] = params.stateFile;
-  process.env["crash-log"] = crashLog;
+  process.env["crash-log"] = params.crashLog;
   process.env["isAsan"] = params.options.isAsan;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
@@ -177,6 +152,15 @@ function recovery (options) {
   let results = {
     status: true
   };
+
+  let useEncryption = false;
+
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      useEncryption = true;
+    }
+  }
 
   let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
 
@@ -211,10 +195,17 @@ function recovery (options) {
           count: count,
           testDir: "",
           stateFile,
-          crashLogDir: "",
+          crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
+          crashLog: "",
           keyDir: ""          
         };
-        runArangodRecovery(params);
+        fs.makeDirectoryRecursive(params.crashLogDir);
+        params.crashLog = fs.join(params.crashLogDir, 'crash.log');
+        if (useEncryption) {
+          params.keyDir = fs.join(fs.getTempPath(), `arango_encryption_${count}`);
+          fs.makeDirectory(params.keyDir);
+        }
+        runArangodRecovery(params, useEncryption);
 
         ////////////////////////////////////////////////////////////////////////
         print(BLUE + "running recovery #" + iteration + " of test " + count + " - " + test + RESET);
@@ -228,7 +219,7 @@ function recovery (options) {
             duration: -1
           });
         } catch (er) {}
-        runArangodRecovery(params);
+        runArangodRecovery(params, useEncryption);
 
         results[test] = tu.readTestResult(
           params.instance.args['temp.path'],
