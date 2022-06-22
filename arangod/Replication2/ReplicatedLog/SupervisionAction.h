@@ -125,25 +125,6 @@ auto inspect(Inspector& f, AddLogToPlanAction& x) {
                             f.field("config", x._config));
 }
 
-struct CurrentNotAvailableAction {
-  static constexpr std::string_view name = "CurrentNotAvailableAction";
-
-  CurrentNotAvailableAction(size_t assumedWriteConcern)
-      : assumedWriteConcern(assumedWriteConcern) {}
-  auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyOrCreate<LogCurrentSupervision>(
-        [&](LogCurrentSupervision& currentSupervision) {
-          currentSupervision.assumedWriteConcern = assumedWriteConcern;
-        });
-  }
-  size_t assumedWriteConcern;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, CurrentNotAvailableAction& x) {
-  auto hack = std::string{x.name};
-  return f.object(x).fields(f.field("type", hack));
-}
-
 struct SwitchLeaderAction {
   static constexpr std::string_view name = "SwitchLeaderAction";
 
@@ -373,8 +354,7 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
  */
 using Action =
     std::variant<EmptyAction, NoActionPossibleAction, AddLogToPlanAction,
-                 CurrentNotAvailableAction, SwitchLeaderAction,
-                 WriteEmptyTermAction, LeaderElectionAction,
+                 SwitchLeaderAction, WriteEmptyTermAction, LeaderElectionAction,
                  UpdateParticipantFlagsAction, AddParticipantToPlanAction,
                  RemoveParticipantFromPlanAction, UpdateLogConfigAction,
                  UpdateEffectiveWriteConcernAction,

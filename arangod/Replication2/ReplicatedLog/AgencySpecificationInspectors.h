@@ -242,7 +242,8 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision& x) {
   return f.object(x).fields(
-      f.field(static_strings::AssumedWriteConcern, x.assumedWriteConcern),
+      f.field(static_strings::AssumedWriteConcern, x.assumedWriteConcern)
+          .fallback(static_cast<size_t>(1)),
       f.field(static_strings::TargetVersion, x.targetVersion),
       f.field(static_strings::StatusReport, x.statusReport),
       f.field(static_strings::LastTimeModified, x.lastTimeModified)

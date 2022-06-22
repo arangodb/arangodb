@@ -536,16 +536,6 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
   }
 }
 
-auto checkCurrentExists(SupervisionContext& ctx, Log const& log) -> void {
-  // If the Current subtree does not exist yet, create it by writing
-  // a message into it.
-  auto const effectiveWriteConcern =
-      log.plan->participantsConfig.config.effectiveWriteConcern;
-  if (!log.current || !log.current->supervision) {
-    ctx.createAction<CurrentNotAvailableAction>(effectiveWriteConcern);
-  }
-}
-
 auto checkParticipantToAdd(SupervisionContext& ctx, Log const& log,
                            ParticipantsHealth const& health) -> void {
   auto const& target = log.target;
@@ -724,11 +714,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // provided we have enough participants If there are not enough participants
   // we can only report back that this log cannot be created.
   checkLogExists(ctx, log, health);
-
-  // FIXME: This is probably not necessary, as all other check functions should
-  //        check whether current is available (and not do anything if it is
-  //        not)
-  checkCurrentExists(ctx, log);
 
   // If currentTerm's leader entry does not have a value,
   // make sure a leader is elected.

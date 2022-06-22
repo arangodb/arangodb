@@ -258,7 +258,9 @@ struct LogCurrentSupervision {
 
   using StatusReport = std::vector<StatusMessage>;
 
-  size_t assumedWriteConcern;
+  // TODO / FIXME: This prevents assumedWriteConcern from
+  // being initialised to
+  size_t assumedWriteConcern{1};
   std::optional<uint64_t> targetVersion;
   std::optional<StatusReport> statusReport;
   std::optional<clock::time_point> lastTimeModified;
