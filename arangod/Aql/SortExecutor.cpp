@@ -258,37 +258,4 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
-
-  //  throw std::exception();
 }
-
-/*
-[[nodiscard]] auto SortExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputMatrix const& input, AqlCall const& call) const noexcept
-    -> size_t {
-  size_t rowsAvailable = input.countDataRows();
-  if (_input != nullptr) {
-    if (_returnNext < _sortedIndexes.size()) {
-      TRI_ASSERT(_returnNext <= rowsAvailable);
-      // if we have input, we are enumerating rows
-      // In a block within the given matrix.
-      // Unfortunately there could be more than
-      // one full block in the matrix and we do not know
-      // in which block we are.
-      // So if we are in the first block this will be accurate
-      rowsAvailable -= _returnNext;
-      // If we are in a later block, we will allocate space
-      // again for the first block.
-      // Nevertheless this is highly unlikely and
-      // only is bad if we sort few elements within highly nested
-      // subqueries.
-    }
-    // else we are in DONE state and not yet reset.
-    // We do not exactly now how many rows will be there
-  }
-  if (input.countShadowRows() == 0) {
-    return std::min(call.getLimit(), rowsAvailable);
-  }
-  return rowsAvailable;
-}
- */
