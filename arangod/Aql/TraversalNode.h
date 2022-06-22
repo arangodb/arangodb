@@ -121,13 +121,13 @@ class TraversalNode : public virtual GraphNode {
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
       const override;
 
-  std::unique_ptr<ExecutionBlock> createRefactoredBlock(
+  std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
       std::vector<std::pair<Variable const*, RegisterId>>&&,
       std::function<
-          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+          void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
       std::function<
-          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+          void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
       const std::unordered_map<TraversalExecutorInfosHelper::OutputName,
                                RegisterId,
                                TraversalExecutorInfosHelper::OutputNameHash>&,
@@ -224,6 +224,14 @@ class TraversalNode : public virtual GraphNode {
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
   auto options() const -> traverser::TraverserOptions*;
 
+  // @brief Get reference to the Prune expression.
+  //        You are not responsible for it!
+  Expression* pruneExpression() const { return _pruneExpression.get(); }
+
+  // @brief Get reference to the postFilter expression.
+  //        You are not responsible for it!
+  Expression* postFilterExpression() const;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -237,15 +245,6 @@ class TraversalNode : public virtual GraphNode {
   void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                             bool withProperties) const;
 
-  // @brief Get reference to the Prune expression.
-  //        You are not responsible for it!
-  Expression* pruneExpression() const { return _pruneExpression.get(); }
-
-  // @brief Get reference to the postFilter expression.
-  //        You are not responsible for it!
-  Expression* postFilterExpression() const;
-
- private:
   /// @brief vertex output variable
   Variable const* _pathOutVariable;
 
