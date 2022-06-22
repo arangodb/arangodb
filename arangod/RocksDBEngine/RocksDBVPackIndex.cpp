@@ -1472,6 +1472,9 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     }
   }
 
+  bool isIndexCreation =
+      trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION);
+
   // now we are going to construct the value to insert into rocksdb
   if (_unique) {
     // build index value (storedValues array will be stored in value if
@@ -1497,8 +1500,12 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     rocksdb::Status s;
     // unique indexes have a different key structure
     for (RocksDBKey const& key : elements) {
-      // banish key in in-memory cache
-      invalidateCacheEntry(::lookupValueFromSlice(key.string()));
+      if (!isIndexCreation) {
+        // banish key in in-memory cache.
+        // not necessary during index creation, because nothing
+        // will be in the in-memory cache.
+        invalidateCacheEntry(::lookupValueFromSlice(key.string()));
+      }
 
       if (performChecks) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
@@ -1577,8 +1584,12 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
 
     rocksdb::Status s;
     for (RocksDBKey const& key : elements) {
-      // banish key in in-memory cache
-      invalidateCacheEntry(::lookupValueFromSlice(key.string()));
+      if (!isIndexCreation) {
+        // banish key in in-memory cache.
+        // not necessary during index creation, because nothing
+        // will be in the in-memory cache.
+        invalidateCacheEntry(::lookupValueFromSlice(key.string()));
+      }
 
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
