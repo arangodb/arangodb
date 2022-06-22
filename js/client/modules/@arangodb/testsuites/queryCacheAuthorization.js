@@ -33,6 +33,7 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/testutils/process-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -84,15 +85,18 @@ function queryCacheAuthorization (options) {
 
   print(CYAN + 'queryCacheAuthorization tests...' + RESET);
 
-  const adbInstance = pu.startInstance('tcp', options, conf, 'queryCacheAuthorization');
-  if (adbInstance === false) {
-    results.failed += 1;
-    results['test'] = {
-      failed: 1,
-      status: false,
-      message: 'failed to start server!'
+  let instanceManager = new im.instanceManager('tcp', options, conf, 'queryCacheAuthorization');
+  instanceManager.prepareInstance();
+  instanceManager.launchTcpDump("");
+  if (!instanceManager.launchInstance()) {
+    return {
+      queryCacheAuthorization: {
+        status: false,
+        message: 'failed to start server!'
+      }
     };
   }
+  instanceManager.reconnect();
 
   const requests = [
     [200, 'put', '/_api/query-cache/properties', 'root', {mode: 'on', maxResults: 128}],
@@ -105,7 +109,7 @@ function queryCacheAuthorization (options) {
     const bodies = [];
     for (const r of tests) {
       const res = request[r[1]]({
-        url: `${adbInstance.arangods[0].url}${r[2]}`,
+        url: `${instanceManager.url}${r[2]}`,
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
         auth: {username: r[3], password: ''}
       });
@@ -124,7 +128,8 @@ function queryCacheAuthorization (options) {
         results.failed += 1;
         results[r.slice(0, 5).join('_')] = {
           failed: 1,
-          status: false
+          status: false,
+          message: "Result: expected " + r[0] + " got " + r[1] + " - reply: " + JSON.stringify(res)
         };
       }
     }
@@ -132,7 +137,7 @@ function queryCacheAuthorization (options) {
   };
 
   pu.run.arangoshCmd(
-    options, adbInstance, {}, [
+    options, instanceManager, {}, [
       '--javascript.execute-string',
       `const users = require('@arangodb/users');
       users.save('test', '', true);
@@ -149,8 +154,8 @@ function queryCacheAuthorization (options) {
   options.coreCheck);
 
   run(requests);
-  results['shutdown'] = pu.shutdownInstance(adbInstance, options);
-
+  results['shutdown'] = instanceManager.shutdownInstance();
+  instanceManager.destructor();
   return results;
 }
 
