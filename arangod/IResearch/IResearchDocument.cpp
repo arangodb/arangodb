@@ -641,8 +641,14 @@ bool FieldIterator<IndexMetaStruct, LevelMeta>::pushLevel(
     VPackSlice value, LevelMeta const& meta,
     FieldIterator<IndexMetaStruct, LevelMeta>::Filter filter) {
   std::optional<MissingFieldsContainer> missing;
-  {
-    auto missingMapEntry = _missingFieldsMap.find(_nameBuffer);
+  // missing fields are gathered for "root" e.g. empty stack
+  // and for array->object in stack
+  if (_stack.empty() || (value.isObject() && _stack.size() > 1
+     && _stack[_stack.size() - 2].it.value().value.isArray())) {
+    auto key = _stack.empty() ? std::string_view("")
+                              : std::string_view(_nameBuffer.data(),
+                                                 _stack.back().nameLength);
+    auto missingMapEntry = _missingFieldsMap.find(key);
     if (missingMapEntry != _missingFieldsMap.end()) {
       missing = std::make_optional(missingMapEntry->second);
     }
@@ -732,6 +738,10 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
               fieldSeen(_nameBuffer);
               setRoot();
               return;
+            }
+            if (top().type == LevelType::NESTED_OBJECTS &&
+                _missingFieldsMap[_nameBuffer].size() == top().missingFields->size()) {
+              _needDoc = true;
             }
           }
           _nameBuffer = *top().missingFields->begin();
