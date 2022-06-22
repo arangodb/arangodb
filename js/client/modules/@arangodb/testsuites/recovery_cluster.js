@@ -204,7 +204,6 @@ function runArangodRecovery (params, useEncryption) {
     });
   } else {
     params.instanceManager.shutdownInstance(false);
-    params.instanceManager.destructor(true);
   }
 }
 
@@ -307,6 +306,7 @@ function recovery (options) {
         },
         test
       );
+      params.instanceManager.destructor(true);
       if (results[test].status) {
         fs.removeDirectoryRecursive(params.rootDir, true);
         if (params.keyDir !== "") {
