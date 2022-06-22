@@ -125,7 +125,7 @@ struct ExecutionNodeMock {
     _regsToClear = std::move(toClear);
   }
 
-  auto getTypeString() const -> std::string const& {
+  auto getTypeString() const -> std::string_view {
     return ExecutionNode::getTypeString(_type);
   }
 

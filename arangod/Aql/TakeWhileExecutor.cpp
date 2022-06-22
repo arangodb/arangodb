@@ -26,6 +26,8 @@
 #include "Aql/Stats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Basics/debugging.h"
+#include "Cluster/ServerState.h"
 
 namespace arangodb::aql {
 
@@ -43,7 +45,14 @@ auto TakeWhileExecutorInfos::emitFirstFalseLine() const noexcept -> bool {
 
 TakeWhileExecutor::TakeWhileExecutor(TakeWhileExecutor::Fetcher&,
                                      TakeWhileExecutor::Infos& infos)
-    : _infos(infos) {}
+    : _infos(infos) {
+  // At least currently, emitFirstFalseLine() should be set exactly when the
+  // node is on the DBServer. If this changes in the future e.g. because users
+  // get an option to turn this on for themselves, this assertion can be
+  // removed.
+  TRI_ASSERT(ServerState::instance()->isDBServer() ==
+             infos.emitFirstFalseLine());
+}
 
 [[nodiscard]] auto TakeWhileExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)

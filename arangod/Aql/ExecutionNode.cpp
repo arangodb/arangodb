@@ -2481,15 +2481,20 @@ std::unique_ptr<ExecutionBlock> TakeWhileNode::createBlock(
 
 ExecutionNode* TakeWhileNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
-  // TODO
-  FATAL_ERROR_EXIT();
-  return nullptr;
+  auto inVariable = _inVariable;
+
+  if (withProperties) {
+    inVariable = plan->getAst()->variables()->createVariable(inVariable);
+  }
+
+  return cloneHelper(std::make_unique<TakeWhileNode>(plan, _id, inVariable),
+                     withDependencies, withProperties);
 }
 
 void TakeWhileNode::doToVelocyPack(velocypack::Builder& builder,
                                    unsigned int flags) const {
-  // TODO
-  FATAL_ERROR_EXIT();
+  builder.add(VPackValue("inVariable"));
+  _inVariable->toVelocyPack(builder);
 }
 
 auto TakeWhileNode::estimateCost() const -> CostEstimate {
@@ -2528,15 +2533,20 @@ std::unique_ptr<ExecutionBlock> DropWhileNode::createBlock(
 
 ExecutionNode* DropWhileNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
-  // TODO
-  FATAL_ERROR_EXIT();
-  return nullptr;
+  auto inVariable = _inVariable;
+
+  if (withProperties) {
+    inVariable = plan->getAst()->variables()->createVariable(inVariable);
+  }
+
+  return cloneHelper(std::make_unique<DropWhileNode>(plan, _id, inVariable),
+                     withDependencies, withProperties);
 }
 
 void DropWhileNode::doToVelocyPack(velocypack::Builder& builder,
                                    unsigned int flags) const {
-  // TODO
-  FATAL_ERROR_EXIT();
+  builder.add(VPackValue("inVariable"));
+  _inVariable->toVelocyPack(builder);
 }
 
 auto DropWhileNode::estimateCost() const -> CostEstimate {
