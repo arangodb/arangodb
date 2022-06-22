@@ -65,15 +65,7 @@ function ensureServers(options, numServers) {
 // / @brief TEST: recovery_cluster
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params) {
-  let useEncryption = false;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      useEncryption = true;
-    }
-  }
-
+function runArangodRecovery (params, useEncryption) {
   let additionalParams= {
     'foxx.queues': 'false',
     'server.statistics': 'false',
@@ -82,9 +74,6 @@ function runArangodRecovery (params) {
     'temp.path': params.temp_path
   };
   
-  // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
-  let additionalTestParams  = {};
-
   if (useEncryption) {
     // randomly turn on or off hardware-acceleration for encryption for both
     // setup and the actual test. given enough tests, this will ensure that we run
@@ -95,10 +84,13 @@ function runArangodRecovery (params) {
   }
   let argv = [];
   let binary = pu.ARANGOD_BIN;
-  // arangosh has different name for parameter :(
-  additionalTestParams['javascript.execute'] =  params.script;
-  additionalTestParams['javascript.run-main'] = true;
-  additionalTestParams['temp.path'] = params.temp_path;
+  // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
+  let additionalTestParams  = {
+    // arangosh has different name for parameter :(
+    'javascript.execute':  params.script,
+    'javascript.run-main': true,
+    'temp.path': params.temp_path
+  };
 
   if (params.setup) {
     additionalTestParams['server.request-timeout'] = '60';
@@ -243,6 +235,13 @@ function recovery (options) {
   let results = {
     status: true
   };
+  let useEncryption = false;
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      useEncryption = true;
+    }
+  }
 
   let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
 
@@ -264,18 +263,15 @@ function recovery (options) {
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
         tempDir: tempDir,
-        instanceInfo: {
-          rootDir: fs.join(fs.getTempPath(), 'recovery_cluster', count.toString())
-        },
+        rootDir: fs.join(fs.getTempPath(), 'recovery_cluster', count.toString()),
         options: _.cloneDeep(options),
         script: test,
         setup: true,
         count: count,
-        testDir: "",
         keyDir: "",
         temp_path: fs.join(tempDir, count.toString())
       };
-      runArangodRecovery(params);
+      runArangodRecovery(params, useEncryption);
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
@@ -290,7 +286,7 @@ function recovery (options) {
         });
     } catch (er) { print(er);}
       try {
-        runArangodRecovery(params);
+        runArangodRecovery(params, useEncryption);
       } catch (err) {
         results[test] = {
           failed: 1,
@@ -312,12 +308,12 @@ function recovery (options) {
         test
       );
       if (results[test].status) {
-        fs.removeDirectoryRecursive(params.testDir, true);
+        fs.removeDirectoryRecursive(params.rootDir, true);
         if (params.keyDir !== "") {
           fs.removeDirectoryRecursive(params.keyDir);
         }
       } else {
-        print("Not cleaning up " + params.testDir);
+        print("Not cleaning up " + params.rootDir);
         results.status = false;
       }
     } else {
