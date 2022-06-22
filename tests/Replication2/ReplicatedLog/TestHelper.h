@@ -52,18 +52,18 @@ namespace arangodb::replication2::test {
 using namespace replicated_log;
 
 struct ReplicatedLogTest : ::testing::Test {
-  template <typename MockLogT = MockLog>
+  template<typename MockLogT = MockLog>
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
     auto persisted = makePersistedLog<MockLogT>(id);
     return std::make_unique<LogCore>(persisted);
   }
 
-  template <typename MockLogT = MockLog>
+  template<typename MockLogT = MockLog>
   auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLogT> {
     return std::dynamic_pointer_cast<MockLogT>(_persistedLogs.at(id));
   }
 
-  template <typename MockLogT = MockLog>
+  template<typename MockLogT = MockLog>
   auto makePersistedLog(LogId id) -> std::shared_ptr<MockLogT> {
     auto persisted = std::make_shared<MockLogT>(id);
     _persistedLogs[id] = persisted;
@@ -74,7 +74,7 @@ struct ReplicatedLogTest : ::testing::Test {
     return makePersistedLog<DelayedMockLog>(id);
   }
 
-  template <typename MockLogT = MockLog>
+  template<typename MockLogT = MockLog>
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto core = makeLogCore<MockLogT>(id);
     return std::make_shared<TestReplicatedLog>(
@@ -96,14 +96,14 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto createLeaderWithDefaultFlags(
       ParticipantId id, LogTerm term, std::unique_ptr<LogCore> logCore,
-      std::vector<std::shared_ptr<AbstractFollower>> const &follower,
+      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
       std::size_t effectiveWriteConcern, bool waitForSync = false,
       std::shared_ptr<cluster::IFailureOracle> failureOracle = nullptr)
       -> std::shared_ptr<LogLeader> {
     auto config = agency::LogPlanConfig{effectiveWriteConcern, waitForSync};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
-    for (auto const &participant : follower) {
+    for (auto const& participant : follower) {
       participants.emplace(participant->getParticipantId(), ParticipantFlags{});
     }
     auto participantsConfig = std::make_shared<agency::ParticipantsConfig>(
@@ -121,7 +121,7 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   auto stopAsyncMockLogs() -> void {
-    for (auto const &it : _persistedLogs) {
+    for (auto const& it : _persistedLogs) {
       if (auto log = std::dynamic_pointer_cast<AsyncMockLog>(it.second);
           log != nullptr) {
         log->stop();
@@ -136,4 +136,4 @@ struct ReplicatedLogTest : ::testing::Test {
       std::make_shared<ReplicatedLogGlobalSettings>();
 };
 
-} // namespace arangodb::replication2::test
+}  // namespace arangodb::replication2::test
