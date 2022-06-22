@@ -37,7 +37,7 @@ namespace arangodb::test {
 struct AgencyLogBuilder {
   AgencyLogBuilder() = default;
 
-  auto setId(LogId id) -> AgencyLogBuilder & {
+  auto setId(LogId id) -> AgencyLogBuilder& {
     _log.target.id = id;
     if (_log.plan) {
       _log.plan->id = id;
@@ -45,13 +45,13 @@ struct AgencyLogBuilder {
     return *this;
   }
 
-  auto setTargetParticipant(ParticipantId const &id, ParticipantFlags flags)
-      -> AgencyLogBuilder & {
+  auto setTargetParticipant(ParticipantId const& id, ParticipantFlags flags)
+      -> AgencyLogBuilder& {
     _log.target.participants[id] = flags;
     return *this;
   }
 
-  auto setTargetConfig(RLA::LogTargetConfig config) -> AgencyLogBuilder & {
+  auto setTargetConfig(RLA::LogTargetConfig config) -> AgencyLogBuilder& {
     _log.target.config = config;
     return *this;
   }
@@ -62,19 +62,19 @@ struct AgencyLogBuilder {
   }
 
   auto setTargetLeader(std::optional<ParticipantId> leader)
-      -> AgencyLogBuilder & {
+      -> AgencyLogBuilder& {
     _log.target.leader = std::move(leader);
     return *this;
   }
 
   auto setTargetVersion(std::optional<std::uint64_t> version)
-      -> AgencyLogBuilder & {
+      -> AgencyLogBuilder& {
     _log.target.version = version;
     return *this;
   }
 
-  auto makeTerm() -> RLA::LogPlanTermSpecification & {
-    auto &plan = makePlan();
+  auto makeTerm() -> RLA::LogPlanTermSpecification& {
+    auto& plan = makePlan();
     if (!plan.currentTerm.has_value()) {
       plan.currentTerm.emplace();
       plan.currentTerm->term = LogTerm{1};
@@ -84,19 +84,19 @@ struct AgencyLogBuilder {
     return plan.currentTerm.value();
   }
 
-  auto setPlanLeader(ParticipantId const &id, RebootId rid = RebootId{0})
-      -> AgencyLogBuilder & {
+  auto setPlanLeader(ParticipantId const& id, RebootId rid = RebootId{0})
+      -> AgencyLogBuilder& {
     makeTerm().leader.emplace(id, rid);
     return *this;
   }
 
-  auto setPlanParticipant(ParticipantId const &id, ParticipantFlags flags)
-      -> AgencyLogBuilder & {
+  auto setPlanParticipant(ParticipantId const& id, ParticipantFlags flags)
+      -> AgencyLogBuilder& {
     makePlan().participantsConfig.participants[id] = flags;
     return *this;
   }
 
-  auto makePlan() -> RLA::LogPlanSpecification & {
+  auto makePlan() -> RLA::LogPlanSpecification& {
     if (!_log.plan.has_value()) {
       _log.plan.emplace();
       _log.plan->id = _log.target.id;
@@ -105,8 +105,8 @@ struct AgencyLogBuilder {
     return _log.plan.value();
   }
 
-  auto establishLeadership() -> AgencyLogBuilder & {
-    auto &leader = makeCurrent().leader.emplace();
+  auto establishLeadership() -> AgencyLogBuilder& {
+    auto& leader = makeCurrent().leader.emplace();
     leader.term = makeTerm().term;
     leader.leadershipEstablished = true;
     leader.serverId = makeTerm().leader.value().serverId;
@@ -114,20 +114,29 @@ struct AgencyLogBuilder {
     return *this;
   }
 
-  auto acknowledgeTerm(ParticipantId const &id) -> AgencyLogBuilder & {
-    auto &current = makeCurrent();
+  auto acknowledgeTerm(ParticipantId const& id) -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
     current.localState[id].term = makeTerm().term;
     return *this;
   }
 
-  auto makeCurrent() -> RLA::LogCurrent & {
+  auto makeCurrent() -> RLA::LogCurrent& {
     if (!_log.current.has_value()) {
       _log.current.emplace();
+
+      if (!_log.current->supervision.has_value()) {
+        _log.current->supervision.emplace();
+      }
+      // makeCurrent should really only be called if a plan already exists.
+      if (_log.plan.has_value()) {
+        _log.current->supervision->assumedWriteConcern =
+            _log.plan->participantsConfig.config.effectiveWriteConcern;
+      }
     }
     return _log.current.value();
   }
 
-  auto get() const noexcept -> RLA::Log const & { return _log; }
+  auto get() const noexcept -> RLA::Log const& { return _log; }
   RLA::Log _log;
 };
-} // namespace arangodb::test
+}  // namespace arangodb::test
