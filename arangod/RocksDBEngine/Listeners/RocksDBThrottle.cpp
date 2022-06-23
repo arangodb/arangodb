@@ -312,9 +312,8 @@ void RocksDBThrottle::ThreadLoop() {
   }
 
   LOG_TOPIC("eebbe", DEBUG, arangodb::Logger::ENGINES) << "ThreadLoop() ended";
-}  // RocksDBThrottle::ThreadLoop
+}
 
-//
 // Routine to actually perform the throttle calculation,
 //  now is external routing from ThreadLoop() to easy unit test
 void RocksDBThrottle::RecalculateThrottle() {
@@ -331,7 +330,7 @@ void RocksDBThrottle::RecalculateThrottle() {
 #endif
   bool no_data;
 
-  int64_t compaction_backlog = ComputeBacklog();
+  auto [compaction_backlog, pendingCompactionBytes] = ComputeBacklog();
   TRI_ASSERT(_throttleData != nullptr);
   auto& throttleData = *_throttleData;
 
@@ -359,6 +358,22 @@ void RocksDBThrottle::RecalculateThrottle() {
   // reduce bytes by 10% for each excess level_0 files and/or excess write
   // buffers
   uint64_t adjustment_bytes = (tot_bytes * compaction_backlog) / 10;
+
+  uint64_t compactionHardLimit =
+      _internalRocksDB->GetOptions().hard_pending_compaction_bytes_limit;
+  if (compactionHardLimit > 0) {
+    // if we are above 25% of the pending compaction bytes stop trigger, take
+    // everything into account that is above this threshold, and use it to slow
+    // down the writes.
+    int64_t threshold = static_cast<int64_t>(compactionHardLimit / 4);
+    if (pendingCompactionBytes > threshold) {
+      double percentReached =
+          static_cast<double>(pendingCompactionBytes - threshold) /
+          static_cast<double>(compactionHardLimit - threshold);
+      adjustment_bytes += (tot_bytes * percentReached) / 2;
+    }
+  }
+
   if (adjustment_bytes < tot_bytes) {
     tot_bytes -= adjustment_bytes;
   } else {
@@ -432,15 +447,8 @@ void RocksDBThrottle::RecalculateThrottle() {
 
       _firstThrottle = false;
     }  // else if
-
-    // This SetThrottle() call currently occurs without holding the
-    //  rocksdb db mutex.  Not safe, seen likely crash from it.
-    //  Add back only if this becomes a pluggable WriteController with
-    //  access to db mutex.
-    // SetThrottle();
-  }  // !no_data && unlock _threadMutex
-
-}  // RocksDBThrottle::RecalculateThrottle
+  }
+}
 
 ///
 /// @brief Hack a throttle rate into the WriteController object
@@ -463,92 +471,105 @@ void RocksDBThrottle::SetThrottle() {
       //   ... using 100 for safety)
       if (100 < _throttleBps) {
         // hard casting away of "const" ...
-        if (((WriteController&)_internalRocksDB->write_controller())
-                .max_delayed_write_rate() < _throttleBps) {
-          ((WriteController&)_internalRocksDB->write_controller())
-              .set_max_delayed_write_rate(_throttleBps);
-        }  // if
+        auto& writeController =
+            const_cast<WriteController&>(_internalRocksDB->write_controller());
+        if (writeController.max_delayed_write_rate() < _throttleBps) {
+          writeController.set_max_delayed_write_rate(_throttleBps);
+        }
 
         // Only replace the token when absolutely necessary.  GetDelayToken()
         //  also resets internal timers which can result in long pauses if
         //  flushes/compactions are happening often.
         if (nullptr == _delayToken.get()) {
-          _delayToken =
-              (((WriteController&)_internalRocksDB->write_controller())
-                   .GetDelayToken(_throttleBps));
+          _delayToken = writeController.GetDelayToken(_throttleBps);
           LOG_TOPIC("7c51e", DEBUG, arangodb::Logger::ENGINES)
               << "SetThrottle(): GetDelayTokey(" << _throttleBps << ")";
         } else {
           LOG_TOPIC("2eb9e", DEBUG, arangodb::Logger::ENGINES)
               << "SetThrottle(): set_delayed_write_rate(" << _throttleBps
               << ")";
-          ((WriteController&)_internalRocksDB->write_controller())
-              .set_delayed_write_rate(_throttleBps);
-        }  // else
+          writeController.set_delayed_write_rate(_throttleBps);
+        }
       } else {
         _delayToken.reset();
         LOG_TOPIC("af180", DEBUG, arangodb::Logger::ENGINES)
             << "SetThrottle(): _delaytoken.reset()";
-      }  // else
-    }    // if
-  }      // lock
-}  // RocksDBThrottle::SetThrottle
+      }
+    }
+  }
+}
 
 ///
 /// @brief Use rocksdb's internal statistics to determine if
 ///  additional slowing of writes is warranted
-///
-int64_t RocksDBThrottle::ComputeBacklog() {
-  int64_t compaction_backlog, imm_backlog, imm_trigger;
-  bool ret_flag;
-  std::string ret_string, property_name;
-  int temp;
-
+/// returns the total number of level0/immutable memtables and the
+/// estimated number of bytes to compact, across all column families
+std::pair<int64_t, int64_t> RocksDBThrottle::ComputeBacklog() {
   // want count of level 0 files to estimate if compactions "behind"
   //  and therefore likely to start stalling / stopping
-  compaction_backlog = 0;
-  imm_backlog = 0;
+  int64_t immBacklog = 0;
+  int64_t immTrigger = 3;
   if (_families.size()) {
-    imm_trigger =
+    immTrigger =
         _internalRocksDB->GetOptions(_families[0]).max_write_buffer_number / 2;
-  } else {
-    imm_trigger = 3;
-  }  // else
+  }
 
-  // loop through column families to obtain family specific counts
-  property_name = rocksdb::DB::Properties::kNumFilesAtLevelPrefix + '0';
-
+  int64_t compactionBacklog = 0;
+  std::string propertyName;
+  std::string retString;
+  int64_t pendingCompactionBytes = 0;
+  int numLevels = _internalRocksDB->GetOptions().num_levels;
   for (auto const& cf : _families) {
-    ret_flag = _internalRocksDB->GetProperty(cf, property_name, &ret_string);
-    if (ret_flag) {
-      temp = std::stoi(ret_string);
-    } else {
-      temp = 0;
-    }  // else
+    // loop through column families to obtain family specific counts
+    propertyName = rocksdb::DB::Properties::kNumFilesAtLevelPrefix;
+    int temp = 0;
+
+    // start at level 0 and then continue digging deeper until we find
+    // _some_ file.
+    for (int i = 0; i <= numLevels; ++i) {
+      propertyName.push_back('0' + i);
+      bool ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
+      if (ok) {
+        temp = std::stoi(retString);
+      } else {
+        temp = 0;
+      }
+      propertyName.pop_back();
+      if (temp > 0) {
+        // found a file on a level. that is enough.
+        break;
+      }
+    }
 
     if (static_cast<int>(_slowdownWritesTrigger) <= temp) {
       temp -= (static_cast<int>(_slowdownWritesTrigger) - 1);
     } else {
       temp = 0;
-    }  // else
+    }
 
-    compaction_backlog += temp;
+    compactionBacklog += temp;
 
-    property_name = rocksdb::DB::Properties::kNumImmutableMemTable;
-    ret_flag = _internalRocksDB->GetProperty(cf, property_name, &ret_string);
+    propertyName = rocksdb::DB::Properties::kNumImmutableMemTable;
+    bool ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
 
-    if (ret_flag) {
-      temp = std::stoi(ret_string);
-      imm_backlog += temp;
-    }  // if
-  }    // for
+    if (ok) {
+      immBacklog += std::stoi(retString);
+    }
 
-  if (imm_trigger < imm_backlog) {
-    compaction_backlog += (imm_backlog - imm_trigger);
-  }  // if
+    ok = _internalRocksDB->GetProperty(
+        cf, rocksdb::DB::Properties::kEstimatePendingCompactionBytes,
+        &retString);
+    if (ok) {
+      pendingCompactionBytes += std::stoll(retString);
+    }
+  }
 
-  return compaction_backlog;
-}  // RocksDBThrottle::Computebacklog
+  if (immTrigger < immBacklog) {
+    compactionBacklog += (immBacklog - immTrigger);
+  }
+
+  return {compactionBacklog, pendingCompactionBytes};
+}
 
 /// @brief Adjust the active thread's priority to match the work
 ///  it is performing.  The routine is called HEAVILY.

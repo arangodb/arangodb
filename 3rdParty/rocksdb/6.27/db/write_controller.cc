@@ -92,6 +92,10 @@ uint64_t WriteController::GetDelay(SystemClock* clock, uint64_t num_bytes) {
   uint64_t needed_delay = static_cast<uint64_t>(
       1.0 * bytes_over_budget / delayed_write_rate_ * kMicrosPerSecond);
 
+  // Make sure that maximum delay does not exceed 2 seconds.
+  const uint64_t kMaxDelay = 2'000'000;
+  needed_delay = std::min(needed_delay, kMaxDelay);
+
   credit_in_bytes_ = 0;
   next_refill_time_ += needed_delay;
 

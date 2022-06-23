@@ -1488,6 +1488,7 @@ Status DBImpl::DelayWrite(uint64_t num_bytes,
                           const WriteOptions& write_options) {
   uint64_t time_delayed = 0;
   bool delayed = false;
+  bool lost_patience = false;
   {
     StopWatch sw(immutable_db_options_.clock, stats_, WRITE_STALL,
                  &time_delayed);
@@ -1528,6 +1529,7 @@ Status DBImpl::DelayWrite(uint64_t num_bytes,
     // might wait here indefinitely as the background compaction may never
     // finish successfully, resulting in the stall condition lasting
     // indefinitely
+    uint64_t start = 0;
     while (error_handler_.GetBGError().ok() && write_controller_.IsStopped()) {
       if (write_options.no_slowdown) {
         return Status::Incomplete("Write stall");
@@ -1538,8 +1540,18 @@ Status DBImpl::DelayWrite(uint64_t num_bytes,
       // fail any pending writers with no_slowdown
       write_thread_.BeginWriteStall();
       TEST_SYNC_POINT("DBImpl::DelayWrite:Wait");
-      bg_cv_.Wait();
+      // Sleep for at most 2 seconds here, in case we miss some wakeup call.
+      uint64_t now = env_->NowMicros();
+      bg_cv_.TimedWait(now + 2'000'000);
       write_thread_.EndWriteStall();
+
+      if (start == 0) {
+        start = now;
+      } else if (now >= start + 6'000'000) {
+        // Break after at most 10 seconds of write stop.
+        lost_patience = true;
+        break;
+      }
     }
   }
   assert(!delayed || !write_options.no_slowdown);
@@ -1553,7 +1565,7 @@ Status DBImpl::DelayWrite(uint64_t num_bytes,
   // writes, we can ignore any background errors and allow the write to
   // proceed
   Status s;
-  if (write_controller_.IsStopped()) {
+  if (!lost_patience && write_controller_.IsStopped()) {
     // If writes are still stopped, it means we bailed due to a background
     // error
     s = Status::Incomplete(error_handler_.GetBGError().ToString());
