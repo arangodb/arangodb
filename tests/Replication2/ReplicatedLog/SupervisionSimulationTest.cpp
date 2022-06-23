@@ -320,17 +320,6 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
   EXPECT_FALSE(result.failed) << *result.failed;
   std::cout << result.stats << std::endl;
 }
-
-// need an actor that changes Target config
-//
-// predicate that eventually assumedWriteConcern == effectiveWriteConcern
-//
-// when leader election happens assumedWriteConcern <= last used
-// effectiveWriteConcern
-//
-// we want to observe effective write concern that used by leader actor for
-// commit
-//
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
