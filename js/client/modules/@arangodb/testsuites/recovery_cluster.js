@@ -230,8 +230,6 @@ function recovery (options) {
       status: false
     };
   }
-  options.extremeVerbosity = true;
-  options.cleanup = false;
   let results = {
     status: true
   };
@@ -311,9 +309,8 @@ function recovery (options) {
       );
       params.instanceManager.destructor(results[test].status);
       if (results[test].status) {
-//        if (fs.exists(params.rootDir)) {
-//          fs.removeDirectoryRecursive(params.rootDir, true);
-//        }
+//        the instance manager destructor cleans this out:
+//        fs.removeDirectoryRecursive(params.rootDir, true);
         if (params.keyDir !== "") {
           fs.removeDirectoryRecursive(params.keyDir);
         }

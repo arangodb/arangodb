@@ -365,7 +365,6 @@ function Done (suiteName) {
 
 function WriteDone (suiteName) {
   var ret = Done(suiteName);
-  print(require("internal").options()['temp.path']);
   let outPath = fs.join(require("internal").options()['temp.path'], 'testresult.json');
   fs.write(outPath, JSON.stringify(ret));
   return ret;
