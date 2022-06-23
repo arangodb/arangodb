@@ -1406,9 +1406,8 @@ futures::Future<metrics::RawDBServers> metricsOnLeader(
         metrics::RawDBServers metrics;
         metrics.reserve(responses->size());
         for (auto& response : *responses) {
-          if (!response.hasValue() || response->fail() ||
-              !response->hasResponse()) {
-            TRI_ASSERT(!response.hasValue() || response->fail());
+          if (!response.hasValue() || !response->hasResponse() ||
+              response->fail()) {
             continue;  // Shit happens, just ignore it
           }
           auto payload = response->response().stealPayload();
@@ -1450,10 +1449,10 @@ futures::Future<metrics::LeaderResponse> metricsFromLeader(
       pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
       "/_admin/metrics", {}, std::move(options), std::move(headers));
   return std::move(future).then([](Try<network::Response>&& response) {
-    if (response.hasValue()) {
-      return response->response().stealPayload();
+    if (!response.hasValue() || !response->hasResponse() || response->fail()) {
+      return metrics::LeaderResponse{};
     }
-    return metrics::LeaderResponse{};
+    return response->response().stealPayload();
   });
 }
 
