@@ -320,8 +320,15 @@ void RocksDBThrottle::ThreadLoop() {
 void RocksDBThrottle::RecalculateThrottle() {
   std::chrono::microseconds tot_micros{0};
   uint64_t tot_bytes = 0;
+#if defined(__APPLE__) && __clang_major__ == 13 && __clang_minor__ == 1
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-but-set-variable"
+#endif
   uint64_t tot_keys = 0;
   uint64_t tot_compact = 0;
+#if defined(__APPLE__) && __clang_major__ == 13 && __clang_minor__ == 1
+#pragma clang diagnostic pop
+#endif
   bool no_data;
 
   int64_t compaction_backlog = ComputeBacklog();
