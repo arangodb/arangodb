@@ -221,7 +221,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
         // TODO: This is just a WIP assert, make sure to delete this before
         // merging
         // TODO: We expect to end up here during planning.
-        TRI_ASSERT(false);
+        // TRI_ASSERT(false);
       } else {
         return {TRI_ERROR_INTERNAL, "expecting a RemoteNode or a MutexNode"};
       }
