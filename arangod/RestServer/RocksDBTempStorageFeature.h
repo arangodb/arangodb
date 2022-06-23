@@ -24,22 +24,11 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/DataProtector.h"
-#include "Basics/Mutex.h"
-#include "Basics/Thread.h"
-#include "Metrics/Counter.h"
-#include "Metrics/Histogram.h"
-#include "Metrics/LogScale.h"
 #include "RestServer/arangod.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "Utils/VersionTracker.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/Methods/Databases.h"
 
 #include <rocksdb/db.h>
+#include <rocksdb/comparator.h>
 #include <rocksdb/options.h>
-
-#include <condition_variable>
 
 struct TRI_vocbase_t;
 
@@ -81,13 +70,9 @@ class RocksDBTempStorageFeature : public ArangodFeature {
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const {
     return _basePath;
   }
+  std::vector<rocksdb::ColumnFamilyHandle*>& cfHandles() { return _cfHandles; }
   rocksdb::DB* tempDB() const { return _db; }
   rocksdb::Options const& tempDBOptions() { return _options; }
-
-  /// @brief whether or not the RocksDBTempStorageFeature has started (and thus
-  /// has completely populated its lists of databases and collections from
-  /// persistent storage)
-  bool started() const noexcept;
 
  private:
   static constexpr std::string_view kTempPath = "temp-rocksdb";
@@ -95,9 +80,9 @@ class RocksDBTempStorageFeature : public ArangodFeature {
   rocksdb::DB* _db;
   rocksdb::Options _options;
 
-  std::atomic<bool> _started;
-
   rocksdb::DBOptions _dbOptions;
+  std::unique_ptr<rocksdb::Comparator> _comp;
+  std::vector<rocksdb::ColumnFamilyHandle*> _cfHandles;
 };
 
 }  // namespace arangodb

@@ -24,6 +24,8 @@
 #include "SortExecutor.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
@@ -33,7 +35,7 @@
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Basics/ResourceUsage.h"
-#include "RestServer/RocksDBTempStorageFeature.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 
 #include <rocksdb/options.h>
 
@@ -45,6 +47,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
+
+std::atomic<uint64_t> keyPrefixCounter = 0;
+
 // custom AqlValue-aware comparator for sorting
 class OurLessThan {
  public:
@@ -58,12 +63,9 @@ class OurLessThan {
     auto const& left = _input[a.first].get();
     auto const& right = _input[b.first].get();
     for (auto const& reg : _sortRegisters) {
-      LOG_DEVEL << "reg id " << reg.reg.toUInt32();
       AqlValue const& lhs = left->getValueReference(a.second, reg.reg);
       AqlValue const& rhs = right->getValueReference(b.second, reg.reg);
       int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
-      LOG_DEVEL << "comparing " << lhs.slice().toString() << " "
-                << rhs.slice().toString();
       if (cmp < 0) {
         return reg.asc;
       } else if (cmp > 0) {
@@ -87,7 +89,8 @@ SortExecutorInfos::SortExecutorInfos(
     RegIdFlatSet const& registersToClear,
     std::vector<SortRegister> sortRegisters, std::size_t limit,
     AqlItemBlockManager& manager, velocypack::Options const* options,
-    arangodb::ResourceMonitor& resourceMonitor, bool stable)
+    arangodb::ResourceMonitor& resourceMonitor, bool stable,
+    RocksDBTempStorageFeature& rocksDBfeature)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
@@ -96,11 +99,9 @@ SortExecutorInfos::SortExecutorInfos(
       _vpackOptions(options),
       _resourceMonitor(resourceMonitor),
       _sortRegisters(std::move(sortRegisters)),
-      _stable(stable) {
+      _stable(stable),
+      _rocksDBfeature(rocksDBfeature) {
   TRI_ASSERT(!_sortRegisters.empty());
-  for (auto const& reg : _sortRegisters) {
-    LOG_DEVEL << "ASC " << reg.asc;
-  }
 }
 
 RegisterCount SortExecutorInfos::numberOfInputRegisters() const {
@@ -142,7 +143,14 @@ SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
       _currentRow(CreateInvalidInputRowHint{}),
       _returnNext(0),
       _memoryUsageForRowIndexes(0),
-      _comp(std::make_unique<TwoPartComparator>(_infos.vpackOptions())) {}
+      _keyPrefix(++::keyPrefixCounter) {
+  rocksutils::uintToPersistentBigEndian<std::uint64_t>(_upperBoundPrefix,
+                                                       _keyPrefix + 1);
+  rocksutils::uintToPersistentBigEndian<std::uint64_t>(_lowerBoundPrefix,
+                                                       _keyPrefix);
+  _lowerrBoundSlice = _lowerBoundPrefix;
+  _upperBoundSlice = _upperBoundPrefix;
+}
 
 SortExecutor::~SortExecutor() {
   _inputReady = false;
@@ -152,8 +160,48 @@ SortExecutor::~SortExecutor() {
   _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
 }
 
+void SortExecutor::consumeInputForStorage() {
+  auto& rocksDBfeature = _infos.getStorageFeature();
+  rocksdb::DB* tempDB = rocksDBfeature.tempDB();
+  std::string keyWithPrefix;
+
+  size_t const avgSliceSize = 50;
+  keyWithPrefix.reserve(sizeof(std::uint64_t) +
+                        _infos.sortRegisters().size() * avgSliceSize);
+  for (auto const& [first, second] : _rowIndexes) {
+    auto& inputBlock = *_curBlock;
+    keyWithPrefix.clear();
+
+    rocksutils::uintToPersistentBigEndian<std::uint64_t>(keyWithPrefix,
+                                                         _keyPrefix);
+    rocksutils::uintToPersistentBigEndian<std::uint64_t>(keyWithPrefix,
+                                                         ++_curEntryId);
+    for (auto const& reg : _infos.sortRegisters()) {
+      auto inputBlockSlice =
+          inputBlock.getValueReference(second, reg.reg).slice();
+      auto inputBlockSize = inputBlockSlice.byteSize();
+      keyWithPrefix.append(inputBlockSlice.startAs<char const>(),
+                           inputBlockSize);
+      keyWithPrefix.push_back(reg.asc ? '1' : '0');
+    }
+    InputAqlItemRow newRow(_curBlock, second);
+    velocypack::Builder builder;
+    builder.openObject();
+    newRow.toVelocyPack(_infos.vpackOptions(), builder);
+    builder.close();
+    _batch.Put(
+        rocksDBfeature.cfHandles()[0], keyWithPrefix,
+        {builder.slice().startAs<char const>(), builder.slice().byteSize()});
+    ++_inputCounterForStorage;
+  }
+  rocksdb::Status s = tempDB->Write(rocksdb::WriteOptions(), &_batch);
+  _batch.Clear();
+  _rowIndexes.clear();
+  _inputBlocks.clear();
+}
+
 void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
-                                ExecutorState& state, ExecutionEngine* engine) {
+                                ExecutorState& state) {
   size_t memoryUsageForRowIndexes =
       inputRange.countDataRows() * sizeof(AqlItemMatrix::RowIndex);
 
@@ -164,84 +212,91 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
 
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
-
-    if (_rowIndexes.size() >= 3) {  // THIS IS JUST FOR DEBUGGING,
-                                    // MUST BE AROUND 100k OR
-                                    // A THRESHOLD IN BYTES USED IN RAM
+    _rowIndexes.emplace_back(
+        std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
+    if (_memoryUsage >= kMemoryLowerBound) {
+      //  if (_rowIndexes.size() >= 3) {  // THIS IS JUST FOR DEBUGGING,
+      // MUST BE AROUND 100k OR
+      // A THRESHOLD IN BYTES USED IN RAM
       _mustStoreInput = true;
-
-      auto& rocksDBfeature = engine->getQuery()
-                                 .vocbase()
-                                 .server()
-                                 .getFeature<RocksDBTempStorageFeature>();
-      if (!_rowIndexes.empty()) {
-        rocksdb::DB* tempDB = rocksDBfeature.tempDB();
-        rocksdb::Options options = rocksDBfeature.tempDBOptions();
-        rocksdb::WriteOptions writeOptions;
-        rocksdb::ColumnFamilyOptions cfOptions;
-        cfOptions.comparator = _comp.get();
-        tempDB->CreateColumnFamily(cfOptions, "SortCF", &_cfHandle);
-        //   writeOptions.comparator = &_comp;
-        _curIt = tempDB->NewIterator(rocksdb::ReadOptions());
-        for (auto const& [first, second] : _rowIndexes) {
-          for (auto const& reg : _infos.sortRegisters()) {
-            InputAqlItemRow newRow(_curBlock, second);
-            velocypack::Builder builder;
-            newRow.toVelocyPack(_infos.vpackOptions(), builder);
-            tempDB->Put(writeOptions, _cfHandle,
-                        _inputBlocks[first]
-                            .get()
-                            ->getValueReference(second, reg.reg)
-                            .slice()
-                            .toString(),
-                        builder.toString());
-          }
-        }
-        _rowIndexes.clear();
-      }
-    } else {
-      _rowIndexes.emplace_back(
-          std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
+      consumeInputForStorage();
     }
     std::tie(state, input) =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
   }
+  if (_mustStoreInput) {
+    // consume remainder in _rowIndexes
+    consumeInputForStorage();
+  }
   guard.steal();
   _memoryUsageForRowIndexes += memoryUsageForRowIndexes;
 }
 
+rocksdb::Status SortExecutor::deleteRangeInStorage() {
+  return _infos.getStorageFeature().tempDB()->DeleteRange(
+      rocksdb::WriteOptions(), _infos.getStorageFeature().cfHandles()[0],
+      _lowerrBoundSlice, _upperBoundSlice);
+}
+
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
-    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output,
-    ExecutionEngine* engine) {
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
+
   if (!_inputReady) {
     _curBlock = inputRange.getBlock();
-    if (_curBlock != nullptr && !_mustStoreInput) {
-      _inputBlocks.emplace_back(_curBlock);
+    if (_curBlock != nullptr) {
+      _memoryUsage += _curBlock->getMemoryUsage();
+      if (!_mustStoreInput) {
+        _inputBlocks.emplace_back(_curBlock);
+      }
     }
   }
 
   if ((!_mustStoreInput &&
        (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty())) ||
-      (_curIt != nullptr && !_curIt->Valid())) {
+      (_mustStoreInput &&
+       (_returnNext >= _curEntryId &&
+        inputRange.upstreamState() == ExecutorState::DONE))) {
     // Bail out if called too often,
     // Bail out on no elements
+    if (_mustStoreInput) {
+      auto status = deleteRangeInStorage();
+      if (!status.ok()) {
+        LOG_TOPIC("20e7f", FATAL, arangodb::Logger::STARTUP)
+            << "unable to initialize RocksDB engine: " << status.ToString();
+      }
+    }
     return {ExecutorState::DONE, NoStats{}, upstreamCall};
   }
 
   ExecutorState state = ExecutorState::HASMORE;
 
   if (!_inputReady) {
-    consumeInput(inputRange, state, engine);
+    consumeInput(inputRange, state);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, upstreamCall};
     }
     if (!_mustStoreInput && (_returnNext < _rowIndexes.size())) {
       doSorting();
-      //  _inputReady = true;
     }
     _inputReady = true;
+    if (_mustStoreInput) {
+      rocksdb::ReadOptions readOptions;
+
+      std::string keyPrefix;
+      rocksutils::uintToPersistentBigEndian<std::uint64_t>(keyPrefix,
+                                                           _keyPrefix);
+
+      readOptions.iterate_upper_bound = &_upperBoundSlice;
+
+      readOptions.prefix_same_as_start = true;
+
+      _curIt = std::unique_ptr<rocksdb::Iterator>(
+          _infos.getStorageFeature().tempDB()->NewIterator(
+              readOptions, _infos.getStorageFeature().cfHandles()[0]));
+      _curIt->Seek(keyPrefix);
+    }
   }
 
   if (!_mustStoreInput) {
@@ -253,18 +308,37 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
       _returnNext++;
     }
   } else {
-    // iterate through rocksdb storage, but how to build a row from key and
-    // value
+    for (; _curIt->Valid() && !output.isFull(); _curIt->Next()) {
+      std::string key = _curIt->key().ToString();
+      auto p1 = _curIt->value().data();
+      arangodb::velocypack::Slice slice1(reinterpret_cast<uint8_t const*>(p1));
+      auto curBlock = _infos.itemBlockManager().requestAndInitBlock(slice1);
+      TRI_ASSERT(curBlock->getRefCount() == 1);
+      {
+        InputAqlItemRow inRow(curBlock, 0);
+        TRI_ASSERT(curBlock->getRefCount() == 2);
+
+        output.copyRow(inRow);
+        TRI_ASSERT(curBlock->getRefCount() == 3);
+      }
+      TRI_ASSERT(curBlock->getRefCount() == 2);
+
+      output.advanceRow();
+
+      _returnNext++;
+    }
   }
 
   if ((!_mustStoreInput && (_returnNext >= _rowIndexes.size())) ||
-      !_curIt->Valid()) {
-    //  _inputReady = false;
-    // _inputBlocks.clear();
-    // _rowIndexes.clear();
+      (_mustStoreInput && (_returnNext >= _curEntryId))) {
+    if (_mustStoreInput) {
+      auto status = deleteRangeInStorage();
+      if (!status.ok()) {
+        LOG_TOPIC("5a64a", FATAL, arangodb::Logger::STARTUP)
+            << "unable to initialize RocksDB engine: " << status.ToString();
+      }
+    }
     state = ExecutorState::DONE;
-  } else {
-    state = ExecutorState::HASMORE;
   }
 
   return {state, NoStats{}, upstreamCall};
@@ -286,24 +360,61 @@ void SortExecutor::doSorting() {
 }
 
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call,
-    ExecutionEngine* engine) {
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
   AqlCall upstreamCall{};
 
   ExecutorState state = ExecutorState::HASMORE;
 
   if (!_inputReady) {
-    auto inputBlock = inputRange.getBlock();
-    if (inputBlock != nullptr) {
-      _inputBlocks.emplace_back(inputBlock);
+    _curBlock = inputRange.getBlock();
+    if (_curBlock != nullptr) {
+      _memoryUsage += _curBlock->getMemoryUsage();
+      if (!_mustStoreInput) {
+        _inputBlocks.emplace_back(_curBlock);
+      }
     }
-    consumeInput(inputRange, state, engine);
+  }
+
+  if ((!_mustStoreInput &&
+       (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty())) ||
+      (_mustStoreInput &&
+       (_returnNext >= _curEntryId &&
+        inputRange.upstreamState() == ExecutorState::DONE))) {
+    // Bail out if called too often,
+    // Bail out on no elements
+    if (_mustStoreInput) {
+      auto status = deleteRangeInStorage();
+      if (!status.ok()) {
+        LOG_TOPIC("c7490", FATAL, arangodb::Logger::STARTUP)
+            << "unable to initialize RocksDB engine: " << status.ToString();
+      }
+    }
+    return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
+  }
+
+  if (!_inputReady) {
+    consumeInput(inputRange, state);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, 0, upstreamCall};
     }
-    if (_returnNext < _rowIndexes.size()) {
+    if (!_mustStoreInput && (_returnNext < _rowIndexes.size())) {
       doSorting();
-      _inputReady = true;
+    }
+    _inputReady = true;
+    if (_mustStoreInput) {
+      rocksdb::ReadOptions readOptions;
+
+      readOptions.iterate_upper_bound = &_upperBoundSlice;
+
+      std::string keyPrefix;
+      rocksutils::uintToPersistentBigEndian<std::uint64_t>(keyPrefix,
+                                                           _keyPrefix);
+      readOptions.prefix_same_as_start = true;
+
+      _curIt = std::unique_ptr<rocksdb::Iterator>(
+          _infos.getStorageFeature().tempDB()->NewIterator(
+              readOptions, _infos.getStorageFeature().cfHandles()[0]));
+      _curIt->Seek(keyPrefix);
     }
   }
 
@@ -311,28 +422,32 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     return {state, NoStats{}, 0, upstreamCall};
   }
 
-  if (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty()) {
-    // Bail out if called too often,
-    // Bail out on no elements
-    return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
+  if (!_mustStoreInput) {
+    while (_returnNext < _rowIndexes.size() && call.shouldSkip()) {
+      InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
+                            _rowIndexes[_returnNext].second);
+      _returnNext++;
+      call.didSkip(1);
+    }
+  } else {
+    for (; _curIt->Valid() && call.shouldSkip(); _curIt->Next()) {
+      _returnNext++;
+      call.didSkip(1);
+    }
   }
 
-  while (_returnNext < _rowIndexes.size() && call.shouldSkip()) {
-    InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
-                          _rowIndexes[_returnNext].second);
-    _returnNext++;
-    call.didSkip(1);
-  }
-
-  if (_returnNext >= _rowIndexes.size()) {
-    //  _inputReady = false;
-    //  _rowIndexes.clear();
-    //  _inputBlocks.clear();
+  if ((!_mustStoreInput && (_returnNext >= _rowIndexes.size())) ||
+      (_mustStoreInput && (_returnNext >= _curEntryId))) {
+    if (_mustStoreInput) {
+      auto status = deleteRangeInStorage();
+      if (!status.ok()) {
+        LOG_TOPIC("43bf7", FATAL, arangodb::Logger::STARTUP)
+            << "unable to initialize RocksDB engine: " << status.ToString();
+      }
+    }
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
-
-  //  throw std::exception();
 }
 
 /*

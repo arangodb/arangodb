@@ -23,6 +23,7 @@
 
 #include "SortNode.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -36,6 +37,8 @@
 #include "Aql/SortRegister.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/arangod.h"
+#include "RestServer/RocksDBTempStorageFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -198,7 +201,11 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
       registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
       std::move(sortRegs), _limit, engine.itemBlockManager(),
       &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
-      _stable);
+      _stable,
+      engine.getQuery()
+          .vocbase()
+          .server()
+          .getFeature<RocksDBTempStorageFeature>());
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));

@@ -30,7 +30,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include <rocksdb/comparator.h>
+#include "RestServer/RocksDBTempStorageFeature.h"
 #include <rocksdb/db.h>
 #include <rocksdb/iterator.h>
 
@@ -58,43 +58,6 @@ template<BlockPassthrough>
 class SingleRowFetcher;
 struct SortRegister;
 
-class TwoPartComparator : public rocksdb::Comparator {
- public:
-  TwoPartComparator(arangodb::velocypack::Options const* options)
-      : _options(options) {}
-  int Compare(const rocksdb::Slice& lhs,
-              const rocksdb::Slice& rhs) const override {
-    /*
-    velocypack::Builder builder1;
-    builder1.add(lhs.data());
-    velocypack::Builder builder2;
-    builder2.add(rhs.data());
-    VPackSlice const lSlice = VPackSlice(builder1.slice());
-    VPackSlice const rSlice = VPackSlice(builder2.slice());
-     */
-    AqlValue aqlValue1(lhs.ToString());
-    AqlValue aqlValue2(lhs.ToString());
-    int const cmp =
-        arangodb::aql::AqlValue::Compare(_options, aqlValue1, aqlValue2, true);
-    LOG_DEVEL << "comparing " << lhs.ToString() << " " << rhs.ToString();
-    if (cmp < 0) {
-      return true;  // actually whether it's ascending or descending
-    } else if (cmp > 0) {
-      return false;  // actually the opposite from above
-    }
-    return false;
-  }
-
-  // Ignore the following methods for now:
-  const char* Name() const override { return "TwoPartComparator"; }
-  void FindShortestSeparator(std::string*,
-                             const rocksdb::Slice&) const override {}
-  void FindShortSuccessor(std::string*) const override {}
-
- private:
-  arangodb::velocypack::Options const* _options;
-};
-
 class SortExecutorInfos {
  public:
   SortExecutorInfos(RegisterCount nrInputRegisters,
@@ -103,7 +66,8 @@ class SortExecutorInfos {
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager,
                     velocypack::Options const* options,
-                    arangodb::ResourceMonitor& resourceMonitor, bool stable);
+                    arangodb::ResourceMonitor& resourceMonitor, bool stable,
+                    RocksDBTempStorageFeature& rocksDBfeature);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -122,6 +86,10 @@ class SortExecutorInfos {
 
   [[nodiscard]] arangodb::ResourceMonitor& getResourceMonitor() const;
 
+  [[nodiscard]] RocksDBTempStorageFeature& getStorageFeature() const {
+    return _rocksDBfeature;
+  }
+
   [[nodiscard]] bool stable() const;
 
   [[nodiscard]] size_t limit() const noexcept;
@@ -138,6 +106,7 @@ class SortExecutorInfos {
   arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
   bool _stable;
+  RocksDBTempStorageFeature& _rocksDBfeature;
 };
 
 /**
@@ -165,8 +134,7 @@ class SortExecutor {
    * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
-      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output,
-      ExecutionEngine* engine = nullptr);
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
 
   /**
    * @brief skip the next Row of Aql Values.
@@ -176,8 +144,7 @@ class SortExecutor {
    */
 
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
-      AqlItemBlockInputRange& inputRange, AqlCall& call,
-      ExecutionEngine* engine);
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   /*
   [[nodiscard]] auto expectedNumberOfRowsNew(
@@ -187,10 +154,12 @@ class SortExecutor {
 
  private:
   void doSorting();
-  void consumeInput(AqlItemBlockInputRange& inputRange, ExecutorState& state,
-                    ExecutionEngine* engine);
+  void consumeInput(AqlItemBlockInputRange& inputRange, ExecutorState& state);
+  void consumeInputForStorage();
+  rocksdb::Status deleteRangeInStorage();
 
  private:
+  static constexpr size_t kMemoryLowerBound = 1024 * 1024;
   bool _inputReady = false;
   bool _mustStoreInput = false;
   Infos& _infos;
@@ -205,10 +174,27 @@ class SortExecutor {
   size_t _memoryUsageForRowIndexes;
   std::vector<SharedAqlItemBlockPtr> _inputBlocks;
   std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
-  std::unique_ptr<TwoPartComparator> _comp;
-  rocksdb::Iterator* _curIt = nullptr;
+  std::unique_ptr<rocksdb::Iterator> _curIt;
   SharedAqlItemBlockPtr _curBlock = nullptr;
   rocksdb::ColumnFamilyHandle* _cfHandle = nullptr;
+  std::uint64_t const _keyPrefix;
+  std::string _lowerBoundPrefix;
+  rocksdb::WriteBatch _batch;
+  std::uint64_t _inputCounterForStorage;
+  std::string _upperBoundPrefix;
+  std::uint64_t _curEntryId = 0;
+  rocksdb::Slice _lowerrBoundSlice;
+  rocksdb::Slice _upperBoundSlice;
+  std::uint64_t _memoryUsage = 0;
 };
 }  // namespace aql
 }  // namespace arangodb
+
+/*
+ * = 0 in comparator
+ *  delete in range here also remove files in storage feature
+ *  hardcode memory threshold to 100k
+ *  more complex queries with arrays and strings >= 16 bytes
+ *  test more
+ *  see memory usage in top
+ */

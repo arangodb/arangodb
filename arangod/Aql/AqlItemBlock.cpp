@@ -963,10 +963,13 @@ AqlItemBlock::~AqlItemBlock() {
 
 void AqlItemBlock::increaseMemoryUsage(size_t value) {
   resourceMonitor().increaseMemoryUsage(value);
+  _memoryUsage += value;
 }
 
 void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
   resourceMonitor().decreaseMemoryUsage(value);
+  TRI_ASSERT(_memoryUsage >= value);
+  _memoryUsage -= value;
 }
 
 AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
