@@ -179,6 +179,9 @@ class ConfigBuilder {
     }
     this.config['output-directory'] = fs.join(this.rootDir, dir);
   }
+  getOutputDirectory() {
+    return this.config['output-directory'];
+  }
   setInputDirectory(dir, createDatabase) {
     if (this.type !== 'restore') {
       throw '"input-directory" is not supported for binary: ' + this.type;

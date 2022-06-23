@@ -99,7 +99,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
     this.which = which;
-    this.results = {failed: 1};
+    this.results = {failed: 0};
     this.dumpConfig = false;
     this.restoreConfig = false;
     this.restoreOldConfig = false;
@@ -110,15 +110,16 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   }
 
   destructor(cleanup) {
-    if (this.options.cleanup && this.results.status && cleanup) {
-      if (this.keyDir !== null) {
-        fs.removeDirectoryRecursive(this.keyDir);
-        this.keyDir = null;
-      }
-      if (this.otherKeyDir !== null) {
-        fs.removeDirectoryRecursive(this.otherKeyDir);
-        this.otherKeyDir = null;
-      }
+    let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
+    if (doCleanup) {
+      [this.keyDir,
+       this.otherKeyDir,
+       this.dumpConfig.getOutputDirectory()].forEach(dir => {
+         if (dir !== null) {
+           print(CYAN + "Cleaning up " + dir + RESET);
+           fs.removeDirectoryRecursive(dir);
+         }
+       });
     }
   }
   bindInstanceInfo(options) {
