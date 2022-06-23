@@ -77,6 +77,18 @@ function CoordinatorMetricsTestSuite() {
         let res = getRawMetric(primary, '?mode=local');
         assertEqual(res.code, 400);
       }
+      let type = ['?e0=e0', '?type=invalid', '?type=db_json', '?type=cd_json', '?type=last'];
+      let mode = ['&e1=e1', '&mode=invalid', '&mode=local', '&mode=trigger_global', '&mode=read_global', '&mode=write_global'];
+      let serverId = ['&e2=e2', '&serverId=invalid'];
+      let f = (a, b) => [].concat(...a.map(a => b.map(b => [].concat(a, b))));
+      let cartesian = (a, b, ...c) => b ? cartesian(f(a, b), ...c) : a;
+      let params = cartesian(type, mode, serverId);
+      for (let k = 0; k < params.length; k++) {
+        let param = params[k][0] + params[k][1] + params[k][2];
+        // require('internal').print(param);
+        let res = getRawMetric(primary, param);
+        // require('internal').print(res.errorCode);
+      }
     },
   };
 }

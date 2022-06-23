@@ -26,7 +26,7 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const { getEndpointsByType, getRawMetric, getAllMetric } = require("@arangodb/test-helper");
+const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
 
@@ -85,16 +85,16 @@ function checkCoordinators(coordinators, mode) {
 }
 
 function createClusterWideMetrics() {
-  db._create("foo1", { "replicationFactor": 3, "numberOfShards": 9 });
-  db._create("foo2", { "replicationFactor": 2, "numberOfShards": 12 });
-  db._create("foo3", { "replicationFactor": 1, "numberOfShards": 1 });
+  db._create("foo1", {"replicationFactor": 3, "numberOfShards": 9});
+  db._create("foo2", {"replicationFactor": 2, "numberOfShards": 12});
+  db._create("foo3", {"replicationFactor": 1, "numberOfShards": 1});
   let foo1_values = [];
-  let foo2_values = [{ "name": "i" }];
-  let foo3_values = [{ "name": "hate" }, { "name": "js" }];
+  let foo2_values = [{"name": "i"}];
+  let foo3_values = [{"name": "hate"}, {"name": "js"}];
   for (let i = 0; i !== 1000; ++i) {
-    foo1_values.push({ "name": i });
-    foo2_values.push({ "name": i + 100000 });
-    foo3_values.push({ "name": i - 100000 });
+    foo1_values.push({"name": i});
+    foo2_values.push({"name": i + 100000});
+    foo3_values.push({"name": i - 100000});
   }
   db.foo1.save(foo1_values);
   db.foo2.save(foo2_values);
@@ -103,9 +103,9 @@ function createClusterWideMetrics() {
     "consolidationIntervalMsec": 0,
     "cleanupIntervalStep": 0,
     "links": {
-      "foo1": { "includeAllFields": true },
-      "foo2": { "includeAllFields": true },
-      "foo3": { "includeAllFields": true }
+      "foo1": {"includeAllFields": true},
+      "foo2": {"includeAllFields": true},
+      "foo3": {"includeAllFields": true}
     }
   });
   db._query("FOR d IN foov OPTIONS { waitForSync: true } LIMIT 1 RETURN 1");
@@ -273,6 +273,29 @@ function CoordinatorMetricsTestSuite() {
       require("internal").sleep(1);
       checkCoordinators(coordinators, '?mode=read_global');
     },
+
+    testMetricsHandlerNotCrash: function () {
+      let type = ['?e0=e0', '?type=invalid', '?type=db_json', '?type=cd_json', '?type=last'];
+      let mode = ['&e1=e1', '&mode=invalid', '&mode=local', '&mode=trigger_global', '&mode=read_global', '&mode=write_global'];
+      let serverId = ['&e2=e2', '&serverId=invalid'];
+      let coordinators = getEndpointsByType("coordinator");
+      let dbservers = getEndpointsByType("dbserver");
+      let servers = [coordinators, dbservers];
+      let f = (a, b) => [].concat(...a.map(a => b.map(b => [].concat(a, b))));
+      let cartesian = (a, b, ...c) => b ? cartesian(f(a, b), ...c) : a;
+      let params = cartesian(type, mode, serverId);
+      for (let k = 0; k < params.length; k++) {
+        let param = params[k][0] + params[k][1] + params[k][2];
+        // require('internal').print(param);
+        for (let j = 0; j < servers.length; j++) {
+          for (let i = 0; i < servers[j].length; i++) {
+            let server = servers[j][i];
+            let res = getRawMetric(server, param);
+            // require('internal').print(res.errorMessage);
+          }
+        }
+      }
+    }
   };
 }
 

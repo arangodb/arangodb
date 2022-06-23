@@ -73,19 +73,19 @@ bool isOutdated(
     return false;
   }
   velocypack::Slice newData{data->packed->data()};
-  auto const oldVersion = oldData.value("MetricsVersion");
+  auto const& oldVersion = oldData.value("MetricsVersion");
   TRI_ASSERT(!oldVersion.empty());
   auto const newVersion = newData.get("Version").getNumber<uint64_t>();
   if (std::stoull(oldVersion) < newVersion) {
     return true;
   }
-  auto const oldRebootId = oldData.value("MetricsRebootId");
+  auto const& oldRebootId = oldData.value("MetricsRebootId");
   TRI_ASSERT(!oldRebootId.empty());
   auto const newRebootId = newData.get("RebootId").getNumber<uint64_t>();
   if (std::stoull(oldRebootId) != newRebootId) {
     return true;
   }
-  auto const oldServerId = oldData.value("MetricsServerId");
+  auto const& oldServerId = oldData.value("MetricsServerId");
   auto const newServerId = newData.get("ServerId").stringView();
   return oldServerId != newServerId;
 }
@@ -121,9 +121,9 @@ RestStatus RestMetricsHandler::execute() {
   bool foundType;
   bool foundMode;
   auto const& serverId = _request->value("serverId", foundServerId);
-  std::string_view type = _request->value("type", foundType);
-  std::string_view modeStr = _request->value("mode", foundMode);
-  auto itMode = kModes.find(modeStr);
+  auto const& type = _request->value("type", foundType);
+  auto const& modeStr = _request->value("mode", foundMode);
+  auto itMode = kModes.find(std::string_view{modeStr});
   auto mode = [&] {
     if (itMode != kModes.end()) {
       return itMode->second;
@@ -154,6 +154,17 @@ RestStatus RestMetricsHandler::execute() {
   if (foundType) {
     if (foundServerId) {
       error += "Can't use type parameter with serverId parameter.\n";
+    }
+    if (type == metrics::kCDJson) {
+      auto const& oldVersion = _request->value("MetricsVersion");
+      auto const& oldRebootId = _request->value("MetricsRebootId");
+      auto const& oldServerId = _request->value("MetricsServerId");
+      if (oldVersion.empty() || oldRebootId.empty() || oldServerId.empty()) {
+        error += "Incorrect type=cd_json usage.\n";
+      }
+    }
+    if (type == metrics::kLast && !foundMode) {
+      error += "Incorrect type=last usage.\n";
     }
     if (type == metrics::kCDJson || type == metrics::kLast) {
       if (!ServerState::instance()->isCoordinator()) {
@@ -228,8 +239,9 @@ RestStatus RestMetricsHandler::execute() {
   }();
 
   if (leader && (leader->empty() || type == metrics::kLast)) {
-    // TODO(MBkkt) Maybe response with some error?
-    mode = metrics::CollectMode::Local;
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "We didn't find leader server");
+    return RestStatus::DONE;
   }
 
   if (!leader) {
