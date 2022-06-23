@@ -50,6 +50,7 @@ struct MyHelperState {
   using EntryType = MyEntryType;
   using FollowerType = EmptyFollowerType<MyHelperState>;
   using CoreType = MyCoreType;
+  using CoreParameterType = void;
 };
 
 struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
@@ -137,7 +138,7 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   ASSERT_EQ(leaderState, nullptr);
 
   replicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
 
   {
     auto status = replicatedState->getStatus().value();
@@ -215,7 +216,7 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   ASSERT_EQ(leaderState, nullptr);
 
   replicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
 
   {
     auto status = replicatedState->getStatus().value();

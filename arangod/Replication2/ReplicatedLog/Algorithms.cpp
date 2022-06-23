@@ -150,8 +150,7 @@ auto algorithms::updateReplicatedLog(
 
       TRI_ASSERT(spec->participantsConfig.generation > 0);
       auto newLeader = log->becomeLeader(
-          spec->participantsConfig.config, myServerId, spec->currentTerm->term,
-          followers,
+          myServerId, spec->currentTerm->term, followers,
           std::make_shared<ParticipantsConfig>(spec->participantsConfig),
           std::move(failureOracle));
       newLeader->triggerAsyncReplication();  // TODO move this call into
