@@ -48,7 +48,7 @@ auto ReplicatedStateMetrics::createMetric(
     -> std::shared_ptr<typename Builder::MetricT> {
   TRI_ASSERT((metricsFeature == nullptr) == mock);
   if constexpr (!mock) {
-    return metricsFeature->addShared(Builder{}.withLabel("state-impl", impl));
+    return metricsFeature->addShared(Builder{}.withLabel("state_impl", impl));
   } else {
     return std::dynamic_pointer_cast<typename Builder::MetricT>(
         Builder{}.build());
