@@ -72,8 +72,12 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   TRI_ASSERT(_dependencies.size() == 1);
 
   if (_internalState == AsyncState::InProgress) {
+    LOG_DEVEL << "AsyncExecutor: Someone else is working. InProgress: "
+              << _exeNode->id().id();
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
   } else if (_internalState == AsyncState::GotResult) {
+    LOG_DEVEL << "AsyncExecutor: Handing out GotResult: "
+              << _exeNode->id().id();
     if (_returnState != ExecutionState::DONE) {
       // we may not return WAITING if upstream returned DONE
       _internalState = AsyncState::Empty;
@@ -91,6 +95,15 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   bool queued =
       _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
+        LOG_DEVEL << "AsyncExecutor: Started working: "
+                  << this->_exeNode->id().id();
+        if (this->_exeNode->id().id() == 35) {
+          auto d = this->_dependencies.at(0);
+          auto execNode = d->getPlanNode();
+          auto p = execNode->plan();
+          LOG_DEVEL << "Showing async plan:";
+          p->show();
+        }
 
         try {
           auto [state, skip, block] = _dependencies[0]->execute(stack);
@@ -115,6 +128,8 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
     _internalState = AsyncState::Empty;
     return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
   }
+
+  LOG_DEVEL << "AsyncExecutor: Scheduled work: " << this->_exeNode->id().id();
   return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
 }
 

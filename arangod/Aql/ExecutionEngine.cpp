@@ -757,7 +757,9 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
 
 #ifdef USE_ENTERPRISE
   std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
-  ExecutionEngine::parallelizeTraversals(query, plan, aliases);
+  if (arangodb::ServerState::isSingleServerOrCoordinator(role)) {
+    ExecutionEngine::parallelizeTraversals(query, plan, aliases);
+  }
 #endif
 
   if (arangodb::ServerState::isCoordinator(role)) {
@@ -775,9 +777,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     TRI_ASSERT(snippets[0]->engineId() == 0);
     engine = snippets[0].get();
     root = snippets[0]->root();
-
   } else {
-
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;

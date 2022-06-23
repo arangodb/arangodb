@@ -156,11 +156,16 @@ auto BlocksWithClientsImpl<Executor>::executeForClient(
     AqlCallStack stack, std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+    LOG_DEVEL << "MutexExecutor: Trying to get lock: "
+              << this->_exeNode->id().id();
     _executor.acquireLock();
+    LOG_DEVEL << "MutexExecutor: Got lock: " << this->_exeNode->id().id();
   }
 
   auto guard = scopeGuard([&]() noexcept {
     if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+      LOG_DEVEL << "MutexExecutor: Trying to release lock: "
+                << this->_exeNode->id().id();
       _executor.releaseLock();
     }
   });

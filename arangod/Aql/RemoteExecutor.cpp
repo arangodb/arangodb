@@ -104,6 +104,7 @@ ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
 
   if (_requestInFlight) {
     // Already sent a getSome request, but haven't got an answer yet.
+    LOG_DEVEL << "RemoteExecutor: Request is in flight.";
     return {ExecutionState::WAITING, nullptr};
   }
 
@@ -120,6 +121,10 @@ ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
     TRI_ASSERT(_lastError.ok());
     // We do not have an error but a result, all is good
     // We have an open result still.
+    LOG_DEVEL << "RemoteExecutor: Handing out response.";
+    ScopeGuard peter([]() noexcept {
+      LOG_DEVEL << "RemoteExecutor: Leaving after handing out response.";
+    });
     auto response = std::move(_lastResponse);
     // Result is the response which will be a serialized AqlItemBlock
 
@@ -139,6 +144,11 @@ ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
     return {state,
             _engine->itemBlockManager().requestAndInitBlock(responseBody)};
   }
+
+  ScopeGuard peter([]() noexcept {
+    LOG_DEVEL << "RemoteExecutor: Leaving after sending request.";
+  });
+  LOG_DEVEL << "RemoteExecutor: Sending out request";
 
   // We need to send a request here
   VPackBuffer<uint8_t> buffer;

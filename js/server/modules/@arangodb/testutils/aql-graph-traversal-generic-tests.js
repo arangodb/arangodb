@@ -2588,7 +2588,7 @@ const testParallelism = (testGraph, mode) => {
     debugSetFailAt("MutexExecutor::distributeBlock");
     if (isEnterprise()) {
       try {
-        db._query(query);
+        db._query(query, {}, {profile: 0});
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_DEBUG.code);

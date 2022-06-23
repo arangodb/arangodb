@@ -143,6 +143,7 @@ void ClusterQuery::prepareClusterQuery(
   auto instantiateSnippet = [&](VPackSlice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
+    plan->show();
 
     plan->findVarUsage();  // I think this is a no-op
 
