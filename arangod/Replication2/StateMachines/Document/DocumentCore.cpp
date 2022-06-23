@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentCore.h"
+#include "DocumentFollowerState.h"
+#include "DocumentLeaderState.h"
 #include "DocumentStateMachine.h"
 
 using namespace arangodb::replication2::replicated_state::document;
@@ -49,4 +51,8 @@ DocumentCore::DocumentCore(
   TRI_ASSERT(shardResult.ok());
 
   LOG_CTX("b7e0d", TRACE, loggerContext) << "Created shard " << shardId;
+}
+
+auto DocumentCore::getCollectionId() -> std::string_view {
+  return _params.collectionId;
 }
