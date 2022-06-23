@@ -90,7 +90,7 @@ auto algorithms::updateReplicatedState(
       return std::make_unique<ReplicatedStateToken>(expectedGeneration);
     });
     // now start the replicated state
-    state->start(std::move(token));
+    state->start(std::move(token), spec->properties.implementation.parameters);
     return {TRI_ERROR_NO_ERROR};
   } else {
     auto status = state->getStatus();

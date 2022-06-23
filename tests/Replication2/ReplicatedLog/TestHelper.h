@@ -116,10 +116,9 @@ struct ReplicatedLogTest : ::testing::Test {
       failureOracle = std::make_shared<FakeFailureOracle>();
     }
 
-    return LogLeader::construct(config, std::move(logCore), {follower},
-                                std::move(participantsConfig), id, term,
-                                defaultLogger(), _logMetricsMock, _optionsMock,
-                                failureOracle);
+    return LogLeader::construct(
+        std::move(logCore), {follower}, std::move(participantsConfig), id, term,
+        defaultLogger(), _logMetricsMock, _optionsMock, failureOracle);
   }
 
   auto stopAsyncMockLogs() -> void {

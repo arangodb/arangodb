@@ -67,6 +67,7 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -515,14 +516,20 @@ void ClusterInfo::triggerBackgroundGetIds() {
   }
 }
 
-auto ClusterInfo::createReplicatedStateSpec(
+auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
-    std::size_t writeConcern, std::size_t softWriteConcern)
+    ClusterCollectionCreationInfo const& info)
     -> replication2::replicated_state::agency::Target {
+  using namespace replication2::replicated_state;
+
   replication2::replicated_state::agency::Target spec;
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
-  spec.properties.implementation.type = "document";
+
+  spec.properties.implementation.type = document::DocumentState::NAME;
+  auto parameters = document::DocumentCoreParameters{info.collectionID};
+  spec.properties.implementation.parameters = parameters.toSharedSlice();
+
   TRI_ASSERT(!serverIds.empty());
   spec.leader = serverIds.front();
 
@@ -532,8 +539,8 @@ auto ClusterInfo::createReplicatedStateSpec(
         replication2::replicated_state::agency::Target::Participant{});
   }
 
-  spec.config.writeConcern = writeConcern;
-  spec.config.softWriteConcern = softWriteConcern;
+  spec.config.writeConcern = info.writeConcern;
+  spec.config.softWriteConcern = info.replicationFactor;
   spec.config.waitForSync = false;
   spec.version = 1;
 
@@ -910,13 +917,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 }
 
 struct ClusterInfo::NewStuffByDatabase {
-  using ReplicatedLogsMap = containers::FlatHashMap<
-      replication2::LogId,
-      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
   ReplicatedLogsMap replicatedLogs;
-  using CollectionGroupMap = containers::FlatHashMap<
-      replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
   CollectionGroupMap collectionGroups;
 };
 
@@ -1567,14 +1568,14 @@ void ClusterInfo::loadPlan() {
 
       auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
       if (!logsSlice.isNone()) {
-        NewStuffByDatabase::ReplicatedLogsMap newLogs;
+        ReplicatedLogsMap newLogs;
         for (auto const& [idString, logSlice] :
              VPackObjectIterator(logsSlice)) {
           auto spec =
               std::make_shared<replication2::agency::LogPlanSpecification>(
                   velocypack::deserialize<
                       replication2::agency::LogPlanSpecification>(logSlice));
-          newLogs.emplace(spec->id, spec);
+          newLogs.emplace(spec->id, std::move(spec));
         }
         stuff->replicatedLogs = std::move(newLogs);
       }
@@ -1585,18 +1586,25 @@ void ClusterInfo::loadPlan() {
           AgencyCommHelper::path(), "Plan", "CollectionGroups", databaseName};
       auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
       if (!groupsSlice.isNone()) {
-        NewStuffByDatabase::CollectionGroupMap groups;
+        CollectionGroupMap groups;
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
           auto spec = std::make_shared<replication2::agency::CollectionGroup>(
               groupSlice);
-          groups.emplace(spec->id, spec);
+          groups.emplace(spec->id, std::move(spec));
         }
         stuff->collectionGroups = std::move(groups);
       }
     }
 
     newStuffByDatabase[databaseName] = std::move(stuff);
+  }
+
+  decltype(_replicatedLogs) newReplicatedLogs;
+  for (auto& dbs : newStuffByDatabase) {
+    for (auto& it : dbs.second->replicatedLogs) {
+      newReplicatedLogs.emplace(it.first, it.second);
+    }
   }
 
   if (isCoordinator) {
@@ -1652,6 +1660,7 @@ void ClusterInfo::loadPlan() {
   }
 
   _newStuffByDatabase.swap(newStuffByDatabase);
+  _replicatedLogs.swap(newReplicatedLogs);
 
   if (planValid) {
     _planProt.isValid = true;
@@ -3200,8 +3209,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        auto spec = createReplicatedStateSpec(
-            shardId, serverIds, info.writeConcern, info.replicationFactor);
+        auto spec = createDocumentStateSpec(shardId, serverIds, info);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
@@ -5747,9 +5755,32 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
     tries++;
   }
 
+  auto logId = LogicalCollection::shardIdToStateId(shardID);
+
   while (true) {
     {
       READ_LOCKER(readLocker, _currentProt.lock);
+      {
+        // if we find a replicated log for this shard, then this is a
+        // replication 2.0 db, in which case we want to use the participant
+        // information from the log instead
+        auto it = _replicatedLogs.find(logId);
+        if (it != _replicatedLogs.end()) {
+          auto& participants = it->second->participantsConfig.participants;
+          auto result = std::make_shared<std::vector<ServerID>>();
+          result->reserve(participants.size());
+          // participants is an unordered map, but the resulting list requires
+          // that the leader is the first entry!
+          auto& leader = it->second->currentTerm->leader->serverId;
+          result->emplace_back(leader);
+          for (auto& [k, v] : participants) {
+            if (k != leader) {
+              result->emplace_back(k);
+            }
+          }
+        }
+      }
+
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
@@ -5799,6 +5830,39 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     Result r = waitForCurrent(1).get();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  {
+    READ_LOCKER(readLocker, _currentProt.lock);
+    bool isReplicationTwo = false;
+    for (auto const& shardId : shardIds) {
+      auto logId = LogicalCollection::tryShardIdToStateId(shardId);
+      if (!logId.has_value()) {
+        // could not convert shardId to logId, but this implies that
+        // the shardId is not valid.
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                       "invalid shard " + shardId);
+      }
+      // if we find a replicated log for this shard, then this is a
+      // replication 2.0 db, in which case we want to use the leader
+      // information from the log instead
+      auto it = _replicatedLogs.find(*logId);
+      if (it != _replicatedLogs.end()) {
+        isReplicationTwo = true;
+        result.emplace(shardId, it->second->currentTerm->leader->serverId);
+      } else if (isReplicationTwo) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+            "no replicated log found for shard " + shardId);
+      } else {
+        // this seems to be no replication 2.0 db -> skip the remaining shards
+        // and continue as usual
+        break;
+      }
+    }
+    if (isReplicationTwo) {
+      return result;
     }
   }
 
@@ -6110,22 +6174,16 @@ auto ClusterInfo::getReplicatedLogsParticipants(std::string_view database) const
   return replicatedLogs;
 }
 
-auto ClusterInfo::getReplicatedLogLeader(std::string_view database,
-                                         replication2::LogId id) const
+auto ClusterInfo::getReplicatedLogLeader(replication2::LogId id) const
     -> ResultT<ServerID> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _newStuffByDatabase.find(database);
-  if (it == std::end(_newStuffByDatabase)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
-  }
-
-  auto it2 = it->second->replicatedLogs.find(id);
-  if (it2 == std::end(it->second->replicatedLogs)) {
+  auto it = _replicatedLogs.find(id);
+  if (it == std::end(_replicatedLogs)) {
     return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
-  if (auto const& term = it2->second->currentTerm) {
+  if (auto const& term = it->second->currentTerm) {
     if (auto const& leader = term->leader) {
       return leader->serverId;
     }
@@ -6967,23 +7025,18 @@ void ClusterInfo::triggerWaiting(
 }
 
 auto arangodb::ClusterInfo::getReplicatedLogPlanSpecification(
-    std::string_view database, replication2::LogId id) const
+    replication2::LogId id) const
     -> ResultT<
         std::shared_ptr<replication2::agency::LogPlanSpecification const>> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _newStuffByDatabase.find(database);
-  if (it == std::end(_newStuffByDatabase)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
-  }
-
-  auto it2 = it->second->replicatedLogs.find(id);
-  if (it2 == std::end(it->second->replicatedLogs)) {
+  auto it = _replicatedLogs.find(id);
+  if (it == std::end(_replicatedLogs)) {
     return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
-  TRI_ASSERT(it2->second != nullptr);
-  return it2->second;
+  TRI_ASSERT(it->second != nullptr);
+  return it->second;
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(
