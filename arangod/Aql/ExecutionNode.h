@@ -359,6 +359,8 @@ class ExecutionNode {
 
   bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
 
+  bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, bool onlyFlattenAsync);
+
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS = 1;
   /// include estimate cost  (used in the explainer)
