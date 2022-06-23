@@ -9,4 +9,4 @@ complexity: simple
 exposedBy:
   - dbserver
 description: |
-  Number of replicated states this server is a follower for.
+  Number of replicated states this server is a leader of.
