@@ -174,8 +174,7 @@ isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern() {
   });
 }
 
-static inline auto
-isWriteConcernUsedForCommitLessThanOrEqualToAssumedWriteConcern() {
+static inline auto isAssumedWriteConcernLessThanWriteConcernUsedForCommit() {
   return MC_BOOL_PRED(global, {
     AgencyState const& state = global.state;
 
