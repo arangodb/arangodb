@@ -38,6 +38,7 @@ const analyzers = require("@arangodb/analyzers");
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+const _ = require('lodash');
 
 var compareStringIds = function (l, r) {
   'use strict';
@@ -4885,19 +4886,25 @@ jsunity.run(transactionOverlapSuiteV1);
 jsunity.run(transactionDatabaseSuite);
 
 if (isReplication2Enabled) {
-  jsunity.run(transactionRevisionsSuiteV2);
-  jsunity.run(transactionRollbackSuiteV2);
-  jsunity.run(transactionInvocationSuiteV2);
-  jsunity.run(transactionCollectionsSuiteV2);
-  jsunity.run(transactionOperationsSuiteV2);
-  jsunity.run(transactionBarriersSuiteV2);
-  jsunity.run(transactionCountSuiteV2);
-  jsunity.run(transactionCrossCollectionSuiteV2);
-  jsunity.run(transactionTraversalSuiteV2);
-  jsunity.run(transactionAQLStreamSuiteV2);
-  jsunity.run(transactionTTLStreamSuiteV2);
-  jsunity.run(transactionIteratorSuiteV2);
-  jsunity.run(transactionOverlapSuiteV2);
+  let suites = [
+    transactionRevisionsSuiteV2,
+    transactionRollbackSuiteV2,
+    transactionInvocationSuiteV2,
+    transactionCollectionsSuiteV2,
+    transactionOperationsSuiteV2,
+    transactionBarriersSuiteV2,
+    transactionCountSuiteV2,
+    transactionCrossCollectionSuiteV2,
+    transactionTraversalSuiteV2,
+    transactionAQLStreamSuiteV2,
+    transactionTTLStreamSuiteV2,
+    transactionIteratorSuiteV2,
+    transactionOverlapSuiteV2,
+  ];
+
+  for (const suite of suites) {
+    jsunity.run(suite);
+  }
 }
 
 return jsunity.done();

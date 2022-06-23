@@ -60,6 +60,6 @@ auto TestReplicatedLog::becomeLeader(
     failureOracle = std::make_shared<FakeFailureOracle>();
   }
 
-  return becomeLeader(config, id, term, follower, std::move(participantsConfig),
+  return becomeLeader(id, term, follower, std::move(participantsConfig),
                       failureOracle);
 }

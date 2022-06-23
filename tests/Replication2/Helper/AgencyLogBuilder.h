@@ -56,6 +56,11 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto setPlanConfig(RLA::LogPlanConfig config) -> AgencyLogBuilder& {
+    makePlan().participantsConfig.config = config;
+    return *this;
+  }
+
   auto setTargetLeader(std::optional<ParticipantId> leader)
       -> AgencyLogBuilder& {
     _log.target.leader = std::move(leader);

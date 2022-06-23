@@ -112,6 +112,11 @@ struct VPackLoadInspectorImpl
     return {};
   }
 
+  [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
+    v = VPackBuilder{_slice}.sharedSlice();
+    return {};
+  }
+
   [[nodiscard]] Status value(bool& v) {
     if (!_slice.isBool()) {
       return {"Expecting type Bool"};
