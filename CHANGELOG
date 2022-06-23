@@ -1,6 +1,10 @@
 devel
 -----
 
+* Pregel SSSP now supports `resultField` as well as `_resultField` as 
+  parameter name to specify the field into which results are stored.
+  The name `_resultField` will be deprecated in future.
+
 * Added Enterprise Graph feature to enterprise version of ArangoDB.
   The enterprise graph is another graph sharding model that we introduced,
   it is less strict, and therefore easier to start with, then SmartGraphs,
