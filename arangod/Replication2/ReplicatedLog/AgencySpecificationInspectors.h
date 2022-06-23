@@ -163,12 +163,6 @@ auto inspect(Inspector& f,
 }
 
 template<class Inspector>
-auto inspect(Inspector& f,
-             LogCurrentSupervision::ConfigChangeNotImplemented& x) {
-  return f.object(x).fields();
-}
-
-template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision::LeaderElectionImpossible& x) {
   return f.object(x).fields();
 }
@@ -221,8 +215,6 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
               LogCurrentSupervision::TargetNotEnoughParticipants::code),
           insp::type<LogCurrentSupervision::WaitingForConfigCommitted>(
               LogCurrentSupervision::WaitingForConfigCommitted::code),
-          insp::type<LogCurrentSupervision::ConfigChangeNotImplemented>(
-              LogCurrentSupervision::ConfigChangeNotImplemented::code),
           insp::type<LogCurrentSupervision::LeaderElectionImpossible>(
               LogCurrentSupervision::LeaderElectionImpossible::code),
           insp::type<LogCurrentSupervision::LeaderElectionOutOfBounds>(
