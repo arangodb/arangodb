@@ -271,6 +271,8 @@ function recovery (options) {
         keyDir: "",
         temp_path: fs.join(tempDir, count.toString())
       };
+      fs.makeDirectoryRecursive(params.rootDir);
+      fs.makeDirectoryRecursive(params.temp_path);
       runArangodRecovery(params, useEncryption);
 
       ////////////////////////////////////////////////////////////////////////
