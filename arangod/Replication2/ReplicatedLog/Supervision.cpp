@@ -675,8 +675,7 @@ auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
         plan.participantsConfig.config.effectiveWriteConcern);
   }
 
-  // TODO: check waitForSync
-  ctx.reportStatus<LogCurrentSupervision::ConfigChangeNotImplemented>();
+  // TODO: waitForSync
 }
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {
