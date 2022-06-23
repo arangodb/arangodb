@@ -756,12 +756,8 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
   TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
 
 #ifdef USE_ENTERPRISE
-  LOG_DEVEL << "Try parallietzing!";
   std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
   ExecutionEngine::parallelizeTraversals(query, plan, aliases);
-  LOG_DEVEL << "Try showing!";
-  plan.show();
-  LOG_DEVEL << "Did show!";
 #endif
 
   if (arangodb::ServerState::isCoordinator(role)) {
