@@ -156,10 +156,10 @@ void FollowerStateManager<S>::tryTransferSnapshot(
   TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
                                     "has to be a leader in the current term";
 
+  auto const commitIndex = logFollower->getCommitIndex();
   LOG_CTX("52a11", DEBUG, loggerContext)
-      << "try to acquire a new snapshot, starting at "
-      << logFollower->getCommitIndex();
-  auto f = hiddenState->acquireSnapshot(*leader, logFollower->getCommitIndex());
+      << "try to acquire a new snapshot, starting at " << commitIndex;
+  auto f = hiddenState->acquireSnapshot(*leader, commitIndex);
   std::move(f).thenFinal([weak = this->weak_from_this(), hiddenState](
                              futures::Try<Result>&& tryResult) noexcept {
     auto self = weak.lock();
@@ -363,8 +363,81 @@ void FollowerStateManager<S>::run() noexcept {
 }
 
 template<typename S>
+void FollowerStateManager<S>::newRun() noexcept {
+  waitForLogFollowerResign();
+
+  static auto constexpr throwResultOnError = [](Result result) {
+    if (result.fail()) {
+      throw basics::Exception(std::move(result), ADB_HERE);
+    }
+  };
+  static auto constexpr handleErrors = [](futures::Try<Result>&& tryResult) {};
+  static auto constexpr transitionTo = [this](FollowerInternalState state) {
+    return [state, weak = this->weak_from_this()] {
+      if (auto self = weak.lock(); self != nullptr) {
+        self->_guardedData.getLockedGuard()->updateInternalState(state);
+        self->newRun();
+      }
+    };
+  };
+
+  // Note that because `transitionWith` locks the self-ptr before calling `fn`,
+  // fn itself is allowed to just capture and use `this`.
+  static auto constexpr transitionWith = [this]<typename F>(F&& fn) {
+    return [weak = this->weak_from_this(), fn = std::forward<F>(fn)] () mutable {
+      if (auto self = weak.lock(); self != nullptr) {
+        auto state = std::move(fn)();
+        self->_guardedData.getLockedGuard()->updateInternalState(state);
+        self->newRun();
+      }
+    };
+  };
+
+  auto lastState = _guardedData.getLockedGuard()->internalState;
+
+  switch (lastState) {
+    case FollowerInternalState::kUninitializedState:
+      std::invoke(
+          transitionTo(FollowerInternalState::kWaitForLeaderConfirmation));
+      break;
+    case FollowerInternalState::kWaitForLeaderConfirmation:
+      waitForLeaderAcked()
+          .thenValue(transitionWith([this] {
+            if (needsSnapshot()) {
+              return FollowerInternalState::kTransferSnapshot;
+            } else {
+              return FollowerInternalState::kWaitForNewEntries;
+            }
+          }))
+          .thenError(handleErrors);
+      break;
+    case FollowerInternalState::kTransferSnapshot:
+      tryTransferSnapshot()
+          .thenValue(throwResultOnError)
+          .thenValue(transitionTo(FollowerInternalState::kWaitForNewEntries))
+          .thenError(
+              transitionTo(FollowerInternalState::kSnapshotTransferFailed));
+      break;
+    case FollowerInternalState::kSnapshotTransferFailed:
+      std::invoke(transitionTo(FollowerInternalState::kTransferSnapshot));
+      break;
+    case FollowerInternalState::kWaitForNewEntries:
+      waitForNewEntries()
+          .thenValue(transitionTo(FollowerInternalState::kApplyRecentEntries))
+          .thenError(handleErrors);
+      break;
+    case FollowerInternalState::kApplyRecentEntries:
+      applyNewEntries()
+          .thenValue(transitionTo(FollowerInternalState::kWaitForNewEntries))
+          .thenError(handleErrors);
+      break;
+  }
+}
+
+template<typename S>
 FollowerStateManager<S>::FollowerStateManager(
-    LoggerContext loggerContext, std::shared_ptr<ReplicatedStateBase> parent,
+    LoggerContext loggerContext,
+    std::shared_ptr<ReplicatedStateBase> const& parent,
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
     std::shared_ptr<Factory> factory) noexcept
@@ -445,6 +518,16 @@ template<typename S>
 auto FollowerStateManager<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> {
   return _guardedData.getLockedGuard()->stream;
+}
+
+template<typename S>
+auto FollowerStateManager<S>::needsSnapshot() const noexcept -> bool {
+  return _guardedData.doUnderLock([&](GuardedData& data) {
+    LOG_CTX("aee5b", DEBUG, loggerContext)
+        << "snapshot status is " << data.token->snapshot.status
+        << ", generation is " << data.token->generation;
+    return data.token->snapshot.status != SnapshotStatus::kCompleted;
+  });
 }
 
 template<typename S>

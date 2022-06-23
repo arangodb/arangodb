@@ -46,13 +46,28 @@ struct FollowerStateManager
   using Iterator = typename Stream::Iterator;
 
   FollowerStateManager(
-      LoggerContext loggerContext, std::shared_ptr<ReplicatedStateBase> parent,
+      LoggerContext loggerContext,
+      std::shared_ptr<ReplicatedStateBase> const& parent,
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
   void run() noexcept override;
+
+  // <new> (mostly stubs)
+  void waitForLogFollowerResign();
+
+  void newRun() noexcept;
+  auto waitForLeaderAcked() -> futures::Future<futures::Unit>;
+  void createFollower();
+  auto tryTransferSnapshot() -> futures::Future<Result>;
+  void startService();  //?
+  void waitForNewEntries();
+  void applyNewEntries();
+
+  auto needsSnapshot() const noexcept -> bool;
+  // </new>
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
