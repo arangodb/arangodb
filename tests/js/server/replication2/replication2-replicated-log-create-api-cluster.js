@@ -83,6 +83,13 @@ const replicatedLogCreateSuite = function () {
       const status = log.status();
       assertEqual(Object.keys(status.participants).sort(), servers.sort());
     },
+
+    testCreateWithNumberOfServers: function () {
+      const servers = _.sampleSize(lh.dbservers, 3);
+      const log = db._createReplicatedLog({servers, config: targetConfig, numberOfServers: 4});
+      const status = log.status();
+      assertEqual(Object.keys(status.participants).length, 4);
+    },
   };
 };
 

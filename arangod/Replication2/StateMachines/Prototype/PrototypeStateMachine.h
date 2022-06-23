@@ -58,6 +58,7 @@ struct PrototypeState {
   using EntryType = PrototypeLogEntry;
   using FactoryType = PrototypeFactory;
   using CoreType = PrototypeCore;
+  using CoreParameterType = void;
 };
 
 struct IPrototypeLeaderInterface {
