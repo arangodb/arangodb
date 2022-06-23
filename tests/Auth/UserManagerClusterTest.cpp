@@ -32,14 +32,7 @@ namespace tests {
 namespace auth_info_test {
 
 namespace {
-#if defined(__APPLE__) && __clang_major__ == 13 && __clang_minor__ == 1
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-variable"
-#endif
-static char const* FailureOnLoadDB = "UserManager::performDBLookup";
-#if defined(__APPLE__) && __clang_major__ == 13 && __clang_minor__ == 1
-#pragma clang diagnostic pop
-#endif
+[[maybe_unused]] static char const* FailureOnLoadDB = "UserManager::performDBLookup";
 }
 
 class UserManagerClusterTest : public ::testing::Test {
