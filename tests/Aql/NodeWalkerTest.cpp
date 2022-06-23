@@ -31,7 +31,7 @@ using namespace arangodb::aql;
 namespace arangodb::tests::aql {
 struct TestWalker final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  std::vector<std::pair<uint64_t, std::string, bool>> _visitedNode{};
+  std::vector<std::tuple<uint64_t, std::string, bool>> _visitedNode{};
 
   bool before(ExecutionNode* en) final {
     _visitedNode.emplace_back(
