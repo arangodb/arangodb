@@ -5909,7 +5909,7 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     // reset everything we found so far for the next round
     result.clear();
 
-    if (++tries >= 20 || _server.isStopping()) {
+    if (++tries >= 2 || _server.isStopping()) {
       break;
     }
 
