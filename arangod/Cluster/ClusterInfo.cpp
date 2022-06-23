@@ -1579,6 +1579,11 @@ void ClusterInfo::loadPlan() {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
+            if (col->second->size() == 0) {
+              // Can happen for smart edge collections. But in this case we
+              // can ignore the collection.
+              continue;
+            }
             TRI_ASSERT(groupLeaderCol->second->size() == col->second->size());
             for (size_t i = 0; i < col->second->size(); ++i) {
               newShardToShardGroupLeader.try_emplace(
@@ -5852,7 +5857,7 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
 //////////////////////////////////////////////////////////////////////////////
 
 containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
-    std::vector<ShardID> const& shardIds) {
+    containers::FlatHashSet<ShardID> const& shardIds) {
   TRI_ASSERT(!shardIds.empty());
 
   containers::FlatHashMap<ShardID, ServerID> result;
@@ -5904,7 +5909,7 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     // reset everything we found so far for the next round
     result.clear();
 
-    if (++tries >= 2 || _server.isStopping()) {
+    if (++tries >= 20 || _server.isStopping()) {
       break;
     }
 

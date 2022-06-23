@@ -256,14 +256,14 @@ class TransactionState {
   /// (or one has the other as `distributeShardsLike`), then the choices for
   /// corresponding shards must be made in a coherent fashion. Therefore:
   /// Do not fill in this map yourself, always use this method for this.
-  void chooseReplicas(std::vector<ShardID> const& shards);
+  void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
 
   /// @brief lookup a replica choice for some shard, this basically looks
   /// up things in `_chosenReplicas`, but if the shard is not found there,
   /// it uses `chooseReplicas` to make a choice.
   ServerID whichReplica(ShardID const& shard);
   containers::FlatHashMap<ShardID, ServerID> whichReplicas(
-      std::vector<ShardID> const& shardIds);
+      containers::FlatHashSet<ShardID> const& shardIds);
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after

@@ -893,7 +893,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   containers::FlatHashMap<ShardID, ServerID> getResponsibleServers(
-      std::vector<ShardID> const&);
+      containers::FlatHashSet<ShardID> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -913,7 +913,7 @@ class ClusterInfo final {
 
 #ifdef USE_ENTERPRISE
   void getResponsibleServersReadFromFollower(
-      std::vector<ShardID> const& list,
+      containers::FlatHashSet<ShardID> const& list,
       containers::FlatHashMap<ShardID, ServerID>& result);
 #endif
 

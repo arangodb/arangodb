@@ -511,7 +511,8 @@ TransactionStatistics& TransactionState::statistics() noexcept {
       ._transactionsStatistics;
 }
 
-void TransactionState::chooseReplicas(std::vector<ShardID> const& shards) {
+void TransactionState::chooseReplicas(
+    containers::FlatHashSet<ShardID> const& shards) {
   if (_chosenReplicas == nullptr) {
     _chosenReplicas =
         std::make_unique<containers::FlatHashMap<ShardID, ServerID>>(
@@ -522,7 +523,7 @@ void TransactionState::chooseReplicas(std::vector<ShardID> const& shards) {
 #ifdef USE_ENTERPRISE
   ci.getResponsibleServersReadFromFollower(shards, *_chosenReplicas);
 #else
-  _chosenReplicas = ci.getResponsibleServers(shards);
+  *_chosenReplicas = ci.getResponsibleServers(shards);
 #endif
 }
 
@@ -534,8 +535,8 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
     }
   }
   // Not yet decided
-  std::vector<ShardID> shards;
-  shards.emplace_back(shard);
+  containers::FlatHashSet<ShardID> shards;
+  shards.emplace(shard);
   chooseReplicas(shards);
   auto it = _chosenReplicas->find(shard);
   TRI_ASSERT(it != _chosenReplicas->end());
@@ -543,7 +544,7 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
 }
 
 containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
-    std::vector<ShardID> const& shardIds) {
+    containers::FlatHashSet<ShardID> const& shardIds) {
   chooseReplicas(shardIds);
   containers::FlatHashMap<ShardID, ServerID> result;
   for (auto const& shard : shardIds) {

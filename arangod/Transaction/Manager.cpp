@@ -618,13 +618,13 @@ ResultT<TransactionId> Manager::createManagedTrx(
     TRI_ASSERT(ServerState::instance()->isCoordinator());
     // Choose the replica we read from for all shards of all collections in
     // the reads list:
-    std::vector<ShardID> shards;
+    containers::FlatHashSet<ShardID> shards;
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     for (std::string const& collName : readCollections) {
       auto coll = ci.getCollection(vocbase.name(), collName);
       auto shardMap = coll->shardIds();
       for (auto const& p : *shardMap) {
-        shards.emplace_back(p.first);
+        shards.emplace(p.first);
       }
     }
     state->chooseReplicas(shards);

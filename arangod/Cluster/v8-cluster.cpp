@@ -982,12 +982,12 @@ static void JS_GetResponsibleServersClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
 
-  std::vector<std::string> shardIds;
+  containers::FlatHashSet<std::string> shardIds;
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
 
   uint32_t const n = array->Length();
   for (uint32_t i = 0; i < n; ++i) {
-    shardIds.emplace_back(TRI_ObjectToString(
+    shardIds.emplace(TRI_ObjectToString(
         isolate, array->Get(context, i).FromMaybe(v8::Local<v8::Value>())));
   }
 

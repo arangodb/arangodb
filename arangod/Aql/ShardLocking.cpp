@@ -360,7 +360,7 @@ void ShardLocking::serializeIntoBuilder(
 containers::FlatHashMap<ShardID, ServerID> const&
 ShardLocking::getShardMapping() {
   if (_shardMapping.empty() && !_collectionLocking.empty()) {
-    std::vector<ShardID> shardIds;
+    containers::FlatHashSet<ShardID> shardIds;
     for (auto& lockInfo : _collectionLocking) {
       auto& allShards = lockInfo.second.allShards;
       TRI_ASSERT(!allShards.empty());
@@ -369,13 +369,13 @@ ShardLocking::getShardMapping() {
           // We have an unrestricted snippet for this collection
           // Use all shards for locking
           for (auto const& s : allShards) {
-            shardIds.emplace_back(s);
+            shardIds.emplace(s);
           }
           // No need to search further
           break;
         }
         for (auto const& s : rest.second.restrictedShards) {
-          shardIds.emplace_back(s);
+          shardIds.emplace(s);
         }
       }
     }
