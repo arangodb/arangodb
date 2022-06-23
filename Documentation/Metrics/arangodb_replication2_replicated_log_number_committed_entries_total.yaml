@@ -1,4 +1,4 @@
-name: arangodb_replication2_replicated_log_number_committed_entries
+name: arangodb_replication2_replicated_log_number_committed_entries_total
 introducedIn: "3.10.0"
 help: |
   Number of committed log entries.

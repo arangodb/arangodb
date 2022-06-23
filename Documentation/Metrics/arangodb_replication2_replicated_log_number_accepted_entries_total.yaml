@@ -1,4 +1,4 @@
-name: arangodb_replication2_replicated_log_number_accepted_entries
+name: arangodb_replication2_replicated_log_number_accepted_entries_total
 introducedIn: "3.10.0"
 help: |
   Number of accepted (not yet committed) log entries.
