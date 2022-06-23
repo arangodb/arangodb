@@ -2026,7 +2026,6 @@ Future<OperationResult> getDocumentOnCoordinator(
     Future<Result> f = makeFuture(Result());
     if (isManaged &&
         opCtx.shardMap.size() > 1) {  // lazily begin the transaction
-      LOG_DEVEL << "Beginning transactions on some leaders...";
       f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap,
                                         api);
     }
