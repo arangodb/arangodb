@@ -156,10 +156,10 @@ void FollowerStateManager<S>::tryTransferSnapshot(
   TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
                                     "has to be a leader in the current term";
 
+  auto const commitIndex = logFollower->getCommitIndex();
   LOG_CTX("52a11", DEBUG, loggerContext)
-      << "try to acquire a new snapshot, starting at "
-      << logFollower->getCommitIndex();
-  auto f = hiddenState->acquireSnapshot(*leader, logFollower->getCommitIndex());
+      << "try to acquire a new snapshot, starting at " << commitIndex;
+  auto f = hiddenState->acquireSnapshot(*leader, commitIndex);
   std::move(f).thenFinal([weak = this->weak_from_this(), hiddenState](
                              futures::Try<Result>&& tryResult) noexcept {
     auto self = weak.lock();
