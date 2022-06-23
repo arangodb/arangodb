@@ -1300,7 +1300,7 @@ class ClusterInfo final {
   // Note that shard group leaders themselves do not appear in this map:
   containers::FlatHashMap<ShardID, ShardID> _shardToShardGroupLeader;
   // In the following map we store for each shard group leader the list
-  // of shards in the group.
+  // of shards in the group, including the leader.
   containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>
       _shardGroups;
 
