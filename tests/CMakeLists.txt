@@ -363,7 +363,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
-)
+        Replication2/ReplicatedLog/MetricsTest.cpp)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp

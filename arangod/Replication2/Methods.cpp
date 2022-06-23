@@ -969,7 +969,8 @@ struct ReplicatedStateCoordinatorMethods
 
           auto supervision = velocypack::deserialize<
               replicated_state::agency::Current::Supervision>(slice);
-          if (supervision.version >= ctx->version) {
+          if (supervision.version.has_value() &&
+              supervision.version >= ctx->version) {
             ctx->promise.setValue(ResultT<consensus::index_t>{index});
             return true;
           }

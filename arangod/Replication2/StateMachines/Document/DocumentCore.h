@@ -23,14 +23,14 @@
 
 #pragma once
 
-#include "DocumentStateStrategy.h"
+#include "DocumentLogEntry.h"
 #include "DocumentStateMachine.h"
+#include "DocumentStateStrategy.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::replication2::replicated_state::document {
-struct DocumentCoreParameters;
 
 struct DocumentCore {
   explicit DocumentCore(
@@ -40,6 +40,8 @@ struct DocumentCore {
       LoggerContext loggerContext);
 
   LoggerContext const loggerContext;
+
+  auto getCollectionId() -> std::string_view;
 
  private:
   GlobalLogIdentifier _gid;

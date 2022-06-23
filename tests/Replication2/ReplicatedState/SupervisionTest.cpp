@@ -630,7 +630,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_change_config) {
   AgencyStateBuilder state;
   AgencyLogBuilder log;
   RLA::LogTargetConfig newConfig = defaultConfig;
-  newConfig.writeConcern = 3; // change write concern from 2 -> 3
+  newConfig.writeConcern = 3;  // change write concern from 2 -> 3
 
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
