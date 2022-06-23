@@ -384,7 +384,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
 
   auto allTests = model_checker::combined{
       MC_ALWAYS(
-          mcpreds::AssumedWriteConcernLessThanWriteConcernUsedForCommit()),
+          mcpreds::isAssumedWriteConcernLessThanWriteConcernUsedForCommit()),
       MC_ALWAYS(
           mcpreds::
               isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern()),

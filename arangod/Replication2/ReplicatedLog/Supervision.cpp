@@ -633,15 +633,20 @@ auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
   }
 }
 
+// TODO/FIXME: This could be two separate functions
 auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
-  if (!log.plan.has_value()) {
+  if (!log.plan.has_value() || !log.current.has_value()) {
     return;
   }
   ADB_PROD_ASSERT(log.plan.has_value());
+  ADB_PROD_ASSERT(log.current.has_value());
 
   auto const& target = log.target;
   auto const& plan = *log.plan;
+  auto const& current = *log.current;
+
+  ADB_PROD_ASSERT(current.supervision.has_value());
 
   // Check write concern
   auto effectiveWriteConcern = computeEffectiveWriteConcern(
@@ -649,15 +654,14 @@ auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
 
   if (effectiveWriteConcern !=
       plan.participantsConfig.config.effectiveWriteConcern) {
-    ctx.createAction<UpdateEffectiveWriteConcernAction>(effectiveWriteConcern);
+    ctx.createAction<UpdateEffectiveAndAssumedWriteConcernAction>(
+        effectiveWriteConcern,
+        std::min(effectiveWriteConcern,
+                 current.supervision->assumedWriteConcern));
 
     return;
   }
 
-  if (!log.current.has_value()) {
-    return;
-  }
-  auto const& current = *log.current;
   if (!current.leader.has_value() ||
       !current.leader->committedParticipantsConfig.has_value()) {
     return;

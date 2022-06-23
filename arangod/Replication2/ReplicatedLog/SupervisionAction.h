@@ -284,9 +284,11 @@ auto inspect(Inspector& f, UpdateLogConfigAction& x) {
   return f.object(x).fields(f.field("type", hack));
 }
 
-struct UpdateEffectiveWriteConcernAction {
-  static constexpr std::string_view name = "UpdateEffectiveWriteConcernAction";
+struct UpdateEffectiveAndAssumedWriteConcernAction {
+  static constexpr std::string_view name =
+      "UpdateEffectiveAndAssumedWriteConcernAction";
   size_t newEffectiveWriteConcern;
+  size_t newAssumedWriteConcern;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
@@ -296,17 +298,17 @@ struct UpdateEffectiveWriteConcernAction {
     });
     ctx.modify<LogCurrentSupervision>(
         [&](LogCurrentSupervision& currentSupervision) {
-          currentSupervision.assumedWriteConcern = std::min(
-              currentSupervision.assumedWriteConcern, newEffectiveWriteConcern);
+          currentSupervision.assumedWriteConcern = newAssumedWriteConcern;
         });
   }
 };
 template<typename Inspector>
-auto inspect(Inspector& f, UpdateEffectiveWriteConcernAction& x) {
+auto inspect(Inspector& f, UpdateEffectiveAndAssumedWriteConcernAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(
       f.field("type", hack),
-      f.field("newEffectiveWriteConcern", x.newEffectiveWriteConcern));
+      f.field("newEffectiveWriteConcern", x.newEffectiveWriteConcern),
+      f.field("newAssumedWriteConcern", x.newAssumedWriteConcern));
 }
 
 struct SetAssumedWriteConcernAction {
@@ -357,7 +359,7 @@ using Action =
                  SwitchLeaderAction, WriteEmptyTermAction, LeaderElectionAction,
                  UpdateParticipantFlagsAction, AddParticipantToPlanAction,
                  RemoveParticipantFromPlanAction, UpdateLogConfigAction,
-                 UpdateEffectiveWriteConcernAction,
+                 UpdateEffectiveAndAssumedWriteConcernAction,
                  SetAssumedWriteConcernAction, ConvergedToTargetAction>;
 
 auto executeAction(Log log, Action& action) -> ActionContext;
