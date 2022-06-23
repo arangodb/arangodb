@@ -115,7 +115,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       [this.keyDir,
        this.otherKeyDir,
        this.dumpConfig.getOutputDirectory()].forEach(dir => {
-         if (dir !== null) {
+         if ((dir !== null) && fs.exists(dir)) {
            print(CYAN + "Cleaning up " + dir + RESET);
            fs.removeDirectoryRecursive(dir);
          }
