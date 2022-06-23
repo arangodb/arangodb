@@ -749,11 +749,20 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
   aql::SnippetList& snippets = query.snippets();
   TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
 
+#ifdef USE_ENTERPRISE
+  LOG_DEVEL << "Try parallietzing!";
+  std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
+  ExecutionEngine::parallelizeTraversals(query, plan, aliases);
+  LOG_DEVEL << "Try showing!";
+  plan.show();
+  LOG_DEVEL << "Did show!";
+#endif
+
   if (arangodb::ServerState::isCoordinator(role)) {
     // distributed query
     DistributedQueryInstanciator inst(query, plan.getNodesById(),
                                       pushToSingleServer);
-    plan.root()->walk(inst);
+    plan.root()->flatWalk(inst, true);
 
     Result res = inst.buildEngines();
     if (res.fail()) {
@@ -766,10 +775,6 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     root = snippets[0]->root();
 
   } else {
-#ifdef USE_ENTERPRISE
-    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
-    ExecutionEngine::parallelizeTraversals(query, plan, aliases);
-#endif
 
     // instantiate the engine on a local server
     EngineId eId =

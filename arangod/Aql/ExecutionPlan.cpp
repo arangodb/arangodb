@@ -2871,7 +2871,7 @@ struct Shower final
 /// @brief show an overview over the plan
 void ExecutionPlan::show() const {
   Shower shower;
-  _root->walk(shower);
+  _root->flatWalk(shower, false);
 }
 
 #endif
