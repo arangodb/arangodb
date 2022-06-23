@@ -169,53 +169,61 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 
     if (nodeType == ExecutionNode::GATHER) {
       // we found a gather node
-      if (remoteNode == nullptr) {
-        return {TRI_ERROR_INTERNAL, "expecting a RemoteNode"};
-      }
+      if (en->getFirstDependency()->getType() == ExecutionNode::REMOTE) {
+        TRI_ASSERT(en->getFirstDependency() == remoteNode);
+        // now we'll create a remote node for each shard and add it to the
+        // gather node (eb->addDependency)
+        auto serversForRemote = queryIds.find(remoteNode->id());
+        // Planning gone terribly wrong. The RemoteNode does not have a
+        // counter-part to fetch data from.
+        TRI_ASSERT(serversForRemote != queryIds.end());
+        if (serversForRemote == queryIds.end()) {
+          return {TRI_ERROR_INTERNAL,
+                  "Did not find a DBServer to contact for RemoteNode"};
+        }
 
-      // now we'll create a remote node for each shard and add it to the
-      // gather node (eb->addDependency)
-      auto serversForRemote = queryIds.find(remoteNode->id());
-      // Planning gone terribly wrong. The RemoteNode does not have a
-      // counter-part to fetch data from.
-      TRI_ASSERT(serversForRemote != queryIds.end());
-      if (serversForRemote == queryIds.end()) {
-        return {TRI_ERROR_INTERNAL,
-                "Did not find a DBServer to contact for RemoteNode"};
-      }
-
-      // use "server:" instead of "shard:" to send query fragments to
-      // the correct servers, even after failover or when a follower drops
-      // the problem with using the previous shard-based approach was that
-      // responsibilities for shards may change at runtime.
-      // however, an AQL query must send all requests for the query to the
-      // initially used servers.
-      // if there is a failover while the query is executing, we must still
-      // send all following requests to the same servers, and not the newly
-      // responsible servers.
-      // otherwise we potentially would try to get data from a query from
-      // server B while the query was only instanciated on server A.
-      for (auto const& serverToSnippet : serversForRemote->second) {
-        std::string const& serverID = serverToSnippet.first;
-        for (std::string const& snippetId : serverToSnippet.second) {
-          remoteNode->queryId(snippetId);
-          remoteNode->server(serverID);
-          remoteNode->setDistributeId({""});
-          std::unique_ptr<ExecutionBlock> r =
-              remoteNode->createBlock(*this, {});
+        // use "server:" instead of "shard:" to send query fragments to
+        // the correct servers, even after failover or when a follower drops
+        // the problem with using the previous shard-based approach was that
+        // responsibilities for shards may change at runtime.
+        // however, an AQL query must send all requests for the query to the
+        // initially used servers.
+        // if there is a failover while the query is executing, we must still
+        // send all following requests to the same servers, and not the newly
+        // responsible servers.
+        // otherwise we potentially would try to get data from a query from
+        // server B while the query was only instanciated on server A.
+        for (auto const& serverToSnippet : serversForRemote->second) {
+          std::string const& serverID = serverToSnippet.first;
+          for (std::string const& snippetId : serverToSnippet.second) {
+            remoteNode->queryId(snippetId);
+            remoteNode->server(serverID);
+            remoteNode->setDistributeId({""});
+            std::unique_ptr<ExecutionBlock> r =
+                remoteNode->createBlock(*this, {});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto remoteBlock =
-              dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
-          TRI_ASSERT(remoteBlock->server() == serverID);
-          TRI_ASSERT(remoteBlock->distributeId() ==
-                     "");  // NOLINT(readability-container-size-empty)
-          TRI_ASSERT(remoteBlock->queryId() == snippetId);
+            auto remoteBlock =
+                dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
+            TRI_ASSERT(remoteBlock->server() == serverID);
+            TRI_ASSERT(remoteBlock->distributeId() ==
+                       "");  // NOLINT(readability-container-size-empty)
+            TRI_ASSERT(remoteBlock->queryId() == snippetId);
 #endif
 
-          TRI_ASSERT(r != nullptr);
-          eb->addDependency(r.get());
-          addBlock(std::move(r));
+            TRI_ASSERT(r != nullptr);
+            eb->addDependency(r.get());
+            addBlock(std::move(r));
+          }
         }
+      } else if (en->getFirstDependency()->getType() == ExecutionNode::ASYNC) {
+        // TODO: I don't think we need to do anything here. Dependency are
+        // handled before
+        // TODO: This is just a WIP assert, make sure to delete this before
+        // merging
+        // TODO: We expect to end up here during planning.
+        TRI_ASSERT(false);
+      } else {
+        return {TRI_ERROR_INTERNAL, "expecting a RemoteNode or a MutexNode"};
       }
     }
 
