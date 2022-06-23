@@ -23,7 +23,7 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "KShortestPathsNode.h"
+#include "PathsNode.h"
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -87,7 +87,7 @@ static void parseNodeInput(AstNode const* node, std::string& id,
   }
 }
 
-static GraphNode::InputVertex prepareVertexInput(KShortestPathsNode const* node,
+static GraphNode::InputVertex prepareVertexInput(PathsNode const* node,
                                                  bool isTarget) {
   using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
@@ -112,11 +112,12 @@ static GraphNode::InputVertex prepareVertexInput(KShortestPathsNode const* node,
 }
 }  // namespace
 
-KShortestPathsNode::KShortestPathsNode(
-    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-    arangodb::graph::ShortestPathType::Type shortestPathType,
-    AstNode const* direction, AstNode const* start, AstNode const* target,
-    AstNode const* graph, std::unique_ptr<BaseOptions> options)
+PathsNode::PathsNode(ExecutionPlan* plan, ExecutionNodeId id,
+                     TRI_vocbase_t* vocbase,
+                     arangodb::graph::ShortestPathType::Type shortestPathType,
+                     AstNode const* direction, AstNode const* start,
+                     AstNode const* target, AstNode const* graph,
+                     std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _shortestPathType(shortestPathType),
       _pathOutVariable(nullptr),
@@ -156,7 +157,7 @@ KShortestPathsNode::KShortestPathsNode(
 }
 
 /// @brief Internal constructor to clone the node.
-KShortestPathsNode::KShortestPathsNode(
+PathsNode::PathsNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     arangodb::graph::ShortestPathType::Type shortestPathType,
     std::vector<Collection*> const& edgeColls,
@@ -179,10 +180,10 @@ KShortestPathsNode::KShortestPathsNode(
       _toCondition(nullptr),
       _distributeVariable(distributeVariable) {}
 
-KShortestPathsNode::~KShortestPathsNode() = default;
+PathsNode::~PathsNode() = default;
 
-KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base)
+PathsNode::PathsNode(ExecutionPlan* plan,
+                     arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),
       _shortestPathType(
           arangodb::graph::ShortestPathType::Type::KShortestPaths),
@@ -259,8 +260,7 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
-KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan,
-                                       KShortestPathsNode const& other)
+PathsNode::PathsNode(ExecutionPlan& plan, PathsNode const& other)
     : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),
       _shortestPathType(other._shortestPathType),
       _pathOutVariable(other._pathOutVariable),
@@ -274,24 +274,23 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan,
   other.kShortestPathsCloneHelper(plan, *this, false);
 }
 
-void KShortestPathsNode::setStartInVariable(Variable const* inVariable) {
+void PathsNode::setStartInVariable(Variable const* inVariable) {
   _inStartVariable = inVariable;
   _startVertexId = "";
 }
 
-void KShortestPathsNode::setTargetInVariable(Variable const* inVariable) {
+void PathsNode::setTargetInVariable(Variable const* inVariable) {
   _inTargetVariable = inVariable;
   _targetVertexId = "";
 }
 
-void KShortestPathsNode::setDistributeVariable(Variable const* distVariable) {
+void PathsNode::setDistributeVariable(Variable const* distVariable) {
   // Can only be set once.
   TRI_ASSERT(_distributeVariable == nullptr);
   _distributeVariable = distVariable;
 }
 
-void KShortestPathsNode::doToVelocyPack(VPackBuilder& nodes,
-                                        unsigned flags) const {
+void PathsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   GraphNode::doToVelocyPack(nodes, flags);  // call base class method
   nodes.add(StaticStrings::GraphQueryShortestPathType,
             VPackValue(arangodb::graph::ShortestPathType::toString(
@@ -339,7 +338,7 @@ void KShortestPathsNode::doToVelocyPack(VPackBuilder& nodes,
 // 3. or ClusterProvider<ClusterProviderStep>
 
 template<typename KPathRefactored, typename Provider, typename ProviderOptions>
-std::unique_ptr<ExecutionBlock> KShortestPathsNode::_makeExecutionBlockImpl(
+std::unique_ptr<ExecutionBlock> PathsNode::_makeExecutionBlockImpl(
     ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
     ProviderOptions backwardProviderOptions,
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
@@ -364,7 +363,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::_makeExecutionBlockImpl(
 };
 
 /// @brief creates corresponding ExecutionBlock
-std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
+std::unique_ptr<ExecutionBlock> PathsNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
@@ -473,14 +472,13 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   }
 }
 
-ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan,
-                                         bool withDependencies,
-                                         bool withProperties) const {
+ExecutionNode* PathsNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                bool withProperties) const {
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = std::make_unique<KShortestPathsNode>(
+  auto c = std::make_unique<PathsNode>(
       plan, _id, _vocbase, _shortestPathType, _edgeColls, _vertexColls,
       _defaultDirection, _directions, _inStartVariable, _startVertexId,
       _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj,
@@ -491,9 +489,8 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
-                                                   KShortestPathsNode& c,
-                                                   bool withProperties) const {
+void PathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan, PathsNode& c,
+                                          bool withProperties) const {
   graphCloneHelper(plan, c, withProperties);
   if (usesPathOutVariable()) {
     auto pathOutVariable = _pathOutVariable;
@@ -515,7 +512,7 @@ void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
   c._toCondition = _toCondition->clone(_plan->getAst());
 }
 
-void KShortestPathsNode::replaceVariables(
+void PathsNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   if (_inStartVariable != nullptr) {
     _inStartVariable = Variable::replace(_inStartVariable, replacements);
@@ -529,7 +526,7 @@ void KShortestPathsNode::replaceVariables(
 }
 
 /// @brief getVariablesSetHere
-std::vector<Variable const*> KShortestPathsNode::getVariablesSetHere() const {
+std::vector<Variable const*> PathsNode::getVariablesSetHere() const {
   std::vector<Variable const*> vars;
   TRI_ASSERT(_pathOutVariable != nullptr);
   vars.emplace_back(_pathOutVariable);
@@ -537,7 +534,7 @@ std::vector<Variable const*> KShortestPathsNode::getVariablesSetHere() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void KShortestPathsNode::getVariablesUsedHere(VarSet& vars) const {
+void PathsNode::getVariablesUsedHere(VarSet& vars) const {
   if (_inStartVariable != nullptr) {
     vars.emplace(_inStartVariable);
   }
@@ -554,17 +551,17 @@ void KShortestPathsNode::getVariablesUsedHere(VarSet& vars) const {
   }
 }
 
-std::vector<arangodb::graph::IndexAccessor>
-KShortestPathsNode::buildUsedIndexes() const {
+std::vector<arangodb::graph::IndexAccessor> PathsNode::buildUsedIndexes()
+    const {
   return buildIndexes(/*reverse*/ false);
 }
 
-std::vector<arangodb::graph::IndexAccessor>
-KShortestPathsNode::buildReverseUsedIndexes() const {
+std::vector<arangodb::graph::IndexAccessor> PathsNode::buildReverseUsedIndexes()
+    const {
   return buildIndexes(/*reverse*/ true);
 }
 
-std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildIndexes(
+std::vector<arangodb::graph::IndexAccessor> PathsNode::buildIndexes(
     bool reverse) const {
   size_t numEdgeColls = _edgeColls.size();
   constexpr bool onlyEdgeIndexes = true;
@@ -615,7 +612,7 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildIndexes(
   return indexAccessors;
 }
 
-void KShortestPathsNode::prepareOptions() {
+void PathsNode::prepareOptions() {
   if (_optionsBuilt) {
     return;
   }
@@ -665,7 +662,7 @@ void KShortestPathsNode::prepareOptions() {
   _optionsBuilt = true;
 }
 
-auto KShortestPathsNode::options() const -> graph::ShortestPathOptions* {
+auto PathsNode::options() const -> graph::ShortestPathOptions* {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* opts = dynamic_cast<ShortestPathOptions*>(GraphNode::options());
   TRI_ASSERT((GraphNode::options() == nullptr) == (opts == nullptr));

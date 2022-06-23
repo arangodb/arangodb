@@ -43,7 +43,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
-#include "Aql/KShortestPathsNode.h"
+#include "Aql/PathsNode.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
@@ -340,7 +340,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
     case K_SHORTEST_PATHS:
-      return new KShortestPathsNode(plan, slice);
+      return new PathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:

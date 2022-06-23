@@ -41,7 +41,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
-#include "Aql/KShortestPathsNode.h"
+#include "Aql/PathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -4152,13 +4152,12 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       isTraversalNode = true;
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
-      auto kShortestPathsNode =
-          ExecutionNode::castTo<KShortestPathsNode const*>(node);
-      TRI_ASSERT(kShortestPathsNode->isDisjoint());
-      collection = kShortestPathsNode->collection();
-      // Subtle: KShortestPathsNode uses a reference when returning
+      auto pathsNode = ExecutionNode::castTo<PathsNode const*>(node);
+      TRI_ASSERT(pathsNode->isDisjoint());
+      collection = pathsNode->collection();
+      // Subtle: PathsNode uses a reference when returning
       // startInVariable
-      inputVariable = &kShortestPathsNode->startInVariable();
+      inputVariable = &pathsNode->startInVariable();
     } break;
     case ExecutionNode::SHORTEST_PATH: {
       auto shortestPathNode =
@@ -8714,27 +8713,26 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         };
       } break;
       case ExecutionNode::K_SHORTEST_PATHS: {
-        auto* kShortestPathsNode =
-            ExecutionNode::castTo<KShortestPathsNode*>(targetNode);
-        TRI_ASSERT(kShortestPathsNode->isDisjoint());
-        collection = kShortestPathsNode->collection();
-        // Subtle: KShortestPathsNode uses a reference when returning
+        auto* pathsNode = ExecutionNode::castTo<PathsNode*>(targetNode);
+        TRI_ASSERT(pathsNode->isDisjoint());
+        collection = pathsNode->collection();
+        // Subtle: PathsNode uses a reference when returning
         // startInVariable
-        TRI_ASSERT(kShortestPathsNode->usesStartInVariable());
-        inputVariable = &kShortestPathsNode->startInVariable();
-        TRI_ASSERT(kShortestPathsNode->usesTargetInVariable());
-        alternativeVariable = &kShortestPathsNode->targetInVariable();
+        TRI_ASSERT(pathsNode->usesStartInVariable());
+        inputVariable = &pathsNode->startInVariable();
+        TRI_ASSERT(pathsNode->usesTargetInVariable());
+        alternativeVariable = &pathsNode->targetInVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
         fixupGraphInput = DistributeType::PATH;
-        setInVariable = [kShortestPathsNode](Variable* var) {
-          kShortestPathsNode->setStartInVariable(var);
+        setInVariable = [pathsNode](Variable* var) {
+          pathsNode->setStartInVariable(var);
         };
-        setTargetVariable = [kShortestPathsNode](Variable* var) {
-          kShortestPathsNode->setTargetInVariable(var);
+        setTargetVariable = [pathsNode](Variable* var) {
+          pathsNode->setTargetInVariable(var);
         };
-        setDistributeVariable = [kShortestPathsNode](Variable* var) {
-          kShortestPathsNode->setDistributeVariable(var);
+        setDistributeVariable = [pathsNode](Variable* var) {
+          pathsNode->setDistributeVariable(var);
         };
       } break;
       case ExecutionNode::SHORTEST_PATH: {

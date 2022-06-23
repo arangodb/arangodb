@@ -44,8 +44,7 @@ struct IndexAccessor;
 }  // namespace graph
 namespace aql {
 
-/// @brief class KShortestPathsNode
-class KShortestPathsNode : public virtual GraphNode {
+class PathsNode : public virtual GraphNode {
   friend class ExecutionBlock;
 
   /// @brief constructor with a vocbase and a collection name
@@ -54,33 +53,30 @@ class KShortestPathsNode : public virtual GraphNode {
   /// Does not clone recursively, does not clone properties (`other.plan()` is
   /// expected to be the same as `plan)`, and does not register this node in the
   /// plan.
-  KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode const& node);
+  PathsNode(ExecutionPlan& plan, PathsNode const& node);
 
  public:
-  KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id,
-                     TRI_vocbase_t* vocbase,
-                     arangodb::graph::ShortestPathType::Type shortestPathType,
-                     AstNode const* direction, AstNode const* start,
-                     AstNode const* target, AstNode const* graph,
-                     std::unique_ptr<graph::BaseOptions> options);
+  PathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+            arangodb::graph::ShortestPathType::Type shortestPathType,
+            AstNode const* direction, AstNode const* start,
+            AstNode const* target, AstNode const* graph,
+            std::unique_ptr<graph::BaseOptions> options);
 
-  KShortestPathsNode(ExecutionPlan* plan,
-                     arangodb::velocypack::Slice const& base);
+  PathsNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
-  ~KShortestPathsNode();
+  ~PathsNode();
 
   /// @brief Internal constructor to clone the node.
-  KShortestPathsNode(
-      ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-      arangodb::graph::ShortestPathType::Type shortestPathType,
-      std::vector<Collection*> const& edgeColls,
-      std::vector<Collection*> const& vertexColls,
-      TRI_edge_direction_e defaultDirection,
-      std::vector<TRI_edge_direction_e> const& directions,
-      Variable const* inStartVariable, std::string const& startVertexId,
-      Variable const* inTargetVariable, std::string const& targetVertexId,
-      std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
-      Variable const* distributeVariable);
+  PathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+            arangodb::graph::ShortestPathType::Type shortestPathType,
+            std::vector<Collection*> const& edgeColls,
+            std::vector<Collection*> const& vertexColls,
+            TRI_edge_direction_e defaultDirection,
+            std::vector<TRI_edge_direction_e> const& directions,
+            Variable const* inStartVariable, std::string const& startVertexId,
+            Variable const* inTargetVariable, std::string const& targetVertexId,
+            std::unique_ptr<graph::BaseOptions> options,
+            graph::Graph const* graph, Variable const* distributeVariable);
 
  public:
   /// @brief return the type of the node
@@ -166,7 +162,7 @@ class KShortestPathsNode : public virtual GraphNode {
  private:
   std::vector<arangodb::graph::IndexAccessor> buildIndexes(bool reverse) const;
 
-  void kShortestPathsCloneHelper(ExecutionPlan& plan, KShortestPathsNode& c,
+  void kShortestPathsCloneHelper(ExecutionPlan& plan, PathsNode& c,
                                  bool withProperties) const;
 
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)

@@ -38,7 +38,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
-#include "Aql/KShortestPathsNode.h"
+#include "Aql/PathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -1469,9 +1469,9 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
       getAst(), direction, node->getMember(5), defaultToRefactor);
 
   // First create the node
-  auto spNode = new KShortestPathsNode(
-      this, nextId(), &(_ast->query().vocbase()), type, direction, start,
-      target, graph, std::move(options));
+  auto spNode =
+      new PathsNode(this, nextId(), &(_ast->query().vocbase()), type, direction,
+                    start, target, graph, std::move(options));
 
   auto variable = node->getMember(6);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
