@@ -71,12 +71,7 @@ ReplicatedStateMetrics::ReplicatedStateMetrics(MFP metricsFeature,
                        mock>(metricsFeature, impl)),
       replicatedStateNumberFollowers(
           createMetric<arangodb_replication2_replicated_state_follower_number,
-                       mock>(metricsFeature, impl)) {
-#ifndef ARANGODB_USE_GOOGLE_TESTS
-  static_assert(!mock);
-  static_assert(!std::is_null_pointer_v<MFP>);
-#endif
-}
+                       mock>(metricsFeature, impl)) {}
 
 template arangodb::replication2::replicated_state::ReplicatedStateMetrics::
     ReplicatedStateMetrics(arangodb::metrics::MetricsFeature*,
