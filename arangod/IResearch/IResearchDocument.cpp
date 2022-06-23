@@ -669,6 +669,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::fieldSeen(std::string& name) {
   if constexpr (!std::is_same_v<InvertedIndexField, LevelMeta>) {
     return;
   }
+  std::cout << "SEEN:" << name << std::endl;
   auto it = _stack.rbegin();
   while (it != _stack.rend()) {
     if (it->missingFields) {
@@ -735,13 +736,18 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
               _nameBuffer = *top().missingFields->begin();
               std::cout << "HANDLING NESTED ROOT:"
                         << *top().missingFields->begin() << std::endl;
-              fieldSeen(_nameBuffer);
+              fieldSeen(_nameBuffer); // seen before mangling! As "path" does not contain suffix
               setRoot();
               return;
             }
-            if (top().type == LevelType::NESTED_OBJECTS &&
-                _missingFieldsMap[_nameBuffer].size() == top().missingFields->size()) {
-              _needDoc = true;
+            if (top().type == LevelType::NESTED_OBJECTS) {
+              std::string nestedKey = _nameBuffer;
+              kludge::mangleNested(nestedKey);
+              if (_missingFieldsMap[nestedKey].size() ==
+                  top().missingFields->size()) {
+                // first missing field reqires doc to place this and all other missing.
+                _needDoc = true;
+              }
             }
           }
           _nameBuffer = *top().missingFields->begin();
@@ -771,7 +777,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
       }
 
       auto const filterRes = level.filter(_nameBuffer, context, value);
-      // Filter might decorate name. But even if filter decided
+      // Filter will add a new part. But even if filter decided
       // to skip field - we must track it as seen and not emit null
       // for explicitly discarded values. Like skipping non-array fields 
       // for expansion fields in the index as the field is definately not
