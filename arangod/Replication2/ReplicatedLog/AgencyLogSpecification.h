@@ -259,7 +259,11 @@ struct LogCurrentSupervision {
   using StatusReport = std::vector<StatusMessage>;
 
   // TODO / FIXME: This prevents assumedWriteConcern from
-  // being initialised to
+  // being initialised to 0, which would prevent any progress
+  // at all and a broken log.
+  // Under normal operation assumedWriteConcern is set to the
+  // first effectiveWriteConcern that is calculated on creation
+  // of the log.
   size_t assumedWriteConcern{1};
   std::optional<uint64_t> targetVersion;
   std::optional<StatusReport> statusReport;
