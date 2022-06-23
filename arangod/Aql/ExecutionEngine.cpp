@@ -454,6 +454,12 @@ struct DistributedQueryInstanciator final
         case ExecutionNode::GATHER:
           _lastGatherNode = ExecutionNode::castTo<GatherNode const*>(en);
           break;
+        case ExecutionNode::ASYNC:
+          // We are in an GATHER/ASYNC case.
+          // We are not allowed to use this case node
+          // for our remote, so discard it.
+          _lastGatherNode = nullptr;
+          break;
         case ExecutionNode::REMOTE:
           // Flip over to DBServer
           _isCoordinator = false;
