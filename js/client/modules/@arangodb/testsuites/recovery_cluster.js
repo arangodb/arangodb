@@ -230,7 +230,8 @@ function recovery (options) {
       status: false
     };
   }
-
+  options.extremeVerbosity = true;
+  options.cleanup = false;
   let results = {
     status: true
   };
