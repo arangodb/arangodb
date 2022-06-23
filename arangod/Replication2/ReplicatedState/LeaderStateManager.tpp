@@ -127,8 +127,8 @@ template<typename S>
 auto LeaderStateManager<S>::recoverEntries() -> futures::Future<Result> {
   LOG_CTX("53ba1", TRACE, loggerContext) << "LeaderStateManager established";
   auto f = guardedData.doUnderLock([&](GuardedData& data) {
-    TRI_ASSERT(data.internalState ==
-               LeaderInternalState::kWaitingForLeadershipEstablished);
+    TRI_ASSERT(data.internalState == LeaderInternalState::kRecoveryInProgress)
+        << "Unexpected state " << to_string(data.internalState);
     auto mux = Multiplexer::construct(logLeader);
     mux->digestAvailableEntries();
     data.stream = mux->template getStreamById<1>(); /* TODO fix stream id*/
@@ -147,20 +147,26 @@ auto LeaderStateManager<S>::recoverEntries() -> futures::Future<Result> {
       << "receiving committed entries for recovery";
 
   LOG_CTX("53ba0", TRACE, loggerContext) << "creating leader instance";
-  auto core = guardedData.doUnderLock([&](GuardedData& data) {
+  auto machine = guardedData.doUnderLock([&](GuardedData& data) {
     data.recoveryRange = result->range();
-    return std::move(data.core);
+
+    auto core = std::move(data.core);
+
+    if (core == nullptr) {
+      LOG_CTX("6d9ee", DEBUG, loggerContext) << "core already gone ";
+      throw basics::Exception(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+    }
+    std::shared_ptr<IReplicatedLeaderState<S>> machine =
+        factory->constructLeader(std::move(core));
+
+    data.state = machine;
+
+    return machine;
   });
-  if (core == nullptr) {
-    LOG_CTX("6d9ee", DEBUG, loggerContext) << "core already gone ";
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
-  }
 
   LOG_CTX("5af0d", DEBUG, loggerContext)
       << "starting recovery on range " << result->range();
-  std::shared_ptr<IReplicatedLeaderState<S>> machine =
-      factory->constructLeader(std::move(core));
 
   return machine->recoverEntries(std::move(result));
 }
@@ -175,6 +181,7 @@ auto LeaderStateManager<S>::startService() -> Result {
           return nullptr;
         }
         data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
+        TRI_ASSERT(data.state != nullptr);
         data.state->_stream = data.stream;
         return data.state;
       });
@@ -266,6 +273,13 @@ void LeaderStateManager<S>::beginWaitingForLogLeaderResigned() {
 template<typename S>
 auto LeaderStateManager<S>::getImplementationState()
     -> std::shared_ptr<IReplicatedLeaderState<S>> {
-  return guardedData.getLockedGuard()->state;
+  return guardedData.doUnderLock([](auto& self) -> decltype(self.state) {
+    // The state machine must not be accessible before it is ready.
+    if (self.internalState == LeaderInternalState::kServiceAvailable) {
+      return self.state;
+    } else {
+      return nullptr;
+    }
+  });
 }
 }  // namespace arangodb::replication2::replicated_state
