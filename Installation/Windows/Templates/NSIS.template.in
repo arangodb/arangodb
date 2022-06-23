@@ -1023,7 +1023,7 @@ continueUI:
       StrCpy $ServiceUp "1"
     ${EndIf}
     ${If} $ServiceUp == 1
-      ; open web ui in default browser
+      ; open web interface in default browser
       ExecShell "" "${TRI_AARDVARK_URL}"
     ${EndIf}
   ${EndIf}
