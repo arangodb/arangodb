@@ -696,7 +696,7 @@ CostEstimate ExecutionNode::getCost() const {
 
 /// @brief functionality to walk an execution plan recursively
 bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
-  return doWalk(worker, false);
+  return doWalk(worker, false, FlattenType::NONE);
 }
 
 /// @brief functionality to walk an execution plan recursively.
@@ -707,11 +707,11 @@ bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
 /// recursing into the subquery.
 bool ExecutionNode::walkSubqueriesFirst(
     WalkerWorkerBase<ExecutionNode>& worker) {
-  return doWalk(worker, true);
+  return doWalk(worker, true, FlattenType::NONE);
 }
 
 bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
-                           bool subQueryFirst) {
+                           bool subQueryFirst, FlattenType flattenType) {
   enum class State { Pending, Processed, InSubQuery };
 
   using Entry = std::pair<ExecutionNode*, State>;

@@ -587,8 +587,11 @@ class ExecutionNode {
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
 
+  enum FlattenType { NONE, INLINE_ASYNC, INLINE_ALL };
+
  private:
-  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst);
+  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst,
+              FlattenType flattenType);
 };
 
 /// @brief class SingletonNode
