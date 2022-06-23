@@ -92,18 +92,19 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
               metricsFeature)),
       replicatedLogNumberAcceptedEntries(
           createMetric<
-              arangodb_replication2_replicated_log_number_accepted_entries,
+              arangodb_replication2_replicated_log_number_accepted_entries_total,
               mock>(metricsFeature)),
       replicatedLogNumberCommittedEntries(
           createMetric<
-              arangodb_replication2_replicated_log_number_committed_entries,
+              arangodb_replication2_replicated_log_number_committed_entries_total,
               mock>(metricsFeature)),
       replicatedLogNumberMetaEntries(
-          createMetric<arangodb_replication2_replicated_log_number_meta_entries,
-                       mock>(metricsFeature)),
+          createMetric<
+              arangodb_replication2_replicated_log_number_meta_entries_total,
+              mock>(metricsFeature)),
       replicatedLogNumberCompactedEntries(
           createMetric<
-              arangodb_replication2_replicated_log_number_compacted_entries,
+              arangodb_replication2_replicated_log_number_compacted_entries_total,
               mock>(metricsFeature))
 
 {
