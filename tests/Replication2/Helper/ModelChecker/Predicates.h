@@ -174,4 +174,23 @@ isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern() {
   });
 }
 
+static inline auto
+isWriteConcernUsedForCommitLessThanOrEqualToAssumedWriteConcern() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+
+    if (not state.logLeaderWriteConcern) {
+      return true;
+    }
+
+    if (state.replicatedLog and state.replicatedLog->plan and
+        state.replicatedLog->current and
+        state.replicatedLog->current->supervision) {
+      return state.replicatedLog->current->supervision->assumedWriteConcern <=
+             *state.logLeaderWriteConcern;
+    }
+    return false;
+  });
+}
+
 }  // namespace arangodb::test::mcpreds

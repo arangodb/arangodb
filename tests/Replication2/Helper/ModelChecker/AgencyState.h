@@ -35,6 +35,11 @@ struct AgencyState {
   std::optional<arangodb::replication2::agency::Log> replicatedLog{};
   arangodb::replication2::replicated_log::ParticipantsHealth health;
 
+  // FIXME: strictly speaking this is a hack, as it does not form part of the
+  // agency's state; it is currently the simplest way to persist informatioon
+  // for predicates to access;
+  std::optional<size_t> logLeaderWriteConcern;
+
   friend std::size_t hash_value(AgencyState const& s) {
     std::size_t seed = 0;
     boost::hash_combine(seed, s.replicatedState);
@@ -77,6 +82,10 @@ struct AgencyState {
         os << "Log/Current: ";
         print(*state.replicatedLog->current);
       }
+    }
+    if (state.logLeaderWriteConcern) {
+      os << "logLeaderWriteConcern: " << *state.logLeaderWriteConcern
+         << std::endl;
     }
     {
       VPackBuilder builder;

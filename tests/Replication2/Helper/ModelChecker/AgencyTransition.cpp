@@ -187,6 +187,9 @@ void DBServerCommitConfigAction::apply(AgencyState& agency) const {
   leader.committedParticipantsConfig =
       agency.replicatedLog->plan->participantsConfig;
   leader.committedParticipantsConfig->generation = generation;
+
+  agency.logLeaderWriteConcern = agency.replicatedLog->plan->participantsConfig
+                                     .config.effectiveWriteConcern;
 }
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream& {
