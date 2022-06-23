@@ -56,6 +56,8 @@ namespace {
 
 constexpr bool const BigEndian = false;
 
+auto const emptyNestedHierarchy = arangodb::velocypack::Parser::fromJson("[{}]");
+
 template<bool IsLittleEndian>
 struct PrimaryKeyEndianness {
   static uint64_t hostToPk(uint64_t value) {
@@ -340,6 +342,9 @@ void handleNested(std::string_view parent,
   std::string self;
   arangodb::iresearch::kludge::mangleNested(self);
   self += parent;
+  if (!parent.empty()) {
+    arangodb::iresearch::kludge::mangleNested(self);
+  }
   std::cout << "Nested Root:<" << self << "> Expect:" << nestedObjectsPath << std::endl;
   map[self].emplace(field.path());
   arangodb::iresearch::kludge::mangleNested(nestedObjectsPath);
@@ -729,8 +734,11 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
                         << std::endl;
               auto name = *top().missingFields->begin();
               top().missingFields->erase(name);
-              acceptOnlyNestingFromKey(_nameBuffer, context, name);
-              pushLevel(VPackSlice::emptyArraySlice(), *context, &acceptOnlyNesting);
+              _nameBuffer = name; // name is always full path here
+              auto const* contextLocal = top().meta;
+              if(acceptOnlyNestingFromPath(contextLocal, name)) {
+                pushLevel(emptyNestedHierarchy->slice(), *contextLocal, &acceptOnlyNesting);
+              }
               continue;
             } else if (top().type == LevelType::NESTED_ROOT) {
               _nameBuffer = *top().missingFields->begin();
@@ -741,13 +749,10 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
               return;
             }
             if (top().type == LevelType::NESTED_OBJECTS) {
-              std::string nestedKey = _nameBuffer;
-              kludge::mangleNested(nestedKey);
-              if (_missingFieldsMap[nestedKey].size() ==
-                  top().missingFields->size()) {
-                // first missing field reqires doc to place this and all other missing.
-                _needDoc = true;
-              }
+              _nameBuffer.resize(top().nameLength);
+              _needDoc = true;
+              pushLevel(VPackSlice::emptyObjectSlice(), *context, &acceptAll<false>);
+              continue;
             }
           }
           _nameBuffer = *top().missingFields->begin();
