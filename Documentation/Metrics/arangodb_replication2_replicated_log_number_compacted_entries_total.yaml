@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_log_number_compacted_entries_total
+introducedIn: "3.10.0"
+help: |
+  Number of compacted log entries.
+unit: number
+type: counter
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Number of compacted log entries. If log entries have been replicated to every participant and applied
+  durably, they can be compacted, i.e. deleted.

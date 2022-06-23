@@ -41,6 +41,8 @@ permissions weight=500 single
 recovery weight=2000 buckets=4 single
 version single
 
+shell_api weight=500 single suffix=http -- $EncryptionAtRest
+shell_api weight=500 single suffix=https -- $EncryptionAtRest --protocol ssl
 # Shell client tests Single Server
 shell_client weight=500 single suffix=http -- $EncryptionAtRest
 shell_client weight=500 single suffix=http2 -- --http2 true
@@ -93,12 +95,10 @@ importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
 
-http_server weight=750 -- --dumpAgencyOnError true
 server_http -- --dumpAgencyOnError true
 server_parameters weight=1000 -- --dumpAgencyOnError true
 server_permissions weight=1000 -- --dumpAgencyOnError true
 server_secrets weight=500 -- --dumpAgencyOnError true
-ssl_server weight=1000 -- --dumpAgencyOnError true
 
 # Dump Tests
 dump -- --dumpAgencyOnError true
