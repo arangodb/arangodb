@@ -367,10 +367,11 @@ void ShardingInfo::distributeShardsLike(std::string const& cid,
   }
 
   if (!usesSameShardingStrategy(other)) {
-    // other collection has a different sharding strategy
-    // adjust our sharding so it uses the same strategy as the other collection
     auto& server = _collection->vocbase().server();
     auto& shr = server.getFeature<ShardingFeature>();
+    // other collection has a different sharding strategy
+    // adjust our sharding so it uses the same strategy as the other
+    // collection
     _shardingStrategy = shr.create(other->shardingStrategyName(), this);
   }
 

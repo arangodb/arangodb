@@ -170,6 +170,9 @@ class LogicalCollection : public LogicalDataSource {
   bool hasSmartJoinAttribute() const noexcept {
     return !_smartJoinAttribute.empty();
   }
+  bool hasSmartGraphAttribute() const noexcept {
+    return !_smartGraphAttribute.empty();
+  }
 
   bool isLocalSmartEdgeCollection() const noexcept;
   bool isRemoteSmartEdgeCollection() const noexcept;
@@ -182,6 +185,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmart() const noexcept { return false; }
   bool isSmartChild() const noexcept { return false; }
   bool hasSmartJoinAttribute() const noexcept { return false; }
+  bool hasSmartGraphAttribute() const noexcept { return false; }
 
   bool isLocalSmartEdgeCollection() const noexcept { return false; }
   bool isRemoteSmartEdgeCollection() const noexcept { return false; }
