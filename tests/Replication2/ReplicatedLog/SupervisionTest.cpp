@@ -405,9 +405,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   // TODO: we get two "Waiting for config committed", and the source
   //       of this report should be made obvious.
-  //       The Third is config change not implemented and this is
-  //       temporary while config changes are implemented.
-  EXPECT_EQ(r.size(), 3);
+  EXPECT_EQ(r.size(), 2);
 
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
@@ -415,9 +413,6 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
           r[1]));
-  EXPECT_TRUE(
-      std::holds_alternative<LogCurrentSupervision::ConfigChangeNotImplemented>(
-          r[2]));
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
