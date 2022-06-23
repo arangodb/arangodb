@@ -74,6 +74,7 @@ struct ReplicatedLogMethods {
     std::optional<LogId> id;
     std::optional<agency::LogTargetConfig> config;
     std::optional<ParticipantId> leader;
+    std::optional<std::size_t> numberOfServers;
     std::vector<ParticipantId> servers;
   };
 
@@ -151,6 +152,7 @@ auto inspect(Inspector& f, ReplicatedLogMethods::CreateOptions& x) {
       f.field("waitForReady", x.waitForReady).fallback(true),
       f.field("id", x.id), f.field("config", x.config),
       f.field("leader", x.leader),
+      f.field("numberOfServers", x.numberOfServers),
       f.field("servers", x.servers).fallback(std::vector<ParticipantId>{}));
 }
 

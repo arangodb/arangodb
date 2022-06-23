@@ -367,7 +367,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   addAlias("KEYS", "ATTRIBUTES");
   add({"VALUES", ".|.", flags, &Functions::Values});
   add({"MERGE", ".|+", flags, &Functions::Merge});
-  add({"MERGE_RECURSIVE", ".,.|+", flags, &Functions::MergeRecursive});
+  add({"MERGE_RECURSIVE", ".|+", flags, &Functions::MergeRecursive});
   add({"MATCHES", ".,.|.", flags, &Functions::Matches});
   add({"UNSET", ".,.|+", flags, &Functions::Unset});
   add({"UNSET_RECURSIVE", ".,.|+", flags, &Functions::UnsetRecursive});

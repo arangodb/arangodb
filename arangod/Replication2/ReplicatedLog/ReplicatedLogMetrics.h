@@ -67,6 +67,11 @@ struct ReplicatedLogMetrics {
       replicatedLogInsertsBytes;
   std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
       replicatedLogInsertsRtt;
+
+  std::shared_ptr<metrics::Counter> const replicatedLogNumberAcceptedEntries;
+  std::shared_ptr<metrics::Counter> const replicatedLogNumberCommittedEntries;
+  std::shared_ptr<metrics::Counter> const replicatedLogNumberMetaEntries;
+  std::shared_ptr<metrics::Counter> const replicatedLogNumberCompactedEntries;
 };
 
 struct MeasureTimeGuard {

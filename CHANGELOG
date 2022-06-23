@@ -9,6 +9,26 @@ devel
 
   The former startup options are still supported.
 
+* Added Enterprise Graph feature to enterprise version of ArangoDB.
+  The enterprise graph is another graph sharding model that we introduced,
+  it is less strict, and therefore easier to start with, then SmartGraphs,
+  as it does not require a smartGraphAttribute, and allows free choice of
+  vertex _key values. But still maintains performance gains as compared to
+  general-graphs. For more details please check documentation.
+
+* APM-135: Added multithreading to assigning non-unique indexes to documents,
+  in foreground or background mode. The number of index creation threads 
+  is hardcoded to 2 for now. Improvements for higher parallelism are expected
+  for future versions.
+
+* Issue 15592: Permit `MERGE_RECURSIVE()` to be called with a single argument.
+
+* Fixed issue 16337: arangoimport with `--headers-file` and `--merge-attributes`
+  merges column names instead of row values on the first line of a CSV file.
+
+  Additionally, floating-point numbers are now merged using their standard
+  string representation instead of with a fixed precision of 6 decimal places.
+
 * Now supporting projections on traversals. In AQL Traversal statements like
   FOR v,e,p IN 1..3 OUTBOUND @start GRAPH @graph RETURN v.name
   we will now detect attribute accesses on the data, in above example "v.name"
