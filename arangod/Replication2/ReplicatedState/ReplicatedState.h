@@ -65,7 +65,9 @@ struct ReplicatedStateBase {
   virtual ~ReplicatedStateBase() = default;
 
   virtual void flush(StateGeneration plannedGeneration) = 0;
-  virtual void start(std::unique_ptr<ReplicatedStateToken> token) = 0;
+  virtual void start(
+      std::unique_ptr<ReplicatedStateToken> token,
+      std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
   virtual void forceRebuild() = 0;
   [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
@@ -102,7 +104,9 @@ struct ReplicatedState final
    * Forces to rebuild the state machine depending on the replicated log state.
    */
   void flush(StateGeneration planGeneration) override;
-  void start(std::unique_ptr<ReplicatedStateToken> token) override;
+  void start(
+      std::unique_ptr<ReplicatedStateToken> token,
+      std::optional<velocypack::SharedSlice> const& coreParameter) override;
 
   /**
    * Returns the follower state machine. Returns nullptr if no follower state

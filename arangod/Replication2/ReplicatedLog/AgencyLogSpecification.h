@@ -63,7 +63,7 @@ auto inspect(Inspector& f, LogPlanConfig& x) {
 struct ParticipantsConfig {
   std::size_t generation = 0;
   ParticipantsFlagsMap participants;
-  LogPlanConfig config;
+  LogPlanConfig config{};
 
   // to be defaulted soon
   friend auto operator==(ParticipantsConfig const& left,
