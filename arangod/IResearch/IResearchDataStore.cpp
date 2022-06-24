@@ -732,7 +732,6 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
   auto& impl = basics::downCast<IResearchFlushSubscription>(*subscription);
 
   try {
-
     std::unique_lock commitLock{_commitMutex, std::try_to_lock};
     if (!commitLock.owns_lock()) {
       if (!wait) {
