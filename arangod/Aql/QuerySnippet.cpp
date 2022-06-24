@@ -262,9 +262,6 @@ void CloneWorker::processAfter(ExecutionNode* node) {
   for (auto d : deps) {
     VPackBuilder builder;
     d->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
-    LOG_DEVEL_IF(!(_originalToClone.count(d) == 1))
-        << "Count: " << _originalToClone.count(d);
-    LOG_DEVEL_IF(!(_originalToClone.count(d) == 1)) << builder.toJson();
     TRI_ASSERT(_originalToClone.count(d) == 1);
     auto depClone = _originalToClone.at(d);
     clone->addDependency(depClone);

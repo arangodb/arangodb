@@ -71,9 +71,8 @@ ExecutionNode* DistributeConsumerNode::clone(ExecutionPlan* plan,
       std::make_unique<DistributeConsumerNode>(plan, _id, getDistributeId()),
       withDependencies, withProperties);
 
-  if (withProperties) {
-    static_cast<DistributeConsumerNode*>(clone)
-        ->isResponsibleForInitializeCursor(_isResponsibleForInitializeCursor);
-  }
+  static_cast<DistributeConsumerNode*>(clone)->isResponsibleForInitializeCursor(
+      _isResponsibleForInitializeCursor);
+
   return clone;
 }
