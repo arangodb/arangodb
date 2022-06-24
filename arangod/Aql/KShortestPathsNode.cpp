@@ -37,6 +37,7 @@
 #include "Graph/AttributeWeightShortestPathFinder.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/KShortestPathsFinder.h"
+#include "Graph/AllShortestPathsFinder.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -417,14 +418,12 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         // TODO [GraphRefactor]: Clean this up (de-dupllicate with
         // SmartGraphEngine)
         SingleServerBaseProviderOptions forwardProviderOptions(
-            opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-            {}, opts->collectionToShard(), opts->getVertexProjections(),
-            opts->getEdgeProjections());
+            opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
+            opts->collectionToShard());
 
         SingleServerBaseProviderOptions backwardProviderOptions(
             opts->tmpVar(), std::move(reversedUsedIndexes),
-            opts->getExpressionCtx(), {}, opts->collectionToShard(),
-            opts->getVertexProjections(), opts->getEdgeProjections());
+            opts->getExpressionCtx(), {}, opts->collectionToShard());
 
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
@@ -434,8 +433,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
               SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outputRegister, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outputRegister, engine, sourceInput, targetInput,
+              registerInfos);
         } else {
           return _makeExecutionBlockImpl<
               TracedKPathEnumerator<
@@ -444,8 +443,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
               SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
-              validatorOptions, outputRegister, engine, sourceInput,
-              targetInput, registerInfos);
+              validatorOptions, outputRegister, engine, sourceInput, targetInput,
+              registerInfos);
         }
       } else {
         auto cache = std::make_shared<RefactoredClusterTraverserCache>(
@@ -475,8 +474,6 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     }
     case arangodb::graph::ShortestPathType::Type::AllShortestPaths: {
       TRI_ASSERT(false);
-      break;
-      // TODO next step: Create graph::AllShortestPathsFinder
     }
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
