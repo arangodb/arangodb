@@ -192,7 +192,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
     //  - "bidirected": as "directed" but for every edge (v,w), we also have the edge (w,v)
     //  - "alternating": as "directed" but every second edge is inverted
     const makePath = function (length, kind = "directed") {
-        let vertices = makeVertices(length, name_prefix);
+        let vertices = makeVertices(length);
         let edges = [];
         for (let v = 0; v < length - 1; ++v) {
             switch (kind) {
