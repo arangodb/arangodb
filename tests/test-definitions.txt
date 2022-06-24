@@ -75,7 +75,6 @@ recovery_cluster weight=2000 cluster buckets=4 -- --test arangosearch
 shell_server_aql weight=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client weight=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_server weight=500 cluster buckets=5 -- --dumpAgencyOnError true
-shell_fuzzer weight=500 -- --dumpAgencyOnError true
 
 # Common Tests
 
@@ -83,8 +82,6 @@ export -- --dumpAgencyOnError true
 importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
-
-server_http -- --dumpAgencyOnError true
 server_parameters weight=1000 -- --dumpAgencyOnError true
 server_permissions weight=1000 -- --dumpAgencyOnError true
 server_secrets weight=500 -- --dumpAgencyOnError true
