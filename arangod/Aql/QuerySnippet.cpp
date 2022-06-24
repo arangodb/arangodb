@@ -149,7 +149,7 @@ CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
       _nodeAliases{nodeAliases} {}
 
 void CloneWorker::process() {
-  _root->walk(*this);
+  _root->flatWalk(*this, true);
 
   // Home-brew early cancel: We collect the processed nodes on a stack
   // and process them in reverse order in processAfter
@@ -208,14 +208,31 @@ bool CloneWorker::before(ExecutionNode* node) {
   // We don't clone the DistributeConsumerNode, but create a new one instead
   // This will get `internalScatter` as its sole dependency
   if (node->getType() == ExecutionNode::DISTRIBUTE_CONSUMER) {
-    auto consumer = createConsumerNode(plan, _internalScatter, _distId);
-    consumer->isResponsibleForInitializeCursor(false);
-    _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
-    _originalToClone.try_emplace(node, consumer);
+    if (node->hasDependency() &&
+        node->getFirstDependency()->getType() == ExecutionNode::MUTEX) {
+      auto clone = node->clone(plan, false, false);
 
-    // Stop here. Note that we do things special here and don't really
-    // use the WalkerWorker!
-    return true;
+      // set the used shards on the clone just created. We have
+      // to handle graph nodes specially as they have multiple
+      // collections associated with them
+      setUsedShardsOnClone(node, clone);
+
+      TRI_ASSERT(clone->id() != node->id());
+      _originalToClone.try_emplace(node, clone);
+      _nodeAliases.try_emplace(clone->id(), node->id());
+      _stack.push_back(node);
+
+      return false;
+    } else {
+      auto consumer = createConsumerNode(plan, _internalScatter, _distId);
+      consumer->isResponsibleForInitializeCursor(false);
+      _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
+      _originalToClone.try_emplace(node, consumer);
+
+      // Stop here. Note that we do things special here and don't really
+      // use the WalkerWorker!
+      return true;
+    }
   } else if (node == _internalGather || node == _internalScatter) {
     // Never clone these nodes. We should never run into this case.
     TRI_ASSERT(false);
@@ -243,6 +260,11 @@ void CloneWorker::processAfter(ExecutionNode* node) {
 
   auto deps = node->getDependencies();
   for (auto d : deps) {
+    VPackBuilder builder;
+    d->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+    LOG_DEVEL_IF(!(_originalToClone.count(d) == 1))
+        << "Count: " << _originalToClone.count(d);
+    LOG_DEVEL_IF(!(_originalToClone.count(d) == 1)) << builder.toJson();
     TRI_ASSERT(_originalToClone.count(d) == 1);
     auto depClone = _originalToClone.at(d);
     clone->addDependency(depClone);
@@ -505,7 +527,8 @@ void QuerySnippet::serializeIntoBuilder(
 
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
-    internalGather->addDependency(_nodes.front());
+    // internalGather->addDependency(_nodes.front());
+    plan->insertAfter(_nodes.front(), internalGather);
 
     // NOTE: We will copy over the entire snippet stream here.
     // We will inject the permuted shards on the way.
@@ -543,6 +566,9 @@ void QuerySnippet::serializeIntoBuilder(
     }
     if (internalScatter != nullptr) {
       plan->unlinkNode(internalScatter);
+    }
+    if (internalGather != nullptr) {
+      plan->unlinkNode(internalGather);
     }
 
     if (_remoteNode != nullptr) {

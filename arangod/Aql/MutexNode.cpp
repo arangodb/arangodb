@@ -39,9 +39,12 @@ MutexNode::MutexNode(ExecutionPlan* plan,
                      arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
   auto const clientsSlice = base.get("clients");
+  LOG_DEVEL << "From slice clients: " << clientsSlice.toJson();
+  LOG_DEVEL << "From NodeID: " << id().id();
   if (clientsSlice.isArray()) {
     for (auto const clientSlice : velocypack::ArrayIterator(clientsSlice)) {
       if (clientSlice.isString()) {
+        LOG_DEVEL << "Emplacing client: " << clientSlice.copyString();
         _clients.emplace_back(clientSlice.copyString());
       }
     }
@@ -52,14 +55,21 @@ ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
 
 ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
-  return cloneHelper(std::make_unique<MutexNode>(plan, _id), withDependencies,
-                     withProperties);
+  auto clone = cloneHelper(std::make_unique<MutexNode>(plan, _id),
+                           withDependencies, withProperties);
+  if (withProperties) {
+    static_cast<MutexNode*>(clone)->_clients = this->_clients;
+  }
+
+  return clone;
 }
 
 /// @brief doToVelocyPack, for MutexNode
 void MutexNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   VPackArrayBuilder arrayScope(&nodes, "clients");
+  LOG_DEVEL << "For NodeID: " << id().id();
   for (auto const& client : _clients) {
+    LOG_DEVEL << "Adding client: " << client;
     nodes.add(VPackValue(client));
   }
 }

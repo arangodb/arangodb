@@ -540,7 +540,7 @@ void ExecutionNode::allToVelocyPack(VPackBuilder& builder,
   } nodeSerializer{builder, flags};
 
   VPackArrayBuilder guard(&builder);
-  const_cast<ExecutionNode*>(this)->walk(nodeSerializer);
+  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer, true);
 }
 
 /// @brief execution Node clone utility to be called by derived classes
@@ -780,6 +780,24 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           // by the time this code was implemented only
           // SCATTER, MUTEX and DISTRIBUTE nodes were allowed to have more
           // than one parent, so all others indicated an issue on plan
+          if (!(n->getType() == SCATTER || n->getType() == MUTEX ||
+                n->getType() == DISTRIBUTE)) {
+            LOG_DEVEL << "NodeType: " << n->getTypeString();
+            VPackBuilder builder;
+
+            n->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+            LOG_DEVEL << "NodeJson:";
+            LOG_DEVEL << builder.toJson();
+            std::vector<ExecutionNode*> parents{};
+            n->parents(parents);
+            LOG_DEVEL << "Parents:";
+
+            for (auto p : parents) {
+              builder.clear();
+              p->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+              LOG_DEVEL << builder.toJson();
+            }
+          }
           TRI_ASSERT(n->getType() == SCATTER || n->getType() == MUTEX ||
                      n->getType() == DISTRIBUTE);
           if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX) {
