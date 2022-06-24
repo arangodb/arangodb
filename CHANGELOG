@@ -1,6 +1,8 @@
 devel
 -----
 
+* Update Windows compiler to Visual Studio 2022.
+
 * Renamed the `--frontend.*` startup options to `--web-interface.*`:
 
   - `--frontend.proxy-request.check` -> `--web-interface.proxy-request.check`
