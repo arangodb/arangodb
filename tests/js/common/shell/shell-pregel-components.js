@@ -425,8 +425,9 @@ function wccRegressionTestSuite() {
   };
 }
 
-const wccTestSuite = pregelTestHelpers.makeWCCTestSuite(false, "", 4);
-
+let communityGenerator = require("@arangodb/graph/community-graph-generator").communityGenerator;
+const wccTestSuite = pregelTestHelpers.makeWCCTestSuite(
+  communityGenerator("UnitTestVColl", "unitTestEcoll", "UnitTestGraph", 4, 1));
 
 
 jsunity.run(componentsTestSuite);
