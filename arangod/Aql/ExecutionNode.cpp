@@ -784,7 +784,6 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
                      n->getType() == DISTRIBUTE);
           if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX) {
             ADB_PROD_ASSERT(!parallelStarter.empty());
-            LOG_DEVEL << "Jumping back to parallelStarter.";
             // If we are not INLINE_ALL, only flatten the MUTEX, which is the
             // counterpart of ASYNC
             auto& starter = parallelStarter.back();
