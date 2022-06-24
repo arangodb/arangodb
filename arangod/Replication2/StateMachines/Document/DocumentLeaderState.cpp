@@ -51,12 +51,22 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
   return {TRI_ERROR_NO_ERROR};
 }
 
-void DocumentLeaderState::replicateOperations(velocypack::SharedSlice payload,
-                                              OperationType operation,
-                                              TransactionId transactionId) {
+auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
+                                             OperationType operation,
+                                             TransactionId transactionId,
+                                             ReplicationOptions opts)
+    -> futures::Future<LogIndex> {
   auto entry = DocumentLogEntry{std::string(collectionId), operation,
                                 std::move(payload), transactionId};
-  getStream()->insert(entry);
+  auto stream = getStream();
+  auto idx = stream->insert(entry);
+
+  if (opts.waitForCommit) {
+    return stream->waitFor(idx).thenValue(
+        [idx](auto&& result) { return futures::Future<LogIndex>{idx}; });
+  }
+
+  return futures::Future<LogIndex>{idx};
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

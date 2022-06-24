@@ -113,6 +113,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
 
   auto leaderState = leaderReplicatedState->getLeader();
   ASSERT_NE(leaderState, nullptr);
+  ASSERT_EQ(leaderState->collectionId, collectionId);
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
@@ -127,4 +128,58 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
+
+  follower->runAllAsyncAppendEntries();
+
+  // insert operation
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add("test", "insert");
+    ob->close();
+
+    auto logIndex = LogIndex{2};
+    auto operation = OperationType::kInsert;
+    auto trx = TransactionId{0};
+    auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
+                                               trx, ReplicationOptions{});
+
+    ASSERT_TRUE(res.isReady());
+    ASSERT_EQ(res.result().get(), logIndex);
+
+    follower->runAllAsyncAppendEntries();
+    auto inMemoryLog = leader->copyInMemoryLog();
+    auto entry = inMemoryLog.getEntryByIndex(logIndex);
+    auto docEntry = velocypack::deserialize<DocumentLogEntry>(
+        entry->entry().logPayload()->slice()[1]);
+    ASSERT_EQ(docEntry.collectionId, collectionId);
+    ASSERT_EQ(docEntry.operation, operation);
+    ASSERT_EQ(docEntry.trx, trx);
+    ASSERT_EQ(docEntry.data.get("test").stringView(), "insert");
+  }
+
+  // commit operation
+  {
+    auto logIndex = LogIndex{3};
+    auto operation = OperationType::kCommit;
+    auto trx = TransactionId{1};
+    auto res = leaderState->replicateOperation(
+        velocypack::SharedSlice{}, operation, trx,
+        ReplicationOptions{.waitForCommit = true});
+
+    ASSERT_FALSE(res.isReady());
+    follower->runAllAsyncAppendEntries();
+    ASSERT_TRUE(res.isReady());
+    ASSERT_EQ(res.result().get(), logIndex);
+
+    follower->runAllAsyncAppendEntries();
+    auto inMemoryLog = leader->copyInMemoryLog();
+    auto entry = inMemoryLog.getEntryByIndex(logIndex);
+    auto docEntry = velocypack::deserialize<DocumentLogEntry>(
+        entry->entry().logPayload()->slice()[1]);
+    ASSERT_EQ(docEntry.collectionId, collectionId);
+    ASSERT_EQ(docEntry.operation, operation);
+    ASSERT_EQ(docEntry.trx, trx);
+    ASSERT_TRUE(docEntry.data.isNone());
+  }
 }

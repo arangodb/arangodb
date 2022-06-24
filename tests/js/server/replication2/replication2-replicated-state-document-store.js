@@ -38,7 +38,20 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const getDocumentEntry = function (document, entries, type) {
+/*
+ * Returns first entry with the same key and type as the document provided.
+ * If no document is provided, all entries of the specified type are returned.
+ */
+const getDocumentEntries = function (entries, type, document) {
+  if (document === undefined) {
+    let matchingType = [];
+    for (const entry of entries) {
+      if (entry.hasOwnProperty("payload") && entry.payload[1].operation === type) {
+        matchingType.push(entry);
+      }
+    }
+    return matchingType;
+  }
   for (const entry of entries) {
     if (entry.hasOwnProperty("payload") && entry.payload[1].operation === type
         && entry.payload[1].data._key === document._key) {
@@ -48,17 +61,26 @@ const getDocumentEntry = function (document, entries, type) {
   return null;
 };
 
+const mergeLogs = function(logs) {
+  return logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
+};
+
+/*
+ * Check if all the documents are in the logs and have the provided type.
+ */
 const searchDocs = function(logs, docs, opType) {
-  let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
+  let allEntries = mergeLogs(logs);
   for (const doc of docs) {
-    let entry = getDocumentEntry(doc, allEntries, opType);
+    let entry = getDocumentEntries(allEntries, opType, doc);
     assertTrue(entry !== null);
     assertEqual(entry.payload[1].operation, opType);
   }
 };
 
+/*
+ * Unroll all array entries from all logs and optionally filter by name.
+ */
 const getArrayElements = function(logs, opType, name) {
-  // Unroll all array entries from all logs and then filter by name.
   let entries = logs.reduce((previous, current) => previous.concat(current.head(1000)), [])
       .filter(entry => entry.hasOwnProperty("payload") && entry.payload[1].operation === opType
           && Array.isArray(entry.payload[1].data))
@@ -130,6 +152,18 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         assertEqual(plan, undefined);
       }
     },
+
+    /*
+    testReplicateOperationsCommit: function() {
+      const opType = "Commit";
+      let collection = db._collection(collectionName);
+      let shards = collection.shards();
+      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+
+      collection.insert({_key: "abcd"});
+      let entries = getDocumentEntries(mergeLogs(logs), opType);
+    },
+     */
 
     testReplicateOperationsInsert: function() {
       const opType = "Insert";

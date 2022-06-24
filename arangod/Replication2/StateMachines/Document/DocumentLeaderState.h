@@ -41,9 +41,9 @@ struct DocumentLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  void replicateOperations(velocypack::SharedSlice payload,
-                           OperationType operation,
-                           TransactionId transactionId);
+  auto replicateOperation(velocypack::SharedSlice payload,
+                          OperationType operation, TransactionId transactionId,
+                          ReplicationOptions opts) -> futures::Future<LogIndex>;
 
   LoggerContext const loggerContext;
   std::string_view collectionId;

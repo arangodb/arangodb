@@ -1,5 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -2133,10 +2131,11 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
-    leaderState->replicateOperations(
+    leaderState->replicateOperation(
         body.sharedSlice(),
         replication2::replicated_state::document::OperationType::kTruncate,
-        state()->id());
+        state()->id(),
+        replication2::replicated_state::document::ReplicationOptions{});
     return OperationResult{Result{}, options};
   }
 
@@ -2657,11 +2656,12 @@ Future<Result> Methods::replicateOperations(
 
   if (collection->replicationVersion() == replication::Version::TWO) {
     auto leaderState = collection->waitForDocumentStateLeader();
-    leaderState->replicateOperations(
+    leaderState->replicateOperation(
         payload->sharedSlice(),
         replication2::replicated_state::document::fromDocumentOperation(
             operation),
-        state()->id());
+        state()->id(),
+        replication2::replicated_state::document::ReplicationOptions{});
     return Result{};
   }
 
@@ -2955,25 +2955,31 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
     return f;
   }
 
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
+  if (_state->isRunningInCluster() &&
+      (_state->vocbase().replicationVersion() != replication::Version::TWO ||
+       tid().isCoordinatorTransactionId())) {
+    // In case we're using replication 2, let the coordinator notify the db
+    // servers
     f = ClusterTrxMethods::commitTransaction(*this, api);
   }
 
-  return std::move(f).thenValue([this](Result res) -> Result {
-    if (res.fail()) {  // do not commit locally
-      LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-          << "failed to commit on subordinates: '" << res.errorMessage() << "'";
-      return res;
-    }
+  return std::move(f)
+      .thenValue([this](Result res) -> futures::Future<Result> {
+        if (res.fail()) {  // do not commit locally
+          LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
+              << "failed to commit on subordinates: '" << res.errorMessage()
+              << "'";
+          return res;
+        }
 
-    res = _state->commitTransaction(this);
-    if (res.ok()) {
-      applyStatusChangeCallbacks(*this, Status::COMMITTED);
-    }
-
-    return res;
-  });
+        return _state->commitTransaction(this);
+      })
+      .thenValue([this](Result res) -> Result {
+        if (res.ok()) {
+          applyStatusChangeCallbacks(*this, Status::COMMITTED);
+        }
+        return res;
+      });
 }
 
 Future<Result> Methods::abortInternal(MethodsApi api) {

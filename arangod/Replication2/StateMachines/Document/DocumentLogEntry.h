@@ -42,6 +42,7 @@ enum OperationType {
   kReplace,
   kRemove,
   kTruncate,
+  kCommit,
 };
 
 auto to_string(OperationType) noexcept -> std::string_view;
@@ -64,10 +65,12 @@ struct DocumentLogEntry {
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentLogEntry& p) {
-    return f.object(p).fields(f.field("collectionId", p.collectionId),
-                              f.field("operation", p.operation)
-                                  .transformWith(OperationStringTransformer{}),
-                              f.field("data", p.data), f.field("trx", p.trx));
+    return f.object(p).fields(
+        f.field("collectionId", p.collectionId),
+        f.field("operation", p.operation)
+            .transformWith(OperationStringTransformer{}),
+        f.field("data", p.data).fallback(velocypack::SharedSlice{}),
+        f.field("trx", p.trx));
   }
 };
 }  // namespace document
