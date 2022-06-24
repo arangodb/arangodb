@@ -37,8 +37,9 @@
 #include "Basics/ResourceUsage.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
+#include <rocksdb/convenience.h>
 #include <rocksdb/options.h>
-
+#include <rocksdb/db.h>
 #include <Logger/LogMacros.h>
 #include <algorithm>
 #include <string>
@@ -148,7 +149,7 @@ SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
                                                        _keyPrefix + 1);
   rocksutils::uintToPersistentBigEndian<std::uint64_t>(_lowerBoundPrefix,
                                                        _keyPrefix);
-  _lowerrBoundSlice = _lowerBoundPrefix;
+  _lowerBoundSlice = _lowerBoundPrefix;
   _upperBoundSlice = _upperBoundPrefix;
 }
 
@@ -215,9 +216,6 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
     _rowIndexes.emplace_back(
         std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
     if (_memoryUsage >= kMemoryLowerBound) {
-      //  if (_rowIndexes.size() >= 3) {  // THIS IS JUST FOR DEBUGGING,
-      // MUST BE AROUND 100k OR
-      // A THRESHOLD IN BYTES USED IN RAM
       _mustStoreInput = true;
       consumeInputForStorage();
     }
@@ -234,9 +232,15 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
 }
 
 rocksdb::Status SortExecutor::deleteRangeInStorage() {
-  return _infos.getStorageFeature().tempDB()->DeleteRange(
-      rocksdb::WriteOptions(), _infos.getStorageFeature().cfHandles()[0],
-      _lowerrBoundSlice, _upperBoundSlice);
+  return rocksdb::DeleteFilesInRange(_infos.getStorageFeature().tempDB(),
+                                     _infos.getStorageFeature().cfHandles()[0],
+                                     &_lowerBoundSlice, &_upperBoundSlice,
+                                     true);
+  /*
+return _infos.getStorageFeature().tempDB()->DeleteRange(
+  rocksdb::WriteOptions(), _infos.getStorageFeature().cfHandles()[0],
+  _lowerBoundSlice, _upperBoundSlice);
+   */
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
@@ -287,6 +291,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
       std::string keyPrefix;
       rocksutils::uintToPersistentBigEndian<std::uint64_t>(keyPrefix,
                                                            _keyPrefix);
+
+      readOptions.auto_prefix_mode = true;
 
       readOptions.iterate_upper_bound = &_upperBoundSlice;
 
@@ -339,6 +345,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
       }
     }
     state = ExecutorState::DONE;
+  } else {
+    state = ExecutorState::HASMORE;
   }
 
   return {state, NoStats{}, upstreamCall};

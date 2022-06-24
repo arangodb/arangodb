@@ -183,7 +183,7 @@ class SortExecutor {
   std::uint64_t _inputCounterForStorage;
   std::string _upperBoundPrefix;
   std::uint64_t _curEntryId = 0;
-  rocksdb::Slice _lowerrBoundSlice;
+  rocksdb::Slice _lowerBoundSlice;
   rocksdb::Slice _upperBoundSlice;
   std::uint64_t _memoryUsage = 0;
 };
