@@ -147,7 +147,8 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     _rowIndexes.emplace_back(
-        std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
+        std::make_pair(static_cast<std::uint32_t>(_inputBlocks.size() - 1),
+                       static_cast<std::uint32_t>(inputRange.getRowIndex())));
     std::tie(state, input) =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
