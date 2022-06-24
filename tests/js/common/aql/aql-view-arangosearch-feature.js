@@ -2797,6 +2797,8 @@ function iResearchFeatureAqlTestSuite () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
+      for (let ggg = 0; ggg < 100; ggg++) {
+      print("GGG:" + ggg);
       db._useDatabase("_system");
       try { db._dropDatabase(dbName); } catch(e) {}
       db._createDatabase(dbName);
@@ -2815,6 +2817,8 @@ function iResearchFeatureAqlTestSuite () {
         }
         col.insert(docs);
         db._view(viewName).properties({commitIntervalMsec: 10});
+        db._view(viewName).properties({commitIntervalMsec: 11});
+        db._view(viewName).properties({commitIntervalMsec: 12});
         let res1 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
                             + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
                             + " length RETURN length").toArray();
@@ -2827,7 +2831,12 @@ function iResearchFeatureAqlTestSuite () {
           docs.push({field: i});
         }
         col.insert(docs);
-        db._view(viewName).properties({commitIntervalMsec: 10});
+        for (let ttt = 0; ttt < 1000; ttt++) {
+            print("TTT:" + ttt);
+            db._view(viewName).properties({commitIntervalMsec: 10});
+            db._view(viewName).properties({commitIntervalMsec: 11});
+            db._view(viewName).properties({commitIntervalMsec: 12});
+        }
         let res2 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
                             + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
                             + " length RETURN length").toArray();
@@ -2839,6 +2848,8 @@ function iResearchFeatureAqlTestSuite () {
         internal.sleep(3); // give consolidation some time
         col.truncate();
         db._view(viewName).properties({commitIntervalMsec: 10});
+        db._view(viewName).properties({commitIntervalMsec: 11});
+        db._view(viewName).properties({commitIntervalMsec: 12});
 
         // force sync
         let res = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
@@ -2849,6 +2860,7 @@ function iResearchFeatureAqlTestSuite () {
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
+      }
       }
     }
   };
