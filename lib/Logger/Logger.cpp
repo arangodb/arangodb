@@ -749,7 +749,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     // the offset is used by the in-memory logger, and it cuts off everything
     // from the start of the concatenated log string until the offset. only
-    // what's after the offset gets displayed in the web UI
+    // what's after the offset gets displayed in the web interface
     TRI_ASSERT(out.size() < static_cast<size_t>(UINT32_MAX));
     offset = static_cast<uint32_t>(out.size());
 
