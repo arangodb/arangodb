@@ -96,14 +96,13 @@ using namespace arangodb::replication2;
 replicated_log::LogLeader::LogLeader(
     LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    agency::LogPlanConfig config, ParticipantId id, LogTerm term,
-    LogIndex firstIndex, InMemoryLog inMemoryLog,
+    ParticipantId id, LogTerm term, LogIndex firstIndex,
+    InMemoryLog inMemoryLog,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
       _failureOracle(std::move(failureOracle)),
-      _config(config),
       _id(std::move(id)),
       _currentTerm(term),
       _firstIndexOfCurrentTerm(firstIndex),
@@ -324,11 +323,11 @@ auto replicated_log::LogLeader::construct(
         LoggerContext logContext,
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-        agency::LogPlanConfig config, ParticipantId id, LogTerm term,
-        LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
+        ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
+        InMemoryLog inMemoryLog,
         std::shared_ptr<cluster::IFailureOracle const> failureOracle)
         : LogLeader(std::move(logContext), std::move(logMetrics),
-                    std::move(options), config, std::move(id), term,
+                    std::move(options), std::move(id), term,
                     firstIndexOfCurrentTerm, std::move(inMemoryLog),
                     std::move(failureOracle)) {}
   };
@@ -357,7 +356,7 @@ auto replicated_log::LogLeader::construct(
 
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
-      std::move(logMetrics), std::move(options), config, std::move(id), term,
+      std::move(logMetrics), std::move(options), std::move(id), term,
       lastIndex.index + 1u, log, std::move(failureOracle));
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
@@ -742,7 +741,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   req.lowestIndexToKeep = _lowestIndexToKeep;
   req.leaderTerm = _self._currentTerm;
   req.leaderId = _self._id;
-  req.waitForSync = _self._config.waitForSync;
+  req.waitForSync = this->activeParticipantsConfig->config.waitForSync;
   req.messageId = ++follower.lastSentMessageId;
 
   follower._state = FollowerInfo::State::REQUEST_IN_FLIGHT;
@@ -951,8 +950,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
 
   auto [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
-          indexes, _self._config.effectiveWriteConcern, _commitIndex,
-          _inMemoryLog.getLastTermIndexPair());
+          indexes, this->activeParticipantsConfig->config.effectiveWriteConcern,
+          _commitIndex, _inMemoryLog.getLastTermIndexPair());
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)

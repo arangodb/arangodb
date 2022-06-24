@@ -335,6 +335,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/MaintenanceTests.cpp
   Replication2/ReplicatedLog/MultiTermTest.cpp
   Replication2/ReplicatedLog/ParticipantResignTest.cpp
+  Replication2/ReplicatedLog/ParticipantsHealthTest.cpp
   Replication2/ReplicatedLog/ReplicatedLogTest.cpp
   Replication2/ReplicatedLog/RewriteLogTest.cpp
   Replication2/ReplicatedLog/RocksDBLogTest.cpp

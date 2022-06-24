@@ -196,4 +196,27 @@ struct SetLeaderActor : OnceActorBase<SetLeaderActor> {
   replication2::ParticipantId newLeader;
 };
 
+struct SetWriteConcernActor : OnceActorBase<SetWriteConcernActor> {
+  explicit SetWriteConcernActor(size_t writeConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newWriteConcern;
+};
+
+struct SetSoftWriteConcernActor : OnceActorBase<SetSoftWriteConcernActor> {
+  explicit SetSoftWriteConcernActor(size_t softWriteConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newSoftWriteConcern;
+};
+
+struct SetBothWriteConcernActor : OnceActorBase<SetBothWriteConcernActor> {
+  explicit SetBothWriteConcernActor(size_t writeConcern,
+                                    size_t softWriteConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newWriteConcern;
+  size_t newSoftWriteConcern;
+};
+
 }  // namespace arangodb::test
