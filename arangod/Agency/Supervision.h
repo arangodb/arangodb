@@ -26,7 +26,6 @@
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Store.h"
-#include "Basics/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
@@ -71,46 +70,6 @@ class Supervision : public arangodb::Thread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;
-  typedef std::string ServerStatus;
-  typedef std::string ServerTimestamp;
-
-  enum TASKS {
-    LEADER_FAILURE_MIGRATION,
-    FOLLOWER_FAILURE_MIGRATION,
-    LEADER_INTENDED_MIGRATION,
-    FOLLOWER_INTENDED_MIGRATION
-  };
-
-  template<TASKS T>
-  class Task {
-    explicit Task(VPackSlice const& config) {}
-    ServerID _serverID;
-    std::string _endpoint;
-  };
-
-  struct VitalSign {
-    VitalSign(ServerStatus const& s, ServerTimestamp const& t)
-        : myTimestamp(std::chrono::system_clock::now()),
-          serverStatus(s),
-          serverTimestamp(t),
-          jobId("0") {}
-
-    void update(ServerStatus const& s, ServerTimestamp const& t) {
-      myTimestamp = std::chrono::system_clock::now();
-      serverStatus = s;
-      serverTimestamp = t;
-      jobId = "0";
-    }
-
-    void maintenance(std::string const& jid) { jobId = jid; }
-
-    std::string const& maintenance() const { return jobId; }
-
-    TimePoint myTimestamp;
-    ServerStatus serverStatus;
-    ServerTimestamp serverTimestamp;
-    std::string jobId;
-  };
 
   /// @brief Construct cluster consistency checking
   explicit Supervision(ArangodServer& server);

@@ -26,6 +26,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
 
 using namespace arangodb;
