@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/*global assertTrue */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -58,7 +58,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
 
     const makeOneVertex = function () {
         return makeVertices(1)[0];
-    }
+    };
 
     const makeSingleVertexNoEdges = function () {
         const vertices = makeVertices(1);
