@@ -87,8 +87,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     sortRegisters.emplace_back(std::move(sortReg));
     return SortExecutorInfos(1, 1, {}, std::move(sortRegisters),
                              /*limit (ignored for default sort)*/ 0, manager(),
-                             vpackOptions, monitor, false,
-                             _server->getFeature<RocksDBTempStorageFeature>());
+                             vpackOptions, monitor, false);
   }
 
   auto makeSubqueryRegisterInfos(size_t nestingLevel) -> RegisterInfos {

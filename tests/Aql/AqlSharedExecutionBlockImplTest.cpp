@@ -256,12 +256,11 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       std::vector<SortRegister> sortRegisters{};
       // We do not care for sorting, we skip anyways.
       sortRegisters.emplace_back(SortRegister{0, SortElement{nullptr, true}});
-      SortExecutorInfos execInfos{
-          1,       1,
-          {},      std::move(sortRegisters),
-          0,       fakedQuery->itemBlockManager(),
-          nullptr, monitor,
-          true,    server.getFeature<RocksDBTempStorageFeature>()};
+      SortExecutorInfos execInfos{1,       1,
+                                  {},      std::move(sortRegisters),
+                                  0,       fakedQuery->itemBlockManager(),
+                                  nullptr, monitor,
+                                  true};
       return ExecutionBlockImpl<ExecutorType>{
           fakedQuery->rootEngine(), generateNodeDummy(),
           std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
