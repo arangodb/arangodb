@@ -158,7 +158,11 @@ class ClusterMetricsFeature final : public ArangodFeature {
   std::shared_ptr<Data> _data;
   Scheduler::WorkHandle _update;
   Scheduler::WorkHandle _timer;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint32_t _timeout = 1;
+#else
   uint32_t _timeout = 0;
+#endif
 
   static constexpr uint32_t kStop = 1;
   static constexpr uint32_t kUpdate = 2;
