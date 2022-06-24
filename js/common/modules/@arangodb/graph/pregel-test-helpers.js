@@ -35,8 +35,22 @@ let internal = require("internal");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
 
-const verticesEdgesGenerator = graphGeneration.communityGenerator;
 const graphGenerator = graphGeneration.graphGenerator;
+
+const loadGraphGenerators = function (isSmart) {
+    if (isSmart) {
+        return {
+            makeEdgeBetweenVertices:
+                require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
+            verticesEdgesGenerator:
+                require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
+        };
+    }
+    return {
+        makeEdgeBetweenVertices: graphGeneration.makeEdgeBetweenVertices,
+        verticesEdgesGenerator: graphGeneration.communityGenerator
+    };
+};
 
 // TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
 const pregelRunSmallInstance = function (algName, graphName, parameters) {
@@ -56,11 +70,11 @@ const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function makeSetUp(smart, smartAttribute, numberOfShards) {
     return function () {
-        db._create(vColl, {numberOfShards: numberOfShards});
         if (smart) {
             smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
                 {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
         } else {
+            db._create(vColl, {numberOfShards: numberOfShards});
             db._createEdgeCollection(eColl, {
                 numberOfShards: numberOfShards,
                 replicationFactor: 1,
@@ -152,16 +166,18 @@ const testWCCDisjointComponents = function (componentGenerators) {
     }
 };
 
-function makeWCCTestSuite(smart, smartAttribute, numberOfShards) {
+function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
+
+    const {makeEdgeBetweenVertices, verticesEdgesGenerator} = loadGraphGenerators(isSmart);
 
     return function () {
         'use strict';
 
         return {
 
-            setUp: makeSetUp(smart, smartAttribute, numberOfShards),
+            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
 
-            tearDown: makeTearDown(smart),
+            tearDown: makeTearDown(isSmart),
 
             testWCCFourDirectedCycles: function () {
                 const componentSizes = [2, 10, 5, 23];
@@ -217,7 +233,7 @@ function makeWCCTestSuite(smart, smartAttribute, numberOfShards) {
             },
 
             testWCCOneSingleVertex: function () {
-                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "")).makeSingleVertex();
+                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "")).makeSingleVertexNoEdges();
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
@@ -237,8 +253,8 @@ function makeWCCTestSuite(smart, smartAttribute, numberOfShards) {
             },
 
             testWCCTwoIsolatedVertices: function () {
-                let isolatedVertex0 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeSingleVertex();
-                let isolatedVertex1 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeSingleVertex();
+                let isolatedVertex0 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeOneVertex();
+                let isolatedVertex1 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeOneVertex();
                 const vertices = [isolatedVertex0, isolatedVertex1];
                 db[vColl].save(vertices);
                 const edges = [];
@@ -395,11 +411,7 @@ function makeWCCTestSuite(smart, smartAttribute, numberOfShards) {
                 db[eColl].save(resultC1.edges);
 
                 // connecting edge
-                const connectingEdge = {
-                    _from: `${vColl}/c0_0`,
-                    _to: `${vColl}/c1_0`,
-                    vertex: `c0_0`
-                };
+                const connectingEdge = makeEdgeBetweenVertices(vColl, "0", "c0", "0", "c1");
                 db[eColl].save([connectingEdge]);
 
                 const status = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
@@ -421,16 +433,18 @@ function makeWCCTestSuite(smart, smartAttribute, numberOfShards) {
     };
 }
 
-function makeHeavyWCCTestSuite(smart, smartAttribute, numberOfShards) {
+function makeHeavyWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
+
+    const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
 
     return function () {
         'use strict';
 
         return {
 
-            setUp: makeSetUp(smart, smartAttribute, numberOfShards),
+            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
 
-            tearDown: makeTearDown(smart),
+            tearDown: makeTearDown(isSmart),
 
             testWCC10BidirectedCliques() {
                 let componentSizes = [];

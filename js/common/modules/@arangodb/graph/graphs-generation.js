@@ -56,7 +56,11 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return vertices;
     };
 
-    const makeSingleVertex = function () {
+    const makeOneVertex = function () {
+        return makeVertices(1)[0];
+    }
+
+    const makeSingleVertexNoEdges = function () {
         const vertices = makeVertices(1);
         const edges = [];
         return {vertices, edges};
@@ -184,7 +188,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
 
     return {
         makeVertices,
-        makeSingleVertex,
+        makeOneVertex,
+        makeSingleVertexNoEdges,
         makeDirectedCycle,
         makeAlternatingCycle,
         makeFullBinaryTree,
@@ -194,5 +199,14 @@ const graphGenerator = function (verticesEdgesGenerator) {
 
 };
 
+const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
+    return {
+        _from: `${vColl}/${fromLabel}_${from}`,
+        _to: `${vColl}/${toLabel}_${to}`,
+        vertex: `${fromLabel}_${from}`
+    };
+};
+
 exports.communityGenerator = communityGenerator;
 exports.graphGenerator = graphGenerator;
+exports.makeEdgeBetweenVertices = makeEdgeBetweenVertices;
