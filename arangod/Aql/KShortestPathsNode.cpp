@@ -473,7 +473,13 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case arangodb::graph::ShortestPathType::Type::AllShortestPaths: {
-      TRI_ASSERT(false);
+      auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
+      auto executorInfos = KShortestPathsExecutorInfos(
+          outputRegister, engine.getQuery(), std::move(finder),
+          std::move(sourceInput), std::move(targetInput));
+      return std::make_unique<ExecutionBlockImpl<
+          KShortestPathsExecutor<graph::KShortestPathsFinder>>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
