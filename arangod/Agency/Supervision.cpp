@@ -1191,7 +1191,6 @@ void Supervision::run() {
   waitForSupervisionNode();
 
   bool shutdown = false;
-  bool wokeUpByTimeout = true;
   {
     CONDITION_LOCKER(guard, _cv);
     TRI_ASSERT(_agent != nullptr);
@@ -1232,8 +1231,7 @@ void Supervision::run() {
 
         if (lapTime < 1000000) {
           // wait returns false if timeout was reached
-          wokeUpByTimeout = _cv.wait(static_cast<uint64_t>(
-                                (1000000 - lapTime) * _frequency)) == false;
+          _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
         }
       } catch (std::exception const& ex) {
         LOG_TOPIC("f5af1", ERR, Logger::SUPERVISION)
