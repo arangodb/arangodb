@@ -261,7 +261,10 @@ void GeneralServerFeature::collectOptions(
                   new BooleanParameter(&_allowEarlyConnections))
       .setIntroducedIn(31000);
 
-  options->addOption("--frontend.proxy-request-check",
+  options->addOldOption("frontend.proxy-request-check",
+                        "web-interface.proxy-request-check");
+
+  options->addOption("--web-interface.proxy-request-check",
                      "enable proxy request checking",
                      new BooleanParameter(&_proxyCheck),
                      arangodb::options::makeFlags(
@@ -269,9 +272,12 @@ void GeneralServerFeature::collectOptions(
                          arangodb::options::Flags::OnCoordinator,
                          arangodb::options::Flags::OnSingle));
 
-  options->addOption("--frontend.trusted-proxy",
+  options->addOldOption("frontend.trusted-proxy",
+                        "web-interface.trusted-proxy");
+
+  options->addOption("--web-interface.trusted-proxy",
                      "list of proxies to trust (may be IP or network). Make "
-                     "sure --frontend.proxy-request-check is enabled",
+                     "sure --web-interface.proxy-request-check is enabled",
                      new VectorParameter<StringParameter>(&_trustedProxies),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,

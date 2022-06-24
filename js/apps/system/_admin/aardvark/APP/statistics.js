@@ -415,7 +415,7 @@ router.get('/coordshort', function (req, res) {
       merged.clientConnections15M = stats15.length === 0 ? 0 : stats15[0].clientConnections15M;
     }
   } catch (e) {
-    // ignore exceptions, because throwing here will render the entire web UI cluster stats broken
+    // ignore exceptions, because throwing here will render the entire web interface cluster stats broken
   }
 
   res.json({'enabled': internal.enabledStatistics(), 'data': merged});
