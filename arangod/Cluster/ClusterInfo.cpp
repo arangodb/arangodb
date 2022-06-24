@@ -6737,10 +6737,12 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 }
 
 bool ClusterInfo::SyncerThread::start() {
+  ThreadNameFetcher nameFetcher;
+  std::string_view name = nameFetcher.get();
+
   LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
       << "Starting "
-      << (currentThreadName() != nullptr ? currentThreadName()
-                                         : "by unknown thread");
+      << (name.empty() ? std::string_view("by unknown thread") : name);
   return Thread::start();
 }
 
