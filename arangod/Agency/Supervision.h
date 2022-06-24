@@ -159,7 +159,19 @@ class Supervision : public arangodb::Thread {
                                    std::string const& serverID,
                                    uint64_t wantedRebootID, bool& serverFound);
 
+  /// @brief notifies the supervision and triggers a new run
+  void notify() noexcept;
+
  private:
+  /// @brief wait for the supervision node to appear (cluster bootstrap)
+  void waitForSupervisionNode();
+
+  /// @brief does one round of supervision business
+  void step();
+
+  /// @brief waits for the given index to be committed
+  void waitForIndexCommitted(index_t);
+
   /// @brief get reference to the spearhead snapshot
   Node const& snapshot() const;
 
@@ -281,10 +293,7 @@ class Supervision : public arangodb::Thread {
    */
   void reportStatus(std::string const& status);
 
-  bool isShuttingDown();
-
   bool handleJobs();
-  void handleShutdown();
   void deleteBrokenDatabase(std::string const& database,
                             std::string const& coordinatorID, uint64_t rebootID,
                             bool coordinatorFound);
@@ -319,16 +328,6 @@ class Supervision : public arangodb::Thread {
   uint64_t _lastUpdateIndex;
 
   bool _haveAborts; /**< @brief We have accumulated pending aborts in a round */
-
-  // mop: this feels very hacky...we have a hen and egg problem here
-  // we are using /Shutdown in the agency to determine that the cluster should
-  // shutdown. When every member is down we should of course not persist this
-  // flag so we don't immediately initiate shutdown after restart. we use this
-  // flag to temporarily store that shutdown was initiated...when the /Shutdown
-  // stuff has been removed we shutdown ourselves. The assumption (heheh...) is
-  // that while the cluster is shutting down every agent hit the shutdown stuff
-  // at least once so this flag got set at some point
-  bool _selfShutdown;
 
   std::atomic<bool> _upgraded;
   std::chrono::system_clock::time_point _nextServerCleanup;
