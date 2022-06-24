@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global print */
+/*global print, fail */
 
 "use strict";
 
@@ -2588,7 +2588,7 @@ const testParallelism = (testGraph, mode) => {
     debugSetFailAt("MutexExecutor::distributeBlock");
     if (isEnterprise()) {
       try {
-        db._query(query, {}, {profile: 0});
+        db._query(query);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_DEBUG.code);
