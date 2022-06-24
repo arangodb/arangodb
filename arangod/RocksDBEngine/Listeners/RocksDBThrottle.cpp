@@ -113,7 +113,6 @@ void RocksDBThrottle::stopThread() {
           CONDITION_LOCKER(guard, _threadCondvar);
 
           _internalRocksDB = nullptr;
-          _delayToken.reset();
         }
         break;
       }
@@ -408,23 +407,7 @@ void RocksDBThrottle::SetThrottle() {
           writeController.set_max_delayed_write_rate(_throttleBps);
         }
 
-        // Only replace the token when absolutely necessary.  GetDelayToken()
-        //  also resets internal timers which can result in long pauses if
-        //  flushes/compactions are happening often.
-        if (nullptr == _delayToken.get()) {
-          _delayToken = writeController.GetDelayToken(_throttleBps);
-          LOG_TOPIC("7c51e", DEBUG, arangodb::Logger::ENGINES)
-              << "SetThrottle(): GetDelayTokey(" << _throttleBps << ")";
-        } else {
-          LOG_TOPIC("2eb9e", DEBUG, arangodb::Logger::ENGINES)
-              << "SetThrottle(): set_delayed_write_rate(" << _throttleBps
-              << ")";
-          writeController.set_delayed_write_rate(_throttleBps);
-        }
-      } else {
-        _delayToken.reset();
-        LOG_TOPIC("af180", DEBUG, arangodb::Logger::ENGINES)
-            << "SetThrottle(): _delaytoken.reset()";
+        writeController.set_delayed_write_rate(_throttleBps);
       }
     }
   }

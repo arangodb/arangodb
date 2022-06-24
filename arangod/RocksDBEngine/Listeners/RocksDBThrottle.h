@@ -144,7 +144,6 @@ class RocksDBThrottle : public rocksdb::EventListener {
   std::atomic<uint64_t> _throttleBps;
   bool _firstThrottle;
 
-  std::unique_ptr<rocksdb::WriteControllerToken> _delayToken;
   std::vector<rocksdb::ColumnFamilyHandle*> _families;
 
  private:
