@@ -37,19 +37,6 @@ var console = require("console");
 let pregel = require("@arangodb/pregel");
 let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
-// TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
-const pregelRunSmallInstance = function (algName, graphName, parameters) {
-  const pid = pregel.start("wcc", graphName, parameters);
-  const maxWaitTimeSecs = 120;
-  const sleepIntervalSecs = 0.2;
-  let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
-  while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
-    wakeupsLeft--;
-    internal.sleep(0.2);
-  }
-  return pregel.status(pid);
-};
-
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 

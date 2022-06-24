@@ -213,7 +213,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 testWCCDisjointComponents(componentGenerators);
             },
 
-            testWCC20AlternatingCycles() {
+            testWCC20AlternatingCycles: function () {
                 let componentSizes = [];
                 // cycles of length smaller than 2 cannot be produced
                 for (let i = 2; i < 22; ++i) {
@@ -265,7 +265,6 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 assertEqual(status.state, "done", "Pregel Job did never succeed.");
 
                 // Now test the result.
-                // We expect four components
                 const query = `
                 FOR v IN ${vColl}
                   COLLECT component = v.result WITH COUNT INTO size
@@ -292,7 +291,6 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 assertEqual(status.state, "done", "Pregel Job did never succeed.");
 
                 // Now test the result.
-                // We expect four components
                 const query = `
                   FOR v IN ${vColl}
                     COLLECT component = v.result WITH COUNT INTO size
@@ -320,7 +318,6 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 assertEqual(status.state, "done", "Pregel Job did never succeed.");
 
                 // Now test the result.
-                // We expect 1 component
                 const query = `
                   FOR v IN ${vColl}
                     COLLECT component = v.result WITH COUNT INTO size
@@ -347,7 +344,6 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 assertEqual(status.state, "done", "Pregel Job did never succeed.");
 
                 // Now test the result.
-                // We expect 1 component
                 const query = `
                   FOR v IN ${vColl}
                     COLLECT component = v.result WITH COUNT INTO size
@@ -380,7 +376,6 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 assertEqual(status.state, "done", "Pregel Job did never succeed.");
 
                 // Now test the result.
-                // We expect four components
                 const query = `
                   FOR v IN ${vColl}
                     COLLECT component = v.result WITH COUNT INTO size

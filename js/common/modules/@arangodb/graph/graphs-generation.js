@@ -162,18 +162,18 @@ const graphGenerator = function (verticesEdgesGenerator) {
 //  - "linear": the edges constitute a linear order <:
 //              there is an edge from v to w if and only if index of v < index of w.
 // Note that the number of edges grows quadratically in size!
-    const makeClique = function (size, vColl, name_prefix, kind = "bidirected") {
-        let vertices = makeVertices(size, name_prefix);
+    const makeClique = function (size, kind = "bidirected") {
+        let vertices = makeVertices(size);
         let edges = [];
         for (let v = 0; v < size; ++v) {
             for (let w = v + 1; w < size; ++w) {
                 switch (kind) {
                     case "bidirected":
-                        edges.push(makeEdge(v, w, vColl, name_prefix));
-                        edges.push(makeEdge(w, v, vColl, name_prefix));
+                        edges.push(makeEdge(v, w));
+                        edges.push(makeEdge(w, v));
                         break;
                     case "linear":
-                        edges.push(makeEdge(v, w, vColl, name_prefix));
+                        edges.push(makeEdge(v, w));
                         break;
                 }
             }
@@ -182,8 +182,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
     };
 
     // a wrapper to unify the call of createDirectedCycle, createAlternatingCycle, createFullBinaryTree
-    const makeBidirectedClique = function (size, vColl, name_prefix) {
-        return makeClique(size, vColl, name_prefix, "bidirected");
+    const makeBidirectedClique = function (size) {
+        return makeClique(size, "bidirected");
     };
 
     return {
