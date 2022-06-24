@@ -83,7 +83,6 @@ importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
 
-server_http -- --dumpAgencyOnError true
 server_parameters weight=1000 -- --dumpAgencyOnError true
 server_permissions weight=1000 -- --dumpAgencyOnError true
 server_secrets weight=500 -- --dumpAgencyOnError true
