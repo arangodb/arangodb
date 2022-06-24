@@ -37,7 +37,7 @@
 #include "Graph/AttributeWeightShortestPathFinder.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/KShortestPathsFinder.h"
-#include "Graph/AllShortestPathsFinder.h"
+//#include "Graph/AllShortestPathsFinder.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/ClusterProvider.h"
