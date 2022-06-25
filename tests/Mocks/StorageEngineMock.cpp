@@ -1014,7 +1014,7 @@ ErrorCode PhysicalCollectionMock::close() {
 }
 
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
-    arangodb::velocypack::Slice const& info, bool restore, bool& created) {
+    arangodb::velocypack::Slice info, bool restore, bool& created) {
   before();
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
@@ -1156,55 +1156,44 @@ void PhysicalCollectionMock::getPropertiesVPack(
 }
 
 arangodb::Result PhysicalCollectionMock::insert(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-    arangodb::ManagedDocumentResult& result,
-    arangodb::OperationOptions& options) {
+    arangodb::transaction::Methods& trx, arangodb::RevisionId newRevisionId,
+    arangodb::velocypack::Slice newDocument,
+    arangodb::OperationOptions const& options) {
   before();
 
-  TRI_ASSERT(newSlice.isObject());
-  VPackSlice newKey = newSlice.get(arangodb::StaticStrings::KeyString);
+  TRI_ASSERT(newDocument.isObject());
+  TRI_ASSERT(newDocument.get(arangodb::StaticStrings::KeyString).isString());
+  VPackSlice newKey = newDocument.get(arangodb::StaticStrings::KeyString);
   if (newKey.isString() && _documents.contains(newKey.stringView())) {
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
-  arangodb::velocypack::Builder builder;
-  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
+  std::string_view key{newKey.stringView()};
 
-  arangodb::RevisionId revisionId;
-  auto res = newObjectForInsert(trx, newSlice, isEdgeCollection, builder,
-                                options, revisionId);
+  auto buffer = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+  buffer->append(newDocument.start(), newDocument.byteSize());
+  // key is a string_view, and it must point into the storage space that
+  // we own and that keeps valid
+  key = arangodb::velocypack::Slice(buffer->data())
+            .get(arangodb::StaticStrings::KeyString)
+            .stringView();
 
-  if (res.fail()) {
-    return res;
-  }
-  TRI_ASSERT(
-      builder.slice().get(arangodb::StaticStrings::KeyString).isString());
-
-  std::string_view key{
-      builder.slice().get(arangodb::StaticStrings::KeyString).stringView()};
   arangodb::LocalDocumentId id =
-      ::generateDocumentId(_logicalCollection, revisionId, _lastDocumentId);
+      ::generateDocumentId(_logicalCollection, newRevisionId, _lastDocumentId);
   auto const& [ref, didInsert] =
-      _documents.emplace(key, DocElement{builder.steal(), id.id()});
+      _documents.emplace(key, DocElement{std::move(buffer), id.id()});
   TRI_ASSERT(didInsert);
-
-  result.setManaged(ref->second.vptr());
-  TRI_ASSERT(result.revisionId() == revisionId);
 
   for (auto& index : _indexes) {
     if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
       auto* l = static_cast<EdgeIndexMock*>(index.get());
-      if (!l->insert(*trx, ref->second.docId(),
-                     arangodb::velocypack::Slice(result.vpack()))
-               .ok()) {
+      if (!l->insert(trx, id, newDocument).ok()) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
       continue;
     } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
       auto* l = static_cast<HashIndexMock*>(index.get());
-      if (!l->insert(*trx, ref->second.docId(),
-                     arangodb::velocypack::Slice(result.vpack()))
-               .ok()) {
+      if (!l->insert(trx, id, newDocument).ok()) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
       continue;
@@ -1212,17 +1201,13 @@ arangodb::Result PhysicalCollectionMock::insert(
       if (arangodb::ServerState::instance()->isCoordinator()) {
         auto* l = static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(
             index.get());
-        if (!l->insert(*trx, ref->second.docId(),
-                       arangodb::velocypack::Slice(result.vpack()))
-                 .ok()) {
+        if (!l->insert(trx, id, newDocument).ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
       } else {
         auto* l =
             static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
-        if (!l->insert(*trx, ref->second.docId(),
-                       arangodb::velocypack::Slice(result.vpack()))
-                 .ok()) {
+        if (!l->insert(trx, id, newDocument).ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
       }
@@ -1240,7 +1225,7 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
     arangodb::ReadOwnWrites) const {
   before();
 
-  auto it = _documents.find(std::string_view{key});
+  auto it = _documents.find(key);
   if (it != _documents.end()) {
     result.first = it->second.docId();
     result.second = arangodb::RevisionId::fromSlice(it->second.data());
@@ -1374,41 +1359,71 @@ bool PhysicalCollectionMock::readDocument(
   return false;
 }
 
+arangodb::Result PhysicalCollectionMock::lookupDocument(
+    arangodb::transaction::Methods& /*trx*/, arangodb::LocalDocumentId token,
+    arangodb::velocypack::Builder& builder, bool /*readCache*/,
+    bool /*fillCache*/, arangodb::ReadOwnWrites /*readOwnWrites*/) const {
+  before();
+  for (auto const& entry : _documents) {
+    auto& doc = entry.second;
+    if (doc.docId() == token) {
+      builder.add(doc.data());
+      return arangodb::Result{};
+    }
+  }
+  return arangodb::Result{TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
+}
+
 arangodb::Result PhysicalCollectionMock::remove(
-    arangodb::transaction::Methods& trx, arangodb::velocypack::Slice slice,
-    arangodb::ManagedDocumentResult& previous,
-    arangodb::OperationOptions& options) {
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId previousDocumentId,
+    arangodb::RevisionId previousRevisionId,
+    arangodb::velocypack::Slice previousDocument,
+    arangodb::OperationOptions const& options) {
   before();
 
-  auto key = slice.get(arangodb::StaticStrings::KeyString);
-  TRI_ASSERT(key.isString());
-  std::string_view keyRef{key.stringView()};
-  auto old = _documents.find(keyRef);
+  std::string_view key;
+  if (previousDocument.isString()) {
+    key = previousDocument.stringView();
+  } else {
+    key = previousDocument.get(arangodb::StaticStrings::KeyString).stringView();
+  }
+  auto old = _documents.find(key);
   if (old != _documents.end()) {
-    previous.setManaged(old->second.vptr());
-    _graveyard.emplace_back(old->second.rawData());
-    TRI_ASSERT(previous.revisionId() ==
+    TRI_ASSERT(previousRevisionId ==
                arangodb::RevisionId::fromSlice(old->second.data()));
-    _documents.erase(keyRef);
-    return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume document was removed
+    _documents.erase(old);
+    // TODO: removing the document from the mock collection
+    // does not remove it from any mock indexes
+
+    // assume document was removed
+    return arangodb::Result(TRI_ERROR_NO_ERROR);
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 arangodb::Result PhysicalCollectionMock::update(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-    arangodb::ManagedDocumentResult& result,
-    arangodb::OperationOptions& options,
-    arangodb::ManagedDocumentResult& previous) {
-  return updateInternal(trx, newSlice, result, options, previous, true);
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId newDocumentId,
+    arangodb::RevisionId previousRevisionId,
+    arangodb::velocypack::Slice previousDocument,
+    arangodb::RevisionId newRevisionId, arangodb::velocypack::Slice newDocument,
+    arangodb::OperationOptions const& options) {
+  return updateInternal(trx, newDocumentId, previousRevisionId,
+                        previousDocument, newRevisionId, newDocument, options,
+                        true);
 }
 
 arangodb::Result PhysicalCollectionMock::replace(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-    arangodb::ManagedDocumentResult& result,
-    arangodb::OperationOptions& options,
-    arangodb::ManagedDocumentResult& previous) {
-  return updateInternal(trx, newSlice, result, options, previous, false);
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId newDocumentId,
+    arangodb::RevisionId previousRevisionId,
+    arangodb::velocypack::Slice previousDocument,
+    arangodb::RevisionId newRevisionId, arangodb::velocypack::Slice newDocument,
+    arangodb::OperationOptions const& options) {
+  return updateInternal(trx, newDocumentId, previousRevisionId,
+                        previousDocument, newRevisionId, newDocument, options,
+                        false);
 }
 
 arangodb::RevisionId PhysicalCollectionMock::revision(
@@ -1426,61 +1441,45 @@ arangodb::Result PhysicalCollectionMock::truncate(
 }
 
 arangodb::Result PhysicalCollectionMock::updateInternal(
-    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-    arangodb::ManagedDocumentResult& result,
-    arangodb::OperationOptions& options,
-    arangodb::ManagedDocumentResult& previous, bool isUpdate) {
-  auto key = newSlice.get(arangodb::StaticStrings::KeyString);
-  if (!key.isString()) {
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId /*newDocumentId*/,
+    arangodb::RevisionId previousRevisionId,
+    arangodb::velocypack::Slice /*previousDocument*/,
+    arangodb::RevisionId /*newRevisionId*/,
+    arangodb::velocypack::Slice newDocument,
+    arangodb::OperationOptions const& options, bool isUpdate) {
+  TRI_ASSERT(newDocument.isObject());
+  auto keySlice = newDocument.get(arangodb::StaticStrings::KeyString);
+  if (!keySlice.isString()) {
     return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   before();
-  std::string_view keyRef{key.stringView()};
-  auto it = _documents.find(keyRef);
+  std::string_view key{keySlice.stringView()};
+  auto it = _documents.find(key);
   if (it != _documents.end()) {
     auto doc = it->second.data();
-    if (!options.ignoreRevs) {
-      arangodb::RevisionId expectedRev = arangodb::RevisionId::none();
-      if (newSlice.isObject()) {
-        expectedRev = arangodb::RevisionId::fromSlice(newSlice);
-      }
-      TRI_ASSERT(doc.isObject());
-      arangodb::RevisionId oldRev = arangodb::RevisionId::fromSlice(doc);
-      if (!checkRevision(trx, expectedRev, oldRev)) {
-        return arangodb::Result(TRI_ERROR_ARANGO_CONFLICT,
-                                "_rev values mismatch");
-      }
-    }
-    arangodb::velocypack::Builder builder;
-    arangodb::RevisionId revisionId = arangodb::RevisionId::none();  // unused
-    auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
-    if (isUpdate) {
-      arangodb::Result res = mergeObjectsForUpdate(
-          trx, doc, newSlice, isEdgeCollection, options, builder, revisionId);
-      if (res.fail()) {
-        return res;
-      }
-    } else {
-      arangodb::Result res = newObjectForReplace(
-          trx, doc, newSlice, isEdgeCollection, builder, options, revisionId);
-      if (res.fail()) {
-        return res;
-      }
-    }
-    auto nextBuffer = builder.steal();
-    // Set previous
-    previous.setManaged(it->second.vptr());
-    TRI_ASSERT(previous.revisionId() == arangodb::RevisionId::fromSlice(doc));
+    TRI_ASSERT(doc.isObject());
 
-    // swap with new data
-    // Replace the existing Buffer and nextBuffer
-    it->second.swapBuffer(nextBuffer);
-    // Put the now old buffer into the graveyour for previous to stay valid
-    _graveyard.emplace_back(nextBuffer);
+    // replace document
+    auto newBuffer = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+    newBuffer->append(newDocument.start(), newDocument.byteSize());
+    // key is a string_view, and it must point into the storage space that
+    // we own and that keeps valid
+    key = arangodb::velocypack::Slice(newBuffer->data())
+              .get(arangodb::StaticStrings::KeyString)
+              .stringView();
 
-    result.setManaged(it->second.vptr());
-    TRI_ASSERT(result.revisionId() != previous.revisionId());
+    auto docId = it->second.docId();
+    // must remove and insert, because our map's key type is a string_view. the
+    // string_view could point to invalid memory if we change a map entry's
+    // contents.
+    _documents.erase(it);
+    auto const& [ref, didInsert] =
+        _documents.emplace(key, DocElement{std::move(newBuffer), docId.id()});
+    TRI_ASSERT(didInsert);
+
+    // TODO: mock index entries are not updated here
     return TRI_ERROR_NO_ERROR;
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);

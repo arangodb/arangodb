@@ -27,7 +27,6 @@
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/FileUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
@@ -54,26 +53,8 @@ class Builder;
 class HashedStringRef;
 }  // namespace velocypack
 
-namespace traverser {
-struct TraverserOptions;
-}
-
 class ClusterFeature;
 struct OperationOptions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a list of attributes have the same values in two vpack
-/// documents
-////////////////////////////////////////////////////////////////////////////////
-
-bool shardKeysChanged(LogicalCollection const& collection,
-                      VPackSlice const& oldValue, VPackSlice const& newValue,
-                      bool isPatch);
-
-/// @brief check if the value of the smartJoinAttribute has changed
-bool smartJoinAttributeChanged(LogicalCollection const& collection,
-                               VPackSlice const& oldValue,
-                               VPackSlice const& newValue, bool isPatch);
 
 /// @brief aggregate the results of multiple figures responses (e.g. from
 /// multiple shards or for a smart edge collection)

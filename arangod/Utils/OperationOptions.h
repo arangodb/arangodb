@@ -31,7 +31,6 @@
 
 namespace arangodb {
 class ExecContext;
-struct ValidatorBase;
 
 /// @brief Indicates whether we want to observe writes performed within the
 /// current (sub) transaction. This is only relevant for AQL queries.
@@ -169,10 +168,6 @@ struct OperationOptions {
   // necessary for UPSERTS where the subquery relies on a non-unique secondary
   // index.
   bool canDisableIndexing = true;
-
-  // schema used for validation during INSERT/UPDATE/REPLACE. this value is only
-  // set temporarily.
-  std::shared_ptr<ValidatorBase> schema = nullptr;
 
   // get associated execution context
   ExecContext const& context() const;

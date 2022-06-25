@@ -409,11 +409,12 @@ Result ComputedValues::buildDefinitions(
     std::string_view n = name.stringView();
 
     if (n == StaticStrings::IdString || n == StaticStrings::RevString ||
-        n == StaticStrings::KeyString) {
-      return res.reset(TRI_ERROR_BAD_PARAMETER,
-                       "invalid 'computedValues' entry: '"s +
-                           name.copyString() +
-                           "' attribute cannot be computed");
+        n == StaticStrings::KeyString || n == StaticStrings::FromString ||
+        n == StaticStrings::ToString) {
+      return res.reset(
+          TRI_ERROR_BAD_PARAMETER,
+          "invalid 'computedValues' entry: '"s + name.copyString() +
+              "' attribute cannot be computed via computation expression");
     }
 
     // forbid computedValues on shardKeys!

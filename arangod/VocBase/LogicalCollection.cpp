@@ -304,6 +304,14 @@ Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
   return {};
 }
 
+RevisionId LogicalCollection::newRevisionId() const {
+  if (hasClusterWideUniqueRevs()) {
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    return RevisionId::createClusterWideUnique(ci);
+  }
+  return RevisionId::create();
+}
+
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
@@ -1158,63 +1166,6 @@ Result LogicalCollection::truncate(transaction::Methods& trx,
 
 /// @brief compact-data operation
 void LogicalCollection::compact() { getPhysical()->compact(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a document or edge into the collection
-////////////////////////////////////////////////////////////////////////////////
-
-Result LogicalCollection::insert(transaction::Methods* trx,
-                                 VPackSlice const slice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options) {
-  TRI_IF_FAILURE("LogicalCollection::insert") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-  return getPhysical()->insert(trx, slice, result, options);
-}
-
-/// @brief updates a document or edge in a collection
-Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options,
-                                 ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::update") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-
-  if (!newSlice.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  return getPhysical()->update(trx, newSlice, result, options, previous);
-}
-
-/// @brief replaces a document or edge in a collection
-Result LogicalCollection::replace(transaction::Methods* trx,
-                                  VPackSlice newSlice,
-                                  ManagedDocumentResult& result,
-                                  OperationOptions& options,
-                                  ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::replace") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-  if (!newSlice.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  return getPhysical()->replace(trx, newSlice, result, options, previous);
-}
-
-/// @brief removes a document or edge
-Result LogicalCollection::remove(transaction::Methods& trx,
-                                 velocypack::Slice const slice,
-                                 OperationOptions& options,
-                                 ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::remove") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-  return getPhysical()->remove(trx, slice, previous, options);
-}
 
 /// @brief a method to skip certain documents in AQL write operations,
 /// this is only used in the Enterprise Edition for SmartGraphs

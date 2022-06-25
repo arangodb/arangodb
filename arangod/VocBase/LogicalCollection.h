@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "Basics/Common.h"
@@ -146,6 +147,8 @@ class LogicalCollection : public LogicalDataSource {
   virtual std::vector<std::string> realNamesForRead() const {
     return std::vector<std::string>{name()};
   }
+
+  RevisionId newRevisionId() const;
 
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
@@ -339,20 +342,6 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief compact-data operation
   void compact();
-
-  Result insert(transaction::Methods* trx, velocypack::Slice slice,
-                ManagedDocumentResult& result, OperationOptions& options);
-
-  Result update(transaction::Methods*, velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions&,
-                ManagedDocumentResult& previousMdr);
-
-  Result replace(transaction::Methods*, velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions&,
-                 ManagedDocumentResult& previousMdr);
-
-  Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, ManagedDocumentResult& previousMdr);
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully

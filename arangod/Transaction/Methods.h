@@ -77,16 +77,24 @@ struct Options;
 
 /// @brief forward declarations
 class CollectionNameResolver;
+class ComputedValues;
 class Index;
 class IndexIterator;
 class LocalDocumentId;
-class ManagedDocumentResult;
 struct IndexIteratorOptions;
 struct OperationOptions;
 class TransactionState;
 class TransactionCollection;
+struct ValidatorBase;
 
 namespace transaction {
+
+struct BatchOptions {
+  bool validateShardKeysOnUpdateReplace = false;
+  bool validateSmartJoinAttribute = false;
+  std::shared_ptr<ValidatorBase> schema = nullptr;
+  std::shared_ptr<ComputedValues> computedValues = nullptr;
+};
 
 class Methods {
  public:
@@ -278,12 +286,12 @@ class Methods {
                                           OperationOptions const& options);
 
   /// @brief return one or multiple documents from a collection
-  Future<OperationResult> documentAsync(std::string const& cname,
+  Future<OperationResult> documentAsync(std::string const& collectionName,
                                         VPackSlice value,
                                         OperationOptions const& options);
 
   /// @deprecated use async variant
-  [[deprecated]] OperationResult insert(std::string const& cname,
+  [[deprecated]] OperationResult insert(std::string const& collectionName,
                                         VPackSlice value,
                                         OperationOptions const& options);
 
@@ -295,7 +303,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @deprecated use async variant
-  [[deprecated]] OperationResult update(std::string const& cname,
+  [[deprecated]] OperationResult update(std::string const& collectionName,
                                         VPackSlice updateValue,
                                         OperationOptions const& options);
 
@@ -307,7 +315,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @deprecated use async variant
-  [[deprecated]] OperationResult replace(std::string const& cname,
+  [[deprecated]] OperationResult replace(std::string const& collectionName,
                                          VPackSlice replaceValue,
                                          OperationOptions const& options);
 
@@ -385,31 +393,34 @@ class Methods {
     return false;
   }
   [[nodiscard]] bool isInaccessibleCollection(
-      std::string_view /*cname*/) const {
+      std::string_view /*collectionName*/) const {
     return false;
   }
 #else
   [[nodiscard]] bool skipInaccessible() const;
   [[nodiscard]] bool isInaccessibleCollection(DataSourceId /*cid*/) const;
-  [[nodiscard]] bool isInaccessibleCollection(std::string_view /*cname*/) const;
+  [[nodiscard]] bool isInaccessibleCollection(
+      std::string_view /*collectionName*/) const;
 #endif
 
-  static ErrorCode validateSmartJoinAttribute(
-      LogicalCollection const& collinfo, arangodb::velocypack::Slice value);
+  static ErrorCode validateSmartJoinAttribute(LogicalCollection const& collinfo,
+                                              velocypack::Slice value);
 
  private:
+  enum class ReplicationType { NONE, LEADER, FOLLOWER };
+
   // perform a (deferred) intermediate commit if required
   Result performIntermediateCommitIfRequired(DataSourceId collectionId);
 
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
-  void buildDocumentIdentity(arangodb::LogicalCollection* collection,
+  void buildDocumentIdentity(arangodb::LogicalCollection& collection,
                              velocypack::Builder& builder, DataSourceId cid,
                              std::string_view key, RevisionId rid,
                              RevisionId oldRid,
-                             ManagedDocumentResult const* oldDoc,
-                             ManagedDocumentResult const* newDoc);
+                             velocypack::Builder const* oldDoc,
+                             velocypack::Builder const* newDoc);
 
   futures::Future<OperationResult> documentCoordinator(
       std::string const& collectionName, VPackSlice value,
@@ -428,6 +439,21 @@ class Methods {
                                       VPackSlice value,
                                       OperationOptions& options);
 
+  Result insertLocalHelper(LogicalCollection& collection,
+                           velocypack::Slice value, RevisionId& newRevisionId,
+                           velocypack::Builder& newDocumentBuilder,
+                           OperationOptions& options,
+                           BatchOptions const& batchOptions);
+
+  Result determineReplicationTypeAndFollowers(
+      LogicalCollection& collection, std::string_view operationName,
+      velocypack::Slice value, OperationOptions& options,
+      ReplicationType& replicationType,
+      std::shared_ptr<std::vector<ServerID> const>& followers);
+
+  void trackWaitForSync(LogicalCollection& collection,
+                        OperationOptions& options);
+
   Future<OperationResult> modifyCoordinator(
       std::string const& collectionName, VPackSlice newValue,
       OperationOptions const& options, TRI_voc_document_operation_e operation,
@@ -435,8 +461,14 @@ class Methods {
 
   Future<OperationResult> modifyLocal(std::string const& collectionName,
                                       VPackSlice newValue,
-                                      OperationOptions& options,
-                                      TRI_voc_document_operation_e operation);
+                                      OperationOptions& options, bool isUpdate);
+
+  Result modifyLocalHelper(
+      LogicalCollection& collection, velocypack::Slice value,
+      LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
+      velocypack::Slice previousDocument, RevisionId& newRevisionId,
+      velocypack::Builder& newDocumentBuilder, OperationOptions& options,
+      BatchOptions const& batchOptions, bool isUpdate);
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
                                             VPackSlice value,
@@ -446,6 +478,13 @@ class Methods {
   Future<OperationResult> removeLocal(std::string const& collectionName,
                                       VPackSlice value,
                                       OperationOptions& options);
+
+  Result removeLocalHelper(LogicalCollection& collection,
+                           velocypack::Slice value,
+                           LocalDocumentId previousDocumentId,
+                           RevisionId previousRevisionId,
+                           velocypack::Slice previousDocument,
+                           OperationOptions& options);
 
   OperationResult allCoordinator(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit,
@@ -475,7 +514,7 @@ class Methods {
   auto abortInternal(MethodsApi api) -> Future<Result>;
   auto finishInternal(Result const& res, MethodsApi api) -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
-  ENTERPRISE_VIRT auto documentInternal(std::string const& cname,
+  ENTERPRISE_VIRT auto documentInternal(std::string const& collectionName,
                                         VPackSlice value,
                                         OperationOptions const& options,
                                         MethodsApi api)
@@ -542,8 +581,7 @@ class Methods {
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value,
       TRI_voc_document_operation_e operation,
-      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops,
-      std::unordered_set<size_t> excludePositions);
+      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);
 
   /// @brief transaction hints
   transaction::Hints _localHints;
