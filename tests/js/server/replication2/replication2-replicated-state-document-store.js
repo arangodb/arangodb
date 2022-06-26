@@ -153,17 +153,19 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
     },
 
-    /*
     testReplicateOperationsCommit: function() {
+      // This test currently does not work.
       const opType = "Commit";
       let collection = db._collection(collectionName);
       let shards = collection.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       collection.insert({_key: "abcd"});
+      /*
       let entries = getDocumentEntries(mergeLogs(logs), opType);
+      require('internal').print(entries);
+       */
     },
-     */
 
     testReplicateOperationsInsert: function() {
       const opType = "Insert";
