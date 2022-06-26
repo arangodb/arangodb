@@ -2995,8 +2995,11 @@ Future<Result> Methods::abortInternal(MethodsApi api) {
     return f;
   }
 
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
+  if (_state->isRunningInCluster() &&
+      (_state->vocbase().replicationVersion() != replication::Version::TWO ||
+       tid().isCoordinatorTransactionId())) {
+    // In case we're using replication 2, let the coordinator notify the db
+    // servers
     f = ClusterTrxMethods::abortTransaction(*this, api);
   }
 

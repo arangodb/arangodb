@@ -119,16 +119,37 @@ std::lock_guard<std::mutex> ReplicatedRocksDBTransactionState::lockCommit() {
 
 /// @brief abort and rollback a transaction
 Result ReplicatedRocksDBTransactionState::doAbort() {
-  Result res;
-  for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-              .abortTransaction();
-    if (!res.ok()) {
-      break;
-    }
-  }
   _hasActiveTrx = false;
-  return res;
+  if (isReadOnlyTransaction()) {
+    Result res;
+    for (auto& col : _collections) {
+      res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                .abortTransaction();
+      if (!res.ok()) {
+        break;
+      }
+    }
+    return res;
+  }
+
+  auto operation =
+      replication2::replicated_state::document::OperationType::kAbort;
+  auto options = replication2::replicated_state::document::ReplicationOptions{};
+
+  // The following code has been simplified based on this assertion.
+  TRI_ASSERT(options.waitForCommit == false);
+  for (auto& col : _collections) {
+    auto leader = col->collection()->waitForDocumentStateLeader();
+    leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                               options);
+    auto r = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                 .abortTransaction();
+    if (r.fail()) {
+      return r;
+    }
+  };
+
+  return {};
 }
 
 RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(

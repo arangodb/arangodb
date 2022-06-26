@@ -43,6 +43,7 @@ enum OperationType {
   kRemove,
   kTruncate,
   kCommit,
+  kAbort,
 };
 
 auto to_string(OperationType) noexcept -> std::string_view;
