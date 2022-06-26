@@ -1808,7 +1808,7 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
                 key->string(), &ps, readOwnWrites);
 
   if (!s.ok()) {
-    LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
+    LOG_TOPIC("ba2ef", DEBUG, Logger::ENGINES)
         << "NOT FOUND rev: " << documentId.id()
         << " trx: " << trx.state()->id().id() << " objectID " << objectId()
         << " name: " << _logicalCollection.name();
