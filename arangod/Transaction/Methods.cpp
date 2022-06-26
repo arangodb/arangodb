@@ -1431,7 +1431,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
     res = workForOneDocument(value, false);
 
     // on a follower, our result should always be an empty object
-    if (res.ok() && replicationType == ReplicationType::FOLLOWER) {
+    if (replicationType == ReplicationType::FOLLOWER) {
       TRI_ASSERT(resultBuilder.slice().isNone());
       // add an empty object here so that when sending things back in JSON
       // format, there is no "non-representable type 'none'" issue.
@@ -1806,7 +1806,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     res = workForOneDocument(newValue, false);
 
     // on a follower, our result should always be an empty object
-    if (res.ok() && replicationType == ReplicationType::FOLLOWER) {
+    if (replicationType == ReplicationType::FOLLOWER) {
       TRI_ASSERT(resultBuilder.slice().isNone());
       // add an empty object here so that when sending things back in JSON
       // format, there is no "non-representable type 'none'" issue.
@@ -2145,7 +2145,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
     res = workForOneDocument(value, false);
 
     // on a follower, our result should always be an empty object
-    if (res.ok() && replicationType == ReplicationType::FOLLOWER) {
+    if (replicationType == ReplicationType::FOLLOWER) {
       TRI_ASSERT(resultBuilder.slice().isNone());
       // add an empty object here so that when sending things back in JSON
       // format, there is no "non-representable type 'none'" issue.
