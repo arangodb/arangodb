@@ -579,9 +579,9 @@ class Methods {
   Future<Result> replicateOperations(
       std::shared_ptr<LogicalCollection> collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
-      OperationOptions const& options, VPackSlice value,
-      TRI_voc_document_operation_e operation,
-      std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops);
+      OperationOptions const& options,
+      velocypack::Builder const& replicationData,
+      TRI_voc_document_operation_e operation);
 
   /// @brief transaction hints
   transaction::Hints _localHints;

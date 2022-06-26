@@ -1226,7 +1226,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
   // all document data that are going to be replicated, append-only
-  VPackBuilder replicationData;
+  transaction::BuilderLeaser replicationData(this);
   // total result that is going to be returned to the caller, append-only
   VPackBuilder resultBuilder;
 
@@ -1391,7 +1391,16 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
     if (!excludeFromReplication) {
       TRI_ASSERT(newDocumentBuilder->slice().isObject());
-      replicationData.add(newDocumentBuilder->slice());
+      // _id values are written to the database as VelocyPack Custom values.
+      // However, these cannot be transferred as Custom types, because the
+      // VelocyPack validator on the receiver side will complain about them.
+      // so we need to rewrite the document here to not include any Custom
+      // types.
+      // replicationData->add(newDocumentBuilder->slice());
+      basics::VelocyPackHelper::sanitizeNonClientTypes(
+          newDocumentBuilder->slice(), VPackSlice::noneSlice(),
+          *replicationData, transactionContextPtr()->getVPackOptions(), true,
+          true, false);
     }
 
     return res;
@@ -1399,8 +1408,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   std::unordered_map<ErrorCode, size_t> errorCounter;
 
+  replicationData->openArray(true);
   if (value.isArray()) {
-    replicationData.openArray();
     resultBuilder.openArray();
 
     for (VPackSlice s : VPackArrayIterator(value)) {
@@ -1418,7 +1427,6 @@ Future<OperationResult> transaction::Methods::insertLocal(
     }
 
     resultBuilder.close();
-    replicationData.close();
   } else {
     res = workForOneDocument(value, false);
 
@@ -1430,10 +1438,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
       resultBuilder.add(VPackSlice::emptyObjectSlice());
     }
   }
+  replicationData->close();
 
   // LOG_DEVEL << "INSERT. VALUE: " << value.toJson()
   //          << ", RESULTBUILDER: " << resultBuilder.slice().toJson()
-  //          << ", REPLICATIONDATA: " << replicationData.slice().toJson()
+  //          << ", REPLICATIONDATA: " << replicationData->slice().toJson()
   //          << ", SILENT: " << options.silent << ", MODE: "
   //          << options.stringifyOverwriteMode(options.overwriteMode);
 
@@ -1441,9 +1450,9 @@ Future<OperationResult> transaction::Methods::insertLocal(
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
              (value.isObject() && resultBuilder.slice().isEmptyObject()));
+  TRI_ASSERT(replicationData->slice().isArray());
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
-             (value.isArray() && replicationData.slice().isEmptyArray()) ||
-             (value.isObject() && replicationData.slice().isEmptyObject()));
+             replicationData->slice().isEmptyArray());
 
   TRI_ASSERT(res.ok() || !value.isArray());
 
@@ -1467,7 +1476,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
     if (!isMock && replicationType == ReplicationType::LEADER &&
         (!followers->empty() ||
-         collection->replicationVersion() == replication::Version::TWO)) {
+         collection->replicationVersion() == replication::Version::TWO) &&
+        !replicationData->slice().isEmptyArray()) {
       TRI_ASSERT(collection != nullptr);
 
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1475,19 +1485,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options, value,
-                                 TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs)
+      return replicateOperations(collection, followers, options,
+                                 *replicationData,
+                                 TRI_VOC_DOCUMENT_OPERATION_INSERT)
           .thenValue([options, errs = std::move(errorCounter),
-                      resDocs](Result res) mutable {
+                      resultData = std::move(resDocs)](Result res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
             if (options.silent && errs.empty()) {
               // We needed the results, but do not want to report:
-              resDocs->clear();
+              resultData->clear();
             }
-            return OperationResult(std::move(res), std::move(resDocs), options,
-                                   std::move(errs));
+            return OperationResult(std::move(res), std::move(resultData),
+                                   options, std::move(errs));
           });
     }
 
@@ -1670,7 +1681,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   // document)
   transaction::BuilderLeaser previousDocumentBuilder(this);
   // all document data that are going to be replicated, append-only
-  VPackBuilder replicationData;
+  transaction::BuilderLeaser replicationData(this);
   // total result that is going to be returned to the caller, append-only
   VPackBuilder resultBuilder;
 
@@ -1758,7 +1769,16 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     }
 
     if (!excludeFromReplication) {
-      replicationData.add(newDocumentBuilder->slice());
+      // _id values are written to the database as VelocyPack Custom values.
+      // However, these cannot be transferred as Custom types, because the
+      // VelocyPack validator on the receiver side will complain about them.
+      // so we need to rewrite the document here to not include any Custom
+      // types.
+      // replicationData->add(newDocumentBuilder->slice());
+      basics::VelocyPackHelper::sanitizeNonClientTypes(
+          newDocumentBuilder->slice(), VPackSlice::noneSlice(),
+          *replicationData, transactionContextPtr()->getVPackOptions(), true,
+          true, false);
     }
 
     return res;
@@ -1766,8 +1786,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
   std::unordered_map<ErrorCode, size_t> errorCounter;
 
+  replicationData->openArray(true);
   if (newValue.isArray()) {
-    replicationData.openArray();
     resultBuilder.openArray();
 
     for (VPackSlice s : VPackArrayIterator(newValue)) {
@@ -1782,7 +1802,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     }
 
     resultBuilder.close();
-    replicationData.close();
   } else {
     res = workForOneDocument(newValue, false);
 
@@ -1794,15 +1813,18 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       resultBuilder.add(VPackSlice::emptyObjectSlice());
     }
   }
+  replicationData->close();
 
   // LOG_DEVEL << "MODIFY: RESULTBUILDER: " << resultBuilder.slice().toJson()
-  //          << ", REPLICATIONDATA: " << replicationData.slice().toJson();
+  //          << ", REPLICATIONDATA: " << replicationData->slice().toJson();
 
   // on a follower, our result should always be an empty array or object
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              (newValue.isArray() && resultBuilder.slice().isEmptyArray()) ||
              (newValue.isObject() && resultBuilder.slice().isEmptyObject()));
-
+  TRI_ASSERT(replicationData->slice().isArray());
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             replicationData->slice().isEmptyArray());
   TRI_ASSERT(!newValue.isArray() || options.silent ||
              resultBuilder.slice().length() == newValue.length());
 
@@ -1810,7 +1832,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   if (res.ok()) {
     if (replicationType == ReplicationType::LEADER &&
         (!followers->empty() ||
-         collection->replicationVersion() == replication::Version::TWO)) {
+         collection->replicationVersion() == replication::Version::TWO) &&
+        !replicationData->slice().isEmptyArray()) {
       // We still hold a lock here, because this is update/replace and we're
       // therefore not doing single document operations. But if we didn't hold
       // it at the beginning of the method the followers may not be up-to-date.
@@ -1822,20 +1845,20 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options, newValue,
+      return replicateOperations(collection, followers, options,
+                                 *replicationData,
                                  isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
-                                          : TRI_VOC_DOCUMENT_OPERATION_REPLACE,
-                                 resDocs)
+                                          : TRI_VOC_DOCUMENT_OPERATION_REPLACE)
           .thenValue([options, errs = std::move(errorCounter),
-                      resDocs](Result&& res) mutable {
+                      resultData = std::move(resDocs)](Result&& res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
             if (options.silent && errs.empty()) {
               // We needed the results, but do not want to report:
-              resDocs->clear();
+              resultData->clear();
             }
-            return OperationResult(std::move(res), std::move(resDocs),
+            return OperationResult(std::move(res), std::move(resultData),
                                    std::move(options), std::move(errs));
           });
     }
@@ -2011,10 +2034,10 @@ Future<OperationResult> transaction::Methods::removeLocal(
     return futures::makeFuture(OperationResult(std::move(res), options));
   }
 
-  // all document data that are going to be replicated, append-only
-  VPackBuilder replicationData;
   // total result that is going to be returned to the caller, append-only
   VPackBuilder resultBuilder;
+  // all document data that are going to be replicated, append-only
+  transaction::BuilderLeaser replicationData(this);
   // builder for a single, old version of document (will be recycled for each
   // document)
   transaction::BuilderLeaser previousDocumentBuilder(this);
@@ -2089,21 +2112,21 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
 
     if (res.ok() && !excludeFromReplication) {
-      replicationData.openObject(true);
-      replicationData.add(StaticStrings::KeyString, VPackValue(key));
+      replicationData->openObject(true);
+      replicationData->add(StaticStrings::KeyString, VPackValue(key));
 
       char ridBuffer[arangodb::basics::maxUInt64StringSize];
-      replicationData.add(StaticStrings::RevString,
-                          oldRevisionId.toValuePair(ridBuffer));
-      replicationData.close();
+      replicationData->add(StaticStrings::RevString,
+                           oldRevisionId.toValuePair(ridBuffer));
+      replicationData->close();
     }
 
     return res;
   };
 
+  replicationData->openArray(true);
   std::unordered_map<ErrorCode, size_t> errorCounter;
   if (value.isArray()) {
-    replicationData.openArray();
     resultBuilder.openArray();
 
     for (VPackSlice s : VPackArrayIterator(value)) {
@@ -2118,7 +2141,6 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
 
     resultBuilder.close();
-    replicationData.close();
   } else {
     res = workForOneDocument(value, false);
 
@@ -2130,17 +2152,20 @@ Future<OperationResult> transaction::Methods::removeLocal(
       resultBuilder.add(VPackSlice::emptyObjectSlice());
     }
   }
+  replicationData->close();
 
   // LOG_DEVEL << "REMOVE. VALUE: " << value.toJson()
   //          << ", RESULTBUILDER: " << resultBuilder.slice().toJson()
-  //          << ", REPLICATIONDATA: " << replicationData.slice().toJson()
+  //          << ", REPLICATIONDATA: " << replicationData->slice().toJson()
   //          << ", SILENT: " << options.silent;
 
   // on a follower, our result should always be an empty array or object
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
              (value.isObject() && resultBuilder.slice().isEmptyObject()));
-
+  TRI_ASSERT(replicationData->slice().isArray());
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             replicationData->slice().isEmptyArray());
   TRI_ASSERT(!value.isArray() || options.silent ||
              resultBuilder.slice().length() == value.length());
 
@@ -2149,7 +2174,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
     auto replicationVersion = collection->replicationVersion();
     if (replicationType == ReplicationType::LEADER &&
         (!followers->empty() ||
-         replicationVersion == replication::Version::TWO)) {
+         replicationVersion == replication::Version::TWO) &&
+        !replicationData->slice().isEmptyArray()) {
       TRI_ASSERT(collection != nullptr);
       // Now replicate the same operation on all followers:
 
@@ -2158,18 +2184,19 @@ Future<OperationResult> transaction::Methods::removeLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options, value,
-                                 TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs)
+      return replicateOperations(collection, followers, options,
+                                 *replicationData,
+                                 TRI_VOC_DOCUMENT_OPERATION_REMOVE)
           .thenValue([options, errs = std::move(errorCounter),
-                      resDocs](Result res) mutable {
+                      resultData = std::move(resDocs)](Result res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
             if (options.silent && errs.empty()) {
               // We needed the results, but do not want to report:
-              resDocs->clear();
+              resultData->clear();
             }
-            return OperationResult(std::move(res), std::move(resDocs),
+            return OperationResult(std::move(res), std::move(resultData),
                                    std::move(options), std::move(errs));
           });
     }
@@ -2306,82 +2333,26 @@ Future<OperationResult> transaction::Methods::truncateLocal(
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
-  auto replicationVersion = collection->replicationVersion();
 
+  // this call will populate replicationType and followers
+  ReplicationType replicationType = ReplicationType::NONE;
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  ReplicationType replicationType = ReplicationType::NONE;
-  if (_state->isDBServer()) {
-    // Block operation early if we are not supposed to perform it:
-    auto const& followerInfo = collection->followers();
-    std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
-      if (!options.isSynchronousReplicationFrom.empty()) {
-        return futures::makeFuture(OperationResult(
-            TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
-      }
+  Result res = determineReplicationTypeAndFollowers(
+      *collection, "truncate", VPackSlice::noneSlice(), options,
+      replicationType, followers);
 
-      // This is just a trick to let the function continue for replication2
-      // databases
-      if (replicationVersion != replication::Version::TWO) {
-        switch (followerInfo->allowedToWrite()) {
-          case FollowerInfo::WriteState::FORBIDDEN:
-            // We cannot fulfill minimum replication Factor. Reject write.
-            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-          case FollowerInfo::WriteState::UNAVAILABLE:
-          case FollowerInfo::WriteState::STARTUP:
-            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                   options);
-          default:
-            break;
-        }
-      }
+  if (res.fail()) {
+    return futures::makeFuture(OperationResult(std::move(res), options));
+  }
 
-      // fetch followers
-      replicationType = ReplicationType::LEADER;
-      followers = followerInfo->get();
-      if (!followers->empty() ||
-          replicationVersion == replication::Version::TWO) {
-        options.silent = false;
-      }
-    } else {  // we are a follower following theLeader
-      replicationType = ReplicationType::FOLLOWER;
-      if (options.isSynchronousReplicationFrom.empty()) {
-        return futures::makeFuture(
-            OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
-      }
-      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
-      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
-        sendRefusal = false;
-      }
-      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
-        sendRefusal = true;
-      }
-      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
-        // expect a following term id or send a refusal
-        if (!options.isRestore) {
-          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') ==
-                          std::string::npos);
-        }
-      }
-      if (sendRefusal) {
-        return futures::makeFuture(OperationResult(
-            ::buildRefusalResult(*collection, "truncate", options, theLeader),
-            options));
-      }
-    }
-  }  // isDBServer - early block
-
-  TRI_ASSERT((replicationType == ReplicationType::LEADER) ==
-             (followers != nullptr));
-  TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
-
-  Result res = collection->truncate(*this, options);
+  res = collection->truncate(*this, options);
 
   if (res.fail()) {
     return futures::makeFuture(OperationResult(res, options));
   }
 
+  auto replicationVersion = collection->replicationVersion();
   if (replicationType == ReplicationType::LEADER &&
       replicationVersion == replication::Version::TWO) {
     auto leaderState = collection->waitForDocumentStateLeader();
@@ -2853,9 +2824,8 @@ Result transaction::Methods::resolveId(
 Future<Result> Methods::replicateOperations(
     std::shared_ptr<LogicalCollection> collection,
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
-    OperationOptions const& options, VPackSlice value,
-    TRI_voc_document_operation_e operation,
-    std::shared_ptr<VPackBuffer<uint8_t>> const& ops) {
+    OperationOptions const& options, velocypack::Builder const& replicationData,
+    TRI_voc_document_operation_e operation) {
   TRI_ASSERT(followerList != nullptr);
 
   // It is normal to have an empty followerList when using replication2
@@ -2863,51 +2833,14 @@ Future<Result> Methods::replicateOperations(
              collection->vocbase().replicationVersion() ==
                  replication::Version::TWO);
 
-  transaction::BuilderLeaser payload(this);
-  auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
-    VPackObjectBuilder guard(payload.get());
-    VPackSlice s = result.get(StaticStrings::KeyString);
-    TRI_ASSERT(s.isString());
-    payload->add(StaticStrings::KeyString, s);
-    s = result.get(StaticStrings::RevString);
-    payload->add(StaticStrings::RevString, s);
-    if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      TRI_SanitizeObject(doc, *payload);
-    }
-  };
+  TRI_ASSERT(replicationData.slice().isArray());
+  TRI_ASSERT(!replicationData.slice().isEmptyArray());
 
-  VPackSlice ourResult(ops->data());
-  size_t count = 0;
-  if (value.isArray()) {
-    VPackArrayBuilder guard(payload.get());
-    VPackArrayIterator itValue(value);
-    VPackArrayIterator itResult(ourResult);
-    while (itValue.valid() && itResult.valid()) {
-      TRI_ASSERT(itValue.index() == itResult.index());
-
-      TRI_ASSERT((*itResult).isObject());
-      if (!(*itResult).hasKey(StaticStrings::Error)) {
-        // not an error
-        doOneDoc(itValue.value(), itResult.value());
-        count++;
-      }
-      itValue.next();
-      itResult.next();
-    }
-  } else {
-    doOneDoc(value, ourResult);
-    count++;
-  }
-
-  if (count == 0) {
-    // nothing to do
-    return Result();
-  }
-
+  // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
     auto leaderState = collection->waitForDocumentStateLeader();
     leaderState->replicateOperations(
-        payload->sharedSlice(),
+        replicationData.sharedSlice(),
         replication2::replicated_state::document::fromDocumentOperation(
             operation),
         state()->id());
@@ -2921,14 +2854,6 @@ Future<Result> Methods::replicateOperations(
   reqOpts.param(StaticStrings::IsRestoreString, "true");
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
-  if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
-    TRI_ASSERT(value.isObject());
-    TRI_ASSERT(value.hasKey(StaticStrings::KeyString));
-    url.push_back('/');
-    VPackValueLength len;
-    char const* ptr = value.get(StaticStrings::KeyString).getString(len);
-    basics::StringUtils::encodeURIComponent(url, ptr, len);
-  }
 
   char const* opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
@@ -2980,10 +2905,11 @@ Future<Result> Methods::replicateOperations(
       TRI_ASSERT(false);
   }
 
+  size_t count = replicationData.slice().length();
   ReplicationTimeoutFeature& timeouts =
       vocbase().server().getFeature<ReplicationTimeoutFeature>();
   reqOpts.timeout = network::Timeout(
-      ::chooseTimeoutForReplication(timeouts, count, payload->size()));
+      ::chooseTimeoutForReplication(timeouts, count, replicationData.size()));
   TRI_IF_FAILURE("replicateOperations_randomize_timeout") {
     reqOpts.timeout = network::Timeout(
         static_cast<double>(RandomGenerator::interval(uint32_t(60))));
@@ -3025,8 +2951,8 @@ Future<Result> Methods::replicateOperations(
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
     futures.emplace_back(network::sendRequestRetry(
-        pool, "server:" + f, requestType, url, *(payload->buffer()), reqOpts,
-        std::move(headers)));
+        pool, "server:" + f, requestType, url, *(replicationData.buffer()),
+        reqOpts, std::move(headers)));
 
     LOG_TOPIC("fecaf", TRACE, Logger::REPLICATION)
         << "replicating " << count << " " << opName << " operations for shard "

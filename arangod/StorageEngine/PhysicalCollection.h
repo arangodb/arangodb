@@ -243,11 +243,6 @@ class PhysicalCollection {
   virtual void figuresSpecific(bool details,
                                arangodb::velocypack::Builder&) = 0;
 
-  // SECTION: Document pre commit preperation
-
-  bool checkRevision(transaction::Methods* trx, RevisionId expected,
-                     RevisionId found) const;
-
   LogicalCollection& _logicalCollection;
 
   mutable basics::ReadWriteLock _indexesLock;

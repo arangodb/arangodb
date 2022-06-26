@@ -948,6 +948,15 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
       res = savepoint.finish(_logicalCollection.newRevisionId());
 
       if (res.ok()) {
+        // if waitForSync flag is set, update it for transaction and options
+        if (_logicalCollection.waitForSync() && !options.isRestore) {
+          options.waitForSync = true;
+        }
+
+        if (options.waitForSync) {
+          trx.state()->waitForSync(true);
+        }
+
         res =
             state->performIntermediateCommitIfRequired(_logicalCollection.id());
       }
@@ -956,7 +965,6 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
     if (res.fail()) {  // Failed to remove document in truncate.
       return res;
     }
-    trackWaitForSync(&trx, options);
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

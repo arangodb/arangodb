@@ -194,13 +194,6 @@ void PhysicalCollection::removeRevisionTreeBlocker(TransactionId) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief checks the revision of a document
-bool PhysicalCollection::checkRevision(transaction::Methods*,
-                                       RevisionId expected,
-                                       RevisionId found) const {
-  return expected.empty() || found == expected;
-}
-
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
