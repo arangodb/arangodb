@@ -100,6 +100,7 @@ struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
+  TermIndexPair matchedIndex;
 
   friend auto operator==(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept -> bool;
@@ -115,6 +116,7 @@ auto inspect(Inspector& f, FollowerStatistics& x) {
       f.field(StaticStrings::CommitIndex, x.commitIndex),
       f.field(StaticStrings::FirstIndex, x.firstIndex),
       f.field(StaticStrings::ReleaseIndex, x.releaseIndex),
+      f.field("matchedIndex", x.matchedIndex),
       f.field("lastErrorReason", x.lastErrorReason),
       f.field("lastRequestLatencyMS", x.lastRequestLatencyMS)
           .transformWith(inspection::DurationTransformer<

@@ -193,7 +193,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::chrono::steady_clock::time_point _lastRequestStartTP{};
     std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
-    TermIndexPair lastAckedEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    TermIndexPair lastAckedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    TermIndexPair lastMatchedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
     MessageId lastSentMessageId{0};
