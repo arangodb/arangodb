@@ -147,8 +147,8 @@ function gtestRunner (testname, options) {
         results.failed += 1;
       }
       results = getGTestResults(testResultJsonFile, results);
-      if ((results.failed !== 0) || !options.cleanup) {
-        fs.removeDirectoryRecursive(this.tempDir, true);
+      if ((results.failed === 0) && options.cleanup) {
+        fs.removeDirectoryRecursive(tempDir, true);
       }
       process.env.TMPDIR = orgTmp;
     } else {
