@@ -32,6 +32,7 @@
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedServer.h"
+#include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
@@ -2982,8 +2983,14 @@ void arangodb::consensus::enforceReplicationFunctional(
 
   // We will loop over plannedDBs, so we use hasAsChildren
   auto const& plannedDBs = snapshot.hasAsChildren(planColPrefix).value().get();
+  auto const& databaseProperties =
+      snapshot.hasAsChildren("/Plan/Databases").value().get();
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
+    if (isReplicationTwoDB(databaseProperties, db_.first)) {
+      continue;
+    }
+
     auto const& db = *(db_.second);
     for (const auto& col_ : db.children()) {  // Planned collections
       auto const& col = *(col_.second);

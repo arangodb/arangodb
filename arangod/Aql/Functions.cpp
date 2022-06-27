@@ -9251,7 +9251,7 @@ AqlValue Functions::SelectSmartDistributeGraphInput(
   auto fromId = input.get(StaticStrings::IdString).stringView();
   auto res =
       SmartGraphValidationHelper::SmartValidationResult::validateVertexId(
-          fromId);
+          fromId, expressionContext->vocbase());
   if (res.ok()) {
     return AqlValue{input};
   }

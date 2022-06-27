@@ -93,7 +93,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
+      std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,

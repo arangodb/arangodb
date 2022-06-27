@@ -200,6 +200,14 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
     auto nextReqToWrite = pendingRequests.begin();
     auto nextReqToResolve = nextReqToWrite;
+    // We sort the logs by their ids. This will make the write batch sorted
+    // in ascending order, which should improve performance in RocksDB.
+    // Remember, the keys for the individual log entries are constructed as
+    // <8-byte big endian log id> <8-byte big endian index>
+    std::sort(pendingRequests.begin(), pendingRequests.end(),
+              [](PersistRequest const& left, PersistRequest const& right) {
+                return left.log->id() < right.log->id();
+              });
 
     auto result = basics::catchToResult([&] {
       rocksdb::WriteBatch wb;
