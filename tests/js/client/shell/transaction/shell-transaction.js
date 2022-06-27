@@ -4861,14 +4861,11 @@ function transactionReplication2ReplicateOperation() {
       let shards = c.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
-      //require('internal').print(trx.id());
       for (const log of logs) {
         let entries = log.head(1000);
         let abortFound = false;
         for (const entry of entries) {
           if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
-            //require('internal').print(entry);
-            //assertEqual(entry.payload[1].trx, trx.id());
             assertEqual(entry.payload[1].collectionId, c._id);
             abortFound = true;
             break;
@@ -4904,14 +4901,11 @@ function transactionReplication2ReplicateOperation() {
       let shards = c.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
-      //require('internal').print(trx.id());
       for (const log of logs) {
         let entries = log.head(1000);
         let abortFound = false;
         for (const entry of entries) {
           if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Commit") {
-            //require('internal').print(entry);
-            //assertEqual(entry.payload[1].trx, trx.id());
             assertEqual(entry.payload[1].collectionId, c._id);
             abortFound = true;
             break;
