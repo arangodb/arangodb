@@ -1100,12 +1100,8 @@ void ClusterInfo::loadPlan() {
                 newShards.erase(shardName);
                 newShardServers.erase(shardName);
                 newShardToName.erase(shardName);
-                // if (col.value.hasKey("distributeShardsLike")) {
-                // Probably faster to try to erase anyway!
                 newShardToShardGroupLeader.erase(shardName);
-                // } else {
                 newShardGroups.erase(shardName);
-                //}
               }
             }
           }
@@ -1591,7 +1587,8 @@ void ClusterInfo::loadPlan() {
               auto it = newShardGroups.find(groupLeaderCol->second->at(i));
               if (it == newShardGroups.end()) {
                 // Need to create a new list:
-                auto list = std::make_shared<std::vector<ShardID>>(2);
+                auto list = std::make_shared<std::vector<ShardID>>();
+                list->reserve(2);
                 // group leader as well as member:
                 list->emplace_back(groupLeaderCol->second->at(i));
                 list->emplace_back(col->second->at(i));

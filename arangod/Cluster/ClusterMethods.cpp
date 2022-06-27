@@ -139,7 +139,7 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
-  ClusterTrxMethods::SortedServersSet leaders{};
+  ClusterTrxMethods::SortedServersSet servers{};
 
   if (state.options().allowDirtyReads) {
     // In this case we do not always choose the leader, but take the
@@ -148,7 +148,7 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
     for (auto const& pair : shards) {
       ServerID const& replica = state.whichReplica(pair.first);
       if (!state.knowsServer(replica)) {
-        leaders.emplace(replica);
+        servers.emplace(replica);
       }
     }
   } else {
@@ -161,11 +161,11 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
       // now we got the shard leader
       std::string const& leader = it->second[0];
       if (!state.knowsServer(leader)) {
-        leaders.emplace(leader);
+        servers.emplace(leader);
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders, api);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state, servers, api);
 }
 
 // begin transaction on shard leaders
@@ -174,7 +174,7 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
                                             transaction::MethodsApi api) {
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
-  ClusterTrxMethods::SortedServersSet leaders{};
+  ClusterTrxMethods::SortedServersSet servers{};
   if (trx.state()->options().allowDirtyReads) {
     // In this case we do not always choose the leader, but take the
     // choice stored in the TransactionState. We might hit some followers
@@ -182,18 +182,18 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
     for (auto const& pair : shards) {
       ServerID const& replica = trx.state()->whichReplica(pair.first);
       if (!trx.state()->knowsServer(replica)) {
-        leaders.emplace(replica);
+        servers.emplace(replica);
       }
     }
   } else {
     for (auto const& shardServers : shards) {
       ServerID const& srv = shardServers.second.at(0);
       if (!trx.state()->knowsServer(srv)) {
-        leaders.emplace(srv);
+        servers.emplace(srv);
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders,
+  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), servers,
                                                       api);
 }
 
@@ -213,8 +213,8 @@ void addTransactionHeaderForShard(transaction::Methods const& trx,
   // we must consult `whichReplica` instead blindly taking the leader.
   // Note that this essentially only happens in `getDocumentOnCoordinator`.
   if (trx.state()->options().allowDirtyReads) {
-    ServerID const& leader = trx.state()->whichReplica(shard);
-    ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
+    ServerID const& server = trx.state()->whichReplica(shard);
+    ClusterTrxMethods::addTransactionHeader(trx, server, headers);
   } else {
     auto const& it = shardMap.find(shard);
     if (it != shardMap.end()) {
