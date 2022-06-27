@@ -103,9 +103,8 @@ struct FollowerStatistics : LogStatistics {
   TermIndexPair matchedIndex;
 
   friend auto operator==(FollowerStatistics const& left,
-                         FollowerStatistics const& right) noexcept -> bool;
-  friend auto operator!=(FollowerStatistics const& left,
-                         FollowerStatistics const& right) noexcept -> bool;
+                         FollowerStatistics const& right) noexcept
+      -> bool = default;
 };
 
 template<class Inspector>
@@ -123,11 +122,6 @@ auto inspect(Inspector& f, FollowerStatistics& x) {
                          std::chrono::duration<double, std::milli>>{}),
       f.field("state", x.internalState));
 }
-
-[[nodiscard]] auto operator==(FollowerStatistics const& left,
-                              FollowerStatistics const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(FollowerStatistics const& left,
-                              FollowerStatistics const& right) noexcept -> bool;
 
 struct LeaderStatus {
   LogStatistics local;
