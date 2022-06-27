@@ -371,9 +371,16 @@ void FollowerStateManager<S>::newRun() noexcept {
       throw basics::Exception(std::move(result), ADB_HERE);
     }
   };
-  static auto constexpr handleErrors = [](futures::Try<Result>&& tryResult) {};
+  static auto constexpr handleErrors =
+      [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
+        // TODO Instead of capturing "this", should we capture the loggerContext
+        // instead?
+
+        // TODO implement this
+        FATAL_ERROR_EXIT();
+      };
   static auto constexpr transitionTo = [this](FollowerInternalState state) {
-    return [state, weak = this->weak_from_this()] {
+    return [state, weak = this->weak_from_this()](futures::Unit) {
       if (auto self = weak.lock(); self != nullptr) {
         self->_guardedData.getLockedGuard()->updateInternalState(state);
         self->newRun();
@@ -384,7 +391,8 @@ void FollowerStateManager<S>::newRun() noexcept {
   // Note that because `transitionWith` locks the self-ptr before calling `fn`,
   // fn itself is allowed to just capture and use `this`.
   static auto constexpr transitionWith = [this]<typename F>(F&& fn) {
-    return [weak = this->weak_from_this(), fn = std::forward<F>(fn)] () mutable {
+    return [weak = this->weak_from_this(),
+            fn = std::forward<F>(fn)](futures::Unit) mutable {
       if (auto self = weak.lock(); self != nullptr) {
         auto state = std::move(fn)();
         self->_guardedData.getLockedGuard()->updateInternalState(state);
@@ -414,12 +422,22 @@ void FollowerStateManager<S>::newRun() noexcept {
     case FollowerInternalState::kTransferSnapshot:
       tryTransferSnapshot()
           .thenValue(throwResultOnError)
-          .thenValue(transitionTo(FollowerInternalState::kWaitForNewEntries))
-          .thenError(
-              transitionTo(FollowerInternalState::kSnapshotTransferFailed));
+          .thenValue()
+          .thenFinal([&](futures::Try<futures::Unit>&& tryResult) {
+            if (tryResult.hasValue()) {
+              std::invoke(
+                  transitionTo(FollowerInternalState::kWaitForNewEntries),
+                  futures::Unit());
+            } else {
+              std::invoke(
+                  transitionTo(FollowerInternalState::kSnapshotTransferFailed),
+                  futures::Unit());
+            }
+          });
       break;
     case FollowerInternalState::kSnapshotTransferFailed:
-      std::invoke(transitionTo(FollowerInternalState::kTransferSnapshot));
+      std::invoke(transitionTo(FollowerInternalState::kTransferSnapshot),
+                  futures::Unit());
       break;
     case FollowerInternalState::kWaitForNewEntries:
       waitForNewEntries()
