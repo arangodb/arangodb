@@ -24,6 +24,7 @@
 #include "AgencySpecification.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "velocypack/Builder.h"
@@ -80,4 +81,16 @@ auto replicated_state::agency::to_string(StatusCode code) noexcept
     default:
       return "(unknown status code)";
   }
+}
+
+auto replicated_state::agency::operator==(ImplementationSpec const& s,
+                                          ImplementationSpec const& s2) noexcept
+    -> bool {
+  if (s.type != s2.type ||
+      s.parameters.has_value() != s2.parameters.has_value()) {
+    return false;
+  }
+  return !s.parameters.has_value() ||
+         basics::VelocyPackHelper::equal(s.parameters->slice(),
+                                         s2.parameters->slice(), true);
 }

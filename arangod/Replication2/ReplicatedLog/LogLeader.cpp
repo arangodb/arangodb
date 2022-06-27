@@ -68,6 +68,7 @@
 #include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Metrics/Counter.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "immer/detail/iterator_facade.hpp"
@@ -291,7 +292,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
+    std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
@@ -299,6 +300,8 @@ auto replicated_log::LogLeader::construct(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
+  auto const& config = participantsConfig->config;
+
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
     std::transform(followers.begin(), followers.end(),
@@ -567,6 +570,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
   auto const payloadSize = std::holds_alternative<LogPayload>(payload)
                                ? std::get<LogPayload>(payload).byteSize()
                                : 0;
+  bool const isMetaLogEntry = std::holds_alternative<LogMetaPayload>(payload);
   auto logEntry = InMemoryLogEntry(
       PersistingLogEntry(TermIndexPair{_self._currentTerm, index},
                          std::move(payload)),
@@ -575,6 +579,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
                                             : InMemoryLogEntry::clock::now());
   this->_inMemoryLog.appendInPlace(_self._logContext, std::move(logEntry));
   _self._logMetrics->replicatedLogInsertsBytes->count(payloadSize);
+  if (isMetaLogEntry) {
+    _self._logMetrics->replicatedLogNumberMetaEntries->count(1);
+  } else {
+    _self._logMetrics->replicatedLogNumberAcceptedEntries->count(1);
+  }
   return index;
 }
 
@@ -624,6 +633,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
 
   TRI_ASSERT(_commitIndex < newIndex)
       << "_commitIndex == " << _commitIndex << ", newIndex == " << newIndex;
+  _self._logMetrics->replicatedLogNumberCommittedEntries->count(
+      newIndex.value - _commitIndex.value);
   _commitIndex = newIndex;
   _lastQuorum = quorum;
 
@@ -989,18 +1000,24 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
   auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d6", TRACE, _self._logContext)
       << "compaction index calculated as " << compactionStop;
-  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
-    // only do a compaction every 1000 entries
+  if (compactionStop <=
+      _inMemoryLog.getFirstIndex() + _self._options->_thresholdLogCompaction) {
+    // only do a compaction every _self._options->_thresholdLogCompaction
+    // entries
     LOG_CTX("ebba0", TRACE, _self._logContext)
         << "won't trigger a compaction, not enough entries. First index = "
         << _inMemoryLog.getFirstIndex();
     return {};
   }
 
+  auto const numberOfCompactedEntries =
+      compactionStop.value - _inMemoryLog.getFirstIndex().value;
   auto newLog = _inMemoryLog.release(compactionStop);
   auto res = _self._localFollower->release(compactionStop);
   if (res.ok()) {
     _inMemoryLog = std::move(newLog);
+    _self._logMetrics->replicatedLogNumberCompactedEntries->count(
+        numberOfCompactedEntries);
   }
   LOG_CTX("f1029", TRACE, _self._logContext)
       << "compaction result = " << res.errorMessage();

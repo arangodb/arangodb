@@ -65,6 +65,11 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
     return {};
   }
 
+  [[nodiscard]] Status::Success value(velocypack::SharedSlice s) {
+    _builder.add(s.slice());
+    return {};
+  }
+
   [[nodiscard]] Status::Success value(velocypack::HashedStringRef const& s) {
     _builder.add(VPackValue(s.stringView()));
     return {};

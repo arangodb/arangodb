@@ -195,6 +195,16 @@ auto checkLeaderSet(SupervisionContext& ctx, RLA::Log const& log,
   }
 }
 
+auto checkConfigSet(SupervisionContext& ctx, RLA::Log const& log,
+                    RSA::State const& state) {
+  auto const& stateConfig = state.target.config;
+  auto const& logConfig = log.target.config;
+
+  if (stateConfig != logConfig) {
+    ctx.createAction<SetLogConfigAction>(stateConfig);
+  }
+}
+
 auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
                            RSA::State const& state) {
   ADB_PROD_ASSERT(state.plan.has_value());
@@ -386,6 +396,7 @@ auto checkReplicatedStateParticipants(SupervisionContext& ctx,
 auto checkForwardSettings(SupervisionContext& ctx, RLA::Log const& log,
                           RSA::State const& state) {
   checkLeaderSet(ctx, log, state);
+  checkConfigSet(ctx, log, state);
 }
 
 void checkReplicatedState(SupervisionContext& ctx,
