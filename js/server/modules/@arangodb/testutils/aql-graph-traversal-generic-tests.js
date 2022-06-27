@@ -2559,47 +2559,14 @@ const testSmallCircleBFSProjectionsEdges = testGraph => testProjectionsUsage(tes
 const testSmallCircleDFSProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "dfs", true);
 const testSmallCircleWeightedProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "weighted", true);
 
-const testParallelism = (testGraph, mode) => {
+const executeParallelQuery = (makeQuery, expectedTotalNumberOfNodes = -1) => {
   // We are using 10.000 start nodes here, to give all worker threads something to work on.
   // The input will most likely be split into batches of 1000 nodes each (implementation detail)
   // so with the above batch-size there should be enough work to distribute on 4 threads.
   const numberOfStartNodes = 10000;
 
-  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
-  // Note here: None of the proeduced results is returned twice by numberOfStartNodes = 1
-  const makeQuery = (parallel) => {
-    return `
-     LET start = "${testGraph.vertex('A')}"
-     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
-        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
-        OPTIONS {
-          ${parallel ? `parallelism: 4,` : ``}
-          uniqueVertices: "global",
-          uniqueEdges: "none",
-          order: "${mode}" }
-        RETURN v.key
-      `;
-  };
-
-  const query = makeQuery(true);
-
-  if (debugCanUseFailAt()) {
-    // Dry run, try to hit the MutexExecutor, a sign that parallelism is triggereds
-    debugSetFailAt("MutexExecutor::distributeBlock");
-    if (isEnterprise()) {
-      try {
-        db._query(query);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_DEBUG.code);
-      }
-    } else {
-      db._query(query);
-    }
-    debugClearFailAt();
-  }
-
-  const nonParallelQuery = makeQuery(false);
+  const query = makeQuery(true, numberOfStartNodes);
+  const nonParallelQuery = makeQuery(false, numberOfStartNodes);
   const cursor = db._query(nonParallelQuery);
   const expectedResults = new Map();
   while (cursor.hasNext()) {
@@ -2611,20 +2578,132 @@ const testParallelism = (testGraph, mode) => {
 
   // By this time the expected results contains all allowed results, each with an assigend counter of 0.
   // The target is to assert later, that only those allowed results are seen, and each is seen exactly ${numberOfStartNodes} many times.
-  const res = db._query(query);
+  const res = db._query(query, {}, {profile: 3});
+
   while (res.hasNext()) {
     const actual = res.next();
     assertTrue(expectedResults.has(actual), `Found unexpected result in parallel variant ${actual}`);
     // Increase the counter of seen by one
     expectedResults.set(actual, expectedResults.get(actual) + 1);
   }
-  for (const [result, counter] of expectedResults) {
-    assertEqual(counter, numberOfStartNodes, `Have seen incorrect number of result: ${result}`);
+
+  if (expectedTotalNumberOfNodes !== -1) {
+    let count = 0;
+    for (const [, counter] of expectedResults) {
+      count += counter;
+    }
+    assertEqual(count, expectedTotalNumberOfNodes);
+  } else {
+    for (const [result, counter] of expectedResults) {
+      assertEqual(counter, numberOfStartNodes, `Have seen incorrect number of result: ${result}`);
+    }
+  }
+};
+
+const makeParallelOptions = (parallel, mode) => {
+  return `OPTIONS {
+          ${parallel ? `parallelism: 8,` : ``}
+          uniqueVertices: "global",
+          uniqueEdges: "none",
+          order: "${mode}" }`;
+};
+
+const testParallelism = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        RETURN v.key
+      `;
+  };
+
+  if (debugCanUseFailAt()) {
+    const query = makeQuery(true, 1001);
+    // Dry run, try to hit the MutexExecutor, a sign that parallelism is triggereds
+    debugSetFailAt("MutexExecutor::distributeBlock");
+    if (isEnterprise()) {
+      try {
+        db._query(query, {}, {profile: 3});
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_DEBUG.code);
+      }
+    } else {
+      db._query(query);
+    }
+    debugClearFailAt();
   }
 
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismTwoTraversals = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismLimit = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        LET d = DOCUMENT(CONCAT(v._id, "_illegal"))
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        ${parallel ? `LIMIT 42, 637` : ``}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637);
+};
+
+const testParallelismSortLimit = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        LET d = DOCUMENT(CONCAT(v._id, "_illegal"))
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        SORT v2.key
+        ${parallel ? `LIMIT 42` : ``}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 42);
 };
 
 const testSmallCircleBFSParallelism = testGraph => testParallelism(testGraph, "bfs");
+const testSmallCircleBFSParallelismTwoTraversals = testGraph => testParallelismTwoTraversals(testGraph, "bfs");
+const testSmallCircleBFSParallelismLimit = testGraph => testParallelismLimit(testGraph, "bfs");
+const testSmallCircleBFSParallelismSortLimit = testGraph => testParallelismSortLimit(testGraph, "bfs");
 
 function testSmallCircleShortestPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
@@ -6264,6 +6343,9 @@ const testsByGraph = {
     testSmallCircleDFSProjectionsEdges,
     testSmallCircleWeightedProjectionsEdges,
     testSmallCircleBFSParallelism,
+    testSmallCircleBFSParallelismTwoTraversals,
+    testSmallCircleBFSParallelismLimit,
+    testSmallCircleBFSParallelismSortLimit,
     testSmallCircleShortestPath,
     testSmallCircleKPathsOutbound,
     testSmallCircleKPathsAny,

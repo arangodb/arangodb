@@ -138,7 +138,7 @@ class ExecutionEngine {
 
 #ifdef USE_ENTERPRISE
   static bool parallelizeGraphNode(
-      ExecutionPlan& plan, aql::GraphNode* graphNode,
+      aql::Query& query, ExecutionPlan& plan, aql::GraphNode* graphNode,
       std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
 
   static void parallelizeTraversals(
