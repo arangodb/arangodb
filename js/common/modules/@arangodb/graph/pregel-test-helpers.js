@@ -33,7 +33,7 @@ let general_graph_module = require("@arangodb/general-graph");
 let smart_graph_module = require("@arangodb/smart-graph");
 let internal = require("internal");
 let pregel = require("@arangodb/pregel");
-let graphGeneration = require("@arangodb/graph/graphs-generation");
+let graphGenerator = require("@arangodb/graph/graphs-generation").graphGenerator;
 
 // TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
 const pregelRunSmallInstance = function (algName, graphName, parameters) {
@@ -48,71 +48,52 @@ const pregelRunSmallInstance = function (algName, graphName, parameters) {
     return pregel.status(pid);
 };
 
-const graphName = "UnitTest_pregel";
-const vColl = "UnitTest_pregel_v";
-const eColl = "UnitTest_pregel_e";
+function makeWCCTestSuite(generatorBase) {
 
-/**
- * Create disjoint components using parameters from componentGenerators, apply WCC on the graph and test
- * the result.
- * @param componentGenerators is a list of ComponentGenerator's. Expected that a ComponentGenerator
- *        has fields generator and parameters, the latter should be an object with the field length.
- */
-const checkWCCDisjointComponents = function (parameters) {
+    const checkWCCDisjointComponents = function (parameters) {
     // Get the result of Pregel's WCC.
-    const status = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
+    const status = pregelRunSmallInstance("wcc", generatorBase.graphName, {resultField: "result", store: true});
     assertEqual(status.state, "done", "Pregel Job did never succeed.");
 
     // Now test the result.
-    const query = `
-                FOR v IN ${vColl}
-                  COLLECT component = v.result INTO components
-                  RETURN {component, components}
-            `;
+    const query = `FOR v IN ${generatorBase.vColl}
+                     COLLECT component = v.result INTO vertices = { _key: v._key, label: v.label }
+                     RETURN { component, vertices }`;
     const computedComponents = db._query(query).toArray();
-    assertEqual(computedComponents.length, parameters.length,
-        `We expected ${componentGenerators.length} components, instead got ${JSON.stringify(computedComponents)}`);
 
-    // Test that components contain correct vertices:
-    //   we saved the components such that a has vertices with labels
-    //   `${s}_i` where s is the size of the component and i is unique among all components
-    for (let computedComponent of computedComponents) {
-        const componentId = computedComponent.component;
-        // get the vertices of the computed component
-        const queryVerticesOfComponent = `
-        FOR v IN ${vColl}
-        FILTER v.result == ${componentId}
-          RETURN v.label
-      `;
-        const vertexLabelsOfComponent = db._query(queryVerticesOfComponent).toArray();
-        // note that vertexLabelsOfComponent cannot be empty
-        const expectedSize = extractSizeUniqueLabel(vertexLabelsOfComponent[0]).size;
-        // test component size
-        assertEqual(computedComponent.size, expectedSize,
-            `Expected ${expectedSize} as the size of the current component, obtained ${computedComponent.size}`);
-        // Test that the labels of vertices in the computed component are all the same.
-        for (let vertexLabel of vertexLabelsOfComponent) {
-            assertEqual(vertexLabel, `${vertexLabelsOfComponent[0]}`,
-                `Expected vertex label is ${vertexLabelsOfComponent[0]}, obtained ${vertexLabel}`);
+    assertEqual(computedComponents.length, Object.keys(parameters).length,
+        `We expected ${Object.keys(parameters).length} components, instead got ${JSON.stringify(computedComponents)}`);
+
+    console.log(`Compz: ${computedComponents}`);
+    for (const c in computedComponents) {
+      let component = computedComponents[c];
+      assertTrue(component.vertices.length > 0, `Found an empty component: ${JSON.stringify(component)}`);
+      let label = component.vertices[0].label;
+      let expectedSize = parameters[label].size;
+
+      assertEqual(component.vertices.length, expectedSize,
+            `Expected ${expectedSize} for component with label ${label}, found ${component.vertices.length}`);
+      // Test that the labels of vertices in the computed component are all the same.
+      for (let vertex of component.vertices) {
+          assertEqual(vertex.label, label,
+                `Connected component contains vertices with at least two different labels, ${vertex.label} and  ${label}`);
         }
     }
-};
-
-function makeWCCTestSuite(generator) {
+    };
     return function () {
         'use strict';
 
         return {
-          setUp: generator.setUp,
-          tearDown: generator.tearDown,
+          setUp: generatorBase.setUp,
+          tearDown: generatorBase.tearDown,
           testWCCFourDirectedCycles: function () {
-            parameters = [ { label: "C_2", size: 2 },
-                           { label: "C_10", size: 10 },
-                           { label: "C_5", size: 5  },
-                           { label: "C_23", size: 23 } ];
+            let parameters = { "C_2": { size: 2 },
+                               "C_10": { size: 10 },
+                               "C_5": { size: 5 },
+                               "C_23": { size: 23 } };
 
-            for (let p of parameters) {
-              generator.store(generator.labeled(p.label).makeDirectedCycle(p.size));
+            for (const [label, options] of Object.entries(parameters)) {
+              generatorBase.store(graphGenerator(generatorBase, label, label).makeDirectedCycle(options.size));
             }
 
             checkWCCDisjointComponents(parameters);

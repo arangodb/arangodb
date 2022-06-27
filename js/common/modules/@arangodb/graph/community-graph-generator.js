@@ -32,9 +32,37 @@
 const db = require("@arangodb").db;
 const graph_module = require("@arangodb/general-graph");
 
-const communityGenerator = function (vColl, eColl, graphName, numberOfShards, replicationFactor) {
+// TODO/FIXME: maybe we could just store vertices/edges in this closure and flush/store them
+// to the underlying graph?
+const communityGenerator = function (graphName, vColl, eColl, numberOfShards, replicationFactor) {
+      const makeLabeledEdge = function (from, to, label) {
+	  let r = {
+              _from: `${vColl}/${from}`,
+              _to: `${vColl}/${to}`,
+              vertex: `${from}`,
+          };
+	  if (label !== undefined) {
+	    r.label = label;
+	  }
+          return r;
+      };
+      const makeLabeledVertex = function (name, label) {
+          let r = { _key: `${name}` };
+	  if (label !== undefined) {
+	    r.label = label;
+	  }
+	  return r;
+      };
+
     return {
+      graphName: graphName,
+      vColl: vColl,
+      eColl: eColl,
       setUp: function() {
+	db._createDocumentCollection(vColl, {
+          numberOfShards: numberOfShards,
+	  replicationFactor: replicationFactor
+	});
         db._createEdgeCollection(eColl, {
           numberOfShards: numberOfShards,
           replicationFactor: replicationFactor,
@@ -43,23 +71,18 @@ const communityGenerator = function (vColl, eColl, graphName, numberOfShards, re
         });
         graph_module._create(graphName, [graph_module._relation(eColl, vColl, vColl)], []);
       },
+
       tearDown: function() {
         graph_module._drop(graphName, true);
       },
-      makeLabeledEdge: function (from, to, label) {
-          return {
-            _from: `${vColl}/${label}_${from}`,
-            _to: `${vColl}/${label}_${to}`,
-            vertex: `${label}_${from}`,
-            label: `${label}`
-          };
+
+      with_label: function(label) {
+	return {
+          makeEdge: function(from, to) { return makeLabeledEdge(from, to, label); },
+          makeVertex: function(name) { return makeLabeledVertex(name, label); }
+	};
       },
-      makeLabeledVertex: function (name, label) {
-          return {
-            _key: `${label}_${name}`,
-            label: `${label}`
-          };
-      },
+
       store: function(graph) {
         let {vertices, edges} = graph;
         db[vColl].save(vertices);

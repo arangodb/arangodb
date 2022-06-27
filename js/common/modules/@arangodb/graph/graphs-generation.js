@@ -31,65 +31,13 @@
 
 var graph_module = require("@arangodb/general-graph");
 
-const communityGenerator = function (vColl, numberOfShards, replicationFactor) {
-  const makeLabeledEdge = function (from, to, label) {
-          return {
-              _from: `${vColl}/${label}_${from}`,
-              _to: `${vColl}/${label}_${to}`,
-              vertex: `${label}_${from}`
-          };
-      };
-      const makeLabeledVertex = function (name, label) {
-          return {
-              _key: `${label}_${name}`,
-              label: `${label}`
-          };
-      };
-  const labeledSubgraphGenerator = function(label) {
-    return {
-      makeEdge: function(from, to) {
-        return makeLabeledEdge(from, to, label);
-      },
-      makeVertex: function(name) {
-        return makeLabeledVertex(name, label);
-      }
-    };
-  }
-    return {
-      setUp: function() {
-        db._createEdgeCollection(eColl, {
-          numberOfShards: numberOfShards,
-          replicationFactor: replicationFactor,
-          shardKeys: ["vertex"],
-          distributeShardsLike: vColl
-        });
-        graph_module._create(graphName, [graph_module._relation(eColl, vColl, vColl)], []);
-      },
-      tearDown: function() {
-        graph_module._drop(graphName, true);
-      },
-      makeLabeledEdge: function (from, to, label) {
-          return {
-              _from: `${vColl}/${label}_${from}`,
-              _to: `${vColl}/${label}_${to}`,
-              vertex: `${label}_${from}`
-          };
-      }, makeVertex: function (name, label) {
-          return {
-              _key: `${label}_${name}`,
-              label: `${label}`
-          };
-      }
-    };
-};
-
-const graphGenerator = function (verticesEdgesGenerator) {
-    const {makeVertex, makeEdge} = verticesEdgesGenerator;
+const graphGenerator = function (generatorBase, name, label) {
+    const {makeVertex, makeEdge} = generatorBase.with_label(label);
 
     const makeVertices = function (length) {
         let vertices = [];
         for (let i = 0; i < length; ++i) {
-            vertices.push(makeVertex(i));
+            vertices.push(makeVertex(`${name}_${i}`));
         }
         return vertices;
     };
@@ -110,9 +58,9 @@ const graphGenerator = function (verticesEdgesGenerator) {
         let vertices = makeVertices(length);
         let edges = [];
         for (let i = 0; i < length - 1; ++i) {
-            edges.push(makeEdge(i, i + 1));
+            edges.push(makeEdge(vertices[i]._key, vertices[i + 1]._key));
         }
-        edges.push(makeEdge(length - 1, 0));
+        edges.push(makeEdge(vertices[length - 1]._key, vertices[0]._key));
         return {vertices, edges};
     };
 
@@ -232,5 +180,4 @@ const graphGenerator = function (verticesEdgesGenerator) {
 
 };
 
-exports.communityGenerator = communityGenerator;
 exports.graphGenerator = graphGenerator;
