@@ -45,7 +45,10 @@
 
 #include <velocypack/Slice.h>
 
+#include <memory>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #ifdef USE_ENTERPRISE
 #define ENTERPRISE_VIRT virtual
@@ -66,18 +69,16 @@ class Builder;
 namespace aql {
 class Ast;
 struct AstNode;
-class SortCondition;
 struct Variable;
 }  // namespace aql
 
 namespace transaction {
+struct BatchOptions;
 class Context;
 struct Options;
 }  // namespace transaction
 
-/// @brief forward declarations
 class CollectionNameResolver;
-class ComputedValues;
 class Index;
 class IndexIterator;
 class LocalDocumentId;
@@ -85,16 +86,8 @@ struct IndexIteratorOptions;
 struct OperationOptions;
 class TransactionState;
 class TransactionCollection;
-struct ValidatorBase;
 
 namespace transaction {
-
-struct BatchOptions {
-  bool validateShardKeysOnUpdateReplace = false;
-  bool validateSmartJoinAttribute = false;
-  std::shared_ptr<ValidatorBase> schema = nullptr;
-  std::shared_ptr<ComputedValues> computedValues = nullptr;
-};
 
 class Methods {
  public:
@@ -443,7 +436,7 @@ class Methods {
                            velocypack::Slice value, RevisionId& newRevisionId,
                            velocypack::Builder& newDocumentBuilder,
                            OperationOptions& options,
-                           BatchOptions const& batchOptions);
+                           BatchOptions& batchOptions);
 
   Result determineReplicationTypeAndFollowers(
       LogicalCollection& collection, std::string_view operationName,
@@ -468,7 +461,7 @@ class Methods {
       LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
       velocypack::Slice previousDocument, RevisionId& newRevisionId,
       velocypack::Builder& newDocumentBuilder, OperationOptions& options,
-      BatchOptions const& batchOptions, bool isUpdate);
+      BatchOptions& batchOptions, bool isUpdate);
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
                                             VPackSlice value,

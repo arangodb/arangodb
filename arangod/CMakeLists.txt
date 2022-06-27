@@ -890,6 +890,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
+  Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
   Transaction/CountCache.cpp

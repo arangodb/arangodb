@@ -30,6 +30,7 @@
 #include "Basics/encoding.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/BatchOptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -449,7 +450,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
     velocypack::Slice oldValue, velocypack::Slice newValue, bool isNoOpUpdate,
     RevisionId previousRevisionId, RevisionId& revisionId,
     velocypack::Builder& builder, OperationOptions const& options,
-    transaction::BatchOptions const& batchOptions) {
+    transaction::BatchOptions& batchOptions) {
   transaction::BuilderLeaser b(&trx);
   b->openObject();
 
@@ -631,8 +632,10 @@ Result transaction::helpers::mergeObjectsForUpdate(
 
   if (batchOptions.computedValues != nullptr) {
     // add all remaining computed attributes, if we need to
+    batchOptions.ensureComputedValuesContext(trx);
     batchOptions.computedValues->mergeComputedAttributes(
-        trx, b->slice(), keysWritten, ComputeValuesOn::kUpdate, builder);
+        *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
+        ComputeValuesOn::kUpdate, builder);
   } else {
     // add document as is
     builder.add(b->slice());
@@ -647,7 +650,7 @@ Result transaction::helpers::newObjectForInsert(
     transaction::Methods& trx, LogicalCollection& collection,
     velocypack::Slice value, RevisionId& revisionId,
     velocypack::Builder& builder, OperationOptions const& options,
-    transaction::BatchOptions const& batchOptions) {
+    transaction::BatchOptions& batchOptions) {
   transaction::BuilderLeaser b(&trx);
 
   b->openObject();
@@ -771,8 +774,10 @@ Result transaction::helpers::newObjectForInsert(
 
   if (batchOptions.computedValues != nullptr) {
     // add all remaining computed attributes, if we need to
+    batchOptions.ensureComputedValuesContext(trx);
     batchOptions.computedValues->mergeComputedAttributes(
-        trx, b->slice(), keysWritten, ComputeValuesOn::kInsert, builder);
+        *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
+        ComputeValuesOn::kInsert, builder);
   } else {
     // add document as is
     builder.add(b->slice());
@@ -788,7 +793,7 @@ Result transaction::helpers::newObjectForReplace(
     transaction::Methods& trx, LogicalCollection& collection,
     VPackSlice oldValue, VPackSlice newValue, RevisionId& revisionId,
     VPackBuilder& builder, OperationOptions const& options,
-    transaction::BatchOptions const& batchOptions) {
+    transaction::BatchOptions& batchOptions) {
   transaction::BuilderLeaser b(&trx);
   b->openObject();
 
@@ -874,8 +879,10 @@ Result transaction::helpers::newObjectForReplace(
 
   if (batchOptions.computedValues != nullptr) {
     // add all remaining computed attributes, if we need to
+    batchOptions.ensureComputedValuesContext(trx);
     batchOptions.computedValues->mergeComputedAttributes(
-        trx, b->slice(), keysWritten, ComputeValuesOn::kReplace, builder);
+        *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
+        ComputeValuesOn::kReplace, builder);
   } else {
     // add document as is
     builder.add(b->slice());

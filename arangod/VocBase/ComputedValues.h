@@ -23,6 +23,10 @@
 
 #pragma once
 
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AqlValue.h"
+#include "Aql/ExpressionContext.h"
+#include "Basics/ErrorCode.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
@@ -34,6 +38,8 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct ValidatorBase;
+
 namespace aql {
 struct AstNode;
 class Expression;
@@ -56,6 +62,54 @@ enum class ComputeValuesOn : uint8_t {
   kInsert = 1,
   kUpdate = 2,
   kReplace = 4,
+};
+
+// expression context used for calculating computed values inside
+class ComputedValuesExpressionContext final : public aql::ExpressionContext {
+ public:
+  explicit ComputedValuesExpressionContext(transaction::Methods& trx);
+
+  void registerWarning(ErrorCode errorCode, char const* msg) override;
+
+  void registerError(ErrorCode errorCode, char const* msg) override;
+
+  void failOnWarning(bool value) { _failOnWarning = value; }
+
+  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+                                       bool caseInsensitive) override;
+
+  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+                                      bool caseInsensitive) override;
+
+  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                       velocypack::Options const* opts,
+                                       bool& isEmptyExpression) override;
+
+  ValidatorBase* buildValidator(
+      arangodb::velocypack::Slice const& params) override;
+
+  TRI_vocbase_t& vocbase() const override;
+
+  transaction::Methods& trx() const override;
+
+  bool killed() const override { return false; }
+
+  aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
+                                 bool& mustDestroy) const override;
+
+  void setVariable(aql::Variable const* variable,
+                   arangodb::velocypack::Slice value) override;
+
+  // unregister a temporary variable from the ExpressionContext.
+  void clearVariable(aql::Variable const* variable) noexcept override;
+
+ private:
+  transaction::Methods& _trx;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+  bool _failOnWarning;
+
+  containers::FlatHashMap<aql::Variable const*, arangodb::velocypack::Slice>
+      _variables;
 };
 
 class ComputedValues {
@@ -111,12 +165,14 @@ class ComputedValues {
   bool mustComputeValuesOnReplace() const noexcept;
 
   void mergeComputedAttributes(
-      transaction::Methods& trx, velocypack::Slice input,
+      aql::ExpressionContext& ctx, transaction::Methods& trx,
+      velocypack::Slice input,
       containers::FlatHashSet<std::string_view> const& keysWritten,
       ComputeValuesOn mustComputeOn, velocypack::Builder& output) const;
 
  private:
   void mergeComputedAttributes(
+      aql::ExpressionContext& ctx,
       containers::FlatHashMap<std::string, std::size_t> const& attributes,
       transaction::Methods& trx, velocypack::Slice input,
       containers::FlatHashSet<std::string_view> const& keysWritten,

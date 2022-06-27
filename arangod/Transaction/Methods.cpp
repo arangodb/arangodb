@@ -47,7 +47,6 @@
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
 #include "Futures/Utilities.h"
-#include "GeneralServer/RestHandler.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
@@ -61,6 +60,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/BatchOptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
@@ -1223,6 +1223,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
     }
   }
 
+  bool excludeAllFromReplication =
+      (replicationType != ReplicationType::LEADER ||
+       (followers->empty() &&
+        collection->replicationVersion() != replication::Version::TWO));
+
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
   // all document data that are going to be replicated, append-only
@@ -1268,10 +1273,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
     RevisionId newRevisionId;
     bool didReplace = false;
-    bool excludeFromReplication =
-        (replicationType != ReplicationType::LEADER ||
-         (followers->empty() &&
-          collection->replicationVersion() != replication::Version::TWO));
+    bool excludeFromReplication = excludeAllFromReplication;
 
     if (!isPrimaryKeyConstraintViolation) {
       // regular insert without overwrite option. the insert itself will check
@@ -1323,7 +1325,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
         if (res.ok() && oldRevisionId == newRevisionId) {
           // did not actually update - intentionally do not fill replicationData
-          excludeFromReplication = true;
+          excludeFromReplication |= true;
         }
       } else if (options.overwriteMode ==
                  OperationOptions::OverwriteMode::Replace) {
@@ -1517,7 +1519,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 Result transaction::Methods::insertLocalHelper(
     LogicalCollection& collection, velocypack::Slice value,
     RevisionId& newRevisionId, velocypack::Builder& newDocumentBuilder,
-    OperationOptions& options, BatchOptions const& batchOptions) {
+    OperationOptions& options, BatchOptions& batchOptions) {
   TRI_IF_FAILURE("LogicalCollection::insert") { return {TRI_ERROR_DEBUG}; }
 
   Result res = newObjectForInsert(*this, collection, value, newRevisionId,
@@ -1675,6 +1677,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     }
   }
 
+  bool excludeAllFromReplication =
+      (replicationType != ReplicationType::LEADER ||
+       (followers->empty() &&
+        collection->replicationVersion() != replication::Version::TWO));
+
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
   // builder for a single, old version of document (will be recycled for each
@@ -1727,11 +1734,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       return res;
     }
 
-    bool excludeFromReplication =
-        (replicationType != ReplicationType::LEADER ||
-         (followers->empty() &&
-          collection->replicationVersion() != replication::Version::TWO));
-
+    bool excludeFromReplication = excludeAllFromReplication;
     TRI_ASSERT(previousDocumentBuilder->slice().isObject());
     RevisionId newRevisionId;
     res =
@@ -1764,7 +1767,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
           options.returnOld ? previousDocumentBuilder.get() : nullptr,
           options.returnNew ? newDocumentBuilder.get() : nullptr);
       if (newRevisionId == oldRevisionId && isUpdate) {
-        excludeFromReplication = true;
+        excludeFromReplication |= true;
       }
     }
 
@@ -1881,7 +1884,7 @@ Result transaction::Methods::modifyLocalHelper(
     LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
     velocypack::Slice previousDocument, RevisionId& newRevisionId,
     velocypack::Builder& newDocumentBuilder, OperationOptions& options,
-    BatchOptions const& batchOptions, bool isUpdate) {
+    BatchOptions& batchOptions, bool isUpdate) {
   TRI_IF_FAILURE("LogicalCollection::update") {
     if (isUpdate) {
       return {TRI_ERROR_DEBUG};
@@ -2034,6 +2037,11 @@ Future<OperationResult> transaction::Methods::removeLocal(
     return futures::makeFuture(OperationResult(std::move(res), options));
   }
 
+  bool excludeAllFromReplication =
+      (replicationType != ReplicationType::LEADER ||
+       (followers->empty() &&
+        collection->replicationVersion() != replication::Version::TWO));
+
   // total result that is going to be returned to the caller, append-only
   VPackBuilder resultBuilder;
   // all document data that are going to be replicated, append-only
@@ -2092,11 +2100,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
       return res;
     }
 
-    bool excludeFromReplication =
-        (replicationType != ReplicationType::LEADER ||
-         (followers->empty() &&
-          collection->replicationVersion() != replication::Version::TWO));
-
+    bool excludeFromReplication = excludeAllFromReplication;
     TRI_ASSERT(previousDocumentBuilder->slice().isObject());
 
     res = removeLocalHelper(*collection, value, oldDocumentId, oldRevisionId,

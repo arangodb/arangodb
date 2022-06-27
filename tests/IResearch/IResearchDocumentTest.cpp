@@ -62,6 +62,7 @@
 #include "RestServer/AqlFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/BatchOptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -3110,10 +3111,11 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
     builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
     builder.close();
 
+    arangodb::transaction::BatchOptions batchOptions;
     arangodb::OperationOptions options;
     ASSERT_TRUE(arangodb::transaction::helpers::newObjectForInsert(
                     trx, *analyzersCollection, builder.slice(), rev, document,
-                    options, arangodb::transaction::BatchOptions{})
+                    options, batchOptions)
                     .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }
@@ -3186,10 +3188,11 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
     builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
     builder.close();
 
+    arangodb::transaction::BatchOptions batchOptions;
     arangodb::OperationOptions options;
     ASSERT_TRUE(arangodb::transaction::helpers::newObjectForInsert(
                     trx, *analyzersCollection, builder.slice(), rev, document,
-                    options, arangodb::transaction::BatchOptions{})
+                    options, batchOptions)
                     .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }

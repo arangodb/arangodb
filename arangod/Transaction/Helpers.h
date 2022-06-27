@@ -111,7 +111,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
                           velocypack::Slice value, RevisionId& revisionId,
                           velocypack::Builder& builder,
                           OperationOptions const& options,
-                          transaction::BatchOptions const& batchOptions);
+                          transaction::BatchOptions& batchOptions);
 
 /// @brief merge two objects for update
 Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
@@ -121,7 +121,7 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
                              RevisionId& revisionId,
                              velocypack::Builder& builder,
                              OperationOptions const& options,
-                             transaction::BatchOptions const& batchOptions);
+                             transaction::BatchOptions& batchOptions);
 
 /// @brief new object for replace
 Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
@@ -129,7 +129,7 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            velocypack::Slice newValue, RevisionId& revisionId,
                            velocypack::Builder& builder,
                            OperationOptions const& options,
-                           transaction::BatchOptions const& batchOptions);
+                           transaction::BatchOptions& batchOptions);
 
 bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
 

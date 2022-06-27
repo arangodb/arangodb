@@ -22,20 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ComputedValues.h"
-#include "Aql/AqlFunctionsInternalCache.h"
-#include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/StandaloneCalculation.h"
 #include "Aql/Variable.h"
+#include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
@@ -49,7 +47,6 @@
 
 #include <string_view>
 #include <type_traits>
-#include <unordered_set>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -65,100 +62,91 @@ std::underlying_type<arangodb::ComputeValuesOn>::type mustComputeOnValue(
       mustComputeOn);
 }
 
-// expression context used for calculating computed values inside
-class ComputedValuesExpressionContext final : public aql::ExpressionContext {
- public:
-  explicit ComputedValuesExpressionContext(transaction::Methods& trx)
-      : ExpressionContext(), _trx(trx), _failOnWarning(false) {}
-
-  void registerWarning(ErrorCode errorCode, char const* msg) override {
-    if (_failOnWarning) {
-      // treat as an error if we are supposed to treat warnings as errors
-      registerError(errorCode, msg);
-    }
-  }
-
-  void registerError(ErrorCode errorCode, char const* msg) override {
-    TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
-
-    if (msg == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(errorCode,
-                                     "computed values runtime error");
-    }
-
-    std::string error("computed values runtime error: ");
-    error.append(msg);
-    THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, error);
-  }
-
-  void failOnWarning(bool value) { _failOnWarning = value; }
-
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
-                                       bool caseInsensitive) override {
-    return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
-                                                        caseInsensitive);
-  }
-
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
-                                      bool caseInsensitive) override {
-    return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
-                                                       caseInsensitive);
-  }
-
-  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
-                                       velocypack::Options const* opts,
-                                       bool& isEmptyExpression) override {
-    return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
-                                                        isEmptyExpression);
-  }
-
-  arangodb::ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice const& params) override {
-    return _aqlFunctionsInternalCache.buildValidator(params);
-  }
-
-  TRI_vocbase_t& vocbase() const override { return _trx.vocbase(); }
-
-  // may be inaccessible on some platforms
-  transaction::Methods& trx() const override { return _trx; }
-  bool killed() const override { return false; }
-
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override {
-    auto it = _variables.find(variable);
-    if (it == _variables.end()) {
-      return AqlValue(AqlValueHintNull());
-    }
-    if (doCopy) {
-      return AqlValue(AqlValueHintSliceCopy(it->second));
-    }
-    return AqlValue(AqlValueHintSliceNoCopy(it->second));
-  }
-
-  void setVariable(Variable const* variable,
-                   arangodb::velocypack::Slice value) override {
-    TRI_ASSERT(variable != nullptr);
-    _variables[variable] = value;
-  }
-
-  // unregister a temporary variable from the ExpressionContext.
-  void clearVariable(Variable const* variable) noexcept override {
-    TRI_ASSERT(variable != nullptr);
-    _variables.erase(variable);
-  }
-
- private:
-  transaction::Methods& _trx;
-  AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-  bool _failOnWarning;
-
-  containers::FlatHashMap<Variable const*, arangodb::velocypack::Slice>
-      _variables;
-};
-
 }  // namespace
 
 namespace arangodb {
+// expression context used for calculating computed values inside
+ComputedValuesExpressionContext::ComputedValuesExpressionContext(
+    transaction::Methods& trx)
+    : aql::ExpressionContext(), _trx(trx), _failOnWarning(false) {}
+
+TRI_vocbase_t& ComputedValuesExpressionContext::vocbase() const {
+  return _trx.vocbase();
+}
+
+transaction::Methods& ComputedValuesExpressionContext::trx() const {
+  return _trx;
+}
+
+void ComputedValuesExpressionContext::registerWarning(ErrorCode errorCode,
+                                                      char const* msg) {
+  if (_failOnWarning) {
+    // treat as an error if we are supposed to treat warnings as errors
+    registerError(errorCode, msg);
+  }
+}
+
+void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
+                                                    char const* msg) {
+  TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
+
+  if (msg == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, "computed values runtime error");
+  }
+
+  std::string error("computed values runtime error: ");
+  error.append(msg);
+  THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, error);
+}
+
+icu::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
+    char const* ptr, size_t length, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
+                                                      caseInsensitive);
+}
+
+icu::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
+    char const* ptr, size_t length, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
+                                                     caseInsensitive);
+}
+
+icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
+    AqlValue splitExpression, velocypack::Options const* opts,
+    bool& isEmptyExpression) {
+  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
+                                                      isEmptyExpression);
+}
+
+arangodb::ValidatorBase* ComputedValuesExpressionContext::buildValidator(
+    arangodb::velocypack::Slice const& params) {
+  return _aqlFunctionsInternalCache.buildValidator(params);
+}
+
+aql::AqlValue ComputedValuesExpressionContext::getVariableValue(
+    aql::Variable const* variable, bool doCopy, bool& mustDestroy) const {
+  auto it = _variables.find(variable);
+  if (it == _variables.end()) {
+    return AqlValue(AqlValueHintNull());
+  }
+  if (doCopy) {
+    return AqlValue(AqlValueHintSliceCopy(it->second));
+  }
+  return AqlValue(AqlValueHintSliceNoCopy(it->second));
+}
+
+void ComputedValuesExpressionContext::setVariable(
+    aql::Variable const* variable, arangodb::velocypack::Slice value) {
+  TRI_ASSERT(variable != nullptr);
+  _variables[variable] = value;
+}
+
+// unregister a temporary variable from the ExpressionContext.
+void ComputedValuesExpressionContext::clearVariable(
+    aql::Variable const* variable) noexcept {
+  TRI_ASSERT(variable != nullptr);
+  _variables.erase(variable);
+}
 
 ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
                                              std::string_view name,
@@ -253,7 +241,7 @@ void ComputedValues::ComputedValue::toVelocyPack(
       ::mustComputeOnValue(ComputeValuesOn::kReplace)) {
     result.add(VPackValue("replace"));
   }
-  result.close();  // mustComputeOn
+  result.close();  // computeOn
   result.add("override", VPackValue(_override));
   result.add("failOnWarning", VPackValue(_failOnWarning));
   result.close();
@@ -314,20 +302,21 @@ bool ComputedValues::mustComputeValuesOnReplace() const noexcept {
 }
 
 void ComputedValues::mergeComputedAttributes(
-    transaction::Methods& trx, velocypack::Slice input,
+    aql::ExpressionContext& ctx, transaction::Methods& trx,
+    velocypack::Slice input,
     containers::FlatHashSet<std::string_view> const& keysWritten,
     ComputeValuesOn mustComputeOn, velocypack::Builder& output) const {
   if (mustComputeOn == ComputeValuesOn::kInsert) {
     // insert case
-    mergeComputedAttributes(_attributesForInsert, trx, input, keysWritten,
+    mergeComputedAttributes(ctx, _attributesForInsert, trx, input, keysWritten,
                             output);
   } else if (mustComputeOn == ComputeValuesOn::kUpdate) {
     // update case
-    mergeComputedAttributes(_attributesForUpdate, trx, input, keysWritten,
+    mergeComputedAttributes(ctx, _attributesForUpdate, trx, input, keysWritten,
                             output);
   } else if (mustComputeOn == ComputeValuesOn::kReplace) {
     // replace case
-    mergeComputedAttributes(_attributesForReplace, trx, input, keysWritten,
+    mergeComputedAttributes(ctx, _attributesForReplace, trx, input, keysWritten,
                             output);
   } else {
     TRI_ASSERT(false);
@@ -335,12 +324,11 @@ void ComputedValues::mergeComputedAttributes(
 }
 
 void ComputedValues::mergeComputedAttributes(
+    aql::ExpressionContext& ctx,
     containers::FlatHashMap<std::string, std::size_t> const& attributes,
     transaction::Methods& trx, velocypack::Slice input,
     containers::FlatHashSet<std::string_view> const& keysWritten,
     velocypack::Builder& output) const {
-  ComputedValuesExpressionContext ctx(trx);
-
   output.openObject();
 
   {
@@ -350,6 +338,8 @@ void ComputedValues::mergeComputedAttributes(
     VPackObjectIterator it(input, true);
 
     while (it.valid()) {
+      // note: key slices can be strings or numbers. they are numbers
+      // for the internal attributes _id, _key, _rev, _from, _to
       VPackSlice key = it.key(/*translate*/ false);
       if (key.isNumber()) {
         // _id, _key, _rev, _from, _to
@@ -368,18 +358,21 @@ void ComputedValues::mergeComputedAttributes(
   }
 
   // now add all the computed attributes
+  ComputedValuesExpressionContext& cvec =
+      basics::downCast<ComputedValuesExpressionContext>(ctx);
+
   for (auto const& it : attributes) {
     ComputedValue const& cv = _values[it.second];
     if (cv.doOverride() || !keysWritten.contains(cv.name())) {
       // update "failOnWarning" flag for each computation
-      ctx.failOnWarning(cv.failOnWarning());
+      cvec.failOnWarning(cv.failOnWarning());
       // inject document into temporary variable (@doc)
-      ctx.setVariable(cv.tempVariable(), input);
+      cvec.setVariable(cv.tempVariable(), input);
       // if "computeAttribute" throws, then the operation is
       // intentionally aborted here. caller has to catch the
       // exception
-      cv.computeAttribute(ctx, input, output);
-      ctx.clearVariable(cv.tempVariable());
+      cv.computeAttribute(cvec, input, output);
+      cvec.clearVariable(cv.tempVariable());
     }
   }
 
@@ -399,7 +392,7 @@ Result ComputedValues::buildDefinitions(
 
   using namespace std::literals::string_literals;
 
-  std::unordered_set<std::string_view> names;
+  containers::FlatHashSet<std::string_view> names;
   Result res;
 
   for (auto it : VPackArrayIterator(params)) {
