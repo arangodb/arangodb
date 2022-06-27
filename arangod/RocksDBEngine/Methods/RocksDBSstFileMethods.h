@@ -44,6 +44,10 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
                                  RocksDBIndex& ridx,
                                  rocksdb::Options const& dbOptions,
                                  std::string const& idxPath);
+  explicit RocksDBSstFileMethods(rocksdb::DB* rootDB,
+                                 rocksdb::ColumnFamilyHandle* cf,
+                                 rocksdb::Options const& dbOptions,
+                                 std::string const& idxPath);
   ~RocksDBSstFileMethods();
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
@@ -76,9 +80,9 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   bool _isForeground;
   rocksdb::DB* _rootDB;
   RocksDBTransactionCollection* _trxColl;
-  RocksDBIndex& _ridx;
-  rocksdb::SstFileWriter _sstFileWriter;
+  std::unique_ptr<RocksDBIndex> _ridx;
   rocksdb::ColumnFamilyHandle* _cf;
+  rocksdb::SstFileWriter _sstFileWriter;
   std::string _idxPath;
   std::vector<std::string> _sstFileNames;
   std::vector<std::pair<std::string, std::string>> _keyValPairs;

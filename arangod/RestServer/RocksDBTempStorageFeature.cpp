@@ -141,11 +141,15 @@ void RocksDBTempStorageFeature::start() {
   std::string path(dataPath());
   cleanUpTempStorageFiles(path);
 
-  RocksDBEngine& rocksDBEngine = (RocksDBEngine&)(engine);
+  RocksDBEngine& rocksDBEngine = static_cast<RocksDBEngine&>(engine);
   _dbOptions = rocksDBEngine.rocksDBOptions();
   _options.create_missing_column_families = true;
   _options.create_if_missing = true;
-  _options.env = _dbOptions.env;
+  _options.env = rocksdb::Env::Default();
+
+#ifdef USE_ENTERPRISE
+  rocksDBEngine.configureEnterpriseRocksDBOptions(_options, true);
+#endif
   _options.prefix_extractor.reset(
       rocksdb::NewFixedPrefixTransform(sizeof(uint64_t)));
 

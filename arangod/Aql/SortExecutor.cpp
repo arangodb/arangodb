@@ -34,6 +34,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Basics/application-exit.h"
 #include "Basics/ResourceUsage.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
@@ -140,10 +141,15 @@ size_t SortExecutorInfos::limit() const noexcept { return _limit; }
 
 SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
     : _infos(infos),
-      _input(nullptr),
       _currentRow(CreateInvalidInputRowHint{}),
       _returnNext(0),
       _memoryUsageForRowIndexes(0),
+      _rocksDBfeature(_infos.getStorageFeature()),
+      _tempDB(_rocksDBfeature.tempDB()),
+      _cfHandle(_rocksDBfeature.cfHandles()[0]),
+      _methods(std::make_unique<RocksDBSstFileMethods>(
+          _tempDB, _cfHandle, _rocksDBfeature.tempDBOptions(),
+          _rocksDBfeature.dataPath())),
       _keyPrefix(++::keyPrefixCounter) {
   rocksutils::uintToPersistentBigEndian<std::uint64_t>(_upperBoundPrefix,
                                                        _keyPrefix + 1);
@@ -154,16 +160,10 @@ SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
 }
 
 SortExecutor::~SortExecutor() {
-  _inputReady = false;
-  _mustStoreInput = false;
-  _rowIndexes.clear();
-  _inputBlocks.clear();
   _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
 }
 
 void SortExecutor::consumeInputForStorage() {
-  auto& rocksDBfeature = _infos.getStorageFeature();
-  rocksdb::DB* tempDB = rocksDBfeature.tempDB();
   std::string keyWithPrefix;
 
   size_t const avgSliceSize = 50;
@@ -190,13 +190,27 @@ void SortExecutor::consumeInputForStorage() {
     builder.openObject();
     newRow.toVelocyPack(_infos.vpackOptions(), builder);
     builder.close();
+    rocksdb::Slice keySlice = keyWithPrefix;
+    RocksDBKey rocksDBkey(keySlice);
+    auto res = _methods->Put(
+        _cfHandle, rocksDBkey,
+        {builder.slice().startAs<char const>(), builder.slice().byteSize()},
+        true);
+    if (!res.ok()) {
+      LOG_TOPIC("20e7f", FATAL, arangodb::Logger::STARTUP)
+          << "unable to write in entry: "
+          << rocksutils::convertStatus(res).errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+    /*
     _batch.Put(
-        rocksDBfeature.cfHandles()[0], keyWithPrefix,
+        _cfHandle, keyWithPrefix,
         {builder.slice().startAs<char const>(), builder.slice().byteSize()});
+        */
     ++_inputCounterForStorage;
   }
-  rocksdb::Status s = tempDB->Write(rocksdb::WriteOptions(), &_batch);
-  _batch.Clear();
+  // rocksdb::Status s = _tempDB->Write(rocksdb::WriteOptions(), &_batch);
+  // _batch.Clear();
   _rowIndexes.clear();
   _inputBlocks.clear();
 }
@@ -215,7 +229,8 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
     // This executor is passthrough. it has enough place to write.
     _rowIndexes.emplace_back(
         std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
-    if (_memoryUsage >= kMemoryLowerBound) {
+    if (_rowIndexes.size() >= 5) {
+      //  if (_memoryUsage >= kMemoryLowerBound) {
       _mustStoreInput = true;
       consumeInputForStorage();
     }
@@ -231,16 +246,58 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
   _memoryUsageForRowIndexes += memoryUsageForRowIndexes;
 }
 
-rocksdb::Status SortExecutor::deleteRangeInStorage() {
-  return rocksdb::DeleteFilesInRange(_infos.getStorageFeature().tempDB(),
-                                     _infos.getStorageFeature().cfHandles()[0],
-                                     &_lowerBoundSlice, &_upperBoundSlice,
-                                     true);
+Result SortExecutor::deleteRangeInStorage() {  // return our result instead of
+                                               // rocksdb one
+
+  rocksdb::Status s = rocksdb::DeleteFilesInRange(
+      _tempDB, _cfHandle, &_lowerBoundSlice, &_upperBoundSlice, false);
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+  s = _tempDB->DeleteRange(rocksdb::WriteOptions(), _cfHandle, _lowerBoundSlice,
+                           _upperBoundSlice);
+
+  rocksdb::ReadOptions readOptions;
+  readOptions.iterate_upper_bound = &_upperBoundSlice;
+
+  readOptions.prefix_same_as_start = true;
+  auto it = std::unique_ptr<rocksdb::Iterator>(
+      _tempDB->NewIterator(readOptions, _cfHandle));
+
   /*
-return _infos.getStorageFeature().tempDB()->DeleteRange(
-  rocksdb::WriteOptions(), _infos.getStorageFeature().cfHandles()[0],
-  _lowerBoundSlice, _upperBoundSlice);
+  it->Seek(_lowerBoundSlice);
+  std::uint64_t counter = 0;
+  for (; it->Valid(); it->Next()) {
+    ++counter;
+  }
+  LOG_DEVEL << "COUNTER " << counter;
    */
+
+  return rocksutils::convertStatus(s);
+}
+
+Result SortExecutor::ingestFilesForStorage() {
+  std::vector<std::string> fileNames;
+  Result res = static_cast<RocksDBSstFileMethods*>(_methods.get())
+                   ->stealFileNames(fileNames);
+  rocksdb::Status s;
+  if (res.ok() && !fileNames.empty()) {
+    rocksdb::IngestExternalFileOptions ingestOptions;
+    ingestOptions.move_files = true;
+    ingestOptions.failed_move_fall_back_to_copy = true;
+    ingestOptions.snapshot_consistency = false;
+    ingestOptions.write_global_seqno = false;
+    ingestOptions.verify_checksums_before_ingest = false;
+
+    s = _tempDB->IngestExternalFile(_cfHandle, fileNames,
+                                    std::move(ingestOptions));
+  }
+  if (!s.ok()) {
+    res = rocksutils::convertStatus(s);
+    LOG_TOPIC("11080", WARN, Logger::ENGINES)
+        << "Error in file ingestion: " << res.errorMessage();
+  }
+  return res;
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
@@ -268,7 +325,9 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
       auto status = deleteRangeInStorage();
       if (!status.ok()) {
         LOG_TOPIC("20e7f", FATAL, arangodb::Logger::STARTUP)
-            << "unable to initialize RocksDB engine: " << status.ToString();
+            << "unable to delete range in RocksDB storage: "
+            << status.errorMessage();
+        FATAL_ERROR_EXIT();
       }
     }
     return {ExecutorState::DONE, NoStats{}, upstreamCall};
@@ -286,21 +345,27 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     }
     _inputReady = true;
     if (_mustStoreInput) {
+      auto status = ingestFilesForStorage();
+      if (!status.ok()) {
+        LOG_TOPIC("b9731", FATAL, arangodb::Logger::STARTUP)
+            << "unable to ingest files in RocksDB storage: "
+            << status.errorMessage();
+        FATAL_ERROR_EXIT();
+      }
       rocksdb::ReadOptions readOptions;
 
       std::string keyPrefix;
       rocksutils::uintToPersistentBigEndian<std::uint64_t>(keyPrefix,
                                                            _keyPrefix);
 
-      readOptions.auto_prefix_mode = true;
+      // readOptions.auto_prefix_mode = true;
 
       readOptions.iterate_upper_bound = &_upperBoundSlice;
 
       readOptions.prefix_same_as_start = true;
 
       _curIt = std::unique_ptr<rocksdb::Iterator>(
-          _infos.getStorageFeature().tempDB()->NewIterator(
-              readOptions, _infos.getStorageFeature().cfHandles()[0]));
+          _tempDB->NewIterator(readOptions, _cfHandle));
       _curIt->Seek(keyPrefix);
     }
   }
@@ -341,7 +406,9 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
       auto status = deleteRangeInStorage();
       if (!status.ok()) {
         LOG_TOPIC("5a64a", FATAL, arangodb::Logger::STARTUP)
-            << "unable to initialize RocksDB engine: " << status.ToString();
+            << "unable to delete range in RocksDB storage: "
+            << status.errorMessage();
+        FATAL_ERROR_EXIT();
       }
     }
     state = ExecutorState::DONE;
@@ -394,7 +461,9 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
       auto status = deleteRangeInStorage();
       if (!status.ok()) {
         LOG_TOPIC("c7490", FATAL, arangodb::Logger::STARTUP)
-            << "unable to initialize RocksDB engine: " << status.ToString();
+            << "unable to delete range in RocksDB storage: "
+            << status.errorMessage();
+        FATAL_ERROR_EXIT();
       }
     }
     return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
@@ -410,6 +479,13 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     }
     _inputReady = true;
     if (_mustStoreInput) {
+      auto status = ingestFilesForStorage();
+      if (!status.ok()) {
+        LOG_TOPIC("59437", FATAL, arangodb::Logger::STARTUP)
+            << "unable to ingest files in RocksDB storage: "
+            << status.errorMessage();
+        FATAL_ERROR_EXIT();
+      }
       rocksdb::ReadOptions readOptions;
 
       readOptions.iterate_upper_bound = &_upperBoundSlice;
@@ -420,8 +496,7 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
       readOptions.prefix_same_as_start = true;
 
       _curIt = std::unique_ptr<rocksdb::Iterator>(
-          _infos.getStorageFeature().tempDB()->NewIterator(
-              readOptions, _infos.getStorageFeature().cfHandles()[0]));
+          _tempDB->NewIterator(readOptions, _cfHandle));
       _curIt->Seek(keyPrefix);
     }
   }
@@ -450,7 +525,9 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
       auto status = deleteRangeInStorage();
       if (!status.ok()) {
         LOG_TOPIC("43bf7", FATAL, arangodb::Logger::STARTUP)
-            << "unable to initialize RocksDB engine: " << status.ToString();
+            << "unable to delete range in RocksDB storage: "
+            << status.errorMessage();
+        FATAL_ERROR_EXIT();
       }
     }
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};

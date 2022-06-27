@@ -41,10 +41,24 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
       _isForeground(isForeground),
       _rootDB(rootDB),
       _trxColl(trxColl),
-      _ridx(ridx),
+      _ridx(&ridx),
+      _cf(ridx.columnFamily()),
       _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
                      ridx.columnFamily()->GetComparator(), ridx.columnFamily()),
-      _cf(ridx.columnFamily()),
+      _idxPath(idxPath) {}
+
+RocksDBSstFileMethods::RocksDBSstFileMethods(rocksdb::DB* rootDB,
+                                             rocksdb::ColumnFamilyHandle* cf,
+                                             rocksdb::Options const& dbOptions,
+                                             std::string const& idxPath)
+    : RocksDBMethods(),
+      _isForeground(false),
+      _rootDB(rootDB),
+      _trxColl(nullptr),
+      //  _ridx(nullptr),
+      _cf(cf),
+      _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
+                     _cf->GetComparator(), _cf),
       _idxPath(idxPath) {}
 
 RocksDBSstFileMethods::~RocksDBSstFileMethods() { cleanUpFiles(); }
@@ -52,11 +66,11 @@ RocksDBSstFileMethods::~RocksDBSstFileMethods() { cleanUpFiles(); }
 void RocksDBSstFileMethods::insertEstimators() {
   auto ops = _trxColl->stealTrackedIndexOperations();
   if (!ops.empty()) {
-    TRI_ASSERT(_ridx.hasSelectivityEstimate() && ops.size() == 1);
+    TRI_ASSERT(_ridx->hasSelectivityEstimate() && ops.size() == 1);
     auto it = ops.begin();
-    TRI_ASSERT(_ridx.id() == it->first);
+    TRI_ASSERT(_ridx->id() == it->first);
 
-    auto* estimator = _ridx.estimator();
+    auto* estimator = _ridx->estimator();
     if (estimator != nullptr) {
       if (_isForeground) {
         estimator->insert(it->second.inserts);
@@ -102,7 +116,7 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
     }
     if (!res.ok()) {
       cleanUpFiles();
-    } else {
+    } else if (_ridx.get() != nullptr) {
       insertEstimators();
     }
   }

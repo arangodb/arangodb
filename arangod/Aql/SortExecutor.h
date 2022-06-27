@@ -31,6 +31,8 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "RestServer/RocksDBTempStorageFeature.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
 #include <rocksdb/db.h>
 #include <rocksdb/iterator.h>
 
@@ -156,7 +158,8 @@ class SortExecutor {
   void doSorting();
   void consumeInput(AqlItemBlockInputRange& inputRange, ExecutorState& state);
   void consumeInputForStorage();
-  rocksdb::Status deleteRangeInStorage();
+  Result deleteRangeInStorage();
+  Result ingestFilesForStorage();
 
  private:
   static constexpr size_t kMemoryLowerBound = 1024 * 1024;
@@ -164,7 +167,6 @@ class SortExecutor {
   bool _mustStoreInput = false;
   Infos& _infos;
 
-  AqlItemMatrix const* _input;
   InputAqlItemRow _currentRow;
 
   std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
@@ -175,8 +177,11 @@ class SortExecutor {
   std::vector<SharedAqlItemBlockPtr> _inputBlocks;
   std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
   std::unique_ptr<rocksdb::Iterator> _curIt;
+  RocksDBTempStorageFeature& _rocksDBfeature;
   SharedAqlItemBlockPtr _curBlock = nullptr;
+  rocksdb::DB* _tempDB;
   rocksdb::ColumnFamilyHandle* _cfHandle = nullptr;
+  std::unique_ptr<RocksDBSstFileMethods> _methods;
   std::uint64_t const _keyPrefix;
   std::string _lowerBoundPrefix;
   rocksdb::WriteBatch _batch;
