@@ -45,39 +45,43 @@ void LeaderStateManager<S>::run() noexcept {
         }
       };
 
-  auto const handleErrorsAndTransitionTo = [this](
-                                               LeaderInternalState nextState) {
-    return [weak = this->weak_from_this(),
-            nextState](futures::Try<Result>&& tryResult) noexcept {
-      auto self = weak.lock();
-      if (self != nullptr) {
-        try {
-          throwResultOnErrorAsCorrespondingException(tryResult.get());
-        } catch (replicated_log::ParticipantResignedException const&) {
-          LOG_CTX("7322d", DEBUG, self->loggerContext)
-              << "Log leader resigned, stopping replicated state machine. Will "
-                 "be restarted soon.";
-          return;
-        } catch (basics::Exception const& ex) {
-          LOG_CTX("0dcf7", FATAL, self->loggerContext)
-              << "Caught unhandled exception in replicated state "
-                 "machine: "
-              << ex.message();
-          FATAL_ERROR_EXIT();
-        } catch (std::exception const& ex) {
-          LOG_CTX("506c2", FATAL, self->loggerContext)
-              << "Caught unhandled exception in replicated state "
-                 "machine: "
-              << ex.what();
-          FATAL_ERROR_EXIT();
-        } catch (...) {
-          LOG_CTX("6788b", FATAL, self->loggerContext)
-              << "Caught unhandled exception in replicated state "
-                 "machine.";
-          FATAL_ERROR_EXIT();
-        }
-        self->guardedData.doUnderLock(
-            [nextState](auto& data) { data.updateInternalState(nextState); });
+  auto const handleErrors = [weak = this->weak_from_this()](
+                                futures::Try<Result>&& tryResult) {
+    // TODO Instead of capturing "this", should we capture the loggerContext
+    // instead?
+    if (auto self = weak.lock(); self != nullptr) {
+      try {
+        throwResultOnErrorAsCorrespondingException(tryResult.get());
+      } catch (replicated_log::ParticipantResignedException const&) {
+        LOG_CTX("7322d", DEBUG, self->loggerContext)
+            << "Log leader resigned, stopping replicated state machine. Will "
+               "be restarted soon.";
+        return;
+      } catch (basics::Exception const& ex) {
+        LOG_CTX("0dcf7", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state "
+               "machine: "
+            << ex.message();
+        FATAL_ERROR_EXIT();
+      } catch (std::exception const& ex) {
+        LOG_CTX("506c2", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state "
+               "machine: "
+            << ex.what();
+        FATAL_ERROR_EXIT();
+      } catch (...) {
+        LOG_CTX("6788b", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state "
+               "machine.";
+        FATAL_ERROR_EXIT();
+      }
+    }
+  };
+
+  auto const transitionTo = [this](LeaderInternalState state) {
+    return [state, weak = this->weak_from_this()] {
+      if (auto self = weak.lock(); self != nullptr) {
+        self->_guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
       }
     };
@@ -96,21 +100,26 @@ void LeaderStateManager<S>::run() noexcept {
     case LeaderInternalState::kUninitializedState: {
       // This transition does nothing except make it visible that run() was
       // actually called.
-      handleErrorsAndTransitionTo(
-          LeaderInternalState::kWaitingForLeadershipEstablished)({});
+      std::invoke(
+          transitionTo(LeaderInternalState::kWaitingForLeadershipEstablished));
     } break;
     case LeaderInternalState::kWaitingForLeadershipEstablished: {
-      waitForLeadership().thenFinal(handleErrorsAndTransitionTo(
-          LeaderInternalState::kRecoveryInProgress));
+      waitForLeadership()
+          .thenValue(transitionTo(LeaderInternalState::kRecoveryInProgress))
+          .thenError(handleErrors);
     } break;
     case LeaderInternalState::kRecoveryInProgress: {
-      recoverEntries().thenFinal(
-          handleErrorsAndTransitionTo(LeaderInternalState::kServiceStarting));
+      recoverEntries()
+          .thenValue(transitionTo(LeaderInternalState::kServiceStarting))
+          .thenError(handleErrors);
     } break;
     case LeaderInternalState::kServiceStarting: {
       auto res = toTryResult([this] { return startService(); });
-      handleErrorsAndTransitionTo(LeaderInternalState::kServiceAvailable)(
-          std::move(res));
+      if (res.ok()) {
+        std::invoke(transitionTo(LeaderInternalState::kServiceAvailable));
+      } else {
+        handleErrors(std::move(res));
+      }
     } break;
     case LeaderInternalState::kServiceAvailable: {
     } break;
