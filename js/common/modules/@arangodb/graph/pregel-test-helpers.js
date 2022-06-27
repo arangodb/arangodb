@@ -97,6 +97,19 @@ function makeWCCTestSuite(generatorBase) {
             }
 
             checkWCCDisjointComponents(parameters);
+          },
+          testWCC20DirectedCycles: function () {
+            let parameters = {};
+                // cycles of length smaller than 2 cannot be produced
+                for (let i = 2; i < 22; ++i) {
+                  parameters[`C_{$i}`] = { size: i };
+                }
+
+                for (const [label, options] of Object.entries(parameters)) {
+                  generatorBase.store(graphGenerator(generatorBase, label, label).makeDirectedCycle(options.size));
+                }
+
+                checkWCCDisjointComponents(parameters);
           }
         };
     };
