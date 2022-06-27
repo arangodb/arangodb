@@ -55,6 +55,7 @@
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -994,6 +995,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
+  auto replicationVersion = collection->replicationVersion();
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // This failure point is to test the case that a former leader has
@@ -1018,16 +1020,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
             TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
-      switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
-          // We cannot fulfill minimum replication Factor. Reject write.
-          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-        case FollowerInfo::WriteState::UNAVAILABLE:
-        case FollowerInfo::WriteState::STARTUP:
-          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                 options);
-        default:
-          break;
+      // This is just a trick to let the function continue for replication2
+      // databases
+      if (replicationVersion != replication::Version::TWO) {
+        switch (followerInfo->allowedToWrite()) {
+          case FollowerInfo::WriteState::FORBIDDEN:
+            // We cannot fulfill minimum replication Factor. Reject write.
+            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+          case FollowerInfo::WriteState::UNAVAILABLE:
+          case FollowerInfo::WriteState::STARTUP:
+            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                   options);
+          default:
+            break;
+        }
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1038,7 +1044,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty()) {
+      if (!followers->empty() ||
+          replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1325,7 +1332,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
 #endif
 
     if (!isMock && replicationType == ReplicationType::LEADER &&
-        !followers->empty()) {
+        (!followers->empty() ||
+         replicationVersion == replication::Version::TWO)) {
       TRI_ASSERT(collection != nullptr);
 
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1432,6 +1440,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
+  auto replicationVersion = collection->replicationVersion();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
@@ -1449,16 +1458,20 @@ Future<OperationResult> transaction::Methods::modifyLocal(
             TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
-      switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
-          // We cannot fulfill minimum replication Factor. Reject write.
-          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-        case FollowerInfo::WriteState::UNAVAILABLE:
-        case FollowerInfo::WriteState::STARTUP:
-          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                 options);
-        default:
-          break;
+      // This is just a trick to let the function continue for replication2
+      // databases
+      if (replicationVersion != replication::Version::TWO) {
+        switch (followerInfo->allowedToWrite()) {
+          case FollowerInfo::WriteState::FORBIDDEN:
+            // We cannot fulfill minimum replication Factor. Reject write.
+            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+          case FollowerInfo::WriteState::UNAVAILABLE:
+          case FollowerInfo::WriteState::STARTUP:
+            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                   options);
+          default:
+            break;
+        }
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1469,7 +1482,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty()) {
+      if (!followers->empty() ||
+          replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1650,7 +1664,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
   auto resDocs = resultBuilder.steal();
   if (res.ok()) {
-    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+    if (replicationType == ReplicationType::LEADER &&
+        (!followers->empty() ||
+         replicationVersion == replication::Version::TWO)) {
       // We still hold a lock here, because this is update/replace and we're
       // therefore not doing single document operations. But if we didn't hold
       // it at the beginning of the method the followers may not be up-to-date.
@@ -1736,6 +1752,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
+  auto replicationVersion = collection->replicationVersion();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -1750,16 +1767,20 @@ Future<OperationResult> transaction::Methods::removeLocal(
             TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
-      switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
-          // We cannot fulfill minimum replication Factor. Reject write.
-          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-        case FollowerInfo::WriteState::UNAVAILABLE:
-        case FollowerInfo::WriteState::STARTUP:
-          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                 options);
-        default:
-          break;
+      // This is just a trick to let the function continue for replication2
+      // databases
+      if (replicationVersion != replication::Version::TWO) {
+        switch (followerInfo->allowedToWrite()) {
+          case FollowerInfo::WriteState::FORBIDDEN:
+            // We cannot fulfill minimum replication Factor. Reject write.
+            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+          case FollowerInfo::WriteState::UNAVAILABLE:
+          case FollowerInfo::WriteState::STARTUP:
+            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                   options);
+          default:
+            break;
+        }
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1770,7 +1791,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty()) {
+      if (!followers->empty() ||
+          replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1905,7 +1927,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
 
   auto resDocs = resultBuilder.steal();
   if (res.ok()) {
-    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+    if (replicationType == ReplicationType::LEADER &&
+        (!followers->empty() ||
+         replicationVersion == replication::Version::TWO)) {
       TRI_ASSERT(collection != nullptr);
       // Now replicate the same operation on all followers:
 
@@ -2028,6 +2052,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
+  auto replicationVersion = collection->replicationVersion();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -2042,22 +2067,27 @@ Future<OperationResult> transaction::Methods::truncateLocal(
             TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
       }
 
-      switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
-          // We cannot fulfill minimum replication Factor. Reject write.
-          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-        case FollowerInfo::WriteState::UNAVAILABLE:
-        case FollowerInfo::WriteState::STARTUP:
-          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                 options);
-        default:
-          break;
+      // This is just a trick to let the function continue for replication2
+      // databases
+      if (replicationVersion != replication::Version::TWO) {
+        switch (followerInfo->allowedToWrite()) {
+          case FollowerInfo::WriteState::FORBIDDEN:
+            // We cannot fulfill minimum replication Factor. Reject write.
+            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+          case FollowerInfo::WriteState::UNAVAILABLE:
+          case FollowerInfo::WriteState::STARTUP:
+            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                   options);
+          default:
+            break;
+        }
       }
 
       // fetch followers
       replicationType = ReplicationType::LEADER;
       followers = followerInfo->get();
-      if (!followers->empty()) {
+      if (!followers->empty() ||
+          replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -2096,6 +2126,21 @@ Future<OperationResult> transaction::Methods::truncateLocal(
 
   if (res.fail()) {
     return futures::makeFuture(OperationResult(res, options));
+  }
+
+  if (replicationType == ReplicationType::LEADER &&
+      replicationVersion == replication::Version::TWO) {
+    auto leaderState = collection->waitForDocumentStateLeader();
+    auto body = VPackBuilder();
+    {
+      VPackObjectBuilder ob(&body);
+      body.add("collection", collectionName);
+    }
+    leaderState->replicateOperations(
+        body.sharedSlice(),
+        replication2::replicated_state::document::OperationType::kTruncate,
+        state()->id());
+    return OperationResult{Result{}, options};
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2559,7 +2604,69 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<VPackBuffer<uint8_t>> const& ops,
     std::unordered_set<size_t> excludePositions) {
   TRI_ASSERT(followerList != nullptr);
-  TRI_ASSERT(!followerList->empty());
+
+  // It is normal to have an empty followerList when using replication2
+  TRI_ASSERT(!followerList->empty() ||
+             collection->vocbase().replicationVersion() ==
+                 replication::Version::TWO);
+
+  transaction::BuilderLeaser payload(this);
+  auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+    VPackObjectBuilder guard(payload.get());
+    VPackSlice s = result.get(StaticStrings::KeyString);
+    TRI_ASSERT(s.isString());
+    payload->add(StaticStrings::KeyString, s);
+    s = result.get(StaticStrings::RevString);
+    payload->add(StaticStrings::RevString, s);
+    if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+      TRI_SanitizeObject(doc, *payload);
+    }
+  };
+
+  VPackSlice ourResult(ops->data());
+  size_t count = 0;
+  if (value.isArray()) {
+    VPackArrayBuilder guard(payload.get());
+    VPackArrayIterator itValue(value);
+    VPackArrayIterator itResult(ourResult);
+    while (itValue.valid() && itResult.valid()) {
+      TRI_ASSERT(itValue.index() == itResult.index());
+
+      TRI_ASSERT((*itResult).isObject());
+      if (!(*itResult).hasKey(StaticStrings::Error)) {
+        // not an error
+        // now check if document is explicitly excluded from replication
+        // this currently happens only for insert with overwriteMode=ignore
+        // for already-existing documents
+        if (excludePositions.find(itValue.index()) == excludePositions.end()) {
+          doOneDoc(itValue.value(), itResult.value());
+          count++;
+        }
+      }
+      itValue.next();
+      itResult.next();
+    }
+  } else {
+    if (excludePositions.find(0) == excludePositions.end()) {
+      doOneDoc(value, ourResult);
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    // nothing to do
+    return Result();
+  }
+
+  if (collection->replicationVersion() == replication::Version::TWO) {
+    auto leaderState = collection->waitForDocumentStateLeader();
+    leaderState->replicateOperations(
+        payload->sharedSlice(),
+        replication2::replicated_state::document::fromDocumentOperation(
+            operation),
+        state()->id());
+    return Result{};
+  }
 
   // path and requestType are different for insert/remove/modify.
 
@@ -2625,54 +2732,6 @@ Future<Result> Methods::replicateOperations(
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
     default:
       TRI_ASSERT(false);
-  }
-
-  transaction::BuilderLeaser payload(this);
-  auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
-    VPackObjectBuilder guard(payload.get());
-    VPackSlice s = result.get(StaticStrings::KeyString);
-    TRI_ASSERT(s.isString());
-    payload->add(StaticStrings::KeyString, s);
-    s = result.get(StaticStrings::RevString);
-    payload->add(StaticStrings::RevString, s);
-    if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      TRI_SanitizeObject(doc, *payload);
-    }
-  };
-
-  VPackSlice ourResult(ops->data());
-  size_t count = 0;
-  if (value.isArray()) {
-    VPackArrayBuilder guard(payload.get());
-    VPackArrayIterator itValue(value);
-    VPackArrayIterator itResult(ourResult);
-    while (itValue.valid() && itResult.valid()) {
-      TRI_ASSERT(itValue.index() == itResult.index());
-
-      TRI_ASSERT((*itResult).isObject());
-      if (!(*itResult).hasKey(StaticStrings::Error)) {
-        // not an error
-        // now check if document is explicitly excluded from replication
-        // this currently happens only for insert with overwriteMode=ignore
-        // for already-existing documents
-        if (excludePositions.find(itValue.index()) == excludePositions.end()) {
-          doOneDoc(itValue.value(), itResult.value());
-          count++;
-        }
-      }
-      itValue.next();
-      itResult.next();
-    }
-  } else {
-    if (excludePositions.find(0) == excludePositions.end()) {
-      doOneDoc(value, ourResult);
-      count++;
-    }
-  }
-
-  if (count == 0) {
-    // nothing to do
-    return Result();
   }
 
   ReplicationTimeoutFeature& timeouts =

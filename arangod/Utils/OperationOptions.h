@@ -189,6 +189,8 @@ struct OperationOptions {
   ExecContext const* _context;
 };
 
+std::ostream& operator<<(std::ostream& os, OperationOptions const& ops);
+
 #if defined(__GNUC__) && \
     (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic pop

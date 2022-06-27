@@ -105,7 +105,8 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
     auto replicatedState =
         feature->createReplicatedState("prototype-state", leaderLog);
     replicatedState->start(
-        std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+        std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+        std::nullopt);
     leaderState = std::dynamic_pointer_cast<PrototypeLeaderState>(
         replicatedState->getLeader());
     TRI_ASSERT(leaderState != nullptr);
@@ -114,7 +115,8 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
     replicatedState =
         feature->createReplicatedState("prototype-state", followerLog);
     replicatedState->start(
-        std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+        std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+        std::nullopt);
     followerState = std::dynamic_pointer_cast<PrototypeFollowerState>(
         replicatedState->getFollower());
   }
@@ -141,7 +143,6 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
       std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-    auto config = agency::LogPlanConfig{writeConcern, writeConcern, false};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
     for (auto const& participant : follower) {
@@ -152,7 +153,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
             .generation = 1,
             .participants = std::move(participants),
         });
-    return log->becomeLeader(config, std::move(id), term, follower,
+    return log->becomeLeader(std::move(id), term, follower,
                              std::move(participantsConfig),
                              std::make_shared<FakeFailureOracle>());
   }

@@ -50,7 +50,8 @@ TEST_F(ReplicatedStateTest, simple_become_follower_test) {
       feature->createReplicatedState("my-state", log));
   ASSERT_NE(state, nullptr);
 
-  state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+               std::nullopt);
 
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
@@ -79,7 +80,8 @@ TEST_F(ReplicatedStateTest, simple_unconfigured_log_test) {
   ASSERT_NE(state, nullptr);
 
   auto const stateGeneration = StateGeneration{1};
-  state->start(std::make_unique<ReplicatedStateToken>(stateGeneration));
+  state->start(std::make_unique<ReplicatedStateToken>(stateGeneration),
+               std::nullopt);
 
   auto status = state->getStatus();
 
@@ -102,7 +104,8 @@ TEST_F(ReplicatedStateTest, unconfigured_log_becomes_leader_test) {
   ASSERT_NE(state, nullptr);
 
   auto const stateGeneration = StateGeneration{1};
-  state->start(std::make_unique<ReplicatedStateToken>(stateGeneration));
+  state->start(std::make_unique<ReplicatedStateToken>(stateGeneration),
+               std::nullopt);
 
   {  // check the unconfigured state
     auto status = state->getStatus();
@@ -158,7 +161,8 @@ TEST_F(ReplicatedStateTest, unconfigured_log_becomes_follower_test) {
   ASSERT_NE(state, nullptr);
 
   auto const stateGeneration = StateGeneration{1};
-  state->start(std::make_unique<ReplicatedStateToken>(stateGeneration));
+  state->start(std::make_unique<ReplicatedStateToken>(stateGeneration),
+               std::nullopt);
 
   {  // check the unconfigured state
     auto status = state->getStatus();
@@ -220,7 +224,8 @@ TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
   auto inputStream = mux->getStreamById<1>();
   inputStream->insert({.key = "hello", .value = "world"});
 
-  state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+               std::nullopt);
 
   // recreate follower
   follower = log->becomeFollower("follower", LogTerm{2}, "leader");
@@ -252,7 +257,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
   auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", log));
   ASSERT_NE(state, nullptr);
-  state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+               std::nullopt);
   {
     auto status = state->getStatus().value();
     ASSERT_TRUE(
@@ -290,7 +296,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
         feature->createReplicatedState("my-state", log));
     ASSERT_NE(state, nullptr);
 
-    state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+    state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+                 std::nullopt);
     {
       auto status = state->getStatus().value();
       ASSERT_TRUE(std::holds_alternative<replicated_state::FollowerStatus>(
@@ -331,7 +338,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
         feature->createReplicatedState("my-state", log));
     ASSERT_NE(state, nullptr);
 
-    state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+    state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+                 std::nullopt);
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }
@@ -365,13 +373,13 @@ TEST_F(ReplicatedStateTest, stream_test) {
 
   auto leaderState = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", leaderLog));
-  leaderState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  leaderState->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+                     std::nullopt);
 
   auto followerState = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", followerLog));
   followerState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
 
   // make sure we do recovery
   while (follower->hasPendingAppendEntries()) {

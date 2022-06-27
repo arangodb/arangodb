@@ -115,10 +115,21 @@ struct SetLeaderAction {
   }
 };
 
-using Action = std::variant<
-    EmptyAction, AddParticipantAction, RemoveParticipantFromLogTargetAction,
-    RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
-    UpdateParticipantFlagsAction, CurrentConvergedAction, SetLeaderAction>;
+struct SetLogConfigAction {
+  replication2::agency::LogTargetConfig config;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<replication2::agency::LogTarget>(
+        [&](auto& target) { target.config = config; });
+  }
+};
+
+using Action =
+    std::variant<EmptyAction, AddParticipantAction,
+                 RemoveParticipantFromLogTargetAction,
+                 RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
+                 UpdateParticipantFlagsAction, CurrentConvergedAction,
+                 SetLeaderAction, SetLogConfigAction>;
 
 auto executeAction(
     arangodb::replication2::replicated_state::agency::State state,
