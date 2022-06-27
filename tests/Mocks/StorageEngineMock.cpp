@@ -1165,7 +1165,7 @@ arangodb::Result PhysicalCollectionMock::insert(
   TRI_ASSERT(newDocument.get(arangodb::StaticStrings::KeyString).isString());
   VPackSlice newKey = newDocument.get(arangodb::StaticStrings::KeyString);
   if (newKey.isString() && _documents.contains(newKey.stringView())) {
-    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+    return {TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED};
   }
 
   std::string_view key{newKey.stringView()};
@@ -1188,13 +1188,13 @@ arangodb::Result PhysicalCollectionMock::insert(
     if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
       auto* l = static_cast<EdgeIndexMock*>(index.get());
       if (!l->insert(trx, id, newDocument).ok()) {
-        return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        return {TRI_ERROR_BAD_PARAMETER};
       }
       continue;
     } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
       auto* l = static_cast<HashIndexMock*>(index.get());
       if (!l->insert(trx, id, newDocument).ok()) {
-        return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        return {TRI_ERROR_BAD_PARAMETER};
       }
       continue;
     } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
@@ -1202,13 +1202,13 @@ arangodb::Result PhysicalCollectionMock::insert(
         auto* l = static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(
             index.get());
         if (!l->insert(trx, id, newDocument).ok()) {
-          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+          return {TRI_ERROR_BAD_PARAMETER};
         }
       } else {
         auto* l =
             static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
         if (!l->insert(trx, id, newDocument).ok()) {
-          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+          return {TRI_ERROR_BAD_PARAMETER};
         }
       }
       continue;
@@ -1216,7 +1216,7 @@ arangodb::Result PhysicalCollectionMock::insert(
     TRI_ASSERT(false);
   }
 
-  return arangodb::Result();
+  return {};
 }
 
 arangodb::Result PhysicalCollectionMock::lookupKey(
@@ -1229,12 +1229,12 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
   if (it != _documents.end()) {
     result.first = it->second.docId();
     result.second = arangodb::RevisionId::fromSlice(it->second.data());
-    return arangodb::Result();
+    return {};
   }
 
   result.first = arangodb::LocalDocumentId::none();
   result.second = arangodb::RevisionId::none();
-  return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
 uint64_t PhysicalCollectionMock::numberDocuments(
@@ -1397,9 +1397,9 @@ arangodb::Result PhysicalCollectionMock::remove(
     // does not remove it from any mock indexes
 
     // assume document was removed
-    return arangodb::Result(TRI_ERROR_NO_ERROR);
+    return {};
   }
-  return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
 arangodb::Result PhysicalCollectionMock::update(
@@ -1411,7 +1411,7 @@ arangodb::Result PhysicalCollectionMock::update(
     arangodb::OperationOptions const& options) {
   return updateInternal(trx, newDocumentId, previousRevisionId,
                         previousDocument, newRevisionId, newDocument, options,
-                        true);
+                        /*isUpdate*/ true);
 }
 
 arangodb::Result PhysicalCollectionMock::replace(
@@ -1423,7 +1423,7 @@ arangodb::Result PhysicalCollectionMock::replace(
     arangodb::OperationOptions const& options) {
   return updateInternal(trx, newDocumentId, previousRevisionId,
                         previousDocument, newRevisionId, newDocument, options,
-                        false);
+                        /*isUpdate*/ false);
 }
 
 arangodb::RevisionId PhysicalCollectionMock::revision(
@@ -1437,7 +1437,7 @@ arangodb::Result PhysicalCollectionMock::truncate(
     arangodb::transaction::Methods& trx, arangodb::OperationOptions& options) {
   before();
   _documents.clear();
-  return arangodb::Result();
+  return {};
 }
 
 arangodb::Result PhysicalCollectionMock::updateInternal(
@@ -1451,7 +1451,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
   TRI_ASSERT(newDocument.isObject());
   auto keySlice = newDocument.get(arangodb::StaticStrings::KeyString);
   if (!keySlice.isString()) {
-    return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
   }
 
   before();
@@ -1480,9 +1480,9 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     TRI_ASSERT(didInsert);
 
     // TODO: mock index entries are not updated here
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
-  return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
 arangodb::Result PhysicalCollectionMock::updateProperties(
