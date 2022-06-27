@@ -1,6 +1,8 @@
 devel
 -----
 
+* Changed default macOS CI compiler to LLVM clang-14.
+
 * Changed HTTP response code for error number 1521 from 500 to 400.
 
   Error 1521 (query collection lock failed) is nowadays only emitted by
