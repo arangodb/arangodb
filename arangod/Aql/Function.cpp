@@ -57,6 +57,7 @@ Function::Function(std::string const& name, char const* arguments,
       << hasFlag(Flags::CanRunOnDBServerOneShard)
       << ", canReadDocuments: " << hasFlag(Flags::CanReadDocuments)
       << ", canUseInAnalyzer: " << hasFlag(Flags::CanUseInAnalyzer)
+      << ", internal: " << hasFlag(Flags::Internal)
       << ", hasCxxImplementation: " << hasCxxImplementation()
       << ", hasConversions: " << !conversions.empty();
 
