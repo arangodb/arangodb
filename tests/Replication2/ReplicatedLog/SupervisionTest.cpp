@@ -400,8 +400,13 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   checkReplicatedLog(ctx, log, health);
 
-  EXPECT_FALSE(ctx.hasAction());
-  auto const r = ctx.getReport();
+  EXPECT_TRUE(ctx.hasAction());
+  auto const& a = ctx.getAction();
+
+  EXPECT_TRUE(std::holds_alternative<NoActionPossibleAction>(a))
+      << fmt::format("{}", a);
+
+  auto const& r = ctx.getReport();
 
   // TODO: we get two "Waiting for config committed", and the source
   //       of this report should be made obvious.
