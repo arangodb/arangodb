@@ -367,6 +367,7 @@ class TransactionState {
   /// for this. If you use `whichReplica(<shardID>)`, then this happens
   /// automatically. This member is only relevant (and != nullptr) if the
   /// transaction option allowDirtyReads is set.
+  std::mutex _replicaMutex;  // protects access to _chosenReplicas
   std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
 
   QueryAnalyzerRevisions _analyzersRevision;
