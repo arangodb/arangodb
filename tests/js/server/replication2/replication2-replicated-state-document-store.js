@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual*/
+/*global assertTrue, assertEqual, assertNotNull*/
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,9 +40,18 @@ const shardIdToLogId = function (shardId) {
 
 const getDocumentEntry = function (document, entries, type) {
   for (const entry of entries) {
-    if (entry.hasOwnProperty("payload") && entry.payload[1].operation === type
-        && entry.payload[1].data._key === document._key) {
-      return entry;
+    if (entry.hasOwnProperty("payload") && entry.payload[1].operation === type) {
+      // replication entries can contain an array of documents (batch op)
+      if (Array.isArray(entry.payload[1].data)) {
+        // in this case try to find the document in the batch
+        let res = entry.payload[1].data.filter((doc) => doc._key === document._key);
+        if (res.length === 1) {
+          return entry;
+        }
+      } else if (entry.payload[1].data._key === document._key) {
+        // single document operation was replicated
+        return entry;
+      }
     }
   }
   return null;
@@ -52,7 +61,7 @@ const searchDocs = function(logs, docs, opType) {
   let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
   for (const doc of docs) {
     let entry = getDocumentEntry(doc, allEntries, opType);
-    assertTrue(entry !== null);
+    assertNotNull(entry);
     assertEqual(entry.payload[1].operation, opType);
   }
 };
