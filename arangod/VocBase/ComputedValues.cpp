@@ -240,7 +240,7 @@ void ComputedValues::ComputedValue::toVelocyPack(
   result.openObject();
   result.add("name", VPackValue(_name));
   result.add("expression", VPackValue(_expressionString));
-  result.add("mustComputeOn", VPackValue(VPackValueType::Array));
+  result.add("computeOn", VPackValue(VPackValueType::Array));
   if (::mustComputeOnValue(_mustComputeOn) &
       ::mustComputeOnValue(ComputeValuesOn::kInsert)) {
     result.add(VPackValue("insert"));
@@ -350,14 +350,18 @@ void ComputedValues::mergeComputedAttributes(
     VPackObjectIterator it(input, true);
 
     while (it.valid()) {
-      auto const& key = it.key();
-      auto itCompute = attributes.find(key.stringView());
-      if (itCompute == attributes.end() ||
-          !_values[itCompute->second].doOverride()) {
-        // only add these attributes from the original document
-        // that we are not going to overwrite
-        output.add(key);
-        output.add(it.value());
+      VPackSlice key = it.key(/*translate*/ false);
+      if (key.isNumber()) {
+        // _id, _key, _rev, _from, _to
+        output.addUnchecked(key, it.value());
+      } else {
+        auto itCompute = attributes.find(key.stringView());
+        if (itCompute == attributes.end() ||
+            !_values[itCompute->second].doOverride()) {
+          // only add these attributes from the original document
+          // that we are not going to overwrite
+          output.addUnchecked(key, it.value());
+        }
       }
       it.next();
     }
@@ -414,7 +418,7 @@ Result ComputedValues::buildDefinitions(
       return res.reset(
           TRI_ERROR_BAD_PARAMETER,
           "invalid 'computedValues' entry: '"s + name.copyString() +
-              "' attribute cannot be computed via computation expression");
+              "' attribute must not be computed via computation expression");
     }
 
     // forbid computedValues on shardKeys!
@@ -422,7 +426,7 @@ Result ComputedValues::buildDefinitions(
       if (key == n) {
         return res.reset(TRI_ERROR_BAD_PARAMETER,
                          "invalid 'computedValues' entry: cannot compute "
-                         "values of shard key attributes");
+                         "values for shard key attributes");
       }
     }
 
@@ -435,7 +439,7 @@ Result ComputedValues::buildDefinitions(
 
     ComputeValuesOn mustComputeOn = ComputeValuesOn::kInsert;
 
-    VPackSlice on = it.get("on");
+    VPackSlice on = it.get("computeOn");
     if (on.isArray()) {
       mustComputeOn = ComputeValuesOn::kNever;
 
@@ -443,7 +447,7 @@ Result ComputedValues::buildDefinitions(
         if (!onValue.isString()) {
           return res.reset(
               TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: invalid on enumeration value");
+              "invalid 'computedValues' entry: invalid 'computeOn' value");
         }
         std::string_view ov = onValue.stringView();
         if (ov == "insert") {
@@ -464,31 +468,33 @@ Result ComputedValues::buildDefinitions(
         } else {
           return res.reset(
               TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: invalid on value '"s +
+              "invalid 'computedValues' entry: invalid 'computeOn' value: '"s +
                   onValue.copyString() + "'");
         }
       }
 
       if (mustComputeOn == ComputeValuesOn::kNever) {
-        return res.reset(TRI_ERROR_BAD_PARAMETER,
-                         "invalid 'computedValues' entry: empty on value");
+        return res.reset(
+            TRI_ERROR_BAD_PARAMETER,
+            "invalid 'computedValues' entry: empty 'computeOn' value");
       }
     } else if (on.isNone()) {
-      // default is just "insert"
+      // default for "computeOn" is just "insert"
       mustComputeOn = static_cast<ComputeValuesOn>(
           ::mustComputeOnValue(mustComputeOn) |
           ::mustComputeOnValue(ComputeValuesOn::kInsert));
       _attributesForInsert.emplace(n, _values.size());
     } else {
-      return res.reset(TRI_ERROR_BAD_PARAMETER,
-                       "invalid 'computedValues' entry: invalid on value");
+      return res.reset(
+          TRI_ERROR_BAD_PARAMETER,
+          "invalid 'computedValues' entry: invalid 'computeOn' value");
     }
 
     VPackSlice expression = it.get("expression");
     if (!expression.isString()) {
       return res.reset(
           TRI_ERROR_BAD_PARAMETER,
-          "invalid 'computedValues' entry: invalid computation expression");
+          "invalid 'computedValues' entry: invalid 'expression' value");
     }
 
     // validate the actual expression
