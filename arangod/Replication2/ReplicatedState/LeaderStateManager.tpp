@@ -46,12 +46,12 @@ void LeaderStateManager<S>::run() noexcept {
       };
 
   auto const handleErrors = [weak = this->weak_from_this()](
-                                futures::Try<Result>&& tryResult) {
+                                futures::Try<futures::Unit>&& tryResult) {
     // TODO Instead of capturing "this", should we capture the loggerContext
     // instead?
     if (auto self = weak.lock(); self != nullptr) {
       try {
-        throwResultOnErrorAsCorrespondingException(tryResult.get());
+        futures::Unit _ = tryResult.get();
       } catch (replicated_log::ParticipantResignedException const&) {
         LOG_CTX("7322d", DEBUG, self->loggerContext)
             << "Log leader resigned, stopping replicated state machine. Will "
@@ -79,7 +79,7 @@ void LeaderStateManager<S>::run() noexcept {
   };
 
   auto const transitionTo = [this](LeaderInternalState state) {
-    return [state, weak = this->weak_from_this()] {
+    return [state, weak = this->weak_from_this()](futures::Unit) {
       if (auto self = weak.lock(); self != nullptr) {
         self->guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
@@ -87,11 +87,11 @@ void LeaderStateManager<S>::run() noexcept {
     };
   };
 
-  auto const toTryResult = []<typename F>(F&& fn) {
+  auto const toTryUnit = []<typename F>(F&& fn) -> futures::Try<futures::Unit> {
     try {
-      return futures::Try<Result>(std::forward<F>(fn)());
+      return futures::Try<futures::Unit>{std::forward<F>(fn)()};
     } catch (...) {
-      return futures::Try<Result>(std::current_exception());
+      return futures::Try<futures::Unit>{std::current_exception()};
     }
   };
 
@@ -101,24 +101,32 @@ void LeaderStateManager<S>::run() noexcept {
       // This transition does nothing except make it visible that run() was
       // actually called.
       std::invoke(
-          transitionTo(LeaderInternalState::kWaitingForLeadershipEstablished));
+          transitionTo(LeaderInternalState::kWaitingForLeadershipEstablished),
+          futures::Unit());
     } break;
     case LeaderInternalState::kWaitingForLeadershipEstablished: {
       waitForLeadership()
+          .thenValue(throwResultOnErrorAsCorrespondingException)
           .thenValue(transitionTo(LeaderInternalState::kRecoveryInProgress))
-          .thenError(handleErrors);
+          .thenFinal(handleErrors);
     } break;
     case LeaderInternalState::kRecoveryInProgress: {
       recoverEntries()
+          .thenValue(throwResultOnErrorAsCorrespondingException)
           .thenValue(transitionTo(LeaderInternalState::kServiceStarting))
-          .thenError(handleErrors);
+          .thenFinal(handleErrors);
     } break;
     case LeaderInternalState::kServiceStarting: {
-      auto res = toTryResult([this] { return startService(); });
-      if (res.ok()) {
-        std::invoke(transitionTo(LeaderInternalState::kServiceAvailable));
+      auto tryResult = toTryUnit([this]() -> futures::Unit {
+        auto res = startService();
+        throwResultOnErrorAsCorrespondingException(std::move(res));
+        return {};
+      });
+      if (tryResult.hasValue()) {
+        std::invoke(transitionTo(LeaderInternalState::kServiceAvailable),
+                    futures::Unit());
       } else {
-        handleErrors(std::move(res));
+        handleErrors(std::move(tryResult));
       }
     } break;
     case LeaderInternalState::kServiceAvailable: {
