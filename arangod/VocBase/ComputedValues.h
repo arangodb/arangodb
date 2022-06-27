@@ -68,7 +68,7 @@ class ComputedValues {
     ComputedValue(ComputedValue const&) = delete;
     ComputedValue& operator=(ComputedValue const&) = delete;
     ComputedValue(ComputedValue&&) = default;
-    ComputedValue& operator=(ComputedValue&&) = default;
+    ComputedValue& operator=(ComputedValue&&) = delete;
     ~ComputedValue();
 
     void toVelocyPack(velocypack::Builder&) const;
