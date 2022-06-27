@@ -36,6 +36,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
+const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
 const toArgv = require('internal').toArgv;
 
@@ -167,10 +168,8 @@ function recovery (options) {
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
   let count = 0;
-  let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.join(fs.getTempPath(), 'recovery');
-  fs.makeDirectoryRecursive(tempDir);
-  process.env.TMPDIR = tempDir;
+
+  let tmpMgr = new tmpDirMmgr('recovery', options);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -185,7 +184,7 @@ function recovery (options) {
         ++iteration;
         print(BLUE + "running setup #" + iteration + " of test " + count + " - " + test + RESET);
         let params = {
-          tempDir: tempDir,
+          tempDir: tmpMgr.tempDir,
           instanceInfo: {
             rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
           },
@@ -269,10 +268,7 @@ function recovery (options) {
       }
     }
   }
-  if (options.cleanup && results.status) {
-    fs.removeDirectoryRecursive(tempDir, true);
-  }
-  process.env.TMPDIR = orgTmp;
+  tmpMgr.destructor(options.cleanup && results.status);
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {

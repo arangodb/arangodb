@@ -36,6 +36,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
+const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
 const toArgv = require('internal').toArgv;
 
@@ -124,10 +125,7 @@ function agencyRestart (options) {
 
   let agencyRestartTests = tu.splitBuckets(options, tu.scanTestPaths(testPaths['agency-restart'], options));
   let count = 0;
-  let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.join(fs.getTempPath(), 'agency-restart');
-  fs.makeDirectoryRecursive(tempDir);
-  process.env.TMPDIR = tempDir;
+  let tmpMgr = new tmpDirMmgr('agency-restart', options);
 
   for (let i = 0; i < agencyRestartTests.length; ++i) {
     let test = agencyRestartTests[i];
@@ -138,7 +136,7 @@ function agencyRestart (options) {
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
-        tempDir: tempDir,
+        tempDir: tmpMgr.tempDir,
         rootDir: fs.join(fs.getTempPath(), 'agency-restart', count.toString()),
         options: _.cloneDeep(options),
         script: test,
@@ -187,10 +185,7 @@ function agencyRestart (options) {
       }
     }
   }
-  if (results.status) {
-    fs.removeDirectoryRecursive(tempDir, true);
-  }
-  process.env.TMPDIR = orgTmp;
+  tmpMgr.destructor(results.status);
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {

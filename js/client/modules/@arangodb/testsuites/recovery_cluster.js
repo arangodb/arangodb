@@ -37,6 +37,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
+const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -246,10 +247,7 @@ function recovery (options) {
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
   let count = 0;
-  let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.join(fs.getTempPath(), 'recovery_cluster');
-  fs.makeDirectoryRecursive(tempDir);
-  process.env.TMPDIR = tempDir;
+  let tmpMgr = new tmpDirMmgr('recovery_cluster', options);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -260,14 +258,14 @@ function recovery (options) {
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
-        tempDir: tempDir,
+        tempDir: tmpMgr.tempDir,
         rootDir: fs.join(fs.getTempPath(), 'recovery_cluster', count.toString()),
         options: _.cloneDeep(options),
         script: test,
         setup: true,
         count: count,
         keyDir: "",
-        temp_path: fs.join(tempDir, count.toString())
+        temp_path: fs.join(tmpMgr.tempDir, count.toString())
       };
       fs.makeDirectoryRecursive(params.rootDir);
       fs.makeDirectoryRecursive(params.temp_path);
@@ -324,10 +322,7 @@ function recovery (options) {
       }
     }
   }
-  if (options.cleanup && results.status) {
-    fs.removeDirectoryRecursive(tempDir, true);
-  }
-  process.env.TMPDIR = orgTmp;
+  tmpMgr.destructor(options.cleanup && results.status);
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {

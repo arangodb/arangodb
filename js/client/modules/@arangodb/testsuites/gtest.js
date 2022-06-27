@@ -36,7 +36,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-
+const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const testPaths = {
   'gtest': [],
   'catch': [],
@@ -122,12 +122,7 @@ function gtestRunner (testname, options) {
   const run = locateGTest(testname);
   if (!options.skipGTest) {
     if (run !== '') {
-      let orgTmp = process.env.TMPDIR;
-      let tempDir = fs.join(fs.getTempPath(), 'gtest');
-      process.env.TMPDIR = tempDir;
-      process.env.TMP = tempDir;
-      fs.makeDirectoryRecursive(tempDir);
-      print(process.env)
+      let tmpMgr = new tmpDirMmgr('gtest', options);
       let argv = [
         '--gtest_output=json:' + testResultJsonFile,
       ];
@@ -149,11 +144,7 @@ function gtestRunner (testname, options) {
         results.failed += 1;
       }
       results = getGTestResults(testResultJsonFile, results);
-      if ((results.failed === 0) && options.cleanup) {
-        fs.removeDirectoryRecursive(tempDir, true);
-      }
-      process.env.TMPDIR = orgTmp;
-      process.env.TMP = orgTmp;
+      tmpMgr.destructor((results.failed === 0) && options.cleanup);
     } else {
       results.failed += 1;
       results.basics = {
