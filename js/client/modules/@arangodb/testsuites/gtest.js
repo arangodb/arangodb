@@ -125,7 +125,9 @@ function gtestRunner (testname, options) {
       let orgTmp = process.env.TMPDIR;
       let tempDir = fs.join(fs.getTempPath(), 'gtest');
       process.env.TMPDIR = tempDir;
+      process.env.TMP = tempDir;
       fs.makeDirectoryRecursive(tempDir);
+      print(process.env)
       let argv = [
         '--gtest_output=json:' + testResultJsonFile,
       ];
@@ -151,6 +153,7 @@ function gtestRunner (testname, options) {
         fs.removeDirectoryRecursive(tempDir, true);
       }
       process.env.TMPDIR = orgTmp;
+      process.env.TMP = orgTmp;
     } else {
       results.failed += 1;
       results.basics = {
