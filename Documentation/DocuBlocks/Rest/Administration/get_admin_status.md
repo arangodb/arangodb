@@ -1,5 +1,5 @@
 
-@startDocuBlock JSF_get_admin_status
+@startDocuBlock get_admin_status
 @brief returns status information of the server.
 
 @RESTHEADER{GET /_admin/status, Return status information, RestStatusHandler}
