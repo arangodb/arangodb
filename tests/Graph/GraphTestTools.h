@@ -39,11 +39,13 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
+#include "Graph/Providers/BaseProviderOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -242,23 +244,12 @@ struct MockGraphDatabase {
     auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     auto ast = plan->getAst();
 
-    auto _toCondition =
-        ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+
 
     auto tmpVar = generateTempVar(query);
 
-    auto _fromCondition = buildOutboundCondition(query, tmpVar);
-
-    AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
-    AstNode* tmpId2 = plan->getAst()->createNodeValueString("", 0);
-
-    {
-      auto const* access =
-          ast->createNodeAttributeAccess(tmpId1, StaticStrings::ToString);
-      auto const* cond = ast->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
-      _toCondition->addMember(cond);
-    }
+    auto _fromCondition = buildCondition(query, tmpVar, false);
+    auto _toCondition = buildCondition(query, tmpVar, true);
 
     auto spo = std::make_unique<ShortestPathOptions>(*query);
     spo->setVariable(tmpVar);
@@ -272,21 +263,53 @@ struct MockGraphDatabase {
     return spo;
   }
 
-  arangodb::aql::AstNode* buildOutboundCondition(
-      arangodb::aql::Query* query, arangodb::aql::Variable const* tmpVar) {
+  std::vector<arangodb::graph::IndexAccessor> buildIndexAccessors(arangodb::aql::Query* query, arangodb::aql::Variable const* tmpVar, bool reverse) {
+    constexpr bool onlyEdgeIndexes = false;
+    auto collection = query->collections().get("e");
+    std::vector<IndexAccessor> indexAccessors;
+    std::shared_ptr<Index> indexToUse;
+    auto cond = buildCondition(query, tmpVar, reverse);
     auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     auto ast = plan->getAst();
-    auto fromCondition =
+    aql::AstNode* clonedCondition = cond->clone(ast);
+    constexpr size_t itemsInCollection = 1000;
+
+    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+        *collection, clonedCondition, tmpVar, itemsInCollection,
+        aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+    if (!res) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "expected edge index not found");
+    }
+
+    indexAccessors.emplace_back(std::move(indexToUse), clonedCondition, 0,
+                                nullptr, std::nullopt, 0,
+                                reverse ? TRI_EDGE_IN : TRI_EDGE_OUT);
+    return indexAccessors;
+  }
+
+  arangodb::aql::AstNode* buildCondition(
+    arangodb::aql::Query* query, arangodb::aql::Variable const* tmpVar, bool inbound) {
+    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
+    auto ast = plan->getAst();
+    auto condition =
         ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
     AstNode* tmpId2 = plan->getAst()->createNodeValueMutableString("", 0);
 
+    auto& attribute = inbound ? StaticStrings::ToString : StaticStrings::FromString;
     auto const* access =
-        ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString);
+        ast->createNodeAttributeAccess(tmpId1, attribute);
     auto const* cond = ast->createNodeBinaryOperator(
         NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
-    fromCondition->addMember(cond);
-    return fromCondition;
+    condition->addMember(cond);
+    return condition;
+  }
+
+
+  arangodb::aql::AstNode* buildOutboundCondition(
+      arangodb::aql::Query* query, arangodb::aql::Variable const* tmpVar) {
+    return buildCondition(query, tmpVar, false);
   }
 
   arangodb::aql::Variable* generateTempVar(arangodb::aql::Query* query) {

@@ -40,24 +40,6 @@
 
 namespace arangodb::graph {
 
-// K_PATH implementation
-template<class Provider>
-using KPathEnumerator = TwoSidedEnumerator<
-    FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
-    Provider,
-    PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
-// K_PATH implementation using Tracing
-template<class Provider>
-using TracedKPathEnumerator = TwoSidedEnumerator<
-    QueueTracer<FifoQueue<typename Provider::Step>>,
-    PathStoreTracer<PathStore<typename Provider::Step>>,
-    ProviderTracer<Provider>,
-    PathValidator<ProviderTracer<Provider>,
-                  PathStoreTracer<PathStore<typename Provider::Step>>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness, bool useTracing>
 struct BFSConfiguration {
@@ -155,5 +137,43 @@ template<class Provider, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 using TracedWeightedEnumerator = OneSidedEnumerator<
     WeightedConfiguration<Provider, vertexUniqueness, edgeUniqueness, true>>;
+
+// PATHS section
+
+// K_PATH implementation
+template<class Provider>
+using KPathEnumerator =
+    TwoSidedEnumerator<BFSConfiguration<Provider, VertexUniquenessLevel::PATH,
+                                        EdgeUniquenessLevel::PATH, false>>;
+
+// K_PATH implementation using Tracing
+// K_PATH implementation
+template<class Provider>
+using TracedKPathEnumerator =
+    TwoSidedEnumerator<BFSConfiguration<Provider, VertexUniquenessLevel::PATH,
+                                        EdgeUniquenessLevel::PATH, true>>;
+
+// SHORTEST_PATH implementation
+template<class Provider>
+using ShortestPathEnumerator =
+    TwoSidedEnumerator<BFSConfiguration<Provider, VertexUniquenessLevel::GLOBAL,
+                                        EdgeUniquenessLevel::PATH, false>>;
+
+// SHORTEST_PATH implementation using Tracing
+template<class Provider>
+using TracedShortestPathEnumerator =
+    TwoSidedEnumerator<BFSConfiguration<Provider, VertexUniquenessLevel::GLOBAL,
+                                        EdgeUniquenessLevel::PATH, true>>;
+
+// Weighted SHORTEST_PATH implementation
+template<class Provider>
+using WeightedShortestPathEnumerator = TwoSidedEnumerator<WeightedConfiguration<
+    Provider, VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH, false>>;
+
+// Weighted SHORTEST_PATH implementation using Tracing
+template<class Provider>
+using TracedWeightedShortestPathEnumerator = TwoSidedEnumerator<
+    WeightedConfiguration<Provider, VertexUniquenessLevel::GLOBAL,
+                          EdgeUniquenessLevel::PATH, true>>;
 
 }  // namespace arangodb::graph

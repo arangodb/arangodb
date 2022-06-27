@@ -43,6 +43,10 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
 
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
@@ -51,9 +55,8 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+template<class Configuration>
+TwoSidedEnumerator<Configuration>::
     Ball::Ball(Direction dir, ProviderType&& provider,
                GraphOptions const& options,
                PathValidatorOptions validatorOptions,
@@ -67,25 +70,19 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       _minDepth(options.getMinDepth()),
       _graphOptions(options) {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::Ball::~Ball() = default;
+template<class Configuration>
+TwoSidedEnumerator<Configuration>::Ball::~Ball() = default;
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::reset(VertexRef center,
+template<class Configuration>
+void TwoSidedEnumerator<Configuration>::Ball::reset(VertexRef center,
                                                     size_t depth) {
   clear();
   auto firstStep = _provider.startVertex(center, depth);
   _shell.emplace(std::move(firstStep));
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::clear() {
+template<class Configuration>
+void TwoSidedEnumerator<Configuration>::Ball::clear() {
   _depth = 0;
   _queue.clear();
   _shell.clear();
@@ -95,10 +92,8 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   clearProvider();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::clearProvider() {
+template<class Configuration>
+void TwoSidedEnumerator<Configuration>::Ball::clearProvider() {
   // We need to make sure, no one holds references to _provider.
   // Guarantee that the used Queue is empty and we do not hold any reference to
   // PathStore. Info: Steps do contain VertexRefs which are hold in PathStore.
@@ -115,38 +110,28 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _provider.clear();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::doneWithDepth() const -> bool {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::Ball::doneWithDepth() const -> bool {
   return _queue.isEmpty();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::noPathLeft() const -> bool {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::Ball::noPathLeft() const -> bool {
   return doneWithDepth() && _shell.empty();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::getDepth() const -> size_t {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::Ball::getDepth() const -> size_t {
   return _depth;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::shellSize() const -> size_t {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::Ball::shellSize() const -> size_t {
   return _shell.size();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::startNextDepth() -> void {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::Ball::startNextDepth() -> void {
   // We start the next depth, build a new queue
   // based on the shell contents.
   TRI_ASSERT(_queue.isEmpty());
@@ -157,10 +142,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _depth++;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::fetchResults(ResultList& results)
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::Ball::fetchResults(ResultList& results)
     -> void {
   std::vector<Step*> looseEnds{};
 
@@ -192,9 +175,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::
     Ball::computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
         -> void {
   // Pull next element from Queue
@@ -234,20 +216,18 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   });
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+template<class Configuration>
+void TwoSidedEnumerator<Configuration>::
     Ball::testDepthZero(Ball& other, ResultList& results) {
   for (auto const& step : _shell) {
     other.matchResultsInShell(step, results, _validator);
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::
     Ball::matchResultsInShell(Step const& match, ResultList& results,
-                              PathValidator const& otherSideValidator) -> void {
+                              PathValidatorType const& otherSideValidator) -> void {
   auto [first, last] = _shell.equal_range(match);
   if (_direction == FORWARD) {
     while (first != last) {
@@ -272,9 +252,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::
     Ball::buildPath(Step const& vertexInShell,
                     PathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
@@ -284,16 +263,13 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::provider() -> ProviderType& {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::Ball::provider() -> ProviderType& {
   return _provider;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+template<class Configuration>
+TwoSidedEnumerator<Configuration>::
     TwoSidedEnumerator(ProviderType&& forwardProvider,
                        ProviderType&& backwardProvider,
                        TwoSidedEnumeratorOptions&& options,
@@ -306,24 +282,18 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
              std::move(validatorOptions), resourceMonitor},
       _resultPath{_left.provider(), _right.provider()} {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::~TwoSidedEnumerator() {}
+template<class Configuration>
+TwoSidedEnumerator<Configuration>::~TwoSidedEnumerator() {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::destroyEngines() -> void {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::destroyEngines() -> void {
   // Note: Left & Right Provider use the same traversal engines.
   //   => Destroying one of them is enough.
   _left.provider().destroyEngines();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::clear() {
+template<class Configuration>
+void TwoSidedEnumerator<Configuration>::clear() {
   // Order is important here, please do not change.
   // 1.) Remove current results
   _results.clear();
@@ -339,10 +309,8 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @return true There will be no further path.
  * @return false There is a chance that there is more data available.
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::isDone() const {
+template<class Configuration>
+bool TwoSidedEnumerator<Configuration>::isDone() const {
   return _results.empty() && searchDone();
 }
 
@@ -356,10 +324,8 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @param source The source vertex to start the paths
  * @param target The target vertex to end the paths
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::reset(VertexRef source,
+template<class Configuration>
+void TwoSidedEnumerator<Configuration>::reset(VertexRef source,
                                               VertexRef target, size_t depth) {
   _results.clear();
   _left.reset(source);
@@ -385,10 +351,8 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @return true Found and written a path, result is modified.
  * @return false No path found, result has not been changed.
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::getNextPath(VPackBuilder& result) {
+template<class Configuration>
+bool TwoSidedEnumerator<Configuration>::getNextPath(VPackBuilder& result) {
   while (!isDone()) {
     searchMoreResults();
 
@@ -412,10 +376,32 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::searchMoreResults() {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::getNextPath_New() -> std::optional<PathResultInterface const*> {
+  while (!isDone()) {
+    searchMoreResults();
+
+    while (!_results.empty()) {
+      auto const& [leftVertex, rightVertex] = _results.back();
+
+      // Performance Optimization:
+      // It seems to be pointless to first push
+      // everything in to the _resultPath object
+      // and then iterate again to return the path
+      // we should be able to return the path in the first go.
+      _resultPath.clear();
+      _left.buildPath(leftVertex, _resultPath);
+      _right.buildPath(rightVertex, _resultPath);
+      TRI_ASSERT(!_resultPath.isEmpty());
+      _results.pop_back();
+      return &_resultPath;
+    }
+  }
+  return std::nullopt;
+}
+
+template<class Configuration>
+void TwoSidedEnumerator<Configuration>::searchMoreResults() {
   while (_results.empty() && !searchDone()) {
     _resultsFetched = false;
     if (_searchLeft) {
@@ -443,10 +429,8 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @return false No path found.
  */
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::skipPath() {
+template<class Configuration>
+bool TwoSidedEnumerator<Configuration>::skipPath() {
   while (!isDone()) {
     searchMoreResults();
 
@@ -459,10 +443,8 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::startNextDepth() -> void {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::startNextDepth() -> void {
   if (_right.shellSize() < _left.shellSize()) {
     _searchLeft = false;
     _right.startNextDepth();
@@ -472,18 +454,14 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::searchDone() const -> bool {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::searchDone() const -> bool {
   return _left.noPathLeft() || _right.noPathLeft() ||
          _left.getDepth() + _right.getDepth() > _options.getMaxDepth();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::fetchResults() -> void {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::fetchResults() -> void {
   if (!_resultsFetched && !_results.empty()) {
     _left.fetchResults(_results);
     _right.fetchResults(_results);
@@ -491,59 +469,49 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _resultsFetched = true;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::stealStats() -> aql::TraversalStats {
+template<class Configuration>
+auto TwoSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
   aql::TraversalStats stats = _left.provider().stealStats();
   stats += _right.provider().stealStats();
   return stats;
 }
 
+
+
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidator<
-        SingleServerProvider<SingleServerProviderStep>,
-        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-        EdgeUniquenessLevel::PATH>>;
+#define MAKE_TWO_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
+                                           vertexUniqueness, edgeUniqueness) \
+  template class ::arangodb::graph::TwoSidedEnumerator<                      \
+      configuration<provider, vertexUniqueness, edgeUniqueness, false>>;     \
+  template class ::arangodb::graph::TwoSidedEnumerator<                      \
+      configuration<provider, vertexUniqueness, edgeUniqueness, true>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<
-            SingleServerProvider<SingleServerProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-/* ClusterProvider Section */
+// PATH_PATH for K_PATH and K_Shortest_Paths
+// GLOBAL_PATH for Shortest_Path
+#define MAKE_TWO_SIDED_ENUMERATORS_UNIQUENESS(provider, configuration) \
+  MAKE_TWO_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
+                                     VertexUniquenessLevel::PATH,      \
+                                     EdgeUniquenessLevel::PATH)        \
+  MAKE_TWO_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
+                                     VertexUniquenessLevel::GLOBAL,    \
+                                     EdgeUniquenessLevel::PATH)
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidator<
-        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+// BFS for equal weights on edges
+// Weighted for weightAttribute
+#define MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(provider)          \
+  MAKE_TWO_SIDED_ENUMERATORS_UNIQUENESS(provider, BFSConfiguration) \
+  MAKE_TWO_SIDED_ENUMERATORS_UNIQUENESS(provider, WeightedConfiguration)
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(
+    SingleServerProvider<SingleServerProviderStep>)
+MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(ClusterProvider<ClusterProviderStep>)
+#ifdef USE_ENTERPRISE
+MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(
+    SingleServerProvider<arangodb::graph::enterprise::SmartGraphStep>)
+MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(
+    arangodb::graph::enterprise::SmartGraphProvider<
+        arangodb::graph::ClusterProviderStep>)
+#endif

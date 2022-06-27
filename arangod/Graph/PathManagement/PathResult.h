@@ -26,6 +26,7 @@
 
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
+#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 
 #include <numeric>
 
@@ -38,7 +39,7 @@ class Builder;
 namespace graph {
 
 template<class ProviderType, class Step>
-class PathResult {
+class PathResult : public PathResultInterface {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:

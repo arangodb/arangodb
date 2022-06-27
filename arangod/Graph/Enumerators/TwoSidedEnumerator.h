@@ -28,6 +28,7 @@
 
 #include "Basics/ResourceUsage.h"
 
+#include "Graph/Enumerators/PathEnumeratorInterface.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Transaction/Methods.h"
@@ -53,11 +54,15 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidatorType>
-class TwoSidedEnumerator {
+template<class Configuration>
+class TwoSidedEnumerator final : public PathEnumeratorInterface {
  public:
-  using Step = typename ProviderType::Step;  // public due to tracer access
+
+  using Step = typename Configuration::Step;  // public due to tracer access
+  using ProviderType = typename Configuration::Provider;
+  using PathStoreType = typename Configuration::Store;
+  using QueueType = typename Configuration::Queue;
+  using PathValidatorType = typename Configuration::Validator;
 
  private:
   enum Direction { FORWARD, BACKWARD };
@@ -140,7 +145,7 @@ class TwoSidedEnumerator {
 
   ~TwoSidedEnumerator();
 
-  auto clear() -> void;
+  auto clear() -> void override;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
@@ -148,7 +153,7 @@ class TwoSidedEnumerator {
    * @return true There will be no further path.
    * @return false There is a chance that there is more data available.
    */
-  [[nodiscard]] bool isDone() const;
+  [[nodiscard]] bool isDone() const override;
 
   /**
    * @brief Reset to new source and target vertices.
@@ -160,7 +165,7 @@ class TwoSidedEnumerator {
    * @param source The source vertex to start the paths
    * @param target The target vertex to end the paths
    */
-  void reset(VertexRef source, VertexRef target, size_t depth = 0);
+  void reset(VertexRef source, VertexRef target, size_t depth = 0) override;
 
   /**
    * @brief Get the next path, if available written into the result build.
@@ -175,8 +180,10 @@ class TwoSidedEnumerator {
    * @return true Found and written a path, result is modified.
    * @return false No path found, result has not been changed.
    */
-  bool getNextPath(arangodb::velocypack::Builder& result);
+  bool getNextPath(arangodb::velocypack::Builder& result) override;
 
+
+  auto getNextPath_New() -> std::optional<arangodb::graph::PathResultInterface const*> override;
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
    *
@@ -184,14 +191,14 @@ class TwoSidedEnumerator {
    * @return false No path found.
    */
 
-  bool skipPath();
-  auto destroyEngines() -> void;
+  bool skipPath() override;
+  auto destroyEngines() -> void override;
 
   /**
    * @brief Return statistics generated since
    * the last time this method was called.
    */
-  auto stealStats() -> aql::TraversalStats;
+  auto stealStats() -> aql::TraversalStats override;
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;

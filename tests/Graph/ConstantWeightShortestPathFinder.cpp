@@ -29,6 +29,12 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Graph/algorithm-aliases.h"
+#include "Graph/Enumerators/PathEnumeratorInterface.h"
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
@@ -72,6 +78,7 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
   std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   ConstantWeightShortestPathFinder* finder;
+  std::unique_ptr<PathEnumeratorInterface> nextFinder;
 
   ConstantWeightShortestPathFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
@@ -86,6 +93,39 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
     spo = gdb.getShortestPathOptions(query.get());
 
     finder = new ConstantWeightShortestPathFinder(*spo);
+
+    // Transform old style options to Provider Based ones:
+    TwoSidedEnumeratorOptions enumeratorOptions{
+        0, std::numeric_limits<uint64_t>::max()};
+    PathValidatorOptions validatorOptions(spo->tmpVar(),
+                                          spo->getExpressionCtx());
+    std::pair<std::vector<IndexAccessor>,
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+        outIndexes{};
+    outIndexes.first = gdb.buildIndexAccessors(query.get(), spo->tmpVar(), false);
+
+    std::pair<std::vector<IndexAccessor>,
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+        inIndexes{};
+    inIndexes.first = gdb.buildIndexAccessors(query.get(), spo->tmpVar(), false);
+
+    SingleServerBaseProviderOptions forwardProviderOptions(
+        spo->tmpVar(), std::move(outIndexes), spo->getExpressionCtx(), {},
+        spo->collectionToShard(), spo->getVertexProjections(),
+        spo->getEdgeProjections());
+
+
+    SingleServerBaseProviderOptions backwardProviderOptions(
+        spo->tmpVar(), std::move(inIndexes), spo->getExpressionCtx(), {},
+        spo->collectionToShard(), spo->getVertexProjections(),
+        spo->getEdgeProjections());
+
+    nextFinder = std::make_unique<ShortestPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>(
+        SingleServerProvider<SingleServerProviderStep>{spo->query(), std::move(forwardProviderOptions), spo->query().resourceMonitor()},
+        SingleServerProvider<SingleServerProviderStep>{spo->query(), std::move(backwardProviderOptions), spo->query().resourceMonitor()},
+        std::move(enumeratorOptions), std::move(validatorOptions),
+        spo->query().resourceMonitor()
+        );
   }
 
   ~ConstantWeightShortestPathFinderTest() { delete finder; }

@@ -71,19 +71,13 @@ template class ::arangodb::graph::PathValidator<
     MockGraphProvider, PathStoreTracer<PathStore<MockGraphProvider::Step>>,
     VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>,
-    MockGraphProvider,
-    PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
 template class arangodb::graph::PathValidatorTracer<
     arangodb::graph::PathValidator<
         arangodb::graph::ProviderTracer<MockGraphProvider>,
         arangodb::graph::PathStoreTracer<
             arangodb::graph::PathStore<MockGraphProvider::Step>>,
-        (arangodb::graph::VertexUniquenessLevel)1,
-        (arangodb::graph::EdgeUniquenessLevel)1>>;
+        arangodb::graph::VertexUniquenessLevel::PATH,
+        arangodb::graph::EdgeUniquenessLevel::PATH>>;
 
 // BFS with PATH uniqueness
 template class ::arangodb::graph::OneSidedEnumerator<
@@ -107,16 +101,17 @@ template class ::arangodb::graph::QueueTracer<
 template class ::arangodb::graph::QueueTracer<
     LifoQueue<MockGraphProvider::Step>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    QueueTracer<FifoQueue<MockGraphProvider::Step>>,
-    PathStore<MockGraphProvider::Step>, MockGraphProvider,
-    PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    QueueTracer<FifoQueue<MockGraphProvider::Step>>,
-    PathStoreTracer<PathStore<MockGraphProvider::Step>>, MockGraphProvider,
-    PathValidator<
-        MockGraphProvider,
-        PathStoreTracer<::arangodb::graph::PathStore<MockGraphProvider::Step>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    BFSConfiguration<MockGraphProvider, VertexUniquenessLevel::PATH,
+                     EdgeUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::TwoSidedEnumerator<
+    BFSConfiguration<MockGraphProvider, VertexUniquenessLevel::PATH,
+                     EdgeUniquenessLevel::PATH, true>>;
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+    BFSConfiguration<MockGraphProvider, VertexUniquenessLevel::GLOBAL,
+                     EdgeUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::TwoSidedEnumerator<
+    BFSConfiguration<MockGraphProvider, VertexUniquenessLevel::GLOBAL,
+                     EdgeUniquenessLevel::PATH, true>>;
