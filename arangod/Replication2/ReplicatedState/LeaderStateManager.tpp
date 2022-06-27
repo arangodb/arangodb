@@ -81,7 +81,7 @@ void LeaderStateManager<S>::run() noexcept {
   auto const transitionTo = [this](LeaderInternalState state) {
     return [state, weak = this->weak_from_this()] {
       if (auto self = weak.lock(); self != nullptr) {
-        self->_guardedData.getLockedGuard()->updateInternalState(state);
+        self->guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
       }
     };
