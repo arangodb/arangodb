@@ -361,6 +361,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                                      CanRunOnDBServerCluster) ||
                   !func->hasFlag(arangodb::aql::Function::Flags::
                                      CanRunOnDBServerOneShard) ||
+                  func->hasFlag(arangodb::aql::Function::Flags::Internal) ||
                   func->hasFlag(
                       arangodb::aql::Function::Flags::CanReadDocuments) ||
                   !func->hasFlag(
