@@ -120,6 +120,10 @@ function gtestRunner (testname, options) {
   const run = locateGTest(testname);
   if (!options.skipGTest) {
     if (run !== '') {
+      let orgTmp = process.env.TMPDIR;
+      let tempDir = fs.join(fs.getTempPath(), 'gtest');
+      process.env.TMPDIR = tempDir;
+      fs.makeDirectoryRecursive(tempDir);
       let argv = [
         '--gtest_output=json:' + testResultJsonFile,
       ];
@@ -141,6 +145,10 @@ function gtestRunner (testname, options) {
         results.failed += 1;
       }
       results = getGTestResults(testResultJsonFile, results);
+      if ((results.failed !== 0) || !options.cleanup) {
+        fs.removeDirectoryRecursive(this.tempDir, true);
+      }
+      process.env.TMPDIR = orgTmp;
     } else {
       results.failed += 1;
       results.basics = {

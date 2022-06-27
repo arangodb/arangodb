@@ -570,6 +570,7 @@ function unitTest (cases, options) {
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
   options.extremeVerbosity = 'true'
+  options.cleanup = false
   if (options.memprof) {
     process.env['MALLOC_CONF'] = 'prof:true';
   }
