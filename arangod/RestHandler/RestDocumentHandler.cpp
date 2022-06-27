@@ -338,15 +338,10 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   options.ignoreRevs = true;
 
   // Check if dirty reads are allowed:
-  bool found = false;
-  std::string const& val =
-      _request->header(StaticStrings::AllowDirtyReads, found);
-  if (found && StringUtils::boolean(val)) {
-    // This will be used in `createTransaction` below, if that creates
-    // a new transaction. Otherwise, we use the default given by the
-    // existing transaction.
-    options.allowDirtyReads = true;
-  }
+  // This will be used in `createTransaction` below, if that creates
+  // a new transaction. Otherwise, we use the default given by the
+  // existing transaction.
+  options.allowDirtyReads = _request->parsedValue(StaticStrings::AllowDirtyReads, /*default*/ false);
 
   RevisionId ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
@@ -821,16 +816,11 @@ RestStatus RestDocumentHandler::readManyDocuments() {
       _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
   // Check if dirty reads are allowed:
-  bool found = false;
-  std::string const& val =
-      _request->header(StaticStrings::AllowDirtyReads, found);
-  if (found && StringUtils::boolean(val)) {
-    opOptions.allowDirtyReads = true;
-    // This will tell `createTransaction` below, that in the case it
-    // actually creates a new transaction (rather than using an existing
-    // one), we want to read from followers. If the transaction is already
-    // there, the flag is ignored.
-  }
+  // This will tell `createTransaction` below, that in the case it
+  // actually creates a new transaction (rather than using an existing
+  // one), we want to read from followers. If the transaction is already
+  // there, the flag is ignored.
+  opOptions.allowDirtyReads = _request->parsedValue(StaticStrings::AllowDirtyReads, /*default*/ false);
 
   _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
 

@@ -210,7 +210,7 @@ void addTransactionHeaderForShard(transaction::Methods const& trx,
   // If we are in a reading transaction and are supposed to read from followers
   // then we need to send transaction begin headers not only to leaders, but
   // sometimes also to followers. The `TransactionState` knows this and so
-  // we must consult `whichReplica` instead blindly taking the leader.
+  // we must consult `whichReplica` instead of blindly taking the leader.
   // Note that this essentially only happens in `getDocumentOnCoordinator`.
   if (trx.state()->options().allowDirtyReads) {
     ServerID const& server = trx.state()->whichReplica(shard);
@@ -1652,7 +1652,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
       network::Headers headers;
       // Just make sure that no dirty read flag makes it here, since we
       // are writing and then `addTransactionHeaderForShard` might
-      // mightbehave!
+      // misbehave!
       TRI_ASSERT(!trx.state()->options().allowDirtyReads);
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
       auto future = network::sendRequestRetry(
@@ -1791,7 +1791,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
             network::Headers headers;
             // Just make sure that no dirty read flag makes it here, since we
             // are writing and then `addTransactionHeaderForShard` might
-            // mightbehave!
+            // misbehave!
             TRI_ASSERT(!trx.state()->options().allowDirtyReads);
             addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
                                          headers);
@@ -1862,7 +1862,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
           network::Headers headers;
           // Just make sure that no dirty read flag makes it here, since we
           // are writing and then `addTransactionHeaderForShard` might
-          // mightbehave!
+          // misbehave!
           TRI_ASSERT(!trx.state()->options().allowDirtyReads);
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
           futures.emplace_back(network::sendRequestRetry(
@@ -1938,7 +1938,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     network::Headers headers;
     // Just make sure that no dirty read flag makes it here, since we
     // are writing and then `addTransactionHeaderForShard` might
-    // mightbehave!
+    // misbehave!
     TRI_ASSERT(!trx.state()->options().allowDirtyReads);
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
@@ -2647,7 +2647,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
             network::Headers headers;
             // Just make sure that no dirty read flag makes it here, since we
             // are writing and then `addTransactionHeaderForShard` might
-            // mightbehave!
+            // misbehave!
             TRI_ASSERT(!trx.state()->options().allowDirtyReads);
             addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
                                          headers);
@@ -2704,7 +2704,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
           network::Headers headers;
           // Just make sure that no dirty read flag makes it here, since we
           // are writing and then `addTransactionHeaderForShard` might
-          // mightbehave!
+          // misbehave!
           TRI_ASSERT(!trx.state()->options().allowDirtyReads);
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 

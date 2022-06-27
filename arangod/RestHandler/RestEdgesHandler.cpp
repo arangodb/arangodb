@@ -178,16 +178,10 @@ bool RestEdgesHandler::readEdges() {
   }
 
   // Check if dirty reads are allowed:
-  found = false;
-  std::string const& val =
-      _request->header(StaticStrings::AllowDirtyReads, found);
-  bool allowDirtyReads = false;
-  if (found && StringUtils::boolean(val)) {
-    // This will be used in `createTransaction` below, if that creates
-    // a new transaction. Otherwise, we use the default given by the
-    // existing transaction.
-    allowDirtyReads = true;
-  }
+  // This will be used in `createTransaction` below, if that creates
+  // a new transaction. Otherwise, we use the default given by the
+  // existing transaction.
+  allowDirtyReads = _request->parsedValue(StaticStrings::AllowDirtyReads, /*default*/ false);
 
   auto queryResult = ::queryEdges(_vocbase, collectionName, direction,
                                   startVertex, allowDirtyReads);
@@ -279,16 +273,10 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   std::unordered_set<std::string> foundEdges;
 
   // Check if dirty reads are allowed:
-  bool found = false;
-  std::string const& val =
-      _request->header(StaticStrings::AllowDirtyReads, found);
-  bool allowDirtyReads = false;
-  if (found && StringUtils::boolean(val)) {
-    // This will be used in `createTransaction` below, if that creates
-    // a new transaction. Otherwise, we use the default given by the
-    // existing transaction.
-    allowDirtyReads = true;
-  }
+  // This will be used in `createTransaction` below, if that creates
+  // a new transaction. Otherwise, we use the default given by the
+  // existing transaction.
+  allowDirtyReads = _request->parsedValue(StaticStrings::AllowDirtyReads, /*default*/ false);
 
   std::shared_ptr<transaction::Context> ctx;
   for (VPackSlice it : VPackArrayIterator(body)) {
