@@ -103,6 +103,7 @@ auto inspect(Inspector& f, LeaderStatus::ManagerState& x) {
 enum class FollowerInternalState {
   kUninitializedState,
   kWaitForLeaderConfirmation,
+  kInstantiateStateMachine,
   kTransferSnapshot,
   kNothingToApply,     // old TODO delete this
   kWaitForNewEntries,  // new
