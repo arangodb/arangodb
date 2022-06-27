@@ -4,9 +4,14 @@ devel
 * Made the sort executor for queries with the SORT keyword receive the entries 
   in rows, incrementally, instead of receiving a matrix containing all the 
   input at once in memory.
-  This is to be used later in conjunction with rocksdb temporary storage of the
-  entries for queries with a large amount of entries in the input not to be 
-  held in memory and also for the rocksdb storage to store the entries in order.
+
+* Changed HTTP response code for error number 1521 from 500 to 400.
+
+  Error 1521 (query collection lock failed) is nowadays only emitted by
+  traversals, when a collection is accessed during the traversal that has
+  not been specified in the WITH statement of the query. 
+  Thus returning HTTP 500 is not a good idea, as it is clearly a user error
+  that triggered the problem.
 
 * Renamed the `--frontend.*` startup options to `--web-interface.*`:
 
