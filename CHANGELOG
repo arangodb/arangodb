@@ -1,6 +1,8 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Changed default macOS CI compiler to LLVM clang-13.
+
 * Optionally enable range deletions in the WAL for truncate operations in the
   cluster, too. This can speed up truncate operations for large
   collections/shards. Range deletions are turned off by default to ensure
