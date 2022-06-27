@@ -492,8 +492,14 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
   bool isStream = VelocyPackHelper::getBooleanValue(slice, "stream", false);
 
   // Look for allowDirtyReads header:
-  bool allowDirtyReads = _request->parsedValue(StaticStrings::AllowDirtyReads, /*default*/ false);
+  bool allowDirtyReads = false;
+  bool found = false;
   bool sawDirtyReads = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  if (found && StringUtils::boolean(val)) {
+    allowDirtyReads = true;
+  }
 
   if (opts.isObject()) {
     if (!isStream) {

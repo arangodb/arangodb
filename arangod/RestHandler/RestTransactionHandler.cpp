@@ -186,10 +186,16 @@ void RestTransactionHandler::executeBegin() {
     }
 
     // Check if dirty reads are allowed:
-    // This will be used in `createTransaction` below, if that creates
-    // a new transaction. Otherwise, we use the default given by the
-    // existing transaction.
-    bool allowDirtyReads = _request->parsedValue(StaticStrings::AllowDirtyReads, /*default*/ false);
+    bool found = false;
+    bool allowDirtyReads = false;
+    std::string const& val =
+        _request->header(StaticStrings::AllowDirtyReads, found);
+    if (found && StringUtils::boolean(val)) {
+      // This will be used in `createTransaction` below, if that creates
+      // a new transaction. Otherwise, we use the default given by the
+      // existing transaction.
+      allowDirtyReads = true;
+    }
 
     // start
     ResultT<TransactionId> res =
