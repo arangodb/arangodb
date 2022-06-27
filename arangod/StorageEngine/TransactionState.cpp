@@ -511,9 +511,8 @@ TransactionStatistics& TransactionState::statistics() noexcept {
       ._transactionsStatistics;
 }
 
-void TransactionState::chooseReplicas(
+void TransactionState::chooseReplicasNolock(
     containers::FlatHashSet<ShardID> const& shards) {
-  MUTEX_LOCKER(guard, _replicaMutex);
   if (_chosenReplicas == nullptr) {
     _chosenReplicas =
         std::make_unique<containers::FlatHashMap<ShardID, ServerID>>(
@@ -528,6 +527,12 @@ void TransactionState::chooseReplicas(
 #endif
 }
 
+void TransactionState::chooseReplicas(
+    containers::FlatHashSet<ShardID> const& shards) {
+  MUTEX_LOCKER(guard, _replicaMutex);
+  chooseReplicasNolock(shards);
+}
+
 ServerID TransactionState::whichReplica(ShardID const& shard) {
   MUTEX_LOCKER(guard, _replicaMutex);
   if (_chosenReplicas != nullptr) {
@@ -539,7 +544,7 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
   // Not yet decided
   containers::FlatHashSet<ShardID> shards;
   shards.emplace(shard);
-  chooseReplicas(shards);
+  chooseReplicasNolock(shards);
   auto it = _chosenReplicas->find(shard);
   TRI_ASSERT(it != _chosenReplicas->end());
   return it->second;
@@ -547,8 +552,8 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
 
 containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
     containers::FlatHashSet<ShardID> const& shardIds) {
-  chooseReplicas(shardIds);
   MUTEX_LOCKER(guard, _replicaMutex);
+  chooseReplicasNolock(shardIds);
   containers::FlatHashMap<ShardID, ServerID> result;
   for (auto const& shard : shardIds) {
     auto it = _chosenReplicas->find(shard);

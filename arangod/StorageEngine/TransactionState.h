@@ -256,6 +256,12 @@ class TransactionState {
   /// (or one has the other as `distributeShardsLike`), then the choices for
   /// corresponding shards must be made in a coherent fashion. Therefore:
   /// Do not fill in this map yourself, always use this method for this.
+  /// The Nolock version does not acquire the _replicaMutex and is only
+  /// called from other, public methods in this class.
+ private:
+  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
+
+ public:
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
 
   /// @brief lookup a replica choice for some shard, this basically looks
