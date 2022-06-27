@@ -116,8 +116,6 @@ function gtestRunner (testname, options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'gtest');
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
-  options.extremeVerbosity = 'true'
-  options.cleanup = false
 
   const run = locateGTest(testname);
   if (!options.skipGTest) {
