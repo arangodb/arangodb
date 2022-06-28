@@ -427,18 +427,20 @@ class AllIteratorMock final : public arangodb::IndexIterator {
   AllIteratorMock(
       std::unordered_map<std::string_view,
                          PhysicalCollectionMock::DocElement> const& data,
-      arangodb::LogicalCollection& coll, arangodb::transaction::Methods* trx)
-      : arangodb::IndexIterator(&coll, trx, arangodb::ReadOwnWrites::no),
+      arangodb::LogicalCollection& coll, arangodb::transaction::Methods* trx,
+      arangodb::ReadOwnWrites readOwnWrites)
+      : arangodb::IndexIterator(&coll, trx, readOwnWrites),
         _data(data),
-        _it{_data.begin()} {}
+        _ref(readOwnWrites == arangodb::ReadOwnWrites::yes ? data : _data),
+        _it{_ref.begin()} {}
 
   std::string_view typeName() const noexcept final { return "AllIteratorMock"; }
 
-  void resetImpl() override { _it = _data.begin(); }
+  void resetImpl() override { _it = _ref.begin(); }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
                 uint64_t limit) override {
-    while (_it != _data.end() && limit != 0) {
+    while (_it != _ref.end() && limit != 0) {
       callback(_it->second.docId());
       ++_it;
       --limit;
@@ -451,6 +453,10 @@ class AllIteratorMock final : public arangodb::IndexIterator {
   // the original data safely while the collection data is being modified
   std::unordered_map<std::string_view, PhysicalCollectionMock::DocElement>
       _data;
+  // we also need to keep a reference to the original map in order to satisfy
+  // read-your-own-writes queries
+  std::unordered_map<std::string_view,
+                     PhysicalCollectionMock::DocElement> const& _ref;
   std::unordered_map<std::string_view,
                      PhysicalCollectionMock::DocElement>::const_iterator _it;
 };  // AllIteratorMock
@@ -1132,18 +1138,19 @@ void PhysicalCollectionMock::figuresSpecific(bool /*details*/,
 }
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(
-    arangodb::transaction::Methods* trx, arangodb::ReadOwnWrites) const {
+    arangodb::transaction::Methods* trx,
+    arangodb::ReadOwnWrites readOwnWrites) const {
   before();
 
   return std::make_unique<AllIteratorMock>(_documents, this->_logicalCollection,
-                                           trx);
+                                           trx, readOwnWrites);
 }
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(
     arangodb::transaction::Methods* trx) const {
   before();
   return std::make_unique<AllIteratorMock>(_documents, this->_logicalCollection,
-                                           trx);
+                                           trx, arangodb::ReadOwnWrites::no);
 }
 
 std::unique_ptr<arangodb::ReplicationIterator>
