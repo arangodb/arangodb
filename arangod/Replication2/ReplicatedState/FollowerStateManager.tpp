@@ -31,109 +31,110 @@
 
 namespace arangodb::replication2::replicated_state {
 
-template<typename S>
-void FollowerStateManager<S>::applyEntries(
-    std::unique_ptr<Iterator> iter) noexcept {
-  TRI_ASSERT(iter != nullptr);
-  auto range = iter->range();
-  LOG_CTX("3678e", TRACE, loggerContext) << "apply entries in range " << range;
+// template<typename S>
+// void FollowerStateManager<S>::applyEntries(
+//     std::unique_ptr<Iterator> iter) noexcept {
+//   TRI_ASSERT(iter != nullptr);
+//   auto range = iter->range();
+//   LOG_CTX("3678e", TRACE, loggerContext) << "apply entries in range " << range;
+//
+//   auto state = _guardedData.doUnderLock([&](GuardedData& data) {
+//     data.updateInternalState(FollowerInternalState::kApplyRecentEntries, range);
+//     return data.state;
+//   });
+//
+//   TRI_ASSERT(state != nullptr);
+//
+//   state->applyEntries(std::move(iter))
+//       .thenFinal([weak = this->weak_from_this(),
+//                   range](futures::Try<Result> tryResult) noexcept {
+//         auto self = weak.lock();
+//         if (self == nullptr) {
+//           LOG_CTX("a87aa", TRACE, self->loggerContext)
+//               << "replicated state already gone";
+//           return;
+//         }
+//         try {
+//           auto& result = tryResult.get();
+//           if (result.ok()) {
+//             LOG_CTX("6e9bb", TRACE, self->loggerContext)
+//                 << "follower state applied range " << range;
+//
+//             auto [outerAction, pollFuture] =
+//                 self->pollNewEntries([&](GuardedData& data) {
+//                   return data.updateNextIndex(range.to);
+//                 });
+//             // this action will resolve promises that wait for a given index to
+//             // be applied
+//             outerAction.fire();
+//             self->handlePollResult(std::move(pollFuture));
+//             return;
+//           } else {
+//             LOG_CTX("335f0", ERR, self->loggerContext)
+//                 << "follower failed to apply range " << range
+//                 << " and returned error " << result;
+//           }
+//         } catch (std::exception const& e) {
+//           LOG_CTX("2fbae", ERR, self->loggerContext)
+//               << "follower failed to apply range " << range
+//               << " with exception: " << e.what();
+//         } catch (...) {
+//           LOG_CTX("1a737", ERR, self->loggerContext)
+//               << "follower failed to apply range " << range
+//               << " with unknown exception";
+//         }
+//
+//         LOG_CTX("c89c8", DEBUG, self->loggerContext)
+//             << "trigger retry for polling";
+//         // TODO retry
+//         std::abort();
+//       });
+// }
 
-  auto state = _guardedData.doUnderLock([&](GuardedData& data) {
-    data.updateInternalState(FollowerInternalState::kApplyRecentEntries, range);
-    return data.state;
-  });
+// template<typename S>
+// template<typename F>
+// auto FollowerStateManager<S>::pollNewEntries(F&& fn) {
+//   return _guardedData.doUnderLock([&](GuardedData& data) {
+//     auto result = std::invoke(std::forward<F>(fn), data);
+//     TRI_ASSERT(data.stream != nullptr);
+//     LOG_CTX("a1462", TRACE, loggerContext)
+//         << "polling for new entries _nextWaitForIndex = "
+//         << data._nextWaitForIndex;
+//     data.updateInternalState(FollowerInternalState::kNothingToApply);
+//     return std::make_tuple(std::move(result), data.stream->waitForIterator(
+//                                                   data._nextWaitForIndex));
+//   });
+// }
 
-  TRI_ASSERT(state != nullptr);
-
-  state->applyEntries(std::move(iter))
-      .thenFinal([weak = this->weak_from_this(),
-                  range](futures::Try<Result> tryResult) noexcept {
-        auto self = weak.lock();
-        if (self == nullptr) {
-          LOG_CTX("a87aa", TRACE, self->loggerContext)
-              << "replicated state already gone";
-          return;
-        }
-        try {
-          auto& result = tryResult.get();
-          if (result.ok()) {
-            LOG_CTX("6e9bb", TRACE, self->loggerContext)
-                << "follower state applied range " << range;
-
-            auto [outerAction, pollFuture] =
-                self->pollNewEntries([&](GuardedData& data) {
-                  return data.updateNextIndex(range.to);
-                });
-            // this action will resolve promises that wait for a given index to
-            // be applied
-            outerAction.fire();
-            self->handlePollResult(std::move(pollFuture));
-            return;
-          } else {
-            LOG_CTX("335f0", ERR, self->loggerContext)
-                << "follower failed to apply range " << range
-                << " and returned error " << result;
-          }
-        } catch (std::exception const& e) {
-          LOG_CTX("2fbae", ERR, self->loggerContext)
-              << "follower failed to apply range " << range
-              << " with exception: " << e.what();
-        } catch (...) {
-          LOG_CTX("1a737", ERR, self->loggerContext)
-              << "follower failed to apply range " << range
-              << " with unknown exception";
-        }
-
-        LOG_CTX("c89c8", DEBUG, self->loggerContext)
-            << "trigger retry for polling";
-        // TODO retry
-        std::abort();
-      });
-}
-
-template<typename S>
-template<typename F>
-auto FollowerStateManager<S>::pollNewEntries(F&& fn) {
-  return _guardedData.doUnderLock([&](GuardedData& data) {
-    auto result = std::invoke(std::forward<F>(fn), data);
-    TRI_ASSERT(data.stream != nullptr);
-    LOG_CTX("a1462", TRACE, loggerContext)
-        << "polling for new entries _nextWaitForIndex = "
-        << data._nextWaitForIndex;
-    data.updateInternalState(FollowerInternalState::kNothingToApply);
-    return std::make_tuple(std::move(result), data.stream->waitForIterator(
-                                                  data._nextWaitForIndex));
-  });
-}
-
-template<typename S>
-void FollowerStateManager<S>::handlePollResult(
-    futures::Future<std::unique_ptr<Iterator>>&& pollFuture) {
-  std::move(pollFuture)
-      .thenFinal([weak = this->weak_from_this()](
-                     futures::Try<std::unique_ptr<Iterator>> result) noexcept {
-        auto self = weak.lock();
-        if (self == nullptr) {
-          return;
-        }
-        try {
-          self->applyEntries(std::move(result).get());
-        } catch (replicated_log::ParticipantResignedException const&) {
-          if (auto ptr = self->parent.lock(); ptr) {
-            LOG_CTX("654fb", TRACE, self->loggerContext)
-                << "forcing rebuild because participant resigned";
-            ptr->forceRebuild();
-          } else {
-            LOG_CTX("15cb4", TRACE, self->loggerContext)
-                << "LogFollower resigned, but Replicated State already gone";
-          }
-        } catch (basics::Exception const& e) {
-          LOG_CTX("f2188", FATAL, self->loggerContext)
-              << "waiting for leader ack failed with unexpected exception: "
-              << e.message();
-        }
-      });
-}
+// template<typename S>
+// void FollowerStateManager<S>::handlePollResult(
+//     futures::Future<std::unique_ptr<Iterator>>&& pollFuture) {
+//   std::move(pollFuture)
+//       .thenFinal([weak = this->weak_from_this()](
+//                      futures::Try<std::unique_ptr<Iterator>> result) noexcept
+//                      {
+//         auto self = weak.lock();
+//         if (self == nullptr) {
+//           return;
+//         }
+//         try {
+//           self->applyEntries(std::move(result).get());
+//         } catch (replicated_log::ParticipantResignedException const&) {
+//           if (auto ptr = self->parent.lock(); ptr) {
+//             LOG_CTX("654fb", TRACE, self->loggerContext)
+//                 << "forcing rebuild because participant resigned";
+//             ptr->forceRebuild();
+//           } else {
+//             LOG_CTX("15cb4", TRACE, self->loggerContext)
+//                 << "LogFollower resigned, but Replicated State already gone";
+//           }
+//         } catch (basics::Exception const& e) {
+//           LOG_CTX("f2188", FATAL, self->loggerContext)
+//               << "waiting for leader ack failed with unexpected exception: "
+//               << e.message();
+//         }
+//       });
+// }
 
 template<typename S>
 auto FollowerStateManager<S>::waitForApplied(LogIndex idx)
@@ -149,56 +150,58 @@ auto FollowerStateManager<S>::waitForApplied(LogIndex idx)
   return f;
 }
 
-template<typename S>
-void FollowerStateManager<S>::tryTransferSnapshot(
-    std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  auto& leader = logFollower->getLeader();
-  TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
-                                    "has to be a leader in the current term";
-
-  auto const commitIndex = logFollower->getCommitIndex();
-  LOG_CTX("52a11", DEBUG, loggerContext)
-      << "try to acquire a new snapshot, starting at " << commitIndex;
-  auto f = hiddenState->acquireSnapshot(*leader, commitIndex);
-  std::move(f).thenFinal([weak = this->weak_from_this(), hiddenState](
-                             futures::Try<Result>&& tryResult) noexcept {
-    auto self = weak.lock();
-    if (self == nullptr) {
-      return;
-    }
-
-    auto result = basics::catchToResult([&] { return tryResult.get(); });
-    if (result.ok()) {
-      LOG_CTX("44d58", DEBUG, self->loggerContext)
-          << "snapshot transfer successfully completed";
-
-      bool startService =
-          self->_guardedData.doUnderLock([&](GuardedData& data) {
-            if (data.token == nullptr) {
-              return false;
-            }
-            data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
-            return true;
-          });
-      if (startService) {
-        self->startService(hiddenState);
-      }
-      return;
-    } else {
-      LOG_CTX("9a68a", ERR, self->loggerContext)
-          << "failed to transfer snapshot: " << result.errorMessage()
-          << " - retry scheduled";
-
-      auto retryCount = self->_guardedData.doUnderLock([&](GuardedData& data) {
-        data.updateInternalState(FollowerInternalState::kSnapshotTransferFailed,
-                                 result);
-        return data.errorCounter;
-      });
-
-      self->retryTransferSnapshot(std::move(hiddenState), retryCount);
-    }
-  });
-}
+// template<typename S>
+// void FollowerStateManager<S>::tryTransferSnapshot(
+//     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
+//   auto& leader = logFollower->getLeader();
+//   TRI_ASSERT(leader.has_value()) << "leader established it's leadership.
+//   There "
+//                                     "has to be a leader in the current term";
+//
+//   auto const commitIndex = logFollower->getCommitIndex();
+//   LOG_CTX("52a11", DEBUG, loggerContext)
+//       << "try to acquire a new snapshot, starting at " << commitIndex;
+//   auto f = hiddenState->acquireSnapshot(*leader, commitIndex);
+//   std::move(f).thenFinal([weak = this->weak_from_this(), hiddenState](
+//                              futures::Try<Result>&& tryResult) noexcept {
+//     auto self = weak.lock();
+//     if (self == nullptr) {
+//       return;
+//     }
+//
+//     auto result = basics::catchToResult([&] { return tryResult.get(); });
+//     if (result.ok()) {
+//       LOG_CTX("44d58", DEBUG, self->loggerContext)
+//           << "snapshot transfer successfully completed";
+//
+//       bool startService =
+//           self->_guardedData.doUnderLock([&](GuardedData& data) {
+//             if (data.token == nullptr) {
+//               return false;
+//             }
+//             data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
+//             return true;
+//           });
+//       if (startService) {
+//         self->startService(hiddenState);
+//       }
+//       return;
+//     } else {
+//       LOG_CTX("9a68a", ERR, self->loggerContext)
+//           << "failed to transfer snapshot: " << result.errorMessage()
+//           << " - retry scheduled";
+//
+//       auto retryCount = self->_guardedData.doUnderLock([&](GuardedData& data)
+//       {
+//         data.updateInternalState(FollowerInternalState::kSnapshotTransferFailed,
+//                                  result);
+//         return data.errorCounter;
+//       });
+//
+//       self->retryTransferSnapshot(std::move(hiddenState), retryCount);
+//     }
+//   });
+// }
 
 namespace {
 inline auto delayedFuture(std::chrono::steady_clock::duration duration)
@@ -222,148 +225,152 @@ inline auto calcRetryDuration(std::uint64_t retryCount)
 }
 }  // namespace
 
-template<typename S>
-void FollowerStateManager<S>::retryTransferSnapshot(
-    std::shared_ptr<IReplicatedFollowerState<S>> hiddenState,
-    std::uint64_t retryCount) {
-  auto duration = calcRetryDuration(retryCount);
-  LOG_CTX("2ea59", TRACE, loggerContext)
-      << "retry snapshot transfer after "
-      << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
-      << "ms";
-  delayedFuture(duration).thenFinal(
-      [weak = this->weak_from_this(), hiddenState](auto&&) {
-        auto self = weak.lock();
-        if (self == nullptr) {
-          return;
-        }
+// template<typename S>
+// void FollowerStateManager<S>::retryTransferSnapshot(
+//     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState,
+//     std::uint64_t retryCount) {
+//   auto duration = calcRetryDuration(retryCount);
+//   LOG_CTX("2ea59", TRACE, loggerContext)
+//       << "retry snapshot transfer after "
+//       <<
+//       std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
+//       << "ms";
+//   delayedFuture(duration).thenFinal(
+//       [weak = this->weak_from_this(), hiddenState](auto&&) {
+//         auto self = weak.lock();
+//         if (self == nullptr) {
+//           return;
+//         }
+//
+//         self->tryTransferSnapshot(hiddenState);
+//       });
+// }
 
-        self->tryTransferSnapshot(hiddenState);
-      });
-}
+// template<typename S>
+// void FollowerStateManager<S>::checkSnapshot(
+//     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
+//   bool needsSnapshot = _guardedData.doUnderLock([&](GuardedData& data) {
+//     LOG_CTX("aee5b", DEBUG, loggerContext)
+//         << "snapshot status is " << data.token->snapshot.status
+//         << ", generation is " << data.token->generation;
+//     return data.token->snapshot.status != SnapshotStatus::kCompleted;
+//   });
+//   if (needsSnapshot) {
+//     LOG_CTX("3d0fc", DEBUG, loggerContext) << "new snapshot is required";
+//     tryTransferSnapshot(hiddenState);
+//   } else {
+//     LOG_CTX("9cd75", DEBUG, loggerContext) << "no snapshot transfer
+//     required"; startService(hiddenState);
+//   }
+// }
 
-template<typename S>
-void FollowerStateManager<S>::checkSnapshot(
-    std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  bool needsSnapshot = _guardedData.doUnderLock([&](GuardedData& data) {
-    LOG_CTX("aee5b", DEBUG, loggerContext)
-        << "snapshot status is " << data.token->snapshot.status
-        << ", generation is " << data.token->generation;
-    return data.token->snapshot.status != SnapshotStatus::kCompleted;
-  });
-  if (needsSnapshot) {
-    LOG_CTX("3d0fc", DEBUG, loggerContext) << "new snapshot is required";
-    tryTransferSnapshot(hiddenState);
-  } else {
-    LOG_CTX("9cd75", DEBUG, loggerContext) << "no snapshot transfer required";
-    startService(hiddenState);
-  }
-}
+// template<typename S>
+// void FollowerStateManager<S>::startService(
+//     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
+//   hiddenState->setStateManager(this->shared_from_this());
+//
+//   auto [nothing, pollFuture] = pollNewEntries([&](GuardedData& data) {
+//     LOG_CTX("26c55", TRACE, loggerContext) << "starting service as follower";
+//     data.state = hiddenState;
+//     return std::monostate{};
+//   });
+//
+//   handlePollResult(std::move(pollFuture));
+// }
 
-template<typename S>
-void FollowerStateManager<S>::startService(
-    std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  hiddenState->setStateManager(this->shared_from_this());
+// template<typename S>
+// void FollowerStateManager<S>::ingestLogData() {
+//   auto core = _guardedData.doUnderLock([&](GuardedData& data) {
+//     data.updateInternalState(FollowerInternalState::kTransferSnapshot);
+//     auto demux = Demultiplexer::construct(logFollower);
+//     demux->listen();
+//     data.stream = demux->template getStreamById<1>();
+//     return std::move(data.core);
+//   });
+//
+//   LOG_CTX("1d843", TRACE, loggerContext) << "creating follower state
+//   instance"; auto hiddenState = factory->constructFollower(std::move(core));
+//
+//   LOG_CTX("ea777", TRACE, loggerContext) << "check if new snapshot is
+//   required"; checkSnapshot(hiddenState);
+// }
 
-  auto [nothing, pollFuture] = pollNewEntries([&](GuardedData& data) {
-    LOG_CTX("26c55", TRACE, loggerContext) << "starting service as follower";
-    data.state = hiddenState;
-    return std::monostate{};
-  });
+// template<typename S>
+// void FollowerStateManager<S>::awaitLeaderShip() {
+//   _guardedData.getLockedGuard()->updateInternalState(
+//       FollowerInternalState::kWaitForLeaderConfirmation);
+//   try {
+//     handleAwaitLeadershipResult(logFollower->waitForLeaderAcked());
+//   } catch (replicated_log::ParticipantResignedException const&) {
+//     if (auto p = parent.lock(); p) {
+//       LOG_CTX("1cb5c", TRACE, loggerContext)
+//           << "forcing rebuild because participant resigned";
+//       return p->forceRebuild();
+//     } else {
+//       LOG_CTX("a62cb", TRACE, loggerContext) << "replicated state already
+//       gone";
+//     }
+//   }
+// }
 
-  handlePollResult(std::move(pollFuture));
-}
+// template<typename S>
+// void FollowerStateManager<S>::handleAwaitLeadershipResult(
+//     futures::Future<replicated_log::WaitForResult>&& f) {
+//   std::move(f).thenFinal(
+//       [weak = this->weak_from_this()](
+//           futures::Try<replicated_log::WaitForResult>&& result) noexcept {
+//         auto self = weak.lock();
+//         if (self == nullptr) {
+//           return;
+//         }
+//         try {
+//           try {
+//             result.throwIfFailed();
+//             LOG_CTX("53ba1", TRACE, self->loggerContext)
+//                 << "leadership acknowledged - ingesting log data";
+//             self->ingestLogData();
+//           } catch (replicated_log::ParticipantResignedException const&) {
+//             if (auto ptr = self->parent.lock(); ptr) {
+//               LOG_CTX("79e37", DEBUG, self->loggerContext)
+//                   << "participant resigned before leadership - force
+//                   rebuild";
+//               ptr->forceRebuild();
+//             } else {
+//               LOG_CTX("15cb4", DEBUG, self->loggerContext)
+//                   << "LogFollower resigned, but Replicated State already "
+//                      "gone";
+//             }
+//           } catch (basics::Exception const& e) {
+//             LOG_CTX("f2188", FATAL, self->loggerContext)
+//                 << "waiting for leader ack failed with unexpected exception:
+//                 "
+//                 << e.message();
+//             FATAL_ERROR_EXIT();
+//           }
+//         } catch (std::exception const& ex) {
+//           LOG_CTX("c7787", FATAL, self->loggerContext)
+//               << "waiting for leader ack failed with unexpected exception: "
+//               << ex.what();
+//           FATAL_ERROR_EXIT();
+//         } catch (...) {
+//           LOG_CTX("43456", FATAL, self->loggerContext)
+//               << "waiting for leader ack failed with unexpected exception";
+//           FATAL_ERROR_EXIT();
+//         }
+//       });
+// }
 
-template<typename S>
-void FollowerStateManager<S>::ingestLogData() {
-  auto core = _guardedData.doUnderLock([&](GuardedData& data) {
-    data.updateInternalState(FollowerInternalState::kTransferSnapshot);
-    auto demux = Demultiplexer::construct(logFollower);
-    demux->listen();
-    data.stream = demux->template getStreamById<1>();
-    return std::move(data.core);
-  });
-
-  LOG_CTX("1d843", TRACE, loggerContext) << "creating follower state instance";
-  auto hiddenState = factory->constructFollower(std::move(core));
-
-  LOG_CTX("ea777", TRACE, loggerContext) << "check if new snapshot is required";
-  checkSnapshot(hiddenState);
-}
-
-template<typename S>
-void FollowerStateManager<S>::awaitLeaderShip() {
-  _guardedData.getLockedGuard()->updateInternalState(
-      FollowerInternalState::kWaitForLeaderConfirmation);
-  try {
-    handleAwaitLeadershipResult(logFollower->waitForLeaderAcked());
-  } catch (replicated_log::ParticipantResignedException const&) {
-    if (auto p = parent.lock(); p) {
-      LOG_CTX("1cb5c", TRACE, loggerContext)
-          << "forcing rebuild because participant resigned";
-      return p->forceRebuild();
-    } else {
-      LOG_CTX("a62cb", TRACE, loggerContext) << "replicated state already gone";
-    }
-  }
-}
-
-template<typename S>
-void FollowerStateManager<S>::handleAwaitLeadershipResult(
-    futures::Future<replicated_log::WaitForResult>&& f) {
-  std::move(f).thenFinal(
-      [weak = this->weak_from_this()](
-          futures::Try<replicated_log::WaitForResult>&& result) noexcept {
-        auto self = weak.lock();
-        if (self == nullptr) {
-          return;
-        }
-        try {
-          try {
-            result.throwIfFailed();
-            LOG_CTX("53ba1", TRACE, self->loggerContext)
-                << "leadership acknowledged - ingesting log data";
-            self->ingestLogData();
-          } catch (replicated_log::ParticipantResignedException const&) {
-            if (auto ptr = self->parent.lock(); ptr) {
-              LOG_CTX("79e37", DEBUG, self->loggerContext)
-                  << "participant resigned before leadership - force rebuild";
-              ptr->forceRebuild();
-            } else {
-              LOG_CTX("15cb4", DEBUG, self->loggerContext)
-                  << "LogFollower resigned, but Replicated State already "
-                     "gone";
-            }
-          } catch (basics::Exception const& e) {
-            LOG_CTX("f2188", FATAL, self->loggerContext)
-                << "waiting for leader ack failed with unexpected exception: "
-                << e.message();
-            FATAL_ERROR_EXIT();
-          }
-        } catch (std::exception const& ex) {
-          LOG_CTX("c7787", FATAL, self->loggerContext)
-              << "waiting for leader ack failed with unexpected exception: "
-              << ex.what();
-          FATAL_ERROR_EXIT();
-        } catch (...) {
-          LOG_CTX("43456", FATAL, self->loggerContext)
-              << "waiting for leader ack failed with unexpected exception";
-          FATAL_ERROR_EXIT();
-        }
-      });
-}
+// template<typename S>
+// void FollowerStateManager<S>::oldRun() noexcept {
+//   // 1. wait for log follower to have committed at least one entry
+//   // 2. receive a new snapshot (if required)
+//   //    if (old_generation != new_generation || snapshot_status != Completed)
+//   // 3. start polling for new entries
+//   awaitLeaderShip();
+// }
 
 template<typename S>
 void FollowerStateManager<S>::run() noexcept {
-  // 1. wait for log follower to have committed at least one entry
-  // 2. receive a new snapshot (if required)
-  //    if (old_generation != new_generation || snapshot_status != Completed)
-  // 3. start polling for new entries
-  awaitLeaderShip();
-}
-
-template<typename S>
-void FollowerStateManager<S>::newRun() noexcept {
   waitForLogFollowerResign();
 
   static auto constexpr throwResultOnError = [](Result result) {
@@ -371,43 +378,84 @@ void FollowerStateManager<S>::newRun() noexcept {
       throw basics::Exception(std::move(result), ADB_HERE);
     }
   };
-  static auto constexpr handleErrors =
-      [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
-        // TODO Instead of capturing "this", should we capture the loggerContext
-        // instead?
 
-        // TODO implement this
+  auto const handleErrors = [weak = this->weak_from_this()](
+                                futures::Try<futures::Unit>&& tryResult) {
+    // TODO Instead of capturing "this", should we capture the loggerContext
+    // instead?
+    if (auto self = weak.lock(); self != nullptr) {
+      try {
+        [[maybe_unused]] futures::Unit _ = tryResult.get();
+      } catch (replicated_log::ParticipantResignedException const&) {
+        LOG_CTX("0a0db", DEBUG, self->loggerContext)
+            << "Log follower resigned, stopping replicated state machine. Will "
+               "be restarted soon.";
+        return;
+      } catch (basics::Exception const& ex) {
+        LOG_CTX("2feb8", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state machine: "
+            << ex.message();
         FATAL_ERROR_EXIT();
-      };
-  static auto constexpr transitionTo = [this](FollowerInternalState state) {
+      } catch (std::exception const& ex) {
+        LOG_CTX("8c611", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state machine: "
+            << ex.what();
+        FATAL_ERROR_EXIT();
+      } catch (...) {
+        LOG_CTX("4d160", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state machine.";
+        FATAL_ERROR_EXIT();
+      }
+    }
+  };
+
+  auto const transitionTo = [this](FollowerInternalState state) {
     return [state, weak = this->weak_from_this()](futures::Unit) {
       if (auto self = weak.lock(); self != nullptr) {
         self->_guardedData.getLockedGuard()->updateInternalState(state);
-        self->newRun();
+        self->run();
       }
     };
   };
 
   // Note that because `transitionWith` locks the self-ptr before calling `fn`,
   // fn itself is allowed to just capture and use `this`.
-  static auto constexpr transitionWith = [this]<typename F>(F&& fn) {
+  auto const transitionWith = [this]<typename F>(F&& fn) {
     return [weak = this->weak_from_this(),
-            fn = std::forward<F>(fn)](futures::Unit) mutable {
+            fn = std::forward<F>(fn)]<typename T>(T&& arg) mutable {
       if (auto self = weak.lock(); self != nullptr) {
-        auto state = std::move(fn)();
+        auto const state = std::invoke([&] {
+          if constexpr (std::is_same_v<std::decay_t<T>, futures::Unit>) {
+            return std::move(fn)();
+          } else {
+            return std::move(fn)(std::forward<T>(arg));
+          }
+        });
         self->_guardedData.getLockedGuard()->updateInternalState(state);
-        self->newRun();
+        self->run();
       }
     };
   };
 
-  static auto constexpr transitionWithTry = [this]<typename F>(F&& fn) {
+  auto const transitionWithArg = [this]<typename F>(F&& fn) {
+    return [weak = this->weak_from_this(),
+            fn = std::forward<F>(fn)]<typename T>(T&& arg) mutable {
+      if (auto self = weak.lock(); self != nullptr) {
+        auto const state =
+            std::invoke([&] { return std::move(fn)(std::forward<T>(arg)); });
+        self->_guardedData.getLockedGuard()->updateInternalState(state);
+        self->run();
+      }
+    };
+  };
+
+  auto const transitionWithTry = [this]<typename F>(F&& fn) {
     return [weak = this->weak_from_this(), fn = std::forward<F>(fn)](
                futures::Try<futures::Unit> tryResult) mutable {
       if (auto self = weak.lock(); self != nullptr) {
         auto state = std::move(fn)(std::move(tryResult));
         self->_guardedData.getLockedGuard()->updateInternalState(state);
-        self->newRun();
+        self->run();
       }
     };
   };
@@ -415,40 +463,42 @@ void FollowerStateManager<S>::newRun() noexcept {
   static auto constexpr immediate = []<typename F>(F&& fn) {
     auto promise = futures::Promise<futures::Unit>{};
     try {
-      promise.setValue(std::forward<F>(fn));
+      static_assert(std::is_same_v<void, std::invoke_result_t<F>>);
+      std::forward<F>(fn)();
+      promise.setValue(futures::Unit());
     } catch (...) {
       promise.setException(std::current_exception());
     }
     return promise.getFuture();
   };
 
-  static auto constexpr toTryUnit =
-      []<typename F>(F&& fn) -> futures::Try<futures::Unit> {
-    try {
-      return futures::Try<futures::Unit>{std::forward<F>(fn)()};
-    } catch (...) {
-      return futures::Try<futures::Unit>{std::current_exception()};
-    }
+  // static auto constexpr toTryUnit =
+  //     []<typename F>(F&& fn) -> futures::Try<futures::Unit> {
+  //   try {
+  //     return futures::Try<futures::Unit>{std::forward<F>(fn)()};
+  //   } catch (...) {
+  //     return futures::Try<futures::Unit>{std::current_exception()};
+  //   }
+  // };
+
+  static auto constexpr noop = []() {
+    auto promise = futures::Promise<futures::Unit>{};
+    promise.setValue(futures::Unit());
+    return promise.getFuture();
   };
 
   auto lastState = _guardedData.getLockedGuard()->internalState;
 
   switch (lastState) {
     case FollowerInternalState::kUninitializedState: {
-      std::invoke(
+      noop().thenValue(
           transitionTo(FollowerInternalState::kWaitForLeaderConfirmation));
     } break;
     case FollowerInternalState::kWaitForLeaderConfirmation: {
       waitForLeaderAcked()
-          .thenValue(throwResultOnError)
-          .thenValue(transitionWith([this] {
-            if (needsSnapshot()) {
-              return FollowerInternalState::kTransferSnapshot;
-            } else {
-              return FollowerInternalState::kWaitForNewEntries;
-            }
-          }))
-          .thenError(handleErrors);
+          .thenValue(
+              transitionTo(FollowerInternalState::kInstantiateStateMachine))
+          .thenFinal(handleErrors);
     } break;
     case FollowerInternalState::kInstantiateStateMachine: {
       immediate([this] { return instantiateStateMachine(); })
@@ -463,10 +513,8 @@ void FollowerStateManager<S>::newRun() noexcept {
     } break;
     case FollowerInternalState::kTransferSnapshot: {
       tryTransferSnapshot()
-          .thenValue(throwResultOnError)
-          .thenValue()
           .then(transitionWithTry(
-              [this](futures::Try<futures::Unit>&& tryResult) {
+              [](futures::Try<futures::Unit> const& tryResult) {
                 if (tryResult.hasValue()) {
                   return FollowerInternalState::kWaitForNewEntries;
                 } else {
@@ -477,7 +525,10 @@ void FollowerStateManager<S>::newRun() noexcept {
           .thenFinal(handleErrors);
     } break;
     case FollowerInternalState::kSnapshotTransferFailed: {
-      auto const retryCount = _guardedData.getLockedGuard()->errorCounter;
+      auto const retryCount = _guardedData.doUnderLock([](GuardedData& data) {
+        data.ingestionRange.reset();
+        return ++data.errorCounter;
+      });
       auto const duration = calcRetryDuration(retryCount);
       LOG_CTX("2ea59", TRACE, loggerContext)
           << "retry snapshot transfer after "
@@ -490,17 +541,18 @@ void FollowerStateManager<S>::newRun() noexcept {
     } break;
     case FollowerInternalState::kWaitForNewEntries: {
       waitForNewEntries()
-          .thenValue(transitionWith([this](auto iter) {
+          .thenValue(transitionWithArg([this](auto iter) {
             _guardedData.doUnderLock(
                 [&](auto& data) { data.nextEntriesIter = std::move(iter); });
             return FollowerInternalState::kApplyRecentEntries;
           }))
-          .thenError(handleErrors);
+          .thenFinal(handleErrors);
     } break;
     case FollowerInternalState::kApplyRecentEntries: {
       applyNewEntries()
+          .thenValue(throwResultOnError)
           .thenValue(transitionTo(FollowerInternalState::kWaitForNewEntries))
-          .thenError(handleErrors);
+          .thenFinal(handleErrors);
     } break;
   }
 }
@@ -551,7 +603,20 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
 template<typename S>
 auto FollowerStateManager<S>::getFollowerState() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
-  return _guardedData.getLockedGuard()->state;
+  return _guardedData.doUnderLock([](GuardedData const& data) -> decltype(data.state) {
+    switch (data.internalState) {
+      case FollowerInternalState::kWaitForNewEntries:
+      case FollowerInternalState::kApplyRecentEntries:
+        return data.state;
+      case FollowerInternalState::kUninitializedState:
+      case FollowerInternalState::kWaitForLeaderConfirmation:
+      case FollowerInternalState::kInstantiateStateMachine:
+      case FollowerInternalState::kTransferSnapshot:
+      case FollowerInternalState::kSnapshotTransferFailed:
+        return nullptr;
+    }
+    FATAL_ERROR_ABORT();
+  });
 }
 
 template<typename S>
@@ -594,7 +659,7 @@ auto FollowerStateManager<S>::getStream() const noexcept
 template<typename S>
 auto FollowerStateManager<S>::needsSnapshot() const noexcept -> bool {
   LOG_CTX("ea777", TRACE, loggerContext) << "check if new snapshot is required";
-  return _guardedData.doUnderLock([&](GuardedData& data) {
+  return _guardedData.doUnderLock([&](GuardedData const& data) {
     LOG_CTX("aee5b", DEBUG, loggerContext)
         << "snapshot status is " << data.token->snapshot.status
         << ", generation is " << data.token->generation;
@@ -610,15 +675,20 @@ auto FollowerStateManager<S>::waitForLeaderAcked()
 }
 
 template<typename S>
-auto FollowerStateManager<S>::tryTransferSnapshot() -> futures::Future<Result> {
-  auto& leader = logFollower->getLeader();
-  TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
-                                    "has to be a leader in the current term";
+auto FollowerStateManager<S>::tryTransferSnapshot()
+    -> futures::Future<futures::Unit> {
+  auto const& leader = logFollower->getLeader();
+  ADB_PROD_ASSERT(leader.has_value())
+      << "Leader established it's leadership. "
+         "There has to be a leader in the current term.";
 
   auto const commitIndex = logFollower->getCommitIndex();
   LOG_CTX("52a11", DEBUG, loggerContext)
       << "try to acquire a new snapshot, starting at " << commitIndex;
-  return _guardedData.doUnderLock([this](auto& data) {
+  return _guardedData.doUnderLock([&](auto& data) {
+    ADB_PROD_ASSERT(data.state != nullptr)
+        << "State machine must have been initialized before acquiring a "
+           "snapshot.";
     return data.state->acquireSnapshot(*leader, commitIndex)
         .then([ctx = loggerContext](futures::Try<Result>&& tryResult) {
           auto result = basics::catchToResult([&] { return tryResult.get(); });
@@ -645,27 +715,29 @@ void FollowerStateManager<S>::instantiateStateMachine() {
     LOG_CTX("1d843", TRACE, loggerContext)
         << "creating follower state instance";
     data.state = factory->constructFollower(std::move(data.core));
+    ADB_PROD_ASSERT(data.state != nullptr);  // TODO remove, just for debugging
   });
 }
+
 template<typename S>
-void FollowerStateManager<S>::waitForNewEntries() {
+auto FollowerStateManager<S>::waitForNewEntries()
+    -> futures::Future<std::unique_ptr<typename Stream::Iterator>> {
   return _guardedData.doUnderLock([&](GuardedData& data) {
     TRI_ASSERT(data.stream != nullptr);
     LOG_CTX("a1462", TRACE, loggerContext)
         << "polling for new entries _nextWaitForIndex = "
         << data._nextWaitForIndex;
-    TRI_ASSERT(data.nextEntriesIter == std::nullopt);
+    TRI_ASSERT(data.nextEntriesIter == nullptr);
     return data.stream->waitForIterator(data._nextWaitForIndex);
   });
 }
 
 template<typename S>
-auto FollowerStateManager<S>::applyNewEntries()
-    -> futures::Future<futures::Unit> {
+auto FollowerStateManager<S>::applyNewEntries() -> futures::Future<Result> {
   auto [state, iter] = _guardedData.doUnderLock([&](GuardedData& data) {
+    TRI_ASSERT(data.nextEntriesIter != nullptr);
     auto iter_ = std::move(data.nextEntriesIter);
-    TRI_ASSERT(iter_ != nullptr);
-    data.ingestionRange = iter_->range;
+    data.ingestionRange = iter_->range();
     data.lastError.reset();
     data.errorCounter = 0;
     return std::make_pair(data.state, std::move(iter_));
@@ -722,6 +794,20 @@ FollowerStateManager<S>::GuardedData::GuardedData(
     : self(self), core(std::move(core)), token(std::move(token)) {
   TRI_ASSERT(this->core != nullptr);
   TRI_ASSERT(this->token != nullptr);
+}
+
+template<typename S>
+void FollowerStateManager<S>::waitForLogFollowerResign() {
+  logFollower->waitForResign().thenFinal(
+      [weak = this->weak_from_this()](futures::Try<futures::Unit> const&) {
+        if (auto self = weak.lock(); self != nullptr) {
+          if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
+            LOG_CTX("654fb", TRACE, self->loggerContext)
+                << "forcing rebuild because participant resigned";
+            parentPtr->forceRebuild();
+          }
+        }
+      });
 }
 
 }  // namespace arangodb::replication2::replicated_state

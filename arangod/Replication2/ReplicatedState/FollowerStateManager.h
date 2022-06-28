@@ -53,18 +53,19 @@ struct FollowerStateManager
       std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
-  void run() noexcept override;
+  void oldRun() noexcept;
 
   // <new> (mostly stubs)
   void waitForLogFollowerResign();
 
-  void newRun() noexcept;
+  void run() noexcept override;
   [[nodiscard]] auto waitForLeaderAcked() -> futures::Future<futures::Unit>;
   void instantiateStateMachine();
-  [[nodiscard]] auto tryTransferSnapshot() -> futures::Future<Result>;
-  void startService();  //?
-  void waitForNewEntries();
-  [[nodiscard]] auto applyNewEntries() -> futures::Future<futures::Unit>;
+  [[nodiscard]] auto tryTransferSnapshot() -> futures::Future<futures::Unit>;
+  // void startService();  //?
+  auto waitForNewEntries()
+      -> futures::Future<std::unique_ptr<typename Stream::Iterator>>;
+  [[nodiscard]] auto applyNewEntries() -> futures::Future<Result>;
 
   [[nodiscard]] auto needsSnapshot() const noexcept -> bool;
   // </new>
@@ -116,7 +117,7 @@ struct FollowerStateManager
     std::unique_ptr<CoreType> core;
     std::unique_ptr<ReplicatedStateToken> token;
     WaitForAppliedQueue waitForAppliedQueue;
-    std::optional<typename Stream::Iterator> nextEntriesIter;
+    std::unique_ptr<typename Stream::Iterator> nextEntriesIter;
 
     bool _didResign = false;
 

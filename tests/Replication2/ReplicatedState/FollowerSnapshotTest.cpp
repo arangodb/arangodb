@@ -126,7 +126,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   {
     auto status = *manager->getStatus().asFollowerStatus();
     EXPECT_EQ(status.managerState.state,
-              FollowerInternalState::kNothingToApply);
+              FollowerInternalState::kWaitForNewEntries);
   }
   ASSERT_NE(nullptr, manager->getFollowerState())
       << "follower state should be available";
@@ -146,7 +146,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   {
     auto status = *manager->getStatus().asFollowerStatus();
     EXPECT_EQ(status.managerState.state,
-              FollowerInternalState::kNothingToApply);
+              FollowerInternalState::kWaitForNewEntries);
   }
 }
 

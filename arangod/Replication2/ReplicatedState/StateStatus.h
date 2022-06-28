@@ -105,7 +105,7 @@ enum class FollowerInternalState {
   kWaitForLeaderConfirmation,
   kInstantiateStateMachine,
   kTransferSnapshot,
-  kNothingToApply,     // old TODO delete this
+  // kNothingToApply,     // old TODO delete this
   kWaitForNewEntries,  // new
   kApplyRecentEntries,
   kSnapshotTransferFailed,
