@@ -52,7 +52,7 @@ ArangoDB versions. The values are only expected to change during the startup and
 shutdown, i.e. while `maintenance` is `true`.
 
 You need to start _arangod_ with the `--server.early-connections` startup option
-enabled to be able to query the endpoint during the startup phase.
+enabled to be able to query the endpoint during the startup process.
 If authentication is enabled, then you need to use the super-user JWT for the
 request because the user management is not available during the startup.
 
