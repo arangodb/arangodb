@@ -425,6 +425,8 @@ void FollowerStateManager<S>::run() noexcept {
             fn = std::forward<F>(fn)]<typename T>(T&& arg) mutable {
       if (auto self = weak.lock(); self != nullptr) {
         auto const state = std::invoke([&] {
+          // TODO This is a try to unify this with transitionWithArg;
+          //      try to make it work.
           if constexpr (std::is_same_v<std::decay_t<T>, futures::Unit>) {
             return std::move(fn)();
           } else {
@@ -437,6 +439,7 @@ void FollowerStateManager<S>::run() noexcept {
     };
   };
 
+  // TODO merge this with transitionWith (see comment above)
   auto const transitionWithArg = [this]<typename F>(F&& fn) {
     return [weak = this->weak_from_this(),
             fn = std::forward<F>(fn)]<typename T>(T&& arg) mutable {
@@ -449,6 +452,7 @@ void FollowerStateManager<S>::run() noexcept {
     };
   };
 
+  // TODO merge this with transitionWith
   auto const transitionWithTry = [this]<typename F>(F&& fn) {
     return [weak = this->weak_from_this(), fn = std::forward<F>(fn)](
                futures::Try<futures::Unit> tryResult) mutable {
@@ -514,8 +518,12 @@ void FollowerStateManager<S>::run() noexcept {
     case FollowerInternalState::kTransferSnapshot: {
       tryTransferSnapshot()
           .then(transitionWithTry(
-              [](futures::Try<futures::Unit> const& tryResult) {
+              [this](futures::Try<futures::Unit> const& tryResult) {
                 if (tryResult.hasValue()) {
+                  auto const state = _guardedData.getLockedGuard()->state;
+                  // setStateManager must not be called while the lock is held,
+                  // or it will deadlock.
+                  state->setStateManager(this->shared_from_this());
                   return FollowerInternalState::kWaitForNewEntries;
                 } else {
                   TRI_ASSERT(tryResult.hasException());
@@ -525,9 +533,8 @@ void FollowerStateManager<S>::run() noexcept {
           .thenFinal(handleErrors);
     } break;
     case FollowerInternalState::kSnapshotTransferFailed: {
-      auto const retryCount = _guardedData.doUnderLock([](GuardedData& data) {
-        return ++data.errorCounter;
-      });
+      auto const retryCount = _guardedData.doUnderLock(
+          [](GuardedData& data) { return ++data.errorCounter; });
       auto const duration = calcRetryDuration(retryCount);
       LOG_CTX("2ea59", TRACE, loggerContext)
           << "retry snapshot transfer after "
@@ -745,7 +752,6 @@ auto FollowerStateManager<S>::waitForNewEntries()
               }
             });
       } else {
-        data.state->setStateManager(this->shared_from_this());
         return DeferredAction();
       }
     });
@@ -790,7 +796,6 @@ void FollowerStateManager<S>::GuardedData::updateInternalState(
   lastError.reset();
   errorCounter = 0;
 }
-
 
 // template<typename S>
 // void FollowerStateManager<S>::GuardedData::updateInternalState(
