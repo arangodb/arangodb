@@ -323,6 +323,23 @@ auto ReplaceSpecificServerActor::step(AgencyState const& agency) const
   return {ReplaceServerTargetState{oldServer, newServer}};
 }
 
+ReplaceSpecificLogServerActor::ReplaceSpecificLogServerActor(ParticipantId oldServer,
+                                                       ParticipantId newServer)
+    : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
+
+auto ReplaceSpecificLogServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  if (!agency.replicatedLog) {
+    return {};
+  }
+
+  auto const& target = agency.replicatedLog->target;
+  TRI_ASSERT(!target.participants.contains(newServer));
+  TRI_ASSERT(target.participants.contains(oldServer));
+
+  return {ReplaceServerTargetLog{oldServer, newServer}};
+}
+
 SetLeaderActor::SetLeaderActor(ParticipantId leader) : newLeader(leader) {}
 
 auto SetLeaderActor::step(AgencyState const& agency) const
