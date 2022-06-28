@@ -41,7 +41,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
-#include "Aql/PathsNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -4152,10 +4152,10 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       isTraversalNode = true;
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
-      auto pathsNode = ExecutionNode::castTo<PathsNode const*>(node);
+      auto pathsNode = ExecutionNode::castTo<EnumeratePathsNode const*>(node);
       TRI_ASSERT(pathsNode->isDisjoint());
       collection = pathsNode->collection();
-      // Subtle: PathsNode uses a reference when returning
+      // Subtle: EnumeratePathsNode uses a reference when returning
       // startInVariable
       inputVariable = &pathsNode->startInVariable();
     } break;
@@ -8713,10 +8713,11 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         };
       } break;
       case ExecutionNode::K_SHORTEST_PATHS: {
-        auto* pathsNode = ExecutionNode::castTo<PathsNode*>(targetNode);
+        auto* pathsNode =
+            ExecutionNode::castTo<EnumeratePathsNode*>(targetNode);
         TRI_ASSERT(pathsNode->isDisjoint());
         collection = pathsNode->collection();
-        // Subtle: PathsNode uses a reference when returning
+        // Subtle: EnumeratePathsNode uses a reference when returning
         // startInVariable
         TRI_ASSERT(pathsNode->usesStartInVariable());
         inputVariable = &pathsNode->startInVariable();

@@ -23,7 +23,7 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PathsNode.h"
+#include "EnumeratePathsNode.h"
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -87,7 +87,7 @@ static void parseNodeInput(AstNode const* node, std::string& id,
   }
 }
 
-static GraphNode::InputVertex prepareVertexInput(PathsNode const* node,
+static GraphNode::InputVertex prepareVertexInput(EnumeratePathsNode const* node,
                                                  bool isTarget) {
   using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
@@ -112,12 +112,11 @@ static GraphNode::InputVertex prepareVertexInput(PathsNode const* node,
 }
 }  // namespace
 
-PathsNode::PathsNode(ExecutionPlan* plan, ExecutionNodeId id,
-                     TRI_vocbase_t* vocbase,
-                     arangodb::graph::PathType::Type pathType,
-                     AstNode const* direction, AstNode const* start,
-                     AstNode const* target, AstNode const* graph,
-                     std::unique_ptr<BaseOptions> options)
+EnumeratePathsNode::EnumeratePathsNode(
+    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+    arangodb::graph::PathType::Type pathType, AstNode const* direction,
+    AstNode const* start, AstNode const* target, AstNode const* graph,
+    std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathType(pathType),
       _pathOutVariable(nullptr),
@@ -157,7 +156,7 @@ PathsNode::PathsNode(ExecutionPlan* plan, ExecutionNodeId id,
 }
 
 /// @brief Internal constructor to clone the node.
-PathsNode::PathsNode(
+EnumeratePathsNode::EnumeratePathsNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     arangodb::graph::PathType::Type pathType,
     std::vector<Collection*> const& edgeColls,
@@ -180,10 +179,10 @@ PathsNode::PathsNode(
       _toCondition(nullptr),
       _distributeVariable(distributeVariable) {}
 
-PathsNode::~PathsNode() = default;
+EnumeratePathsNode::~EnumeratePathsNode() = default;
 
-PathsNode::PathsNode(ExecutionPlan* plan,
-                     arangodb::velocypack::Slice const& base)
+EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
+                                       arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),
       _pathType(arangodb::graph::PathType::Type::KShortestPaths),
       _pathOutVariable(nullptr),
@@ -259,7 +258,8 @@ PathsNode::PathsNode(ExecutionPlan* plan,
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
-PathsNode::PathsNode(ExecutionPlan& plan, PathsNode const& other)
+EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan& plan,
+                                       EnumeratePathsNode const& other)
     : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),
       _pathType(other._pathType),
       _pathOutVariable(other._pathOutVariable),
@@ -273,23 +273,24 @@ PathsNode::PathsNode(ExecutionPlan& plan, PathsNode const& other)
   other.kShortestPathsCloneHelper(plan, *this, false);
 }
 
-void PathsNode::setStartInVariable(Variable const* inVariable) {
+void EnumeratePathsNode::setStartInVariable(Variable const* inVariable) {
   _inStartVariable = inVariable;
   _startVertexId = "";
 }
 
-void PathsNode::setTargetInVariable(Variable const* inVariable) {
+void EnumeratePathsNode::setTargetInVariable(Variable const* inVariable) {
   _inTargetVariable = inVariable;
   _targetVertexId = "";
 }
 
-void PathsNode::setDistributeVariable(Variable const* distVariable) {
+void EnumeratePathsNode::setDistributeVariable(Variable const* distVariable) {
   // Can only be set once.
   TRI_ASSERT(_distributeVariable == nullptr);
   _distributeVariable = distVariable;
 }
 
-void PathsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void EnumeratePathsNode::doToVelocyPack(VPackBuilder& nodes,
+                                        unsigned flags) const {
   GraphNode::doToVelocyPack(nodes, flags);  // call base class method
   nodes.add(StaticStrings::GraphQueryShortestPathType,
             VPackValue(arangodb::graph::PathType::toString(_pathType)));
@@ -336,7 +337,7 @@ void PathsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 // 3. or ClusterProvider<ClusterProviderStep>
 
 template<typename KPathRefactored, typename Provider, typename ProviderOptions>
-std::unique_ptr<ExecutionBlock> PathsNode::_makeExecutionBlockImpl(
+std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
     ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
     ProviderOptions backwardProviderOptions,
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
@@ -361,7 +362,7 @@ std::unique_ptr<ExecutionBlock> PathsNode::_makeExecutionBlockImpl(
 };
 
 /// @brief creates corresponding ExecutionBlock
-std::unique_ptr<ExecutionBlock> PathsNode::createBlock(
+std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
@@ -470,13 +471,14 @@ std::unique_ptr<ExecutionBlock> PathsNode::createBlock(
   }
 }
 
-ExecutionNode* PathsNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                bool withProperties) const {
+ExecutionNode* EnumeratePathsNode::clone(ExecutionPlan* plan,
+                                         bool withDependencies,
+                                         bool withProperties) const {
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = std::make_unique<PathsNode>(
+  auto c = std::make_unique<EnumeratePathsNode>(
       plan, _id, _vocbase, _pathType, _edgeColls, _vertexColls,
       _defaultDirection, _directions, _inStartVariable, _startVertexId,
       _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj,
@@ -487,8 +489,9 @@ ExecutionNode* PathsNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void PathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan, PathsNode& c,
-                                          bool withProperties) const {
+void EnumeratePathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
+                                                   EnumeratePathsNode& c,
+                                                   bool withProperties) const {
   graphCloneHelper(plan, c, withProperties);
   if (usesPathOutVariable()) {
     auto pathOutVariable = _pathOutVariable;
@@ -510,7 +513,7 @@ void PathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan, PathsNode& c,
   c._toCondition = _toCondition->clone(_plan->getAst());
 }
 
-void PathsNode::replaceVariables(
+void EnumeratePathsNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   if (_inStartVariable != nullptr) {
     _inStartVariable = Variable::replace(_inStartVariable, replacements);
@@ -524,7 +527,7 @@ void PathsNode::replaceVariables(
 }
 
 /// @brief getVariablesSetHere
-std::vector<Variable const*> PathsNode::getVariablesSetHere() const {
+std::vector<Variable const*> EnumeratePathsNode::getVariablesSetHere() const {
   std::vector<Variable const*> vars;
   TRI_ASSERT(_pathOutVariable != nullptr);
   vars.emplace_back(_pathOutVariable);
@@ -532,7 +535,7 @@ std::vector<Variable const*> PathsNode::getVariablesSetHere() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void PathsNode::getVariablesUsedHere(VarSet& vars) const {
+void EnumeratePathsNode::getVariablesUsedHere(VarSet& vars) const {
   if (_inStartVariable != nullptr) {
     vars.emplace(_inStartVariable);
   }
@@ -549,17 +552,17 @@ void PathsNode::getVariablesUsedHere(VarSet& vars) const {
   }
 }
 
-std::vector<arangodb::graph::IndexAccessor> PathsNode::buildUsedIndexes()
-    const {
+std::vector<arangodb::graph::IndexAccessor>
+EnumeratePathsNode::buildUsedIndexes() const {
   return buildIndexes(/*reverse*/ false);
 }
 
-std::vector<arangodb::graph::IndexAccessor> PathsNode::buildReverseUsedIndexes()
-    const {
+std::vector<arangodb::graph::IndexAccessor>
+EnumeratePathsNode::buildReverseUsedIndexes() const {
   return buildIndexes(/*reverse*/ true);
 }
 
-std::vector<arangodb::graph::IndexAccessor> PathsNode::buildIndexes(
+std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     bool reverse) const {
   size_t numEdgeColls = _edgeColls.size();
   constexpr bool onlyEdgeIndexes = true;
@@ -610,7 +613,7 @@ std::vector<arangodb::graph::IndexAccessor> PathsNode::buildIndexes(
   return indexAccessors;
 }
 
-void PathsNode::prepareOptions() {
+void EnumeratePathsNode::prepareOptions() {
   if (_optionsBuilt) {
     return;
   }
@@ -660,7 +663,7 @@ void PathsNode::prepareOptions() {
   _optionsBuilt = true;
 }
 
-auto PathsNode::options() const -> graph::ShortestPathOptions* {
+auto EnumeratePathsNode::options() const -> graph::ShortestPathOptions* {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* opts = dynamic_cast<ShortestPathOptions*>(GraphNode::options());
   TRI_ASSERT((GraphNode::options() == nullptr) == (opts == nullptr));

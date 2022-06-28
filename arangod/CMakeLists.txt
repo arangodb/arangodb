@@ -347,6 +347,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DocumentExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/EnumeratePathsNode.cpp
   Aql/ClusterQuery.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
@@ -381,7 +382,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/InputAqlItemRow.cpp
   Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
-  Aql/PathsNode.cpp
   Aql/LateMaterializedExpressionContext.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp

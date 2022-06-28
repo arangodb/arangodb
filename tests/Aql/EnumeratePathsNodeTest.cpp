@@ -24,7 +24,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/Ast.h"
-#include "Aql/PathsNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/Query.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/ShortestPathOptions.h"
@@ -40,7 +40,7 @@ using namespace arangodb::tests::mocks;
 namespace arangodb {
 namespace tests {
 namespace aql {
-class PathsNodeTest : public ::testing::Test {
+class EnumeratePathsNodeTest : public ::testing::Test {
   MockAqlServer _server{};
   std::shared_ptr<Query> _query{_server.createFakeQuery()};
   std::shared_ptr<Query> _otherQuery{_server.createFakeQuery()};
@@ -51,7 +51,7 @@ class PathsNodeTest : public ::testing::Test {
   AstNode* _graph{nullptr};
 
  public:
-  PathsNodeTest() {
+  EnumeratePathsNodeTest() {
     auto ast = _query->ast();
     _source =
         ast->createNodeValueString(_startNode.c_str(), _startNode.length());
@@ -71,17 +71,17 @@ class PathsNodeTest : public ::testing::Test {
     return _otherQuery->plan();
   }
 
-  PathsNode createNode(ExecutionNodeId id,
-                       std::unique_ptr<ShortestPathOptions> opts) const {
-    return PathsNode{plan(),
-                     id,
-                     &_query->vocbase(),
-                     PathType::Type::KShortestPaths,
-                     _direction,
-                     _source,
-                     _target,
-                     _graph,
-                     std::move(opts)};
+  EnumeratePathsNode createNode(
+      ExecutionNodeId id, std::unique_ptr<ShortestPathOptions> opts) const {
+    return EnumeratePathsNode{plan(),
+                              id,
+                              &_query->vocbase(),
+                              PathType::Type::KShortestPaths,
+                              _direction,
+                              _source,
+                              _target,
+                              _graph,
+                              std::move(opts)};
   };
 
   std::unique_ptr<ShortestPathOptions> makeOptions() const {
@@ -89,16 +89,16 @@ class PathsNodeTest : public ::testing::Test {
   }
 };
 
-TEST_F(PathsNodeTest, clone_should_preserve_isSmart) {
+TEST_F(EnumeratePathsNodeTest, clone_should_preserve_isSmart) {
   ExecutionNodeId id(12);
   auto opts = makeOptions();
-  PathsNode original = createNode(id, std::move(opts));
+  EnumeratePathsNode original = createNode(id, std::move(opts));
   ASSERT_EQ(original.id(), id);
   for (bool keepPlan : std::vector<bool>{false, true}) {
     for (bool value : std::vector<bool>{false, true}) {
       auto p = keepPlan ? plan() : otherPlan(true);
       original.setIsSmart(value);
-      auto clone = ExecutionNode::castTo<PathsNode*>(
+      auto clone = ExecutionNode::castTo<EnumeratePathsNode*>(
           original.clone(p, false, !keepPlan));
       if (keepPlan) {
         EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
@@ -111,16 +111,16 @@ TEST_F(PathsNodeTest, clone_should_preserve_isSmart) {
   }
 }
 
-TEST_F(PathsNodeTest, clone_should_preserve_isDisjoint) {
+TEST_F(EnumeratePathsNodeTest, clone_should_preserve_isDisjoint) {
   ExecutionNodeId id(12);
   auto opts = makeOptions();
-  PathsNode original = createNode(id, std::move(opts));
+  EnumeratePathsNode original = createNode(id, std::move(opts));
   ASSERT_EQ(original.id(), id);
   for (bool keepPlan : std::vector<bool>{false, true}) {
     for (bool value : std::vector<bool>{false, true}) {
       auto p = keepPlan ? plan() : otherPlan(true);
       original.setIsDisjoint(value);
-      auto clone = ExecutionNode::castTo<PathsNode*>(
+      auto clone = ExecutionNode::castTo<EnumeratePathsNode*>(
           original.clone(p, false, !keepPlan));
       if (keepPlan) {
         EXPECT_NE(clone->id(), original.id()) << "Clone did keep the id";
