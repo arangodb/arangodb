@@ -300,6 +300,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID):
     case static_cast<int>(TRI_ERROR_QUERY_VARIABLE_REDECLARED):
     case static_cast<int>(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN):
+    case static_cast<int>(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED):
     case static_cast<int>(TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS):
     case static_cast<int>(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN):
     case static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH):
