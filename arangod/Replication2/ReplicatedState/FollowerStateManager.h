@@ -123,8 +123,9 @@ struct FollowerStateManager
 
     GuardedData(FollowerStateManager& self, std::unique_ptr<CoreType> core,
                 std::unique_ptr<ReplicatedStateToken> token);
+    void updateInternalState(FollowerInternalState newState);
     void updateInternalState(FollowerInternalState newState,
-                             std::optional<LogRange> range = std::nullopt);
+                             std::optional<LogRange> range);
     void updateInternalState(FollowerInternalState newState, Result);
     auto updateNextIndex(LogIndex nextWaitForIndex) -> DeferredAction;
   };

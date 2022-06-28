@@ -526,7 +526,6 @@ void FollowerStateManager<S>::run() noexcept {
     } break;
     case FollowerInternalState::kSnapshotTransferFailed: {
       auto const retryCount = _guardedData.doUnderLock([](GuardedData& data) {
-        data.ingestionRange.reset();
         return ++data.errorCounter;
       });
       auto const duration = calcRetryDuration(retryCount);
@@ -542,8 +541,10 @@ void FollowerStateManager<S>::run() noexcept {
     case FollowerInternalState::kWaitForNewEntries: {
       waitForNewEntries()
           .thenValue(transitionWithArg([this](auto iter) {
-            _guardedData.doUnderLock(
-                [&](auto& data) { data.nextEntriesIter = std::move(iter); });
+            _guardedData.doUnderLock([&iter](auto& data) {
+              data.nextEntriesIter = std::move(iter);
+              data.ingestionRange.reset();
+            });
             return FollowerInternalState::kApplyRecentEntries;
           }))
           .thenFinal(handleErrors);
@@ -603,20 +604,21 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
 template<typename S>
 auto FollowerStateManager<S>::getFollowerState() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
-  return _guardedData.doUnderLock([](GuardedData const& data) -> decltype(data.state) {
-    switch (data.internalState) {
-      case FollowerInternalState::kWaitForNewEntries:
-      case FollowerInternalState::kApplyRecentEntries:
-        return data.state;
-      case FollowerInternalState::kUninitializedState:
-      case FollowerInternalState::kWaitForLeaderConfirmation:
-      case FollowerInternalState::kInstantiateStateMachine:
-      case FollowerInternalState::kTransferSnapshot:
-      case FollowerInternalState::kSnapshotTransferFailed:
-        return nullptr;
-    }
-    FATAL_ERROR_ABORT();
-  });
+  return _guardedData.doUnderLock(
+      [](GuardedData const& data) -> decltype(data.state) {
+        switch (data.internalState) {
+          case FollowerInternalState::kWaitForNewEntries:
+          case FollowerInternalState::kApplyRecentEntries:
+            return data.state;
+          case FollowerInternalState::kUninitializedState:
+          case FollowerInternalState::kWaitForLeaderConfirmation:
+          case FollowerInternalState::kInstantiateStateMachine:
+          case FollowerInternalState::kTransferSnapshot:
+          case FollowerInternalState::kSnapshotTransferFailed:
+            return nullptr;
+        }
+        FATAL_ERROR_ABORT();
+      });
 }
 
 template<typename S>
@@ -722,14 +724,45 @@ void FollowerStateManager<S>::instantiateStateMachine() {
 template<typename S>
 auto FollowerStateManager<S>::waitForNewEntries()
     -> futures::Future<std::unique_ptr<typename Stream::Iterator>> {
-  return _guardedData.doUnderLock([&](GuardedData& data) {
+  auto&& [action,
+          futureIter] = _guardedData.doUnderLock([&](GuardedData& data) {
+    auto action_ = std::invoke([&] {
+      if (data.ingestionRange) {
+        data._nextWaitForIndex = data.ingestionRange.value().to;
+        auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
+        LOG_CTX("9929a", TRACE, loggerContext)
+            << "Resolving WaitForApplied promises upto "
+            << data._nextWaitForIndex;
+        auto const end =
+            data.waitForAppliedQueue.lower_bound(data._nextWaitForIndex);
+        for (auto it = data.waitForAppliedQueue.begin(); it != end;) {
+          resolveQueue->insert(data.waitForAppliedQueue.extract(it++));
+        }
+        return DeferredAction(
+            [resolveQueue = std::move(resolveQueue)]() noexcept {
+              for (auto& p : *resolveQueue) {
+                p.second.setValue();
+              }
+            });
+      } else {
+        return DeferredAction();
+      }
+    });
+
     TRI_ASSERT(data.stream != nullptr);
     LOG_CTX("a1462", TRACE, loggerContext)
         << "polling for new entries _nextWaitForIndex = "
         << data._nextWaitForIndex;
     TRI_ASSERT(data.nextEntriesIter == nullptr);
-    return data.stream->waitForIterator(data._nextWaitForIndex);
+    return std::make_pair(std::move(action_),
+                          data.stream->waitForIterator(data._nextWaitForIndex));
   });
+
+  // this action will resolve promises that wait for a given index to
+  // be applied
+  action.fire();
+
+  return std::move(futureIter);
 }
 
 template<typename S>
@@ -748,44 +781,53 @@ auto FollowerStateManager<S>::applyNewEntries() -> futures::Future<Result> {
 
   return state->applyEntries(std::move(iter));
 }
-
 template<typename S>
 void FollowerStateManager<S>::GuardedData::updateInternalState(
-    FollowerInternalState newState, std::optional<LogRange> range) {
+    FollowerInternalState newState) {
   internalState = newState;
   lastInternalStateChange = std::chrono::system_clock::now();
-  ingestionRange = range;
   lastError.reset();
   errorCounter = 0;
 }
 
-template<typename S>
-void FollowerStateManager<S>::GuardedData::updateInternalState(
-    FollowerInternalState newState, Result error) {
-  internalState = newState;
-  lastInternalStateChange = std::chrono::system_clock::now();
-  ingestionRange.reset();
-  lastError.emplace(std::move(error));
-  errorCounter += 1;
-}
 
-template<typename S>
-auto FollowerStateManager<S>::GuardedData::updateNextIndex(
-    LogIndex nextWaitForIndex) -> DeferredAction {
-  _nextWaitForIndex = nextWaitForIndex;
-  auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
-  LOG_CTX("9929a", TRACE, self.loggerContext)
-      << "Resolving WaitForApplied promises upto " << nextWaitForIndex;
-  auto const end = waitForAppliedQueue.lower_bound(nextWaitForIndex);
-  for (auto it = waitForAppliedQueue.begin(); it != end;) {
-    resolveQueue->insert(waitForAppliedQueue.extract(it++));
-  }
-  return DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
-    for (auto& p : *resolveQueue) {
-      p.second.setValue();
-    }
-  });
-}
+// template<typename S>
+// void FollowerStateManager<S>::GuardedData::updateInternalState(
+//     FollowerInternalState newState, std::optional<LogRange> range) {
+//   internalState = newState;
+//   lastInternalStateChange = std::chrono::system_clock::now();
+//   ingestionRange = range;
+//   lastError.reset();
+//   errorCounter = 0;
+// }
+//
+// template<typename S>
+// void FollowerStateManager<S>::GuardedData::updateInternalState(
+//     FollowerInternalState newState, Result error) {
+//   internalState = newState;
+//   lastInternalStateChange = std::chrono::system_clock::now();
+//   ingestionRange.reset();
+//   lastError.emplace(std::move(error));
+//   errorCounter += 1;
+// }
+
+// template<typename S>
+// auto FollowerStateManager<S>::GuardedData::updateNextIndex(
+//     LogIndex nextWaitForIndex) -> DeferredAction {
+//   _nextWaitForIndex = nextWaitForIndex;
+//   auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
+//   LOG_CTX("9929a", TRACE, self.loggerContext)
+//       << "Resolving WaitForApplied promises upto " << nextWaitForIndex;
+//   auto const end = waitForAppliedQueue.lower_bound(nextWaitForIndex);
+//   for (auto it = waitForAppliedQueue.begin(); it != end;) {
+//     resolveQueue->insert(waitForAppliedQueue.extract(it++));
+//   }
+//   return DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
+//     for (auto& p : *resolveQueue) {
+//       p.second.setValue();
+//     }
+//   });
+// }
 
 template<typename S>
 FollowerStateManager<S>::GuardedData::GuardedData(
