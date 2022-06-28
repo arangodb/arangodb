@@ -4820,6 +4820,9 @@ function transactionDatabaseSuite() {
   };
 }
 
+/**
+ * This test suite checks the correctness of replicated operations with respect to replicated log contents.
+ */
 function transactionReplication2ReplicateOperation() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
@@ -4866,7 +4869,6 @@ function transactionReplication2ReplicateOperation() {
         let abortFound = false;
         for (const entry of entries) {
           if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
-            assertEqual(entry.payload[1].collectionId, c._id);
             abortFound = true;
             break;
           }
@@ -4903,15 +4905,14 @@ function transactionReplication2ReplicateOperation() {
 
       for (const log of logs) {
         let entries = log.head(1000);
-        let abortFound = false;
+        let commitFound = false;
         for (const entry of entries) {
           if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Commit") {
-            assertEqual(entry.payload[1].collectionId, c._id);
-            abortFound = true;
+            commitFound = true;
             break;
           }
         }
-        assertTrue(abortFound, `Could not find Commit operation in log ${log.id()}! Log entries: ${entries}`);
+        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}! Log entries: ${entries}`);
       }
     },
   };
