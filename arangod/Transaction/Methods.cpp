@@ -426,7 +426,11 @@ transaction::Methods::~Methods() {
         try {
           this->abort();
           TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
-        } catch (...) {
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("6d20f", ERR, Logger::TRANSACTIONS)
+              << "Exception triggered while destroying transaction " << tid()
+              << " on server " << ServerState::instance()->getId() << " "
+              << ex.what();
           // must never throw because we are in a dtor
         }
       }
