@@ -37,7 +37,7 @@ const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
-
+const netstat = require('node-netstat');
 /* Functions: */
 const toArgv = internal.toArgv;
 const executeExternal = internal.executeExternal;
@@ -554,11 +554,25 @@ class instanceManager {
     return true;
   }
 
-
+  printNetstat() {
+    this.arangods.forEach( arangod => {
+      print(arangod.name + " => " + JSON.stringify(arangod.netstat));
+    });
+  }
 
   // skipHealthCheck can be set to true to avoid a call to /_admin/cluster/health
   // on the coordinator. This is necessary if only the agency is running yet.
   checkInstanceAlive({skipHealthCheck = false} = {}) {
+    this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
+    let obj = this;
+    netstat({platform: process.platform}, function (data) {
+      // skip server ports, we know what we bound.
+      if (data.state !== 'LISTEN') {
+        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+      }
+    });
+    this.printNetstat();
+    
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
         (this.url !== this.agencyConfig.urls[0])
