@@ -2697,13 +2697,13 @@ void ExecutionPlan::prepareTraversalOptions() {
   findNodesOfType(nodes,
                   {arangodb::aql::ExecutionNode::TRAVERSAL,
                    arangodb::aql::ExecutionNode::SHORTEST_PATH,
-                   arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
+                   arangodb::aql::ExecutionNode::ENUMERATE_PATHS},
                   true);
   for (auto& node : nodes) {
     switch (node->getType()) {
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
-      case ExecutionNode::K_SHORTEST_PATHS: {
+      case ExecutionNode::ENUMERATE_PATHS: {
         auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
         graphNode->prepareOptions();
       } break;
@@ -2835,7 +2835,7 @@ struct Shower final
     switch (node.getType()) {
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
-      case ExecutionNode::K_SHORTEST_PATHS: {
+      case ExecutionNode::ENUMERATE_PATHS: {
         auto const& graphNode = *ExecutionNode::castTo<GraphNode const*>(&node);
         auto type = std::string{node.getTypeString()};
         if (graphNode.isUsedAsSatellite()) {

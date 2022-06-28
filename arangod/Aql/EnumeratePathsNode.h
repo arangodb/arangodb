@@ -83,7 +83,7 @@ class EnumeratePathsNode : public virtual GraphNode {
 
  public:
   /// @brief return the type of the node
-  NodeType getType() const override final { return K_SHORTEST_PATHS; }
+  NodeType getType() const override final { return ENUMERATE_PATHS; }
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

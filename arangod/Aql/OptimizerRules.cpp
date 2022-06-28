@@ -124,7 +124,7 @@ bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
         setter->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
         setter->getType() == EN::SUBQUERY ||
         setter->getType() == EN::TRAVERSAL ||
-        setter->getType() == EN::K_SHORTEST_PATHS ||
+        setter->getType() == EN::ENUMERATE_PATHS ||
         setter->getType() == EN::SHORTEST_PATH) {
       return true;
     }
@@ -153,7 +153,7 @@ arangodb::aql::Collection const* getCollection(
       return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
           ->collection();
     case EN::TRAVERSAL:
-    case EN::K_SHORTEST_PATHS:
+    case EN::ENUMERATE_PATHS:
     case EN::SHORTEST_PATH:
       return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
           ->collection();
@@ -455,7 +455,7 @@ class RestrictToSingleShardChecker final
 
     switch (en->getType()) {
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH: {
         _stop = true;
         return true;  // abort enumerating, we are done already!
@@ -1391,7 +1391,7 @@ void arangodb::aql::removeRedundantSortsRule(
         } else if (current->getType() == EN::ENUMERATE_LIST ||
                    current->getType() == EN::ENUMERATE_COLLECTION ||
                    current->getType() == EN::TRAVERSAL ||
-                   current->getType() == EN::K_SHORTEST_PATHS ||
+                   current->getType() == EN::ENUMERATE_PATHS ||
                    current->getType() == EN::SHORTEST_PATH) {
           // ok, but we cannot remove two different sorts if one of these node
           // types is between them
@@ -2089,7 +2089,7 @@ void arangodb::aql::moveCalculationsDownRule(
                  currentType == EN::ENUMERATE_LIST ||
                  currentType == EN::TRAVERSAL ||
                  currentType == EN::SHORTEST_PATH ||
-                 currentType == EN::K_SHORTEST_PATHS ||
+                 currentType == EN::ENUMERATE_PATHS ||
                  currentType == EN::COLLECT || currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         break;
@@ -3384,7 +3384,7 @@ struct SortToIndexNode final
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH:
       case EN::ENUMERATE_LIST:
       case EN::ENUMERATE_IRESEARCH_VIEW:
@@ -4151,7 +4151,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       inputVariable = traversalNode->inVariable();
       isTraversalNode = true;
     } break;
-    case ExecutionNode::K_SHORTEST_PATHS: {
+    case ExecutionNode::ENUMERATE_PATHS: {
       auto pathsNode = ExecutionNode::castTo<EnumeratePathsNode const*>(node);
       TRI_ASSERT(pathsNode->isDisjoint());
       collection = pathsNode->collection();
@@ -4311,7 +4311,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
 
   if (nodeType == ExecutionNode::TRAVERSAL ||
       nodeType == ExecutionNode::SHORTEST_PATH ||
-      nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+      nodeType == ExecutionNode::ENUMERATE_PATHS) {
     auto const* graphNode = ExecutionNode::castTo<GraphNode*>(node);
 
     isSmart = graphNode->isSmart();
@@ -4346,7 +4346,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
 auto isGraphNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
   return nodeType == ExecutionNode::TRAVERSAL ||
          nodeType == ExecutionNode::SHORTEST_PATH ||
-         nodeType == ExecutionNode::K_SHORTEST_PATHS;
+         nodeType == ExecutionNode::ENUMERATE_PATHS;
 }
 
 auto isModificationNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
@@ -4850,7 +4850,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
         case EN::TRAVERSAL:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
         case EN::ENUMERATE_IRESEARCH_VIEW:
@@ -4973,7 +4973,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::LIMIT:
         case EN::INDEX:
         case EN::TRAVERSAL:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
@@ -5541,7 +5541,7 @@ class RemoveToEnumCollFinder final
       case EN::LIMIT:
       case EN::SORT:
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH: {
         // if we meet any of the above, then we abort . . .
         break;
@@ -7352,7 +7352,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
                  current->getType() == EN::ENUMERATE_LIST ||
                  current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
                  current->getType() == EN::TRAVERSAL ||
-                 current->getType() == EN::K_SHORTEST_PATHS ||
+                 current->getType() == EN::ENUMERATE_PATHS ||
                  current->getType() == EN::SHORTEST_PATH) {
         // invalidate limit and sort. filters can still be used
         limit = nullptr;
@@ -7403,7 +7403,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::RETURN:
     case ExecutionNode::DISTRIBUTE:
@@ -7867,7 +7867,7 @@ struct ParallelizableFinder final
 
     if (node->getType() == ExecutionNode::TRAVERSAL ||
         node->getType() == ExecutionNode::SHORTEST_PATH ||
-        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+        node->getType() == ExecutionNode::ENUMERATE_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
       if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
@@ -8132,7 +8132,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::ENUMERATE_IRESEARCH_VIEW: {
           // we don't handle nested FOR loops
           found = nullptr;
@@ -8256,8 +8256,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       // find all graph nodes and make sure that they all are using satellite
       nodes.clear();
       plan->findNodesOfType(
-          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS},
-          true);
+          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS}, true);
       bool const allSatellite =
           std::all_of(nodes.begin(), nodes.end(), [](auto n) {
             GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
@@ -8712,7 +8711,7 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
           traversalNode->setInVariable(var);
         };
       } break;
-      case ExecutionNode::K_SHORTEST_PATHS: {
+      case ExecutionNode::ENUMERATE_PATHS: {
         auto* pathsNode =
             ExecutionNode::castTo<EnumeratePathsNode*>(targetNode);
         TRI_ASSERT(pathsNode->isDisjoint());

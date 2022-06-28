@@ -1597,7 +1597,7 @@ void Query::injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan) {
 
   plan.findNodesOfType(graphNodes,
                        {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
-                        ExecutionNode::K_SHORTEST_PATHS},
+                        ExecutionNode::ENUMERATE_PATHS},
                        true);
   for (auto& node : graphNodes) {
     auto graphNode = ExecutionNode::castTo<GraphNode*>(node);
