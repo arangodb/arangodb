@@ -79,6 +79,12 @@ void ShardingFeature::prepare() {
         return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(
             sharding);
       });
+  registerFactory(
+      ShardingStrategyEnterpriseHexSmartVertex::NAME,
+      [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyEnterpriseHexSmartVertex>(
+            sharding);
+      });
 #else
   // in the Community Edition register some stand-ins for the sharding
   // strategies only available in the Enterprise Edition
@@ -186,9 +192,20 @@ std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
   bool isEdge =
       TRI_COL_TYPE_EDGE == VelocyPackHelper::getNumericValue<uint32_t>(
                                properties, "type", TRI_COL_TYPE_DOCUMENT);
-  if (isSmart && isEdge) {
-    // smart edge collection
-    return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+  if (isSmart) {
+    if (isEdge) {
+      // smart edge collection
+      return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+    } else {
+      VPackSlice sga = properties.get(StaticStrings::GraphSmartGraphAttribute);
+      if (sga.isNone()) {
+        // In case we do have a SmartVertex collection without a
+        // SmartGraphAttribute given, we use a different sharding strategy.
+        // In case it is given, we fall back to the default ShardingStrategyHash
+        // strategy.
+        return ShardingStrategyEnterpriseHexSmartVertex::NAME;
+      }
+    }
   }
 #endif
 

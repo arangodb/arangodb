@@ -24,6 +24,7 @@
 #include "Options.h"
 
 #include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
@@ -50,9 +51,8 @@ Options::Options() {
   // picked up inside fromVelocyPack()
   if (ServerState::instance()->isCoordinator()) {
     // cluster transactions always originate on a coordinator
-    origin = arangodb::cluster::RebootTracker::PeerState(
-        ServerState::instance()->getId(),
-        ServerState::instance()->getRebootId());
+    origin.serverId = ServerState::instance()->getId();
+    origin.rebootId = ServerState::instance()->getRebootId();
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -121,6 +121,10 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     fillBlockCache = value.getBool();
   }
+  value = slice.get("allowDirtyReads");
+  if (value.isBool()) {
+    allowDirtyReads = value.getBool();
+  }
 
   if (!ServerState::instance()->isSingleServer()) {
     value = slice.get("isFollowerTransaction");
@@ -132,7 +136,11 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
     // empty if the originating coordinator is an ArangoDB 3.7.
     value = slice.get("origin");
     if (value.isObject()) {
-      origin = cluster::RebootTracker::PeerState::fromVelocyPack(value);
+      origin.serverId =
+          value.get(StaticStrings::AttrCoordinatorId).stringView();
+      origin.rebootId =
+          RebootId{value.get(StaticStrings::AttrCoordinatorRebootId)
+                       .getNumber<uint64_t>()};
     }
   }
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
@@ -161,6 +169,7 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("fillBlockCache", VPackValue(fillBlockCache));
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
+  builder.add("allowDirtyReads", VPackValue(allowDirtyReads));
 
   // serialize data for cluster-wide collections
   if (!ServerState::instance()->isSingleServer()) {
@@ -168,9 +177,14 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 
     // serialize the server id/reboot id of the originating server (which must
     // be a coordinator id if set)
-    if (!origin.serverId().empty()) {
+    if (!origin.serverId.empty()) {
       builder.add(VPackValue("origin"));
-      origin.toVelocyPack(builder);
+      builder.openObject();
+      builder.add(StaticStrings::AttrCoordinatorId,
+                  VPackValue{origin.serverId});
+      builder.add(StaticStrings::AttrCoordinatorRebootId,
+                  VPackValue{origin.rebootId.value()});
+      builder.close();
     }
   }
 }

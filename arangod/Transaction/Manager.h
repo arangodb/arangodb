@@ -77,7 +77,6 @@ class Manager final {
     bool expired() const noexcept;
     void updateExpiry() noexcept;
 
-   public:
     /// @brief managed, AQL or tombstone
     MetaType type;
     /// @brief whether or not the transaction has performed any intermediate
@@ -101,7 +100,7 @@ class Manager final {
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     arangodb::cluster::CallbackGuard rGuard;
     std::string const user;  /// user owning the transaction
-    std::string const db;    /// database in which the transaction operates
+    std::string db;          /// database in which the transaction operates
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -139,7 +138,8 @@ class Manager final {
 
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice trxOpts);
+                                          velocypack::Slice trxOpts,
+                                          bool allowDirtyReads);
 
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(

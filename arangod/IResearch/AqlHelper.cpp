@@ -646,7 +646,8 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 
   // TODO: is the "&" intionally. If yes: why?
   // cppcheck-suppress uninitvar; false positive
-  while (lhsValue.read(lhs, ctx) & rhsValue.read(rhs, ctx)) {
+  while (lhsValue.read(lhs, ctx) &
+         static_cast<unsigned>(rhsValue.read(rhs, ctx))) {
     if (lhsValue != rhsValue) {
       return false;
     }

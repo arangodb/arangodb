@@ -118,9 +118,24 @@
 #include <iomanip>
 #include <limits>
 
+// we will not use the multithreaded index creation that uses rocksdb's sst
+// file ingestion until rocksdb external file ingestion is fixed to have
+// correct sequence numbers for the files without gaps
+#undef USE_SST_INGESTION
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
+
+#ifdef USE_SST_INGESTION
+namespace {
+void cleanUpTempFiles(std::string_view path) {
+  for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
+    TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
+  }
+}
+}  // namespace
+#endif
 
 namespace arangodb {
 
@@ -530,7 +545,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(30903);
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
@@ -653,6 +668,7 @@ void RocksDBEngine::start() {
 
   // set the database sub-directory for RocksDB
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
 
   [[maybe_unused]] bool createdEngineDir = false;
@@ -674,6 +690,20 @@ void RocksDBEngine::start() {
       FATAL_ERROR_EXIT();
     }
   }
+
+#ifdef USE_SST_INGESTION
+  _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
+  if (basics::FileUtils::isDirectory(_idxPath)) {
+    ::cleanUpExtFiles(_idxPath);
+  } else {
+    auto errorMsg = TRI_ERROR_NO_ERROR;
+    if (!basics::FileUtils::createDirectory(_idxPath, &errorMsg)) {
+      LOG_TOPIC("6d10f", FATAL, Logger::ENGINES)
+          << "Cannot create tmp-idx-creation directory: " << TRI_last_error();
+      FATAL_ERROR_EXIT();
+    }
+  }
+#endif
 
   uint64_t totalSpace;
   uint64_t freeSpace;

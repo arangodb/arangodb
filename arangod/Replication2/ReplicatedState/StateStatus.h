@@ -176,6 +176,10 @@ struct StateStatus {
     return std::get_if<FollowerStatus>(&variant);
   }
 
+  [[nodiscard]] auto asLeaderStatus() const noexcept -> LeaderStatus const* {
+    return std::get_if<LeaderStatus>(&variant);
+  }
+
   [[nodiscard]] auto getSnapshotInfo() const noexcept -> SnapshotInfo const& {
     return std::visit(
         [](auto&& s) -> SnapshotInfo const& { return s.snapshot; }, variant);

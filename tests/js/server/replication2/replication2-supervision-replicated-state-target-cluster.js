@@ -230,6 +230,31 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
       lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
     },
+
+    ["testUpdateConfig_" + stateType]: function () {
+      const {stateId} = createReplicatedState();
+      const newConfig = {
+        waitForSync: true,
+        writeConcern: 3,
+        softWriteConcern: 2,
+      };
+      sh.updateReplicatedStateTarget(database, stateId,
+          (target) => {
+            target.config = newConfig;
+            target.version = 8;
+            return target;
+          });
+
+      lh.waitFor(() => {
+        const {target} = lh.readReplicatedLogAgency(database, stateId);
+        if (!_.isEqual(target.config, newConfig)) {
+          return Error(`Config not yet updated in target; found = ${JSON.stringify(target.config)}, expected = ${JSON.stringify(newConfig)}`);
+        }
+        return true;
+      });
+
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 8));
+    },
   };
 };
 

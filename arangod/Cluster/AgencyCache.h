@@ -82,6 +82,11 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   /// prepended
   consensus::query_t dump() const;
 
+  /// @brief Get velocypack from node downward.
+  consensus::index_t get(
+      arangodb::velocypack::Builder& result,
+      std::shared_ptr<const cluster::paths::Path> const& path) const;
+
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is
   /// prepended
   consensus::index_t get(arangodb::velocypack::Builder& result,

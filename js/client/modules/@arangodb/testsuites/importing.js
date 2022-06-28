@@ -35,6 +35,7 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
 
 const testPaths = {
@@ -216,6 +217,17 @@ const impTodos = [{
   datatype: "value=string",
   mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
 }, {
+  id: 'csvheadersmergeattributes',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  skipLines: 1,
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs-headers.csv')),
+  coll: 'UnitTestsImportCsvHeadersMergeAttributes',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+}, {
   id: 'csvmergeattributesInvalid',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
   coll: 'UnitTestsImportCsvMergeAttributesInvalid',
@@ -386,9 +398,10 @@ class importRunner extends tu.runInArangoshRunner {
   }
   
   run() {
-    this.instanceInfo = pu.startInstance('tcp', this.options, {}, 'importing');
-
-    if (this.instanceInfo === false) {
+        this.instanceManager = new im.instanceManager('tcp', this.options, {}, 'importing');
+    this.instanceManager.prepareInstance();
+    this.instanceManager.launchTcpDump("");
+    if (!this.instanceManager.launchInstance()) {
       return {
         'failed': 1,
         'importing': {
@@ -398,6 +411,8 @@ class importRunner extends tu.runInArangoshRunner {
         }
       };
     }
+    this.instanceManager.reconnect();
+
 
     let result = { failed: 0 };
 
@@ -413,10 +428,10 @@ class importRunner extends tu.runInArangoshRunner {
 
       for (let i = 0; i < impTodos.length; i++) {
         const impTodo = impTodos[i];
-        let cfg = pu.createBaseConfig('import', this.options, this.instanceInfo);
+        let cfg = pu.createBaseConfig('import', this.options, this.instanceManager);
         cfg.setWhatToImport(impTodo);
-        cfg.setEndpoint(this.instanceInfo.endpoint);
-        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceInfo.rootDir, this.options.coreCheck);
+        cfg.setEndpoint(this.instanceManager.endpoint);
+        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
         result[impTodo.id].failed = 0;
 
         if (impTodo.expectFailure) {
@@ -448,7 +463,8 @@ class importRunner extends tu.runInArangoshRunner {
             exception);
     }
     print('Shutting down...');
-    result['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+    result['shutdown'] = this.instanceManager.shutdownInstance();
+    this.instanceManager.destructor();
     print('done.');
     return result;
   }

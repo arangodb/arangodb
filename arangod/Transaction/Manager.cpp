@@ -76,8 +76,6 @@ std::string currentUser() { return arangodb::ExecContext::current().user(); }
 namespace arangodb {
 namespace transaction {
 
-size_t constexpr Manager::maxTransactionSize;
-
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
@@ -279,12 +277,11 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
 
   if (ServerState::instance()->isDBServer()) {
     auto const& origin = state.options().origin;
-    if (!origin.serverId().empty()) {
+    if (!origin.serverId.empty()) {
       auto& clusterFeature = _feature.server().getFeature<ClusterFeature>();
       auto& clusterInfo = clusterFeature.clusterInfo();
       rGuard = clusterInfo.rebootTracker().callMeOnChange(
-          cluster::RebootTracker::PeerState(origin.serverId(),
-                                            origin.rebootId()),
+          origin,
           [this, tid = state.id()]() {
             // abort the transaction once the coordinator goes away
             abortManagedTrx(tid, std::string());
@@ -351,7 +348,8 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 }
 
 ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
-                                                 VPackSlice trxOpts) {
+                                                 VPackSlice trxOpts,
+                                                 bool allowDirtyReads) {
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -361,6 +359,18 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   Result res = buildOptions(trxOpts, options, reads, writes, exclusives);
   if (res.fail()) {
     return res;
+  }
+  if (ServerState::instance()->isCoordinator() && writes.empty() &&
+      exclusives.empty()) {
+    if (allowDirtyReads) {
+      options.allowDirtyReads = true;
+    }
+    // If the header is not set, but the option said true, we accept this,
+    // provided we are on a coordinator and there are only reading collections.
+  } else {
+    // If we are not on a coordinator or if there are writing or exclusive
+    // collections, then there will be no dirty reads:
+    options.allowDirtyReads = false;
   }
 
   return createManagedTrx(vocbase, reads, writes, exclusives,
@@ -603,6 +613,22 @@ ResultT<TransactionId> Manager::createManagedTrx(
 
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
+
+  if (options.allowDirtyReads) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    // Choose the replica we read from for all shards of all collections in
+    // the reads list:
+    containers::FlatHashSet<ShardID> shards;
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    for (std::string const& collName : readCollections) {
+      auto coll = ci.getCollection(vocbase.name(), collName);
+      auto shardMap = coll->shardIds();
+      for (auto const& p : *shardMap) {
+        shards.emplace(p.first);
+      }
+    }
+    state->chooseReplicas(shards);
+  }
 
   // lock collections
   res = lockCollections(vocbase, state, exclusiveCollections, writeCollections,
@@ -921,7 +947,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
   }
 }
 
-/// @brief get the transasction state
+/// @brief get the transaction state
 transaction::Status Manager::getManagedTrxStatus(
     TransactionId tid, std::string const& database) const {
   size_t bucket = getBucket(tid);
@@ -991,6 +1017,21 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
   Result res;
   size_t const bucket = getBucket(tid);
   bool wasExpired = false;
+  auto buildErrorMessage = [](TransactionId tid, transaction::Status status,
+                              bool found) -> std::string {
+    std::string msg = "transaction " + std::to_string(tid.id());
+    if (found) {
+      msg += " inaccessible";
+    } else {
+      msg += " not found";
+    }
+    if (status == transaction::Status::COMMITTED) {
+      msg += " on commit operation";
+    } else {
+      msg += " on abort operation";
+    }
+    return msg;
+  };
 
   std::shared_ptr<TransactionState> state;
   {
@@ -1001,35 +1042,20 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     if (it == buck._managed.end()) {
       // insert a tombstone for an aborted transaction that we never saw before
       auto inserted = buck._managed.try_emplace(
-          tid, _feature, MetaType::Tombstone, tombstoneTTL, nullptr,
+          tid, _feature, MetaType::Tombstone,
+          ttlForType(_feature, MetaType::Tombstone), nullptr,
           arangodb::cluster::CallbackGuard{});
       inserted.first->second.finalStatus = transaction::Status::ABORTED;
-      std::string msg =
-          "transaction " + std::to_string(tid.id()) + " not found";
-      if (status == transaction::Status::COMMITTED) {
-        msg += " on commit operation";
-      } else {
-        msg += " on abort operation";
-      }
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::move(msg));
+      inserted.first->second.db = database;
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                       buildErrorMessage(tid, status, /*found*/ false));
     }
 
     ManagedTrx& mtrx = it->second;
     if (!::authorized(mtrx.user) ||
         (!database.empty() && mtrx.db != database)) {
-      std::string msg = "transaction " + std::to_string(tid.id());
-      if (it == buck._managed.end()) {
-        msg += " not found";
-      } else {
-        msg += " inaccessible";
-      }
-      if (status == transaction::Status::COMMITTED) {
-        msg += " on commit operation";
-      } else {
-        msg += " on abort operation";
-      }
-
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::move(msg));
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                       buildErrorMessage(tid, status, /*found*/ true));
     }
 
     // in order to modify the transaction's status, we need the write lock here,
