@@ -4549,12 +4549,15 @@ ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
   auto leaderServerId = data.get("ServerId").stringView();
   auto ourRebootId = ServerState::instance()->getRebootId().value();
   auto ourServerId = ServerState::instance()->getId();
+  if (wantLeader) {
+    // remove old callback (with _metricsGuard call)
+    // then store new callback or understand we are leader
+    _metricsGuard = {};
+  }
   if (ourRebootId == leaderRebootId && ourServerId == leaderServerId) {
-    TRI_ASSERT(_metricsGuard.empty());
     return {std::nullopt};
   }
   if (wantLeader) {
-    // remove old callback (with _metricsGuard call, then store new callback)
     _metricsGuard = _rebootTracker.callMeOnChange(
         {std::string{leaderServerId}, RebootId{leaderRebootId}},
         [this, leaderRebootId, serverId = std::string{leaderServerId}] {
