@@ -745,6 +745,7 @@ auto FollowerStateManager<S>::waitForNewEntries()
               }
             });
       } else {
+        data.state->setStateManager(this->shared_from_this());
         return DeferredAction();
       }
     });
