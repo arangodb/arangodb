@@ -2764,7 +2764,7 @@ const testParallelismSubqueryOuterLoopBothInnerTraversals = (testGraph, mode) =>
       `;
   };
 
-  executeParallelQuery(makeQuery, 637 * 5); // x10 due to SubQueries
+  executeParallelQuery(makeQuery, 637 * 5); // x5 due to SubQueries
 };
 
 const testSmallCircleBFSParallelism = testGraph => testParallelism(testGraph, "bfs");
