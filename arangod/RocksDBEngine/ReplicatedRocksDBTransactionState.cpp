@@ -71,7 +71,7 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
 futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   _hasActiveTrx = false;
 
-  if (isReadOnlyTransaction()) {
+  if (!mustBeReplicated()) {
     Result res;
     for (auto& col : _collections) {
       res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
@@ -120,7 +120,8 @@ std::lock_guard<std::mutex> ReplicatedRocksDBTransactionState::lockCommit() {
 /// @brief abort and rollback a transaction
 Result ReplicatedRocksDBTransactionState::doAbort() {
   _hasActiveTrx = false;
-  if (isReadOnlyTransaction()) {
+
+  if (!mustBeReplicated()) {
     Result res;
     for (auto& col : _collections) {
       res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
@@ -252,4 +253,9 @@ rocksdb::SequenceNumber ReplicatedRocksDBTransactionState::beginSeq() const {
       });
   TRI_ASSERT(seq != std::numeric_limits<rocksdb::SequenceNumber>::max());
   return seq;
+}
+
+bool ReplicatedRocksDBTransactionState::mustBeReplicated() const {
+  auto isIndexCreation = _hints.has(transaction::Hints::Hint::INDEX_CREATION);
+  return !isReadOnlyTransaction() && !isIndexCreation;
 }

@@ -75,6 +75,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
 
  private:
   void maybeDisableIndexing();
+  bool mustBeReplicated() const;
   bool _hasActiveTrx = false;
   std::mutex _commitLock;
 };
