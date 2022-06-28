@@ -142,4 +142,15 @@ The endpoint of the queried Agent.
 @RESTSTRUCT{term,get_admin_status_agent,number,optional,}
 The current term number.
 
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestAdminStatus_cluster}
+    var url = "/_admin/status";
+    var response = logCurlRequest("GET", url);
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
