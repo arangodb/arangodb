@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,33 +20,9 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "UnshackledMutex.h"
+#include "ReplicatedStateMetricsMock.h"
 
-#include "Basics/debugging.h"
+using namespace arangodb;
 
-namespace arangodb::basics {
-
-void UnshackledMutex::lock() noexcept {
-  // cppcheck-suppress throwInNoexceptFunction
-  auto func = +[](bool const* locked) noexcept { return !*locked; };
-  absl::MutexLock guard{&_mutex,
-                        absl::Condition{func, &std::as_const(_locked)}};
-  _locked = true;
-}
-
-void UnshackledMutex::unlock() noexcept {
-  absl::MutexLock guard{&_mutex};
-  TRI_ASSERT(_locked);
-  _locked = false;
-}
-
-bool UnshackledMutex::try_lock() noexcept {
-  if (!_mutex.TryLock()) {
-    return false;
-  }
-  bool const was_locked = std::exchange(_locked, true);
-  _mutex.Unlock();
-  return !was_locked;
-}
-
-}  // namespace arangodb::basics
+ReplicatedStateMetricsMock::ReplicatedStateMetricsMock(std::string_view impl)
+    : ReplicatedStateMetrics(nullptr, impl) {}
