@@ -402,7 +402,7 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeKShortestPaths(arangodb::graph::PathType::Type type,
+  AstNode* createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
                                     AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node

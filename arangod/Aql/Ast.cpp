@@ -1751,7 +1751,7 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
 }
 
 /// @brief create an AST k-shortest paths or k-paths node
-AstNode* Ast::createNodeKShortestPaths(arangodb::graph::PathType::Type type,
+AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
                                        AstNode const* outVars,
                                        AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
