@@ -76,7 +76,7 @@ class PathsNodeTest : public ::testing::Test {
     return PathsNode{plan(),
                      id,
                      &_query->vocbase(),
-                     ShortestPathType::Type::KShortestPaths,
+                     PathType::Type::KShortestPaths,
                      _direction,
                      _source,
                      _target,

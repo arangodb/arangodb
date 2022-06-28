@@ -26,7 +26,7 @@
 
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
-#include "Graph/ShortestPathType.h"
+#include "Graph/PathType.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
@@ -57,9 +57,8 @@ class PathsNode : public virtual GraphNode {
 
  public:
   PathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-            arangodb::graph::ShortestPathType::Type shortestPathType,
-            AstNode const* direction, AstNode const* start,
-            AstNode const* target, AstNode const* graph,
+            arangodb::graph::PathType::Type pathType, AstNode const* direction,
+            AstNode const* start, AstNode const* target, AstNode const* graph,
             std::unique_ptr<graph::BaseOptions> options);
 
   PathsNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -68,7 +67,7 @@ class PathsNode : public virtual GraphNode {
 
   /// @brief Internal constructor to clone the node.
   PathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-            arangodb::graph::ShortestPathType::Type shortestPathType,
+            arangodb::graph::PathType::Type pathType,
             std::vector<Collection*> const& edgeColls,
             std::vector<Collection*> const& vertexColls,
             TRI_edge_direction_e defaultDirection,
@@ -137,9 +136,7 @@ class PathsNode : public virtual GraphNode {
   void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
-  arangodb::graph::ShortestPathType::Type shortestPathType() const {
-    return _shortestPathType;
-  }
+  arangodb::graph::PathType::Type pathType() const { return _pathType; }
 
   /// @brief Compute the shortest path options containing the expressions
   ///        MUST! be called after optimization and before creation
@@ -166,7 +163,7 @@ class PathsNode : public virtual GraphNode {
                                  bool withProperties) const;
 
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
-  arangodb::graph::ShortestPathType::Type _shortestPathType;
+  arangodb::graph::PathType::Type _pathType;
 
   /// @brief path output variable
   Variable const* _pathOutVariable;

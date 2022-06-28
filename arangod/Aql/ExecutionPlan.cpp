@@ -57,7 +57,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathType.h"
+#include "Graph/PathType.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -1447,10 +1447,10 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_K_SHORTEST_PATHS);
   TRI_ASSERT(node->numMembers() == 7);
 
-  auto const type = static_cast<arangodb::graph::ShortestPathType::Type>(
+  auto const type = static_cast<arangodb::graph::PathType::Type>(
       node->getMember(0)->getIntValue());
-  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
-             type == arangodb::graph::ShortestPathType::Type::KPaths);
+  TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
+             type == arangodb::graph::PathType::Type::KPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
@@ -1462,8 +1462,7 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
 
   // Refactored variant shall be default on SingleServer and Cluster on KPaths
   // After the whole refactoring is done, this can be removed.
-  bool defaultToRefactor =
-      type == arangodb::graph::ShortestPathType::Type::KPaths;
+  bool defaultToRefactor = type == arangodb::graph::PathType::Type::KPaths;
 
   auto options = createShortestPathOptions(
       getAst(), direction, node->getMember(5), defaultToRefactor);

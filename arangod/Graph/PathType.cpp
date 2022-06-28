@@ -21,23 +21,39 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Graph/PathType.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
+
+#include <cstring>
 
 namespace arangodb {
 namespace graph {
 
-struct ShortestPathType {
-  enum class Type { KShortestPaths = 0, KPaths = 1 };
+constexpr char const* KShortestPathsName = "K_SHORTEST_PATHS";
+constexpr char const* KPathsName = "K_PATHS";
 
-  // no need to create an object of it
-  ShortestPathType() = delete;
+/// @brief get the type from a string
+/*static*/ PathType::Type PathType::fromString(char const* value) {
+  if (strcmp(value, KShortestPathsName) == 0) {
+    return Type::KShortestPaths;
+  }
+  if (strcmp(value, KPathsName) == 0) {
+    return Type::KPaths;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid path type");
+}
 
-  /// @brief get the type from a string
-  static Type fromString(char const* value);
-
-  /// @brief return the type as a string
-  static char const* toString(Type value);
-};
+/// @brief return the type as a string
+/*static*/ char const* PathType::toString(PathType::Type value) {
+  switch (value) {
+    case Type::KShortestPaths:
+      return KShortestPathsName;
+    case Type::KPaths:
+      return KPathsName;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid path type");
+}
 
 }  // namespace graph
 }  // namespace arangodb

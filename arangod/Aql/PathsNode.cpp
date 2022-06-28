@@ -114,12 +114,12 @@ static GraphNode::InputVertex prepareVertexInput(PathsNode const* node,
 
 PathsNode::PathsNode(ExecutionPlan* plan, ExecutionNodeId id,
                      TRI_vocbase_t* vocbase,
-                     arangodb::graph::ShortestPathType::Type shortestPathType,
+                     arangodb::graph::PathType::Type pathType,
                      AstNode const* direction, AstNode const* start,
                      AstNode const* target, AstNode const* graph,
                      std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
-      _shortestPathType(shortestPathType),
+      _pathType(pathType),
       _pathOutVariable(nullptr),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
@@ -159,7 +159,7 @@ PathsNode::PathsNode(ExecutionPlan* plan, ExecutionNodeId id,
 /// @brief Internal constructor to clone the node.
 PathsNode::PathsNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-    arangodb::graph::ShortestPathType::Type shortestPathType,
+    arangodb::graph::PathType::Type pathType,
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls,
     TRI_edge_direction_e defaultDirection,
@@ -170,7 +170,7 @@ PathsNode::PathsNode(
     Variable const* distributeVariable)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
                 directions, std::move(options), graph),
-      _shortestPathType(shortestPathType),
+      _pathType(pathType),
       _pathOutVariable(nullptr),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
@@ -185,8 +185,7 @@ PathsNode::~PathsNode() = default;
 PathsNode::PathsNode(ExecutionPlan* plan,
                      arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),
-      _shortestPathType(
-          arangodb::graph::ShortestPathType::Type::KShortestPaths),
+      _pathType(arangodb::graph::PathType::Type::KShortestPaths),
       _pathOutVariable(nullptr),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
@@ -194,7 +193,7 @@ PathsNode::PathsNode(ExecutionPlan* plan,
       _toCondition(nullptr),
       _distributeVariable(nullptr) {
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
-    _shortestPathType = arangodb::graph::ShortestPathType::fromString(
+    _pathType = arangodb::graph::PathType::fromString(
         base.get(StaticStrings::GraphQueryShortestPathType)
             .copyString()
             .c_str());
@@ -262,7 +261,7 @@ PathsNode::PathsNode(ExecutionPlan* plan,
 // is virtually inherited; thus its constructor is never called from here.
 PathsNode::PathsNode(ExecutionPlan& plan, PathsNode const& other)
     : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),
-      _shortestPathType(other._shortestPathType),
+      _pathType(other._pathType),
       _pathOutVariable(other._pathOutVariable),
       _inStartVariable(other._inStartVariable),
       _startVertexId(other._startVertexId),
@@ -293,8 +292,7 @@ void PathsNode::setDistributeVariable(Variable const* distVariable) {
 void PathsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   GraphNode::doToVelocyPack(nodes, flags);  // call base class method
   nodes.add(StaticStrings::GraphQueryShortestPathType,
-            VPackValue(arangodb::graph::ShortestPathType::toString(
-                _shortestPathType)));
+            VPackValue(arangodb::graph::PathType::toString(_pathType)));
 
   // Out variables
   if (usesPathOutVariable()) {
@@ -392,7 +390,7 @@ std::unique_ptr<ExecutionBlock> PathsNode::createBlock(
   waitForSatelliteIfRequired(&engine);
 #endif
 
-  if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
+  if (pathType() == arangodb::graph::PathType::Type::KPaths) {
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
         opts->minDepth, opts->maxDepth};
     PathValidatorOptions validatorOptions(opts->tmpVar(),
@@ -479,7 +477,7 @@ ExecutionNode* PathsNode::clone(ExecutionPlan* plan, bool withDependencies,
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<ShortestPathOptions>(*oldOpts);
   auto c = std::make_unique<PathsNode>(
-      plan, _id, _vocbase, _shortestPathType, _edgeColls, _vertexColls,
+      plan, _id, _vocbase, _pathType, _edgeColls, _vertexColls,
       _defaultDirection, _directions, _inStartVariable, _startVertexId,
       _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj,
       _distributeVariable);
