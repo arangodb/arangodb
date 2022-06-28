@@ -131,6 +131,12 @@ struct RequestOptions {
   bool skipScheduler = false;  // do not use Scheduler queue
   RequestLane continuationLane = RequestLane::CONTINUATION;
 
+  // Normally this is empty, if it is set to the ID of a server in the
+  // cluster, we will direct a read operation to a shard not as usual to
+  // the leader, but rather to the server given here. This is read for
+  // the "allowDirtyReads" options when we want to read from followers.
+  std::string overrideDestination;
+
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
     this->parameters.insert_or_assign(std::forward<K>(key),

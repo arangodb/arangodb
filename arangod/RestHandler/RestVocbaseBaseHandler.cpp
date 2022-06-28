@@ -563,6 +563,9 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
+    if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
+      tmp->state()->options().allowDirtyReads = true;
+    }
     return tmp;
   }
 
