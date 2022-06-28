@@ -85,6 +85,9 @@ enum class Flags : uint16_t {
 
   // experimental flag
   Experimental = 8192,
+
+  // whether a value can only be set once
+  Immutable = 16384,
 };
 
 static constexpr inline std::underlying_type<Flags>::type makeFlags() {

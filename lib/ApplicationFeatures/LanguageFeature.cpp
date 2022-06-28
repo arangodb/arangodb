@@ -107,14 +107,16 @@ void LanguageFeature::collectOptions(
       ->addOption("--default-language", "ISO-639 language code",
                   new StringParameter(&_defaultLanguage),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Immutable))
       .setDeprecatedIn(31000);
 
   options
       ->addOption("--icu-language", "ICU language",
                   new StringParameter(&_icuLanguage),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Immutable))
       .setIntroducedIn(30901);
 
   options

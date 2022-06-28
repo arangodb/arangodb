@@ -498,7 +498,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   new BooleanParameter(&_extendedNamesForDatabases),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Experimental))
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::Immutable))
       .setIntroducedIn(30900);
 
   options
