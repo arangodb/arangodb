@@ -211,6 +211,9 @@ VPackBuilder ProgramOptions::toVelocyPack(
                       VPackValue(option.hasFlag(
                           arangodb::options::Flags::Experimental)));
           builder.add(
+              "immutable",
+              VPackValue(option.hasFlag(arangodb::options::Flags::Immutable)));
+          builder.add(
               "obsolete",
               VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
           builder.add(
