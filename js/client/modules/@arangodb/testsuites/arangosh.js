@@ -99,8 +99,8 @@ function arangosh (options) {
     print(title);
     print('--------------------------------------------------------------------------------');
 
-    let weirdNames = ['arangosh_tests', 'some dog', 'ла́ять', '犬', 'Kläffer'];
-    let tmpMgr = new tmpDirMmgr(fs.join(...weirdNames), options);
+    let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
+    let tmpMgr = new tmpDirMmgr(fs.join('arangosh_tests', ...weirdNames), options);
 
     ////////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
