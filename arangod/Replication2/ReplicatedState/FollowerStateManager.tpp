@@ -523,6 +523,8 @@ void FollowerStateManager<S>::run() noexcept {
                   auto const state = _guardedData.getLockedGuard()->state;
                   // setStateManager must not be called while the lock is held,
                   // or it will deadlock.
+                  // TODO It might be preferable to add a "start service" state,
+                  //      and set the state manager there.
                   state->setStateManager(this->shared_from_this());
                   return FollowerInternalState::kWaitForNewEntries;
                 } else {
@@ -734,6 +736,8 @@ auto FollowerStateManager<S>::waitForNewEntries()
   auto&& [action,
           futureIter] = _guardedData.doUnderLock([&](GuardedData& data) {
     auto action_ = std::invoke([&] {
+      // TODO Get rid of the if (more like, make the condition always true)
+      //      by introducing a "start service" state
       if (data.ingestionRange) {
         data._nextWaitForIndex = data.ingestionRange.value().to;
         auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
