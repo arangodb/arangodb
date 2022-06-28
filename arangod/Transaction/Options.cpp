@@ -121,6 +121,10 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     fillBlockCache = value.getBool();
   }
+  value = slice.get("allowDirtyReads");
+  if (value.isBool()) {
+    allowDirtyReads = value.getBool();
+  }
 
   if (!ServerState::instance()->isSingleServer()) {
     value = slice.get("isFollowerTransaction");
@@ -165,6 +169,7 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("fillBlockCache", VPackValue(fillBlockCache));
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
+  builder.add("allowDirtyReads", VPackValue(allowDirtyReads));
 
   // serialize data for cluster-wide collections
   if (!ServerState::instance()->isSingleServer()) {
