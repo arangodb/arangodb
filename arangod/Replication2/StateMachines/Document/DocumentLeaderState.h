@@ -46,7 +46,7 @@ struct DocumentLeaderState
                           ReplicationOptions opts) -> futures::Future<LogIndex>;
 
   LoggerContext const loggerContext;
-  std::string_view collectionId;
+  std::string_view shardId;
 
  private:
   struct GuardedData {

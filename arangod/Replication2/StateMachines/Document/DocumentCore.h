@@ -41,11 +41,12 @@ struct DocumentCore {
 
   LoggerContext const loggerContext;
 
-  auto getCollectionId() -> std::string_view;
+  auto getShardId() -> std::string_view;
 
  private:
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
+  ShardID _shardId;
   std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };

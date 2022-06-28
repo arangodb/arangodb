@@ -33,7 +33,7 @@ using namespace arangodb::replication2::replicated_state::document;
 DocumentLeaderState::DocumentLeaderState(std::unique_ptr<DocumentCore> core)
     : loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
-      collectionId(core->getCollectionId()),
+      shardId(core->getShardId()),
       _guardedData(std::move(core)) {}
 
 auto DocumentLeaderState::resign() && noexcept
@@ -56,7 +56,7 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                              TransactionId transactionId,
                                              ReplicationOptions opts)
     -> futures::Future<LogIndex> {
-  auto entry = DocumentLogEntry{std::string(collectionId), operation,
+  auto entry = DocumentLogEntry{std::string(shardId), operation,
                                 std::move(payload), transactionId};
   auto stream = getStream();
   auto idx = stream->insert(entry);

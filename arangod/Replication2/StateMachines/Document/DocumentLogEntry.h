@@ -59,7 +59,7 @@ struct OperationStringTransformer {
 };
 
 struct DocumentLogEntry {
-  std::string collectionId;
+  std::string shardId;
   OperationType operation;
   velocypack::SharedSlice data;
   TransactionId trx;
@@ -67,7 +67,7 @@ struct DocumentLogEntry {
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentLogEntry& p) {
     return f.object(p).fields(
-        f.field("collectionId", p.collectionId),
+        f.field("shardId", p.shardId),
         f.field("operation", p.operation)
             .transformWith(OperationStringTransformer{}),
         f.field("data", p.data).fallback(velocypack::SharedSlice{}),
