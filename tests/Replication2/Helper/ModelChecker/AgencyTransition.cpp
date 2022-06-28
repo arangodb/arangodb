@@ -213,6 +213,22 @@ void ReplaceServerTargetState::apply(AgencyState& agency) const {
   target.version.emplace(target.version.value_or(0) + 1);
 }
 
+ReplaceServerTargetLog::ReplaceServerTargetLog(ParticipantId oldServer,
+                                               ParticipantId newServer)
+    : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
+
+auto ReplaceServerTargetLog::toString() const -> std::string {
+  return fmt::format("replacing {} with {}", oldServer, newServer);
+}
+
+void ReplaceServerTargetLog::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.participants.erase(oldServer);
+  target.participants[newServer];
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
 auto SetLeaderInTargetAction::toString() const -> std::string {
   return fmt::format("setting `{}` as leader in target", newLeader);
 }

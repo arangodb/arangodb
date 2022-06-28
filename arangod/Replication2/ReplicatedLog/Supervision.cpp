@@ -355,14 +355,16 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
-  if (!isConfigurationCommitted(log)) {
-    ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
-    return;
-  }
   auto const& committedParticipants =
       current.leader->committedParticipantsConfig->participants;
 
   if (!target.participants.contains(leader.serverId)) {
+    if (!isConfigurationCommitted(log)) {
+      ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+      ctx.createAction<NoActionPossibleAction>();
+      return;
+    }
+
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
         current.leader->serverId,
         current.leader->committedParticipantsConfig->participants);
@@ -603,6 +605,7 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
       } else {
         // still waiting
         ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+        ctx.createAction<NoActionPossibleAction>();
       }
     }
   }
