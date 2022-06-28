@@ -154,17 +154,21 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     },
 
     testReplicateOperationsCommit: function() {
-      // This test currently does not work.
       const opType = "Commit";
       let collection = db._collection(collectionName);
+
       let shards = collection.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       collection.insert({_key: "abcd"});
-      /*
-      let entries = getDocumentEntries(mergeLogs(logs), opType);
-      require('internal').print(entries);
-       */
+      let commitEntries = getDocumentEntries(mergeLogs(logs), opType);
+      let insertEntries = getDocumentEntries(mergeLogs(logs), "Insert");
+      assertEqual(commitEntries.length, 1,
+          `Found more commitEntries than expected: ${commitEntries}. Insert entries: ${insertEntries}`);
+      assertEqual(insertEntries.length, commitEntries.length,
+          `Insert entries: ${insertEntries} do not match Commit entries ${commitEntries}`);
+      assertEqual(insertEntries[0].trx, commitEntries[0].trx,
+          `Insert entries: ${insertEntries} do not match Commit entries ${commitEntries}`);
     },
 
     testReplicateOperationsInsert: function() {

@@ -54,6 +54,7 @@ struct MockDocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
     return {};
   }
 
+  // A mapping between shardId and collectionId
   std::vector<std::pair<std::string, std::string>> shards;
 };
 
@@ -113,7 +114,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
 
   auto leaderState = leaderReplicatedState->getLeader();
   ASSERT_NE(leaderState, nullptr);
-  ASSERT_EQ(leaderState->collectionId, collectionId);
+  ASSERT_EQ(leaderState->shardId, "1");
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
@@ -152,7 +153,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
     auto entry = inMemoryLog.getEntryByIndex(logIndex);
     auto docEntry = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(docEntry.collectionId, collectionId);
+    ASSERT_EQ(docEntry.shardId, "1");
     ASSERT_EQ(docEntry.operation, operation);
     ASSERT_EQ(docEntry.trx, trx);
     ASSERT_EQ(docEntry.data.get("test").stringView(), "insert");
@@ -177,7 +178,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
     auto entry = inMemoryLog.getEntryByIndex(logIndex);
     auto docEntry = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(docEntry.collectionId, collectionId);
+    ASSERT_EQ(docEntry.shardId, "1");
     ASSERT_EQ(docEntry.operation, operation);
     ASSERT_EQ(docEntry.trx, trx);
     ASSERT_TRUE(docEntry.data.isNone());
