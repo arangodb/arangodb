@@ -171,7 +171,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.restoreConfig.setThreads(this.restoreOptions.threads);
     }
     if (this.restoreOptions.jwtSecret) {
-      this.otherKeyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
+      this.otherKeyDir = fs.join(fs.getTempPath(), 'other_jwtSecrets');
       if (!fs.exists(this.otherKeyDir)) {  // needed on win32
         fs.makeDirectory(this.otherKeyDir);
       }
