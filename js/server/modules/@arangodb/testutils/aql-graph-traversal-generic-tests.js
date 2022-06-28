@@ -2700,10 +2700,80 @@ const testParallelismSortLimit = (testGraph, mode) => {
   executeParallelQuery(makeQuery, 42);
 };
 
+const testParallelismSubqueryOuterLoopFirstTraversal = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('A')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          RETURN CONCAT(v.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismSubqueryOuterLoopSecondTraversal = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('D')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 INBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          ${parallel ? `LIMIT 42, 637` : ``}
+          RETURN CONCAT(v.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637 * 10); // x10 due to SubQueries
+};
+
+const testParallelismSubqueryOuterLoopBothInnerTraversals = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('A')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          ${parallel ? `LIMIT 42, 637` : ``}
+          RETURN CONCAT(v2.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637 * 10); // x10 due to SubQueries
+};
+
 const testSmallCircleBFSParallelism = testGraph => testParallelism(testGraph, "bfs");
 const testSmallCircleBFSParallelismTwoTraversals = testGraph => testParallelismTwoTraversals(testGraph, "bfs");
 const testSmallCircleBFSParallelismLimit = testGraph => testParallelismLimit(testGraph, "bfs");
 const testSmallCircleBFSParallelismSortLimit = testGraph => testParallelismSortLimit(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoop = testGraph => testParallelismSubqueryOuterLoopBothInnerTraversals(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoopFirstTraversal = testGraph => testParallelismSubqueryOuterLoopFirstTraversal(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoopSecondTraversal = testGraph => testParallelismSubqueryOuterLoopSecondTraversal(testGraph, "bfs");
 
 function testSmallCircleShortestPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
@@ -6346,6 +6416,9 @@ const testsByGraph = {
     testSmallCircleBFSParallelismTwoTraversals,
     testSmallCircleBFSParallelismLimit,
     testSmallCircleBFSParallelismSortLimit,
+    testSmallCircleBFSParallelismSubqueryOuterLoop,
+    testSmallCircleBFSParallelismSubqueryOuterLoopFirstTraversal,
+    testSmallCircleBFSParallelismSubqueryOuterLoopSecondTraversal,
     testSmallCircleShortestPath,
     testSmallCircleKPathsOutbound,
     testSmallCircleKPathsAny,
