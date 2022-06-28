@@ -214,7 +214,7 @@ void ReplaceServerTargetState::apply(AgencyState& agency) const {
 }
 
 ReplaceServerTargetLog::ReplaceServerTargetLog(ParticipantId oldServer,
-                                                   ParticipantId newServer)
+                                               ParticipantId newServer)
     : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
 
 auto ReplaceServerTargetLog::toString() const -> std::string {

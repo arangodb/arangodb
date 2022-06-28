@@ -323,8 +323,8 @@ auto ReplaceSpecificServerActor::step(AgencyState const& agency) const
   return {ReplaceServerTargetState{oldServer, newServer}};
 }
 
-ReplaceSpecificLogServerActor::ReplaceSpecificLogServerActor(ParticipantId oldServer,
-                                                       ParticipantId newServer)
+ReplaceSpecificLogServerActor::ReplaceSpecificLogServerActor(
+    ParticipantId oldServer, ParticipantId newServer)
     : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
 
 auto ReplaceSpecificLogServerActor::step(AgencyState const& agency) const

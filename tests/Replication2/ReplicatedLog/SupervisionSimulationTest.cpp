@@ -428,7 +428,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_replace_leader) {
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, ReplaceSpecificLogServerActor{"A", "D"},
-      DBServerActor{"A"}, DBServerActor{"B"}, DBServerActor{"C"}, DBServerActor{"D"}};
+      DBServerActor{"A"}, DBServerActor{"B"},
+      DBServerActor{"C"}, DBServerActor{"D"}};
 
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),

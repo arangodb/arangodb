@@ -190,9 +190,10 @@ struct ReplaceSpecificServerActor : OnceActorBase<ReplaceSpecificServerActor> {
   replication2::ParticipantId newServer;
 };
 
-struct ReplaceSpecificLogServerActor : OnceActorBase<ReplaceSpecificLogServerActor> {
+struct ReplaceSpecificLogServerActor
+    : OnceActorBase<ReplaceSpecificLogServerActor> {
   explicit ReplaceSpecificLogServerActor(replication2::ParticipantId oldServer,
-                                      replication2::ParticipantId newServer);
+                                         replication2::ParticipantId newServer);
   auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
 
   replication2::ParticipantId oldServer;
