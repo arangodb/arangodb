@@ -408,16 +408,11 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   auto const& r = ctx.getReport();
 
-  // TODO: we get two "Waiting for config committed", and the source
-  //       of this report should be made obvious.
-  EXPECT_EQ(r.size(), 2);
+  EXPECT_EQ(r.size(), 1);
 
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
           r[0]));
-  EXPECT_TRUE(
-      std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
-          r[1]));
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
