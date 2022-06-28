@@ -447,8 +447,10 @@ class AllIteratorMock final : public arangodb::IndexIterator {
   }
 
  private:
-  std::unordered_map<std::string_view,
-                     PhysicalCollectionMock::DocElement> const& _data;
+  // we need to take a copy of the incoming data here, so we can iterate over
+  // the original data safely while the collection data is being modified
+  std::unordered_map<std::string_view, PhysicalCollectionMock::DocElement>
+      _data;
   std::unordered_map<std::string_view,
                      PhysicalCollectionMock::DocElement>::const_iterator _it;
 };  // AllIteratorMock
