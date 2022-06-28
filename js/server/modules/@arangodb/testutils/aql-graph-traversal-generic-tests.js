@@ -2705,7 +2705,7 @@ const testParallelismSubqueryOuterLoopFirstTraversal = (testGraph, mode) => {
   // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
   const makeQuery = (parallel, numberOfStartNodes) => {
     return `
-      FOR myNumber IN [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      FOR myNumber IN [1, 2, 3, 4, 5]
       LET subQueryResults = ( // SubQuery start
         LET start = "${testGraph.vertex('A')}"
         ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
@@ -2726,7 +2726,7 @@ const testParallelismSubqueryOuterLoopSecondTraversal = (testGraph, mode) => {
   // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
   const makeQuery = (parallel, numberOfStartNodes) => {
     return `
-      FOR myNumber IN [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      FOR myNumber IN [1, 2, 3, 4, 5]
       LET subQueryResults = ( // SubQuery start
         LET start = "${testGraph.vertex('D')}"
         ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
@@ -2740,7 +2740,7 @@ const testParallelismSubqueryOuterLoopSecondTraversal = (testGraph, mode) => {
       `;
   };
 
-  executeParallelQuery(makeQuery, 637 * 10); // x10 due to SubQueries
+  executeParallelQuery(makeQuery, 637 * 5); // x10 due to SubQueries
 };
 
 const testParallelismSubqueryOuterLoopBothInnerTraversals = (testGraph, mode) => {
@@ -2748,7 +2748,7 @@ const testParallelismSubqueryOuterLoopBothInnerTraversals = (testGraph, mode) =>
   // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
   const makeQuery = (parallel, numberOfStartNodes) => {
     return `
-      FOR myNumber IN [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      FOR myNumber IN [1, 2, 3, 4, 5]
       LET subQueryResults = ( // SubQuery start
         LET start = "${testGraph.vertex('A')}"
         ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
@@ -2764,7 +2764,7 @@ const testParallelismSubqueryOuterLoopBothInnerTraversals = (testGraph, mode) =>
       `;
   };
 
-  executeParallelQuery(makeQuery, 637 * 10); // x10 due to SubQueries
+  executeParallelQuery(makeQuery, 637 * 5); // x10 due to SubQueries
 };
 
 const testSmallCircleBFSParallelism = testGraph => testParallelism(testGraph, "bfs");
