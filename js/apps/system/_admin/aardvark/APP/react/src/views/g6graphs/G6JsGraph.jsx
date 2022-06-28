@@ -6,6 +6,7 @@ import { AttributesInfo } from './AttributesInfo';
 import { data } from './data';
 import { EditNodeModal } from './EditNodeModal';
 import { EditEdgeModal } from './EditEdgeModal';
+import { DeleteEdgeModal } from './DeleteEdgeModal';
 import { AddNodeModal } from './AddNodeModal';
 import { AddEdgeModal } from './AddEdgeModal';
 import { FetchFullGraphModal } from './FetchFullGraphModal';
@@ -64,6 +65,7 @@ const G6JsGraph = () => {
   const [showFetchFullGraphModal, setShowFetchFullGraphModal] = useState(false);
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
   const [showEditEdgeModal, setShowEditEdgeModal] = useState(false);
+  const [showDeleteEdgeModal, setShowDeleteEdgeModal] = useState(false);
   const [vertexCollections, setVertexCollections] = useState([]);
   const [vertexCollectionsColors, setVertexCollectionsColors] = useState();
   const [nodesSizeMinMax, setNodesSizeMinMax] = useState();
@@ -72,14 +74,19 @@ const G6JsGraph = () => {
   const [edgeModelToAdd, setEdgeModelToAdd] = useState({});
   const [nodeToEdit, setNodeToEdit] = useState({});
   const [edgeToEdit, setEdgeToEdit] = useState({});
+  const [edgeToDelete, setEdgeToDelete] = useState({});
   const [nodeDataToEdit, setNodeDataToEdit] = useState();
   const [basicNodeDataToEdit, setBasicNodeDataToEdit] = useState([]);
   const [edgeDataToEdit, setEdgeDataToEdit] = useState();
+  const [edgeDataToDelete, setEdgeDataToDelete] = useState();
   const [basicEdgeDataToEdit, setBasicEdgeDataToEdit] = useState([]);
+  const [basicEdgeDataToDelete, setBasicEdgeDataToDelete] = useState([]);
   const [nodeKey, setNodeKey] = useState('');
   const [edgeKey, setEdgeKey] = useState('');
+  const [edgeToDeleteKey, setEdgeToDeleteKey] = useState('');
   const [nodeCollection, setNodeCollection] = useState('');
   const [edgeCollection, setEdgeCollection] = useState('');
+  const [edgeToDeleteCollection, setEdgeToDeleteCollection] = useState('');
   const [nodeToAdd, setNodeToAdd] = useState();
   const [isNewNodeToEdit, setIsNewNodeToEdit] = useState(false);
   const [showNodeToAddModal, setShowNodeToAddModal] = useState();
@@ -268,6 +275,35 @@ const G6JsGraph = () => {
     setShowEditNodeModal(true);
   }
 
+  const openDeleteEdgeModal = (edge) => {
+    const slashPos = edge.indexOf("/");
+    setEdgeToDelete(edge);
+    setEdgeToDeleteKey(edge.substring(slashPos + 1));
+    setEdgeToDeleteCollection(edge.substring(0, slashPos));
+    const edgeDataObject = {
+      "keys": [
+        edge.substring(slashPos + 1)
+      ],
+      "collection": edge.substring(0, slashPos)
+    };
+
+    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+      method: "PUT",
+      body: JSON.stringify(edgeDataObject),
+    })
+    .then(response => response.json())
+    .then(data => {
+      const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev', '_from', '_to');
+      setBasicEdgeDataToDelete(pick(data.documents[0], ['_id', '_key', '_rev', '_from', '_to']));
+      setEdgeDataToDelete(allowedDocuments);
+    })
+    .catch((err) => {
+      arangoHelper.arangoError('Graph', 'Could not look up this edge.');
+      console.log(err);
+    });
+    setShowDeleteEdgeModal(true);
+  }
+
   const openEditEdgeModal = (edge) => {
     const slashPos = edge.indexOf("/");
     setEdgeToEdit(edge);
@@ -393,11 +429,32 @@ const G6JsGraph = () => {
       console.log(err);
     });
   }
+
+  const onDeleteEdge = (removedEdge) => {
+    setShowDeleteEdgeModal(false);
+    const edgesWithoutRemovedEdge = graphData.edges.filter(edges => edges.id !== removedEdge);
+    const currentNodes = graphData.nodes;
+    const currentSettings = graphData.settings;
+
+    const newGraphData = {
+      nodes: [
+        ...currentNodes
+      ],
+      edges: [
+        ...edgesWithoutRemovedEdge
+      ],
+      settings: [
+        currentSettings
+      ]
+    };
+
+    setGraphData(newGraphData);
+  }
         
   return (
     <div>
       <UrlParametersContext.Provider value={[urlParameters, setUrlParameters, vertexCollectionsColors]}>
-      
+
         <EditNodeModal
           shouldShow={showEditNodeModal}
           onRequestClose={() => {
@@ -434,6 +491,22 @@ const G6JsGraph = () => {
         >
           <strong>Edit edge: {edgeToEdit}</strong>
         </EditEdgeModal>
+        <DeleteEdgeModal
+          shouldShow={showDeleteEdgeModal}
+          onRequestClose={() => {
+            setShowDeleteEdgeModal(false);
+            setEdgeDataToDelete(undefined);
+          }}
+          edge={edgeToDelete}
+          edgeData={edgeDataToDelete}
+          basicEdgeData={basicEdgeDataToDelete}
+          editorContent={edgeToDelete}
+          onDeleteEdge={(edgeId) => onDeleteEdge(edgeId)}
+          edgeToDeleteKey={edgeToDeleteKey}
+          edgeToDeleteCollection={edgeToDeleteCollection}
+        >
+          <strong>Delete edge: {edgeToDelete}</strong>
+        </DeleteEdgeModal>
         <FetchFullGraphModal
           shouldShow={showFetchFullGraphModal}
           onRequestClose={() => {
@@ -503,6 +576,7 @@ const G6JsGraph = () => {
               onRemoveSingleEdge={(edge) => removeEdge(edge)}
               onEditNode={(node) => openEditNodeModal(node)}
               onEditEdge={(edge) => openEditEdgeModal(edge)}
+              onDeleteEdge={(edge) => openDeleteEdgeModal(edge)}
               onAddNodeToDb={() => openAddNodeModal()}
               onExpandNode={(node) => expandNode(node)}
               onSetStartnode={(node) => setStartnode(node)}

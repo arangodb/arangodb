@@ -62,7 +62,7 @@ export class GraphView extends React.Component {
         }  else if(chosenAction === 'addNodeToDb') {
           this.props.onAddNodeToDb();
         } else if(chosenAction === 'deleteEdge') {
-          this.removeEdge(item._cfg.id);
+          this.props.onDeleteEdge(item._cfg.id);
         } else if(chosenAction === 'editEdge') {
           this.props.onEditEdge(item._cfg.id);
         } 
@@ -676,6 +676,10 @@ export class GraphView extends React.Component {
 
   render() {
     return <>
+      <button onClick={() => {
+        console.log("this.props.data: ", this.props.data);
+        this.graph.render();
+      }}>this.props.data</button>
       <Headerinfo
         graphName={this.props.graphName}
         graphData={this.props.data}
