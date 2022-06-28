@@ -605,6 +605,7 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
       } else {
         // still waiting
         ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+        ctx.createAction<NoActionPossibleAction>();
       }
     }
   }
