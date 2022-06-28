@@ -7,7 +7,7 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeLabelByCollection, setNodeLabelByCollection] = useState(urlParameters.nodeLabelByCollection);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <div>
@@ -16,8 +16,8 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
         onChange={() => {
           const newNodeLabelByCollection = !nodeLabelByCollection;
           setNodeLabelByCollection(newNodeLabelByCollection);
-          NEWURLPARAMETERS.nodeLabelByCollection = newNodeLabelByCollection;
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.nodeLabelByCollection = newNodeLabelByCollection;
+          setUrlParameters(newUrlParameters);
         }}
         style={{ 'color': '#736b68' }}
       >

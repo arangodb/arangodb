@@ -550,8 +550,6 @@ const G6JsGraph = () => {
           onAddNode={() => {
             setShowNodeToAddModal(false);
           }}
-          nodeKey={''}
-          nodeCollection={''}
           onNodeCreation={(newNode) => {
             updateGraphDataWithNode(newNode)
           }}

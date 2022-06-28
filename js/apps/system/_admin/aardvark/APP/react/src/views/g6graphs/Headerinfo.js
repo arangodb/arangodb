@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Dropdown, Space, Menu, Tag, PageHeader, Tabs, Button, Descriptions, Tooltip } from 'antd';
 import { RollbackOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
-import { ResponseInfo } from './ResponseInfo';
 import ParameterNodeStart from "./ParameterNodeStart";
 import ParameterDepth from "./ParameterDepth";
 import ParameterLimit from "./ParameterLimit";
@@ -33,9 +32,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
     <>
       <Descriptions size="small" column={column}>
         <Descriptions.Item label="Response time">
-          <ResponseInfo
-            duration={responseDuration}
-          />ms
+          <span>{responseDuration}</span>ms
         </Descriptions.Item>
       </Descriptions>
       <Tag color="cyan">{graphData.nodes.length} nodes</Tag>

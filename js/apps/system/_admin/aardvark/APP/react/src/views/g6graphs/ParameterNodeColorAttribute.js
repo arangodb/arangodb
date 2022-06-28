@@ -9,7 +9,7 @@ const ParameterNodeColorAttribute = ({ nodesColorAttributes }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeColorAttribute, setNodeColorAttribute] = useState(urlParameters.nodeColorAttribute);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <>
@@ -20,8 +20,8 @@ const ParameterNodeColorAttribute = ({ nodesColorAttributes }) => {
           width={'300px'}
           onChange={(e) => {
             setNodeColorAttribute(e.target.value);
-            NEWURLPARAMETERS.nodeColorAttribute = e.target.value;
-            setUrlParameters(NEWURLPARAMETERS);
+            newUrlParameters.nodeColorAttribute = e.target.value;
+            setUrlParameters(newUrlParameters);
           }}
           disabled={urlParameters.nodeColorByCollection}>
         </Textinput>

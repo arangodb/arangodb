@@ -7,7 +7,7 @@ const ParameterEdgeColorByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColorByCollection, setEdgeColorByCollection] = useState(urlParameters.edgeColorByCollection);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <div>
@@ -16,8 +16,8 @@ const ParameterEdgeColorByCollection = () => {
         onChange={() => {
           const newEdgeColorByCollection = !edgeColorByCollection;
           setEdgeColorByCollection(newEdgeColorByCollection);
-          NEWURLPARAMETERS.edgeColorByCollection = newEdgeColorByCollection;
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.edgeColorByCollection = newEdgeColorByCollection;
+          setUrlParameters(newUrlParameters);
         }}
         style={{ 'color': '#736b68' }}
       >

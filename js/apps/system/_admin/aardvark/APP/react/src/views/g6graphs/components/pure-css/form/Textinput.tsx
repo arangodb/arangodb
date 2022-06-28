@@ -8,17 +8,6 @@ type StyledTextinputProps = {
   [key: string]: any;
 };
 
-/*
-const StyledTextinput = styled.input.attrs(({ type, ...rest }: StyledTextinputProps) => ({
-  type,
-  ...rest
-}))`
-  &&& {
-    width: 50%;
-    height: auto;
-  }
-`;
-*/
 const StyledTextinput = styled.input.attrs(({ type, width, height, disabled, ...rest }: StyledTextinputProps) => ({
   type,
   ...rest

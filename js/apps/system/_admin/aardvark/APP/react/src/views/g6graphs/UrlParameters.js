@@ -5,11 +5,8 @@ const URLPARAMETERS = {
   nodeColorByCollection: false,
   edgeColorByCollection: false,
   nodeColor: "CBDF2F",
-  //nodeColor: "dee072",
-  //nodeColor: "ff0000",
   nodeColorAttribute: "",
   edgeColor: "1D2A12",
-  //edgeColor: "555555",
   edgeColorAttribute: "",
   nodeLabel: "",
   edgeLabel: "",
@@ -22,10 +19,6 @@ const URLPARAMETERS = {
   nodeStart: "",
   barnesHutOptimize: false,
   query: "",
-  //mode: "all",
 };
-
-//nodeLabel: "_key",
-//edgeLabel: "_id",
 
 export default URLPARAMETERS;

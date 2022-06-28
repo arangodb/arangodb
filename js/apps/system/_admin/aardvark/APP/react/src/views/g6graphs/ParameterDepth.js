@@ -8,7 +8,7 @@ const ParameterDepth = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [depth, setDepth] = useState(urlParameters.depth);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <>
@@ -19,8 +19,8 @@ const ParameterDepth = () => {
             width={'60px'}
             onChange={(e) => {
               setDepth(+e.target.value);
-              NEWURLPARAMETERS.depth = +e.target.value;
-              setUrlParameters(NEWURLPARAMETERS);
+              newUrlParameters.depth = +e.target.value;
+              setUrlParameters(newUrlParameters);
             }}>
         </Textinput>
         <Tooltip placement="bottom" title={"Search depth, starting from your start node."}>

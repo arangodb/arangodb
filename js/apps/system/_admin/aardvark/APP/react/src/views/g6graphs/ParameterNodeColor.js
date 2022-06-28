@@ -6,7 +6,7 @@ const ParameterNodeColor = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeColor, setNodeColor] = useState(urlParameters.nodeColor);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
   let calculatedNodeColor = nodeColor;
   if (!nodeColor.startsWith('#')) {
     calculatedNodeColor = '#' + nodeColor;
@@ -22,8 +22,8 @@ const ParameterNodeColor = () => {
         height={'30px'}
         onChange={(e) => {
           setNodeColor(e.target.value);
-          NEWURLPARAMETERS.nodeColor = e.target.value.replace("#", "");
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.nodeColor = e.target.value.replace("#", "");
+          setUrlParameters(newUrlParameters);
       }}
       disabled={urlParameters.nodeColorByCollection}>
       </Textinput>

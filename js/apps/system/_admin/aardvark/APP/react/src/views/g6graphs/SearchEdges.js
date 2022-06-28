@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tooltip } from 'antd';
-import { Edge } from './components/edge/edge.component';
+import { Edge } from './components/edge/Edge';
 import { InfoCircleFilled } from '@ant-design/icons';
 import PlainLabel from "./components/pure-css/form/PlainLabel";
 

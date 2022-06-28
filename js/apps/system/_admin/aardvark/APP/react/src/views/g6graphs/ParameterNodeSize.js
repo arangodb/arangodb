@@ -8,7 +8,7 @@ const ParameterNodeSize = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeSize, setNodeSize] = useState(urlParameters.nodeSize);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <div style={{ marginBottom: '20px' }}>
@@ -18,8 +18,8 @@ const ParameterNodeSize = () => {
         width={'300px'}
         onChange={(e) => {
           setNodeSize(e.target.value);
-          NEWURLPARAMETERS.nodeSize = e.target.value;
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.nodeSize = e.target.value;
+          setUrlParameters(newUrlParameters);
         }}
         disabled={urlParameters.nodeSizeByEdges}>
       </Textinput>

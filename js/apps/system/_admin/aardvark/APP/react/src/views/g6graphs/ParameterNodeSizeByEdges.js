@@ -7,7 +7,7 @@ const ParameterNodeSizeByEdges = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeSizeByEdges, setNodeSizeByEdges] = useState(urlParameters.nodeSizeByEdges);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <div>
@@ -16,8 +16,8 @@ const ParameterNodeSizeByEdges = () => {
         onChange={() => {
           const newNodeSizeByEdges = !nodeSizeByEdges;
           setNodeSizeByEdges(newNodeSizeByEdges);
-          NEWURLPARAMETERS.nodeSizeByEdges = newNodeSizeByEdges;
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.nodeSizeByEdges = newNodeSizeByEdges;
+          setUrlParameters(newUrlParameters);
         }}
         style={{ 'color': '#736b68' }}
       >

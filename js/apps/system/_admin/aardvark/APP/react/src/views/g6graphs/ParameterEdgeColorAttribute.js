@@ -8,7 +8,7 @@ const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColorAttribute, setEdgeColorAttribute] = useState(urlParameters.edgeColorAttribute);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
   
   return (
     <div>
@@ -18,8 +18,8 @@ const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
         width={'300px'}
         onChange={(e) => {
           setEdgeColorAttribute(e.target.value);
-          NEWURLPARAMETERS.edgeColorAttribute = e.target.value;
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.edgeColorAttribute = e.target.value;
+          setUrlParameters(newUrlParameters);
         }}
         disabled={urlParameters.edgeColorByCollection}>
       </Textinput>

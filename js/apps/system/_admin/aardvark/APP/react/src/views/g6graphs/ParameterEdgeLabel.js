@@ -8,7 +8,7 @@ const ParameterEdgeLabel = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeLabel, setEdgeLabel] = useState(urlParameters.edgeLabel);
 
-  const NEWURLPARAMETERS = { ...urlParameters };  
+  const newUrlParameters = { ...urlParameters };  
   
   return (
     <div style={{'marginTop': '24px'}}>
@@ -18,8 +18,8 @@ const ParameterEdgeLabel = () => {
         width={'300px'}
         onChange={(e) => {
           setEdgeLabel(e.target.value);
-          NEWURLPARAMETERS.edgeLabel = e.target.value;
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.edgeLabel = e.target.value;
+          setUrlParameters(newUrlParameters);
         }}>
       </Textinput>
       <Tooltip placement="bottom" title={"Enter a valid edge attribute to be used as an edge label."}>

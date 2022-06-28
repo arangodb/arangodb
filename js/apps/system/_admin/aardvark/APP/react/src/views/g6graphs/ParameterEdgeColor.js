@@ -6,7 +6,7 @@ const ParameterEdgeColor = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColor, setEdgeColor] = useState(urlParameters.edgeColor);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
   let calculatedEdgeColor = edgeColor;
   if (!edgeColor.startsWith('#')) {
     calculatedEdgeColor = '#' + edgeColor;
@@ -22,8 +22,8 @@ const ParameterEdgeColor = () => {
         height={'30px'}
         onChange={(e) => {
           setEdgeColor(e.target.value);
-          NEWURLPARAMETERS.edgeColor = e.target.value.replace("#", "");
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.edgeColor = e.target.value.replace("#", "");
+          setUrlParameters(newUrlParameters);
         }}
       disabled={urlParameters.edgeColorByCollection}>
       </Textinput>

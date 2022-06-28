@@ -8,7 +8,7 @@ const ParameterNodeLabel = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeLabel, setNodeLabel] = useState(urlParameters.nodeLabel);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
   
   return (
     <>
@@ -19,8 +19,8 @@ const ParameterNodeLabel = () => {
           width={'300px'}
           onChange={(e) => {
             setNodeLabel(e.target.value);
-            NEWURLPARAMETERS.nodeLabel = e.target.value;
-            setUrlParameters(NEWURLPARAMETERS);
+            newUrlParameters.nodeLabel = e.target.value;
+            setUrlParameters(newUrlParameters);
           }}>
         </Textinput>
         <Tooltip placement="bottom" title={"Enter a valid node attribute to be used as a node label."}>

@@ -7,7 +7,7 @@ const ParameterNodeColorByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeColorByCollection, setNodeColorByCollection] = useState(urlParameters.nodeColorByCollection);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <div>
@@ -16,8 +16,8 @@ const ParameterNodeColorByCollection = () => {
         onChange={() => {
           const newNodeColorByCollection = !nodeColorByCollection;
           setNodeColorByCollection(newNodeColorByCollection);
-          NEWURLPARAMETERS.nodeColorByCollection = newNodeColorByCollection;
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.nodeColorByCollection = newNodeColorByCollection;
+          setUrlParameters(newUrlParameters);
         }}
         style={{ 'color': '#736b68' }}
       >

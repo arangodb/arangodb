@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Node } from './components/node/node.component';
+import { Node } from './components/node/Node';
 import { Tooltip } from 'antd';
 import { InfoCircleFilled } from '@ant-design/icons';
 import PlainLabel from "./components/pure-css/form/PlainLabel";
@@ -9,7 +9,7 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeStart, setNodeStart] = useState(urlParameters.nodeStart);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <div style={{'marginTop': '24px'}}>
@@ -24,8 +24,8 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
           onChange={
             (e) => {
               setNodeStart(e.target.value);
-              NEWURLPARAMETERS.nodeStart = e.target.value;
-              setUrlParameters(NEWURLPARAMETERS);
+              newUrlParameters.nodeStart = e.target.value;
+              setUrlParameters(newUrlParameters);
             }
           }
           style={{

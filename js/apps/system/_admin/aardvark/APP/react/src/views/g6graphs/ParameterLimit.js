@@ -8,7 +8,7 @@ const ParameterLimit = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [limit, setLimit] = useState(urlParameters.limit);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
 
   return (
     <>
@@ -19,8 +19,8 @@ const ParameterLimit = () => {
           width={'60px'}
           onChange={(e) => {
             setLimit(+e.target.value);
-            NEWURLPARAMETERS.limit = +e.target.value;
-            setUrlParameters(NEWURLPARAMETERS);
+            newUrlParameters.limit = +e.target.value;
+            setUrlParameters(newUrlParameters);
           }}>
         </Textinput>
         <Tooltip placement="bottom" title={"Limit nodes count. If empty or zero, no limit is set."}>

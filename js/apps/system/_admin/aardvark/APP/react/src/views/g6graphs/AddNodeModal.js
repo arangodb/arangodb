@@ -23,7 +23,7 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
-export const AddNodeModal = ({ shouldShow, onUpdateNode, onRequestClose, node, vertexCollections, nodeData, editorContent, children, nodeKey, nodeCollection, onNodeCreation, graphName, graphData }) => {
+  export const AddNodeModal = ({ shouldShow, onUpdateNode, onRequestClose, node, vertexCollections, nodeData, editorContent, children, onNodeCreation, graphName, graphData }) => {
 
   const { Option } = Select;
   const keyInputRef = useRef();

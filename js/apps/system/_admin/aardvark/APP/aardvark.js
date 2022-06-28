@@ -1306,18 +1306,8 @@ authRouter.get('/g6graph/:name', function (req, res) {
                 nodeEdgesCount[edge._to] += 1;
               }
             }
-            //connectionsCounts.push(nodeEdgesCount[node.id]);
           }
 
-          /*
-          edgeObj = {
-            id: edge._id,
-            source: edge._from,
-            label: edgeLabel,
-            color: config.edgeColor || '#cccccc',
-            target: edge._to
-          };
-          */
           var calculatedEdgeColor = '#1D2A12';
           if (config.edgeColor !== undefined) {
             calculatedEdgeColor = '#' + config.edgeColor;
@@ -1326,7 +1316,6 @@ authRouter.get('/g6graph/:name', function (req, res) {
             id: edge._id,
             source: edge._from,
             label: edgeLabel,
-            //color: config.edgeColor || '#cccccc',
             target: edge._to,
             style: {
               stroke: calculatedEdgeColor,
@@ -1371,26 +1360,12 @@ authRouter.get('/g6graph/:name', function (req, res) {
                 edgeObj.style.fill = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
                 edgeObj[config.edgeColorAttribute] = attr;
                 edgeObj.attributeColor = tmpObjEdges[attr];
-                edgeObj['viking'] = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
               } else {
                 tmpObjEdges[attr] = colors.jans[Object.keys(tmpObjEdges).length];
                 edgeObj.color = tmpObjEdges[attr];
                 edgeObj.style.fill = tmpObjEdges[attr] || '#ff0'; 
               }
             }
-            /*
-            // Original code
-            var attr = edge[config.edgeColorAttribute];
-            if (attr) {
-              if (tmpObjEdges.hasOwnProperty(attr)) {
-                edgeObj.color = tmpObjEdges[attr];
-                edgeObj.style.stroke = tmpObjEdges[attr] || '#555555';
-              } else {
-                tmpObjEdges[attr] = colors.jans[Object.keys(tmpObjEdges).length];
-                edgeObj.color = tmpObjEdges[attr];
-              }
-            }
-            */
           }
         }
         edgeObj.sortColor = edgeObj.color;
@@ -1433,19 +1408,6 @@ authRouter.get('/g6graph/:name', function (req, res) {
             sizeCategory = node[config.nodeSize] || '';
             nodesSizeValues.push(node[config.nodeSize]);
           }
-          
-          /*
-          nodeObj = {
-            id: node._id,
-            label: nodeLabel,
-            size: nodeSize || 3,
-            sizeCategory: sizeCategory || '',
-            color: config.nodeColor || '#2ecc71',
-            sortColor: undefined,
-            x: Math.random(),
-            y: Math.random()
-          };
-          */
         var calculatedNodeColor = '#CBDF2F';
         if (config.nodeColor !== undefined) {
           if(!config.nodeColor.startsWith('#')) {
@@ -1493,31 +1455,13 @@ authRouter.get('/g6graph/:name', function (req, res) {
               }
             }
 
-            /*
-            if (config.nodeLabel) {
-              if (config.nodeLabel.indexOf('.') > -1) {
-                nodeLabel = getAttributeByKey(node, config.nodeLabel);
-                if (nodeLabel === undefined || nodeLabel === '') {
-                  nodeLabel = node._id;
-                }
-              } else {
-                nodeLabel = node[config.nodeLabel];
-              }
-            } else {
-              nodeLabel = node._key;
-            }
-            */
-
             var attr = node[config.nodeColorAttribute];
             if (attr) {
               if (tmpObjNodes.hasOwnProperty(attr)) {
-                //nodeObj.color = tmpObjNodes[attr];
                 nodeObj.color = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
-                //nodeObj.style.fill = tmpObjNodes[attr] || '#ff0';
                 nodeObj.style.fill = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
                 nodeObj[config.nodeColorAttribute] = attr;
                 nodeObj.attributeColor = tmpObjNodes[attr];
-                nodeObj['viking'] = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
               } else {
                 tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
                 nodeObj.color = tmpObjNodes[attr];
@@ -1535,9 +1479,6 @@ authRouter.get('/g6graph/:name', function (req, res) {
     _.each(nodesObj, function (node) {
       if (config.nodeSizeByEdges === 'true') {
         // + 10 visual adjustment sigma
-
-        // original code
-        //node.size = nodeEdgesCount[node.id] + 10;
         node.nodeEdgesCount = nodeEdgesCount[node.id];
         connectionsCounts.push(nodeEdgesCount[node.id]);
 

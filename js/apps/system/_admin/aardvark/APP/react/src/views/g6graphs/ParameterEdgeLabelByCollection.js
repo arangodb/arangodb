@@ -7,7 +7,7 @@ const ParameterEdgeLabelByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeLabelByCollection, setEdgeLabelByCollection] = useState(urlParameters.edgeLabelByCollection);
 
-  const NEWURLPARAMETERS = { ...urlParameters };
+  const newUrlParameters = { ...urlParameters };
   
   return (
     <div>
@@ -16,8 +16,8 @@ const ParameterEdgeLabelByCollection = () => {
         onChange={() => {
           const newEdgeLabelByCollection = !edgeLabelByCollection;
           setEdgeLabelByCollection(newEdgeLabelByCollection);
-          NEWURLPARAMETERS.edgeLabelByCollection = newEdgeLabelByCollection;
-          setUrlParameters(NEWURLPARAMETERS);
+          newUrlParameters.edgeLabelByCollection = newEdgeLabelByCollection;
+          setUrlParameters(newUrlParameters);
         }}
         style={{ 'color': '#736b68' }}
       >

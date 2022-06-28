@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tooltip } from 'antd';
-import { Node } from './components/node/node.component';
+import { Node } from './components/node/Node';
 import { InfoCircleFilled } from '@ant-design/icons';
 import PlainLabel from "./components/pure-css/form/PlainLabel";
 
