@@ -30,7 +30,7 @@
 const joi = require('joi');
 const dd = require('dedent');
 const internal = require('internal');
-const db = require('@arangodb').db;
+const { db, query } = require('@arangodb');
 const actions = require('@arangodb/actions');
 const errors = require('@arangodb').errors;
 const ArangoError = require('@arangodb').ArangoError;
