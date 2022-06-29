@@ -335,7 +335,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             "type": "object",
             "properties": {
               "value1": {
-                "type": "string",
+                "type": "boolean",
               },
             },
             "required": ["value1"],
@@ -360,12 +360,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         const newValue = i % 2 ? true : false;
         docs.push({value1: newValue, value2: newValue});
       }
-      collection.insert(docs);
-
-      let res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      let res = collection.insert(docs);
       res.forEach(el => {
-        assertEqual(el.value1, `${el.value2}+${el.value2}`);
+        assertEqual(errors.ERROR_VALIDATION_FAILED.code, el.errorNum);
+        assertEqual(el.errorMessage, "Schema validation failed");
       });
+
+      res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      assertEqual(res.length, 0);
     },
 
     testSchemaValidationWithComputedValuesNoOverride: function() {
@@ -375,7 +377,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             "type": "object",
             "properties": {
               "value1": {
-                "type": "boolean",
+                "type": "string",
               },
             },
             "required": ["value1"],
@@ -403,12 +405,15 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         const newValue = i % 2 ? true : false;
         docs.push({value1: newValue, value2: newValue});
       }
-      collection.insert(docs);
+      let res = collection.insert(docs);
 
-      let res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
       res.forEach(el => {
-        assertEqual(typeof (el.value1), "boolean");
+        assertEqual(errors.ERROR_VALIDATION_FAILED.code, el.errorNum);
+        assertEqual(el.errorMessage, "Schema validation failed");
       });
+
+      res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      assertEqual(res.length, 0);
     },
 
     testCompoundComputedValues: function() {
