@@ -33,11 +33,7 @@
 
 #include "Basics/system-compiler.h"
 
-#ifndef TRI_ASSERT
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Basics/CrashHandler.h"
-#endif
-#endif
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -219,6 +215,7 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
 
 namespace debug {
 
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 struct NoOpStream {
   template<typename T>
   auto operator<<(T const&) noexcept -> NoOpStream& {
@@ -230,6 +227,7 @@ struct AssertionNoOpLogger {
   void operator&(NoOpStream const& stream) const {}
 };
 
+#else
 struct AssertionLogger {
   [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
@@ -250,40 +248,7 @@ struct AssertionLogger {
 
   static thread_local std::ostringstream assertionStringStream;
 };
-
-struct AssertionConditionalStream {
-  bool condition{false};
-  std::ostringstream stream;
-  template<typename T>
-  auto operator<<(T const& v) noexcept -> AssertionConditionalStream& {
-    if (condition) {
-      stream << v;
-    }
-    return *this;
-  }
-  auto withCondition(bool c) -> AssertionConditionalStream&& {
-    condition = c;
-    return std::move(*this);
-  }
-};
-
-struct AssertionConditionalLogger {
-  void operator&(AssertionConditionalStream const& stream) const {
-    if (!stream.condition) {
-      std::string message = stream.stream.str();
-      arangodb::CrashHandler::assertionFailure(
-          file, line, function, expr,
-          message.empty() ? nullptr : message.c_str());
-    }
-  }
-
-  const char* file;
-  int line;
-  const char* function;
-  const char* expr;
-
-  static thread_local AssertionConditionalStream assertionStringStream;
-};
+#endif
 
 }  // namespace debug
 }  // namespace arangodb
