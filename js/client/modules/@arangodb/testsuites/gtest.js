@@ -36,7 +36,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-
+const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const testPaths = {
   'gtest': [],
   'catch': [],
@@ -116,16 +116,11 @@ function gtestRunner (testname, options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'gtest');
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
-  // we append one cleanup directory for the invoking logic...
-  let dummyDir = fs.join(fs.getTempPath(), 'gtest_dummy');
-  if (!fs.exists(dummyDir)) {
-    fs.makeDirectory(dummyDir);
-  }
-  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   const run = locateGTest(testname);
   if (!options.skipGTest) {
     if (run !== '') {
+      let tmpMgr = new tmpDirMmgr('gtest', options);
       let argv = [
         '--gtest_output=json:' + testResultJsonFile,
       ];
@@ -147,6 +142,7 @@ function gtestRunner (testname, options) {
         results.failed += 1;
       }
       results = getGTestResults(testResultJsonFile, results);
+      tmpMgr.destructor((results.failed === 0) && options.cleanup);
     } else {
       results.failed += 1;
       results.basics = {

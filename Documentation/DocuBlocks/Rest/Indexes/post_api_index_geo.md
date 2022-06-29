@@ -13,13 +13,15 @@ The collection name.
 must be equal to *"geo"*.
 
 @RESTBODYPARAM{fields,array,required,string}
-An array with one or two attribute paths.<br>
+An array with one or two attribute paths.
+
 If it is an array with one attribute path *location*, then a geo-spatial
 index on all documents is created using *location* as path to the
 coordinates. The value of the attribute must be an array with at least two
 double values. The array must contain the latitude (first value) and the
 longitude (second value). All documents, which do not have the attribute
-path or with value that are not suitable, are ignored.<br>
+path or with value that are not suitable, are ignored.
+
 If it is an array with two attribute paths *latitude* and *longitude*,
 then a geo-spatial index on all documents is created using *latitude*
 and *longitude* as paths the latitude and the longitude. The value of
