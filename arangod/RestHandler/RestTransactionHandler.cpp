@@ -185,8 +185,21 @@ void RestTransactionHandler::executeBegin() {
       return;
     }
 
+    // Check if dirty reads are allowed:
+    bool found = false;
+    bool allowDirtyReads = false;
+    std::string const& val =
+        _request->header(StaticStrings::AllowDirtyReads, found);
+    if (found && StringUtils::boolean(val)) {
+      // This will be used in `createTransaction` below, if that creates
+      // a new transaction. Otherwise, we use the default given by the
+      // existing transaction.
+      allowDirtyReads = true;
+    }
+
     // start
-    ResultT<TransactionId> res = mgr->createManagedTrx(_vocbase, slice);
+    ResultT<TransactionId> res =
+        mgr->createManagedTrx(_vocbase, slice, allowDirtyReads);
     if (res.fail()) {
       generateError(res.result());
     } else {
