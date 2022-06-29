@@ -53,8 +53,6 @@ inline constexpr std::string_view StringUninitializedState =
     "UninitializedState";
 inline constexpr std::string_view StringSnapshotTransferFailed =
     "SnapshotTransferFailed";
-inline constexpr std::string_view StringInstantiateStateMachine =
-    "InstantiateStateMachine";
 inline constexpr std::string_view StringWaitForNewEntries = "WaitForNewEntries";
 
 }  // namespace
@@ -90,8 +88,6 @@ auto replicated_state::to_string(FollowerInternalState state) noexcept
       return StringUninitializedState;
     case FollowerInternalState::kSnapshotTransferFailed:
       return StringSnapshotTransferFailed;
-    case FollowerInternalState::kInstantiateStateMachine:
-      return StringInstantiateStateMachine;
     case FollowerInternalState::kWaitForNewEntries:
       return StringWaitForNewEntries;
   }
@@ -145,8 +141,6 @@ auto FollowerInternalStateStringTransformer::fromSerialized(
     target = FollowerInternalState::kApplyRecentEntries;
   } else if (source == StringSnapshotTransferFailed) {
     target = FollowerInternalState::kSnapshotTransferFailed;
-  } else if (source == StringInstantiateStateMachine) {
-    target = FollowerInternalState::kInstantiateStateMachine;
   } else if (source == StringWaitForNewEntries) {
     target = FollowerInternalState::kWaitForNewEntries;
   } else {

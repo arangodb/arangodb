@@ -421,8 +421,9 @@ void FollowerStateManager<S>::run() noexcept {
   // Note that because `transitionWith` locks the self-ptr before calling `fn`,
   // fn itself is allowed to just capture and use `this`.
   auto const transitionWith = [this]<typename F>(F&& fn) {
-    return [weak = this->weak_from_this(),
-            fn = std::forward<F>(fn)]<typename T, typename F1 = F>(T&& arg) mutable {
+    return [
+      weak = this->weak_from_this(), fn = std::forward<F>(fn)
+    ]<typename T, typename F1 = F>(T && arg) mutable {
       if (auto self = weak.lock(); self != nullptr) {
         auto const state = std::invoke([&] {
           // Don't pass Unit to make that case more convenient.
@@ -436,18 +437,6 @@ void FollowerStateManager<S>::run() noexcept {
         self->run();
       }
     };
-  };
-
-  static auto constexpr immediate = []<typename F>(F&& fn) {
-    auto promise = futures::Promise<futures::Unit>{};
-    try {
-      static_assert(std::is_same_v<void, std::invoke_result_t<F>>);
-      std::forward<F>(fn)();
-      promise.setValue(futures::Unit());
-    } catch (...) {
-      promise.setException(std::current_exception());
-    }
-    return promise.getFuture();
   };
 
   static auto constexpr noop = []() {
@@ -465,13 +454,8 @@ void FollowerStateManager<S>::run() noexcept {
     } break;
     case FollowerInternalState::kWaitForLeaderConfirmation: {
       waitForLeaderAcked()
-          .thenValue(
-              transitionTo(FollowerInternalState::kInstantiateStateMachine))
-          .thenFinal(handleErrors);
-    } break;
-    case FollowerInternalState::kInstantiateStateMachine: {
-      immediate([this] { return instantiateStateMachine(); })
           .thenValue(transitionWith([this] {
+            instantiateStateMachine();
             if (needsSnapshot()) {
               return FollowerInternalState::kTransferSnapshot;
             } else {
@@ -501,23 +485,66 @@ void FollowerStateManager<S>::run() noexcept {
     } break;
     case FollowerInternalState::kWaitForNewEntries: {
       waitForNewEntries()
-          .thenValue(transitionWith(
-              [this](auto iter) {
-                _guardedData.doUnderLock([&iter](auto& data) {
-                  data.nextEntriesIter = std::move(iter);
-                  data.ingestionRange.reset();
-                });
-                return FollowerInternalState::kApplyRecentEntries;
-              }))
+          .thenValue(transitionWith([this](auto iter) {
+            saveNewEntriesIter(std::move(iter));
+            return FollowerInternalState::kApplyRecentEntries;
+          }))
           .thenFinal(handleErrors);
     } break;
     case FollowerInternalState::kApplyRecentEntries: {
       applyNewEntries()
           .thenValue(throwResultOnError)
-          .thenValue(transitionTo(FollowerInternalState::kWaitForNewEntries))
+          .thenValue(transitionWith([this]() {
+            resolveAppliedEntriesQueue();
+            return FollowerInternalState::kWaitForNewEntries;
+          }))
           .thenFinal(handleErrors);
     } break;
   }
+}
+
+template<typename S>
+void FollowerStateManager<S>::saveNewEntriesIter(
+    std::unique_ptr<typename Stream::Iterator> iter) {
+  _guardedData.doUnderLock([&iter](auto& data) {
+    data.nextEntriesIter = std::move(iter);
+    data.ingestionRange.reset();
+  });
+}
+
+template<typename S>
+void FollowerStateManager<S>::resolveAppliedEntriesQueue() {
+  auto resolvePromises = this->_guardedData.doUnderLock(
+      [&](FollowerStateManager<S>::GuardedData& data) {
+        TRI_ASSERT(data.ingestionRange);
+        data._nextWaitForIndex = data.ingestionRange.value().to;
+        auto resolveQueue =
+            std::make_unique<FollowerStateManager::WaitForAppliedQueue>();
+        LOG_CTX("9929a", TRACE, this->loggerContext)
+            << "Resolving WaitForApplied promises upto "
+            << data._nextWaitForIndex;
+        auto const end =
+            data.waitForAppliedQueue.lower_bound(data._nextWaitForIndex);
+        for (auto it = data.waitForAppliedQueue.begin(); it != end;) {
+          resolveQueue->insert(data.waitForAppliedQueue.extract(it++));
+        }
+        auto action_ =
+            DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
+              // TODO These should probably be scheduled.
+              for (auto& p : *resolveQueue) {
+                p.second.setValue();
+              }
+            });
+
+        TRI_ASSERT(data.stream != nullptr);
+        LOG_CTX("a1462", TRACE, this->loggerContext)
+            << "polling for new entries _nextWaitForIndex = "
+            << data._nextWaitForIndex;
+        TRI_ASSERT(data.nextEntriesIter == nullptr);
+        return action_;
+      });
+
+  resolvePromises.fire();
 }
 
 template<typename S>
@@ -597,7 +624,6 @@ auto FollowerStateManager<S>::getFollowerState() const
             return data.state;
           case FollowerInternalState::kUninitializedState:
           case FollowerInternalState::kWaitForLeaderConfirmation:
-          case FollowerInternalState::kInstantiateStateMachine:
           case FollowerInternalState::kTransferSnapshot:
           case FollowerInternalState::kSnapshotTransferFailed:
             return nullptr;
@@ -646,12 +672,21 @@ auto FollowerStateManager<S>::getStream() const noexcept
 template<typename S>
 auto FollowerStateManager<S>::needsSnapshot() const noexcept -> bool {
   LOG_CTX("ea777", TRACE, loggerContext) << "check if new snapshot is required";
-  return _guardedData.doUnderLock([&](GuardedData const& data) {
-    LOG_CTX("aee5b", DEBUG, loggerContext)
-        << "snapshot status is " << data.token->snapshot.status
-        << ", generation is " << data.token->generation;
-    return data.token->snapshot.status != SnapshotStatus::kCompleted;
-  });
+  auto const needsSnapshot =
+      _guardedData.doUnderLock([&](GuardedData const& data) {
+        LOG_CTX("aee5b", DEBUG, loggerContext)
+            << "snapshot status is " << data.token->snapshot.status
+            << ", generation is " << data.token->generation;
+        return data.token->snapshot.status != SnapshotStatus::kCompleted;
+      });
+
+  if (needsSnapshot) {
+    LOG_CTX("3d0fc", DEBUG, loggerContext) << "new snapshot is required";
+  } else {
+    LOG_CTX("9cd75", DEBUG, loggerContext) << "no snapshot transfer required";
+  }
+
+  return needsSnapshot;
 }
 
 template<typename S>
@@ -702,54 +737,22 @@ void FollowerStateManager<S>::instantiateStateMachine() {
     LOG_CTX("1d843", TRACE, loggerContext)
         << "creating follower state instance";
     data.state = factory->constructFollower(std::move(data.core));
-    ADB_PROD_ASSERT(data.state != nullptr);  // TODO remove, just for debugging
   });
 }
 
 template<typename S>
 auto FollowerStateManager<S>::waitForNewEntries()
     -> futures::Future<std::unique_ptr<typename Stream::Iterator>> {
-  auto&& [action,
-          futureIter] = _guardedData.doUnderLock([&](GuardedData& data) {
-    auto action_ = std::invoke([&] {
-      // TODO Get rid of the if (more like, make the condition always true)
-      //      by introducing a "start service" state
-      if (data.ingestionRange) {
-        data._nextWaitForIndex = data.ingestionRange.value().to;
-        auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
-        LOG_CTX("9929a", TRACE, loggerContext)
-            << "Resolving WaitForApplied promises upto "
-            << data._nextWaitForIndex;
-        auto const end =
-            data.waitForAppliedQueue.lower_bound(data._nextWaitForIndex);
-        for (auto it = data.waitForAppliedQueue.begin(); it != end;) {
-          resolveQueue->insert(data.waitForAppliedQueue.extract(it++));
-        }
-        return DeferredAction(
-            [resolveQueue = std::move(resolveQueue)]() noexcept {
-              for (auto& p : *resolveQueue) {
-                p.second.setValue();
-              }
-            });
-      } else {
-        return DeferredAction();
-      }
-    });
-
+  auto futureIter = _guardedData.doUnderLock([&](GuardedData& data) {
     TRI_ASSERT(data.stream != nullptr);
     LOG_CTX("a1462", TRACE, loggerContext)
         << "polling for new entries _nextWaitForIndex = "
         << data._nextWaitForIndex;
     TRI_ASSERT(data.nextEntriesIter == nullptr);
-    return std::make_pair(std::move(action_),
-                          data.stream->waitForIterator(data._nextWaitForIndex));
+    return data.stream->waitForIterator(data._nextWaitForIndex);
   });
 
-  // this action will resolve promises that wait for a given index to
-  // be applied
-  action.fire();
-
-  return std::move(futureIter);
+  return futureIter;
 }
 
 template<typename S>

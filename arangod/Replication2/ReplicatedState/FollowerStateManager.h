@@ -53,8 +53,7 @@ struct FollowerStateManager
       std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
-  void oldRun() noexcept;
-
+  // void oldRun() noexcept;
 
   void run() noexcept override;
 
@@ -73,18 +72,18 @@ struct FollowerStateManager
   auto waitForApplied(LogIndex) -> futures::Future<futures::Unit>;
 
  private:
-  void awaitLeaderShip();
-  void ingestLogData();
-
-  template<typename F>
-  auto pollNewEntries(F&& fn);
-  void checkSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
-  void tryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
-  void startService(std::shared_ptr<IReplicatedFollowerState<S>>);
-  void retryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>,
-                             std::uint64_t retryCount);
-
-  void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
+  // void awaitLeaderShip();
+  // void ingestLogData();
+  //
+  // template<typename F>
+  // auto pollNewEntries(F&& fn);
+  // void checkSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
+  // void tryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
+  // void startService(std::shared_ptr<IReplicatedFollowerState<S>>);
+  // void retryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>,
+  //                            std::uint64_t retryCount);
+  //
+  // void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
 
   // <new> (mostly stubs)
   void waitForLogFollowerResign();
@@ -98,6 +97,8 @@ struct FollowerStateManager
 
   [[nodiscard]] auto needsSnapshot() const noexcept -> bool;
   [[nodiscard]] auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
+  void resolveAppliedEntriesQueue();
+  void saveNewEntriesIter(std::unique_ptr<typename Stream::Iterator> iter);
   // </new>
 
   using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
