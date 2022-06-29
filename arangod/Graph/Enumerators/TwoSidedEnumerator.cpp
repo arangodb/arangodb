@@ -377,11 +377,12 @@ bool TwoSidedEnumerator<Configuration>::getNextPath(VPackBuilder& result) {
 }
 
 template<class Configuration>
-auto TwoSidedEnumerator<Configuration>::getNextPath_New() -> std::optional<PathResultInterface const*> {
+auto TwoSidedEnumerator<Configuration>::getNextPath_New() -> PathResultInterface* {
   while (!isDone()) {
     searchMoreResults();
 
     while (!_results.empty()) {
+      LOG_DEVEL << "Preparing Result";
       auto const& [leftVertex, rightVertex] = _results.back();
 
       // Performance Optimization:
@@ -397,7 +398,7 @@ auto TwoSidedEnumerator<Configuration>::getNextPath_New() -> std::optional<PathR
       return &_resultPath;
     }
   }
-  return std::nullopt;
+  return nullptr;
 }
 
 template<class Configuration>

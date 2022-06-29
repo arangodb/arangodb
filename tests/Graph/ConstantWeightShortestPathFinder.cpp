@@ -107,7 +107,7 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
     std::pair<std::vector<IndexAccessor>,
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
         inIndexes{};
-    inIndexes.first = gdb.buildIndexAccessors(query.get(), spo->tmpVar(), false);
+    inIndexes.first = gdb.buildIndexAccessors(query.get(), spo->tmpVar(), true);
 
     SingleServerBaseProviderOptions forwardProviderOptions(
         spo->tmpVar(), std::move(outIndexes), spo->getExpressionCtx(), {},

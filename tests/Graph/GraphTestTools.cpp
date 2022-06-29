@@ -27,6 +27,7 @@
 #include "../Mocks/StorageEngineMock.h"
 #include "IResearch/common.h"
 #include "Transaction/ManagerFeature.h"
+#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "GraphTestTools.h"
 
 using namespace arangodb;
@@ -135,6 +136,69 @@ bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
               edges.at(i).second + " but found " +
               edge.slice().get(StaticStrings::FromString).toString() + " -> " +
               edge.slice().get(StaticStrings::ToString).toString() + "\n";
+      res = false;
+    }
+  }
+  return res;
+}
+
+bool checkPath(ShortestPathOptions* spo, PathResultInterface& result,
+               std::vector<std::string> vertices,
+               std::vector<std::pair<std::string, std::string>> edges,
+               std::string& msgs) {
+  bool res = true;
+  VPackBuilder serializedResultBuilder;
+  result.toVelocyPack(serializedResultBuilder);
+  auto serializedResult = serializedResultBuilder.slice();
+  auto actualVertices = serializedResult.get(StaticStrings::GraphQueryVertices);
+  auto actualEdges = serializedResult.get(StaticStrings::GraphQueryEdges);
+  if (!actualVertices.isArray()) {
+    msgs += "The reported result does not have an vertices array";
+    res = false;
+  }
+  if (!actualEdges.isArray()) {
+    msgs += "The reported result does not have an edges array";
+    res = false;
+  }
+  if (!res) {
+    // Early abort, would trigger undefined behaviour below otherwise.
+    return res;
+  }
+
+  if (actualVertices.length() != vertices.size()) {
+    msgs += "Not enough vertices returned, got: " + basics::StringUtils::itoa(actualVertices.length()) +
+            " expected: " + basics::StringUtils::itoa(vertices.size()) + "\n";
+    res = false;
+  }
+
+  if (actualEdges.length() != edges.size()) {
+    msgs += "Not enough edges returned, got: " + basics::StringUtils::itoa(actualEdges.length()) +
+            " expected: " + basics::StringUtils::itoa(edges.size()) + "\n";
+    res = false;
+  }
+
+  if (!res) {
+    // Early abort, would trigger undefined behaviour below otherwise.
+    return res;
+  }
+
+  for (size_t i = 0; i < actualVertices.length(); i++) {
+    auto vert = actualVertices.at(i);
+    if (!vert.get(StaticStrings::KeyString).isEqualString(vertices.at(i))) {
+      msgs += "expected vertex " + vertices.at(i) + " but found " +
+              vert.get(StaticStrings::KeyString).toString() + "\n";
+      res = false;
+    }
+  }
+
+  for (size_t i = 0; i < actualEdges.length(); i++) {
+    auto edge = actualEdges.at(i);
+    if (!edge.get(StaticStrings::FromString).isEqualString(edges.at(i).first) ||
+        !edge.get(StaticStrings::ToString).isEqualString(edges.at(i).second)) {
+      msgs += "expected edge " + edges.at(i).first + " -> " +
+              edges.at(i).second + " but found " +
+              edge.get(StaticStrings::FromString).toString() + " -> " +
+              edge.get(StaticStrings::ToString).toString() + "\n";
       res = false;
     }
   }

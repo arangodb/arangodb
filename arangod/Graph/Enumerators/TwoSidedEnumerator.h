@@ -183,7 +183,7 @@ class TwoSidedEnumerator final : public PathEnumeratorInterface {
   bool getNextPath(arangodb::velocypack::Builder& result) override;
 
 
-  auto getNextPath_New() -> std::optional<arangodb::graph::PathResultInterface const*> override;
+  auto getNextPath_New() -> arangodb::graph::PathResultInterface* override;
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
    *

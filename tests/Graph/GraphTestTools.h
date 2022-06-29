@@ -66,7 +66,13 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
 
+
 namespace arangodb {
+
+namespace graph {
+  class PathResultInterface;
+};
+
 namespace tests {
 namespace graph {
 
@@ -320,6 +326,11 @@ struct MockGraphDatabase {
 };  // namespace graph
 
 bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
+               std::vector<std::string> vertices,
+               std::vector<std::pair<std::string, std::string>> edges,
+               std::string& msgs);
+
+bool checkPath(ShortestPathOptions* spo, PathResultInterface& result,
                std::vector<std::string> vertices,
                std::vector<std::pair<std::string, std::string>> edges,
                std::string& msgs);

@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <optional>
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -83,7 +81,7 @@ class PathEnumeratorInterface {
    * @return false No path found, result has not been changed.
    */
   virtual auto getNextPath(arangodb::velocypack::Builder& result) -> bool = 0;
-  virtual auto getNextPath_New() -> std::optional<arangodb::graph::PathResultInterface const*> = 0;
+  virtual auto getNextPath_New() -> arangodb::graph::PathResultInterface* = 0;
 
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
