@@ -13,7 +13,7 @@
       }
     });
 
-    function updateOptions(options) {
+    const updateOptions = function(options) {
       const update = { ...options };
       update.headers = {
         ...update.headers,
@@ -30,6 +30,8 @@
     };
     
     window.arangoFetch = function (url, options) {
+      // ToDo: Verify if we can use fetch (need polyfill?)
+      // eslint-disable-next-line
       return fetch(url, updateOptions(options));
     };
 
