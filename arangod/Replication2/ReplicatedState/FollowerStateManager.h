@@ -55,20 +55,8 @@ struct FollowerStateManager
 
   void oldRun() noexcept;
 
-  // <new> (mostly stubs)
-  void waitForLogFollowerResign();
 
   void run() noexcept override;
-  [[nodiscard]] auto waitForLeaderAcked() -> futures::Future<futures::Unit>;
-  void instantiateStateMachine();
-  [[nodiscard]] auto tryTransferSnapshot() -> futures::Future<futures::Unit>;
-  // void startService();  //?
-  auto waitForNewEntries()
-      -> futures::Future<std::unique_ptr<typename Stream::Iterator>>;
-  [[nodiscard]] auto applyNewEntries() -> futures::Future<Result>;
-
-  [[nodiscard]] auto needsSnapshot() const noexcept -> bool;
-  // </new>
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
@@ -97,6 +85,20 @@ struct FollowerStateManager
                              std::uint64_t retryCount);
 
   void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
+
+  // <new> (mostly stubs)
+  void waitForLogFollowerResign();
+  [[nodiscard]] auto waitForLeaderAcked() -> futures::Future<futures::Unit>;
+  void instantiateStateMachine();
+  [[nodiscard]] auto tryTransferSnapshot() -> futures::Future<futures::Unit>;
+  void startService();
+  auto waitForNewEntries()
+      -> futures::Future<std::unique_ptr<typename Stream::Iterator>>;
+  [[nodiscard]] auto applyNewEntries() -> futures::Future<Result>;
+
+  [[nodiscard]] auto needsSnapshot() const noexcept -> bool;
+  [[nodiscard]] auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
+  // </new>
 
   using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
 

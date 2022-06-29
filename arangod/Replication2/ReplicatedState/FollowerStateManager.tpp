@@ -450,15 +450,6 @@ void FollowerStateManager<S>::run() noexcept {
     return promise.getFuture();
   };
 
-  // static auto constexpr toTryUnit =
-  //     []<typename F>(F&& fn) -> futures::Try<futures::Unit> {
-  //   try {
-  //     return futures::Try<futures::Unit>{std::forward<F>(fn)()};
-  //   } catch (...) {
-  //     return futures::Try<futures::Unit>{std::current_exception()};
-  //   }
-  // };
-
   static auto constexpr noop = []() {
     auto promise = futures::Promise<futures::Unit>{};
     promise.setValue(futures::Unit());
@@ -494,12 +485,7 @@ void FollowerStateManager<S>::run() noexcept {
           .then(transitionWith(
               [this](futures::Try<futures::Unit> const& tryResult) {
                 if (tryResult.hasValue()) {
-                  auto const state = _guardedData.getLockedGuard()->state;
-                  // setStateManager must not be called while the lock is held,
-                  // or it will deadlock.
-                  // TODO It might be preferable to add a "start service" state,
-                  //      and set the state manager there.
-                  state->setStateManager(this->shared_from_this());
+                  startService();
                   return FollowerInternalState::kWaitForNewEntries;
                 } else {
                   TRI_ASSERT(tryResult.hasException());
@@ -509,15 +495,7 @@ void FollowerStateManager<S>::run() noexcept {
           .thenFinal(handleErrors);
     } break;
     case FollowerInternalState::kSnapshotTransferFailed: {
-      auto const retryCount = _guardedData.doUnderLock(
-          [](GuardedData& data) { return ++data.errorCounter; });
-      auto const duration = calcRetryDuration(retryCount);
-      LOG_CTX("2ea59", TRACE, loggerContext)
-          << "retry snapshot transfer after "
-          << std::chrono::duration_cast<std::chrono::milliseconds>(duration)
-                 .count()
-          << "ms";
-      delayedFuture(duration)
+      backOffSnapshotRetry()
           .thenValue(transitionTo(FollowerInternalState::kTransferSnapshot))
           .thenFinal(handleErrors);
     } break;
@@ -540,6 +518,29 @@ void FollowerStateManager<S>::run() noexcept {
           .thenFinal(handleErrors);
     } break;
   }
+}
+
+template<typename S>
+void FollowerStateManager<S>::startService() {
+  auto const state = _guardedData.getLockedGuard()->state;
+  // setStateManager must not be called while the lock is held,
+  // or it will deadlock.
+  state->setStateManager(this->shared_from_this());
+}
+
+template<typename S>
+auto FollowerStateManager<S>::backOffSnapshotRetry()
+    -> futures::Future<futures::Unit> {
+  auto const retryCount = this->_guardedData.doUnderLock(
+      [](FollowerStateManager<S>::GuardedData& data) {
+        return ++data.errorCounter;
+      });
+  auto const duration = calcRetryDuration(retryCount);
+  LOG_CTX("2ea59", TRACE, loggerContext)
+      << "retry snapshot transfer after "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
+      << "ms";
+  return delayedFuture(duration);
 }
 
 template<typename S>
