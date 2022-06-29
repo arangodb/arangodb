@@ -88,7 +88,7 @@ struct alignas(64) ReplicatedLog {
   auto getId() const noexcept -> LogId;
   auto getGlobalLogId() const noexcept -> GlobalLogIdentifier const&;
   auto becomeLeader(
-      agency::LogPlanConfig config, ParticipantId id, LogTerm term,
+      ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       std::shared_ptr<cluster::IFailureOracle const> failureOracle)

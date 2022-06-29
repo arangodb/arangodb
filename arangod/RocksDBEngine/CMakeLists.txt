@@ -84,6 +84,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBRestWalHandler.cpp
   RocksDBEngine/RocksDBSavePoint.cpp
   RocksDBEngine/RocksDBSettingsManager.cpp
+  RocksDBEngine/Methods/RocksDBSstFileMethods.cpp
   RocksDBEngine/RocksDBSyncThread.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionMethods.cpp

@@ -779,6 +779,8 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 
 bool Graph::isSmart() const { return false; }
 
+bool Graph::hasSmartGraphAttribute() const { return false; }
+
 bool Graph::isDisjoint() const { return false; }
 
 bool Graph::isSatellite() const { return _isSatellite; }

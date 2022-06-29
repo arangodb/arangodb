@@ -64,7 +64,8 @@ const char* indexOpModeString(IndexOperationMode mode) {
 }
 }  // namespace
 
-std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
+std::ostream& arangodb::operator<<(std::ostream& os,
+                                   OperationOptions const& ops) {
   // clang-format off
   os << "OperationOptions : " << std::boolalpha
      << "{ isSynchronousReplicationFrom : '" << ops.isSynchronousReplicationFrom << "'"

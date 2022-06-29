@@ -417,11 +417,13 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       // SmartGraphEngine)
       SingleServerBaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
-          opts->collectionToShard());
+          opts->collectionToShard(), opts->getVertexProjections(),
+          opts->getEdgeProjections());
 
       SingleServerBaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
-          opts->getExpressionCtx(), {}, opts->collectionToShard());
+          opts->getExpressionCtx(), {}, opts->collectionToShard(),
+          opts->getVertexProjections(), opts->getEdgeProjections());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {

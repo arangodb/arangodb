@@ -217,6 +217,17 @@ const impTodos = [{
   datatype: "value=string",
   mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
 }, {
+  id: 'csvheadersmergeattributes',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  skipLines: 1,
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs-headers.csv')),
+  coll: 'UnitTestsImportCsvHeadersMergeAttributes',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+}, {
   id: 'csvmergeattributesInvalid',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
   coll: 'UnitTestsImportCsvMergeAttributesInvalid',
@@ -444,6 +455,7 @@ class importRunner extends tu.runInArangoshRunner {
 
       result.teardown.failed = result.teardown.success ? 0 : 1;
     } catch (exception) {
+      result.failed += 1;
       result['run'] = {
         'failed': 1,
         'message': 'An exception of the following form was caught: ' + exception + "\n" + exception.stack
@@ -453,7 +465,7 @@ class importRunner extends tu.runInArangoshRunner {
     }
     print('Shutting down...');
     result['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor();
+    this.instanceManager.destructor(result.failed === 0);
     print('done.');
     return result;
   }

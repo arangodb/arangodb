@@ -62,7 +62,7 @@
         }
       }
       
-      // also note that the web UI was actively used
+      // also note that the web interface was actively used
       arangoHelper.noteActivity();
     });
 
@@ -74,7 +74,7 @@
         }
       }
       
-      // also note that the web UI was actively used
+      // also note that the web interface was actively used
       arangoHelper.noteActivity();
     });
   }

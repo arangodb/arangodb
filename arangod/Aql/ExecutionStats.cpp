@@ -219,7 +219,11 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
 void ExecutionStats::setExecutionTime(double value) { executionTime = value; }
 
 void ExecutionStats::setPeakMemoryUsage(size_t value) {
-  peakMemoryUsage = value;
+  if (value > peakMemoryUsage) {
+    // Peak can never go down, it has to be the maximum
+    // value seen
+    peakMemoryUsage = value;
+  }
 }
 
 void ExecutionStats::clear() noexcept {

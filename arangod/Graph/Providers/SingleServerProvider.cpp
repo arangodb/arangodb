@@ -82,7 +82,8 @@ SingleServerProvider<Step>::SingleServerProvider(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
-             _opts.collectionToShardMap()),
+             _opts.collectionToShardMap(), _opts.getVertexProjections(),
+             _opts.getEdgeProjections()),
       _stats{} {
   // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
   // to do benchmarks if affordable) activateCache(false);
@@ -258,6 +259,14 @@ arangodb::transaction::Methods* SingleServerProvider<Step>::trx() {
   TRI_ASSERT(_trx->state() != nullptr);
   TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
   return _trx.get();
+}
+
+template<class Step>
+TRI_vocbase_t const& SingleServerProvider<Step>::vocbase() const {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->state() != nullptr);
+  TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
+  return _trx.get()->vocbase();
 }
 
 template<class Step>

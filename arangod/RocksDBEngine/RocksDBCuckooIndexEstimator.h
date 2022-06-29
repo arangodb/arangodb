@@ -280,6 +280,19 @@ class RocksDBCuckooIndexEstimator {
     _needToPersist.store(true, std::memory_order_release);
   }
 
+  /// @brief set the most recently set "committed" seq/tick only if seq number
+  /// is bigger than current
+  /// only set when recalculating the index estimate
+  void updateAppliedSeq(rocksdb::SequenceNumber seq) noexcept {
+    auto oldSeq = _appliedSeq.load(std::memory_order_relaxed);
+    while (seq > oldSeq) {
+      if (_appliedSeq.compare_exchange_weak(oldSeq, seq)) {
+        break;
+      }
+    }
+    _needToPersist.store(true, std::memory_order_release);
+  }
+
   void clearInRecovery(rocksdb::SequenceNumber seq) {
     if (seq <= _appliedSeq.load(std::memory_order_acquire)) {
       // already incorporated in estimator values

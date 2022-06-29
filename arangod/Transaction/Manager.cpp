@@ -348,7 +348,8 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 }
 
 ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
-                                                 VPackSlice trxOpts) {
+                                                 VPackSlice trxOpts,
+                                                 bool allowDirtyReads) {
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -358,6 +359,18 @@ ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase,
   Result res = buildOptions(trxOpts, options, reads, writes, exclusives);
   if (res.fail()) {
     return res;
+  }
+  if (ServerState::instance()->isCoordinator() && writes.empty() &&
+      exclusives.empty()) {
+    if (allowDirtyReads) {
+      options.allowDirtyReads = true;
+    }
+    // If the header is not set, but the option said true, we accept this,
+    // provided we are on a coordinator and there are only reading collections.
+  } else {
+    // If we are not on a coordinator or if there are writing or exclusive
+    // collections, then there will be no dirty reads:
+    options.allowDirtyReads = false;
   }
 
   return createManagedTrx(vocbase, reads, writes, exclusives,
@@ -600,6 +613,22 @@ ResultT<TransactionId> Manager::createManagedTrx(
 
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
+
+  if (options.allowDirtyReads) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    // Choose the replica we read from for all shards of all collections in
+    // the reads list:
+    containers::FlatHashSet<ShardID> shards;
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    for (std::string const& collName : readCollections) {
+      auto coll = ci.getCollection(vocbase.name(), collName);
+      auto shardMap = coll->shardIds();
+      for (auto const& p : *shardMap) {
+        shards.emplace(p.first);
+      }
+    }
+    state->chooseReplicas(shards);
+  }
 
   // lock collections
   res = lockCollections(vocbase, state, exclusiveCollections, writeCollections,
