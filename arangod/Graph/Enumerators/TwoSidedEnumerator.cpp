@@ -433,6 +433,13 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
   }
 
+  if (_options.getStopAtFirstDepth()) {
+    size_t currentDepth = _left.getDepth() + _right.getDepth();
+    if (currentDepth < _options.getMaxDepth()) {
+      _options.setMaxDepth(currentDepth);
+    }
+  }
+
   fetchResults();
 }
 
