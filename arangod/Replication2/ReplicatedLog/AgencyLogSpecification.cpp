@@ -44,11 +44,6 @@ LogPlanConfig::LogPlanConfig(std::size_t effectiveWriteConcern,
                              bool waitForSync) noexcept
     : effectiveWriteConcern(effectiveWriteConcern), waitForSync(waitForSync) {}
 
-LogPlanConfig::LogPlanConfig(std::size_t writeConcern,
-                             std::size_t softWriteConcern,
-                             bool waitForSync) noexcept
-    : effectiveWriteConcern(writeConcern), waitForSync(waitForSync) {}
-
 LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
                                                    std::optional<Leader> leader)
     : term(term), leader(std::move(leader)) {}

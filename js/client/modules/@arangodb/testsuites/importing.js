@@ -455,6 +455,7 @@ class importRunner extends tu.runInArangoshRunner {
 
       result.teardown.failed = result.teardown.success ? 0 : 1;
     } catch (exception) {
+      result.failed += 1;
       result['run'] = {
         'failed': 1,
         'message': 'An exception of the following form was caught: ' + exception + "\n" + exception.stack
@@ -464,7 +465,7 @@ class importRunner extends tu.runInArangoshRunner {
     }
     print('Shutting down...');
     result['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor();
+    this.instanceManager.destructor(result.failed === 0);
     print('done.');
     return result;
   }

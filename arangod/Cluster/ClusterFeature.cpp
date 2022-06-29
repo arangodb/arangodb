@@ -107,7 +107,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                              true);
   options->addObsoleteOption("--cluster.disable-dispatcher-frontend",
                              "The dispatcher feature isn't available anymore; "
-                             "Use ArangoDBStarter for this now!",
+                             "Use ArangoDB Starter for this now!",
                              true);
   options->addObsoleteOption(
       "--cluster.dbserver-config",
@@ -289,7 +289,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
           "cluster.disable-dispatcher-frontend")) {
     LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
         << "The dispatcher feature isn't available anymore. Use "
-        << "ArangoDBStarter for this now! See "
+        << "ArangoDB Starter for this now! See "
         << "https://github.com/arangodb-helper/arangodb/ for more "
         << "details.";
     FATAL_ERROR_EXIT();

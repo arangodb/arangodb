@@ -169,6 +169,7 @@ auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
     _participant = nullptr;
     return res;
   });
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(core);
 }
 

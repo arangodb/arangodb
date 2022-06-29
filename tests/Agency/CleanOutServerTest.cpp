@@ -32,6 +32,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/Node.h"
+#include "Basics/TimeString.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;

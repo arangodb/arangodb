@@ -100,6 +100,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           clonedOpts['password'] = paramsSecondRun['database.password'];
           paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
         }
+        print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
 
         if (runSetup) {
           delete paramsSecondRun.runSetup;
@@ -115,12 +116,11 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
-            this.instanceManager.destructor();
+            this.instanceManager.destructor(false);
             throw new Error("failed to launch instance");
           }
           this.instanceManager.reconnect();
           try {
-            print(BLUE + '================================================================================' + RESET);
             print(CYAN + 'Running Setup of: ' + te + RESET);
             content = `(function(){ const runSetup = true; const getOptions = false; ${fileContent}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
@@ -130,7 +130,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             }
           } catch (ex) {
             shutdownStatus = this.instanceManager.shutdownInstance(false);                                     // stop
-            this.instanceManager.destructor();
+            this.instanceManager.destructor(false);
             this.results[te] = {
               status: false,
               messages: 'Warmup of system failed: ' + ex,
@@ -200,7 +200,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               };
               this.results.status = false;
               this.instanceManager.shutdownInstance(true);
-              this.instanceManager.destructor();
+              this.instanceManager.destructor(false);
               return this.results;
             }
           } catch (ex) {
@@ -214,7 +214,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             this.results.shutdown = false;
             this.results.status = false;
             this.instanceManager.shutdownInstance(true);
-            this.instanceManager.destructor();
+            this.instanceManager.destructor(false);
             return this.results;
           }
           if (!failurePoints) {
@@ -231,16 +231,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         }
         shutdownStatus = this.instanceManager.shutdownInstance(false);
         this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
-        this.instanceManager.destructor();
-        if (!this.results[te].status || !shutdownStatus) {
-          print("Not cleaning up " + this.instanceManager.rootDir);
-          this.results.status = false;
-          this.results[te].status = false;
-          return this.results;
-        }
-        else {
-          pu.cleanupLastDirectory(clonedOpts);
-        }
+        this.instanceManager.destructor(this.results[te].status && shutdownStatus);
       } else {
         if (this.options.extremeVerbosity !== 'silent') {
           print('Skipped ' + te + ' because of ' + filtered.filter);
@@ -265,7 +256,6 @@ function server_secrets(options) {
 
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
-  pu.cleanupDBDirectoriesAppend(secretsDir);
 
   fs.write(fs.join(secretsDir, 'secret1'), 'jwtsecret-1');
   fs.write(fs.join(secretsDir, 'secret2'), 'jwtsecret-2');
@@ -276,7 +266,6 @@ function server_secrets(options) {
   let keyfileDir = fs.join(fs.getTempPath(), 'arango_tls_keyfile');
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectory(keyfileDir);
-  pu.cleanupDBDirectoriesAppend(keyfileDir);
 
   fs.copyFile("./UnitTests/server.pem", keyfileName);
 
@@ -299,7 +288,12 @@ function server_secrets(options) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
   }
-  return new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
+  let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
+  if (rc.status && options.cleanup) {
+    fs.removeDirectoryRecursive(keyfileDir, true);
+    fs.removeDirectoryRecursive(secretsDir, true);
+  }
+  return rc;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

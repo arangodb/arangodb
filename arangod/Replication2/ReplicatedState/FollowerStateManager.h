@@ -51,7 +51,9 @@ struct FollowerStateManager
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token,
-      std::shared_ptr<Factory> factory) noexcept;
+      std::shared_ptr<Factory> factory,
+      std::shared_ptr<ReplicatedStateMetrics>) noexcept;
+  ~FollowerStateManager() override;
 
   void run() noexcept override;
 
@@ -118,5 +120,6 @@ struct FollowerStateManager
   std::shared_ptr<replicated_log::ILogFollower> const logFollower;
   std::shared_ptr<Factory> const factory;
   LoggerContext const loggerContext;
+  std::shared_ptr<ReplicatedStateMetrics> const metrics;
 };
 }  // namespace arangodb::replication2::replicated_state
