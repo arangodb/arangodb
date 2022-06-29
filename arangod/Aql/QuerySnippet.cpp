@@ -524,7 +524,6 @@ void QuerySnippet::serializeIntoBuilder(
 
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
-    // internalGather->addDependency(_nodes.front());
     plan->insertAfter(_nodes.front(), internalGather);
 
     // NOTE: We will copy over the entire snippet stream here.
