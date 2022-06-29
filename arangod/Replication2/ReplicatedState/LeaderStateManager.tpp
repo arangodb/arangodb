@@ -53,7 +53,11 @@ void LeaderStateManager<S>::run() noexcept {
           data.updateInternalState(LeaderInternalState::kIngestingExistingLog);
           auto mux = Multiplexer::construct(self->logLeader);
           mux->digestAvailableEntries();
+#ifdef _MSC_VER // circumventing bug in msvc
+          data.stream = mux->getStreamById<1>(); // TODO fix stream id
+#else
           data.stream = mux->template getStreamById<1>();  // TODO fix stream id
+#endif
           return data.stream->waitForIterator(LogIndex{0});
         });
 

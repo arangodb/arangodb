@@ -604,6 +604,11 @@ if (MSVC)
   # Increase the reserved stack size for all threads to 4MB
   # Note: this is only _reserved_ memory, not necessarily _committed_ memory
   set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
+  if (MSVC_VERSION VERSION_GREATER_EQUAL 1930)
+    # see https://docs.microsoft.com/en-us/cpp/overview/cpp-conformance-improvements?view=msvc-170#error-on-a-non-dependent-static_assert
+    set(BASE_C_FLAGS "/Zc:static_assert- ${BASE_C_FLAGS}")
+    set(BASE_CXX_FLAGS "/Zc:static_assert- ${BASE_CXX_FLAGS}")
+  endif()
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
