@@ -578,7 +578,9 @@ class instanceManager {
         obj.arangods.forEach(arangod => arangod.checkNetstat(data));
       }
     });
-    this.printNetstat();
+    if (!this.options.noStartStopLogs) {
+      this.printNetstat();
+    }
     
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
