@@ -252,7 +252,10 @@ struct ReplicatedLogMethodsCoordinator final
                     ->supervision();
     auto cb = std::make_shared<AgencyCallback>(
         vocbase.server(), path->str(SkipComponents(1)),
-        [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
+        [ctx, id](velocypack::Slice slice, consensus::index_t index) -> bool {
+          LOG_DEVEL << "[LogId = " << id
+                    << "] Agency callback called idx = " << index
+                    << " slice = " << slice.toJson();
           if (slice.isNone()) {
             return false;
           }
@@ -260,22 +263,28 @@ struct ReplicatedLogMethodsCoordinator final
           auto supervision = velocypack::deserialize<
               replication2::agency::LogCurrentSupervision>(slice);
           if (supervision.targetVersion >= ctx->version) {
+            LOG_DEVEL << "[LogId = " << id
+                      << "] Version bigger, resolving callback";
             ctx->promise.setValue(ResultT<consensus::index_t>{index});
             return true;
           }
           return false;
         },
         true, true);
+
+    LOG_DEVEL << "[LogId = " << id << "] Registering Agency Callback";
     if (auto result =
             clusterFeature.agencyCallbackRegistry()->registerCallback(cb, true);
         result.fail()) {
       return {result};
     }
 
-    return std::move(f).then([self = shared_from_this(), cb](auto&& result) {
-      self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
-      return std::move(result.get());
-    });
+    return std::move(f).then(
+        [self = shared_from_this(), cb, id](auto&& result) {
+          LOG_DEVEL << "[LogId = " << id << "] Unregistering Agency Callback";
+          self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
+          return std::move(result.get());
+        });
   }
 
   void fillCreateOptions(CreateOptions& options) const {
@@ -352,6 +361,8 @@ struct ReplicatedLogMethodsCoordinator final
         .thenValue([options = std::move(options),
                     self = shared_from_this()](auto&& result) mutable
                    -> futures::Future<ResultT<CreateResult>> {
+          LOG_DEVEL << "[LogId = " << options.id
+                    << "] createReplicatedLog returned";
           auto response = CreateResult{*options.id, std::move(options.servers)};
           if (!result.ok()) {
             return {result};
@@ -359,21 +370,32 @@ struct ReplicatedLogMethodsCoordinator final
 
           if (options.waitForReady) {
             // wait for the state to be ready
+
+            LOG_DEVEL << "[LogId = " << options.id
+                      << "] waitForLogReady calling";
             return self->waitForLogReady(*options.id, 1)
-                .thenValue([self,
-                            resp = std::move(response)](auto&& result) mutable
+                .thenValue([self, resp = std::move(response),
+                            id = *options.id](auto&& result) mutable
                            -> futures::Future<ResultT<CreateResult>> {
+                  LOG_DEVEL << "[LogId = " << id
+                            << "] waitForLogReady resolved";
                   if (result.fail()) {
                     return {result.result()};
                   }
+                  LOG_DEVEL
+                      << "[LogId = " << id
+                      << "] waitForPlan calling with idx = " << result.get();
                   return self->clusterInfo.waitForPlan(result.get())
-                      .thenValue([resp = std::move(resp)](auto&& result) mutable
-                                 -> ResultT<CreateResult> {
-                        if (result.fail()) {
-                          return {result};
-                        }
-                        return std::move(resp);
-                      });
+                      .thenValue(
+                          [resp = std::move(resp),
+                           id](auto&& result) mutable -> ResultT<CreateResult> {
+                            LOG_DEVEL << "[LogId = " << id
+                                      << "] waitForPlan resolved";
+                            if (result.fail()) {
+                              return {result};
+                            }
+                            return std::move(resp);
+                          });
                 });
           }
           return response;

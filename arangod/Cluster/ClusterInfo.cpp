@@ -7012,13 +7012,12 @@ void ClusterInfo::triggerWaiting(
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp =
-        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !_server.isStopping()) {
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp] { pp->setValue(Result()); });
+      scheduler->queue(
+          RequestLane::CLUSTER_INTERNAL,
+          [pp = std::move(pit->second)]() mutable { pp.setValue(Result()); });
     } else {
-      pp->setValue(Result(_syncerShutdownCode));
+      pit->second.setValue(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }
