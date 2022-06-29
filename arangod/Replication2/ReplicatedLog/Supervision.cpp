@@ -690,6 +690,11 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
+  if (log.plan->participantsConfig.generation !=
+      current.leader->committedParticipantsConfig->generation) {
+    return;
+  }
+
   if (target.version.has_value() &&
       (!current.supervision.has_value() ||
        target.version != current.supervision->targetVersion)) {
