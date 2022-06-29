@@ -361,7 +361,7 @@ struct ReplicatedLogMethodsCoordinator final
         .thenValue([options = std::move(options),
                     self = shared_from_this()](auto&& result) mutable
                    -> futures::Future<ResultT<CreateResult>> {
-          LOG_DEVEL << "[LogId = " << options.id
+          LOG_DEVEL << "[LogId = " << *options.id
                     << "] createReplicatedLog returned";
           auto response = CreateResult{*options.id, std::move(options.servers)};
           if (!result.ok()) {
@@ -371,7 +371,7 @@ struct ReplicatedLogMethodsCoordinator final
           if (options.waitForReady) {
             // wait for the state to be ready
 
-            LOG_DEVEL << "[LogId = " << options.id
+            LOG_DEVEL << "[LogId = " << *options.id
                       << "] waitForLogReady calling";
             return self->waitForLogReady(*options.id, 1)
                 .thenValue([self, resp = std::move(response),
