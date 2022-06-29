@@ -229,6 +229,8 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
   builder.add("canRunOnDBServerOneShard",
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerOneShard)));
+  builder.add("canReadDocuments",
+              velocypack::Value(hasFlag(Flags::CanReadDocuments)));
   builder.add("canUseInAnalyzer",
               velocypack::Value(hasFlag(Flags::CanUseInAnalyzer)));
 
