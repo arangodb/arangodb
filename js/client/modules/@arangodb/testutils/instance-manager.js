@@ -555,10 +555,11 @@ class instanceManager {
   }
 
   getNetstat() {
-    return this.arangods.forEach( arangod => {
-      let name = arangod.name;
-      return { name: arangod.netstat };
+    let ret = {};
+    this.arangods.forEach( arangod => {
+      ret[arangod.name] = arangod.netstat;;
     });
+    return ret;
   }
 
   printNetstat() {
