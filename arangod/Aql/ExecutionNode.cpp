@@ -737,18 +737,6 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
     }
   };
 
-  /*
-   * A -> B -> C -> E ->  G -> k
-   *        -> D -> F ->  H
-   *             -> K ->
-   *
-   * nodes: [A, B, C, E , D , E , G]
-   * parallel Start (B)
-   * parallel End (G)
-   * (Sobald wir G erreichen, "springen wir" zurück zu B,
-   * lassen aber den nodesVector intact.)
-   *
-   */
   constexpr std::size_t NumJumpBackPointers = 10;
   struct ParallelEntry {
     explicit ParallelEntry(ExecutionNode* n) : _node(n), _nextVisit(1) {}
