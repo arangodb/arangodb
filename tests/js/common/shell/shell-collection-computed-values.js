@@ -66,10 +66,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
     testCreateOnEmptyChangeAfterInsert: function() {
-      if (isCluster) {
-        return;
-      }
-
       collection.properties({
         computedValues: [{
           name: "concatValues",
@@ -109,9 +105,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
     testComputedValuesOnlyOnInsert: function() {
-      if (isCluster) {
-        return;
-      }
       collection.properties({
         computedValues: [{
           name: "concatValues",
@@ -150,9 +143,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
     testComputedValuesOnlyOnUpdate: function() {
-      if (isCluster) {
-        return;
-      }
       collection.properties({
         computedValues: [{
           name: "concatValues",
@@ -191,9 +181,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
     testComputedValuesOnlyOnReplace: function() {
-      if (isCluster) {
-        return;
-      }
       collection.properties({
         computedValues: [{
           name: "concatValues",
@@ -230,9 +217,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
     testCreateAccessNonTopLevel: function() {
-      if (isCluster) {
-        return;
-      }
       collection.properties({
         computedValues: [{
           name: "value3",
@@ -345,11 +329,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
     testSchemaValidationWithComputedValuesOverride: function() {
-      /*
-      if (isCluster) {
-        return;
-      }
-      */
       collection.properties({
         schema: {
           "rule": {
