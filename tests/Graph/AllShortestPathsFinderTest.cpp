@@ -96,9 +96,9 @@ class AllShortestPathsFinderTest
     mockGraph.addEdge(9, 10);
     mockGraph.addEdge(10, 11);
     mockGraph.addEdge(11, 6);
-    // TODO Anthony: Figure out how to set direction to ANY (looks like default is OUTBOUND)
+    // TODO Anthony: Figure out how to set direction to ANY (looks like default
+    // is OUTBOUND)
     mockGraph.addEdge(6, 11);
-
 
     /* a balanced binary tree 12 -> [13, 14] -> [15, 16, 17, 18] */
     mockGraph.addEdge(12, 13);
@@ -108,7 +108,8 @@ class AllShortestPathsFinderTest
     mockGraph.addEdge(14, 17);
     mockGraph.addEdge(14, 18);
 
-    // TODO Anthony: Remove edges (15, 13) and (13, 12) when ANY direction can be specified
+    // TODO Anthony: Remove edges (15, 13) and (13, 12) when ANY direction can
+    // be specified
     mockGraph.addEdge(15, 13);
     mockGraph.addEdge(13, 12);
 
@@ -123,7 +124,6 @@ class AllShortestPathsFinderTest
     /* connect the two binary trees together */
     mockGraph.addEdge(12, 19);
     mockGraph.addEdge(19, 20);
-
 
     /* a 3x3 grid */
     mockGraph.addEdge(27, 28);
@@ -140,11 +140,9 @@ class AllShortestPathsFinderTest
     mockGraph.addEdge(29, 32);
     mockGraph.addEdge(32, 35);
 
-
     /* multiple edges in between two vertices */
     mockGraph.addEdge(36, 37);
     mockGraph.addEdge(36, 37);
-
   }
 
   auto looseEndBehaviour() const -> MockGraphProvider::LooseEndBehaviour {
@@ -219,7 +217,8 @@ class AllShortestPathsFinderTest
     return res;
   }
 
-  auto pathIsIn(VPackSlice path, std::vector<std::vector<size_t>> const& vertexIdsList) -> void {
+  auto pathIsIn(VPackSlice path,
+                std::vector<std::vector<size_t>> const& vertexIdsList) -> void {
     ASSERT_TRUE(path.isObject());
     ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryVertices));
 
@@ -232,12 +231,12 @@ class AllShortestPathsFinderTest
       ASSERT_EQ(vertices.length(), vertexIds.size());
       pathIsInList = pathEquals(vertices, vertexIds);
     }
-    EXPECT_TRUE(pathIsInList) << "Path not found in 'vertexIdsList': " << path.toJson();
+    EXPECT_TRUE(pathIsInList)
+        << "Path not found in 'vertexIdsList': " << path.toJson();
   }
 
   auto pathEquals(Slice vertices, std::vector<size_t> const& vertexIds)
       -> bool {
-
     size_t i = 0;
     bool isEqual = false;
     for (auto const& v : VPackArrayIterator(vertices)) {
@@ -271,384 +270,374 @@ TEST_P(AllShortestPathsFinderTest, no_path_exists) {
   auto finder = pathFinder(0, 1000);
   finder.reset(toHashedStringRef(source), toHashedStringRef(target));
 
-    EXPECT_FALSE(finder.isDone());
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath);
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath);
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
-    {
-      aql::TraversalStats stats = finder.stealStats();
-      EXPECT_EQ(stats.getScannedIndex(), 0);
-    }
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
   }
 
-  TEST_P(AllShortestPathsFinderTest, path_depth_0) {
-    VPackBuilder result;
-    // Search 0 depth
-    auto finder = pathFinder(0, 0);
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    EXPECT_EQ(stats.getScannedIndex(), 0);
+  }
+}
 
-    // Source and target identical
-    auto source = vId(1);
-    auto target = vId(1);
+TEST_P(AllShortestPathsFinderTest, path_depth_0) {
+  VPackBuilder result;
+  // Search 0 depth
+  auto finder = pathFinder(0, 0);
 
-    const std::vector<std::vector<size_t>> vertexIdsList {{1}};
+  // Source and target identical
+  auto source = vId(1);
+  auto target = vId(1);
 
-    finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  const std::vector<std::vector<size_t>> vertexIdsList{{1}};
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 0);
+    pathIsIn(result.slice(), vertexIdsList);
 
     EXPECT_FALSE(finder.isDone());
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 0);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath);
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
   }
 
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
 
-  TEST_P(AllShortestPathsFinderTest, shortcut_paths) {
-    VPackBuilder result;
-    auto finder = pathFinder(0, 1000);
+TEST_P(AllShortestPathsFinderTest, shortcut_paths) {
+  VPackBuilder result;
+  auto finder = pathFinder(0, 1000);
 
-    // Source and target are direct neighbors, there is only one path between them
-    auto source = vId(1);
-    auto target = vId(5);
+  // Source and target are direct neighbors, there is only one path between them
+  auto source = vId(1);
+  auto target = vId(5);
 
-    const std::vector<std::vector<size_t>> vertexIdsList {{1, 3, 5}, {1, 4, 5}};
+  const std::vector<std::vector<size_t>> vertexIdsList{{1, 3, 5}, {1, 4, 5}};
 
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
 
-    finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    pathIsIn(result.slice(), vertexIdsList);
 
     EXPECT_FALSE(finder.isDone());
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 2);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 2);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath) << result.slice().toJson();
-
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
-
-    {
-      aql::TraversalStats stats = finder.stealStats();
-      // We have to lookup both vertices, and the edge
-      EXPECT_EQ(stats.getScannedIndex(), 11);
-    }
   }
 
-  TEST_P(AllShortestPathsFinderTest, hexagon_path) {
-    VPackBuilder result;
-    auto finder = pathFinder(0, 1000);
-
-    // Source and target are direct neighbors via a hexagon-shaped loop
-    auto source = vId(6);
-    auto target = vId(11);
-
-    const std::vector<std::vector<size_t>> vertexIdsList {{6, 11}};
-
-
-    finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    pathIsIn(result.slice(), vertexIdsList);
 
     EXPECT_FALSE(finder.isDone());
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 1);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath) << result.slice().toJson();
-
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
-
-    {
-      aql::TraversalStats stats = finder.stealStats();
-      // We have to lookup both vertices, and the edge
-      EXPECT_EQ(stats.getScannedIndex(), 4);
-    }
   }
 
-  TEST_P(AllShortestPathsFinderTest, binary_tree) {
-    VPackBuilder result;
-    auto finder = pathFinder(0, 1000);
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath) << result.slice().toJson();
 
-    // Source and target are leaves on each side of the bt root
-    auto source = vId(15);
-    auto target = vId(18);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
 
-    const std::vector<std::vector<size_t>> vertexIdsList {{15, 13, 12, 14, 18}};
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup both vertices, and the edge
+    EXPECT_EQ(stats.getScannedIndex(), 11);
+  }
+}
 
-    finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+TEST_P(AllShortestPathsFinderTest, hexagon_path) {
+  VPackBuilder result;
+  auto finder = pathFinder(0, 1000);
+
+  // Source and target are direct neighbors via a hexagon-shaped loop
+  auto source = vId(6);
+  auto target = vId(11);
+
+  const std::vector<std::vector<size_t>> vertexIdsList{{6, 11}};
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 1);
+    pathIsIn(result.slice(), vertexIdsList);
 
     EXPECT_FALSE(finder.isDone());
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 4);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath) << result.slice().toJson();
-
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
-
-    {
-      aql::TraversalStats stats = finder.stealStats();
-      // We have to lookup both vertices, and the edge
-      EXPECT_EQ(stats.getScannedIndex(), 11);
-    }
   }
 
-  TEST_P(AllShortestPathsFinderTest, binary_trees_connected) {
-    VPackBuilder result;
-    auto finder = pathFinder(0, 1000);
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath) << result.slice().toJson();
 
-    // Source and target are the roots of each binary tree
-    auto source = vId(12);
-    auto target = vId(20);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
 
-    const std::vector<std::vector<size_t>> vertexIdsList {{12, 19, 20}};
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup both vertices, and the edge
+    EXPECT_EQ(stats.getScannedIndex(), 4);
+  }
+}
 
-    finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+TEST_P(AllShortestPathsFinderTest, binary_tree) {
+  VPackBuilder result;
+  auto finder = pathFinder(0, 1000);
+
+  // Source and target are leaves on each side of the bt root
+  auto source = vId(15);
+  auto target = vId(18);
+
+  const std::vector<std::vector<size_t>> vertexIdsList{{15, 13, 12, 14, 18}};
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 4);
+    pathIsIn(result.slice(), vertexIdsList);
 
     EXPECT_FALSE(finder.isDone());
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 2);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath) << result.slice().toJson();
-
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
-
-    {
-      aql::TraversalStats stats = finder.stealStats();
-      // We have to lookup both vertices, and the edge
-      EXPECT_EQ(stats.getScannedIndex(), 7); // TODO Anthony: Why is this 7?
-    }
   }
 
-  TEST_P(AllShortestPathsFinderTest, grid_paths) {
-    VPackBuilder result;
-    auto finder = pathFinder(0, 1000);
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath) << result.slice().toJson();
 
-    // Source and target are in a 3x3 grid with multiple shortest paths
-    auto source = vId(27);
-    auto target = vId(35);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
 
-    const std::vector<std::vector<size_t>> vertexIdsList {
-        {27, 28, 29, 32, 35},
-        {27, 28, 31, 32, 35},
-        {27, 28, 31, 34, 35},
-        {27, 30, 31, 32, 35},
-        {27, 30, 31, 34, 35},
-        {27, 30, 33, 34, 35}
-    };
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup both vertices, and the edge
+    EXPECT_EQ(stats.getScannedIndex(), 11);
+  }
+}
 
-    finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+TEST_P(AllShortestPathsFinderTest, binary_trees_connected) {
+  VPackBuilder result;
+  auto finder = pathFinder(0, 1000);
+
+  // Source and target are the roots of each binary tree
+  auto source = vId(12);
+  auto target = vId(20);
+
+  const std::vector<std::vector<size_t>> vertexIdsList{{12, 19, 20}};
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 2);
+    pathIsIn(result.slice(), vertexIdsList);
 
     EXPECT_FALSE(finder.isDone());
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 4);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 4);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 4);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 4);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 4);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 4);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath) << result.slice().toJson();
-
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
-
-    {
-      aql::TraversalStats stats = finder.stealStats();
-      // We have to lookup both vertices, and the edge
-      EXPECT_EQ(stats.getScannedIndex(), 42);
-    }
   }
 
-  TEST_P(AllShortestPathsFinderTest, multiple_edges_between_pair) {
-    VPackBuilder result;
-    auto finder = pathFinder(0, 1000);
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath) << result.slice().toJson();
 
-    // Source and target have two edges in between each other
-    auto source = vId(36);
-    auto target = vId(37);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
 
-    const std::vector<std::vector<size_t>> vertexIdsList {{36, 37}};
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup both vertices, and the edge
+    EXPECT_EQ(stats.getScannedIndex(), 7);  // TODO Anthony: Why is this 7?
+  }
+}
 
-    finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+TEST_P(AllShortestPathsFinderTest, grid_paths) {
+  VPackBuilder result;
+  auto finder = pathFinder(0, 1000);
+
+  // Source and target are in a 3x3 grid with multiple shortest paths
+  auto source = vId(27);
+  auto target = vId(35);
+
+  const std::vector<std::vector<size_t>> vertexIdsList{
+      {27, 28, 29, 32, 35}, {27, 28, 31, 32, 35}, {27, 28, 31, 34, 35},
+      {27, 30, 31, 32, 35}, {27, 30, 31, 34, 35}, {27, 30, 33, 34, 35}};
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 4);
+    pathIsIn(result.slice(), vertexIdsList);
 
     EXPECT_FALSE(finder.isDone());
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 1);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_TRUE(hasPath);
-      pathStructureValid(result.slice(), 1);
-      pathIsIn(result.slice(), vertexIdsList);
-
-      EXPECT_FALSE(finder.isDone());
-    }
-
-    {
-      result.clear();
-      // Try again to make sure we stay at non-existing
-      auto hasPath = finder.getNextPath(result);
-      EXPECT_FALSE(hasPath) << result.slice().toJson();
-
-      EXPECT_TRUE(result.isEmpty());
-      EXPECT_TRUE(finder.isDone());
-    }
-
-    {
-      aql::TraversalStats stats = finder.stealStats();
-      // We have to lookup both vertices, and the edge
-      EXPECT_EQ(stats.getScannedIndex(), 6);
-    }
   }
 
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 4);
+    pathIsIn(result.slice(), vertexIdsList);
 
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 4);
+    pathIsIn(result.slice(), vertexIdsList);
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 4);
+    pathIsIn(result.slice(), vertexIdsList);
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 4);
+    pathIsIn(result.slice(), vertexIdsList);
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 4);
+    pathIsIn(result.slice(), vertexIdsList);
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath) << result.slice().toJson();
+
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup both vertices, and the edge
+    EXPECT_EQ(stats.getScannedIndex(), 42);
+  }
+}
+
+TEST_P(AllShortestPathsFinderTest, multiple_edges_between_pair) {
+  VPackBuilder result;
+  auto finder = pathFinder(0, 1000);
+
+  // Source and target have two edges in between each other
+  auto source = vId(36);
+  auto target = vId(37);
+
+  const std::vector<std::vector<size_t>> vertexIdsList{{36, 37}};
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 1);
+    pathIsIn(result.slice(), vertexIdsList);
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 1);
+    pathIsIn(result.slice(), vertexIdsList);
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath) << result.slice().toJson();
+
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup both vertices, and the edge
+    EXPECT_EQ(stats.getScannedIndex(), 6);
+  }
+}
 
 }  // namespace graph
 }  // namespace tests
