@@ -55,7 +55,9 @@ struct LeaderStateManager
       std::shared_ptr<replicated_log::ILogLeader> leader,
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token,
-      std::shared_ptr<Factory> factory) noexcept;
+      std::shared_ptr<Factory> factory,
+      std::shared_ptr<ReplicatedStateMetrics>) noexcept;
+  ~LeaderStateManager() override;
 
   using Stream = streams::ProducerStream<EntryType>;
   using Iterator = typename Stream::Iterator;
@@ -101,6 +103,7 @@ struct LeaderStateManager
   std::shared_ptr<replicated_log::ILogLeader> const logLeader;
   LoggerContext const loggerContext;
   std::shared_ptr<Factory> const factory;
+  std::shared_ptr<ReplicatedStateMetrics> const metrics;
 
  private:
   void beginWaitingForLogLeaderResigned();

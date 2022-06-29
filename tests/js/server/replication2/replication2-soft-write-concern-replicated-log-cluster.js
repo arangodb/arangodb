@@ -101,8 +101,7 @@ const replicatedLogSuite = function () {
     },
 
     // Temporarily disabled until effectiveWriteConcern is implemented.
-    testDisabledParticipantFailedOnInsert: function () {
-      return;
+    testParticipantFailedOnInsert: function () {
       const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
 

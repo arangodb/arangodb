@@ -159,15 +159,18 @@ void OutputAqlItemRow::consumeShadowRow(RegisterId registerId,
   TRI_ASSERT(sourceRow.isRelevant());
 
   moveValueWithoutRowCopy<ShadowAqlItemRow>(registerId, guard);
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(allValuesWritten());
   copyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE,
                 AdaptRowDepth::DecreaseDepth>(sourceRow, false);
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(produced());
   block().makeDataRow(_baseIndex);
 }
 
 bool OutputAqlItemRow::reuseLastStoredValue(RegisterId registerId,
                                             InputAqlItemRow const& sourceRow) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isOutputRegister(registerId));
   if (_lastBaseIndex == _baseIndex) {
     return false;
@@ -255,6 +258,7 @@ void OutputAqlItemRow::copyBlockInternalRegister(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isOutputRegister(output));
   // This is already implicitly asserted by isOutputRegister:
   TRI_ASSERT(output < getNumRegisters());
@@ -294,7 +298,9 @@ size_t OutputAqlItemRow::numRowsWritten() const noexcept {
 }
 
 void OutputAqlItemRow::advanceRow() {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(produced());
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(allValuesWritten());
   TRI_ASSERT(_inputRowCopied);
   if (!_block->isShadowRow(_baseIndex)) {
@@ -381,6 +387,7 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(numRegistersToWrite() == 0);
   // This is the hard requirement, if we decide to remove the no-write policy.
   // This has te be in place. However no-write implies this.
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(allValuesWritten());
   TRI_ASSERT(sourceRow.isInitialized());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -399,6 +406,7 @@ void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
   block().makeShadowRow(_baseIndex, newDepth);
   // We need to fake produced state
   _numValuesWritten = numRegistersToWrite();
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(produced());
 }
 
@@ -410,6 +418,7 @@ void OutputAqlItemRow::decreaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
   block().makeShadowRow(_baseIndex, sourceRow.getDepth() - 1);
   // We need to fake produced state
   _numValuesWritten = numRegistersToWrite();
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(produced());
 }
 

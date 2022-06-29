@@ -170,6 +170,14 @@ struct OperationOptions {
   // index.
   bool canDisableIndexing = true;
 
+  /// whether or not reading from followers is allowed in a read/only
+  /// transaction. Note that it is a property of the transaction if reading
+  /// from followers is allowed. However, we need the flag here as an
+  /// operation option to hand it in to
+  /// `RestVocbaseBaseHandler::createTransaction`, which either continues
+  /// using a transaction or creates a new one.
+  bool allowDirtyReads = false;
+
   // schema used for validation during INSERT/UPDATE/REPLACE. this value is only
   // set temporarily.
   std::shared_ptr<ValidatorBase> schema = nullptr;
