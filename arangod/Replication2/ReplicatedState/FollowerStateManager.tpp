@@ -422,42 +422,16 @@ void FollowerStateManager<S>::run() noexcept {
   // fn itself is allowed to just capture and use `this`.
   auto const transitionWith = [this]<typename F>(F&& fn) {
     return [weak = this->weak_from_this(),
-            fn = std::forward<F>(fn)]<typename T>(T&& arg) mutable {
+            fn = std::forward<F>(fn)]<typename T, typename F1 = F>(T&& arg) mutable {
       if (auto self = weak.lock(); self != nullptr) {
         auto const state = std::invoke([&] {
-          // TODO This is a try to unify this with transitionWithArg;
-          //      try to make it work.
+          // Don't pass Unit to make that case more convenient.
           if constexpr (std::is_same_v<std::decay_t<T>, futures::Unit>) {
-            return std::move(fn)();
+            return std::forward<F1>(fn)();
           } else {
-            return std::move(fn)(std::forward<T>(arg));
+            return std::forward<F1>(fn)(std::forward<T>(arg));
           }
         });
-        self->_guardedData.getLockedGuard()->updateInternalState(state);
-        self->run();
-      }
-    };
-  };
-
-  // TODO merge this with transitionWith (see comment above)
-  auto const transitionWithArg = [this]<typename F>(F&& fn) {
-    return [weak = this->weak_from_this(),
-            fn = std::forward<F>(fn)]<typename T>(T&& arg) mutable {
-      if (auto self = weak.lock(); self != nullptr) {
-        auto const state =
-            std::invoke([&] { return std::move(fn)(std::forward<T>(arg)); });
-        self->_guardedData.getLockedGuard()->updateInternalState(state);
-        self->run();
-      }
-    };
-  };
-
-  // TODO merge this with transitionWith
-  auto const transitionWithTry = [this]<typename F>(F&& fn) {
-    return [weak = this->weak_from_this(), fn = std::forward<F>(fn)](
-               futures::Try<futures::Unit> tryResult) mutable {
-      if (auto self = weak.lock(); self != nullptr) {
-        auto state = std::move(fn)(std::move(tryResult));
         self->_guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
       }
@@ -517,7 +491,7 @@ void FollowerStateManager<S>::run() noexcept {
     } break;
     case FollowerInternalState::kTransferSnapshot: {
       tryTransferSnapshot()
-          .then(transitionWithTry(
+          .then(transitionWith(
               [this](futures::Try<futures::Unit> const& tryResult) {
                 if (tryResult.hasValue()) {
                   auto const state = _guardedData.getLockedGuard()->state;
@@ -549,13 +523,14 @@ void FollowerStateManager<S>::run() noexcept {
     } break;
     case FollowerInternalState::kWaitForNewEntries: {
       waitForNewEntries()
-          .thenValue(transitionWithArg([this](auto iter) {
-            _guardedData.doUnderLock([&iter](auto& data) {
-              data.nextEntriesIter = std::move(iter);
-              data.ingestionRange.reset();
-            });
-            return FollowerInternalState::kApplyRecentEntries;
-          }))
+          .thenValue(transitionWith(
+              [this](auto iter) {
+                _guardedData.doUnderLock([&iter](auto& data) {
+                  data.nextEntriesIter = std::move(iter);
+                  data.ingestionRange.reset();
+                });
+                return FollowerInternalState::kApplyRecentEntries;
+              }))
           .thenFinal(handleErrors);
     } break;
     case FollowerInternalState::kApplyRecentEntries: {
