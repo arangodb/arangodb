@@ -474,6 +474,17 @@ class instance {
     return "";
   }
 
+  cleanup() {
+    if ((this.pid !== null) && (this.exitStatus === null)) {
+      print(RED + "killing instance (again?) to make sure we can delete its files!" + RESET);
+      this.terminateInstance();
+    }
+    if (this.options.extremeVerbosity) {
+      print(CYAN + "cleaning up " + this.name + " 's Directory: " + this.rootDir + RESET);
+    }
+    fs.removeDirectoryRecursive(this.rootDir, true);
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
@@ -808,8 +819,8 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat("Force killing - sockstat before: ");
         this.killWithCoreDump();
-        this.pid = null;
         this.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);

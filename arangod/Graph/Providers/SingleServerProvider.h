@@ -115,6 +115,7 @@ class SingleServerProvider {
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
+  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
   aql::TraversalStats stealStats();
 

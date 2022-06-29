@@ -437,7 +437,9 @@ struct PrototypeStateMethodsCoordinator final
     auto dbservers = _clusterInfo.getCurrentDBServers();
     std::size_t expectedNumberOfServers =
         std::min(dbservers.size(), std::size_t{3});
-    if (!options.servers.empty()) {
+    if (options.numberOfServers.has_value()) {
+      expectedNumberOfServers = *options.numberOfServers;
+    } else if (!options.servers.empty()) {
       expectedNumberOfServers = options.servers.size();
     }
 
@@ -548,7 +550,7 @@ struct PrototypeStateMethodsCoordinator final
 
  private:
   [[nodiscard]] auto getLogLeader(LogId id) const -> ServerID {
-    auto leader = _clusterInfo.getReplicatedLogLeader(_vocbase.name(), id);
+    auto leader = _clusterInfo.getReplicatedLogLeader(id);
     if (leader.fail()) {
       if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
         throw ParticipantResignedException(leader.result(), ADB_HERE);

@@ -34,27 +34,18 @@ if (getOptions === true) {
   };
 }
 
-var jsunity = require("jsunity");
-var tasks = require("@arangodb/tasks");
-var arangodb = require("@arangodb");
-var db = arangodb.db;
-
-var ERRORS = arangodb.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const tasks = require("@arangodb/tasks");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
+const ERRORS = arangodb.errors;
 
 function OptionsTestSuite () {
-  var cn1 = "UnitTestsExclusiveCollection1"; // used for test data
-  var cn2 = "UnitTestsExclusiveCollection2"; // used for communication
-  var c1, c2;
+  const cn1 = "UnitTestsExclusiveCollection1"; // used for test data
+  const cn2 = "UnitTestsExclusiveCollection2"; // used for communication
+  let c1, c2;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn1);
@@ -62,10 +53,6 @@ function OptionsTestSuite () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn1);
@@ -83,16 +70,26 @@ function OptionsTestSuite () {
             require("internal").sleep(0.02);
           }
 
-          db._executeTransaction({
-            collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
-            action: function () {
-              let db = require("internal").db;
-              for (let i = 0; i < 200000; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+          try {
+            for (let i = 0; i < 50; ++i) {
+              db._executeTransaction({
+                collections: { write: [ "UnitTestsExclusiveCollection1" ] },
+                action: function () {
+                  let db = require("internal").db;
+                  for (let i = 0; i < 10000; ++i) {
+                    db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+                  }
+                }
+              });
+
+              if (db.UnitTestsExclusiveCollection2.document("runner2").value) {
+                break;
               }
-              db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
             }
-          });
+          } catch (err) {
+            db.UnitTestsExclusiveCollection2.insert({ _key: "other-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+          }
+          db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
         }
       });
 
@@ -102,24 +99,25 @@ function OptionsTestSuite () {
       }
 
       try {
-        db._executeTransaction({
-          collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
-          action: function () {
-            let db = require("internal").db;
-            for (let i = 0; i < 200000; ++i) {
-              db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+        for (let i = 0; i < 50; ++i) {
+          db._executeTransaction({
+            collections: { write: [ "UnitTestsExclusiveCollection1" ] },
+            action: function () {
+              let db = require("internal").db;
+              for (let i = 0; i < 10000; ++i) {
+                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+              }
             }
-            db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
+          });
+
+          if (db.UnitTestsExclusiveCollection2.document("runner1").value) {
+            break;
           }
-        });
-        fail();
+        }
       } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-        assertEqual(409, err.code); // conflict
-        assertMatch( // it is possible to get two different errors messages here (two different internal states can appear)
-          /(precondition failed|timeout waiting to lock key.*Operation timed out)/, err.errorMessage);
-        assertMatch(/XXX/, err.errorMessage);
+        db.UnitTestsExclusiveCollection2.insert({ _key: "we-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
       }
+      db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
 
       while (true) {
         try {
@@ -130,19 +128,30 @@ function OptionsTestSuite () {
           break;
         }
       }
+      
+      let found = 0;
+      let keys = ["other-failed", "we-failed"];
+      keys.forEach((k) => {
+        if (db.UnitTestsExclusiveCollection2.exists(k)) {
+          let doc = db.UnitTestsExclusiveCollection2.document(k);
+          assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, doc.errorNum);
+          assertEqual(409, doc.code); // conflict
+          assertMatch( // it is possible to get two different errors messages here (two different internal states can appear)
+            /(precondition failed|timeout waiting to lock key.*Operation timed out)/, doc.errorMessage);
+          assertMatch(/XXX/, doc.errorMessage);
+          ++found;
+          db.UnitTestsExclusiveCollection2.remove(k);
+        }
+      });
+
+      assertEqual(1, found);
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      assertTrue(c2.document("runner1").value);  // runner1 transaction should succeed
-      assertFalse(c2.document("runner2").value); // runner2 transaction should fail
     }
 
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(OptionsTestSuite);
 

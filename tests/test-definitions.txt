@@ -9,14 +9,6 @@ BackupAuthSysTests single
 BackupNoAuthNoSysTests single
 BackupNoAuthSysTests single
 
-# Upgrade tests
-upgrade_data_3.2.* weight=1000 single
-upgrade_data_3.3.* weight=1000 single
-upgrade_data_3.4.* weight=1000 single
-upgrade_data_3.5.* weight=1000 single
-upgrade_data_3.6.* weight=1000 single
-upgrade_data_3.7.* weight=1000 single
-
 # Single Server Replication Tests
 replication_fuzz weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
 replication_ongoing weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
@@ -41,6 +33,8 @@ permissions weight=500 single
 recovery weight=2000 buckets=4 single
 version single
 
+shell_api weight=500 single suffix=http -- $EncryptionAtRest
+shell_api weight=500 single suffix=https -- $EncryptionAtRest --protocol ssl
 # Shell client tests Single Server
 shell_client weight=500 single suffix=http -- $EncryptionAtRest
 shell_client weight=500 single suffix=http2 -- --http2 true
@@ -93,12 +87,9 @@ importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
 
-http_server weight=750 -- --dumpAgencyOnError true
-server_http -- --dumpAgencyOnError true
 server_parameters weight=1000 -- --dumpAgencyOnError true
 server_permissions weight=1000 -- --dumpAgencyOnError true
 server_secrets weight=500 -- --dumpAgencyOnError true
-ssl_server weight=1000 -- --dumpAgencyOnError true
 
 # Dump Tests
 dump -- --dumpAgencyOnError true
@@ -116,11 +107,9 @@ audit_server -- --dumpAgencyOnError true
 
 
 # Full Tests Single Server
-audit single full
 authentication_parameters single full weight=1000
 authentication_serve single full weight=1000
 config single full weight=1000
-dfdb single full weight=1000
 foxx_manager single full weight=500
 queryCacheAuthorization single full weight=500
 readOnly single full weight=500

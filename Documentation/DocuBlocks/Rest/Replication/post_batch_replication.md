@@ -4,7 +4,7 @@
 
 @RESTHEADER{POST /_api/replication/batch, Create new dump batch, handleCommandBatch:Create}
 
-**Note**: These calls are uninteresting to users.
+**Note**: This is an internally used endpoint.
 
 @RESTQUERYPARAMETERS
 
@@ -15,8 +15,7 @@ This is used only internally during the replication process
 and should not be used by client applications.
 
 @RESTBODYPARAM{ttl,integer,required,int64}
-the time-to-live for the new batch (in seconds)<br>
-A JSON object with the batch configuration.
+The time-to-live for the new batch (in seconds).
 
 @RESTDESCRIPTION
 Creates a new dump batch and returns the batch's id.
