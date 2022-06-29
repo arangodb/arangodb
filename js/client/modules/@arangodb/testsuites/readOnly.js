@@ -200,7 +200,7 @@ function readOnly (options) {
 
   if (res.status !== true) {
     let shutdownStatus = instanceManager.shutdownInstance();
-    instanceManager.destructor();
+    instanceManager.destructor(false);
     return {
       readOnly : {
         status: false,
@@ -223,7 +223,7 @@ function readOnly (options) {
   run(requests);
 
   results['shutdown'] = instanceManager.shutdownInstance();
-  instanceManager.destructor();
+  instanceManager.destructor(results.failed === 0);
 
   return results;
 }

@@ -3,6 +3,18 @@ devel
 
 * Update Windows compiler to Visual Studio 2022.
 
+* Introduce reading from followers in clusters. This works by offering
+  an additional HTTP header "x-arango-allow-dirty-read" for certain
+  read-only APIs. This header has already been used for active failover
+  deployments to allow reading from followers. Using this header leads
+  to the fact that coordinators are allowed to read from follower shards
+  instead only from leader shards. This can help to spread the read load
+  better across the cluster. Obviously, using this header can result in
+  "dirty reads", which are read results returning stale data or even
+  not-yet-officially committed data. Use at your own risk if performance
+  is more important than correctness or if you know that data does not
+  change.
+
 * Changed HTTP response code for error number 1521 from 500 to 400.
 
   Error 1521 (query collection lock failed) is nowadays only emitted by
