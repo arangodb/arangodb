@@ -240,7 +240,7 @@ function arangobench (options) {
           status: false,
           message: instanceManager.exitStatus
         };
-
+        results.failed++;
         instanceManager.exitStatus = 'server is gone.';
 
         break;
@@ -331,6 +331,7 @@ function arangobench (options) {
 
   print(CYAN + 'Shutting down...' + RESET);
   results['shutdown'] = instanceManager.shutdownInstance();
+  instanceManager.destructor(results.failed === 0);
   print(CYAN + 'done.' + RESET);
 
   return results;

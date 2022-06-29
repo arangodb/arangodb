@@ -719,8 +719,13 @@ ArangoCollection.prototype.document = function (id, options) {
   }
 
   let headers = {};
-  if (options && options.transactionId) {
-    headers['x-arango-trx-id'] = options.transactionId;
+  if (options) {
+    if (options.transactionId) {
+      headers['x-arango-trx-id'] = options.transactionId;
+    }
+    if (options.allowDirtyReads) {
+      headers['x-arango-allow-dirty-read'] = "true";
+    }
   }
 
   if (Array.isArray(id)) {
@@ -758,7 +763,7 @@ ArangoCollection.prototype.document = function (id, options) {
 // / @brief checks whether a specific document exists
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.exists = function (id) {
+ArangoCollection.prototype.exists = function (id, options) {
   var rev = null;
   var requestResult;
 
@@ -780,11 +785,22 @@ ArangoCollection.prototype.exists = function (id) {
     }
   }
 
+  let headers = {};
+  if (options) {
+    if (options.transactionId) {
+      headers['x-arango-trx-id'] = options.transactionId;
+    }
+    if (options.allowDirtyReads) {
+      headers['x-arango-allow-dirty-read'] = "true";
+    }
+  }
+
   if (rev === null) {
-    requestResult = this._database._connection.GET(this._documenturl(id));
+    requestResult = this._database._connection.GET(this._documenturl(id), headers);
   }else {
+    headers['if-match'] = JSON.stringify(rev);
     requestResult = this._database._connection.GET(this._documenturl(id),
-      {'if-match': JSON.stringify(rev) });
+      headers);
   }
 
   if (requestResult !== null && requestResult.error === true) {

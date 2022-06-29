@@ -138,7 +138,8 @@ class Manager final {
 
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice trxOpts);
+                                          velocypack::Slice trxOpts,
+                                          bool allowDirtyReads);
 
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(
