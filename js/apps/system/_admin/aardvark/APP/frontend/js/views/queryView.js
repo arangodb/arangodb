@@ -1980,6 +1980,7 @@
               } else {
                 geometry = geo;
               }
+              console.log("geometry.type: ", geometry.type);
 
               if (geometry.type === 'Point' || geometry.type === 'MultiPoint') {
                 // reverse neccessary if we are using GeoJSON order
@@ -2000,6 +2001,15 @@
                 }
               } else if (geometry.type === 'Polygon' || geometry.type === 'LineString' || geometry.type === 'MultiLineString' || geometry.type === 'MultiPolygon') {
                 try {
+                  const Berlin = {lat: 52.5, lng: 13.35};
+                  const LosAngeles = {lat: 33.82, lng: -118.38};
+                  const Johannesburg = {lat: 26.20, lng: 28.04};
+                  const Tokyo = {lat: 35.67, lng: 139.65};
+                  const Koeln = {lat:50.9, lng: 6.7};
+                  
+                  const geodesic = new L.Geodesic(geometry.coordinates).addTo(self.maps[counter]);
+
+                  /*
                   geojson = new L.GeoJSON(geometry, {
                     style: geoStyle,
                     onEachFeature: function (feature, layer) {
@@ -2007,6 +2017,8 @@
                     }
                   }).addTo(self.maps[counter]);
                   markers.push(geojson);
+                  */
+
                 } catch (ignore) {
                   invalidGeoJSON++;
                 }

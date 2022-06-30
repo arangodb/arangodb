@@ -148,6 +148,7 @@ window.aqltemplates = require('../public/assets/aqltemplates.json');
 window.d3 = d3;
 require('../../frontend/js/lib/leaflet.js');
 require('../../frontend/js/lib/tile.stamen.js');
+require('../../frontend/js/lib/leaflet.geodesic.js');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
