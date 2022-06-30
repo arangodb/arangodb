@@ -59,6 +59,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTokensTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryValueTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTraversalTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryNestedTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchRocksDBRecoveryHelperTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchPrimaryKeyReuseTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchTestCommon.cpp
