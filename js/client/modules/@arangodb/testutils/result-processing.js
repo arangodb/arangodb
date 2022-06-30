@@ -609,7 +609,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
         });
       }
       let hasSetupAll = setupAllDuration !== 0;
-      let stats = summarizeStats(estSuite.test['processStats']);
+      let stats = summarizeStats(testSuite.test['processStats']);
       if (testSuite.hasOwnProperty('totalSetUp') &&
           testSuite.hasOwnProperty('totalTearDown')) {
         sortedByDuration.push({
