@@ -1999,7 +1999,6 @@
                   invalidGeoJSON++;
                 }
               } else if (geometry.type === 'Polygon' || geometry.type === 'LineString' || geometry.type === 'MultiLineString' || geometry.type === 'MultiPolygon') {
-                console.log("geometry.type: ", geometry.type);
                 try {
                   geojson = new L.GeoJSON(geometry, {
                     style: geoStyle,
@@ -2007,7 +2006,6 @@
                       layer.bindPopup('<pre style="width: 250px;">' + JSON.stringify(feature, null, 2) + '</pre>');
                     }
                   }).addTo(self.maps[counter]);
-                  console.log("geojson: ", geojson);
                   markers.push(geojson);
                 } catch (ignore) {
                   invalidGeoJSON++;

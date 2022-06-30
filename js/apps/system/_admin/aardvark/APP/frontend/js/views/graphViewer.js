@@ -39,7 +39,6 @@
       this.documentStore = options.documentStore;
 
       if (this.name !== undefined) {
-        console.log("this.name: ", this.name);
         this.collection.fetch({
           cache: false,
           success: function (data) {
@@ -1831,8 +1830,6 @@
 
     getEdgeDefinitionCollections: function (fromCollection, toCollection) {
       var array = [];
-
-      console.log("this.model.edgeDefinitions: ", this.model.edgeDefinitions);
 
       _.each(this.model.edgeDefinitions, function (edgeDefinition) {
         _.each(edgeDefinition.from, function (from) {
