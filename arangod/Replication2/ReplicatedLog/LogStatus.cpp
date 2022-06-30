@@ -53,20 +53,6 @@ auto QuickLogStatus::getLocalStatistics() const noexcept
   return local;
 }
 
-auto replicated_log::operator==(FollowerStatistics const& left,
-                                FollowerStatistics const& right) noexcept
-    -> bool {
-  return left.lastErrorReason == right.lastErrorReason &&
-         left.lastRequestLatencyMS == right.lastRequestLatencyMS &&
-         left.internalState.value.index() == right.internalState.value.index();
-}
-
-auto replicated_log::operator!=(FollowerStatistics const& left,
-                                FollowerStatistics const& right) noexcept
-    -> bool {
-  return !(left == right);
-}
-
 auto LogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
   return std::visit(
       overload{

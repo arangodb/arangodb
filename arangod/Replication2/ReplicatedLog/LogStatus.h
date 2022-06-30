@@ -100,11 +100,11 @@ struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
+  TermIndexPair nextPrevLogIndex;
 
   friend auto operator==(FollowerStatistics const& left,
-                         FollowerStatistics const& right) noexcept -> bool;
-  friend auto operator!=(FollowerStatistics const& left,
-                         FollowerStatistics const& right) noexcept -> bool;
+                         FollowerStatistics const& right) noexcept
+      -> bool = default;
 };
 
 template<class Inspector>
@@ -115,17 +115,13 @@ auto inspect(Inspector& f, FollowerStatistics& x) {
       f.field(StaticStrings::CommitIndex, x.commitIndex),
       f.field(StaticStrings::FirstIndex, x.firstIndex),
       f.field(StaticStrings::ReleaseIndex, x.releaseIndex),
+      f.field("nextPrevLogIndex", x.nextPrevLogIndex),
       f.field("lastErrorReason", x.lastErrorReason),
       f.field("lastRequestLatencyMS", x.lastRequestLatencyMS)
           .transformWith(inspection::DurationTransformer<
                          std::chrono::duration<double, std::milli>>{}),
       f.field("state", x.internalState));
 }
-
-[[nodiscard]] auto operator==(FollowerStatistics const& left,
-                              FollowerStatistics const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(FollowerStatistics const& left,
-                              FollowerStatistics const& right) noexcept -> bool;
 
 struct LeaderStatus {
   LogStatistics local;

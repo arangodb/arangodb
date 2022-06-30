@@ -187,6 +187,7 @@ TEST(LogStatusTest, leader_status) {
         "releaseIndex": 0,
         "firstIndex": 1,
         "spearhead": {"term": 2, "index": 4},
+        "nextPrevLogIndex": {"term": 2, "index": 4},
         "lastErrorReason": {"error": "None"},
         "lastRequestLatencyMS": 0.012983,
         "state": {
@@ -199,6 +200,7 @@ TEST(LogStatusTest, leader_status) {
           "releaseIndex": 0,
           "firstIndex": 1,
           "spearhead": {"term": 2, "index": 3},
+          "nextPrevLogIndex": {"term": 2, "index": 3},
           "lastErrorReason": {"error": "CommunicationError", "details": "foo"},
           "lastRequestLatencyMS": 11159.799272,
           "state": {
