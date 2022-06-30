@@ -30,12 +30,14 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/AgentCallback.h"
+#include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
@@ -95,7 +97,7 @@ std::string const NO_LEADER("");
 Agent::Agent(ArangodServer& server, config_t const& config)
     : arangodb::ServerThread<ArangodServer>(server, "Agent"),
       _constituent(server),
-      _supervision(server),
+      _supervision(std::make_unique<Supervision>(server)),
       _state(server),
       _config(config),
       _commitIndex(0),
@@ -185,7 +187,7 @@ void Agent::waitForThreadsStop() {
   // and from AgencyFeature::unprepare.
   int counter = 0;
   while (_constituent.isRunning() || _compactor.isRunning() ||
-         (_config.supervision() && _supervision.isRunning()) ||
+         (_config.supervision() && _supervision->isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -1102,7 +1104,7 @@ void Agent::load() {
   if (_config.supervision()) {
     LOG_TOPIC("7658f", DEBUG, Logger::AGENCY)
         << "Starting cluster supervision facilities";
-    _supervision.start(this);
+    _supervision->start(this);
   }
 
   if (_inception != nullptr) {  // resilient agency only
@@ -1748,7 +1750,7 @@ void Agent::beginShutdown() {
 
   // Stop supervision
   if (_config.supervision()) {
-    _supervision.beginShutdown();
+    _supervision->beginShutdown();
   }
 
   // Stop inception process
@@ -2483,7 +2485,7 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
     LOG_TOPIC("12341", DEBUG, Logger::SUPERVISION)
         << "Updating okThreshold to " << d;
     _config.setSupervisionOkThreshold(d);
-    _supervision.setOkThreshold(d);
+    _supervision->setOkThreshold(d);
   }
   slice = data.get("gracePeriod");
   if (slice.isNumber()) {
@@ -2491,7 +2493,7 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
     LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION)
         << "Updating gracePeriod to " << d;
     _config.setSupervisionGracePeriod(d);
-    _supervision.setGracePeriod(d);
+    _supervision->setGracePeriod(d);
   }
 }
 

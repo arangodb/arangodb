@@ -22,6 +22,7 @@
 
 #include "FollowerStateManager.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -367,12 +368,17 @@ FollowerStateManager<S>::FollowerStateManager(
     LoggerContext loggerContext, std::shared_ptr<ReplicatedStateBase> parent,
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
-    std::shared_ptr<Factory> factory) noexcept
+    std::shared_ptr<Factory> factory,
+    std::shared_ptr<ReplicatedStateMetrics> ms) noexcept
     : _guardedData(*this, std::move(core), std::move(token)),
       parent(parent),
       logFollower(std::move(logFollower)),
       factory(std::move(factory)),
-      loggerContext(std::move(loggerContext)) {}
+      loggerContext(std::move(loggerContext)),
+      metrics(std::move(ms)) {
+  TRI_ASSERT(metrics != nullptr);
+  metrics->replicatedStateNumberFollowers->fetch_add(1);
+}
 
 template<typename S>
 auto FollowerStateManager<S>::getStatus() const -> StateStatus {
@@ -445,6 +451,11 @@ template<typename S>
 auto FollowerStateManager<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> {
   return _guardedData.getLockedGuard()->stream;
+}
+
+template<typename S>
+FollowerStateManager<S>::~FollowerStateManager() {
+  metrics->replicatedStateNumberFollowers->fetch_sub(1);
 }
 
 template<typename S>
