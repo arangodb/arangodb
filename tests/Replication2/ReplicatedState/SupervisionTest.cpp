@@ -71,6 +71,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_wait_current) {
   state.makePlan();
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotIncomplete)
       .setTargetParticipant("B", flagsSnapshotIncomplete)
       .setTargetParticipant("C", flagsSnapshotIncomplete);
@@ -98,6 +99,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_wait_log_plan) {
   state.makeCurrent();
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotIncomplete)
       .setTargetParticipant("B", flagsSnapshotIncomplete)
       .setTargetParticipant("C", flagsSnapshotIncomplete);
@@ -125,6 +127,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_wait_snapshot) {
   state.makeCurrent();
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotIncomplete)
       .setTargetParticipant("B", flagsSnapshotIncomplete)
       .setTargetParticipant("C", flagsSnapshotIncomplete);
@@ -166,6 +169,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_snapshot_complete) {
   state.makeCurrent();
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotIncomplete)
       .setTargetParticipant("B", flagsSnapshotIncomplete)
       .setTargetParticipant("C", flagsSnapshotIncomplete);
@@ -213,6 +217,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_all_snapshot_complete) {
   state.setCurrentVersion(12);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete);
@@ -241,6 +246,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_1) {
   state.setCurrentVersion(5);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete);
@@ -274,6 +280,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_2) {
   state.setCurrentVersion(5);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
@@ -309,6 +316,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_3_1) {
   state.setCurrentVersion(5);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
@@ -343,6 +351,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_3_2) {
   state.setCurrentVersion(5);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
@@ -377,6 +386,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_4) {
   state.setCurrentVersion(5);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
@@ -411,6 +421,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_0) {
   state.setCurrentVersion(12);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete);
@@ -445,6 +456,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_1) {
   state.setCurrentVersion(12);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
@@ -484,6 +496,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_2) {
   state.setCurrentVersion(12);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
       .setTargetParticipant("D", flagsSnapshotIncomplete);
@@ -531,6 +544,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_1) {
   state.setCurrentVersion(12);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
       .setTargetParticipant("D", flagsSnapshotIncomplete);
@@ -576,6 +590,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_2) {
   state.setCurrentVersion(12);
 
   log.setId(logId)
+      .setTargetConfig(defaultConfig)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
       .setTargetParticipant("D", flagsSnapshotIncomplete);
@@ -609,4 +624,38 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_2) {
   EXPECT_EQ(report[0].participant, "B");
   EXPECT_EQ(report[1].code, RSA::StatusCode::kInsufficientSnapshotCoverage);
   EXPECT_EQ(report[1].participant, "C");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_change_config) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  RLA::LogTargetConfig newConfig = defaultConfig;
+  newConfig.writeConcern = 3;  // change write concern from 2 -> 3
+
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(12)
+      .setTargetConfig(newConfig);
+
+  state.setPlanParticipants("A", "B", "C").setAllSnapshotsComplete();
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  auto& action = ctx.getAction();
+  ASSERT_TRUE(std::holds_alternative<SetLogConfigAction>(action));
+  EXPECT_EQ(std::get<SetLogConfigAction>(action).config, newConfig);
 }

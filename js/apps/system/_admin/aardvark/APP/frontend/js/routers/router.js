@@ -348,7 +348,7 @@
 
       this.init.then(() => {
         if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
-          // no privileges to use cluster/nodes from the web UI
+          // no privileges to use cluster/nodes from the web interface
           this.routes[''] = 'collections';
           this.navigate('#collections', { trigger: true });
           return;
@@ -385,7 +385,7 @@
 
       this.init.then(() => {
         if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
-          // no privileges to use cluster/nodes from the web UI
+          // no privileges to use cluster/nodes from the web interface
           this.routes[''] = 'collections';
           this.navigate('#collections', { trigger: true });
           return;

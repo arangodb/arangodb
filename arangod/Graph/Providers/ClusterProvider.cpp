@@ -557,6 +557,14 @@ arangodb::transaction::Methods* ClusterProvider<StepImpl>::trx() {
   return _trx.get();
 }
 
+template<class Step>
+TRI_vocbase_t const& ClusterProvider<Step>::vocbase() const {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->state() != nullptr);
+  TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
+  return _trx.get()->vocbase();
+}
+
 template<class StepImpl>
 arangodb::aql::TraversalStats ClusterProvider<StepImpl>::stealStats() {
   auto t = _stats;

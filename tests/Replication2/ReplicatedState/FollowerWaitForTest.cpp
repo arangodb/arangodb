@@ -48,6 +48,7 @@ struct FollowerWaitForAppliedTest
     using EntryType = test::DefaultEntryType;
     using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
     using CoreType = test::TestCoreType;
+    using CoreParameterType = void;
   };
 
   std::shared_ptr<State::FactoryType> factory =
