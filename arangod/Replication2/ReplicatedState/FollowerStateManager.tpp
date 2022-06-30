@@ -262,7 +262,7 @@ void FollowerStateManager<S>::startService() {
 template<typename S>
 void FollowerStateManager<S>::registerError(Result error) {
   TRI_ASSERT(error.fail());
-  auto const state = _guardedData.doUnderLock([&error](auto& data) {
+  _guardedData.doUnderLock([&error](auto& data) {
     data.lastError = std::move(error);
     data.errorCounter += 1;
   });
