@@ -510,32 +510,45 @@ struct PrototypeStateMethodsCoordinator final
     auto methods =
         replication2::ReplicatedStateMethods::createInstance(_vocbase);
 
+    LOG_DEVEL << "[StateId " << target.id << "] createState";
     return methods->createReplicatedState(std::move(target))
         .thenValue([options = std::move(options), methods,
                     self = shared_from_this()](auto&& result) mutable
                    -> futures::Future<ResultT<CreateResult>> {
           auto response = CreateResult{*options.id, std::move(options.servers)};
+
+          LOG_DEVEL << "[StateId " << *options.id
+                    << "] createState -> createReplicatedState done ";
           if (!result.ok()) {
             return {result};
           }
 
           if (options.waitForReady) {
+            LOG_DEVEL << "[StateId " << *options.id
+                      << "] createState waitForStateReady ";
             // wait for the state to be ready
             return methods->waitForStateReady(*options.id, 1)
-                .thenValue([self,
-                            resp = std::move(response)](auto&& result) mutable
+                .thenValue([self, resp = std::move(response),
+                            id = *options.id](auto&& result) mutable
                            -> futures::Future<ResultT<CreateResult>> {
+                  LOG_DEVEL << "[StateId " << id
+                            << "] createState waitForStateReady ";
                   if (result.fail()) {
                     return {result.result()};
                   }
+                  LOG_DEVEL << "[StateId " << id << "] createState waitForPlan "
+                            << result.get();
                   return self->_clusterInfo.waitForPlan(result.get())
-                      .thenValue([resp = std::move(resp)](auto&& result) mutable
-                                 -> ResultT<CreateResult> {
-                        if (result.fail()) {
-                          return {result};
-                        }
-                        return std::move(resp);
-                      });
+                      .thenValue(
+                          [resp = std::move(resp),
+                           id](auto&& result) mutable -> ResultT<CreateResult> {
+                            LOG_DEVEL << "[StateId " << id
+                                      << "] createState waitForPlan done ";
+                            if (result.fail()) {
+                              return {result};
+                            }
+                            return std::move(resp);
+                          });
                 });
           }
           return response;
