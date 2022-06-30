@@ -136,6 +136,15 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_from_vertex_to_itself) {
   auto end = velocypack::Parser::fromJson("\"v/0\"");
   ShortestPathResult result;
 
+  nextFinder->reset(HashedStringRef{start->slice()}, HashedStringRef{end->slice()}, 0);
+  ASSERT_FALSE(nextFinder->isDone());
+  std::string msgs;
+  auto path = nextFinder->getNextPath_New();
+  ASSERT_TRUE(path != nullptr);
+  auto cpr =
+      checkPath(spo.get(), *path, {"0"}, {}, msgs);
+  ASSERT_TRUE(cpr) << msgs;
+
   ASSERT_TRUE(finder->shortestPath(start->slice(), end->slice(), result));
 }
 
@@ -143,6 +152,12 @@ TEST_F(ConstantWeightShortestPathFinderTest, no_path_exists) {
   auto start = velocypack::Parser::fromJson("\"v/0\"");
   auto end = velocypack::Parser::fromJson("\"v/1\"");
   ShortestPathResult result;
+
+  nextFinder->reset(HashedStringRef{start->slice()}, HashedStringRef{end->slice()}, 0);
+  ASSERT_FALSE(nextFinder->isDone());
+  std::string msgs;
+  auto path = nextFinder->getNextPath_New();
+  ASSERT_TRUE(path == nullptr);
 
   ASSERT_FALSE(finder->shortestPath(start->slice(), end->slice(), result));
   EXPECT_EQ(result.length(), 0);
@@ -154,10 +169,19 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_1) {
   ShortestPathResult result;
   std::string msgs;
 
+  nextFinder->reset(HashedStringRef{start->slice()}, HashedStringRef{end->slice()}, 0);
+  ASSERT_FALSE(nextFinder->isDone());
+  auto path = nextFinder->getNextPath_New();
+  ASSERT_TRUE(path != nullptr);
+  auto cpr =
+      checkPath(spo.get(), *path, {"1", "2"}, {{"v/1", "v/2"}}, msgs);
+  ASSERT_TRUE(cpr) << msgs;
+
+  msgs = "";
   auto rr = finder->shortestPath(start->slice(), end->slice(), result);
   ASSERT_TRUE(rr);
-  auto cpr =
-      checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+
+  cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -165,11 +189,21 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_4) {
   auto start = velocypack::Parser::fromJson("\"v/1\"");
   auto end = velocypack::Parser::fromJson("\"v/4\"");
   ShortestPathResult result;
+  nextFinder->reset(HashedStringRef{start->slice()}, HashedStringRef{end->slice()}, 0);
+  ASSERT_FALSE(nextFinder->isDone());
   std::string msgs;
+  auto path = nextFinder->getNextPath_New();
+  ASSERT_TRUE(path != nullptr);
+  auto cpr =
+      checkPath(spo.get(), *path, {"1", "2", "3", "4"},
+                {{"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
+  ASSERT_TRUE(cpr) << msgs;
+
+  msgs = "";
 
   auto rr = finder->shortestPath(start->slice(), end->slice(), result);
   ASSERT_TRUE(rr);
-  auto cpr =
+  cpr =
       checkPath(spo.get(), result, {"1", "2", "3", "4"},
                 {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
@@ -178,8 +212,31 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_4) {
 TEST_F(ConstantWeightShortestPathFinderTest, two_paths_of_length_5) {
   auto start = velocypack::Parser::fromJson("\"v/21\"");
   auto end = velocypack::Parser::fromJson("\"v/25\"");
-  ShortestPathResult result;
+  nextFinder->reset(HashedStringRef{start->slice()}, HashedStringRef{end->slice()}, 0);
+  ASSERT_FALSE(nextFinder->isDone());
   std::string msgs;
+  auto path = nextFinder->getNextPath_New();
+  ASSERT_TRUE(path != nullptr);
+  // One of the two has to be returned
+  // This of course leads to output from the LOG_DEVEL in checkPath
+  auto cpr =
+      checkPath(spo.get(), *path, {"21", "22", "23", "24", "25"},
+                 {
+                  {"v/21", "v/22"},
+                  {"v/22", "v/23"},
+                  {"v/23", "v/24"},
+                  {"v/24", "v/25"}}, msgs) ||
+    checkPath(spo.get(), *path,{"21", "26", "27", "28", "25"},
+{
+ {"v/21", "v/26"},
+ {"v/26", "v/27"},
+ {"v/27", "v/28"},
+ {"v/28", "v/25"}}, msgs);
+  ASSERT_TRUE(cpr) << msgs;
+
+  msgs = "";
+
+  ShortestPathResult result;
 
   {
     auto rr = finder->shortestPath(start->slice(), end->slice(), result);
