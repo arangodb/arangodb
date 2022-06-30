@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, JSON */
+/*global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ const loadGraphGenerators = function (isSmart) {
 };
 
 const runPregelInstance = function (algName, graphName, parameters, query, maxWaitTimeSecs = 120) {
-    const pid = pregel.start("wcc", graphName, parameters);
+    const pid = pregel.start(algName, graphName, parameters);
     const sleepIntervalSecs = 0.2;
     let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
     while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
@@ -65,13 +65,23 @@ const runPregelInstance = function (algName, graphName, parameters, query, maxWa
     return db._query(query).toArray();
 };
 
-// intended to algName = "wcc" or "scc" (or similar)
+/**
+ * Run the given algorithm, collect buckets labeled with parameters.resultField with their sizes and returns
+ * an array [{parameters.resultField: <label>, size: <size>} for all possible <label>s].
+ * @param algName
+ * @param graphName
+ * @param parameters should contain the attribute "resultField"
+ * @returns {*}
+ */
 const pregelRunSmallInstanceGetComponents = function (algName, graphName, parameters) {
+    assertTrue(parameters.hasOwnProperty("resultField"),
+        `Malformed test: the parameter "parameters" of pregelRunSmallInstanceGetComponents 
+        must have an attribute "resultField"`);
     const query = `
         FOR v IN ${vColl}
-          COLLECT component = v.result WITH COUNT INTO size
+          COLLECT ${parameters.resultField} = v.result WITH COUNT INTO size
           SORT size DESC
-          RETURN {component, size}
+          RETURN {${parameters.resultField}, size}
       `;
     return runPregelInstance(algName, graphName, parameters, query);
 };
@@ -118,6 +128,47 @@ class ComponentGenerator {
 }
 
 /**
+ * Runs the algorithm on the graph and tests whether vertices grouped by the result field have the same
+ * labels and the groups have the expected sizes.
+ * @param algName
+ * @param graphName
+ * @param parameters
+ * @param expectedSizes
+ */
+const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
+    parameters.resultField = "result"; // ignore passed resultField if any
+    // sorting in the descending order is needed because pregelRunSmallInstanceGetComponents
+    // sorts the results like this
+    expectedSizes.sort(function (a, b) {return b - a;});
+    const computedComponents = pregelRunSmallInstanceGetComponents(algName, graphName, parameters);
+
+    assertEqual(computedComponents.length, expectedSizes.length,
+        `Expected ${expectedSizes.length} many elements, obtained ${computedComponents}`);
+    for (let i = 0; i < computedComponents.length; ++i) {
+        const computedComponent = computedComponents[i];
+        const componentId = computedComponent.result;
+        // get the vertices of the computed subgraph
+        const queryVerticesOfComponent = `
+                        FOR v IN ${vColl}
+                        FILTER v.result == ${componentId}
+                          RETURN v.label
+                      `;
+        const vertexLabelsOfComponent = db._query(queryVerticesOfComponent).toArray();
+
+        // test component size
+        assertEqual(computedComponent.size, expectedSizes[i],
+            `Expected ${expectedSizes[i]} as the size of the current component, 
+                            obtained ${computedComponent.size}`);
+        // Test that the labels of vertices in the computed component are all the same.
+        for (let vertexLabel of vertexLabelsOfComponent) {
+            // note: vertexLabelsOfComponent is not the empty array
+            assertEqual(vertexLabel, `${vertexLabelsOfComponent[0]}`,
+                `Expected vertex label is ${vertexLabelsOfComponent[0]}, obtained ${vertexLabel}`);
+        }
+    }
+};
+
+/**
  * Create disjoint components using parameters from componentGenerators, apply WCC on the graph and test
  * the result. The function relies on the generators to produce vertex labels in the form <size>_<uniqueLabel>
  *     where <size> is the correct size of the component and uniqueLabels are the same within one generators
@@ -140,7 +191,7 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
         db[eColl].save(edges);
     }
 
-    // Get the result of Pregel's WCC.
+    // Get the result of Pregel's algorithm.
     const computedComponents = pregelRunSmallInstanceGetComponents(algorithmName, graphName, {resultField: "result", store: true});
     assertEqual(computedComponents.length, componentGenerators.length,
         `We expected ${componentGenerators.length} components, instead got ${JSON.stringify(computedComponents)}`);
@@ -178,7 +229,6 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
  * @param algorithmName The algorithm name.
  */
 const testComponentsAlgorithmOnDisjointComponentsSameKind = function (sizes, generator, algorithmName = "wcc") {
-    console.warn(generator);
     let componentGenerators = [];
     for (const i of sizes) {
         componentGenerators.push(new ComponentGenerator(generator, {length: i}));
@@ -629,7 +679,7 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             tearDown: makeTearDown(isSmart),
 
-            testSCCOneDirectedCycle: function () {
+            testLPOneDirectedCycle: function () {
                 const length = 3;
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeDirectedCycle(length);
                 db[vColl].save(vertices);
@@ -646,7 +696,7 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
                 }
             },
 
-            testSCCTwoDisjointDirectedCycles: function () {
+            testLPTwoDisjointDirectedCycles: function () {
                 const length = 3;
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
                 db[vColl].save(vertices);
@@ -668,7 +718,7 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
                 assertEqual(result[1].size, length);
             },
 
-            testSCCTwoDirectedCyclesConnectedByDirectedEdge: function () {
+            testLPTwoDirectedCyclesConnectedByDirectedEdge: function () {
                 const size = 5;
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(size);
                 db[vColl].save(vertices);
@@ -685,15 +735,87 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
 
                 const query = `
                   FOR v in ${vColl}
-                  RETURN v.community
+                  COLLECT community = v.community WITH COUNT INTO size
+                  SORT size DESC
+                  RETURN {community, size}
               `;
+                // expected (depending on the "random" distribution of initial ids) that
+                //  - all vertices are in one community with id 0:
+                //      if the least initial value of vertices in the component with label v0,
+                //      is less than the least initial value of vertices in the component with label v1,
+                //  - or two communities otherwise.
                 const result = runPregelInstance("labelpropagation", graphName,
                     {maxGSS: 100, resultField: "community"}, query);
-                console.warn(result);
-                assertEqual(result.length, 2);
-                assertEqual(result[0].size, size);
-                assertEqual(result[1].size, size);
-            }
+                assertTrue(result.length === 1 || result.length === 2, `Expected 1 or 2, obtained ${result}`);
+                if (result.length === 1) {
+                    assertEqual(result[0].community, 0);
+                    assertEqual(result[0].size, 2 * size);
+                } else {
+                    assertEqual(result[0].size, size);
+                    assertEqual(result[1].size, size);
+                }
+            },
+
+            testLPTwo4CliquesConnectedByDirectedEdge: function () {
+                const size = 4;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+                const verticesEdges = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeBidirectedClique(size);
+                db[vColl].save(verticesEdges.vertices);
+                db[eColl].save(verticesEdges.edges);
+
+                db[eColl].save({
+                    _from: `${vColl}/v0_0`,
+                    _to: `${vColl}/v1_0`,
+                    vertex: `v0_0`
+                });
+
+                testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [size, size]);
+            },
+
+            testLPTwo4CliquesConnectedBy2DirectedEdges: function () {
+                const size = 4;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+                const verticesEdges = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeBidirectedClique(size);
+                db[vColl].save(verticesEdges.vertices);
+                db[eColl].save(verticesEdges.edges);
+
+                db[eColl].save({
+                    _from: `${vColl}/v0_0`,
+                    _to: `${vColl}/v1_0`,
+                    vertex: `v0_0`
+                });
+
+                db[eColl].save({
+                    _from: `${vColl}/v0_1`,
+                    _to: `${vColl}/v1_0`,
+                    vertex: `v0_0`
+                });
+
+                testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [size, size]);
+            },
+
+            testLPThree4_5_6CliquesConnectedByUndirectedTriangle: function () {
+                // sort in the descending order
+                const expectedSizes = [4, 5, 6];
+                for (let i = 0; i < 3; ++i) {
+                    const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v${i}`)).makeBidirectedClique(expectedSizes[i]);
+                    db[vColl].save(vertices);
+                    db[eColl].save(edges);
+                }
+
+                for (let i = 0; i < 3; ++i){
+                    for (let j = i+1; j < 3; ++j){
+                        makeEdgesBetweenVertices(vColl, i, `v${i}`, j, `v${j}`);
+                        makeEdgesBetweenVertices(vColl, j, `v${j}`, i, `v${i}`);
+                    }
+                }
+
+                testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, expectedSizes);
+            },
         };
     };
 }
@@ -702,3 +824,4 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
 exports.makeSCCTestSuite = makeSCCTestSuite;
+exports.labelPropagationTestSuite = labelPropagationTestSuite;
