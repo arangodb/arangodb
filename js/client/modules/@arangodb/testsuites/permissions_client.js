@@ -91,7 +91,6 @@ class permissionsRunner extends tu.runInArangoshRunner {
         fs.makeDirectoryRecursive(instanceRoot);
         let testResultJson = fs.join(rootDir, 'testresult.json');;
         process.env['RESULT'] = testResultJson;
-        pu.cleanupDBDirectoriesAppend(instanceRoot);
 
         let content = fs.read(f);
         content = `(function(){ const getOptions = true; ${content} 
@@ -102,12 +101,12 @@ class permissionsRunner extends tu.runInArangoshRunner {
         res[f] = obj.runOneTest(/*  ,*/
           f                                
         );
-      } else {
-        if (obj.options.extremeVerbosity) {
-          print('Skipped ' + f + ' because of ' + filtered.filter);
+        if (obj.options.cleanup && res[f].status) {
+          fs.removeDirectoryRecursive(instanceRoot, true);
         }
+      } else if (obj.options.extremeVerbosity) {
+        print('Skipped ' + f + ' because of ' + filtered.filter);
       }
-
     });
     return res;
   }

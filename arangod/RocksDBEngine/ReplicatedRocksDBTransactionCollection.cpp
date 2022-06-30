@@ -104,6 +104,8 @@ void ReplicatedRocksDBTransactionCollection::maybeDisableIndexing() {
 
 /// @brief commit a transaction
 Result ReplicatedRocksDBTransactionCollection::commitTransaction() {
+  auto lock = static_cast<ReplicatedRocksDBTransactionState*>(_transaction)
+                  ->lockCommit();
   return _rocksMethods->commitTransaction();
 }
 

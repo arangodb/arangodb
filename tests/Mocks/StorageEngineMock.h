@@ -25,6 +25,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Futures/Future.h"
 #include "IResearchLinkMock.h"
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchLinkMock.h"
@@ -194,7 +195,7 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(
       arangodb::transaction::Hints hints) override;
-  virtual arangodb::Result commitTransaction(
+  virtual arangodb::futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result performIntermediateCommitIfRequired(
       arangodb::DataSourceId cid) override;

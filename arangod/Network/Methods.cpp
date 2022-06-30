@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
-#include "Agency/Agent.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -298,7 +297,11 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     }
 
     arangodb::network::EndpointSpec spec;
-    auto res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+    auto res =
+        options.overrideDestination.empty()
+            ? resolveDestination(*pool->config().clusterInfo, dest, spec)
+            : resolveDestination(*pool->config().clusterInfo,
+                                 "server:" + options.overrideDestination, spec);
     if (res != TRI_ERROR_NO_ERROR) {
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
@@ -398,8 +401,12 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
 
     arangodb::network::EndpointSpec spec;
-    auto res =
-        resolveDestination(*_pool->config().clusterInfo, _destination, spec);
+    auto res = _options.overrideDestination.empty()
+                   ? resolveDestination(*_pool->config().clusterInfo,
+                                        _destination, spec)
+                   : resolveDestination(
+                         *_pool->config().clusterInfo,
+                         "server:" + _options.overrideDestination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
