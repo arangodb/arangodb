@@ -51,7 +51,7 @@ void LeaderStateManager<S>::run() noexcept {
     // instead?
     if (auto self = weak.lock(); self != nullptr) {
       try {
-        futures::Unit _ = tryResult.get();
+        std::ignore = tryResult.get();
       } catch (replicated_log::ParticipantResignedException const&) {
         LOG_CTX("7322d", DEBUG, self->loggerContext)
             << "Log leader resigned, stopping replicated state machine. Will "
