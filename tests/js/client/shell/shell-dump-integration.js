@@ -34,8 +34,6 @@ let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
 let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
-const testDbComputedValues = "testDbComputedValues";
-const collectionName = "testCollection";
 
 
 function checkDumpJsonFile(dbName, path, id) {
@@ -243,22 +241,6 @@ function dumpIntegrationSuite() {
 
     setUpAll: function() {
 
-      db._useDatabase("_system");
-      db._createDatabase(testDbComputedValues);
-      db._useDatabase(testDbComputedValues);
-      let collection = db._create(collectionName, {
-        computedValues: [{
-          name: "value3",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: false
-        }, {name: "value4", expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)", override: true}]
-      });
-      let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({value1: "test" + i, value2: "abc", value4: false});
-      }
-      collection.insert(docs);
-      db._useDatabase("_system");
 
       dbs.forEach((name) => {
         if (name !== "_system") {
@@ -267,6 +249,7 @@ function dumpIntegrationSuite() {
         }
         db._useDatabase(name);
         db._drop(cn);
+
         let c = db._create(cn, {numberOfShards: 3});
         let docs = [];
         for (let i = 0; i < 1000; ++i) {
@@ -297,18 +280,35 @@ function dumpIntegrationSuite() {
           docs.push({});
         }
         c.insert(docs);
+        c = db._create(cn + "ComputedValues", {
+          computedValues: [{
+            name: "value3",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: false
+          }, {
+            name: "value4",
+            expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)",
+            override: true
+          }]
+        });
+        docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({value1: "test" + i, value2: "abc", value4: false});
+        }
+        c.insert(docs);
+
       });
     },
 
     tearDownAll: function() {
       db._useDatabase("_system");
-      db._dropDatabase(testDbComputedValues);
       dbs.forEach((name) => {
         if (name === "_system") {
           db._drop(cn);
           db._drop(cn + "Other");
           db._drop(cn + "Padded");
           db._drop(cn + "AutoIncrement");
+          db._drop(cn + "ComputedValues");
         } else {
           db._dropDatabase(name);
         }
@@ -318,16 +318,14 @@ function dumpIntegrationSuite() {
     testDumpForCollectionWithComputedValuesUncompressed: function() {
       let path = fs.getTempFile();
       try {
-        let args = ['--collection', collectionName, '--compress-output', 'false'];
-        db._useDatabase(testDbComputedValues);
+        let args = ['--collection', cn + "ComputedValues", '--compress-output', 'false'];
         let tree = runDump(path, args, 0);
         checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, collectionName);
-        checkDataFileForCollectionWithComputedValues(tree, path, false, false, true, collectionName);
+        checkStructureFile(tree, path, true, cn + "ComputedValues");
+        checkDataFileForCollectionWithComputedValues(tree, path, false, false, true, cn + "ComputedValues");
       } finally {
         try {
           fs.removeDirectory(path);
-          db._useDatabase("_system");
         } catch (err) {
         }
       }
@@ -336,16 +334,14 @@ function dumpIntegrationSuite() {
     testDumpForCollectionWithComputedValuesCompressed: function() {
       let path = fs.getTempFile();
       try {
-        let args = ['--collection', collectionName, '--compress-output', 'true'];
-        db._useDatabase(testDbComputedValues);
+        let args = ['--collection', cn + "ComputedValues", '--compress-output', 'true'];
         let tree = runDump(path, args, 0);
         checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true, collectionName);
-        checkDataFileForCollectionWithComputedValues(tree, path, true, false, true, collectionName);
+        checkStructureFile(tree, path, true, cn + "ComputedValues");
+        checkDataFileForCollectionWithComputedValues(tree, path, true, false, true, cn + "ComputedValues");
       } finally {
         try {
           fs.removeDirectory(path);
-          db._useDatabase("_system");
         } catch (err) {
         }
       }
