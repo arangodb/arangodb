@@ -470,6 +470,7 @@ class testRunner {
 
     let testrunStart = time();
     this.results = {
+      failed: 0,
       shutdown: true,
       startupTime: testrunStart - beforeStart
     };
@@ -519,6 +520,7 @@ class testRunner {
             }
 
             if (this.results[te].status === false) {
+              this.results.failed ++;
               this.options.cleanup = false;
             }
 
@@ -623,7 +625,7 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print('done.');
     }
-    this.instanceManager.destructor();
+    this.instanceManager.destructor(this.continueTesting && this.results.failed === 0);
     return this.results;
   }
 }

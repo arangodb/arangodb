@@ -632,6 +632,9 @@ struct TRI_v8_global_t {
   /// @brief "address" key name
   v8::Persistent<v8::String> AddressKey;
 
+  /// @brief "allowDirtyReads" key name
+  v8::Persistent<v8::String> AllowDirtyReadsKey;
+
   /// @brief "allowUseDatabase" key name
   v8::Persistent<v8::String> AllowUseDatabaseKey;
 
