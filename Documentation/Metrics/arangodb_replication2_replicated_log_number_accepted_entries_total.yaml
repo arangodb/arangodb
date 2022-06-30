@@ -1,0 +1,12 @@
+name: arangodb_replication2_replicated_log_number_accepted_entries_total
+introducedIn: "3.10.0"
+help: |
+  Number of accepted (not yet committed) log entries.
+unit: number
+type: counter
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  The entries have been inserted into the log and are being replicated but a quorum has not yet been reached.
