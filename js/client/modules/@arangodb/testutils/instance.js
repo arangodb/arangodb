@@ -166,6 +166,15 @@ class agencyConfig {
       endpoints: this.endpoints
     };
   }
+  setFromStructure(struct) {
+    this.agencySize = struct['agencySize'];
+    this.supervision = struct['supervision'];
+    this.waitForSync = struct['waitForSync'];
+    this.agencyEndpoint = struct['agencyEndpoint'];
+    this.agentsLaunched = struct['agentsLaunched'];
+    this.urls = struct['urls'];
+    this.endpoints = struct['endpoints'];
+  }
 }
 
 class instance {
@@ -239,6 +248,31 @@ class instance {
     };
   }
 
+  setFromStructure(struct, agencyConfig) {
+    this.name = struct['name'];
+    this.instanceRole = struct['instanceRole'];
+    this.message = struct['message'];
+    this.rootDir = struct['rootDir'];
+    this.protocol = struct['protocol'];
+    this.authHeaders = struct['authHeaders'];
+    this.restKeyFile = struct['restKeyFile'];
+    this.upAndRunning = struct['upAndRunning'];
+    this.suspended = struct['suspended'];
+    this.port = struct['port'];
+    this.url = struct['url'];
+    this.endpoint = struct['endpoint'];
+    this.dataDir = struct['dataDir'];
+    this.appDir = struct['appDir'];
+    this.tmpDir = struct['tmpDir'];
+    this.logFile = struct['logFile'];
+    this.args = struct['args'];
+    this.pid = struct['pid'];
+    this.id = struct['id'];
+    this.JWT = struct['JWT'];
+    this.exitStatus = struct['exitStatus'];
+    this.serverCrashedLocal = struct['serverCrashedLocal'];
+  }
+
   isRole(compareRole) {
     // print(this.instanceRole + ' ==? ' + compareRole);
     return this.instanceRole === compareRole;
@@ -273,7 +307,6 @@ class instance {
     }
 
     let config = 'arangod-' + this.instanceRole + '.conf';
-
     this.args = _.defaults(this.args, {
       'configuration': fs.join(pu.CONFIG_DIR, config),
       'define': 'TOP_DIR=' + pu.TOP_DIR,
@@ -439,6 +472,17 @@ class instance {
       return sockStat;
     }
     return "";
+  }
+
+  cleanup() {
+    if ((this.pid !== null) && (this.exitStatus === null)) {
+      print(RED + "killing instance (again?) to make sure we can delete its files!" + RESET);
+      this.terminateInstance();
+    }
+    if (this.options.extremeVerbosity) {
+      print(CYAN + "cleaning up " + this.name + " 's Directory: " + this.rootDir + RESET);
+    }
+    fs.removeDirectoryRecursive(this.rootDir, true);
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -775,8 +819,8 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat("Force killing - sockstat before: ");
         this.killWithCoreDump();
-        this.pid = null;
         this.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);

@@ -24,10 +24,12 @@
 #include "CleanOutServer.h"
 
 #include "Agency/AgentInterface.h"
+#include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/TimeString.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
@@ -370,11 +372,17 @@ bool CleanOutServer::start(bool& aborts) {
 bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
+  Node::Children const& databaseProperties =
+      _snapshot.hasAsChildren(planDBPrefix).value().get();
   Node::Children const& databases =
-      _snapshot.hasAsChildren("/Plan/Collections").value().get();
+      _snapshot.hasAsChildren(planColPrefix).value().get();
   size_t sub = 0;
 
   for (auto const& database : databases) {
+    if (isReplicationTwoDB(databaseProperties, database.first)) {
+      continue;
+    }
+
     // Find shardsLike dependencies
     for (auto const& collptr : database.second->children()) {
       auto const& collection = *(collptr.second);

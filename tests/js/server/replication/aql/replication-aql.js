@@ -173,6 +173,16 @@ function ReplicationSuite() {
       db._dropDatabase(cn);
     },
     
+    tearDownAll: function() {
+      connectToLeader();
+      db._useDatabase("_system");
+
+      db._dropDatabase(cn);
+      connectToFollower();
+      db._useDatabase("_system");
+      db._dropDatabase(cn);
+    },
+    
     testAqlInsert: function() {
       db._useDatabase(cn);
       connectToLeader();

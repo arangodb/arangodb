@@ -37,6 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -50,6 +51,10 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Sharding/ShardingStrategyEE.h"
+#endif
 
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
@@ -397,6 +402,21 @@ bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {
 
 bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+
+#ifdef USE_ENTERPRISE
+  if (_sharding->shardingStrategyName() ==
+      ShardingStrategyEnterpriseHexSmartVertex::NAME) {
+    TRI_ASSERT(isSmart());
+    TRI_ASSERT(type() == TRI_COL_TYPE_DOCUMENT);
+    TRI_ASSERT(!hasSmartGraphAttribute());
+    // if we've a SmartVertex collection sitting inside an EnterpriseGraph
+    // we need to have the key before we can call the "getResponsibleShards"
+    // method because without it, we cannot calculate which shard will be the
+    // responsible one.
+    return true;
+  }
+#endif
+
   // when there is more than 1 shard, or if we do have a satellite
   // collection, we need to create the key on the coordinator.
   return numberOfShards() != 1;
@@ -1227,12 +1247,98 @@ void LogicalCollection::decorateWithInternalValidators() {
 }
 
 replication2::LogId LogicalCollection::shardIdToStateId(
-    ShardID const& shardId) {
-  auto stateId = std::string_view(shardId).substr(1, shardId.size() - 1);
-  auto logId = replication2::LogId::fromString(stateId);
+    std::string_view shardId) {
+  auto logId = tryShardIdToStateId(shardId);
   ADB_PROD_ASSERT(logId.has_value())
       << " converting " << shardId << " to LogId failed";
   return logId.value();
+}
+
+std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
+    std::string_view shardId) {
+  if (shardId.empty()) {
+    return {};
+  }
+  auto stateId = shardId.substr(1, shardId.size() - 1);
+  return replication2::LogId::fromString(stateId);
+}
+
+auto LogicalCollection::getDocumentState()
+    -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
+        replication2::replicated_state::document::DocumentState>> {
+  using namespace replication2::replicated_state;
+  auto stateMachine =
+      std::dynamic_pointer_cast<ReplicatedState<document::DocumentState>>(
+          vocbase().getReplicatedStateById(shardIdToStateId(name())));
+  ADB_PROD_ASSERT(stateMachine != nullptr)
+      << "Missing document state in shard " << name();
+  return stateMachine;
+}
+
+auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
+    replication2::replicated_state::document::DocumentLeaderState> {
+  auto stateMachine = getDocumentState();
+  auto leader = stateMachine->getLeader();
+  // TODO improve error handling
+  ADB_PROD_ASSERT(leader != nullptr)
+      << "Cannot get DocumentLeaderState in shard " << name();
+  return leader;
+}
+
+auto LogicalCollection::waitForDocumentStateLeader() -> std::shared_ptr<
+    replication2::replicated_state::document::DocumentLeaderState> {
+  auto replicatedState = getDocumentState();
+  std::optional<replication2::replicated_state::StateStatus> status =
+      std::nullopt;
+  replication2::replicated_state::LeaderStatus const* leaderStatus = nullptr;
+
+  // TODO find a better way to wait for service availability
+  for (int counter{0}; counter < 30; ++counter) {
+    status = replicatedState->getStatus();
+    if (status) {
+      leaderStatus = status->asLeaderStatus();
+      if (leaderStatus != nullptr &&
+          leaderStatus->managerState.state ==
+              replication2::replicated_state::LeaderInternalState::
+                  kServiceAvailable) {
+        break;
+      }
+    }
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(1s);
+  }
+
+  if (leaderStatus == nullptr) {
+    if (status.has_value()) {
+      std::stringstream stream;
+      stream << "Could not get leader status, current status is " << *status;
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER, stream.str());
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+          "Could not get any status from replicated state");
+    }
+  }
+  if (leaderStatus->managerState.state !=
+      replication2::replicated_state::LeaderInternalState::kServiceAvailable) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
+        "Leader state service is not available, the current status being: " +
+            std::string(to_string(leaderStatus->managerState.state)));
+  }
+
+  return getDocumentStateLeader();
+}
+
+auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<
+    replication2::replicated_state::document::DocumentFollowerState> {
+  auto stateMachine = getDocumentState();
+  auto follower = stateMachine->getFollower();
+  // TODO improve error handling
+  ADB_PROD_ASSERT(follower != nullptr)
+      << "Cannot get DocumentFollowerState in shard " << name();
+  return follower;
 }
 
 #ifndef USE_ENTERPRISE

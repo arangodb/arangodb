@@ -21,7 +21,8 @@ A primary sort order can be defined to enable an AQL optimization. If a query
 iterates over all documents of a View, wants to sort them by attribute values
 and the (left-most) fields to sort by as well as their sorting direction match
 with the *primarySort* definition, then the `SORT` operation is optimized away.
-This option is immutable.<br/>
+This option is immutable.
+
 Expects an array of objects, each specifying a field (attribute path) and a
 sort direction (`"asc` for ascending, `"desc"` for descending):
 `[ { "field": "attr", "direction": "asc"}, … ]`
@@ -37,7 +38,8 @@ This option is immutable.
 An array of objects to describe which document attributes to store in the View
 index (introduced in v3.7.1). It can then cover search queries, which means the
 data can be taken from the index directly and accessing the storage engine can
-be avoided.<br/>
+be avoided.
+
 Each object is expected in the form
 `{ "fields": [ "attr1", "attr2", ... "attrN" ], "compression": "none" }`,
 where the required `fields` attribute is an array of strings with one or more
@@ -46,7 +48,8 @@ column of the index. A column with all fields that are involved in common
 search queries is ideal for performance. The column should not include too many
 unneeded fields however. The optional `compression` attribute defines the
 compression type used for the internal column-store, which can be `"lz4"`
-(LZ4 fast compression, default) or `"none"` (no compression).<br/>
+(LZ4 fast compression, default) or `"none"` (no compression).
+
 This option is immutable. Not to be confused with `storeValues`, which allows
 to store meta data about attribute values in the View index.
 
@@ -58,7 +61,8 @@ of commit+consolidate), a lower value will cause a lot of disk space to be
 wasted.
 For the case where the consolidation policies rarely merge segments (i.e. few
 inserts/deletes), a higher value will impact performance without any added
-benefits.<br/>
+benefits.
+
 _Background:_
   With every "commit" or "consolidate" operation a new state of the View
   internal data-structures is created on disk.
@@ -76,7 +80,8 @@ commit, will cause the index not to account for them and memory usage would
 continue to grow.
 For the case where there are a few inserts/updates, a higher value will impact
 performance and waste disk space for each commit call without any added
-benefits.<br/>
+benefits.
+
 _Background:_
   For data retrieval ArangoSearch Views follow the concept of
   "eventually-consistent", i.e. eventually all the data in ArangoDB will be
@@ -97,7 +102,8 @@ For the case where there are a lot of data modification operations, a higher
 value could potentially have the data store consume more space and file handles.
 For the case where there are a few data modification operations, a lower value
 will impact performance due to no segment candidates available for
-consolidation.<br/>
+consolidation.
+
 _Background:_
   For data modification ArangoSearch Views follow the concept of a
   "versioned data store". Thus old versions of data may be removed once there
@@ -107,7 +113,8 @@ _Background:_
 
 @RESTBODYPARAM{consolidationPolicy,object,optional,}
 The consolidation policy to apply for selecting which segments should be merged
-(default: {})<br/>
+(default: {})
+
 _Background:_
   With each ArangoDB transaction that inserts documents one or more
   ArangoSearch internal segments gets created.
@@ -118,7 +125,8 @@ _Background:_
   A "consolidation" operation selects one or more segments and copies all of
   their valid documents into a single new segment, thereby allowing the
   search algorithm to perform more optimally and for extra file handles to be
-  released once old segments are no longer used.<br/>
+  released once old segments are no longer used.
+
 Sub-properties:
   - `type` (string, _optional_):
     The segment candidates for the "consolidation" operation are selected based

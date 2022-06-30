@@ -27,8 +27,10 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/FailedFollower.h"
 #include "Agency/FailedLeader.h"
+#include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/TimeString.h"
 
 using namespace arangodb::consensus;
 
@@ -151,16 +153,18 @@ bool FailedServer::start(bool& aborts) {
       VPackObjectBuilder oper(transactions.get());
       // Add pending
 
+      auto const& databaseProperties =
+          _snapshot.hasAsChildren(planDBPrefix).value().get();
       auto const& databases =
-          _snapshot.hasAsChildren("/Plan/Collections").value().get();
-      // auto const& current =
-      // _snapshot.hasAsChildren("/Current/Collections").first;
+          _snapshot.hasAsChildren(planColPrefix).value().get();
 
       size_t sub = 0;
 
       // FIXME: looks OK, but only the non-clone shards are put into the job
       for (auto const& database : databases) {
-        // dead code   auto cdatabase = current.at(database.first)->children();
+        if (isReplicationTwoDB(databaseProperties, database.first)) {
+          continue;
+        }
 
         for (auto const& collptr : database.second->children()) {
           auto const& collection = *(collptr.second);

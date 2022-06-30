@@ -82,6 +82,7 @@ class instanceManager {
     this.restKeyFile = '';
     this.tcpdump = null;
     this.JWT = null;
+    this.cleanup = options.cleanup && options.server === undefined;
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
     }
@@ -93,11 +94,14 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
   }
 
-  destructor() {
+  destructor(cleanup) {
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
     });
     this.stopTcpDump();
+    if (this.cleanup && cleanup) {
+      this._cleanup();
+    }
   }
   getStructure() {
     let d = [];
@@ -121,9 +125,49 @@ class instanceManager {
       arangods: d,
       restKeyFile: this.restKeyFile,
       tcpdump: this.tcpdump,
+      cleanup: this.cleanup
     };
   }
-  
+  setFromStructure(struct) {
+    this.arangods = [];
+    this.agencyConfig.setFromStructure(struct['agencyConfig']);
+    this.protocol = struct['protocol'];
+    this.options = struct['options'];
+    this.addArgs = struct['addArgs'];
+    this.rootDir = struct['rootDir'];
+    this.httpAuthOptions = struct['httpAuthOptions'];
+    this.urls = struct['urls'];
+    this.url = struct['url'];
+    this.endpoints = struct['endpoints'];
+    this.endpoint = struct['endpoint'];
+    this.restKeyFile = struct['restKeyFile'];
+    this.tcpdump = struct['tcpdump'];
+    this.cleanup = struct['cleanup'];
+    struct['arangods'].forEach(arangodStruct => {
+      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig);
+      this.arangods.push(oneArangod);
+      oneArangod.setFromStructure(arangodStruct);
+      if (oneArangod.isAgent()) {
+        this.agencyConfig.agencyInstances.push(oneArangod);
+      }
+    });
+    let ln = struct['leader'];
+    if (ln !== "") {
+      this.arangods.forEach(arangod => {
+        if (arangod.name === ln) {
+          this.leader = arangod;
+        }
+      });
+    }
+  }
+
+  _cleanup() {
+    this.arangods.forEach(instance => { instance.cleanup(); });
+    if (this.options.extremeVerbosity) {
+      print(CYAN + "cleaning up manager's Directory: " + this.rootDir + RESET);
+    }
+    fs.removeDirectoryRecursive(this.rootDir, true);
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief prepares all instances required for a deployment
   // /
@@ -373,7 +417,7 @@ class instanceManager {
 
   initProcessStats() {
     this.arangods.forEach((arangod) => {
-      arangod.stats = arangod.getProcessStats();
+      arangod.stats = arangod._getProcessStats();
     });
   }
 
@@ -480,9 +524,12 @@ class instanceManager {
   }
 
   _checkServersGOOD() {
+    let name = '';
     try {
+      name = "global health check";
       const health = internal.clusterHealth();
       return this.arangods.every((arangod) => {
+        name = "on node " + arangod.name;
         if (arangod.isAgent() || arangod.isRole(instanceRole.single)) {
           return true;
         }
@@ -501,7 +548,7 @@ class instanceManager {
         }
       });
     } catch(e) {
-      print("Error checking cluster health " + e);
+      print("Error checking cluster health " + name + " => " + e);
       return false;
     }
     return true;
@@ -597,7 +644,6 @@ class instanceManager {
     try {
       print(Date() + ' waiting ' + waitTime + ' for server GC');
       const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
-
       const requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
       requestOptions.method = 'POST';
       requestOptions.timeout = waitTime * 10;
@@ -830,7 +876,7 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines();
     });
-    pu.cleanupDBDirectoriesRemove(this.rootDir);
+    this.cleanup = shutdownSuccess;
     return shutdownSuccess;
   }
 
@@ -971,6 +1017,7 @@ class instanceManager {
           arangod.killWithCoreDump();
           arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
         });
+        this.cleanup = false;
         throw new Error('cluster startup timed out after 10 minutes!');
       }
     }
@@ -1009,18 +1056,6 @@ class instanceManager {
       }
     });
 
-    if ((this.options.cluster || this.options.agency) &&
-        !this.hasOwnProperty('clusterHealthMonitor') &&
-        !this.options.disableClusterMonitor) {
-      print("spawning cluster health inspector");
-      internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
-      internal.env.OPTIONS = JSON.stringify(this.options);
-      let args = pu.makeArgsArangosh(this.options);
-      args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
-      const argv = toArgv(args);
-      this.clusterHealthMonitor = executeExternal(pu.ARANGOSH_BIN, argv);
-      this.clusterHealthMonitorFile = fs.join(this.rootDir, 'stats.jsonl');
-    }
   }
   reconnect()
   {
@@ -1153,6 +1188,18 @@ class instanceManager {
     
     this.printProcessInfo(startTime);
     internal.sleep(this.options.sleepBeforeStart);
+    if ((this.options.cluster || this.options.agency) &&
+        !this.hasOwnProperty('clusterHealthMonitor') &&
+        !this.options.disableClusterMonitor) {
+      print("spawning cluster health inspector");
+      internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
+      internal.env.OPTIONS = JSON.stringify(this.options);
+      let args = pu.makeArgs.arangosh(this.options);
+      args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
+      const argv = toArgv(args);
+      this.clusterHealthMonitor = executeExternal(pu.ARANGOSH_BIN, argv);
+      this.clusterHealthMonitorFile = fs.join(this.rootDir, 'stats.jsonl');
+    }
     if (!this.options.disableClusterMonitor) {
       this.initProcessStats();
     }
