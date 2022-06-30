@@ -27,6 +27,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "Graph/ShortestPathType.h"
+#include "Graph/Enumerators/PathEnumeratorInterface.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
@@ -210,7 +211,9 @@ class KShortestPathsNode : public virtual GraphNode {
       arangodb::graph::PathValidatorOptions validatorOptions,
       const RegisterId& outputRegister, ExecutionEngine& engine,
       InputVertex sourceInput, InputVertex targetInput,
-      RegisterInfos registerInfos) const;
+      RegisterInfos registerInfos,
+      arangodb::graph::PathEnumeratorInterface::PathEnumeratorType type,
+      bool useTracing) const;
 };
 
 }  // namespace aql

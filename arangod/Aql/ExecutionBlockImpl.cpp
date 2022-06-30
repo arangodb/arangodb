@@ -687,12 +687,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-              KShortestPathsExecutor<graph::KShortestPathsFinder>,
-              KShortestPathsExecutor<KPathRefactored>,
-              KShortestPathsExecutor<KPathRefactoredTracer>,
-              KShortestPathsExecutor<KPathRefactoredCluster>,
-              KShortestPathsExecutor<KPathRefactoredClusterTracer>,
-              ParallelUnsortedGatherExecutor,
+              KShortestPathsExecutor, ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
               IdExecutor<ConstFetcher>, HashedCollectExecutor,
               AccuWindowExecutor, WindowExecutor, IndexExecutor,
@@ -2708,19 +2703,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>>;
-
-/* SingleServer */
-template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<KPathRefactored>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<KPathRefactoredTracer>>;
-/* Cluster */
-template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<KPathRefactoredCluster>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<KPathRefactoredClusterTracer>>;
+template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;

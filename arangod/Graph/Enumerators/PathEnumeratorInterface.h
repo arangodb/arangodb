@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <numeric>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -29,14 +31,33 @@ class HashedStringRef;
 }
 namespace aql {
 class TraversalStats;
+class QueryContext;
 }
 
 namespace graph {
+
+struct TwoSidedEnumeratorOptions;
+class PathValidatorOptions;
 
 class PathResultInterface;
 
 class PathEnumeratorInterface {
  public:
+  enum PathEnumeratorType {
+    K_PATH,
+    K_SHORTEST_PATH,
+    SHORTEST_PATH
+  };
+
+  template<class ProviderName>
+  static auto createEnumerator(
+      aql::QueryContext& query,
+      typename ProviderName::Options&& forwardProviderOptions,
+      typename ProviderName::Options&& backwardProviderOptions,
+      TwoSidedEnumeratorOptions enumeratorOptions,
+      PathValidatorOptions validatorOptions, PathEnumeratorType type,
+      bool useTracing) -> std::unique_ptr<PathEnumeratorInterface>;
+
   PathEnumeratorInterface() = default;
   virtual ~PathEnumeratorInterface() = default;
 

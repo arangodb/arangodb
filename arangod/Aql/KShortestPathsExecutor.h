@@ -29,7 +29,6 @@
 #include "Aql/GraphNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Graph/KShortestPathsFinder.h"
 
 #include <velocypack/Builder.h>
 
@@ -42,10 +41,7 @@ class Slice;
 }
 
 namespace graph {
-class KShortestPathsFinder;
-class ShortestPathFinder;
-class ShortestPathResult;
-class TraverserCache;
+class PathEnumeratorInterface;
 }  // namespace graph
 
 namespace aql {
@@ -56,13 +52,12 @@ class OutputAqlItemRow;
 class TraversalStats;
 class QueryContext;
 
-template<class FinderType>
 class KShortestPathsExecutorInfos {
   using InputVertex = GraphNode::InputVertex;
 
  public:
   KShortestPathsExecutorInfos(RegisterId outputRegister, QueryContext& query,
-                              std::unique_ptr<FinderType>&& finder,
+                              std::unique_ptr<graph::PathEnumeratorInterface>&& finder,
                               InputVertex&& source, InputVertex&& target);
 
   KShortestPathsExecutorInfos() = delete;
@@ -71,7 +66,7 @@ class KShortestPathsExecutorInfos {
   KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
   ~KShortestPathsExecutorInfos() = default;
 
-  [[nodiscard]] auto finder() const -> FinderType&;
+  [[nodiscard]] auto finder() const -> graph::PathEnumeratorInterface&;
 
   aql::QueryContext& query() noexcept;
 
@@ -104,8 +99,6 @@ class KShortestPathsExecutorInfos {
    */
   [[nodiscard]] auto getOutputRegister() const -> RegisterId;
 
-  [[nodiscard]] auto cache() const -> graph::TraverserCache*;
-
   [[nodiscard]] auto getSourceVertex() const noexcept -> InputVertex;
   [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
 
@@ -113,7 +106,7 @@ class KShortestPathsExecutorInfos {
   QueryContext& _query;
 
   /// @brief the shortest path finder.
-  std::unique_ptr<FinderType> _finder;
+  std::unique_ptr<graph::PathEnumeratorInterface> _finder;
 
   /// @brief Information about the source vertex
   InputVertex _source;
@@ -127,7 +120,6 @@ class KShortestPathsExecutorInfos {
 /**
  * @brief Implementation of ShortestPath Node
  */
-template<class FinderType>
 class KShortestPathsExecutor {
  public:
   struct Properties {
@@ -137,7 +129,7 @@ class KShortestPathsExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = KShortestPathsExecutorInfos<FinderType>;
+  using Infos = KShortestPathsExecutorInfos;
   using Stats = TraversalStats;
 
   using InputVertex = GraphNode::InputVertex;
@@ -190,9 +182,8 @@ class KShortestPathsExecutor {
   Infos& _infos;
   transaction::Methods _trx;
   InputAqlItemRow _inputRow;
-  ExecutionState _rowState;
   /// @brief the shortest path finder.
-  FinderType& _finder;
+  graph::PathEnumeratorInterface& _finder;
 
   /// @brief temporary memory mangement for source id
   arangodb::velocypack::Builder _sourceBuilder;

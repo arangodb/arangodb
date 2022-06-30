@@ -345,21 +345,20 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::_makeExecutionBlockImpl(
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
     PathValidatorOptions validatorOptions, const RegisterId& outputRegister,
     ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
-    RegisterInfos registerInfos) const {
-  auto kPathUnique = std::make_unique<KPathRefactored>(
-      Provider{opts->query(), std::move(forwardProviderOptions),
-               opts->query().resourceMonitor()},
-      Provider{opts->query(), std::move(backwardProviderOptions),
-               opts->query().resourceMonitor()},
-      std::move(enumeratorOptions), std::move(validatorOptions),
-      opts->query().resourceMonitor());
+    RegisterInfos registerInfos,
+    PathEnumeratorInterface::PathEnumeratorType type,
+    bool useTracing
+    ) const {
+  auto kPathUnique = PathEnumeratorInterface::createEnumerator<Provider>(
+      opts->query(), std::move(forwardProviderOptions),
+      std::move(backwardProviderOptions), std::move(enumeratorOptions),
+      std::move(validatorOptions), type, useTracing);
 
   auto executorInfos = KShortestPathsExecutorInfos(
       outputRegister, engine.getQuery(), std::move(kPathUnique),
       std::move(sourceInput), std::move(targetInput));
 
-  return std::make_unique<
-      ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
+  return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 };
 
@@ -393,83 +392,72 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   waitForSatelliteIfRequired(&engine);
 #endif
 
-  if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
-    arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
-        opts->minDepth, opts->maxDepth};
-    PathValidatorOptions validatorOptions(opts->tmpVar(),
-                                          opts->getExpressionCtx());
+  // shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths
+  arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
+                                                               opts->maxDepth};
+  if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KShortestPaths) {
+    // K_SHORTEST is like K_PATH just without min and max depth.
+    // It may be orederd by WEIGHT
+    // TODO HANDLE WEIGHT!
+    TRI_ASSERT(enumeratorOptions.getMinDepth() == 0);
+    TRI_ASSERT(enumeratorOptions.getMaxDepth() == std::numeric_limits<uint64_t>::max());
+  }
 
-    if (!ServerState::instance()->isCoordinator()) {
-      // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
-      // be changed in the future) create BaseProviderOptions
+  PathValidatorOptions validatorOptions(opts->tmpVar(),
+                                        opts->getExpressionCtx());
+  auto useTracing = opts->query().queryOptions().getTraversalProfileLevel() ==
+                    TraversalProfileLevel::None;
+  if (!ServerState::instance()->isCoordinator()) {
+    // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
+    // be changed in the future) create BaseProviderOptions
 
-      std::pair<std::vector<IndexAccessor>,
-                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-          usedIndexes{};
-      usedIndexes.first = buildUsedIndexes();
+    std::pair<std::vector<IndexAccessor>,
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+        usedIndexes{};
+    usedIndexes.first = buildUsedIndexes();
 
-      std::pair<std::vector<IndexAccessor>,
-                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-          reversedUsedIndexes{};
-      reversedUsedIndexes.first = buildReverseUsedIndexes();
+    std::pair<std::vector<IndexAccessor>,
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+        reversedUsedIndexes{};
+    reversedUsedIndexes.first = buildReverseUsedIndexes();
 
-      // TODO [GraphRefactor]: Clean this up (de-dupllicate with
-      // SmartGraphEngine)
-      SingleServerBaseProviderOptions forwardProviderOptions(
-          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
-          opts->collectionToShard(), opts->getVertexProjections(),
-          opts->getEdgeProjections());
+    // TODO [GraphRefactor]: Clean this up (de-dupllicate with
+    // SmartGraphEngine)
+    SingleServerBaseProviderOptions forwardProviderOptions(
+        opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
+        opts->collectionToShard(), opts->getVertexProjections(),
+        opts->getEdgeProjections());
 
-      SingleServerBaseProviderOptions backwardProviderOptions(
-          opts->tmpVar(), std::move(reversedUsedIndexes),
-          opts->getExpressionCtx(), {}, opts->collectionToShard(),
-          opts->getVertexProjections(), opts->getEdgeProjections());
+    SingleServerBaseProviderOptions backwardProviderOptions(
+        opts->tmpVar(), std::move(reversedUsedIndexes),
+        opts->getExpressionCtx(), {}, opts->collectionToShard(),
+        opts->getVertexProjections(), opts->getEdgeProjections());
 
-      if (opts->query().queryOptions().getTraversalProfileLevel() ==
-          TraversalProfileLevel::None) {
-        return _makeExecutionBlockImpl<
-            KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>,
-            SingleServerProvider<SingleServerProviderStep>,
-            SingleServerBaseProviderOptions>(
-            opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
-            registerInfos);
-      } else {
-        return _makeExecutionBlockImpl<
-            TracedKPathEnumerator<
-                SingleServerProvider<SingleServerProviderStep>>,
-            ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-            SingleServerBaseProviderOptions>(
-            opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
-            registerInfos);
-      }
-    } else {
-      auto cache = std::make_shared<RefactoredClusterTraverserCache>(
-          opts->query().resourceMonitor());
-      ClusterBaseProviderOptions forwardProviderOptions(
-          cache, engines(), false, opts->produceVertices());
-      ClusterBaseProviderOptions backwardProviderOptions(
-          cache, engines(), true, opts->produceVertices());
-
-      return _makeExecutionBlockImpl<
-          KPathEnumerator<ClusterProvider<ClusterProviderStep>>,
-          ClusterProvider<ClusterProviderStep>, ClusterBaseProviderOptions>(
-          opts, std::move(forwardProviderOptions),
-          std::move(backwardProviderOptions), enumeratorOptions,
-          validatorOptions, outputRegister, engine, sourceInput, targetInput,
-          registerInfos);
-    }
+    return _makeExecutionBlockImpl<
+        KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>,
+        SingleServerProvider<SingleServerProviderStep>,
+        SingleServerBaseProviderOptions>(
+        opts, std::move(forwardProviderOptions),
+        std::move(backwardProviderOptions), enumeratorOptions, validatorOptions,
+        outputRegister, engine, sourceInput, targetInput, registerInfos,
+        arangodb::graph::PathEnumeratorInterface::PathEnumeratorType::K_PATH,
+        useTracing);
   } else {
-    auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
-    auto executorInfos = KShortestPathsExecutorInfos(
-        outputRegister, engine.getQuery(), std::move(finder),
-        std::move(sourceInput), std::move(targetInput));
-    return std::make_unique<ExecutionBlockImpl<
-        KShortestPathsExecutor<graph::KShortestPathsFinder>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
+    auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+        opts->query().resourceMonitor());
+    ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
+                                                      opts->produceVertices());
+    ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
+                                                       opts->produceVertices());
+
+    return _makeExecutionBlockImpl<
+        KPathEnumerator<ClusterProvider<ClusterProviderStep>>,
+        ClusterProvider<ClusterProviderStep>, ClusterBaseProviderOptions>(
+        opts, std::move(forwardProviderOptions),
+        std::move(backwardProviderOptions), enumeratorOptions, validatorOptions,
+        outputRegister, engine, sourceInput, targetInput, registerInfos,
+        arangodb::graph::PathEnumeratorInterface::PathEnumeratorType::K_PATH,
+        useTracing);
   }
 }
 

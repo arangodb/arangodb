@@ -221,6 +221,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Cache/RefactoredClusterTraverserCache.cpp
   Graph/Enumerators/OneSidedEnumerator.cpp
   Graph/Enumerators/OneSidedEnumeratorInterface.cpp
+  Graph/Enumerators/PathEnumeratorInterface.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/Helpers/TraceEntry.cpp
   Graph/Queues/QueueTracer.cpp
