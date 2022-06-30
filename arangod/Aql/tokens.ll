@@ -15,7 +15,9 @@
 %top{
 /* clang-format off */
 
-#include <stdint.h>
+#include <cstdint>
+#include <charconv>
+
 #if (_MSC_VER >= 1)
 // fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
 #pragma warning( disable : 4267)
@@ -126,6 +128,10 @@ class Parser;
   return T_DESC;
 }
 
+(?i:NOT[ \t\r\n]+IN) {
+  return T_NOT_IN;
+}
+
 (?i:NOT) {
   return T_NOT;
 }
@@ -206,6 +212,10 @@ class Parser;
   return T_NONE;
 }
 
+(?i:AT[ \t\r\n]+LEAST) {
+  return T_AT_LEAST;
+}
+
 (?i:LIKE) {
   return T_LIKE;
 }
@@ -264,6 +274,10 @@ class Parser;
 
 "=" {
   return T_ASSIGN;
+}
+
+(?i:![ \t\r\n]*IN) {
+  return T_NOT_IN;
 }
 
 "!" {
@@ -503,14 +517,14 @@ class Parser;
   if (valid) {
     node = parser->ast()->createNodeValueInt(value1);
   } else {
-    // TODO: use std::from_chars
-    double value2 = TRI_DoubleString(yytext);
-
-    if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+    double value2 = 0;
+    std::from_chars_result r = std::from_chars(yytext, yytext + yyleng, value2);
+    if (r.ec == std::errc()) {
+      // no error
+      node = parser->ast()->createNodeValueDouble(value2);
+    } else {
       parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
       node = parser->ast()->createNodeValueNull();
-    } else {
-      node = parser->ast()->createNodeValueDouble(value2);
     }
   }
 
@@ -596,14 +610,14 @@ class Parser;
 
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
-  // TODO: use std::from_chars
-  double value = TRI_DoubleString(yytext);
-
-  if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+  double value = 0;
+  std::from_chars_result r = std::from_chars(yytext, yytext + yyleng, value);
+  if (r.ec == std::errc()) {
+    // no error
+    node = parser->ast()->createNodeValueDouble(value);
+  } else {
     parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
     node = parser->ast()->createNodeValueNull();
-  } else {
-    node = parser->ast()->createNodeValueDouble(value);
   }
 
   yylval->node = node;
