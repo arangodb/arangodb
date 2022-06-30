@@ -685,10 +685,9 @@
 
       searchInput = $('#graphManagementSearchInput');
       searchString = arangoHelper.escapeHtml($('#graphManagementSearchInput').val());
-      const searchStringLower = arangoHelper.escapeHtml(searchString).toLowerCase();
       reducedCollection = this.collection.filter(
         function (u) {
-          return u.get('_key').toLowerCase().indexOf(searchStringLower) !== -1;
+          return u.get('_key').toLowerCase().indexOf(searchString.toLowerCase()) !== -1;
         }
       );
       $(this.el).html(this.template.render({
