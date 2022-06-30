@@ -124,9 +124,6 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
       if (hasFlag(arangodb::options::Flags::Experimental)) {
         value += " (experimental)";
       }
-      if (hasFlag(arangodb::options::Flags::Immutable)) {
-        value += " (immutable)";
-      }
       std::string description = parameter->description();
       if (!description.empty()) {
         value.append(". ");

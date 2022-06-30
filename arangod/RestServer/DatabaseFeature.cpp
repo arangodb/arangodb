@@ -494,12 +494,12 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--database.extended-names-databases",
-                  "allow extended characters in database names",
+                  "Allow most UTF-8 characters in database names. Once in use, "
+                  "this option cannot be turned off again.",
                   new BooleanParameter(&_extendedNamesForDatabases),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Experimental,
-                      arangodb::options::Flags::Immutable))
+                      arangodb::options::Flags::Experimental))
       .setIntroducedIn(30900);
 
   options

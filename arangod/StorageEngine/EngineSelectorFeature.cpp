@@ -77,14 +77,12 @@ EngineSelectorFeature::EngineSelectorFeature(Server& server)
 
 void EngineSelectorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.storage-engine",
-      "storage engine type "
-      "(note that the mmfiles engine is unavailable since "
-      "v3.7.0 and cannot be used anymore)",
-      new DiscreteValuesParameter<StringParameter>(&_engineName,
-                                                   availableEngineNames()),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Immutable));
+  options->addOption("--server.storage-engine",
+                     "storage engine type "
+                     "(note that the mmfiles engine is unavailable since "
+                     "v3.7.0 and cannot be used anymore)",
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_engineName, availableEngineNames()));
 }
 
 void EngineSelectorFeature::prepare() {
