@@ -1,6 +1,8 @@
 devel
 -----
 
+* Make graph search case-insensitive (fixes BTS-882).
+
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
   read-only APIs. This header has already been used for active failover
