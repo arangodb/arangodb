@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertEqual, assertNotEqual, require*/
+/* global assertTrue, assertEqual, assertNotEqual, require, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -52,7 +52,6 @@ function KeyGeneratorSuite() {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
-    //print(res)
     return res;
   }
 
@@ -132,7 +131,6 @@ function KeyGeneratorSuite() {
           let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
           assertEqual(result.code, 202);
           let key = result.parsedBody._key;
-          print(key)
           assertTrue(key > lastKey || lastKey === null, {key, lastKey});
           lastKey = key;
         }
