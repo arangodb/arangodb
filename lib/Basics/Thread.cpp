@@ -55,28 +55,38 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
 /// @brief local thread number
-static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
-static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
 #ifndef _WIN32
 namespace {
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
 }
 #endif
+struct ThreadNumber {
+  ThreadNumber()
+      :
+#ifdef _WIN32
+        value((uint64_t)GetCurrentThreadId())
+#else
+        value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst))
+#endif
+  {
+  }
+  uint64_t get() const noexcept { return value; }
+
+ private:
+  uint64_t value;
+};
+
+static thread_local ThreadNumber LOCAL_THREAD_NUMBER;
+static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
 /// @brief static started with access to the private variables
 void Thread::startThread(void* arg) {
-#ifdef _WIN32
-  LOCAL_THREAD_NUMBER = (uint64_t)GetCurrentThreadId();
-#else
-  LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
-#endif
-
   TRI_ASSERT(arg != nullptr);
   Thread* ptr = static_cast<Thread*>(arg);
   TRI_ASSERT(ptr != nullptr);
 
-  ptr->_threadNumber = LOCAL_THREAD_NUMBER;
+  ptr->_threadNumber = LOCAL_THREAD_NUMBER.get();
 
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
@@ -115,7 +125,7 @@ TRI_pid_t Thread::currentProcessId() {
 }
 
 /// @brief returns the thread process id
-uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
+uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER.get(); }
 
 /// @brief returns the name of the current thread, if set
 /// note that this function may return a nullptr
