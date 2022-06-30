@@ -52,11 +52,8 @@ const loadGraphGenerators = function (isSmart) {
     };
 };
 
-// TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
-// TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
-const pregelRunSmallInstance = function (algName, graphName, parameters) {
-    const pid = pregel.start(algName, graphName, parameters);
-    const maxWaitTimeSecs = 120;
+const runPregelInstance = function (algName, graphName, parameters, query, maxWaitTimeSecs = 120) {
+    const pid = pregel.start("wcc", graphName, parameters);
     const sleepIntervalSecs = 0.2;
     let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
     while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
@@ -65,15 +62,18 @@ const pregelRunSmallInstance = function (algName, graphName, parameters) {
     }
     const statusState = pregel.status(pid).state;
     assertEqual(statusState, "done", `Pregel Job did never succeed. Status: ${statusState}`);
+    return db._query(query).toArray();
+};
 
-    // Now test the result.
+// intended to algName = "wcc" or "scc" (or similar)
+const pregelRunSmallInstanceGetComponents = function (algName, graphName, parameters) {
     const query = `
         FOR v IN ${vColl}
           COLLECT component = v.result WITH COUNT INTO size
           SORT size DESC
           RETURN {component, size}
       `;
-    return db._query(query).toArray();
+    return runPregelInstance(algName, graphName, parameters, query);
 };
 
 const graphName = "UnitTest_pregel";
@@ -141,7 +141,7 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
     }
 
     // Get the result of Pregel's WCC.
-    const computedComponents = pregelRunSmallInstance(algorithmName, graphName, {resultField: "result", store: true});
+    const computedComponents = pregelRunSmallInstanceGetComponents(algorithmName, graphName, {resultField: "result", store: true});
     assertEqual(computedComponents.length, componentGenerators.length,
         `We expected ${componentGenerators.length} components, instead got ${JSON.stringify(computedComponents)}`);
 
@@ -257,7 +257,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
                 assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
             },
@@ -270,7 +270,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const edges = [];
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
                 assertEqual(computedComponents.length, 2,
                     `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1);
@@ -286,7 +286,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
@@ -302,7 +302,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
@@ -317,7 +317,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true})
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true})
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
@@ -339,7 +339,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(resultC.vertices);
                 db[eColl].save(resultC.edges);
 
-                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
                 assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
@@ -366,7 +366,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const connectingEdge = makeEdgeBetweenVertices(vColl, "0", "c0", "0", "c1");
                 db[eColl].save([connectingEdge]);
 
-                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, size0 + size1);
             },
@@ -462,7 +462,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
             },
@@ -475,7 +475,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const edges = [];
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1);
                 assertEqual(computedComponents[1].size, 1);
@@ -489,7 +489,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const edges = [makeEdgesBetweenVertices(vColl, 0, "v0", 0, "v1")];
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1);
                 assertEqual(computedComponents[1].size, 1);
@@ -501,7 +501,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 assertEqual(computedComponents.length, length,
                     `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
                 for (const component of computedComponents) {
@@ -515,7 +515,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 assertEqual(computedComponents.length, 1,
                     `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, length);
@@ -527,7 +527,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 assertEqual(computedComponents.length, length,
                     `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
                 for (const component of computedComponents) {
@@ -542,7 +542,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 // number of vertices in a full binary tree
                 const numVertices = Math.pow(2, depth + 1) - 1;
                 assertEqual(computedComponents.length, numVertices,
@@ -561,7 +561,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 // number of vertices in a full binary tree
                 const numVertices = Math.pow(2, depth + 1) - 1;
                 assertEqual(computedComponents.length, numVertices,
@@ -579,7 +579,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 // number of vertices in a full binary tree
                 const numVertices = Math.pow(2, depth + 1) - 1;
                 assertEqual(computedComponents.length, numVertices,
@@ -603,7 +603,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(resultC.vertices);
                 db[eColl].save(resultC.edges);
 
-                const computedComponents = pregelRunSmallInstance("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
                 assertEqual(computedComponents.length, Math.pow(2, depth + 1) - 1 + length,
                     `We expected ${Math.pow(2, depth + 1) - 1 + length} components, instead got ${JSON.stringify(computedComponents)}`);
 
@@ -614,6 +614,90 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
         };
     };
 }
+
+function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
+
+    const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+    const makeEdgesBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
+
+    return function () {
+        'use strict';
+
+        return {
+
+            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+
+            tearDown: makeTearDown(isSmart),
+
+            testSCCOneDirectedCycle: function () {
+                const length = 3;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeDirectedCycle(length);
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+                const query = `
+                  FOR v in ${vColl}
+                  RETURN {"key": v._key, "community": v.community}  
+              `;
+                const result = runPregelInstance("labelpropagation", graphName,
+                    {maxGSS: 100, resultField: "community"}, query);
+                assertEqual(result.length, length);
+                for (const value of result) {
+                    assertEqual(value.community, 0);
+                }
+            },
+
+            testSCCTwoDisjointDirectedCycles: function () {
+                const length = 3;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+                const verticesEdges = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
+                db[vColl].save(verticesEdges.vertices);
+                db[eColl].save(verticesEdges.edges);
+
+                const query = `
+                  FOR v in ${vColl}
+                  COLLECT community = v.community WITH COUNT INTO size
+                  SORT size DESC
+                  RETURN {community, size}
+              `;
+                const result = runPregelInstance("labelpropagation", graphName,
+                    {maxGSS: 100, resultField: "community"}, query);
+                assertEqual(result.length, 2);
+                assertEqual(result[0].size, length);
+                assertEqual(result[1].size, length);
+            },
+
+            testSCCTwoDirectedCyclesConnectedByDirectedEdge: function () {
+                const size = 5;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(size);
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+                const verticesEdges = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(size);
+                db[vColl].save(verticesEdges.vertices);
+                db[eColl].save(verticesEdges.edges);
+
+                db[eColl].save({
+                    _from: `${vColl}/v0_0`,
+                    _to: `${vColl}/v1_0`,
+                    vertex: `v0_0`
+                });
+
+                const query = `
+                  FOR v in ${vColl}
+                  RETURN v.community
+              `;
+                const result = runPregelInstance("labelpropagation", graphName,
+                    {maxGSS: 100, resultField: "community"}, query);
+                console.warn(result);
+                assertEqual(result.length, 2);
+                assertEqual(result[0].size, size);
+                assertEqual(result[1].size, size);
+            }
+        };
+    };
+}
+
 
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
