@@ -292,7 +292,7 @@ inline bool inArrayInverted(
     std::string& buffer,
     arangodb::iresearch::InvertedIndexField const*& context,
     arangodb::iresearch::IteratorValue const& value) {
-  if (context->trackListPositions()) {
+  if (context->_trackListPositions) {
     buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
     append(buffer, value.pos);
     buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
@@ -346,12 +346,12 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
     // always monitor on root level plain fields to track completely missing hierarchies
     // trackListPositions enabled arrays are excluded as we could never predict if array[12345] will exist
     // so we do not emit such "nulls". It is not supported in general indexes anyway
-    if ((!field._trackListPositions || field.expansion().empty()) && f._fields.empty()) {
+    if ((!field._trackListPositions || !field._hasExpansion) && f._fields.empty()) {
       std::cout << "ROOT LEVEL:" << f.path() << std::endl;
       map[""].emplace(f.path());
     }
     // but fo individual objects in array we always could track expected fields and emit "nulls"
-    if (!f.expansion().empty()) {
+    if (f._hasExpansion) {
       TRI_ASSERT(f._fields.empty());
       // monitor array subobjects
       std::cout << "ARRAY:" << f.attributeString() << " Expect:" << f.path() << std::endl;

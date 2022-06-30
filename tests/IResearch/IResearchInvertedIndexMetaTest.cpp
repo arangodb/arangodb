@@ -733,14 +733,14 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
 
   ASSERT_EQ(0, meta._analyzerDefinitions.size());
-  ASSERT_TRUE(meta._fields._fields.empty());
+  ASSERT_TRUE(meta._fields.empty());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
   ASSERT_EQ(Consistency::kEventual, meta._consistency);
   ASSERT_TRUE(meta._defaultAnalyzerName.empty());
-  ASSERT_FALSE(meta._features);
-  ASSERT_FALSE(meta._fields._trackListPositions);
-  ASSERT_FALSE(meta._fields._includeAllFields);
+  ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+  ASSERT_FALSE(meta._trackListPositions);
+  ASSERT_FALSE(meta._includeAllFields);
 
   ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
             meta._sort.sortCompression());
@@ -819,8 +819,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
                           irs::string_ref::NIL));
     ASSERT_TRUE(errorString.empty());
     ASSERT_EQ(0, meta._analyzerDefinitions.size());
-    ASSERT_EQ(1, meta._fields._fields.size());
-    ASSERT_EQ("dummy", meta._fields._fields.front().toString());
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
@@ -831,7 +831,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
               meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_TRUE(meta._defaultAnalyzerName.empty());
-    ASSERT_FALSE(meta._features);
+    ASSERT_EQ(meta._features, arangodb::iresearch::Features());
   }
   // with active vocbase
   {
@@ -843,8 +843,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
                           irs::string_ref(vocbase.name())));
     ASSERT_TRUE(errorString.empty());
     ASSERT_EQ(0, meta._analyzerDefinitions.size());
-    ASSERT_EQ(1, meta._fields._fields.size());
-    ASSERT_EQ("dummy", meta._fields._fields.front().toString());
+    ASSERT_EQ(1, meta._fields.size());
+    ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
@@ -855,7 +855,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
               meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_TRUE(meta._defaultAnalyzerName.empty());
-    ASSERT_FALSE(meta._features);
+    ASSERT_EQ(meta._features, arangodb::iresearch::Features());
   }
 }
 
@@ -898,7 +898,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
             meta._analyzerDefinitions.end());
   ASSERT_NE(meta._analyzerDefinitions.find("identity"),
             meta._analyzerDefinitions.end());
-  ASSERT_EQ(6, meta._fields._fields.size());
+  ASSERT_EQ(6, meta._fields.size());
   ASSERT_FALSE(meta._sort.empty());
   ASSERT_FALSE(meta._storedValues.empty());
   ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
@@ -907,7 +907,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
             static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN));
   ASSERT_EQ(meta._consistency, Consistency::kImmediate);
   ASSERT_TRUE(meta._defaultAnalyzerName.empty());
-  ASSERT_FALSE(meta._features);
+  ASSERT_EQ(meta._features, arangodb::iresearch::Features());
 
   VPackBuilder serialized;
   {
