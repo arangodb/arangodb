@@ -1,6 +1,12 @@
 devel
 -----
 
+* Optimization for index post-filtering (early pruning): in case an index
+  is used for lookups, and the index covers the IndexNode's post-filter
+  condition, then loading the full document from the storage engine is
+  now deferred until the filter condition is evaluated and it is established
+  that the document matches the filter condition.
+
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
   read-only APIs. This header has already been used for active failover
