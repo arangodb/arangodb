@@ -382,7 +382,6 @@ auto TwoSidedEnumerator<Configuration>::getNextPath_New() -> PathResultInterface
     searchMoreResults();
 
     while (!_results.empty()) {
-      LOG_DEVEL << "Preparing Result";
       auto const& [leftVertex, rightVertex] = _results.back();
 
       // Performance Optimization:
