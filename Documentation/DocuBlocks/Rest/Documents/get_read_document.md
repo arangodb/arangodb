@@ -24,6 +24,23 @@ If the "If-Match" header is given, then it must contain exactly one
 Etag. The document is returned, if it has the same revision as the
 given Etag. Otherwise a *HTTP 412* is returned.
 
+@RESTHEADERPARAM{x-arango-allow-dirty-read,string,optional}
+If the "x-arango-allow-dirty-read" header is given, then it must contain
+the value `true`. This will allow the coordinator to ask any shard
+replica for the data and not just the leader. However, this may then
+produce "dirty reads", see
+[Dirty Reads](./document-address-and-etag.html#dirty-reads)
+for details. Note that if this operation is part of a read-only streaming
+transaction (see "x-arango-trx-id" header below), then it is the
+transaction creation operation that decides about dirty reads, and not
+this header for the individual read operation.
+
+@RESTHEADERPARAM{x-arango-trx-id,string,optional}
+If the operation shall be part of a streaming transaction (see
+[Streaming Transactions](./transaction-stream-transaction.html) for
+details), then the "x-arango-trx-id" header must be set to the
+transaction id.
+
 @RESTDESCRIPTION
 Returns the document identified by *document-id*. The returned
 document contains three special attributes: *_id* containing the document

@@ -17,6 +17,14 @@ The id of the start vertex.
 Selects *in* or *out* direction for edges. If not set, any edges are
 returned.
 
+@RESTHEADERPARAM{x-arango-allow-dirty-read,string,optional}
+If the "x-arango-allow-dirty-read" header is given, then it must contain
+the value `true`. This will allow the coordinator to ask any shard
+replica for the data and not just the leader. However, this may then
+produce "dirty reads", see
+[Dirty Reads](./document-address-and-etag.html#dirty-reads)
+for details.
+
 @RESTDESCRIPTION
 Returns an array of edges starting or ending in the vertex identified by
 *vertex*.

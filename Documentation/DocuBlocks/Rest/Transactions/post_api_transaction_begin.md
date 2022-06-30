@@ -2,6 +2,16 @@
 @startDocuBlock post_api_transaction_begin
 @brief begin a server-side transaction
 
+@RESTHEADERPARAM{x-arango-allow-dirty-read,string,optional}
+If the "x-arango-allow-dirty-read" header is given, then it must contain
+the value `true`. This will allow the coordinator to ask any shard
+replica for the data and not just the leader. However, this may then
+produce "dirty reads", see
+[Dirty Reads](./document-address-and-etag.html#dirty-reads)
+for details. Note that if this header is set in this begin transaction
+operation, then this counts for the whole transaction and dirty read
+headers in individual operations do no longer matter!
+
 @RESTHEADER{POST /_api/transaction/begin, Begin transaction, executeBegin}
 
 @RESTBODYPARAM{collections,string,required,string}

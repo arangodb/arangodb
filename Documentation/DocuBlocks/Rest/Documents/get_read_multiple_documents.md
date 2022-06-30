@@ -21,6 +21,23 @@ If a search document contains a value for the *_rev* field,
 then the document is only returned if it has the same revision value.
 Otherwise a precondition failed error is returned.
 
+@RESTHEADERPARAM{x-arango-allow-dirty-read,string,optional}
+If the "x-arango-allow-dirty-read" header is given, then it must contain
+the value `true`. This will allow the coordinator to ask any shard
+replica for the data and not just the leader. However, this may then
+produce "dirty reads", see
+[Dirty Reads](./document-address-and-etag.html#dirty-reads)
+for details. Note that if this operation is part of a read-only streaming
+transaction (see "x-arango-trx-id" header below), then it is the
+transaction creation operation that decides about dirty reads, and not
+this header for the individual read operation.
+
+@RESTHEADERPARAM{x-arango-trx-id,string,optional}
+If the operation shall be part of a streaming transaction (see
+[Streaming Transactions](./transaction-stream-transaction.html) for
+details), then the "x-arango-trx-id" header must be set to the
+transaction id.
+
 @RESTDESCRIPTION
 Returns the documents identified by their *_key* in the body objects.
 The body of the request _must_ contain a JSON array of either
