@@ -42,27 +42,17 @@ function KeyGeneratorSuite() {
   const cn = 'UnitTestsCollection';
   let coordinators = [];
 
-  function sendRequest(method, endpoint, body, headers, usePrimary) {
+  function sendRequest(method, db, endpoint, body, headers, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
-      arango.reconnect(`${coordinators[i]}`, '_system', '', '');
-      const envelope = {
-        json: true,
-        method,
-        url: `${coordinators[i]}${endpoint}`,
-        headers,
-      };
-      if (method !== 'GET') {
-        envelope.body = body;
-      }
-      //res = request(envelope);
+      arango.reconnect(`${coordinators[i]}`, db, '', '');
       res = arango[method](endpoint, body, headers);
     } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
-    print(res)
+    //print(res)
     return res;
   }
 
@@ -84,7 +74,7 @@ function KeyGeneratorSuite() {
     assertNotEqual("", db[name].properties().distributeShardsLike);
 
     for (let i = 0; i < 10000; ++i) {
-      let result = sendRequest('POST_RAW', url, /*payload*/ {}, {}, i % 2 === 0);
+      let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
       assertEqual(result.code, 202);
       let key = result.parsedBody._key;
       assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
@@ -110,7 +100,7 @@ function KeyGeneratorSuite() {
         let url = "/_api/document/" + cn;
         // send documents to both coordinators
         for (let i = 0; i < 10000; ++i) {
-          let result = sendRequest('POST_RAW', url, /*payload*/ {}, {}, i % 2 === 0);
+          let result = sendRequest('POST_RAW', '_system', url, /*payload*/ {}, {}, i % 2 === 0);
           assertEqual(result.code, 202);
           let key = result.parsedBody._key;
           assertTrue(key > lastKey || lastKey === null, {key, lastKey});
@@ -139,9 +129,10 @@ function KeyGeneratorSuite() {
         let url = "/_db/" + cn + "/_api/document/" + cn;
         // send documents to both coordinators
         for (let i = 0; i < 10000; ++i) {
-          let result = sendRequest('POST_RAW', url, /*payload*/ {}, {}, i % 2 === 0);
+          let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
           assertEqual(result.code, 202);
           let key = result.parsedBody._key;
+          print(key)
           assertTrue(key > lastKey || lastKey === null, {key, lastKey});
           lastKey = key;
         }
