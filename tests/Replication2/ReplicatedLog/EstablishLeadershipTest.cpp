@@ -22,8 +22,8 @@
 
 #include "TestHelper.h"
 
-#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -118,7 +118,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{4}, "leader");
 
-  auto config = agency::LogPlanConfig{2, 2, false};
+  auto config = agency::LogPlanConfig{2, false};
   auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{
       {"leader", {}}, {"follower", {.allowedInQuorum = false}}};
   auto participantsConfig = std::make_shared<agency::ParticipantsConfig>(

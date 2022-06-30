@@ -38,6 +38,7 @@
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
