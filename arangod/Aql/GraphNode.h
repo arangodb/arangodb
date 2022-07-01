@@ -42,6 +42,9 @@ namespace arangodb {
 
 namespace graph {
 struct BaseOptions;
+struct ClusterBaseProviderOptions;
+struct IndexAccessor;
+struct SingleServerBaseProviderOptions;
 class Graph;
 }  // namespace graph
 
@@ -218,6 +221,19 @@ class GraphNode : public ExecutionNode {
 
   void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone,
                         bool withProperties) const;
+
+  graph::ClusterBaseProviderOptions getClusterProviderOptions(
+      std::vector<std::pair<Variable const*, RegisterId>> const&
+          filterConditionVariables,
+      std::unordered_set<uint64_t> availableDepthsSpecificConditions,
+      bool reverse) const;
+
+  graph::SingleServerBaseProviderOptions getSingleServerProviderOptions(
+      std::pair<std::vector<graph::IndexAccessor>,
+                std::unordered_map<uint64_t, std::vector<graph::IndexAccessor>>>
+          usedIndexes,
+      std::vector<std::pair<Variable const*, RegisterId>> const&
+          filterConditionVariables) const;
 
  private:
   void addEdgeCollection(aql::Collections const& collections,
