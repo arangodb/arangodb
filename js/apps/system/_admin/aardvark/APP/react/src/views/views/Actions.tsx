@@ -1,14 +1,11 @@
-import React, { useState, MouseEventHandler } from "react";
-import Modal, {
-  ModalBody,
-  ModalFooter,
-  ModalHeader
-} from "../../components/modal/Modal";
+import React, { useState } from "react";
+import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormState } from "./constants";
 import { pick } from "lodash";
 import { IconButton } from "../../components/arango/buttons";
 import { mutate } from "swr";
+import { useHistory, useLocation } from "react-router-dom";
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: { [key: string]: any };
@@ -17,52 +14,34 @@ type ButtonProps = {
   view: FormState;
 };
 
-type SaveButtonProps = ButtonProps & {
-  oldName: string;
-  menu?: string;
-};
-
-type BackButtonProps = {
-  buttonClick: MouseEventHandler<HTMLElement>;
+type NavButtonProps = {
   disabled?: boolean;
+  arrow?: string;
+  text?: string;
 };
 
-type JsonButtonProps = {
-  buttonClick: MouseEventHandler<HTMLElement>;
-  buttonName: string;
-  icon: string;
+export const NavButton = ({ disabled, arrow = 'up', text = 'Up' }: NavButtonProps) => {
+  const history = useHistory();
+  const location = useLocation();
+
+  const up = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
+
+  return <IconButton icon={`arrow-${arrow}`} onClick={() => history.push(up)} type={"default"}
+                     disabled={disabled}>{text}</IconButton>;
 };
 
-export const BackButton = ({ buttonClick, disabled }: BackButtonProps) => {
-  return (
-    <IconButton
-      icon={"arrow-left"}
-      onClick={buttonClick}
-      type={"default"}
-      disabled={disabled}
-    >
-      Back
-    </IconButton>
-  );
-};
-
-export const JsonButton = ({
-  buttonClick,
-  buttonName,
-  icon
-}: JsonButtonProps) => {
-  return (
-    <IconButton icon={icon} onClick={buttonClick} type={"success"}>
-      {buttonName}
-    </IconButton>
-  );
+type SaveButtonProps = ButtonProps & {
+  oldName?: string;
+  menu?: string;
+  setChanged: (changed: boolean) => void;
 };
 
 export const SaveButton = ({
-  view,
-  oldName,
-  menu = "settings"
-}: SaveButtonProps) => {
+                             view,
+                             oldName,
+                             menu,
+                             setChanged
+                           }: SaveButtonProps) => {
   const handleSave = async () => {
     const route = getApiRouteForCurrentDB();
     let result;
@@ -70,7 +49,7 @@ export const SaveButton = ({
     const path = `/view/${view.name}/properties`;
 
     try {
-      if (view.name !== oldName) {
+      if (oldName && view.name !== oldName) {
         result = await route.put(`/view/${oldName}/rename`, {
           name: view.name
         });
@@ -85,6 +64,10 @@ export const SaveButton = ({
       }
 
       if (!error) {
+        arangoHelper.arangoMessage(
+          "Saving",
+          `Please wait while the view is being saved. This could take some time for large views.`
+        );
         const properties = pick(
           view,
           "consolidationIntervalMsec",
@@ -94,6 +77,7 @@ export const SaveButton = ({
           "consolidationPolicy"
         );
         result = await route.patch(path, properties);
+        arangoHelper.hideArangoNotifications();
 
         if (result.body.error) {
           arangoHelper.arangoError(
@@ -101,12 +85,23 @@ export const SaveButton = ({
             `Got unexpected server response: ${result.body.errorMessage}`
           );
         } else {
-          if (view.name !== oldName) {
-            window.App.navigate(`#view/${view.name}/${menu}`, {
-              trigger: true
+          window.sessionStorage.removeItem(oldName);
+          window.sessionStorage.removeItem(`${oldName}-changed`);
+          setChanged(false);
+
+          if (view.name === oldName) {
+            await mutate(path);
+          } else {
+            let newRoute = `#view/${view.name}`;
+            if (menu) {
+              newRoute += `/${menu}`;
+            }
+            window.App.navigate(newRoute, {
+              trigger: true,
+              replace: true
             });
           }
-          await mutate(path);
+
           arangoHelper.arangoNotification(
             "Success",
             `Updated View: ${view.name}`
@@ -121,11 +116,15 @@ export const SaveButton = ({
     }
   };
 
-  return (
-    <IconButton icon={"save"} onClick={handleSave} type={"success"}>
-      Save
-    </IconButton>
-  );
+
+  return <IconButton icon={"save"} onClick={handleSave} type={"success"} style={{
+    marginTop: 10,
+    marginBottom: 10,
+    marginRight: 10,
+    float: 'right'
+  }}>
+    Save View
+  </IconButton>;
 };
 
 export const DeleteButton = ({ view }: ButtonProps) => {
@@ -163,6 +162,12 @@ export const DeleteButton = ({ view }: ButtonProps) => {
         icon={"trash-o"}
         onClick={() => setShow(true)}
         type={"danger"}
+        style={{
+          marginTop: 10,
+          marginBottom: 10,
+          marginRight: 10,
+          float: 'right'
+        }}
       >
         Delete
       </IconButton>
@@ -171,7 +176,7 @@ export const DeleteButton = ({ view }: ButtonProps) => {
         setShow={setShow}
         cid={`modal-content-delete-${view.name}`}
       >
-        <ModalHeader title={`Delete View ${view.name}?`} />
+        <ModalHeader title={`Delete View ${view.name}?`}/>
         <ModalBody>
           <p>
             Are you sure? Clicking on the <b>Delete</b> button will permanently

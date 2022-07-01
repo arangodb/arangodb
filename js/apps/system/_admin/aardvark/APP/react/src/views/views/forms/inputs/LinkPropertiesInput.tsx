@@ -1,51 +1,32 @@
 import { FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
-import React, {
-  ChangeEvent,
-  useContext,
-  useEffect,
-  useMemo,
-  useState
-} from "react";
-import { chain, isEmpty, without } from "lodash";
+import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { chain, get, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
-import { ArangoTable, ArangoTD } from "../../../../components/arango/table";
-import Textbox from "../../../../components/pure-css/form/Textbox";
-import { IconButton } from "../../../../components/arango/buttons";
-import { useLinkState } from "../../helpers";
-import Fieldset from "../../../../components/pure-css/form/Fieldset";
 import { getBooleanFieldSetter } from "../../../../utils/helpers";
 import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCompleteMultiSelect";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import FieldList from "../../Components/FieldList";
-import { ViewContext } from "../../ViewLinksReactView";
+import ToolTip from "../../../../components/arango/tootip";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
 };
 
 const LinkPropertiesInput = ({
-  formState,
-  dispatch,
-  disabled,
-  basePath
-}: LinkPropertiesInputProps) => {
-  const [field, setField, addDisabled, fields] = useLinkState(
-    formState,
-    "fields"
-  );
+                               formState,
+                               dispatch,
+                               disabled,
+                               basePath
+                             }: LinkPropertiesInputProps) => {
   const { data } = useSWR("/analyzer", path =>
     getApiRouteForCurrentDB().get(path)
   );
   const [options, setOptions] = useState<string[]>([]);
 
-  const analyzers = useMemo(() => formState.analyzers || [], [
-    formState.analyzers
-  ]);
-
-  const { setShow, setField: setCurrentField } = useContext(ViewContext);
+  const analyzers = useMemo(() => get(formState, 'analyzers', [] as string[]), [formState]);
 
   useEffect(() => {
     if (data) {
@@ -57,22 +38,6 @@ const LinkPropertiesInput = ({
       setOptions(tempOptions);
     }
   }, [analyzers, data]);
-
-  const updateField = (event: ChangeEvent<HTMLInputElement>) => {
-    setField(event.target.value);
-  };
-
-  const addField = () => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: `fields[${field}]`,
-        value: {}
-      },
-      basePath
-    });
-    setField("");
-  };
 
   const addAnalyzer = (analyzer: string | number) => {
     dispatch({
@@ -109,68 +74,13 @@ const LinkPropertiesInput = ({
     });
   };
 
-  // const removeField = (field: string | number) => {
-  //   dispatch({
-  //     type: "unsetField",
-  //     field: {
-  //       path: `fields[${field}]`
-  //     },
-  //     basePath
-  //   });
-  // };
-
-  // const getFieldRemover = (field: string | number) => () => {
-  //   removeField(field);
-  // };
-  const handleShowField = (field: string) => {
-    setCurrentField({
-      field: field,
-      basePath: basePath
-    });
-    setShow("ViewField");
-  };
-
-  const storeIdValues = formState.storeValues === "id";
+  const storeIdValues = get(formState, 'storeValues') === 'id';
   const hideInBackgroundField = disabled || basePath.includes(".fields");
   return (
     <Grid>
-      <Cell size={"1-1"}>
-        <Grid>
-          <Cell size={"1-1"}>
-            {disabled ? null : (
-              <ArangoTable>
-                <tbody>
-                  <tr>
-                    <ArangoTD seq={0} colSpan={2}>
-                      <Textbox
-                        type={"text"}
-                        placeholder={"Field"}
-                        onChange={updateField}
-                        value={field}
-                      />
-                    </ArangoTD>
-                    <ArangoTD seq={1}>
-                      <IconButton
-                        style={{ marginTop: "12px" }}
-                        icon={"plus"}
-                        type={"warning"}
-                        onClick={addField}
-                        disabled={addDisabled}
-                      >
-                        Add
-                      </IconButton>
-                    </ArangoTD>
-                  </tr>
-                </tbody>
-              </ArangoTable>
-            )}
-          </Cell>
-        </Grid>
-      </Cell>
-
-      <Cell size={"1-1"}>
+      <Cell size={"1"}>
         <Grid style={{ marginTop: 24 }}>
-          <Cell size={"1-3"} style={{ marginBottom: 24, marginLeft: 10 }}>
+          <Cell size={"1-3"} style={{ marginBottom: 24 }}>
             <AutoCompleteMultiSelect
               values={analyzers}
               onRemove={removeAnalyzer}
@@ -178,108 +88,111 @@ const LinkPropertiesInput = ({
               options={options}
               label={"Analyzers"}
               disabled={disabled}
+              errorMsg={'Analyzer does not exist.'}
             />
           </Cell>
-          <Cell size={"1-1"} style={{ margingTop: 24, marginLeft: 10 }}>
-            <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-              <Checkbox
-                onChange={getBooleanFieldSetter(
-                  "includeAllFields",
-                  dispatch,
-                  basePath
-                )}
-                inline={true}
-                label={"Include All Fields"}
-                disabled={disabled}
-                checked={formState.includeAllFields}
-              />
-            </Cell>
-            <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-              <Checkbox
-                onChange={getBooleanFieldSetter(
-                  "trackListPositions",
-                  dispatch,
-                  basePath
-                )}
-                label={"Track List Positions"}
-                disabled={disabled}
-                inline={true}
-                checked={formState.trackListPositions}
-              />
-            </Cell>
-            <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-              <Checkbox
-                onChange={updateStoreValues}
-                label={"Store ID Values"}
-                disabled={disabled}
-                inline={true}
-                checked={storeIdValues}
-              />
-            </Cell>
-            {hideInBackgroundField ? null : (
-              <Cell size={"1-6"}>
+          <Cell size={"1-3"}>
+            <Grid>
+              <Cell size={"1-2"}>
                 <Checkbox
                   onChange={getBooleanFieldSetter(
-                    "inBackground",
+                    "includeAllFields",
                     dispatch,
                     basePath
                   )}
-                  label={"In Background"}
                   inline={true}
+                  label={"Include All Fields"}
                   disabled={disabled}
-                  checked={formState.inBackground}
+                  checked={formState.includeAllFields}
                 />
               </Cell>
-            )}
+              <Cell size={"1-4"}>
+                <ToolTip
+                  title="Process all document attributes."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info" style={{ marginTop: 10 }}></span>
+                </ToolTip>
+              </Cell>
+              <Cell size={"1-4"}/>
+              <Cell size={"1-2"}>
+                <Checkbox
+                  onChange={getBooleanFieldSetter(
+                    "trackListPositions",
+                    dispatch,
+                    basePath
+                  )}
+                  label={"Track List Positions"}
+                  disabled={disabled}
+                  inline={true}
+                  checked={formState.trackListPositions}
+                />
+              </Cell>
+              <Cell size={"1-4"}>
+                <ToolTip
+                  title="For array values track the value position in arrays."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info" style={{ marginTop: 10 }}></span>
+                </ToolTip>
+              </Cell>
+              <Cell size={"1-4"}/>
+            </Grid>
+          </Cell>
+          <Cell size={"1-3"}>
+            <Grid>
+              <Cell size={"1-2"}>
+                <Checkbox
+                  onChange={updateStoreValues}
+                  label={"Store ID Values"}
+                  disabled={disabled}
+                  inline={true}
+                  checked={storeIdValues}
+                />
+              </Cell>
+              <Cell size={"1-4"}>
+                <ToolTip
+                  title="Store information about value presence to allow use of the EXISTS() function."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info" style={{ marginTop: 10 }}></span>
+                </ToolTip>
+              </Cell>
+              <Cell size={"1-4"}/>
+              {
+                hideInBackgroundField
+                  ? null
+                  : <>
+                    <Cell size={"1-2"}>
+                      <Checkbox
+                        onChange={getBooleanFieldSetter(
+                          "inBackground",
+                          dispatch,
+                          basePath
+                        )}
+                        label={"In Background"}
+                        inline={true}
+                        disabled={disabled}
+                        checked={formState.inBackground}
+                      />
+                    </Cell>
+                    <Cell size={"1-4"}>
+                      <ToolTip
+                        title="If selected, no exclusive lock is used on the source collection during View index creation."
+                        setArrow={true}
+                      >
+                        <span className="arangoicon icon_arangodb_info" style={{ marginTop: 10 }}></span>
+                      </ToolTip>
+                    </Cell>
+                    <Cell size={"1-4"}/>
+                  </>}
+            </Grid>
           </Cell>
         </Grid>
       </Cell>
 
       <Cell size={"1"}>
-        <Fieldset legend={"Fields"}>
-          {disabled && isEmpty(fields) ? null : (
-            <FieldList
-              fields={fields}
-              disabled={disabled}
-              basePath={basePath}
-              viewField={handleShowField}
-            />
-          )}
-        </Fieldset>
-
-        {/* {map(fields, (properties, fld) => {
-              return (
-                <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
-                  <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
-                  <ArangoTD seq={disabled ? 1 : 2}>
-                    <LinkPropertiesInput
-                      formState={properties}
-                      disabled={disabled}
-                      basePath={`${basePath}.fields[${fld}]`}
-                      dispatch={
-                        (dispatch as unknown) as Dispatch<
-                          DispatchArgs<LinkProperties>
-                        >
-                      }
-                    />
-                  </ArangoTD>
-                  {disabled ? null : (
-                    <ArangoTD seq={0} valign={"middle"}>
-                      <IconButton
-                        icon={"trash-o"}
-                        type={"danger"}
-                        onClick={getFieldRemover(fld)}
-                      />
-                      <IconButton
-                        icon={"eye"}
-                        type={"warning"}
-                        onClick={getFieldRemover(fld)}
-                      />
-                    </ArangoTD>
-                  )}
-                </tr>
-              );
-            })} */}
+        <FieldList fields={formState.fields} disabled={disabled} basePath={basePath}/>
       </Cell>
     </Grid>
   );
