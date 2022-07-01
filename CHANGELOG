@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add the redevelopment of the graph viewer implemented in ReactJS.
+  Switch from sigma to antv/G6 to draw the graph. Fix bugs with
+  inconsistent behavior after deleting and adding nodes and edges.
+
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
   read-only APIs. This header has already been used for active failover
