@@ -31,13 +31,12 @@
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
-
+#include "../../../tests/Mocks/MockGraphProvider.h" // TODO: Fixme
 
 #include <memory>
 
 using namespace arangodb;
 using namespace arangodb::graph;
-
 
 template<class ProviderName>
 auto PathEnumeratorInterface::createEnumerator(
@@ -51,30 +50,61 @@ auto PathEnumeratorInterface::createEnumerator(
     case PathEnumeratorType::K_PATH: {
       return std::make_unique<KPathEnumerator<ProviderName>>(
           ProviderName{query, std::move(forwardProviderOptions),
-                   query.resourceMonitor()},
+                       query.resourceMonitor()},
           ProviderName{query, std::move(backwardProviderOptions),
-                   query.resourceMonitor()},
+                       query.resourceMonitor()},
           std::move(enumeratorOptions), std::move(validatorOptions),
           query.resourceMonitor());
     }
-    default: {}
+    case PathEnumeratorType::K_SHORTEST_PATH: {
+      // TODO: FIXME - Copy/Paste from case above
+      return std::make_unique<KPathEnumerator<ProviderName>>(
+          ProviderName{query, std::move(forwardProviderOptions),
+                       query.resourceMonitor()},
+          ProviderName{query, std::move(backwardProviderOptions),
+                       query.resourceMonitor()},
+          std::move(enumeratorOptions), std::move(validatorOptions),
+          query.resourceMonitor());
+    }
+
+    default: {
+    }
   }
   TRI_ASSERT(false);
   return nullptr;
 }
 
-template auto PathEnumeratorInterface::createEnumerator<SingleServerProvider<arangodb::graph::SingleServerProviderStep>>(
+// TODO: FIXME - Move this to tests if possible
+template auto PathEnumeratorInterface::createEnumerator<
+    SingleServerProvider<arangodb::graph::SingleServerProviderStep>>(
     arangodb::aql::QueryContext& query,
-    SingleServerProvider<arangodb::graph::SingleServerProviderStep>::Options&& forwardProviderOptions,
-    SingleServerProvider<arangodb::graph::SingleServerProviderStep>::Options&& backwardProviderOptions,
+    SingleServerProvider<arangodb::graph::SingleServerProviderStep>::Options&&
+        forwardProviderOptions,
+    SingleServerProvider<arangodb::graph::SingleServerProviderStep>::Options&&
+        backwardProviderOptions,
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
-    arangodb::graph::PathValidatorOptions validatorOptions, PathEnumeratorType type,
-    bool useTracing) -> std::unique_ptr<arangodb::graph::PathEnumeratorInterface>;
+    arangodb::graph::PathValidatorOptions validatorOptions,
+    PathEnumeratorType type, bool useTracing)
+    -> std::unique_ptr<arangodb::graph::PathEnumeratorInterface>;
 
-template auto PathEnumeratorInterface::createEnumerator<ClusterProvider<arangodb::graph::ClusterProviderStep>>(
+template auto PathEnumeratorInterface::createEnumerator<
+    ClusterProvider<arangodb::graph::ClusterProviderStep>>(
     arangodb::aql::QueryContext& query,
-    ClusterProvider<arangodb::graph::ClusterProviderStep>::Options&& forwardProviderOptions,
-    ClusterProvider<arangodb::graph::ClusterProviderStep>::Options&& backwardProviderOptions,
+    ClusterProvider<arangodb::graph::ClusterProviderStep>::Options&&
+        forwardProviderOptions,
+    ClusterProvider<arangodb::graph::ClusterProviderStep>::Options&&
+        backwardProviderOptions,
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
-    arangodb::graph::PathValidatorOptions validatorOptions, PathEnumeratorType type,
-    bool useTracing) -> std::unique_ptr<arangodb::graph::PathEnumeratorInterface>;
+    arangodb::graph::PathValidatorOptions validatorOptions,
+    PathEnumeratorType type, bool useTracing)
+    -> std::unique_ptr<arangodb::graph::PathEnumeratorInterface>;
+
+template auto
+PathEnumeratorInterface::createEnumerator<tests::graph::MockGraphProvider>(
+    arangodb::aql::QueryContext& query,
+    tests::graph::MockGraphProvider::Options&& forwardProviderOptions,
+    tests::graph::MockGraphProvider::Options&& backwardProviderOptions,
+    arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
+    arangodb::graph::PathValidatorOptions validatorOptions,
+    PathEnumeratorType type, bool useTracing)
+    -> std::unique_ptr<arangodb::graph::PathEnumeratorInterface>;
