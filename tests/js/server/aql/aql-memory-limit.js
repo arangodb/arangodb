@@ -254,7 +254,23 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
-    
+
+    testAllShortestPaths : function () {
+      const query = "WITH " + vn + " FOR p IN OUTBOUND ALL_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + " RETURN p";
+
+      // TODO Anthony: Check whether to use memoryLimit value of K_SHORTEST_PATHS or K_PATHS example (see above/below)
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 5 * 1000 * 1000 }).json;
+      // no shortest path available
+      assertEqual(1024, actual.length);
+
+      try {
+        AQL_EXECUTE(query, null, { memoryLimit: 1000 * 1000 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
     testKPaths : function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND K_PATHS '" + vn + "/test0' TO '" + vn + "/test317' " + en + " RETURN p";
       

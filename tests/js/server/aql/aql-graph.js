@@ -1491,6 +1491,32 @@ function ahuacatlQueryShortestPathTestSuite() {
 
       // re-add vertex to let environment stay as is has been before the test
       vertexCollection.save({_key: key, name: key});
+    },
+
+    testAllPathsConnectedButInnerVertexDeleted: function () {
+      // Find the path(s): A -> B -> F (which is valid)
+      // Case: B will be deleted before query execution.
+      // This is valid, but the query needs to report an error!
+      let key = 'B';
+      let item = `${vn}/${key}`;
+      vertexCollection.remove(item);
+
+      // Execute without fail and check
+      let query = `WITH ${vn} FOR path IN 1..3 OUTBOUND ALL_SHORTEST_PATHS "${vn}/A" TO "${vn}/F" ${en} RETURN path.vertices[* RETURN CURRENT._key]`;
+      let actual = getQueryResults(query);
+      assertEqual(1, actual.length);
+      assertEqual([['A', 'null', 'F']], actual);
+
+      // Now execute with fail on warnings
+      try {
+        db._query(query, null, {"failOnWarning": true});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+
+      // re-add vertex to let environment stay as is has been before the test
+      vertexCollection.save({_key: key, name: key});
     }
   };
 }
@@ -1642,6 +1668,29 @@ function kPathsTestSuite() {
 
       assertEqual(outbound.toArray().length, 12);
       assertEqual(any.toArray().length, 16);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we are able to find all shortest paths when using ANY direction with ALL_SHORTEST_PATHS
+/// One of the edges is used in both directions.
+////////////////////////////////////////////////////////////////////////////////
+
+    testAllShortestPathsAnyUseEdgeTwice: function () {
+      // TODO Anthony: Clarify what "One of the edges is used in both directions" means in ASP context
+      let outbound = db._query(`
+        FOR p IN OUTBOUND ALL_SHORTEST_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices[*]._key
+      `);
+
+      let any = db._query(`
+        FOR p IN ANY ALL_SHORTEST_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices[*]._key
+      `);
+
+      assertEqual(outbound.toArray().length, 8);
+      assertEqual(any.toArray().length, 8);
     }
   };
 }
