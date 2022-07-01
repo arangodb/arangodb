@@ -4,7 +4,7 @@ import { formSchema, FormState, linksSchema } from './constants';
 import { useEffect, useMemo, useState } from 'react';
 import { DispatchArgs, State } from '../../utils/constants';
 import { getPath } from '../../utils/helpers';
-import { chain, cloneDeep, escape, isNull, merge, omit, set, truncate } from 'lodash';
+import { chain, cloneDeep, escape, get, isNull, merge, omit, set, truncate } from 'lodash';
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 
@@ -22,10 +22,10 @@ ajvErrors(ajv);
 
 export const validateAndFix = ajv.addSchema(linksSchema).compile(formSchema);
 
-export function useLinkState(formState: { [key: string]: any }, formField: string) {
+export function useLinkState (formState: { [key: string]: any }, formField: string) {
   const [innerField, setInnerField] = useState('');
   const [addDisabled, setAddDisabled] = useState(true);
-  const innerFields = useMemo(() => (formState[formField] || {}), [formField, formState]);
+  const innerFields = useMemo(() => get(formState, formField, {}), [formField, formState]);
 
   useEffect(() => {
     const innerFieldKeys = chain(innerFields).omitBy(isNull).keys().value();
@@ -36,23 +36,38 @@ export function useLinkState(formState: { [key: string]: any }, formField: strin
   return [innerField, setInnerField, addDisabled, innerFields];
 }
 
-export function useView(name: string) {
-  const [view, setView] = useState<object>({ name });
-  const { data } = useSWR(`/view/${name}/properties`,
+export function useView (name: string) {
+  const [view, setView] = useState<Partial<FormState>>({ name });
+  const { data, error } = useSWR(`/view/${name}/properties`,
     path => getApiRouteForCurrentDB().get(path), {
-    revalidateOnFocus: false
-  });
+      revalidateOnFocus: false
+    });
+
+  if (error) {
+    window.App.navigate('#views', { trigger: true });
+    arangoHelper.arangoError(
+      "Failure",
+      `Got unexpected server response: ${error.errorNum}: ${error.message} - ${name}`
+    );
+  }
 
   useEffect(() => {
     if (data) {
-      setView(omit(data.body, 'error', 'code'));
+      let viewState = omit(data.body, 'error', 'code') as FormState;
+
+      const cachedViewStateStr = window.sessionStorage.getItem(name);
+      if (cachedViewStateStr) {
+        viewState = JSON.parse(cachedViewStateStr);
+      }
+
+      setView(viewState);
     }
-  }, [data]);
+  }, [data, name]);
 
   return view;
 }
 
-export const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>) => {
+export const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>, setChanged: (changed: boolean) => void, oldName: string) => {
   if (action.type === 'setField' && action.field) {
     const path = getPath(action.basePath, action.field.path);
 
@@ -67,12 +82,20 @@ export const postProcessor = (state: State<FormState>, action: DispatchArgs<Form
       set(state.formState, path, action.field.value);
     }
   }
+
+  if (['setFormState', 'setField', 'unsetField'].includes(action.type)) {
+    window.sessionStorage.setItem(oldName, JSON.stringify(state.formState));
+    window.sessionStorage.setItem(`${oldName}-changed`, "true");
+    setChanged(true);
+  }
 };
 
-export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: string) => {
+export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: string, changed: boolean) => {
   let breadCrumb = 'View: ' + escape(truncate(name, { length: 64 }));
   if (!isAdminUser) {
     breadCrumb += ' (read-only)';
+  } else if (changed) {
+    breadCrumb += '* (unsaved changes)';
   }
 
   const defaultRoute = '#view/' + encodeURIComponent(name);
@@ -81,15 +104,15 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
     Settings: {
       route: defaultRoute
     },
-    'Consolidation Policy': {
-      route: `${defaultRoute}/consolidation`
-    },
     Links: {
       route: `${defaultRoute}/links`
     },
-    Info: {
-      route: `${defaultRoute}/info`
+    'Consolidation Policy': {
+      route: `${defaultRoute}/consolidation`
     },
+    // Info: {
+    //   route: `${defaultRoute}/info`
+    // },
     JSON: {
       route: `${defaultRoute}/json`
     }
@@ -105,7 +128,7 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
   arangoHelper.buildSubNavBar(menus);
 
   // Setup observer to watch for container divs creation, then render subnav.
-  // This is used during direct page loads or a page rerfesh.
+  // This is used during direct page loads or a page refresh.
   const target = $("#subNavigationBar")[0];
   const observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
@@ -134,3 +157,11 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
 
   return observer;
 };
+
+export function useNavbar (name: string, isAdminUser: boolean, changed: boolean, key: string) {
+  useEffect(() => {
+    const observer = buildSubNav(isAdminUser, name, key, changed);
+
+    return () => observer.disconnect();
+  });
+}
