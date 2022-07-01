@@ -538,7 +538,8 @@ struct PrototypeStateMethodsCoordinator final
                   }
                   LOG_DEVEL << "[StateId " << id << "] createState waitForPlan "
                             << result.get();
-                  return self->_clusterInfo.waitForPlan(result.get())
+                  return self->_clusterInfo
+                      .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
                       .thenValue(
                           [resp = std::move(resp),
                            id](auto&& result) mutable -> ResultT<CreateResult> {

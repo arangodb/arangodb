@@ -367,7 +367,8 @@ struct ReplicatedLogMethodsCoordinator final
                   if (result.fail()) {
                     return {result.result()};
                   }
-                  return self->clusterInfo.waitForPlan(result.get())
+                  return self->clusterInfo
+                      .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
                       .thenValue([resp = std::move(resp)](auto&& result) mutable
                                  -> ResultT<CreateResult> {
                         if (result.fail()) {
@@ -942,7 +943,8 @@ struct ReplicatedStateCoordinatorMethods
 
           LOG_DEVEL << "[StateId " << id
                     << "] createReplicatedState waitForPlan";
-          return self->clusterInfo.waitForPlan(res.get());
+          return self->clusterInfo.fetchAndWaitForPlanVersion(
+              std::chrono::seconds{240});
         });
   }
 
