@@ -797,7 +797,7 @@ std::vector<std::vector<basics::AttributeName>> IResearchInvertedIndex::fields(
   std::vector<std::vector<basics::AttributeName>> res;
   res.reserve(meta._fields.size());
   for (auto const& f : meta._fields) {
-    res.push_back(f.combinedName());
+    res.push_back(f._attribute);
   }
   return res;
 }

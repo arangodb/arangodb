@@ -154,16 +154,14 @@ struct InvertedIndexField {
   FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzers[0]; }
 
   bool isArray() const noexcept {
-    TRI_ASSERT(!_attribute.empty());
-    return _isArray || _attribute.back().shouldExpand;
+    return _isArray || _hasExpansion;
   }
-
-  std::vector<arangodb::basics::AttributeName> const& combinedName() const noexcept;
 
   /// @brief nested fields
   std::vector<InvertedIndexField> _fields;
   /// @brief analyzer to apply. Array to comply with old views definition
-  absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
+  //absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
+  std::vector<FieldMeta::Analyzer> _analyzers;
   /// @brief override for field features
   Features _features;
   /// @brief start point for non primitive analyzers
@@ -186,6 +184,7 @@ struct InvertedIndexField {
   std::string _expression;
   /// @brief Full mangled path to the value
   std::string _path;
+  /// @brief path to attribute before expansion - calculated value
   std::string _attributeName;
   /// @brief if the field is with expansion - calculated value
   bool _hasExpansion{false};

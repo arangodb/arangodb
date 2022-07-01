@@ -849,12 +849,14 @@ bool InvertedIndexField::init(
           // save in referencedAnalyzers
           analyzerDefinitions.emplace(analyzer);
         }
+        TRI_ASSERT(_analyzers.empty());
         _analyzers.emplace_back(std::move(analyzer), std::move(shortName));
       } else {
         errorField = kAnalyzerFieldName;
         return false;
       }
     } else if (!rootMode) {
+      TRI_ASSERT(_analyzers.empty());
       _analyzers.push_back(parent.analyzer());
     }
     {
@@ -927,13 +929,13 @@ bool InvertedIndexField::init(
                       ++expansionCount;
                     }
                   });
-    if (expansionCount > 1 && !parent._attribute.empty()) {
+    if (expansionCount > 1 && parent._attribute.empty()) {
       LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
           << "Error parsing field: '" << kNameFieldName << "'. "
           << "Expansion is allowed only once.";
       errorField = kNameFieldName;
       return false;
-    } else if (expansionCount > 0 && parent._attribute.empty()) {
+    } else if (expansionCount > 0 && !parent._attribute.empty()) {
       LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
           << "Error parsing field: '" << kNameFieldName << "'. "
           << "Expansion is not allowed for nested fields.";
@@ -961,7 +963,10 @@ bool InvertedIndexField::init(
       _path += ".";
     }
 #endif
-    _path += toString();
+    std::string tmp;
+    // last expansion is not emitted as field name in the index!
+    TRI_AttributeNamesToString(_attribute, tmp, _attribute.back().shouldExpand);
+    _path += tmp;
   }
 
   auto fieldsAttributeName = rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
@@ -1007,11 +1012,6 @@ std::string_view InvertedIndexField::attributeString() const {
 }
 
 std::string_view InvertedIndexField::path() const noexcept { return _path; }
-
-std::vector<arangodb::basics::AttributeName> const& InvertedIndexField::combinedName()
-    const noexcept {
-  return _attribute;
-}
 
 bool InvertedIndexField::namesMatch(
     InvertedIndexField const& other) const noexcept {

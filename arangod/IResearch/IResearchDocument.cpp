@@ -348,10 +348,10 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
     // so we do not emit such "nulls". It is not supported in general indexes anyway
     if ((!field._trackListPositions || !field._hasExpansion) && f._fields.empty()) {
       std::cout << "ROOT LEVEL:" << f.path() << std::endl;
-      map[""].emplace(f.path());
+      map[""].emplace(f._attribute.back().shouldExpand ? f.attributeString() : f.path());
     }
-    // but fo individual objects in array we always could track expected fields and emit "nulls"
-    if (f._hasExpansion) {
+    // but for individual objects in array we always could track expected fields and emit "nulls"
+    if (f._hasExpansion && !f._attribute.back().shouldExpand) {
       TRI_ASSERT(f._fields.empty());
       // monitor array subobjects
       std::cout << "ARRAY:" << f.attributeString() << " Expect:" << f.path() << std::endl;
@@ -718,6 +718,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
           }
 #endif
           _nameBuffer = *top().missingFields->begin();
+          std::cout << "Emitting NULL for:" << _nameBuffer << std::endl;
           fieldSeen(_nameBuffer);
           setNullValue(VPackSlice::nullSlice());
           return;
