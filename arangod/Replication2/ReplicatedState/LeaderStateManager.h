@@ -28,6 +28,7 @@
 #include "Replication2/Streams/LogMultiplexer.h"
 
 #include <Basics/Guarded.h>
+#include <Basics/Result.h>
 
 #include <memory>
 
@@ -91,11 +92,9 @@ struct LeaderStateManager
     std::unique_ptr<ReplicatedStateToken> token;
     bool _didResign = false;
 
-    void updateInternalState(LeaderInternalState newState,
-                             std::optional<LogRange> range = std::nullopt) {
+    void updateInternalState(LeaderInternalState newState) {
       internalState = newState;
       lastInternalStateChange = std::chrono::system_clock::now();
-      recoveryRange = range;
     }
   };
 
@@ -107,7 +106,11 @@ struct LeaderStateManager
   std::shared_ptr<ReplicatedStateMetrics> const metrics;
 
  private:
-  void beginWaitingForParticipantResigned();
+  void beginWaitingForLogLeaderResigned();
+
+  auto waitForLeadership() -> futures::Future<Result>;
+  auto recoverEntries() -> futures::Future<Result>;
+  auto startService() -> Result;
 };
 
 template<typename S>
