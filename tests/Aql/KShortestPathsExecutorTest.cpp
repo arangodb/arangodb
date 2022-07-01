@@ -26,6 +26,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Mocks/MockGraph.h"
+#include "Mocks/MockGraphProvider.h"
+
 #include "Aql/RowFetcherHelper.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -46,12 +49,13 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
 #include "Graph/KShortestPathsFinder.h"
+#include "Graph/Enumerators/PathEnumeratorInterface.h"
+#include "Graph/PathManagement/PathValidatorOptions.h"
+#include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
-
-#include "../Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -115,11 +119,10 @@ PathSequence const somePaths = {
 // is merely initialized with a set of "paths" and then outputs them, keeping a
 // record of which paths it produced. This record is used in the validation
 // whether the executor output the correct sequence of rows.
-class FakeKShortestPathsFinder : public KShortestPathsFinder {
+class FakeKShortestPathsFinder {
  public:
-  FakeKShortestPathsFinder(ShortestPathOptions& options,
-                           PathSequence const& kpaths)
-      : KShortestPathsFinder(options), _kpaths(kpaths), _traversalDone(true) {}
+  FakeKShortestPathsFinder(PathSequence const& kpaths)
+      : _kpaths(kpaths), _traversalDone(true) {}
   ~FakeKShortestPathsFinder() = default;
 
   auto gotoNextPath() -> bool {
@@ -136,8 +139,7 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     return false;
   }
 
-  bool startKShortestPathsTraversal(Slice const& start,
-                                    Slice const& end) override {
+  bool startKShortestPathsTraversal(Slice const& start, Slice const& end) {
     _source = std::string{start.copyString()};
     _target = std::string{end.copyString()};
 
@@ -151,7 +153,7 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     return true;
   }
 
-  bool getNextPathAql(Builder& builder) override {
+  bool getNextPathAql(Builder& builder) {
     _traversalDone = !gotoNextPath();
 
     if (_traversalDone) {
@@ -171,12 +173,12 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     }
   }
 
-  bool skipPath() override {
+  bool skipPath() {
     Builder builder{};
     return getNextPathAql(builder);
   }
 
-  bool isDone() const override { return _traversalDone; }
+  bool isDone() const { return _traversalDone; }
 
   PathSequence& getPathsProduced() noexcept { return _pathsProduced; }
   std::vector<std::pair<std::string, std::string>> getCalledWith() noexcept {
@@ -243,9 +245,20 @@ class KShortestPathsExecutorTest : public ::testing::Test {
   ShortestPathOptions options;
 
   RegisterInfos registerInfos;
-  KShortestPathsExecutorInfos<KShortestPathsFinder> executorInfos;
+  arangodb::transaction::Methods myTrx;
+  arangodb::aql::AqlFunctionsInternalCache functionsCache;
+  arangodb::aql::FixedVarExpressionContext expressionContext;
+  arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions;
+  PathValidatorOptions validatorOpts;
+  graph::MockGraph emptyMockGraph;
+  graph::MockGraphProviderOptions forwardMockProviderOptions;
+  graph::MockGraphProviderOptions backwardMockProviderOptions;
+  bool useTracing;
 
-  FakeKShortestPathsFinder& finder;
+  KShortestPathsExecutorInfos executorInfos;
+
+  std::unique_ptr<arangodb::graph::PathEnumeratorInterface> finder;
+  FakeKShortestPathsFinder validationFinder;
 
   SharedAqlItemBlockPtr inputBlock;
   AqlItemBlockInputRange input;
@@ -253,8 +266,15 @@ class KShortestPathsExecutorTest : public ::testing::Test {
   std::shared_ptr<Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-  KShortestPathsExecutor<KShortestPathsFinder> testee;
+  KShortestPathsExecutor testee;
   OutputAqlItemRow output;
+
+  aql::Variable _tmpVar{"tmp", 0, false};
+
+  auto looseEndBehaviour() const
+      -> graph::MockGraphProvider::LooseEndBehaviour {
+    return graph::MockGraphProviderOptions::LooseEndBehaviour::ALWAYS;
+  }
 
   KShortestPathsExecutorTest(KShortestPathsTestParameters parameters__)
       : parameters(std::move(parameters__)),
@@ -264,12 +284,26 @@ class KShortestPathsExecutorTest : public ::testing::Test {
         options(*fakedQuery.get()),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 3, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
-        executorInfos(0, *fakedQuery.get(),
-                      std::make_unique<FakeKShortestPathsFinder>(
-                          options, parameters._paths),
-                      std::move(parameters._source),
-                      std::move(parameters._target)),
-        finder(static_cast<FakeKShortestPathsFinder&>(executorInfos.finder())),
+        myTrx(fakedQuery.get()->newTrxContext()),
+        functionsCache(),
+        expressionContext(myTrx, *fakedQuery.get(), functionsCache),
+        enumeratorOptions(options.minDepth, options.maxDepth),
+        validatorOpts(&_tmpVar, expressionContext),
+        emptyMockGraph(),
+        forwardMockProviderOptions(emptyMockGraph, looseEndBehaviour(), false),
+        backwardMockProviderOptions(emptyMockGraph, looseEndBehaviour(), true),
+        useTracing(false),
+        executorInfos(KShortestPathsExecutorInfos(
+            0, *fakedQuery.get(),
+            arangodb::graph::PathEnumeratorInterface::createEnumerator<
+                graph::MockGraphProvider>(
+                *fakedQuery.get(), std::move(forwardMockProviderOptions),
+                std::move(backwardMockProviderOptions),
+                std::move(enumeratorOptions), std::move(validatorOpts),
+                PathEnumeratorInterface::PathEnumeratorType::K_SHORTEST_PATH,
+                false),
+            std::move(parameters._source), std::move(parameters._target))),
+        validationFinder(parameters._paths),
         inputBlock(buildBlock<2>(itemBlockManager,
                                  std::move(parameters._inputMatrix))),
         input(AqlItemBlockInputRange(MainQueryState::DONE, 0, inputBlock, 0)),
@@ -290,7 +324,7 @@ class KShortestPathsExecutorTest : public ::testing::Test {
   }
 
   void ValidateCalledWith() {
-    auto calledWith = finder.getCalledWith();
+    auto calledWith = validationFinder.getCalledWith();
     auto block =
         buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
@@ -327,7 +361,7 @@ class KShortestPathsExecutorTest : public ::testing::Test {
 
   void ValidateResult(std::vector<SharedAqlItemBlockPtr>& results,
                       size_t skippedInitial, size_t skippedFullCount) {
-    auto pathsFound = finder.getPathsProduced();
+    auto pathsFound = validationFinder.getPathsProduced();
 
     // We expect to be getting exactly the rows returned
     // that we produced with the shortest path finder.
@@ -380,10 +414,9 @@ class KShortestPathsExecutorTest : public ::testing::Test {
     }
   }
 
-  void TestExecutor(
-      RegisterInfos& registerInfos,
-      KShortestPathsExecutorInfos<KShortestPathsFinder>& executorInfos,
-      AqlItemBlockInputRange& input) {
+  void TestExecutor(RegisterInfos& registerInfos,
+                    KShortestPathsExecutorInfos& executorInfos,
+                    AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
     auto stats = TraversalStats{};
