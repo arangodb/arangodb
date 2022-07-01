@@ -481,6 +481,8 @@ IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token,
                     IndexIteratorCoveringData& covering) {
+    // this must only be used if we have a filter!
+    TRI_ASSERT(context.hasFilter());
     TRI_ASSERT(context.getAllowCoveringIndexOptimization());
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
@@ -493,23 +495,23 @@ IndexIterator::CoveringCallback aql::getCallback(
 
     // recycle our Builder object
     VPackBuilder& objectBuilder = context.getBuilder();
-    if (!skip || context.hasFilter()) {
-      objectBuilder.clear();
-      objectBuilder.openObject(true);
+    objectBuilder.clear();
+    objectBuilder.openObject(true);
 
-      // projections from the index for the filter condition
-      context.getFilterProjections().toVelocyPackFromIndex(
-          objectBuilder, covering, context.getTrxPtr());
+    // projections from the index for the filter condition
+    context.getFilterProjections().toVelocyPackFromIndex(
+        objectBuilder, covering, context.getTrxPtr());
 
-      objectBuilder.close();
+    objectBuilder.close();
 
-      if (context.hasFilter() && !context.checkFilter(objectBuilder.slice())) {
-        context.incrFiltered();
-        return false;
-      }
+    if (!context.checkFilter(objectBuilder.slice())) {
+      context.incrFiltered();
+      return false;
     }
 
     if constexpr (!skip) {
+      // read the full document from the storage engine only now,
+      // after checking the filter condition
       context.getPhysical().read(
           context.getTrxPtr(), token,
           [&](LocalDocumentId const&, VPackSlice s) -> bool {

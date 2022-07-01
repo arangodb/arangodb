@@ -566,6 +566,7 @@ transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
 }
 
 void IndexNode::prepareProjections() {
+  // by default, we do not use projections for the filter condition
   _filterProjections.clear();
 
   auto idx = getSingleIndex();
@@ -575,18 +576,32 @@ void IndexNode::prepareProjections() {
 
   if (idx->covers(_projections)) {
     _projections.setCoveringContext(collection()->id(), idx);
-  }
-
-  if (this->hasFilter()) {
+  } else if (this->hasFilter()) {
+    // if we have a covering index and a post-filter condition,
+    // extract which projections we will need just to execute
+    // the filter condition
     std::unordered_set<AttributeNamePath> attributes;
 
     if (Ast::getReferencedAttributesRecursive(
             this->filter()->node(), this->outVariable(),
             /*expectedAttribute*/ "", attributes)) {
-      Projections filterProjections(std::move(attributes));
-      if (idx->covers(filterProjections)) {
-        _filterProjections = std::move(filterProjections);
-        _filterProjections.setCoveringContext(collection()->id(), idx);
+      if (!attributes.empty()) {
+        Projections filterProjections(std::move(attributes));
+        if (idx->covers(filterProjections)) {
+          _filterProjections = std::move(filterProjections);
+          _filterProjections.setCoveringContext(collection()->id(), idx);
+
+          attributes.clear();
+          // try to exclude all projection attributes which are only
+          // used for the filter condition
+          if (utils::findProjections(
+                  this, outVariable(), /*expectedAttribute*/ "",
+                  /*excludeStartNodeFilterCondition*/ true, attributes)) {
+            _projections = Projections(std::move(attributes));
+            // note: idx->covers(...) modifies the projections object!
+            idx->covers(_projections);
+          }
+        }
       }
     }
   }

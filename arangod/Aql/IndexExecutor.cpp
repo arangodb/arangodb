@@ -374,6 +374,10 @@ IndexExecutor::CursorReader::CursorReader(
                 ? Type::CoveringFilterOnly
                 : Type::Document),
       _checkUniqueness(checkUniqueness) {
+  TRI_ASSERT(
+      _type != Type::CoveringFilterOnly ||
+      (infos.getFilter() != nullptr && !infos.getFilterProjections().empty()));
+
   // for the initial cursor created in the initializer list
   _cursorStats.incrCursorsCreated();
 

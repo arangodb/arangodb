@@ -888,14 +888,14 @@ bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
   if (traversal->vertexOutVariable() != nullptr) {
     useVertexProjections = arangodb::aql::utils::findProjections(
         traversal, traversal->vertexOutVariable(), /*expectedAttribute*/ "",
-        attributes);
+        /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useVertexProjections && options->producePathsVertices() &&
       pathOutVariable != nullptr) {
     useVertexProjections = arangodb::aql::utils::findProjections(
         traversal, pathOutVariable, arangodb::StaticStrings::GraphQueryVertices,
-        attributes);
+        /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useVertexProjections && !attributes.empty() &&
@@ -912,14 +912,14 @@ bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
   if (traversal->edgeOutVariable() != nullptr) {
     useEdgeProjections = arangodb::aql::utils::findProjections(
         traversal, traversal->edgeOutVariable(), /*expectedAttribute*/ "",
-        attributes);
+        /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useEdgeProjections && options->producePathsEdges() &&
       pathOutVariable != nullptr) {
     useEdgeProjections = arangodb::aql::utils::findProjections(
         traversal, pathOutVariable, arangodb::StaticStrings::GraphQueryEdges,
-        attributes);
+        /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useEdgeProjections) {
@@ -3533,7 +3533,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     auto current = node;
     while (current != nullptr) {
       if (current->getType() == EN::INDEX) {
-        auto indexNode = ExecutionNode::castTo<IndexNode const*>(current);
+        auto indexNode = ExecutionNode::castTo<IndexNode*>(current);
 
         // found an index node, now check if the expression is covered by the
         // index
@@ -3562,10 +3562,9 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
-              CalculationNode* cn = new CalculationNode(
+              CalculationNode* cn = plan->createNode<CalculationNode>(
                   plan.get(), plan->nextId(), std::move(expr),
                   calculationNode->outVariable());
-              plan->registerNode(cn);
               plan->replaceNode(setter, cn);
               modified = true;
               handled = true;

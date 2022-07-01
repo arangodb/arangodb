@@ -1342,7 +1342,7 @@ function processQuery(query, explain, planIndex) {
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
-          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'projections', 'projections')}${projections(node, 'filterProjections', 'filter projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
           '   ' + annotation(indexAnnotation);
 
       case 'TraversalNode':

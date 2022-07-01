@@ -158,6 +158,9 @@ class IndexNode : public ExecutionNode,
   /// @brief remember the condition to execute for early filtering
   void setFilter(std::unique_ptr<Expression> filter) override;
 
+  // prepare projections for usage with an index
+  void prepareProjections();
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -176,9 +179,6 @@ class IndexNode : public ExecutionNode,
   // returns the single index pointer if the IndexNode uses a single index,
   // nullptr otherwise
   [[nodiscard]] transaction::Methods::IndexHandle getSingleIndex() const;
-
-  // prepare projections for usage with an index
-  void prepareProjections();
 
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
