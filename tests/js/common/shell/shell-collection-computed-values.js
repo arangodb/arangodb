@@ -796,7 +796,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
 
-    /*
     testArayOperatorWithInline: function() {
       collection.properties({
         computedValues: [{
@@ -832,7 +831,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(el.newValue, [2]);
       });
     }
-*/
+
 
   };
 }
