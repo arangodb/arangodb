@@ -400,6 +400,12 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       arangodb::graph::ShortestPathType::Type::AllShortestPaths;
 
   if (isKPaths or isAllShortestPaths) {
+    // TODO Anthony: Opt for a better approach instead of this hack
+    if (isAllShortestPaths) {
+      opts->minDepth = 1;
+      opts->maxDepth = UINT64_MAX;
+    }
+
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
         opts->minDepth, opts->maxDepth};
     enumeratorOptions.setStopAtFirstDepth(isAllShortestPaths);
