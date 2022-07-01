@@ -177,6 +177,24 @@ function optimizerQuantifiersTestSuite () {
       });
     },
 
+   testAtLeastInFail : function () {
+      var queries = [
+        // missing parentheses
+        [ "FOR doc IN " + c.name() + " FILTER [ 1, 2, 3 ] AT LEAST 2 <= doc.value SORT doc.value RETURN doc.value", [ 2, 2, 3, 3, 4, 4 ] ],
+      ];
+
+      queries.forEach(function(query) {
+        try {
+          AQL_EXECUTE(query[0]).json;
+          assertTrue(false);
+        } catch (e) {
+          // Expect parse error
+          assertEqual(1501, e.errorNum);
+        }
+      });
+   },
+
+
   };
 }
 jsunity.run(optimizerQuantifiersTestSuite);
