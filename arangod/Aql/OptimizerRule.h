@@ -307,12 +307,12 @@ struct OptimizerRule {
     // optimizations
     applySortLimitRule,
 
-    // try to restrict fragments to a single shard if possible
-    restrictToSingleShardRule,
-
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
+
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule,
 
     // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized
     // count

@@ -204,6 +204,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             en->DocumentProducingNode::cloneInto(plan.get(), *inode);
             plan->registerNode(inode);
             plan->replaceNode(n, inode);
+
             if (en->isRestricted()) {
               inode->restrictToShard(en->restrictedShard());
             }
