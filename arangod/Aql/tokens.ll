@@ -15,8 +15,8 @@
 %top{
 /* clang-format off */
 
+#include <algorithm>
 #include <cstdint>
-#include <charconv>
 
 #if (_MSC_VER >= 1)
 // fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
@@ -49,8 +49,6 @@ class Parser;
 #include "Aql/Functions.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
-
-#include <algorithm>
 
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
@@ -517,14 +515,14 @@ class Parser;
   if (valid) {
     node = parser->ast()->createNodeValueInt(value1);
   } else {
-    double value2 = 0;
-    std::from_chars_result r = std::from_chars(yytext, yytext + yyleng, value2);
-    if (r.ec == std::errc()) {
-      // no error
-      node = parser->ast()->createNodeValueDouble(value2);
-    } else {
+    // TODO: use std::from_chars
+    double value2 = TRI_DoubleString(yytext);
+
+    if (TRI_errno() != TRI_ERROR_NO_ERROR) {
       parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
       node = parser->ast()->createNodeValueNull();
+    } else {
+      node = parser->ast()->createNodeValueDouble(value2);
     }
   }
 
@@ -610,14 +608,14 @@ class Parser;
 
   arangodb::aql::AstNode* node = nullptr;
   auto parser = yyextra;
-  double value = 0;
-  std::from_chars_result r = std::from_chars(yytext, yytext + yyleng, value);
-  if (r.ec == std::errc()) {
-    // no error
-    node = parser->ast()->createNodeValueDouble(value);
-  } else {
+  // TODO: use std::from_chars
+  double value = TRI_DoubleString(yytext);
+
+  if (TRI_errno() != TRI_ERROR_NO_ERROR) {
     parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
     node = parser->ast()->createNodeValueNull();
+  } else {
+    node = parser->ast()->createNodeValueDouble(value);
   }
 
   yylval->node = node;

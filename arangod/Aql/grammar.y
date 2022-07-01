@@ -1624,6 +1624,38 @@ operator_binary:
   | expression quantifier T_NOT_IN expression {
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $4, $2);
     }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_EQ expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_LT expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_GT expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_LE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_GE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_IN expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NOT_IN expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $7, quantifier);
+    }
   ;
 
 operator_ternary:
@@ -1868,9 +1900,9 @@ optional_array_filter:
       // ALL|ANY|NONE|AT LEAST FILTER filter-condition
       $$ = parser->ast()->createNodeArrayFilter($1, $3);
     }
-  | T_AT_LEAST expression T_FILTER expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $2);
-      $$ = parser->ast()->createNodeArrayFilter(quantifier, $4);
+  | T_AT_LEAST T_OPEN expression T_CLOSE T_FILTER expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $3);
+      $$ = parser->ast()->createNodeArrayFilter(quantifier, $6);
     }
   | expression T_FILTER expression {
       // 1    FILTER filter-condition
