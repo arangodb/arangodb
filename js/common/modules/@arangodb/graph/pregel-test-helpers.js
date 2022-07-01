@@ -144,6 +144,16 @@ const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
     // sorting in the descending order is needed because pregelRunSmallInstanceGetComponents
     // sorts the results like this
     expectedSizes.sort(function (a, b) {return b - a;});
+    if (parameters.hasOwnProperty("test")) {
+        delete parameters.test;
+        const query = `
+        FOR v in ${vColl}
+        RETURN {"vertex": v._key, "result": v.result}
+    `;
+        const result = runPregelInstance(algName, graphName, parameters, query);
+        console.warn(result);
+        return;
+    }
     const computedComponents = pregelRunSmallInstanceGetComponents(algName, graphName, parameters);
 
     assertEqual(computedComponents.length, expectedSizes.length,
@@ -654,10 +664,10 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
     };
 }
 
-function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
-    const makeEdgesBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
+    const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
 
     return function () {
         'use strict';
@@ -716,11 +726,7 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(verticesEdges.vertices);
                 db[eColl].save(verticesEdges.edges);
 
-                db[eColl].save({
-                    _from: `${vColl}/v0_0`,
-                    _to: `${vColl}/v1_0`,
-                    vertex: `v0_0`
-                });
+                db[eColl].save(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
 
                 const query = `
                   FOR v in ${vColl}
@@ -753,11 +759,7 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(verticesEdges.vertices);
                 db[eColl].save(verticesEdges.edges);
 
-                db[eColl].save({
-                    _from: `${vColl}/v0_0`,
-                    _to: `${vColl}/v1_0`,
-                    vertex: `v0_0`
-                });
+                db[eColl].save(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
 
                 testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [size, size]);
             },
@@ -771,23 +773,14 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(verticesEdges.vertices);
                 db[eColl].save(verticesEdges.edges);
 
-                db[eColl].save({
-                    _from: `${vColl}/v0_0`,
-                    _to: `${vColl}/v1_0`,
-                    vertex: `v0_0`
-                });
+                db[eColl].save(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
 
-                db[eColl].save({
-                    _from: `${vColl}/v0_1`,
-                    _to: `${vColl}/v1_0`,
-                    vertex: `v0_0`
-                });
+                db[eColl].save(makeEdgeBetweenVertices(vColl, 1, "v0", 0, "v1"));
 
                 testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [size, size]);
             },
 
             testLPThree4_5_6CliquesConnectedByUndirectedTriangle: function () {
-                // sort in the descending order
                 const expectedSizes = [4, 5, 6];
                 for (let i = 0; i < 3; ++i) {
                     const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v${i}`)).makeBidirectedClique(expectedSizes[i]);
@@ -797,12 +790,41 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
 
                 for (let i = 0; i < 3; ++i){
                     for (let j = i+1; j < 3; ++j){
-                        makeEdgesBetweenVertices(vColl, i, `v${i}`, j, `v${j}`);
-                        makeEdgesBetweenVertices(vColl, j, `v${j}`, i, `v${i}`);
+                        makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`);
+                        makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`);
                     }
                 }
 
                 testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, expectedSizes);
+            },
+
+            testLP10Star: function () {
+                const numberLeaves = 10;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+
+                // expect that all 11 vertices are in the same community
+                testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [numberLeaves + 1]);
+            },
+
+            testLP3Path: function () {
+                // we use that initial communities are given such that smaller community ids are given
+                // to vertices that are produced earlier. in a directed path, vertices at the beginning
+                // of the path are produced earlier. here we test single steps of the algorithm
+                const length = 5;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `p`)).makePath(length, "directed");
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+
+                // expect that all ${length} vertices are in the same community
+                for (let i = 1; i < length; ++i) {
+                    let expectedSizes = [i];
+                    for (let j = i; j < length; ++j) {
+                        expectedSizes.push(1);
+                    }
+                    testSubgraphs("labelpropagation", graphName, {maxGSS: i}, expectedSizes);
+                }
             },
         };
     };
@@ -812,4 +834,4 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
 exports.makeSCCTestSuite = makeSCCTestSuite;
-exports.labelPropagationTestSuite = labelPropagationTestSuite;
+exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;

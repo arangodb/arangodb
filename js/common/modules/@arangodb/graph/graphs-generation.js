@@ -229,17 +229,17 @@ const graphGenerator = function (verticesEdgesGenerator) {
         let edges = [];
         switch (kind) {
             case "fromCenter":
-                for (let v = 1; v < numberLeaves; ++v) {
+                for (let v = 1; v <= numberLeaves; ++v) {
                     edges.push(makeEdge(0, v));
                 }
                 break;
             case "toCenter":
-                for (let v = 1; v < numberLeaves; ++v) {
+                for (let v = 1; v <= numberLeaves; ++v) {
                     edges.push(makeEdge(v, 0));
                 }
                 break;
             case "bidirected":
-                for (let v = 1; v < numberLeaves; ++v) {
+                for (let v = 1; v <= numberLeaves; ++v) {
                     edges.push(makeEdge(0, v));
                     edges.push(makeEdge(v, 0));
                 }
@@ -248,12 +248,12 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 for (let v = 1; v < Math.floor(numberLeaves / 2); ++v) {
                     edges.push(makeEdge(v, 0));
                 }
-                for (let v = Math.floor(numberLeaves / 2); v < numberLeaves; ++v) {
+                for (let v = Math.floor(numberLeaves / 2); v <= numberLeaves; ++v) {
                     edges.push(makeEdge(0, v));
                 }
                 break;
         }
-        console.warn(edges);
+        // console.warn(edges);
         return {vertices, edges};
     };
 
