@@ -438,10 +438,7 @@ auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                                     ->supervision()
                                     ->str();
 
-  return envelope
-      .write()
-      // TODO always increment plan version here to fix a bug in waitForPlan
-      .inc(paths::plan()->version()->str())
+  return envelope.write()
       .cond(actx.hasModificationFor<replication2::agency::LogTarget>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
@@ -456,8 +453,9 @@ auto buildAgencyTransaction(DatabaseID const& database, LogId id,
             })
       .cond(actx.hasModificationFor<agency::Plan>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx).emplace_object(
-                  statePlanPath, [&](VPackBuilder& builder) {
+              return std::move(trx)
+                  .inc(paths::plan()->version()->str())
+                  .emplace_object(statePlanPath, [&](VPackBuilder& builder) {
                     velocypack::serialize(builder,
                                           actx.getValue<agency::Plan>());
                   });
