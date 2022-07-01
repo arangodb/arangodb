@@ -454,12 +454,11 @@ auto buildAgencyTransaction(DatabaseID const& database, LogId id,
       .cond(actx.hasModificationFor<agency::Plan>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
-                  .emplace_object(statePlanPath,
-                                  [&](VPackBuilder& builder) {
-                                    velocypack::serialize(
-                                        builder, actx.getValue<agency::Plan>());
-                                  })
-                  .inc(paths::plan()->version()->str());
+                  .inc(paths::plan()->version()->str())
+                  .emplace_object(statePlanPath, [&](VPackBuilder& builder) {
+                    velocypack::serialize(builder,
+                                          actx.getValue<agency::Plan>());
+                  });
             })
       .cond(actx.hasModificationFor<agency::Current::Supervision>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
