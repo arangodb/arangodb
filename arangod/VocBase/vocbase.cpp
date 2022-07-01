@@ -901,8 +901,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
 
       engine.getCollectionInfo(*this, collection->id(), builder, false, 0);
 
-      auto res = collection->properties(builder.slice().get("parameters"),
-                                        false);  // always a full-update
+      auto res = collection->properties(builder.slice().get("parameters"));
 
       if (!res.ok()) {
         // TODO: Here we're only returning the errorNumber. The errorMessage is
