@@ -30,7 +30,11 @@
 
 let db = require("@arangodb").db;
 let general_graph_module = require("@arangodb/general-graph");
-let smart_graph_module = require("@arangodb/smart-graph");
+const isEnterprise = require('internal').isEnterprise();
+let smart_graph_module;
+if (isEnterprise) {
+    smart_graph_module = require("@arangodb/smart-graph");
+}
 let internal = require("internal");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
@@ -200,7 +204,7 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
     //   we saved the components such that a has vertices with labels
     //   `${s}_i` where s is the size of the component and i is unique among all components
     for (let computedComponent of computedComponents) {
-        const componentId = computedComponent.component;
+        const componentId = computedComponent.result;
         // get the vertices of the computed component
         const queryVerticesOfComponent = `
         FOR v IN ${vColl}
@@ -692,7 +696,7 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
                     {maxGSS: 100, resultField: "community"}, query);
                 assertEqual(result.length, length);
                 for (const value of result) {
-                    assertEqual(value.community, 0);
+                    assertEqual(value.community, result[0].community);
                 }
             },
 
@@ -740,7 +744,7 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
                   RETURN {community, size}
               `;
                 // expected (depending on the "random" distribution of initial ids) that
-                //  - all vertices are in one community with id 0:
+                //  - all vertices are in one community:
                 //      if the least initial value of vertices in the component with label v0,
                 //      is less than the least initial value of vertices in the component with label v1,
                 //  - or two communities otherwise.
@@ -748,7 +752,6 @@ function labelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
                     {maxGSS: 100, resultField: "community"}, query);
                 assertTrue(result.length === 1 || result.length === 2, `Expected 1 or 2, obtained ${result}`);
                 if (result.length === 1) {
-                    assertEqual(result[0].community, 0);
                     assertEqual(result[0].size, 2 * size);
                 } else {
                     assertEqual(result[0].size, size);
