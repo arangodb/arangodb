@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/debugging.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 #include <memory>
@@ -106,6 +107,12 @@ struct AddLogToPlanAction {
             .generation = 1, .participants = _participants, .config = _config});
     newPlan.owner = "target";
     ctx.setValue<LogPlanSpecification>(std::move(newPlan));
+
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWriteConcern =
+              _config.effectiveWriteConcern;
+        });
   }
 };
 
@@ -116,19 +123,6 @@ auto inspect(Inspector& f, AddLogToPlanAction& x) {
                             f.field("participants", x._participants),
                             f.field("leader", x._leader),
                             f.field("config", x._config));
-}
-
-struct CurrentNotAvailableAction {
-  static constexpr std::string_view name = "CurrentNotAvailableAction";
-
-  auto execute(ActionContext& ctx) const -> void {
-    ctx.setValue<LogCurrentSupervision>();
-  }
-};
-template<typename Inspector>
-auto inspect(Inspector& f, CurrentNotAvailableAction& x) {
-  auto hack = std::string{x.name};
-  return f.object(x).fields(f.field("type", hack));
 }
 
 struct SwitchLeaderAction {
@@ -290,6 +284,52 @@ auto inspect(Inspector& f, UpdateLogConfigAction& x) {
   return f.object(x).fields(f.field("type", hack));
 }
 
+struct UpdateEffectiveAndAssumedWriteConcernAction {
+  static constexpr std::string_view name =
+      "UpdateEffectiveAndAssumedWriteConcernAction";
+  size_t newEffectiveWriteConcern;
+  size_t newAssumedWriteConcern;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
+      plan.participantsConfig.config.effectiveWriteConcern =
+          newEffectiveWriteConcern;
+      plan.participantsConfig.generation += 1;
+    });
+    ctx.modify<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWriteConcern = newAssumedWriteConcern;
+        });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, UpdateEffectiveAndAssumedWriteConcernAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(
+      f.field("type", hack),
+      f.field("newEffectiveWriteConcern", x.newEffectiveWriteConcern),
+      f.field("newAssumedWriteConcern", x.newAssumedWriteConcern));
+}
+
+struct SetAssumedWriteConcernAction {
+  static constexpr std::string_view name = "SetAssumedWriteConcernAction";
+  size_t newAssumedWriteConcern;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWriteConcern = newAssumedWriteConcern;
+        });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SetAssumedWriteConcernAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(
+      f.field("type", hack),
+      f.field("newAssumedWriteConcern", x.newAssumedWriteConcern));
+}
+
 struct ConvergedToTargetAction {
   static constexpr std::string_view name = "ConvergedToTargetAction";
   std::optional<std::uint64_t> version{std::nullopt};
@@ -301,7 +341,6 @@ struct ConvergedToTargetAction {
         });
   }
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, ConvergedToTargetAction& x) {
   auto hack = std::string{x.name};
@@ -317,11 +356,11 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
  */
 using Action =
     std::variant<EmptyAction, NoActionPossibleAction, AddLogToPlanAction,
-                 CurrentNotAvailableAction, SwitchLeaderAction,
-                 WriteEmptyTermAction, LeaderElectionAction,
+                 SwitchLeaderAction, WriteEmptyTermAction, LeaderElectionAction,
                  UpdateParticipantFlagsAction, AddParticipantToPlanAction,
                  RemoveParticipantFromPlanAction, UpdateLogConfigAction,
-                 ConvergedToTargetAction>;
+                 UpdateEffectiveAndAssumedWriteConcernAction,
+                 SetAssumedWriteConcernAction, ConvergedToTargetAction>;
 
 auto executeAction(Log log, Action& action) -> ActionContext;
 }  // namespace arangodb::replication2::replicated_log
