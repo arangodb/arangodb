@@ -204,3 +204,8 @@ template<>
 char const conpar<false>::open = '[';
 template<>
 char const conpar<false>::close = ']';
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+thread_local std::ostringstream
+    arangodb::debug::AssertionLogger::assertionStringStream;
+#endif
