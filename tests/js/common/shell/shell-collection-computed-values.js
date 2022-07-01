@@ -75,6 +75,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           override: false
         }]
       });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
@@ -489,6 +495,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           override: false
         }]
       });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
@@ -547,6 +559,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           override: false
         }]
       });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
@@ -668,10 +686,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
     testUserDefinedFunctions: function() {
-      aqlfunctions.register("UnitTests::cv", function(what) {
-        return what * 2;
-      }, true);
-      assertEqual("function(what) {\n        return what * 2;\n      }", aqlfunctions.toArray("UnitTests")[0].code);
+      aqlfunctions.register("UnitTests::cv", function(what) { return what * 2; }, true);
+      assertEqual("function(what) { return what * 2; }", aqlfunctions.toArray("UnitTests")[0].code);
 
       try {
         collection.properties({
@@ -699,6 +715,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           computeOn: ["insert"]
         }]
       });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
@@ -730,6 +752,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           computeOn: ["insert"]
         }]
       });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
@@ -750,7 +778,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(el.newValue, [2]);
       });
     }
-    
      */
 
   };
