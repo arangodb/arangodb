@@ -931,18 +931,13 @@ struct ReplicatedStateCoordinatorMethods
 
   auto createReplicatedState(replicated_state::agency::Target spec) const
       -> futures::Future<Result> override {
-    LOG_DEVEL << "[StateId " << spec.id << "] createReplicatedState";
     return replication2::agency::methods::createReplicatedState(databaseName,
                                                                 spec)
-        .thenValue([self = shared_from_this(), id = spec.id](
+        .thenValue([self = shared_from_this()](
                        ResultT<uint64_t>&& res) -> futures::Future<Result> {
-          LOG_DEVEL << "[StateId " << id << "] createReplicatedState done";
           if (res.fail()) {
             return futures::Future<Result>{std::in_place, res.result()};
           }
-
-          LOG_DEVEL << "[StateId " << id
-                    << "] createReplicatedState waitForPlan";
           return self->clusterInfo.fetchAndWaitForPlanVersion(
               std::chrono::seconds{240});
         });
@@ -969,9 +964,7 @@ struct ReplicatedStateCoordinatorMethods
                     ->supervision();
     auto cb = std::make_shared<AgencyCallback>(
         server, path->str(SkipComponents(1)),
-        [ctx, id](velocypack::Slice slice, consensus::index_t index) -> bool {
-          LOG_DEVEL << "[StateId " << id << "] index = " << index
-                    << " slice = " << slice.toJson();
+        [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
           if (slice.isNone()) {
             return false;
           }
@@ -980,7 +973,6 @@ struct ReplicatedStateCoordinatorMethods
               replicated_state::agency::Current::Supervision>(slice);
           if (supervision.version.has_value() &&
               supervision.version >= ctx->version) {
-            LOG_DEVEL << "[StateId " << id << "] version is bigger";
             ctx->promise.setValue(ResultT<consensus::index_t>{index});
             return true;
           }
@@ -993,12 +985,10 @@ struct ReplicatedStateCoordinatorMethods
       return {result};
     }
 
-    return std::move(f).then(
-        [self = shared_from_this(), cb, id](auto&& result) {
-          LOG_DEVEL << "[StateId " << id << "] unregister agency callback";
-          self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
-          return std::move(result.get());
-        });
+    return std::move(f).then([self = shared_from_this(), cb](auto&& result) {
+      self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
+      return std::move(result.get());
+    });
   }
 
   auto deleteReplicatedState(LogId id) const
