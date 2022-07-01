@@ -35,6 +35,11 @@ struct AgencyState {
   std::optional<arangodb::replication2::agency::Log> replicatedLog{};
   arangodb::replication2::replicated_log::ParticipantsHealth health;
 
+  // FIXME: strictly speaking this is a hack, as it does not form part of the
+  // agency's state; it is currently the simplest way to persist informatioon
+  // for predicates to access;
+  std::optional<size_t> logLeaderWriteConcern;
+
   friend std::size_t hash_value(AgencyState const& s) {
     std::size_t seed = 0;
     boost::hash_combine(seed, s.replicatedState);
@@ -51,26 +56,36 @@ struct AgencyState {
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
       velocypack::serialize(builder, x);
-      os << builder.toJson() << std::endl;
+      os << builder.toString() << std::endl;
     };
 
     if (state.replicatedState) {
+      os << "State/Target: ";
       print(state.replicatedState->target);
       if (state.replicatedState->plan) {
+        os << "State/Plan: ";
         print(*state.replicatedState->plan);
       }
       if (state.replicatedState->current) {
+        os << "State/Current: ";
         print(*state.replicatedState->current);
       }
     }
     if (state.replicatedLog) {
+      os << "Log/Target: ";
       print(state.replicatedLog->target);
       if (state.replicatedLog->plan) {
+        os << "Log/Plan: ";
         print(*state.replicatedLog->plan);
       }
       if (state.replicatedLog->current) {
+        os << "Log/Current: ";
         print(*state.replicatedLog->current);
       }
+    }
+    if (state.logLeaderWriteConcern) {
+      os << "logLeaderWriteConcern: " << *state.logLeaderWriteConcern
+         << std::endl;
     }
     {
       VPackBuilder builder;
@@ -83,7 +98,7 @@ struct AgencyState {
           builder.add("failed", !ph.notIsFailed);
         }
       }
-      os << builder.toJson() << std::endl;
+      os << builder.toString() << std::endl;
     }
 
     return os;
