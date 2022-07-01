@@ -54,8 +54,8 @@ static bool isValidId(VPackSlice id) {
 
 KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
     RegisterId outputRegister, QueryContext& query,
-    std::unique_ptr<graph::PathEnumeratorInterface>&& finder, InputVertex&& source,
-    InputVertex&& target)
+    std::unique_ptr<graph::PathEnumeratorInterface>&& finder,
+    InputVertex&& source, InputVertex&& target)
     : _query(query),
       _finder(std::move(finder)),
       _source(std::move(source)),
@@ -67,28 +67,22 @@ graph::PathEnumeratorInterface& KShortestPathsExecutorInfos::finder() const {
   return *_finder.get();
 }
 
-QueryContext& KShortestPathsExecutorInfos::query() noexcept {
-  return _query;
-}
+QueryContext& KShortestPathsExecutorInfos::query() noexcept { return _query; }
 
-auto KShortestPathsExecutorInfos::useRegisterForSourceInput() const
-    -> bool {
+auto KShortestPathsExecutorInfos::useRegisterForSourceInput() const -> bool {
   return _source.type == InputVertex::Type::REGISTER;
 }
 
-auto KShortestPathsExecutorInfos::useRegisterForTargetInput() const
-    -> bool {
+auto KShortestPathsExecutorInfos::useRegisterForTargetInput() const -> bool {
   return _target.type == InputVertex::Type::REGISTER;
 }
 
-auto KShortestPathsExecutorInfos::getSourceInputRegister() const
-    -> RegisterId {
+auto KShortestPathsExecutorInfos::getSourceInputRegister() const -> RegisterId {
   TRI_ASSERT(useRegisterForSourceInput());
   return _source.reg;
 }
 
-auto KShortestPathsExecutorInfos::getTargetInputRegister() const
-    -> RegisterId {
+auto KShortestPathsExecutorInfos::getTargetInputRegister() const -> RegisterId {
   TRI_ASSERT(useRegisterForTargetInput());
   return _target.reg;
 }
@@ -105,8 +99,7 @@ auto KShortestPathsExecutorInfos::getTargetInputValue() const
   return _target.value;
 }
 
-auto KShortestPathsExecutorInfos::getOutputRegister() const
-    -> RegisterId {
+auto KShortestPathsExecutorInfos::getOutputRegister() const -> RegisterId {
   TRI_ASSERT(_outputRegister.isValid());
   return _outputRegister;
 }
@@ -121,8 +114,7 @@ auto KShortestPathsExecutorInfos::getTargetVertex() const noexcept
   return _target;
 }
 
-KShortestPathsExecutor::KShortestPathsExecutor(Fetcher& fetcher,
-                                                           Infos& infos)
+KShortestPathsExecutor::KShortestPathsExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _trx(infos.query().newTrxContext()),
       _inputRow{CreateInvalidInputRowHint{}},
@@ -149,8 +141,8 @@ auto KShortestPathsExecutor::shutdown(int errorCode)
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-auto KShortestPathsExecutor::produceRows(
-    AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto KShortestPathsExecutor::produceRows(AqlItemBlockInputRange& input,
+                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (!output.isFull()) {
     if (_finder.isDone()) {
@@ -170,8 +162,8 @@ auto KShortestPathsExecutor::produceRows(
   }
 }
 
-auto KShortestPathsExecutor::skipRowsRange(
-    AqlItemBlockInputRange& input, AqlCall& call)
+auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input,
+                                           AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
 
@@ -199,8 +191,7 @@ auto KShortestPathsExecutor::skipRowsRange(
   }
 }
 
-auto KShortestPathsExecutor::fetchPaths(
-    AqlItemBlockInputRange& input) -> bool {
+auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input) -> bool {
   TRI_ASSERT(_finder.isDone());
   _finder.clear();
   while (input.hasDataRow()) {
@@ -222,8 +213,7 @@ auto KShortestPathsExecutor::fetchPaths(
   return false;
 }
 
-auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output)
-    -> void {
+auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
   transaction::BuilderLeaser tmp{&_trx};
   tmp->clear();
   if (_finder.getNextPath(*tmp.builder())) {
@@ -235,9 +225,9 @@ auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output)
 }
 
 auto KShortestPathsExecutor::getVertexId(InputVertex const& vertex,
-                                                     InputAqlItemRow& row,
-                                                     VPackBuilder& builder,
-                                                     VPackSlice& id) -> bool {
+                                         InputAqlItemRow& row,
+                                         VPackBuilder& builder, VPackSlice& id)
+    -> bool {
   switch (vertex.type) {
     case InputVertex::Type::REGISTER: {
       AqlValue const& in = row.getValue(vertex.reg);
