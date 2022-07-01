@@ -1,0 +1,12 @@
+name: arangodb_replication2_replicated_state_number
+introducedIn: "3.10.0"
+help: |
+  Number of replicated states.
+unit: number
+type: counter
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Number of replicated states this server is a participant of.
