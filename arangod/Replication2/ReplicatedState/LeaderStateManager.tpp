@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LeaderStateManager.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Metrics/Gauge.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
