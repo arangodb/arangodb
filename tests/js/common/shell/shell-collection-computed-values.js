@@ -690,7 +690,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({values: [1, 2, 3, 4, 5, 6, 7, , 8]});
+        docs.push({values: [1, 2, 3, 4, 5, 6, 7, 8]});
       }
       collection.insert(docs);
 
@@ -721,7 +721,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({values: [1, 2, 3, 4, 5, 6, 7, , 8]});
+        docs.push({values: [1, 2, 3, 4, 5, 6, 7, 8]});
       }
       collection.insert(docs);
 
@@ -732,7 +732,9 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(el.newValue, [2]);
       });
     }
-    */
+    
+     */
+
   };
 }
 
