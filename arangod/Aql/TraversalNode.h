@@ -294,15 +294,6 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief the hashSet for variables used in postFilter
   VarSet _postFilterVariables;
-
-  graph::ClusterBaseProviderOptions getClusterBaseProviderOptions(
-      traverser::TraverserOptions* opts,
-      std::vector<std::pair<Variable const*, RegisterId>> const&
-          filterConditionVariables) const;
-  graph::SingleServerBaseProviderOptions getSingleServerBaseProviderOptions(
-      traverser::TraverserOptions* opts,
-      std::vector<std::pair<Variable const*, RegisterId>> const&
-          filterConditionVariables) const;
 };
 
 }  // namespace aql

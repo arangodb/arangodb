@@ -1019,6 +1019,40 @@ bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
 
+ClusterBaseProviderOptions GraphNode::getClusterProviderOptions(
+    std::vector<std::pair<Variable const*, RegisterId>> const&
+        filterConditionVariables,
+    std::unordered_set<uint64_t> availableDepthsSpecificConditions,
+    bool reverse) const {
+  auto opts = options();
+  auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+      opts->query().resourceMonitor());
+
+  return {cache,
+          engines(),
+          reverse,
+          opts->produceVertices(),
+          &opts->getExpressionCtx(),
+          filterConditionVariables,
+          std::move(availableDepthsSpecificConditions)};
+}
+
+SingleServerBaseProviderOptions GraphNode::getSingleServerProviderOptions(
+    std::pair<std::vector<IndexAccessor>,
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+        usedIndexes,
+    std::vector<std::pair<Variable const*, RegisterId>> const&
+        filterConditionVariables) const {
+  auto opts = options();
+  return {opts->tmpVar(),
+          std::move(usedIndexes),
+          opts->getExpressionCtx(),
+          filterConditionVariables,
+          opts->collectionToShard(),
+          opts->getVertexProjections(),
+          opts->getEdgeProjections()};
+}
+
 /* Enterprise features */
 
 #ifndef USE_ENTERPRISE

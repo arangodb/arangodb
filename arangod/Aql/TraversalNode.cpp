@@ -709,11 +709,17 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    auto clusterBaseProviderOptions =
-        getClusterBaseProviderOptions(opts, filterConditionVariables);
 
-    auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
-                                                  // SingleServer, Cluster...
+    std::unordered_set<uint64_t> availableDepthsSpecificConditions;
+    availableDepthsSpecificConditions.reserve(opts->_depthLookupInfo.size());
+    for (auto const& [depth, _] : opts->_depthLookupInfo) {
+      availableDepthsSpecificConditions.emplace(depth);
+    }
+    auto clusterBaseProviderOptions = getClusterProviderOptions(
+        filterConditionVariables, std::move(availableDepthsSpecificConditions),
+        false);
+
+    auto executorInfos = TraversalExecutorInfos(
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
@@ -724,8 +730,15 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
     TRI_ASSERT(!isSmart);
+    std::pair<std::vector<IndexAccessor>,
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+        usedIndexes{};
+    usedIndexes.first = buildUsedIndexes();
+    usedIndexes.second = buildUsedDepthBasedIndexes();
     auto singleServerBaseProviderOptions =
-        getSingleServerBaseProviderOptions(opts, filterConditionVariables);
+        getSingleServerProviderOptions(
+            std::move(usedIndexes),
+            filterConditionVariables);
     auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
                                                   // SingleServer, Cluster...
         outputRegisterMapping, getStartVertex(), inputRegister,
@@ -737,45 +750,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
-}
-
-ClusterBaseProviderOptions TraversalNode::getClusterBaseProviderOptions(
-    TraverserOptions* opts,
-    std::vector<std::pair<Variable const*, RegisterId>> const&
-        filterConditionVariables) const {
-  auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
-      opts->query().resourceMonitor());
-  std::unordered_set<uint64_t> availableDepthsSpecificConditions;
-  availableDepthsSpecificConditions.reserve(opts->_depthLookupInfo.size());
-  for (auto const& [depth, _] : opts->_depthLookupInfo) {
-    availableDepthsSpecificConditions.emplace(depth);
-  }
-  return {traverserCache,
-          engines(),
-          false,
-          opts->produceVertices(),
-          &opts->getExpressionCtx(),
-          filterConditionVariables,
-          std::move(availableDepthsSpecificConditions)};
-}
-
-SingleServerBaseProviderOptions
-TraversalNode::getSingleServerBaseProviderOptions(
-    TraverserOptions* opts,
-    std::vector<std::pair<Variable const*, RegisterId>> const&
-        filterConditionVariables) const {
-  std::pair<std::vector<IndexAccessor>,
-            std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-      usedIndexes{};
-  usedIndexes.first = buildUsedIndexes();
-  usedIndexes.second = buildUsedDepthBasedIndexes();
-  return {opts->tmpVar(),
-          std::move(usedIndexes),
-          opts->getExpressionCtx(),
-          filterConditionVariables,
-          opts->collectionToShard(),
-          opts->getVertexProjections(),
-          opts->getEdgeProjections()};
 }
 
 /// @brief creates corresponding ExecutionBlock

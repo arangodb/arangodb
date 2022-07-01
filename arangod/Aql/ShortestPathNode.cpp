@@ -34,6 +34,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
 #include "Graph/ConstantWeightShortestPathFinder.h"
+#include "Graph/Enumerators/PathEnumeratorInterface.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
