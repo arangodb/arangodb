@@ -1294,19 +1294,36 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
 
   size_t const n = left.length();
 
+  AstNode const* q = node->getMember(2);
   if (n == 0) {
-    if (Quantifier::isAllOrNone(node->getMember(2))) {
+    if (Quantifier::isAll(q) || Quantifier::isNone(q)) {
       // [] ALL ...
       // [] NONE ...
       return AqlValue(AqlValueHintBool(true));
-    } else {
+    } else if (Quantifier::isAny(q)) {
       // [] ANY ...
       return AqlValue(AqlValueHintBool(false));
     }
   }
 
+  int64_t atLeast = 0;
+  if (Quantifier::isAtLeast(q)) {
+    // evaluate expression for AT LEAST
+    TRI_ASSERT(q->numMembers() == 1);
+
+    bool mustDestroy = false;
+    AqlValue atLeastValue =
+        executeSimpleExpression(ctx, q->getMember(0), mustDestroy, false);
+    AqlValueGuard guard(atLeastValue, mustDestroy);
+    atLeast = atLeastValue.toInt64();
+    if (atLeast < 0) {
+      atLeast = 0;
+    }
+    TRI_ASSERT(atLeast >= 0);
+  }
+
   std::pair<size_t, size_t> requiredMatches =
-      Quantifier::requiredMatches(n, node->getMember(2));
+      Quantifier::requiredMatches(n, q, static_cast<size_t>(atLeast));
 
   TRI_ASSERT(requiredMatches.first <= requiredMatches.second);
 
@@ -1634,9 +1651,25 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     };
 
     if (quantifierNode->type == NODE_TYPE_QUANTIFIER) {
-      // ALL|ANY|NONE
+      // ALL|ANY|NONE|AT LEAST
+      int64_t atLeast = 0;
+      if (Quantifier::isAtLeast(quantifierNode)) {
+        // evaluate expression for AT LEAST
+        TRI_ASSERT(quantifierNode->numMembers() == 1);
+
+        bool mustDestroy = false;
+        AqlValue atLeastValue = executeSimpleExpression(
+            ctx, quantifierNode->getMember(0), mustDestroy, false);
+        AqlValueGuard guard(atLeastValue, mustDestroy);
+        atLeast = atLeastValue.toInt64();
+        if (atLeast < 0) {
+          atLeast = 0;
+        }
+        TRI_ASSERT(atLeast >= 0);
+      }
       std::tie(minRequiredItems, maxRequiredItems) =
-          Quantifier::requiredMatches(n, quantifierNode);
+          Quantifier::requiredMatches(n, quantifierNode,
+                                      static_cast<size_t>(atLeast));
     } else if (quantifierNode->type == NODE_TYPE_RANGE) {
       // range
       TRI_ASSERT(quantifierNode->numMembers() == 2);
