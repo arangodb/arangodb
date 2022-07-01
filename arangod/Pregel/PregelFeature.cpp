@@ -343,8 +343,8 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--pregel.memory-mapped-files-custom-path",
-                  "custom path for Pregel's temporary files (only used if "
-                  "`--pregel.memory-mapped-files-location` is 'custom')",
+                  "Custom path for Pregel's temporary files. Only used if "
+                  "`--pregel.memory-mapped-files-location` is \"custom\".",
                   new StringParameter(&_tempLocationCustomPath),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,

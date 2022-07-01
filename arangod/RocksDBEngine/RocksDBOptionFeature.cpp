@@ -242,7 +242,7 @@ void RocksDBOptionFeature::collectOptions(
 
   options
       ->addOption("--rocksdb.target-file-size-base",
-                  "per-file target file size for compaction (in bytes). the "
+                  "Per-file target file size for compaction (in bytes). The "
                   "actual target file size for each level is "
                   "`--rocksdb.target-file-size-base` multiplied by "
                   "`--rocksdb.target-file-size-multiplier` ^ (level - 1)",
@@ -897,8 +897,8 @@ void RocksDBOptionFeature::collectOptions(
             family);
         options
             ->addOption("--rocksdb.max-write-buffer-number-" + name,
-                        "if non-zero, overrides the value of "
-                        "--rocksdb.max-write-buffer-number for the " +
+                        "If non-zero, overrides the value of "
+                        "`--rocksdb.max-write-buffer-number` for the " +
                             name + " column family",
                         new UInt64Parameter(&_maxWriteBufferNumberCf[index]),
                         arangodb::options::makeDefaultFlags(

@@ -513,7 +513,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
-      "create and use deprecated system collection (_modules, _fishbowl)",
+      "Create and use deprecated system collection (_modules, _fishbowl).",
       false);
 
   // the following option was obsoleted in 3.8
