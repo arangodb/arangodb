@@ -332,7 +332,7 @@ auto hasConverged(RSA::State const& state, RLA::Log const& log) -> bool {
   }
 
   if (!log.current || !log.current->supervision ||
-      log.current->supervision->targetVersion != state.target.version) {
+      log.current->supervision->targetVersion != log.target.version) {
     return false;
   }
 

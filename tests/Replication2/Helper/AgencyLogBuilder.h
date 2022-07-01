@@ -73,6 +73,12 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto setCurrentVersion(std::optional<std::uint64_t> version)
+      -> AgencyLogBuilder& {
+    makeCurrent().supervision->targetVersion = version;
+    return *this;
+  }
+
   auto makeTerm() -> RLA::LogPlanTermSpecification& {
     auto& plan = makePlan();
     if (!plan.currentTerm.has_value()) {
