@@ -18,59 +18,61 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "IResearch/IResearchLink.h"
-
+#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexFactory.h"
-#include "VocBase/Identifiers/IndexId.h"
-
-namespace arangodb {
-
-struct IndexTypeFactory; // forward declaration
-}
 
 namespace arangodb {
 namespace iresearch {
 
-class IResearchLinkMock final : public Index, public IResearchLink {
+
+class IResearchInvertedIndexMock final : public Index,
+                                         public IResearchInvertedIndex {
 public:
-  IResearchLinkMock(IndexId iid, LogicalCollection &collection);
+  IResearchInvertedIndexMock(IndexId iid, LogicalCollection &collection);
 
-  [[nodiscard]] static auto
-  setCallbakForScope(std::function<irs::directory_attributes()> callback) {
-    InitCallback = callback;
-    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
-  }
+  //  [[nodiscard]] static auto
+  //  setCallbakForScope(std::function<irs::directory_attributes()> callback) {
+  //    InitCallback = callback;
+  //    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
+  //  }
 
-  bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
+  bool canBeDropped() const override { return false; }
 
-  Result drop() override { return IResearchLink::drop(); }
+  Result drop() override { return Result(ErrorCode(0)); }
 
   bool hasSelectivityEstimate() const override {
-    return IResearchLink::hasSelectivityEstimate();
+    return IResearchDataStore::hasSelectivityEstimate();
   }
 
   Result insert(transaction::Methods &trx, LocalDocumentId const &documentId,
                 velocypack::Slice const doc) {
-    return IResearchLink::insert(trx, documentId, doc);
+    IResearchInvertedIndexMeta meta;
+    using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
+        arangodb::iresearch::IResearchInvertedIndexMeta,
+        arangodb::iresearch::InvertedIndexField>;
+
+    return IResearchDataStore::insert<InvertedIndexFieldIterator,
+                                      IResearchInvertedIndexMeta>(
+        trx, documentId, doc, meta);
   }
 
-  bool isSorted() const override { return IResearchLink::isSorted(); }
+  bool isSorted() const override { return IResearchInvertedIndex::isSorted(); }
 
-  bool isHidden() const override { return IResearchLink::isHidden(); }
+  bool isHidden() const override { return false; }
 
   bool needsReversal() const override { return true; }
 
-  void load() override { IResearchLink::load(); }
+  void load() override { /*IResearchDataStore::load();*/
+  }
 
   bool matchesDefinition(velocypack::Slice const &slice) const override {
-    return IResearchLink::matchesDefinition(slice);
+    return false;
   }
 
   size_t memory() const override {
@@ -84,27 +86,21 @@ public:
   ////////////////////////////////////////////////////////////////////////////////
   using Index::toVelocyPack; // for std::shared_ptr<Builder>
                              // Index::toVelocyPack(bool, Index::Serialize)
-  void
-  toVelocyPack(velocypack::Builder &builder,
-               std::underlying_type<Index::Serialize>::type) const override;
+                             //  void
+                             //  toVelocyPack(velocypack::Builder &builder,
+  //               std::underlying_type<Index::Serialize>::type) const override;
 
   void toVelocyPackFigures(velocypack::Builder &builder) const override {
-    IResearchLink::toVelocyPackStats(builder);
+    IResearchInvertedIndex::toVelocyPackStats(builder);
   }
 
-  IndexType type() const override { return IResearchLink::type(); }
+  IndexType type() const override { return Index::TRI_IDX_TYPE_INVERTED_INDEX; }
 
-  char const *typeName() const override { return IResearchLink::typeName(); }
+  char const *typeName() const override { return "inverted"; }
 
-  void unload() override {
-    auto res = IResearchLink::unload();
+  void unload() override {}
 
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-
-  static std::function<irs::directory_attributes()> InitCallback;
+  //  static std::function<irs::directory_attributes()> InitCallback;
 };
 
 } // namespace iresearch

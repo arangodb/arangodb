@@ -39,33 +39,33 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchLinkMock::IResearchLinkMock(IndexId iid,
-                                     arangodb::LogicalCollection& collection)
+                                     arangodb::LogicalCollection &collection)
     : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  _unique = false;  // cannot be unique since multiple fields are indexed
-  _sparse = true;   // always sparse
+  _unique = false; // cannot be unique since multiple fields are indexed
+  _sparse = true;  // always sparse
 }
 
 void IResearchLinkMock::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
+    arangodb::velocypack::Builder &builder,
     std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
-        TRI_ERROR_BAD_PARAMETER,              // code
+    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
+        TRI_ERROR_BAD_PARAMETER,             // code
         std::string("failed to generate link definition for arangosearch view "
                     "link '") +
             std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
-  auto forPersistence =  // definition for persistence
+  auto forPersistence = // definition for persistence
       arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
 
   builder.openObject();
 
   if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
-        TRI_ERROR_INTERNAL,                   // code
+    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
+        TRI_ERROR_INTERNAL,                  // code
         std::string("failed to generate link definition for arangosearch view "
                     "link '") +
             std::to_string(arangodb::Index::id().id()) + "'"));
@@ -81,5 +81,5 @@ void IResearchLinkMock::toVelocyPack(
 }
 
 std::function<irs::directory_attributes()> IResearchLinkMock::InitCallback;
-}  // namespace iresearch
-}  // namespace arangodb
+} // namespace iresearch
+} // namespace arangodb
