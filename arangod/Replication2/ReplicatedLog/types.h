@@ -53,13 +53,23 @@ inline constexpr std::string_view requestInFlightString = "request-in-flight";
 }  // namespace static_strings
 
 struct FollowerState {
-  struct UpToDate {};
+  struct UpToDate {
+    friend auto operator==(UpToDate const& left, UpToDate const& right) noexcept
+        -> bool = default;
+  };
   struct ErrorBackoff {
     std::chrono::duration<double, std::milli> durationMS;
     std::size_t retryCount;
+    friend auto operator==(ErrorBackoff const& left,
+                           ErrorBackoff const& right) noexcept
+        -> bool = default;
   };
   struct RequestInFlight {
     std::chrono::duration<double, std::milli> durationMS;
+
+    friend auto operator==(RequestInFlight const& left,
+                           RequestInFlight const& right) noexcept
+        -> bool = default;
   };
 
   std::variant<UpToDate, ErrorBackoff, RequestInFlight> value;
@@ -74,6 +84,9 @@ struct FollowerState {
   void toVelocyPack(velocypack::Builder&) const;
 
   FollowerState() = default;
+
+  friend auto operator==(FollowerState const& left,
+                         FollowerState const& right) noexcept -> bool = default;
 
  private:
   template<typename... Args>
