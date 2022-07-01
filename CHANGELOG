@@ -4,6 +4,8 @@ devel
 * Added a fully functional UI for Views that lets users view, modify mutable
   properties and delete views from the web UI.
 
+* Changed default macOS CI compiler to LLVM clang-14.
+
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
   read-only APIs. This header has already been used for active failover
