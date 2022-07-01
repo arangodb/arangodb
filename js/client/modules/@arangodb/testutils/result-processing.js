@@ -675,8 +675,7 @@ function summarizeStats(deltaStats) {
     sumStats['netstat'] = {};
     if (instance === 'netstat') {
       for (let nsInstance in deltaStats[instance]) {
-        for (let j = 0; j < 2; j ++) {
-          let dir = ['in', 'out'][j];
+        for (const dir of ['in', 'out']) {
           for (let type in deltaStats[instance][nsInstance][dir]) {
             if (!sumStats['netstat'].hasOwnProperty(type)) {
               sumStats['netstat'][type] = deltaStats[instance][nsInstance][dir][type];
