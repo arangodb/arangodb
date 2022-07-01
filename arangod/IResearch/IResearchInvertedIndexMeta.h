@@ -141,7 +141,7 @@ struct InvertedIndexField {
 
   std::string const& analyzerName() const noexcept {
     TRI_ASSERT(_analyzers[0]._pool);
-    return _analyzers[0]._shortName;
+    return _analyzers[0]._pool->name();
   }
 
   bool namesMatch(InvertedIndexField const& other) const noexcept;
