@@ -32,7 +32,9 @@ const db = require("@arangodb").db;
 const internal = require("internal");
 const isCluster = internal.isCluster();
 const errors = internal.errors;
+var aqlfunctions = require("@arangodb/aql/functions");
 const cn = "UnitTestsCollection";
+
 
 function ComputedValuesAfterCreateCollectionTestSuite() {
   'use strict';
@@ -98,11 +100,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       collection.insert(docs);
 
       res = db._query(`FOR doc IN ${cn} FILTER HAS (doc, "concatValues") FILTER HAS (doc, "value1") FILTER HAS (doc, "value2")  RETURN {value1: doc.value1, value2: doc.value2, concatValues: doc.concatValues}`).toArray();
+      assertEqual(res.length, 100);
       res.forEach(el => {
-        assertEqual(res.length, 100);
         assertEqual(el.concatValues, el.value1 + '+' + el.value2);
       });
     },
+
 
     testComputedValuesOnlyOnInsert: function() {
       collection.properties({
@@ -275,8 +278,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       collection.insert(docs);
 
       res = db._query(`FOR doc IN ${cn} FILTER HAS (doc, "concatValues") FILTER HAS (doc, "value3")  RETURN {value1: doc.value1, value2: doc.value2, concatValues: doc.concatValues}`).toArray();
+      assertEqual(res.length, 100);
       res.forEach(el => {
-        assertEqual(res.length, 100);
         assertEqual(el.concatValues, el.value1 + '+' + el.value2);
       });
       res = db._query(`FOR doc IN ${cn} FILTER HAS (doc, "concatValues") FILTER !HAS (doc, "value3")  RETURN {value1: doc.value1, value2: doc.value2, concatValues: doc.concatValues}`).toArray();
@@ -319,6 +322,51 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           computedValues: [{
             name: "_id",
             expression: "RETURN CONCAT(@doc.value1, '+')",
+            override: false
+          }]
+        });
+        fail();
+      } catch (error) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
+      }
+    },
+
+    testComputeValuesSubquery: function() {
+      try {
+        collection.properties({
+          computedValues: [{
+            name: "newValue",
+            expression: "RETURN (RETURN CONCAT(@doc.value1, '+'))",
+            override: false
+          }]
+        });
+        fail();
+      } catch (error) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
+      }
+    },
+
+    testNotAllowedFor: function() {
+      try {
+        collection.properties({
+          computedValues: [{
+            name: "newValue",
+            expression: "RETURN (FOR i IN 1..10 RETURN i)",
+            override: false
+          }]
+        });
+        fail();
+      } catch (error) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
+      }
+    },
+
+    testNowAllowedLet: function() {
+      try {
+        collection.properties({
+          computedValues: [{
+            name: "newValue",
+            expression: "RETURN (LET temp1 = (RETURN 1))",
             override: false
           }]
         });
@@ -416,6 +464,123 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(res.length, 0);
     },
 
+
+    testRedefineComputedValueUpdateOverride: function() {
+      collection.properties({
+        computedValues: [{
+          name: "concatValues",
+          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+          override: false
+        }, {
+          name: "value3",
+          expression: "return CONCAT(@doc.concatValues, ' ')",
+          override: false
+        }]
+      });
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 2);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "concatValues");
+      assertTrue(colProperties.computedValues[1].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[1].name, "value3");
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({value1: "test" + i, value2: "abc"});
+      }
+      collection.insert(docs);
+
+      let res = db._query(`FOR doc IN ${cn} FILTER HAS (doc, "concatValues") RETURN doc`).toArray();
+      assertEqual(res.length, 100);
+      res.forEach(el => {
+        assertEqual(el.concatValues, el.value1 + '+' + el.value2);
+        assertEqual(el.value3, " ");
+      });
+
+      collection.properties({
+        computedValues: [{
+          name: "concatValues",
+          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+          computeOn: ["update"],
+          override: true
+        }, {
+          name: "value3",
+          expression: "return CONCAT(@doc.concatValues, '+', @doc.value1)",
+          computeOn: ["update"],
+          override: true
+        }]
+      });
+
+      res = db._query(`FOR doc IN ${cn} UPDATE doc WITH {value2: "123"} IN ${cn} RETURN {oldConcatValues: OLD.concatValues, new: NEW}`).toArray();
+      assertEqual(res.length, 100);
+      res.forEach((el, index) => {
+        assertEqual(el.new.value1, "test" + index);
+        assertEqual(el.new.value2, "123");
+        assertEqual(el.new.concatValues, el.new.value1 + "+" + el.new.value2);
+        assertEqual(el.new.value3, el.oldConcatValues + "+" + el.new.value1);
+      });
+    },
+
+    testRedefineComputedValueUpdateNoOverride: function() {
+      collection.properties({
+        computedValues: [{
+          name: "concatValues",
+          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+          override: false
+        }, {
+          name: "value3",
+          expression: "return CONCAT(@doc.concatValues, ' ')",
+          override: false
+        }]
+      });
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 2);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "concatValues");
+      assertTrue(colProperties.computedValues[1].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[1].name, "value3");
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({value1: "test" + i, value2: "abc"});
+      }
+      collection.insert(docs);
+
+      let res = db._query(`FOR doc IN ${cn} FILTER HAS (doc, "concatValues") RETURN doc`).toArray();
+      assertEqual(res.length, 100);
+      res.forEach(el => {
+        assertEqual(el.concatValues, el.value1 + '+' + el.value2);
+        assertEqual(el.value3, " ");
+      });
+
+      collection.properties({
+        computedValues: [{
+          name: "concatValues",
+          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+          computeOn: ["update"],
+          override: false
+        }, {
+          name: "value3",
+          expression: "return CONCAT(@doc.concatValues, '+', @doc.value1)",
+          computeOn: ["update"],
+          override: false
+        }]
+      });
+
+      res = db._query(`FOR doc IN ${cn} UPDATE doc WITH {value2: "123"} IN ${cn} RETURN {oldValue3: OLD.value3, oldConcatValues: OLD.concatValues, new: NEW}`).toArray();
+      assertEqual(res.length, 100);
+      res.forEach((el, index) => {
+        assertEqual(el.new.value1, "test" + index);
+        assertEqual(el.new.value2, "123");
+        assertEqual(el.new.concatValues, el.oldConcatValues);
+        assertEqual(el.new.value3, el.oldValue3);
+      });
+    },
+
     testCompoundComputedValues: function() {
       collection.properties({
         computedValues: [{
@@ -444,8 +609,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       collection.insert(docs);
 
       let res = db._query(`FOR doc IN ${cn} FILTER HAS (doc, "concatValues") RETURN doc`).toArray();
+      assertEqual(res.length, 100);
       res.forEach(el => {
-        assertEqual(res.length, 100);
         assertEqual(el.concatValues, el.value1 + '+' + el.value2);
         assertEqual(el.value3, " ");
       });
@@ -466,7 +631,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         "level": "moderate",
         "message": "Schema validation failed"
       };
-      const specialFunctions = ["COLLECTIONS", "CURRENT_DATABASE", "CURRENT_USER", "VERSION", `CALL("SUBSTRING", @doc.value1, 0, 2)`, `APPLY("SUBSTRING", [@doc.value1, 0, 2])`, `DOCUMENT(${cn}, "test")`, `V8(1 + 1)`, `SCHEMA_GET(${cn}`, `SCHEMA_VALIDATE(@doc, ${schemaTest}`, `COLLECTION_COUNT(${cn}`, `NEAR(${cn}, @doc.latitude, @doc.longitude)`, `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`];
+      const specialFunctions = ["COLLECTIONS", "CURRENT_DATABASE", "CURRENT_USER", "VERSION", `CALL("SUBSTRING", @doc.value1, 0, 2)`, `APPLY("SUBSTRING", [@doc.value1, 0, 2])`, `DOCUMENT(${cn}, "test")`, `V8(1 + 1)`, `SCHEMA_GET(${cn}`, `SCHEMA_VALIDATE(@doc, ${schemaTest}`, `COLLECTION_COUNT(${cn}`, `NEAR(${cn}, @doc.latitude, @doc.longitude)`, `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`, `PREGEL_RESULT("abc", true)`];
       specialFunctions.forEach((el) => {
         try {
           collection.properties({
@@ -482,7 +647,92 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
         }
       });
+    },
+
+    testUserDefinedFunctions: function() {
+      aqlfunctions.register("UnitTests::cv", function(what) {
+        return what * 2;
+      }, true);
+      assertEqual("function(what) {\n        return what * 2;\n      }", aqlfunctions.toArray("UnitTests")[0].code);
+
+      try {
+        collection.properties({
+          computedValues: [{
+            name: "newValue",
+            expression: `RETURN UnitTests::cv(1)`,
+            override: false,
+            computeOn: ["insert"]
+          }]
+        });
+        fail();
+      } catch (error) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
+      } finally {
+        aqlfunctions.unregisterGroup("UnitTests::");
+      }
+    },
+
+    testArayOperator: function() {
+      collection.properties({
+        computedValues: [{
+          name: "newValue",
+          expression: `RETURN @doc.values[* RETURN CURRENT]`,
+          override: false,
+          computeOn: ["insert"]
+        }]
+      });
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({values: [1, 2, 3, 4, 5, 6, 7, , 8]});
+      }
+      collection.insert(docs);
+
+      const res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      assertEqual(res.length, 100);
+      res.forEach(el => {
+        assertEqual(el.values, [1, 2, 3, 4, 5, 6, 7, 8]);
+        assertEqual(el.newValue, [1, 2, 3, 4, 5, 6, 7, 8]);
+      });
+    },
+
+    /*
+    testArayOperatorWithInline: function() {
+      collection.properties({
+        computedValues: [{
+          name: "newValue",
+          expression: `RETURN @doc.values[* FILTER CURRENT % 2 == 0 LIMIT 0,1 RETURN CURRENT]`,
+          override: false,
+          computeOn: ["insert"]
+        }]
+      });
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({values: [1, 2, 3, 4, 5, 6, 7, , 8]});
+      }
+      collection.insert(docs);
+
+      const res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      assertEqual(res.length, 100);
+      res.forEach(el => {
+        assertEqual(el.values, [1, 2, 3, 4, 5, 6, 7, 8]);
+        assertEqual(el.newValue, [2]);
+      });
     }
+    */
   };
 }
 
