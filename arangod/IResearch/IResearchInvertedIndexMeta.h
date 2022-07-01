@@ -156,8 +156,7 @@ struct InvertedIndexField {
   /// @brief nested fields
   std::vector<InvertedIndexField> _fields;
   /// @brief analyzer to apply. Array to comply with old views definition
-  // absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
-  std::vector<FieldMeta::Analyzer> _analyzers;
+  absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
   /// @brief override for field features
   Features _features;
   /// @brief start point for non primitive analyzers
