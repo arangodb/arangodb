@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
@@ -49,6 +50,7 @@
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -791,6 +793,45 @@ class ClusterInfo final {
                                             bool restore);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Init metrics state
+  /// @note Current server should be Coordinator
+  /// Try to propose current server as leader or know that someone
+  /// was a leader. No return while we don't know that or server should stop.
+  //////////////////////////////////////////////////////////////////////////////
+  void initMetricsState();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The MetricsState that stored in agency.
+  /// @note If `leader` is `nullopt` that means we ourselves are the leader.
+  //////////////////////////////////////////////////////////////////////////////
+  struct [[nodiscard]] MetricsState {
+    std::optional<ServerID> leader;
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gets the current MetricsState from the agencyCache.
+  /// @param wantLeader If it is `true`, a RebootTracker event is set,
+  /// in which we will try to become the new leader ourselves, if the current
+  /// leader dies. If the flag is `false`, no new event is set,
+  /// but the old one is also not deleted.
+  /// @note This method can throw exceptions of various types, if
+  /// something is not founded or some other error occurs, so the called
+  /// must guard against this. In particular, this can happen in the
+  /// bootstrap phase if the `AgencyCache` has not yet heard about this.
+  /// @note If `wantLeader` is true, then thread-safe, otherwise not
+  /// @return Who is the leader, and what cache version is current.
+  //////////////////////////////////////////////////////////////////////////////
+  MetricsState getMetricsState(bool wantLeader);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Try to propose current server as new leader
+  /// @note Current server should be Coordinator
+  /// @param oldRebootId last leader RebootId
+  /// @param oldServerId last leader ServerID
+  //////////////////////////////////////////////////////////////////////////////
+  void proposeMetricsLeader(uint64_t oldRebootId, std::string_view oldServerId);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates cleanup transaction for first found dangling operation
   /// @return created transaction or nullptr if no cleanup needed
   //////////////////////////////////////////////////////////////////////////////
@@ -1187,7 +1228,7 @@ class ClusterInfo final {
   };
 
   cluster::RebootTracker _rebootTracker;
-
+  cluster::CallbackGuard _metricsGuard;
   /// @brief error code sent to all remaining promises of the syncers at
   /// shutdown. normally this is TRI_ERROR_SHUTTING_DOWN, but it can be
   /// overridden during testing
