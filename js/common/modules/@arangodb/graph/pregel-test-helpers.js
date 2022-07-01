@@ -30,7 +30,11 @@
 
 let db = require("@arangodb").db;
 let general_graph_module = require("@arangodb/general-graph");
-let smart_graph_module = require("@arangodb/smart-graph");
+const isEnterprise = require('internal').isEnterprise();
+let smart_graph_module;
+if (isEnterprise) {
+    smart_graph_module = require("@arangodb/smart-graph");
+}
 let internal = require("internal");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
