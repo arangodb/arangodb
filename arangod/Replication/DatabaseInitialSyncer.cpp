@@ -2121,7 +2121,7 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                                VPackSlice const& slice) {
   arangodb::CollectionGuard guard(&vocbase(), col->id());
 
-  return guard.collection()->properties(slice, false);  // always a full-update
+  return guard.collection()->properties(slice);
 }
 
 /// @brief whether or not the collection has documents

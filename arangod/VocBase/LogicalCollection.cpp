@@ -857,7 +857,7 @@ void LogicalCollection::includeVelocyPackEnterprise(
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
-Result LogicalCollection::properties(velocypack::Slice slice, bool) {
+Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(_sharding != nullptr);
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:

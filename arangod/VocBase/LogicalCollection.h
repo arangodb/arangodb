@@ -305,12 +305,8 @@ class LogicalCollection : public LogicalDataSource {
 
   using LogicalDataSource::properties;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
-  /// @param definition the properties being updated
-  /// @param partialUpdate modify only the specified properties (false == all)
-  //////////////////////////////////////////////////////////////////////////////
-  virtual Result properties(velocypack::Slice definition, bool partialUpdate);
+  virtual Result properties(velocypack::Slice definition);
 
   /// @brief return the figures for a collection
   virtual futures::Future<OperationResult> figures(
