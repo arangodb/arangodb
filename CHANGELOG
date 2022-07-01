@@ -1,6 +1,8 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Changed default macOS CI compiler to LLVM clang-12.
+
 * Fixed potential resource leak when reusing `rocksdb::PinnableSlice` instances
   without resetting them first. This issue can lead to the block cache filling
   up with data that will not be evicted from the block cache anymore.
