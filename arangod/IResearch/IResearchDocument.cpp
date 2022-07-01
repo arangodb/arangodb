@@ -343,18 +343,16 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
     arangodb::iresearch::InvertedIndexField const& field) {
   arangodb::iresearch::MissingFieldsMap map;
   for (auto const& f : field._fields) {
-    // always monitor on root level plain fields to track completely missing hierarchies
+    // always monitor on root level plain fields to track completely missing hierarchies.
     // trackListPositions enabled arrays are excluded as we could never predict if array[12345] will exist
     // so we do not emit such "nulls". It is not supported in general indexes anyway
     if ((!field._trackListPositions || !field._hasExpansion) && f._fields.empty()) {
-      std::cout << "ROOT LEVEL:" << f.path() << std::endl;
       map[""].emplace(f._attribute.back().shouldExpand ? f.attributeString() : f.path());
     }
     // but for individual objects in array we always could track expected fields and emit "nulls"
     if (f._hasExpansion && !f._attribute.back().shouldExpand) {
       TRI_ASSERT(f._fields.empty());
       // monitor array subobjects
-      std::cout << "ARRAY:" << f.attributeString() << " Expect:" << f.path() << std::endl;
       map[f.attributeString()].emplace(f.path());
     }
 #ifdef USE_ENTERPRISE
@@ -656,7 +654,6 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::fieldSeen(std::string& name) {
   if constexpr (!std::is_same_v<InvertedIndexField, LevelMeta>) {
     return;
   }
-  std::cout << "SEEN:" << name << std::endl;
   auto it = _stack.rbegin();
   while (it != _stack.rend()) {
     if (it->missingFields) {
@@ -718,7 +715,6 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
           }
 #endif
           _nameBuffer = *top().missingFields->begin();
-          std::cout << "Emitting NULL for:" << _nameBuffer << std::endl;
           fieldSeen(_nameBuffer);
           setNullValue(VPackSlice::nullSlice());
           return;
