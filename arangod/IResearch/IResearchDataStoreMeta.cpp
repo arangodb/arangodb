@@ -201,7 +201,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 }  // namespace
 
 namespace arangodb::iresearch {
-  IResearchDataStoreMeta::Mask::Mask(bool mask /*=false*/) noexcept
+IResearchDataStoreMeta::Mask::Mask(bool mask /*=false*/) noexcept
     : _cleanupIntervalStep(mask),
       _commitIntervalMsec(mask),
       _consolidationIntervalMsec(mask),
@@ -211,23 +211,23 @@ namespace arangodb::iresearch {
       _writebufferIdle(mask),
       _writebufferSizeMax(mask) {}
 
-  IResearchDataStoreMeta::IResearchDataStoreMeta()
-    :  _cleanupIntervalStep(2),
+IResearchDataStoreMeta::IResearchDataStoreMeta()
+    : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
       _consolidationIntervalMsec(1000),
       _version(static_cast<uint32_t>(ViewVersion::MAX)),
       _writebufferActive(0),
       _writebufferIdle(64),
       _writebufferSizeMax(32 * (size_t(1) << 20)) {  // 32MB
-     std::string errorField;
+  std::string errorField;
 
   // cppcheck-suppress useInitializationList
-     _consolidationPolicy =
-         createConsolidationPolicy<irs::index_utils::consolidate_tier>(
-             velocypack::Parser::fromJson("{ \"type\": \"tier\" }")->slice(),
-             errorField);
-     assert(_consolidationPolicy.policy());  // ensure above syntax is correct
-  }
+  _consolidationPolicy =
+      createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+          velocypack::Parser::fromJson("{ \"type\": \"tier\" }")->slice(),
+          errorField);
+  assert(_consolidationPolicy.policy());  // ensure above syntax is correct
+}
 
 void IResearchDataStoreMeta::storeFull(IResearchDataStoreMeta const& other) {
   if (this == &other) {
@@ -243,7 +243,8 @@ void IResearchDataStoreMeta::storeFull(IResearchDataStoreMeta const& other) {
   _writebufferSizeMax = other._writebufferSizeMax;
 }
 
-void IResearchDataStoreMeta::storeFull(IResearchDataStoreMeta&& other) noexcept {
+void IResearchDataStoreMeta::storeFull(
+    IResearchDataStoreMeta&& other) noexcept {
   if (this == &other) {
     return;
   }
@@ -257,8 +258,8 @@ void IResearchDataStoreMeta::storeFull(IResearchDataStoreMeta&& other) noexcept 
   _writebufferSizeMax = other._writebufferSizeMax;
 }
 
-
-void IResearchDataStoreMeta::storePartial(IResearchDataStoreMeta&& other) noexcept {
+void IResearchDataStoreMeta::storePartial(
+    IResearchDataStoreMeta&& other) noexcept {
   if (this == &other) {
     return;
   }
@@ -268,10 +269,10 @@ void IResearchDataStoreMeta::storePartial(IResearchDataStoreMeta&& other) noexce
   _consolidationPolicy = std::move(other._consolidationPolicy);
 }
 
-bool IResearchDataStoreMeta::json(velocypack::Builder& builder,
-                             IResearchDataStoreMeta const* ignoreEqual /*= nullptr*/,
-                             IResearchDataStoreMeta::Mask const* mask /*= nullptr*/) const {
-
+bool IResearchDataStoreMeta::json(
+    velocypack::Builder& builder,
+    IResearchDataStoreMeta const* ignoreEqual /*= nullptr*/,
+    IResearchDataStoreMeta::Mask const* mask /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -336,9 +337,10 @@ bool IResearchDataStoreMeta::json(velocypack::Builder& builder,
   return true;
 }
 
-bool IResearchDataStoreMeta::init(velocypack::Slice slice, std::string& errorField,
-                             IResearchDataStoreMeta const& defaults,
-                             Mask* mask) noexcept {
+bool IResearchDataStoreMeta::init(velocypack::Slice slice,
+                                  std::string& errorField,
+                                  IResearchDataStoreMeta const& defaults,
+                                  Mask* mask) noexcept {
   if (!slice.isObject()) {
     errorField = "Object is expected";
     return false;
@@ -551,7 +553,6 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice, std::string& errorFie
   return true;
 }
 
-
 bool IResearchDataStoreMeta::operator==(
     IResearchDataStoreMeta const& other) const noexcept {
   if (_consolidationIntervalMsec != other._consolidationIntervalMsec ||
@@ -581,4 +582,4 @@ bool IResearchDataStoreMeta::operator!=(
   return !(*this == other);
 }
 
-} // namespace arangodb::iresearch
+}  // namespace arangodb::iresearch

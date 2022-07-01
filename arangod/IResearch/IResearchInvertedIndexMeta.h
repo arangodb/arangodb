@@ -123,17 +123,15 @@ struct InvertedIndexField {
   using AnalyzerDefinitions =
       std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer>;
 
-  bool init(
-      VPackSlice slice,
-      AnalyzerDefinitions& analyzerDefinitions,
-      LinkVersion version, bool extendedNames,
-      IResearchAnalyzerFeature& analyzers, InvertedIndexField const& parent,
-      irs::string_ref const defaultVocbase, bool rootMode,
-      std::string& errorField);
+  bool init(VPackSlice slice, AnalyzerDefinitions& analyzerDefinitions,
+            LinkVersion version, bool extendedNames,
+            IResearchAnalyzerFeature& analyzers,
+            InvertedIndexField const& parent,
+            irs::string_ref const defaultVocbase, bool rootMode,
+            std::string& errorField);
 
   bool json(arangodb::ArangodServer& server, VPackBuilder& builder,
-            InvertedIndexField const& parent,
-            bool rootMode,
+            InvertedIndexField const& parent, bool rootMode,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
   std::string_view path() const noexcept;
@@ -153,14 +151,12 @@ struct InvertedIndexField {
 
   FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzers[0]; }
 
-  bool isArray() const noexcept {
-    return _isArray || _hasExpansion;
-  }
+  bool isArray() const noexcept { return _isArray || _hasExpansion; }
 
   /// @brief nested fields
   std::vector<InvertedIndexField> _fields;
   /// @brief analyzer to apply. Array to comply with old views definition
-  //absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
+  // absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
   std::vector<FieldMeta::Analyzer> _analyzers;
   /// @brief override for field features
   Features _features;
@@ -190,7 +186,8 @@ struct InvertedIndexField {
   bool _hasExpansion{false};
 };
 
-struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta, public InvertedIndexField {
+struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
+                                    public InvertedIndexField {
   IResearchInvertedIndexMeta();
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchInvertedIndexMeta with values from a JSON
@@ -246,7 +243,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta, public Invert
   // iresearch (default == MAX) IResearchInvertedIndexMeta
   LinkVersion _version{LinkVersion::MAX};
   Consistency _consistency{Consistency::kEventual};
-  Features _features;
   bool _hasNested{false};
 };
 }  // namespace arangodb::iresearch

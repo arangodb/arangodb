@@ -41,8 +41,8 @@
 #include <search/proxy_filter.hpp>
 
 // FIXME: this part should be moved to the upstream library
-//namespace iresearch {
-//class lazy_bitset : private irs::util::noncopyable {
+// namespace iresearch {
+// class lazy_bitset : private irs::util::noncopyable {
 // public:
 //  using word_t = size_t;
 //
@@ -63,7 +63,7 @@
 //  size_t words_{0};
 //};
 //
-//class lazy_filter_bitset_iterator final : public irs::doc_iterator,
+// class lazy_filter_bitset_iterator final : public irs::doc_iterator,
 //                                          private irs::util::noncopyable {
 // public:
 //  lazy_filter_bitset_iterator(lazy_bitset& bitset,
@@ -87,7 +87,7 @@
 //  irs::doc_id_t base_{irs::doc_limits::invalid()};
 //};
 //
-//class proxy_query final : public irs::filter::prepared {
+// class proxy_query final : public irs::filter::prepared {
 // public:
 //  struct proxy_cache {
 //    absl::flat_hash_map<const irs::sub_reader*, std::unique_ptr<lazy_bitset>>
@@ -128,7 +128,7 @@
 //  const irs::Order& order_;
 //};
 //
-//class proxy_filter final : public irs::filter {
+// class proxy_filter final : public irs::filter {
 // public:
 //  static ptr make();
 //

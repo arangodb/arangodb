@@ -673,8 +673,8 @@ Result parseAnalyzerSlice(VPackSlice const& slice, irs::string_ref& name,
 
     auto featuresRes = features.fromVelocyPack(subSlice);
     if (featuresRes.fail()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Error in analyzer 'features': "s.append(featuresRes.errorMessage())};
+      return {TRI_ERROR_BAD_PARAMETER, "Error in analyzer 'features': "s.append(
+                                           featuresRes.errorMessage())};
     }
   }
   return {};

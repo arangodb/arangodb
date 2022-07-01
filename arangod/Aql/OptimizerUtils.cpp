@@ -585,8 +585,8 @@ void captureFCallArgumentExpressions(
 void captureArrayFilterArgumentExpressions(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
     AstNode const* filter, std::vector<size_t> selectedMembersFromRoot,
-    bool evaluateFCalls,
-    Variable const* indexVariable, NonConstExpressionContainer& result) {
+    bool evaluateFCalls, Variable const* indexVariable,
+    NonConstExpressionContainer& result) {
   for (size_t f = 0; f < filter->numMembers(); ++f) {
     auto member = filter->getMemberUnchecked(f);
     if (!member->isConstant()) {
@@ -597,7 +597,8 @@ void captureArrayFilterArgumentExpressions(
         auto path1 = path;
         path1.emplace_back(0);
         // We will capture only Min and Max members as we do not want
-        // entire array to be evaluated (like if someone writes query 1..35486732486348)
+        // entire array to be evaluated (like if someone writes
+        // query 1..35486732486348)
         captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(0),
                                   path1, result);
         auto path2 = path;
@@ -608,7 +609,7 @@ void captureArrayFilterArgumentExpressions(
         auto localPath = path;
         auto preVisitor = [&localPath, ast, &varInfo, &result, indexVariable,
                            evaluateFCalls](AstNode const* node) -> bool {
-          auto sg = ScopeGuard([&localPath] () noexcept { ++localPath.back(); });
+          auto sg = ScopeGuard([&localPath]() noexcept { ++localPath.back(); });
           if (node->isConstant()) {
             return false;
           }
@@ -623,14 +624,14 @@ void captureArrayFilterArgumentExpressions(
             // never dive into attribute access
             return false;
           } else if (node->type == NODE_TYPE_FCALL) {
-            if (!evaluateFCalls) { // FIXME(Dronplane): we should never execute index-backed functions. But how to track it?
-              captureFCallArgumentExpressions(ast, varInfo, node,
-                                              localPath,
+            if (!evaluateFCalls) {  // FIXME(Dronplane): we should never execute
+                                    // index-backed functions. But how to track
+                                    // it?
+              captureFCallArgumentExpressions(ast, varInfo, node, localPath,
                                               indexVariable, result);
             } else {
-              captureNonConstExpression(ast, varInfo,
-                                        const_cast<AstNode*>(node),
-                                        localPath, result);
+              captureNonConstExpression(
+                  ast, varInfo, const_cast<AstNode*>(node), localPath, result);
             }
             return false;
           } else if (node->type == NODE_TYPE_REFERENCE) {
@@ -701,7 +702,7 @@ void extractNonConstPartsOfAndPart(
       captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path),
                                       indexVariable, result);
       continue;
-    } else if (leaf->type == NODE_TYPE_EXPANSION && leaf->numMembers() > 2 && 
+    } else if (leaf->type == NODE_TYPE_EXPANSION && leaf->numMembers() > 2 &&
                leaf->isAttributeAccessForVariable(indexVariable, false)) {
       // we need to gather all expressions from nested filter
       auto filter = leaf->getMemberUnchecked(2);

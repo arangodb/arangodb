@@ -193,7 +193,8 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
   static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
-  static const IResearchInvertedIndexClusterFactory invertedIndexFactory(server);
+  static const IResearchInvertedIndexClusterFactory invertedIndexFactory(
+      server);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);

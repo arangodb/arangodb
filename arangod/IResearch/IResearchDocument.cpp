@@ -343,13 +343,17 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
     arangodb::iresearch::InvertedIndexField const& field) {
   arangodb::iresearch::MissingFieldsMap map;
   for (auto const& f : field._fields) {
-    // always monitor on root level plain fields to track completely missing hierarchies.
-    // trackListPositions enabled arrays are excluded as we could never predict if array[12345] will exist
-    // so we do not emit such "nulls". It is not supported in general indexes anyway
-    if ((!field._trackListPositions || !field._hasExpansion) && f._fields.empty()) {
-      map[""].emplace(f._attribute.back().shouldExpand ? f.attributeString() : f.path());
+    // always monitor on root level plain fields to track completely missing
+    // hierarchies. trackListPositions enabled arrays are excluded as we could
+    // never predict if array[12345] will exist so we do not emit such "nulls".
+    // It is not supported in general indexes anyway
+    if ((!field._trackListPositions || !field._hasExpansion) &&
+        f._fields.empty()) {
+      map[""].emplace(f._attribute.back().shouldExpand ? f.attributeString()
+                                                       : f.path());
     }
-    // but for individual objects in array we always could track expected fields and emit "nulls"
+    // but for individual objects in array we always could track expected fields
+    // and emit "nulls"
     if (f._hasExpansion && !f._attribute.back().shouldExpand) {
       TRI_ASSERT(f._fields.empty());
       // monitor array subobjects
@@ -414,7 +418,8 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::reset(
   _disableFlush = false;
   // push the provided 'doc' on stack and initialize current value
   auto const filter = getFilter(doc, static_cast<LevelMeta const&>(linkMeta));
-  _missingFieldsMap = gatherMissingFields(static_cast<LevelMeta const&>(linkMeta));
+  _missingFieldsMap =
+      gatherMissingFields(static_cast<LevelMeta const&>(linkMeta));
 #ifdef USE_ENTERPRISE
   // this is set for root level as general mark.
   _hasNested = MetaTraits::hasNested(linkMeta);
@@ -628,8 +633,9 @@ bool FieldIterator<IndexMetaStruct, LevelMeta>::pushLevel(
   std::optional<MissingFieldsContainer> missing;
   // missing fields are gathered for "root" e.g. empty stack
   // and for array->object in stack
-  if (_stack.empty() || (value.isObject() && _stack.size() > 1
-     && _stack[_stack.size() - 2].it.value().value.isArray())) {
+  if (_stack.empty() ||
+      (value.isObject() && _stack.size() > 1 &&
+       _stack[_stack.size() - 2].it.value().value.isArray())) {
     auto key = _stack.empty() ? std::string_view("")
                               : std::string_view(_nameBuffer.data(),
                                                  _stack.back().nameLength);
@@ -704,7 +710,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
         // need to emit "missing" fields as NULLs if index requires so
         if (top().missingFields && !top().missingFields->empty()) {
 #ifdef USE_ENTERPRISE
-          switch (processNestedNulls()) { 
+          switch (processNestedNulls()) {
             case NestedNullsResult::CONTINUE:
               continue;
             case NestedNullsResult::RETURN:
@@ -743,7 +749,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
       auto const filterRes = level.filter(_nameBuffer, context, value);
       // Filter will add a new part. But even if filter decided
       // to skip field - we must track it as seen and not emit null
-      // for explicitly discarded values. Like skipping non-array fields 
+      // for explicitly discarded values. Like skipping non-array fields
       // for expansion fields in the index as the field is definately not
       // missing.
       fieldSeen(_nameBuffer);
@@ -767,15 +773,15 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
         case VPackValueType::Bool:
           setBoolValue(valueSlice);
           return;
-        
-        case VPackValueType::Array: 
+
+        case VPackValueType::Array:
 #ifdef USE_ENTERPRISE
           if (level.type == LevelType::NESTED_ROOT) {
             setRoot();
             return;
           }
 #endif
-        [[fallthrough]];
+          [[fallthrough]];
         case VPackValueType::Object: {
           auto filter = getFilter(valueSlice, *context);
           bool setAnalyzers = pushLevel(valueSlice, *context, filter);
