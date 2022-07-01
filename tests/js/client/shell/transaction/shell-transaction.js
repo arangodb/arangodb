@@ -4898,7 +4898,8 @@ function transactionReplication2ReplicateOperationSuite() {
             break;
           }
         }
-        assertTrue(abortFound, `Could not find Abort operation in log ${log.id()}! Log entries: ${entries}`);
+        assertTrue(abortFound, `Could not find Abort operation in log ${log.id()}!\n` +
+            `Log entries: ${JSON.stringify(entries)}`);
       }
     },
 
@@ -4937,7 +4938,8 @@ function transactionReplication2ReplicateOperationSuite() {
             break;
           }
         }
-        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}! Log entries: ${entries}`);
+        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}!\n` +
+            `Log entries: ${JSON.stringify(entries)}`);
       }
     },
   };
