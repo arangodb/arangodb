@@ -1039,7 +1039,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
 
   var verticesCollections = graph._vertexCollections();
   if (!verticesCollections || verticesCollections.length === 0) {
-    res.throw('bad request', 'no vertex collections found for graph');
+    res.throw('404 NOT FOUND', 'no vertex collections found for graph');
   }
 
   var vertexCollections = [];

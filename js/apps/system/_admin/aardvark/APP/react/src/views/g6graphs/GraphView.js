@@ -666,20 +666,8 @@ export class GraphView extends React.Component {
     });
   }
 
-  colorNodesByCollection = (graphData) => {
-    console.log("Color these nodes: ", graphData.nodes);
-  }
-
-  printVertexCollections = () => {
-    console.log("Print vertex collections in GraphView: ", this.props.vertexCollections);
-  }
-
   render() {
     return <>
-      <button onClick={() => {
-        console.log("this.props.data: ", this.props.data);
-        this.graph.render();
-      }}>this.props.data</button>
       <Headerinfo
         graphName={this.props.graphName}
         graphData={this.props.data}
