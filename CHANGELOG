@@ -1,9 +1,20 @@
 devel
 -----
 
-* Made the sort executor for queries with the SORT keyword receive the entries 
-  in rows, incrementally, instead of receiving a matrix containing all the 
-  input at once in memory.
+* Made the SortExecutor receive its input incrementally, instead of receiving
+  a whole matrix containing all input at once.
+
+* Introduce reading from followers in clusters. This works by offering
+  an additional HTTP header "x-arango-allow-dirty-read" for certain
+  read-only APIs. This header has already been used for active failover
+  deployments to allow reading from followers. Using this header leads
+  to the fact that coordinators are allowed to read from follower shards
+  instead only from leader shards. This can help to spread the read load
+  better across the cluster. Obviously, using this header can result in
+  "dirty reads", which are read results returning stale data or even
+  not-yet-officially committed data. Use at your own risk if performance
+  is more important than correctness or if you know that data does not
+  change.
 
 * Changed HTTP response code for error number 1521 from 500 to 400.
 

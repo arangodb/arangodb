@@ -54,7 +54,7 @@ struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
-
+struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
 
@@ -98,7 +98,9 @@ struct ReplicatedState final
 
   explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
                            std::shared_ptr<Factory> factory,
-                           LoggerContext loggerContext);
+                           LoggerContext loggerContext,
+                           std::shared_ptr<ReplicatedStateMetrics>);
+  ~ReplicatedState() override;
 
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
@@ -182,6 +184,7 @@ struct ReplicatedState final
   Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
   DatabaseID const database;
+  std::shared_ptr<ReplicatedStateMetrics> const metrics;
 };
 
 template<typename S>

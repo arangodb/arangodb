@@ -36,6 +36,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
+const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
 const toArgv = require('internal').toArgv;
 
@@ -51,16 +52,7 @@ const testPaths = {
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params) {
-  let useEncryption = false;
-
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      useEncryption = true;
-    }
-  }
-
+function runArangodRecovery (params, useEncryption) {
   let additionalParams= {
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
@@ -78,19 +70,8 @@ function runArangodRecovery (params) {
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
-  let crashLogDir = fs.join(fs.getTempPath(), 'crash');
-  fs.makeDirectoryRecursive(crashLogDir);
-  pu.cleanupDBDirectoriesAppend(crashLogDir);
-
-  let crashLog = fs.join(crashLogDir, 'crash.log');
-
   if (params.setup) {
     additionalParams['javascript.script-parameter'] = 'setup';
-    try {
-      // clean up crash log before next test
-      fs.remove(crashLog);
-    } catch (err) {}
-
 
     // special handling for crash-handler recovery tests
     if (params.script.match(/crash-handler/)) {
@@ -100,36 +81,28 @@ function runArangodRecovery (params) {
     }
 
     // enable development debugging if extremeVerbosity is set
-    let args = {};
-    if (params.options.extremeVerbosity === true) {
-      args['log.level'] = 'development=info';
-    }
-    args = Object.assign(args, params.options.extraArgs);
-    args = Object.assign(args, {
+    let args = Object.assign({
       'rocksdb.wal-file-timeout-initial': 10,
       'server.rest-server': 'false',
       'replication.auto-start': 'true',
-      'javascript.script': params.script
-    });
-      
-    args['log.output'] = 'file://' + crashLog;
+      'javascript.script': params.script,
+      'log.output': 'file://' + params.crashLog
+    }, params.options.extraArgs);
+    
+    if (params.options.extremeVerbosity === true) {
+      args['log.level'] = 'development=info';
+    }
 
     if (useEncryption) {
-      let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
-      if (!fs.exists(keyDir)) {  // needed on win32
-        fs.makeDirectory(keyDir);
-      }
-      pu.cleanupDBDirectoriesAppend(keyDir);
-        
       const key = '01234567890123456789012345678901';
       
-      let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
+      let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
       fs.write(keyfile, key);
 
       // special handling for encryption-keyfolder tests
       if (params.script.match(/encryption-keyfolder/)) {
-        args['rocksdb.encryption-keyfolder'] = keyDir;
-        process.env["rocksdb-encryption-keyfolder"] = keyDir;
+        args['rocksdb.encryption-keyfolder'] = params.keyDir;
+        process.env["rocksdb-encryption-keyfolder"] = params.keyDir;
       } else {
         args['rocksdb.encryption-keyfile'] = keyfile;
         process.env["rocksdb-encryption-keyfile"] = keyfile;
@@ -138,9 +111,9 @@ function runArangodRecovery (params) {
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
     params['instance'] = new inst.instance(params.options,
-                                      inst.instanceRole.single,
-                                      args, {}, 'tcp', params.testDir, '',
-                                      new inst.agencyConfig(params.options, null));
+                                           inst.instanceRole.single,
+                                           args, {}, 'tcp', params.testDir, '',
+                                           new inst.agencyConfig(params.options, null));
 
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
@@ -154,7 +127,7 @@ function runArangodRecovery (params) {
   }
   
   process.env["state-file"] = params.stateFile;
-  process.env["crash-log"] = crashLog;
+  process.env["crash-log"] = params.crashLog;
   process.env["isAsan"] = params.options.isAsan;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
@@ -181,16 +154,22 @@ function recovery (options) {
     status: true
   };
 
+  let useEncryption = false;
+
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      useEncryption = true;
+    }
+  }
+
   let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
   let count = 0;
-  let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.join(fs.getTempPath(), 'recovery');
-  fs.makeDirectoryRecursive(tempDir);
-  process.env.TMPDIR = tempDir;
-  pu.cleanupDBDirectoriesAppend(tempDir);
+
+  let tmpMgr = new tmpDirMmgr('recovery', options);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -205,7 +184,7 @@ function recovery (options) {
         ++iteration;
         print(BLUE + "running setup #" + iteration + " of test " + count + " - " + test + RESET);
         let params = {
-          tempDir: tempDir,
+          tempDir: tmpMgr.tempDir,
           instanceInfo: {
             rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
           },
@@ -215,8 +194,17 @@ function recovery (options) {
           count: count,
           testDir: "",
           stateFile,
+          crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
+          crashLog: "",
+          keyDir: ""          
         };
-        runArangodRecovery(params);
+        fs.makeDirectoryRecursive(params.crashLogDir);
+        params.crashLog = fs.join(params.crashLogDir, 'crash.log');
+        if (useEncryption) {
+          params.keyDir = fs.join(fs.getTempPath(), `arango_encryption_${count}`);
+          fs.makeDirectory(params.keyDir);
+        }
+        runArangodRecovery(params, useEncryption);
 
         ////////////////////////////////////////////////////////////////////////
         print(BLUE + "running recovery #" + iteration + " of test " + count + " - " + test + RESET);
@@ -230,7 +218,7 @@ function recovery (options) {
             duration: -1
           });
         } catch (er) {}
-        runArangodRecovery(params);
+        runArangodRecovery(params, useEncryption);
 
         results[test] = tu.readTestResult(
           params.instance.args['temp.path'],
@@ -251,22 +239,36 @@ function recovery (options) {
         try {
           if (String(fs.readFileSync(stateFile)).length) {
             print('Going into next iteration of recovery test');
-            continue;
+            if (params.options.cleanup) {
+              if (params.crashLogDir !== "") {
+                fs.removeDirectoryRecursive(params.crashLogDir, true);
+              }
+              if (params.keyDir !== "") {
+                fs.removeDirectoryRecursive(params.keyDir, true);
+              }
+              continue;
+            }
           }
         } catch (err) {
         }
         // last iteration. break out of while loop
-        pu.cleanupLastDirectory(params.options);
+        if (params.options.cleanup) {
+          if (params.crashLogDir !== "") {
+            fs.removeDirectoryRecursive(params.crashLogDir, true);
+          }
+          if (params.keyDir !== "") {
+            fs.removeDirectoryRecursive(params.keyDir, true);
+          }
+        }
         break;
       }
-
     } else {
       if (options.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);
       }
     }
   }
-  process.env.TMPDIR = orgTmp;
+  tmpMgr.destructor(options.cleanup && results.status);
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {
