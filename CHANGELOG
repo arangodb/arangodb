@@ -4,6 +4,7 @@ devel
 * Made the sort executor for queries with the SORT keyword receive the entries 
   in rows, incrementally, instead of receiving a matrix containing all the 
   input at once in memory.
+
   This is to be used later in conjunction with rocksdb temporary storage of the
   entries for queries with a large amount of entries in the input not to be 
   held in memory and also for the rocksdb storage to store the entries in order.
