@@ -323,11 +323,54 @@ auto ReplaceSpecificServerActor::step(AgencyState const& agency) const
   return {ReplaceServerTargetState{oldServer, newServer}};
 }
 
+ReplaceSpecificLogServerActor::ReplaceSpecificLogServerActor(
+    ParticipantId oldServer, ParticipantId newServer)
+    : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
+
+auto ReplaceSpecificLogServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  if (!agency.replicatedLog) {
+    return {};
+  }
+
+  auto const& target = agency.replicatedLog->target;
+  TRI_ASSERT(!target.participants.contains(newServer));
+  TRI_ASSERT(target.participants.contains(oldServer));
+
+  return {ReplaceServerTargetLog{oldServer, newServer}};
+}
+
 SetLeaderActor::SetLeaderActor(ParticipantId leader) : newLeader(leader) {}
 
 auto SetLeaderActor::step(AgencyState const& agency) const
     -> std::vector<AgencyTransition> {
   return {SetLeaderInTargetAction(newLeader)};
+}
+
+SetWriteConcernActor::SetWriteConcernActor(size_t newWriteConcern)
+    : newWriteConcern(newWriteConcern) {}
+
+auto SetWriteConcernActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetWriteConcernAction(newWriteConcern)};
+}
+
+SetSoftWriteConcernActor::SetSoftWriteConcernActor(size_t newSoftWriteConcern)
+    : newSoftWriteConcern(newSoftWriteConcern) {}
+
+auto SetSoftWriteConcernActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetSoftWriteConcernAction(newSoftWriteConcern)};
+}
+
+SetBothWriteConcernActor::SetBothWriteConcernActor(size_t newWriteConcern,
+                                                   size_t newSoftWriteConcern)
+    : newWriteConcern(newWriteConcern),
+      newSoftWriteConcern(newSoftWriteConcern) {}
+
+auto SetBothWriteConcernActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetBothWriteConcernAction(newWriteConcern, newSoftWriteConcern)};
 }
 
 }  // namespace arangodb::test
