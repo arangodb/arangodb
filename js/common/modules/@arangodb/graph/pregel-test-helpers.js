@@ -174,22 +174,6 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
     }
 };
 
-/**
- * A wrapper for testComponentsAlgorithmOnDisjointComponents. If the latter gets the same generators and the parameter
- * is only "length", pass the sizes, the generator and the algorithm name.
- * @param sizes An array of sizes of the resulting components.
- * @param generator The generator function.
- * @param algorithmName The algorithm name.
- */
-const testComponentsAlgorithmOnDisjointComponentsSameKind = function (sizes, generator, algorithmName = "wcc") {
-    console.warn(generator);
-    let componentGenerators = [];
-    for (const i of sizes) {
-        componentGenerators.push(new ComponentGenerator(generator, {length: i}));
-    }
-    testComponentsAlgorithmOnDisjointComponents(componentGenerators, algorithmName);
-};
-
 function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
 
     const {makeEdgeBetweenVertices, verticesEdgesGenerator} = loadGraphGenerators(isSmart);
@@ -321,7 +305,7 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true})
+                const computedComponents = pregelRunSmallInstance("wcc", graphName, {resultField: "result", store: true});
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree

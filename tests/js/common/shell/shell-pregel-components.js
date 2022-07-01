@@ -418,6 +418,6 @@ const sccTestSuite = pregelTestHelpers.makeSCCTestSuite(false, "", 4);
 
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
-//jsunity.run(wccTestSuite);
+jsunity.run(wccTestSuite);
 jsunity.run(sccTestSuite);
 return jsunity.done();
