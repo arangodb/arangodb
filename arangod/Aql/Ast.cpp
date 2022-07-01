@@ -1032,9 +1032,19 @@ AstNode* Ast::createNodeParameterDatasource(std::string_view name) {
 }
 
 /// @brief create an AST quantifier node
-AstNode* Ast::createNodeQuantifier(int64_t type) {
+AstNode* Ast::createNodeQuantifier(Quantifier::Type type) {
   AstNode* node = createNode(NODE_TYPE_QUANTIFIER);
-  node->setIntValue(type);
+  node->setIntValue(static_cast<int64_t>(type));
+
+  return node;
+}
+
+/// @brief create an AST quantifier node, with a value
+AstNode* Ast::createNodeQuantifier(Quantifier::Type type,
+                                   AstNode const* value) {
+  TRI_ASSERT(type == Quantifier::Type::kAtLeast);
+  AstNode* node = createNodeQuantifier(type);
+  node->addMember(value);
 
   return node;
 }

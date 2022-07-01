@@ -123,13 +123,14 @@ extern int Aqldebug;
     T_ANY = 323,                   /* "any modifier"  */
     T_ALL = 324,                   /* "all modifier"  */
     T_NONE = 325,                  /* "none modifier"  */
-    UMINUS = 326,                  /* UMINUS  */
-    UPLUS = 327,                   /* UPLUS  */
-    UNEGATION = 328,               /* UNEGATION  */
-    FUNCCALL = 329,                /* FUNCCALL  */
-    REFERENCE = 330,               /* REFERENCE  */
-    INDEXED = 331,                 /* INDEXED  */
-    EXPANSION = 332                /* EXPANSION  */
+    T_AT_LEAST = 326,              /* "at least modifier"  */
+    UMINUS = 327,                  /* UMINUS  */
+    UPLUS = 328,                   /* UPLUS  */
+    UNEGATION = 329,               /* UNEGATION  */
+    FUNCCALL = 330,                /* FUNCCALL  */
+    REFERENCE = 331,               /* REFERENCE  */
+    INDEXED = 332,                 /* INDEXED  */
+    EXPANSION = 333                /* EXPANSION  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -148,7 +149,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 151 "Aql/grammar.hpp"
+#line 152 "Aql/grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

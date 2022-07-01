@@ -101,8 +101,8 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   auto batchToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
                                std::string_view name, velocypack::Slice labels,
                                velocypack::Slice value) {
-    std::get<uint64_t>(metrics[{std::string{name}, labels.copyString()}]) +=
-        value.getNumber<uint64_t>();
+    auto& v = metrics.values[{std::string{name}, labels.copyString()}];
+    std::get<uint64_t>(v) += value.getNumber<uint64_t>();
   };
   auto batchToPrometheus = [](std::string& result, std::string_view globals,
                               std::string_view name, std::string_view labels,
@@ -129,8 +129,8 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
       return;
     }
     labelsStr = labelsStr.substr(0, end);
-    std::get<uint64_t>(metrics[{std::string{name}, std::string{labelsStr}}]) +=
-        value.getNumber<uint64_t>();
+    auto& v = metrics.values[{std::string{name}, std::string{labelsStr}}];
+    std::get<uint64_t>(v) += value.getNumber<uint64_t>();
   };
   metric.add("arangodb_search_num_failed_commits", gaugeToCoordinator);
   metric.add("arangodb_search_num_failed_cleanups", gaugeToCoordinator);
@@ -166,8 +166,8 @@ IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
   addLabel("view", getViewId());
   addLabel("collection", getCollectionName());
   auto getValue = [&, labels = std::string_view{labels}](std::string_view key) {
-    if (auto it = metrics.find(metrics::MetricKeyView{key, labels});
-        it != metrics.end()) {
+    if (auto it = metrics.values.find(metrics::MetricKeyView{key, labels});
+        it != metrics.values.end()) {
       return std::get<uint64_t>(it->second);
     }
     return uint64_t{0};

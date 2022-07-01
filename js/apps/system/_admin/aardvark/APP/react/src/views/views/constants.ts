@@ -1,4 +1,6 @@
 import { JSONSchemaType } from 'ajv';
+import { createContext } from "react";
+import { noop } from "lodash";
 
 type Compression = 'lz4' | 'none';
 
@@ -62,6 +64,8 @@ export type LinkProperties = {
 };
 
 type BaseFormState = {
+  id: string;
+  globallyUniqueId?: string;
   name: string;
   type: 'arangosearch';
   links?: {
@@ -119,11 +123,18 @@ export const formSchema: JSONSchemaType<FormState> = {
   $id: 'https://arangodb.com/schemas/views/views.json',
   type: 'object',
   properties: {
+    id: {
+      nullable: false,
+      type: 'string'
+    },
+    globallyUniqueId: {
+      nullable: true,
+      type: 'string'
+    },
     name: {
       nullable: false,
       type: 'string',
-      pattern: '^[a-zA-Z][a-zA-Z0-9-_]*$',
-      default: ''
+      pattern: '^[a-zA-Z][a-zA-Z0-9-_]*$'
     },
     type: {
       type: 'string',
@@ -311,6 +322,16 @@ export const formSchema: JSONSchemaType<FormState> = {
       required: ['type']
     }
   },
-  required: ['name', 'type'],
+  required: ['id', 'name', 'type'],
   additionalProperties: false
 };
+
+export const ViewContext = createContext({
+  formState: {},
+  dispatch: noop,
+  isAdminUser: false,
+  changed: false,
+  setChanged: noop
+});
+
+export type ViewProps = Pick<BaseFormState, 'name'>;
