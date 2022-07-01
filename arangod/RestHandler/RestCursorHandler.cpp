@@ -34,6 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -332,6 +333,10 @@ RestStatus RestCursorHandler::handleQueryResult() {
       THROW_ARANGO_EXCEPTION(res);
     }
 
+    if (_cursor->allowDirtyReads()) {
+      setOutgoingDirtyReadsHeader(true);
+    }
+
     VPackBuffer<uint8_t> buffer;
     VPackBuilder result(buffer, &options);
     try {
@@ -378,6 +383,10 @@ RestStatus RestCursorHandler::handleQueryResult() {
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize,
                                              ttl, count);
     // throws if a coordinator soft shutdown is ongoing
+
+    if (_cursor->allowDirtyReads()) {
+      setOutgoingDirtyReadsHeader(true);
+    }
 
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
@@ -596,6 +605,10 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     builder.clear();
     TRI_ASSERT(r.ok());
     return RestStatus::WAITING;
+  }
+
+  if (_cursor->allowDirtyReads()) {
+    setOutgoingDirtyReadsHeader(true);
   }
 
   if (r.ok()) {

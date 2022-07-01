@@ -24,9 +24,11 @@
 
 #pragma once
 
+#include "Aql/Query.h"
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Common.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
 #include "VocBase/vocbase.h"
@@ -109,6 +111,16 @@ class QueryStreamCursor final : public arangodb::Cursor {
   void resetWakeupHandler() override final;
 
   std::shared_ptr<transaction::Context> context() const override final;
+
+  // The following method returns, if the transaction the query is using
+  // allows dirty reads (reads from followers).
+  virtual bool allowDirtyReads() const override final {
+    if (_query != nullptr) {
+      auto& trx = _query->trxForOptimization();
+      return trx.state()->options().allowDirtyReads;
+    }
+    return false;
+  }
 
  private:
   // Writes from _queryResults to builder. Removes copied blocks from

@@ -30,6 +30,7 @@
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
 #include "Basics/StringUtils.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -108,7 +109,8 @@ std::string queryString(TRI_edge_direction_e dir) {
 
 aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
                             TRI_edge_direction_e dir,
-                            std::string const& vertexId, bool allowDirtyReads) {
+                            std::string const& vertexId,
+                            bool& allowDirtyReads) {
   auto bindParameters = std::make_shared<VPackBuilder>();
   bindParameters->openObject();
   bindParameters->add("@collection", VPackValue(cname));
@@ -123,6 +125,14 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   auto query = arangodb::aql::Query::create(
       ctx, aql::QueryString(queryString(dir)), std::move(bindParameters),
       std::move(options));
+  // The following deserves an explanation: The above flag `allowDirtyReads`
+  // indicates if the client has requested dirty reads for this particular
+  // request. However, if this is happening in the context of a streaming
+  // transaction, then it is the transaction which decides. Therefore, we
+  // have to hand back the actual information if dirty reads are allowed
+  // with the decision from the transaction state:
+  allowDirtyReads =
+      query->trxForOptimization().state()->options().allowDirtyReads;
   return query->executeSync();
 }
 }  // namespace
@@ -191,7 +201,9 @@ bool RestEdgesHandler::readEdges() {
 
   auto queryResult = ::queryEdges(_vocbase, collectionName, direction,
                                   startVertex, allowDirtyReads);
-
+  if (allowDirtyReads) {  // could have been changed in ::queryEdges!
+    setOutgoingDirtyReadsHeader(true);
+  }
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {

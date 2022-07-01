@@ -423,6 +423,9 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   if (!rev.empty()) {
     _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
   }
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
 
   try {
     _response->setContentType(_request->contentTypeResponse());
