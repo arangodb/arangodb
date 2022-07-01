@@ -938,8 +938,7 @@ struct ReplicatedStateCoordinatorMethods
           if (res.fail()) {
             return futures::Future<Result>{std::in_place, res.result()};
           }
-          return self->clusterInfo.fetchAndWaitForPlanVersion(
-              std::chrono::seconds{240});
+          return self->clusterInfo.waitForPlan(res.get());
         });
   }
 
