@@ -191,7 +191,7 @@ struct InvertedIndexField {
 };
 
 struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta, public InvertedIndexField {
-  IResearchInvertedIndexMeta() = default;
+  IResearchInvertedIndexMeta();
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchInvertedIndexMeta with values from a JSON
   /// description

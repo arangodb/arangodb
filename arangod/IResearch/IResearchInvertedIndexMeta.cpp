@@ -330,6 +330,11 @@ const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
   return meta;
 }
 
+IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
+  _analyzers.emplace_back(IResearchAnalyzerFeature::identity());
+  _primitiveOffset = 1;
+}
+
 bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                       VPackSlice const& slice,
                                       bool readAnalyzerDefinition,
@@ -409,7 +414,8 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     TRI_ASSERT(false);
     return false;
   }
-  _analyzers.push_back(std::move(versionSpecificIdentity));
+  // replace default with version specific default
+  _analyzers[0] = std::move(versionSpecificIdentity);
 
   {
     // clear existing definitions
@@ -726,6 +732,10 @@ bool InvertedIndexField::json(
     }
 
     builder.add(kAnalyzerFieldName, VPackValue(name));
+  }
+  
+  if (!rootMode) {
+    builder.add(kNameFieldName, VPackValue(toString()));
   }
 
   if (!_fields.empty()) {
@@ -1097,7 +1107,7 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
   }
 
   auto fieldsSlice = slice.get(kFieldsFieldName);
-  if (!fieldsSlice.isArray()) {
+  if (!fieldsSlice.isArray() || fieldsSlice.isEmptyArray()) {
     error = kFieldsFieldName;
     return false;
   }

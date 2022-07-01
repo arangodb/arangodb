@@ -89,7 +89,8 @@ void serializationChecker(ArangodServer& server,
   res = metaRhs.init(server, serializedLhs.slice(), true, errorString,
                      irs::string_ref(vocbase.name()));
   {
-    SCOPED_TRACE(::testing::Message("Unexpected error:") << errorString);
+    SCOPED_TRACE(::testing::Message("Unexpected error:")
+                 << errorString << " in: " << serializedLhs.toString());
     ASSERT_TRUE(res);
   }
   ASSERT_TRUE(errorString.empty());
@@ -593,12 +594,7 @@ TEST_F(IResearchInvertedIndexMetaTest,
                         testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), false, errorString,
                        irs::string_ref(vocbase.name()));
-  {
-    SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
-    ASSERT_TRUE(res);
-  }
-  ASSERT_TRUE(errorString.empty());
-  ASSERT_EQ(0, meta._analyzerDefinitions.size());
+  ASSERT_FALSE(res);
 }
 
 TEST_F(IResearchInvertedIndexMetaTest,
@@ -632,12 +628,7 @@ TEST_F(IResearchInvertedIndexMetaTest,
                         testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), false, errorString,
                        irs::string_ref(vocbase.name()));
-  {
-    SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
-    ASSERT_FALSE(res);
-  }
-  ASSERT_FALSE(errorString.empty());
-  ASSERT_EQ(0, meta._analyzerDefinitions.size());
+  ASSERT_FALSE(res);
 }
 
 TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
@@ -737,7 +728,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
   ASSERT_EQ(Consistency::kEventual, meta._consistency);
-  ASSERT_FALSE(meta._analyzers.empty());
+  ASSERT_EQ(1, meta._analyzers.size());
   ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
   ASSERT_EQ(meta._features, arangodb::iresearch::Features());
   ASSERT_FALSE(meta._trackListPositions);
@@ -894,22 +885,20 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
     ASSERT_TRUE(res);
   }
   ASSERT_TRUE(errorString.empty());
-  ASSERT_EQ(2, meta._analyzerDefinitions.size());
-  ASSERT_NE(meta._analyzerDefinitions.find(vocbase.name() + "::test_text"),
-            meta._analyzerDefinitions.end());
-  ASSERT_NE(meta._analyzerDefinitions.find("identity"),
-            meta._analyzerDefinitions.end());
-  ASSERT_EQ(6, meta._fields.size());
-  ASSERT_FALSE(meta._sort.empty());
-  ASSERT_FALSE(meta._storedValues.empty());
+  ASSERT_EQ(0, meta._analyzerDefinitions.size());
+  ASSERT_EQ(1, meta._fields.size());
+  ASSERT_TRUE(meta._sort.empty());
+  ASSERT_TRUE(meta._storedValues.empty());
   ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
-  ASSERT_TRUE(meta.dense());
-  ASSERT_EQ(arangodb::iresearch::LinkVersion::MIN, meta._version);
-  ASSERT_EQ(meta._consistency, Consistency::kImmediate);
+  ASSERT_FALSE(meta.dense());
+  ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+  ASSERT_EQ(meta._consistency, Consistency::kEventual);
   ASSERT_FALSE(meta._analyzers.empty());
   ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
   ASSERT_EQ(meta._features, arangodb::iresearch::Features());
-
+  ASSERT_EQ(meta._writebufferActive, 10);
+  ASSERT_EQ(meta._writebufferIdle, 11);
+  ASSERT_EQ(meta._writebufferSizeMax, 12);
   VPackBuilder serialized;
   {
     VPackObjectBuilder obj(&serialized);
