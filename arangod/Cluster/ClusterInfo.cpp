@@ -116,6 +116,10 @@ struct ShardStatistics {
 };
 
 namespace {
+
+std::string const kMetricsServerId = "Plan/Metrics/ServerId";
+std::string const kMetricsRebootId = "Plan/Metrics/RebootId";
+
 void addToShardStatistics(arangodb::ShardStatistics& stats,
                           containers::FlatHashSet<std::string>& servers,
                           arangodb::velocypack::Slice databaseSlice,
@@ -4507,6 +4511,101 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
   } while (true);
 
   return Result(TRI_ERROR_NO_ERROR);
+}
+
+void ClusterInfo::initMetricsState() {
+  auto rebootId = ServerState::instance()->getRebootId().value();
+  auto serverId = ServerState::instance()->getId();
+
+  VPackBuilder builderRebootId;
+  builderRebootId.add(VPackValue{rebootId});
+  VPackBuilder builderServerId;
+  builderServerId.add(VPackValue{serverId});
+
+  AgencyWriteTransaction const write{
+      {{kMetricsRebootId, AgencyValueOperationType::SET,
+        builderRebootId.slice()},
+       {kMetricsServerId, AgencyValueOperationType::SET,
+        builderServerId.slice()}},
+      {{kMetricsRebootId, AgencyPrecondition::Type::EMPTY, true},
+       {kMetricsServerId, AgencyPrecondition::Type::EMPTY, true}}};
+  AgencyComm ac{_server};
+  while (!server().isStopping()) {
+    auto const r = ac.sendTransactionWithFailover(write);
+    if (r.successful() ||
+        r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+      return;
+    }
+    LOG_TOPIC("bfdc3", WARN, Logger::CLUSTER)
+        << "Failed to self-propose leader with httpCode: " << r.httpCode();
+  }
+}
+
+ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
+  auto& ac = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [result, index] = ac.read({AgencyCommHelper::path(kMetricsServerId),
+                                  AgencyCommHelper::path(kMetricsRebootId)});
+  auto data = result->slice().at(0).get(std::initializer_list<std::string_view>{
+      AgencyCommHelper::path(), "Plan", "Metrics"});
+  auto leaderRebootId = data.get("RebootId").getNumber<uint64_t>();
+  auto leaderServerId = data.get("ServerId").stringView();
+  auto ourRebootId = ServerState::instance()->getRebootId().value();
+  auto ourServerId = ServerState::instance()->getId();
+  if (wantLeader) {
+    // remove old callback (with _metricsGuard call)
+    // then store new callback or understand we are leader
+    _metricsGuard = {};
+  }
+  if (ourRebootId == leaderRebootId && ourServerId == leaderServerId) {
+    return {std::nullopt};
+  }
+  if (wantLeader) {
+    _metricsGuard = _rebootTracker.callMeOnChange(
+        {std::string{leaderServerId}, RebootId{leaderRebootId}},
+        [this, leaderRebootId, serverId = std::string{leaderServerId}] {
+          proposeMetricsLeader(leaderRebootId, serverId);
+        },
+        "Try to propose current server as a new leader for cluster metrics");
+  }
+  return {std::string{leaderServerId}};
+}
+
+void ClusterInfo::proposeMetricsLeader(uint64_t oldRebootId,
+                                       std::string_view oldServerId) {
+  AgencyComm ac{_server};
+  auto rebootId = ServerState::instance()->getRebootId().value();
+  auto serverId = ServerState::instance()->getId();
+
+  VPackBuilder builderOldRebootId;
+  builderOldRebootId.add(VPackValue{oldRebootId});
+  VPackBuilder builderOldServerId;
+  builderOldServerId.add(VPackValue{oldServerId});
+  VPackBuilder builderRebootId;
+  builderRebootId.add(VPackValue{rebootId});
+  VPackBuilder builderServerId;
+  builderServerId.add(VPackValue{serverId});
+
+  AgencyWriteTransaction const write{
+      {{kMetricsRebootId, AgencyValueOperationType::SET,
+        builderRebootId.slice()},
+       {kMetricsServerId, AgencyValueOperationType::SET,
+        builderServerId.slice()}},
+      {{kMetricsRebootId, AgencyPrecondition::Type::VALUE,
+        builderOldRebootId.slice()},
+       {kMetricsServerId, AgencyPrecondition::Type::VALUE,
+        builderOldServerId.slice()}}};
+  auto const r = ac.sendTransactionWithFailover(write);
+  if (r.successful()) {
+    return;
+  }
+  if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+    LOG_TOPIC("bfdc5", TRACE, Logger::CLUSTER)
+        << "Failed to self-propose leader";
+  } else {
+    // We don't need retry here, because we have retry in ClusterMetricsFeature
+    LOG_TOPIC("bfdc6", WARN, Logger::CLUSTER)
+        << "Failed to self-propose leader with httpCode: " << r.httpCode();
+  }
 }
 
 AnalyzerModificationTransaction::Ptr

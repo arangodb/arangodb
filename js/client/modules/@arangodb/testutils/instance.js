@@ -218,6 +218,7 @@ class instance {
     this.exitStatus = null;
     this.serverCrashedLocal = false;
     this.JWT = null;
+    this.netstat = {'in':{}, 'out': {}};
   }
 
   getStructure() {
@@ -286,6 +287,24 @@ class instance {
              (this.instanceRole === instanceRole.coordinator) ||
              (this.instanceRole === instanceRole.failover)      );
   }
+
+  checkNetstat(data) {
+    let which = null;
+    if (data.local.port === this.port) {
+      which = this.netstat['in'];
+    } else if (data.remote.port === this.port) {
+      which = this.netstat['out'];
+    }
+    if (which !== null) {
+      if (!which.hasOwnProperty(data.state)) {
+        which[data.state] = 1;
+      } else {
+        which[data.state] += 1;
+      }
+    }
+  }
+  
+  
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////

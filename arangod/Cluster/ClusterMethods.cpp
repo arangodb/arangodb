@@ -89,6 +89,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Metrics/Types.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -1300,8 +1301,9 @@ futures::Future<OperationResult> countOnCoordinator(
 /// @brief gets the metrics from DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::RawDBServers> metricsOnCoordinator(
+futures::Future<metrics::RawDBServers> metricsOnLeader(
     NetworkFeature& network, ClusterFeature& cluster) {
+  LOG_TOPIC("badf0", TRACE, Logger::CLUSTER) << "Start collect metrics";
   auto* pool = network.pool();
   auto serverIds = cluster.clusterInfo().getCurrentDBServers();
 
@@ -1313,15 +1315,17 @@ futures::Future<metrics::RawDBServers> metricsOnCoordinator(
                     StaticStrings::MimeTypeJsonNoEncoding);
     futures.push_back(network::sendRequest(
         pool, "server:" + id, fuerte::RestVerb::Get, "/_admin/metrics", {},
-        network::RequestOptions{}.param("type", "json"), std::move(headers)));
+        network::RequestOptions{}.param("type", metrics::kDBJson),
+        std::move(headers)));
   }
-  return collectAll(futures).thenValue(
-      [](std::vector<Try<network::Response>>&& responses) {
+  return collectAll(futures).then(
+      [](Try<std::vector<Try<network::Response>>>&& responses) {
+        TRI_ASSERT(responses.hasValue());  // collectAll always return value
         metrics::RawDBServers metrics;
-        metrics.reserve(responses.size());
-        for (auto& response : responses) {
-          if (!response.hasValue() || response->fail() ||
-              !response->hasResponse()) {
+        metrics.reserve(responses->size());
+        for (auto& response : *responses) {
+          if (!response.hasValue() || !response->hasResponse() ||
+              response->fail()) {
             continue;  // Shit happens, just ignore it
           }
           auto payload = response->response().stealPayload();
@@ -1341,6 +1345,33 @@ futures::Future<metrics::RawDBServers> metricsOnCoordinator(
         }
         return metrics;
       });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the metrics from leader Coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<metrics::LeaderResponse> metricsFromLeader(
+    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
+    std::string serverId, uint64_t rebootId, uint64_t version) {
+  LOG_TOPIC("badf1", TRACE, Logger::CLUSTER) << "Start receive metrics";
+  auto* pool = network.pool();
+  network::Headers headers;
+  headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
+  auto options = network::RequestOptions{}
+                     .param("type", metrics::kCDJson)
+                     .param("MetricsServerId", std::move(serverId))
+                     .param("MetricsRebootId", std::to_string(rebootId))
+                     .param("MetricsVersion", std::to_string(version));
+  auto future = network::sendRequest(
+      pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
+      "/_admin/metrics", {}, std::move(options), std::move(headers));
+  return std::move(future).then([](Try<network::Response>&& response) {
+    if (!response.hasValue() || !response->hasResponse() || response->fail()) {
+      return metrics::LeaderResponse{};
+    }
+    return response->response().stealPayload();
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
