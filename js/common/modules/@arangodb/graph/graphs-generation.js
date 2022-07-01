@@ -228,7 +228,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
         makeBidirectedClique,
         makePath
     };
-}
+};
 
 const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
     return {

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, JSON */
+/*global assertEqual, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
