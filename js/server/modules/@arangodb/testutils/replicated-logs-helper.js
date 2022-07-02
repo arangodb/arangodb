@@ -286,7 +286,7 @@ const getServerUrl = function (serverId) {
   return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 };
 
-const checkRequestResult = function (requestResult) {
+const checkRequestResult = function (requestResult, expectingError=false) {
   if (requestResult === undefined) {
     throw new ArangoError({
       'error': true,
@@ -311,7 +311,7 @@ const checkRequestResult = function (requestResult) {
     delete requestResult.error;
   }
 
-  if (requestResult.json.error) {
+  if (requestResult.json.error && !expectingError) {
     throw new ArangoError({
       'error': true,
       'code': requestResult.json.code,
