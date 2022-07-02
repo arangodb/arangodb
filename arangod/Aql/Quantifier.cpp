@@ -26,65 +26,96 @@
 #include "Aql/AstNode.h"
 #include "Basics/debugging.h"
 
+#include <algorithm>
+
 using namespace arangodb::aql;
 
 /// @brief converts a quantifier string into an int equivalent
-int64_t Quantifier::fromString(std::string const& value) {
+Quantifier::Type Quantifier::fromString(std::string_view value) {
   if (value == "all") {
-    return ALL;
+    return Type::kAll;
   } else if (value == "any") {
-    return ANY;
+    return Type::kAny;
   } else if (value == "none") {
-    return NONE;
+    return Type::kNone;
+  } else if (value == "at least") {
+    return Type::kAtLeast;
   }
 
-  return NONE;
+  TRI_ASSERT(false);
+  return Type::kNone;
 }
 
 /// @brief converts a quantifier int value into its string equivalent
-std::string Quantifier::stringify(int64_t value) {
-  if (value == ALL) {
+std::string_view Quantifier::stringify(Quantifier::Type type) {
+  if (type == Type::kAll) {
     return "all";
   }
-  if (value == ANY) {
+  if (type == Type::kAny) {
     return "any";
   }
-  if (value == NONE) {
+  if (type == Type::kNone) {
     return "none";
   }
+  if (type == Type::kAtLeast) {
+    return "at least";
+  }
+
+  TRI_ASSERT(false);
   return "none";
 }
 
-bool Quantifier::isAllOrNone(AstNode const* quantifier) {
-  TRI_ASSERT(quantifier != nullptr);
+bool Quantifier::isAll(AstNode const* quantifier) {
+  return isType(quantifier, Type::kAll);
+}
 
-  if (quantifier->type == NODE_TYPE_QUANTIFIER) {
-    auto const value = quantifier->getIntValue(true);
-    return (value == Quantifier::ALL || value == Quantifier::NONE);
-  }
-  return false;
+bool Quantifier::isAny(AstNode const* quantifier) {
+  return isType(quantifier, Type::kAny);
+}
+
+bool Quantifier::isNone(AstNode const* quantifier) {
+  return isType(quantifier, Type::kNone);
+}
+
+bool Quantifier::isAtLeast(AstNode const* quantifier) {
+  return isType(quantifier, Type::kAtLeast);
 }
 
 /// @brief determine the min/max number of matches for an array comparison
-std::pair<size_t, size_t> Quantifier::requiredMatches(
-    size_t inputSize, AstNode const* quantifier) {
+std::pair<size_t, size_t> Quantifier::requiredMatches(size_t inputSize,
+                                                      AstNode const* quantifier,
+                                                      size_t atLeastValue) {
   TRI_ASSERT(quantifier != nullptr);
 
   if (quantifier->type == NODE_TYPE_QUANTIFIER) {
-    auto const value = quantifier->getIntValue(true);
+    Type type = static_cast<Type>(quantifier->getIntValue(true));
 
-    if (value == Quantifier::ALL) {
-      return std::make_pair(inputSize, inputSize);
+    if (type == Quantifier::Type::kAll) {
+      return {inputSize, inputSize};
     }
-    if (value == Quantifier::ANY) {
-      return std::make_pair(inputSize == 0 ? 0 : 1, inputSize);
+    if (type == Quantifier::Type::kAny) {
+      return {inputSize == 0 ? 0 : 1, inputSize};
     }
-    if (value == Quantifier::NONE) {
-      return std::make_pair(0, 0);
+    if (type == Quantifier::Type::kNone) {
+      return {0, 0};
+    }
+    if (type == Quantifier::Type::kAtLeast) {
+      TRI_ASSERT(quantifier->numMembers() == 1);
+      return {atLeastValue, std::max(atLeastValue, inputSize)};
     }
   }
 
   // won't be reached
   TRI_ASSERT(false);
-  return std::make_pair(SIZE_MAX, SIZE_MAX);
+  return {SIZE_MAX, SIZE_MAX};
+}
+
+bool Quantifier::isType(AstNode const* quantifier, Type type) {
+  TRI_ASSERT(quantifier != nullptr);
+
+  if (quantifier->type == NODE_TYPE_QUANTIFIER) {
+    auto const value = quantifier->getIntValue(true);
+    return static_cast<Type>(value) == type;
+  }
+  return false;
 }
