@@ -4971,7 +4971,8 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
     setUp: function () {
       db._drop(cn);
-      c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": 3, "replicationFactor": 3});
+      let rc = Object.keys(getDBServers(db)).length;
+      c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": rc, "replicationFactor": rc});
     },
 
     tearDown: function () {
@@ -5131,7 +5132,6 @@ jsunity.run(transactionTTLStreamSuiteV1);
 jsunity.run(transactionIteratorSuiteV1);
 jsunity.run(transactionOverlapSuiteV1);
 jsunity.run(transactionDatabaseSuite);
-
 jsunity.run(transactionReplicationOnFollowersSuiteV1);
 
 if (isReplication2Enabled) {
