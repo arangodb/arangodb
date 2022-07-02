@@ -807,25 +807,6 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
                 // expect that all 11 vertices are in the same community
                 testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [numberLeaves + 1]);
             },
-
-            testLP3Path: function () {
-                // we use that initial communities are given such that smaller community ids are given
-                // to vertices that are produced earlier. in a directed path, vertices at the beginning
-                // of the path are produced earlier. here we test single steps of the algorithm
-                const length = 5;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `p`)).makePath(length, "directed");
-                db[vColl].save(vertices);
-                db[eColl].save(edges);
-
-                // expect that all ${length} vertices are in the same community
-                for (let i = 1; i < length; ++i) {
-                    let expectedSizes = [i];
-                    for (let j = i; j < length; ++j) {
-                        expectedSizes.push(1);
-                    }
-                    testSubgraphs("labelpropagation", graphName, {maxGSS: i}, expectedSizes);
-                }
-            },
         };
     };
 }

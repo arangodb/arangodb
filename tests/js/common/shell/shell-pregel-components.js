@@ -416,7 +416,7 @@ const wccTestSuite = pregelTestHelpers.makeWCCTestSuite(false, "", 4);
 
 const sccTestSuite = pregelTestHelpers.makeSCCTestSuite(false, "", 4);
 
-const labelPropagationTestSuite = pregelTestHelpers.labelPropagationTestSuite(false, "", 4);
+const labelPropagationTestSuite = pregelTestHelpers.makeLabelPropagationTestSuite(false, "", 4);
 
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
