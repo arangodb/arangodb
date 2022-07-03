@@ -4,6 +4,13 @@ devel
 * Made the SortExecutor receive its input incrementally, instead of receiving
   a whole matrix containing all input at once.
 
+* Updated arangosync to v2.11.0-preview-2.
+
+* Add "AT LEAST" quantifier for array filters in AQL:
+
+      `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
+      `RETURN [1,2,3] AT LEAST (2) IN [1,2,3,4,5]`
+
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
   read-only APIs. This header has already been used for active failover

@@ -92,43 +92,45 @@ extern int Aqldebug;
     T_NOT = 292,                   /* "not operator"  */
     T_AND = 293,                   /* "and operator"  */
     T_OR = 294,                    /* "or operator"  */
-    T_REGEX_MATCH = 295,           /* "~= operator"  */
-    T_REGEX_NON_MATCH = 296,       /* "~! operator"  */
-    T_EQ = 297,                    /* "== operator"  */
-    T_NE = 298,                    /* "!= operator"  */
-    T_LT = 299,                    /* "< operator"  */
-    T_GT = 300,                    /* "> operator"  */
-    T_LE = 301,                    /* "<= operator"  */
-    T_GE = 302,                    /* ">= operator"  */
-    T_LIKE = 303,                  /* "like operator"  */
-    T_PLUS = 304,                  /* "+ operator"  */
-    T_MINUS = 305,                 /* "- operator"  */
-    T_TIMES = 306,                 /* "* operator"  */
-    T_DIV = 307,                   /* "/ operator"  */
-    T_MOD = 308,                   /* "% operator"  */
-    T_QUESTION = 309,              /* "?"  */
-    T_COLON = 310,                 /* ":"  */
-    T_SCOPE = 311,                 /* "::"  */
-    T_RANGE = 312,                 /* ".."  */
-    T_COMMA = 313,                 /* ","  */
-    T_OPEN = 314,                  /* "("  */
-    T_CLOSE = 315,                 /* ")"  */
-    T_OBJECT_OPEN = 316,           /* "{"  */
-    T_OBJECT_CLOSE = 317,          /* "}"  */
-    T_ARRAY_OPEN = 318,            /* "["  */
-    T_ARRAY_CLOSE = 319,           /* "]"  */
-    T_OUTBOUND = 320,              /* "outbound modifier"  */
-    T_INBOUND = 321,               /* "inbound modifier"  */
-    T_ANY = 322,                   /* "any modifier"  */
-    T_ALL = 323,                   /* "all modifier"  */
-    T_NONE = 324,                  /* "none modifier"  */
-    UMINUS = 325,                  /* UMINUS  */
-    UPLUS = 326,                   /* UPLUS  */
-    UNEGATION = 327,               /* UNEGATION  */
-    FUNCCALL = 328,                /* FUNCCALL  */
-    REFERENCE = 329,               /* REFERENCE  */
-    INDEXED = 330,                 /* INDEXED  */
-    EXPANSION = 331                /* EXPANSION  */
+    T_NOT_IN = 295,                /* "not in operator"  */
+    T_REGEX_MATCH = 296,           /* "~= operator"  */
+    T_REGEX_NON_MATCH = 297,       /* "~! operator"  */
+    T_EQ = 298,                    /* "== operator"  */
+    T_NE = 299,                    /* "!= operator"  */
+    T_LT = 300,                    /* "< operator"  */
+    T_GT = 301,                    /* "> operator"  */
+    T_LE = 302,                    /* "<= operator"  */
+    T_GE = 303,                    /* ">= operator"  */
+    T_LIKE = 304,                  /* "like operator"  */
+    T_PLUS = 305,                  /* "+ operator"  */
+    T_MINUS = 306,                 /* "- operator"  */
+    T_TIMES = 307,                 /* "* operator"  */
+    T_DIV = 308,                   /* "/ operator"  */
+    T_MOD = 309,                   /* "% operator"  */
+    T_QUESTION = 310,              /* "?"  */
+    T_COLON = 311,                 /* ":"  */
+    T_SCOPE = 312,                 /* "::"  */
+    T_RANGE = 313,                 /* ".."  */
+    T_COMMA = 314,                 /* ","  */
+    T_OPEN = 315,                  /* "("  */
+    T_CLOSE = 316,                 /* ")"  */
+    T_OBJECT_OPEN = 317,           /* "{"  */
+    T_OBJECT_CLOSE = 318,          /* "}"  */
+    T_ARRAY_OPEN = 319,            /* "["  */
+    T_ARRAY_CLOSE = 320,           /* "]"  */
+    T_OUTBOUND = 321,              /* "outbound modifier"  */
+    T_INBOUND = 322,               /* "inbound modifier"  */
+    T_ANY = 323,                   /* "any modifier"  */
+    T_ALL = 324,                   /* "all modifier"  */
+    T_NONE = 325,                  /* "none modifier"  */
+    T_AT_LEAST = 326,              /* "at least modifier"  */
+    UMINUS = 327,                  /* UMINUS  */
+    UPLUS = 328,                   /* UPLUS  */
+    UNEGATION = 329,               /* UNEGATION  */
+    FUNCCALL = 330,                /* FUNCCALL  */
+    REFERENCE = 331,               /* REFERENCE  */
+    INDEXED = 332,                 /* INDEXED  */
+    EXPANSION = 333                /* EXPANSION  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -147,7 +149,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 150 "Aql/grammar.hpp"
+#line 152 "Aql/grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;
