@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
+import ToolTip from '../../components/arango/tootip';
 import Checkbox from '../../components/pure-css/form/Checkbox';
 import { isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
-import { buildSubNav, useView } from './helpers';
-import ToolTip from '../../components/arango/tootip';
+import { SaveButton } from './Actions';
+import { useNavbar, useView } from './helpers';
+
 const PrimarySortView = ({ primarySort = [] }) => {
   return primarySort.length
     ? <ArangoTable style={{ marginLeft: 0 }}>
@@ -56,12 +58,9 @@ const ViewInfoReactView = ({ name }) => {
   const view = useView(name);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
 
-  useEffect(() => {
-    const observer = buildSubNav(isAdminUser, name, 'Info');
-
-    return () => observer.disconnect();
-  }, [isAdminUser, name]);
+  useNavbar(name, isAdminUser, changed, 'Info');
 
   const tempIsAdminUser = userIsAdmin(permissions);
   if (tempIsAdminUser !== isAdminUser) { // Prevents an infinite render loop.
@@ -122,13 +121,13 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="Maximum number of concurrent active writers (segments) that perform a transaction."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="Maximum number of concurrent active writers (segments) that perform a transaction."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
 
             <tr>
@@ -139,13 +138,13 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="Maximum number of writers (segments) cached in the pool."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="Maximum number of writers (segments) cached in the pool."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
 
             <tr>
@@ -156,13 +155,13 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
             </tbody>
           </ArangoTable>
@@ -180,6 +179,16 @@ const ViewInfoReactView = ({ name }) => {
           <ArangoTable id={'viewPrimarySortTable'}>
             <tbody>
             <tr>
+              <th className="collectionInfoTh2">Primary Sort Order:</th>
+              <th className="collectionInfoTh">
+                <div className="modal-text">
+                  <PrimarySortView primarySort={view.primarySort}/>
+                </div>
+              </th>
+              <th className="collectionTh"/>
+            </tr>
+
+            <tr>
               <th className="collectionInfoTh2">Primary Sort Compression:</th>
               <th className="collectionInfoTh">
                 <div className="modal-text">
@@ -187,23 +196,13 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="Defines how to compress the primary sort data."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-            </tr>
-
-            <tr>
-              <th className="collectionInfoTh2">Primary Sort Order:</th>
-              <th className="collectionInfoTh">
-                <div className="modal-text">
-                  <PrimarySortView primarySort={view.primarySort}/>
-                </div>
+                <ToolTip
+                  title="Defines how to compress the primary sort data."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
               </th>
-              <th className="tooltipInfoTh"/>
             </tr>
             </tbody>
           </ArangoTable>
@@ -228,17 +227,22 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="An array of objects to describe which document attributes to store in the View index."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="An array of objects to describe which document attributes to store in the View index."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
             </tbody>
           </ArangoTable>
         </div>
+        {
+          isAdminUser && changed
+            ? <SaveButton view={view} oldName={name} setChanged={setChanged}/>
+            : null
+        }
       </div>
     </div>
   </div>;

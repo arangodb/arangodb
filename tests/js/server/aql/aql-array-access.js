@@ -369,6 +369,51 @@ function arrayAccessTestSuite () {
       
       result = AQL_EXECUTE("LET values = @values RETURN values[? NONE FILTER CURRENT >= 12]", { values }).json;
       assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (0) FILTER CURRENT == 1]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (1) FILTER CURRENT == 1]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (2) FILTER CURRENT == 1]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (1) FILTER CURRENT == 12]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (1) FILTER CURRENT != 1]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (10) FILTER CURRENT != 1]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (15) FILTER CURRENT != 1]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (5) FILTER CURRENT < 10]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (5) FILTER CURRENT < 4]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (5) FILTER CURRENT <= 10]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (5) FILTER CURRENT <= 4]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (3) FILTER CURRENT >= 8]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (5) FILTER CURRENT >= 8]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (3) FILTER CURRENT > 8]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? AT LEAST (5) FILTER CURRENT > 8]", { values }).json;
+      assertEqual([ false ], result);
     },
 
     testStarExtractScalar : function () {
