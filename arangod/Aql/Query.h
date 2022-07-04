@@ -254,7 +254,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
-  // ExecutionNode::K_SHORTEST_PATHS - in case the GraphNode does not contain
+  // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not contain
   // a vertex collection yet. This can happen e.g. during anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
 

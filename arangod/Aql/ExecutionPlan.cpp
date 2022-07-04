@@ -1441,10 +1441,10 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-/// @brief create an execution plan element from an AST for K_SHORTEST_PATH node
+/// @brief create an execution plan element from an AST for ENUMERATE_PATHS node
 ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
                                                      AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_K_SHORTEST_PATHS);
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_ENUMERATE_PATHS);
   TRI_ASSERT(node->numMembers() == 7);
 
   auto const type = static_cast<arangodb::graph::PathType::Type>(
@@ -2262,7 +2262,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
-      case NODE_TYPE_K_SHORTEST_PATHS: {
+      case NODE_TYPE_ENUMERATE_PATHS: {
         en = fromNodeKShortestPaths(en, member);
         break;
       }
