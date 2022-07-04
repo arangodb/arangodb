@@ -58,6 +58,7 @@ auto constexpr Message = std::string_view{"message"};
 auto constexpr LastTimeModified = std::string_view{"lastTimeModified"};
 auto constexpr Participant = std::string_view{"participant"};
 auto constexpr Owner = std::string_view{"owner"};
+auto constexpr AssumedWriteConcern = std::string_view{"assumedWriteConcern"};
 }  // namespace static_strings
 
 template<class Inspector>
@@ -162,12 +163,6 @@ auto inspect(Inspector& f,
 }
 
 template<class Inspector>
-auto inspect(Inspector& f,
-             LogCurrentSupervision::ConfigChangeNotImplemented& x) {
-  return f.object(x).fields();
-}
-
-template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision::LeaderElectionImpossible& x) {
   return f.object(x).fields();
 }
@@ -220,8 +215,6 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
               LogCurrentSupervision::TargetNotEnoughParticipants::code),
           insp::type<LogCurrentSupervision::WaitingForConfigCommitted>(
               LogCurrentSupervision::WaitingForConfigCommitted::code),
-          insp::type<LogCurrentSupervision::ConfigChangeNotImplemented>(
-              LogCurrentSupervision::ConfigChangeNotImplemented::code),
           insp::type<LogCurrentSupervision::LeaderElectionImpossible>(
               LogCurrentSupervision::LeaderElectionImpossible::code),
           insp::type<LogCurrentSupervision::LeaderElectionOutOfBounds>(
@@ -241,6 +234,8 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision& x) {
   return f.object(x).fields(
+      f.field(static_strings::AssumedWriteConcern, x.assumedWriteConcern)
+          .fallback(static_cast<size_t>(1)),
       f.field(static_strings::TargetVersion, x.targetVersion),
       f.field(static_strings::StatusReport, x.statusReport),
       f.field(static_strings::LastTimeModified, x.lastTimeModified)
