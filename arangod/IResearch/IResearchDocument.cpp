@@ -249,9 +249,10 @@ inline bool acceptAll(std::string& buffer,
     }
     auto fullName = nested.path();
     if (fullName.starts_with(buffer)) {
-      result = true;
+      // conditionally approve hierarchy. As it migth be what we are looking for in the end
+      result |= value.value.isObject() || value.value.isArray();
       if (buffer == nested.attributeString()) {
-        if (value.value.isObject() &&
+        if (value.value.isObject() && !nested._includeAllFields &&
             !nested.analyzer()->accepts(
                 arangodb::iresearch::AnalyzerValueType::Object)) {
           THROW_ARANGO_EXCEPTION_FORMAT(
@@ -280,10 +281,15 @@ inline bool acceptAll(std::string& buffer,
                 buffer.c_str());
           }
         }
+        if (value.value.isObject() && nested._includeAllFields) {
+          // store subcontext for now. But continue search for exact path match
+          context = &nested;
+        }
       }
       if (fullName == buffer) {
         // found specific rule. use it.
         context = &nested;
+        result = true;
         break;
       }
     }
@@ -337,7 +343,7 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
 }
 
 #ifdef USE_ENTERPRISE
-void handleNested(std::string_view parent,
+void gatherNestedNulls(std::string_view parent,
                   arangodb::iresearch::MissingFieldsMap& map,
                   arangodb::iresearch::InvertedIndexField const& field);
 #endif
@@ -364,7 +370,7 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
     }
 #ifdef USE_ENTERPRISE
     if (!f._fields.empty()) {
-      handleNested("", map, f);
+      gatherNestedNulls("", map, f);
     }
 #endif
   }
