@@ -32,12 +32,10 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
-const {deriveTestSuite, waitForShardsInSync} = require('@arangodb/test-helper');
 
 const cn = "UnitTestsCollection";
 
 const {
-  getCoordinators,
   getDBServers
 } = require('@arangodb/test-helper');
 
@@ -70,6 +68,8 @@ function collectionComputedValuesClusterSuite() {
 
       let randValues = {};
 
+      // contact DB servers and verify they have have stored the same RAND()
+      // values via replication
       getDBServers().forEach(server => {
         if (servers.indexOf(server.id) === -1) {
           return;
@@ -97,4 +97,5 @@ function collectionComputedValuesClusterSuite() {
 }
 
 jsunity.run(collectionComputedValuesClusterSuite);
+
 return jsunity.done();

@@ -284,13 +284,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: [{animal: "dog"}]});
+        docs.push({value1: "test" + i, value2: {animal: "dog"}});
       }
       collection.insert(docs);
 
       let res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
       res.forEach(el => {
-        assertEqual(el.value3, `${el.value1.substring(0, 3)}`);
+        assertEqual(el.value3, `${el.value1.substring(0, 3)}og`);
       });
     },
 
@@ -397,11 +397,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     testComputeValuesSubquery: function() {
       try {
         collection.properties({
-          computedValues: [{
-            name: "newValue",
-            expression: "RETURN (RETURN CONCAT(@doc.value1, '+'))",
-            override: false
-          }]
+          computedValues: [
+            {
+              name: "newValue",
+              expression: "RETURN (RETURN CONCAT(@doc.value1, '+'))",
+              override: false
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -511,11 +513,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         }
       });
       collection.properties({
-        computedValues: [{
-          name: "value1",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: false
-        }]
+        computedValues: [
+          {
+            name: "value1",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: false
+          }
+        ]
       });
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
@@ -915,7 +919,66 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(el.values, values, el);
         assertEqual(el.newValue, expected, el);
       });
-    }
+    },
+
+    testRandValues: function() {
+      // the result of RAND() must be recomputed every time we
+      // invoke the computed values expression.
+      collection.properties({
+        computedValues: [
+          {
+            name: "newValue",
+            expression: `RETURN TO_STRING(RAND())`,
+            override: false,
+            computeOn: ["insert"]
+          }
+        ]
+      });
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({});
+      }
+      collection.insert(docs);
+
+      const res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      assertEqual(res.length, 100);
+
+      let valuesFound = {};
+      res.forEach(el => {
+        valuesFound[el.newValue] = 1;
+      });
+
+      // assume we got at least 10 different RAND() values for 100 
+      // documents.
+      assertTrue(Object.keys(valuesFound).length >= 10, valuesFound);
+    },
+    
+    testDateValues: function() {
+      // the result of DATE_NOW() must be recomputed every time we
+      // invoke the computed values expression.
+      collection.properties({
+        computedValues: [
+          {
+            name: "newValue",
+            expression: `RETURN TO_STRING(DATE_NOW())`,
+            override: false,
+            computeOn: ["insert"]
+          }
+        ]
+      });
+
+      let valuesCreated = {};
+      for (let i = 0; i < 100; ++i) {
+        let doc = collection.insert({}, {returnNew: true});
+        internal.wait(0.01);
+        valuesCreated[doc.new.newValue] = 1;
+      }
+
+      // assume we got at least 10 different DATE_NOW() values for 100 
+      // documents.
+      assertTrue(Object.keys(valuesCreated).length >= 10, valuesCreated);
+    },
 
   };
 }
@@ -1091,8 +1154,6 @@ function ComputedValuesOnCollectionCreationNoOverrideTestSuite() {
 }
 
 function ComputedValuesClusterShardsTestSuite() {
-  //TODO: use RAND() when differentiating between servers to get the same result
-
   'use strict';
 
   let collection = null;

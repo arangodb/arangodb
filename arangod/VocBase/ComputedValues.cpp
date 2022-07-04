@@ -170,8 +170,13 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
   // validated before
   parser.parse();
 
+  // we have to set "optimizeNonCacheable" to false here, so that the
+  // queryString expression gets re-evaluated every time, and does not
+  // store the computed results once (e.g. when using a queryString such
+  // as "RETURN DATE_NOW()" you always want the current date to be
+  // returned, and not a date once stored)
   ast->validateAndOptimize(_queryContext->trxForOptimization(),
-                           /*optimizeNonCacheable*/ false);
+                           {.optimizeNonCacheable = false});
 
   if (_failOnWarning) {
     // rethrow any warnings during query inspection
@@ -430,7 +435,10 @@ Result ComputedValues::buildDefinitions(
           "invalid 'computedValues' entry: 'override' must be a boolean");
     }
 
-    ComputeValuesOn mustComputeOn = ComputeValuesOn::kInsert;
+    ComputeValuesOn mustComputeOn = static_cast<ComputeValuesOn>(
+        ::mustComputeOnValue(ComputeValuesOn::kInsert) ||
+        ::mustComputeOnValue(ComputeValuesOn::kUpdate) ||
+        ::mustComputeOnValue(ComputeValuesOn::kReplace));
 
     VPackSlice on = it.get("computeOn");
     if (on.isArray()) {
