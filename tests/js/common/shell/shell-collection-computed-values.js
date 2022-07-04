@@ -759,7 +759,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testArayOperator: function() {
+    testArrayOperator: function() {
       collection.properties({
         computedValues: [{
           name: "newValue",
@@ -796,7 +796,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
 
-    testArayOperatorWithInline: function() {
+    testArrayOperatorWithInline: function() {
       collection.properties({
         computedValues: [{
           name: "newValue",
