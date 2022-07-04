@@ -24,6 +24,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Replication2/MetricsHelper.h"
 
 namespace arangodb::replication2::replicated_state {
 template<typename S>
@@ -136,8 +137,13 @@ void LeaderStateManager<S>::run() noexcept {
 
 template<typename S>
 auto LeaderStateManager<S>::waitForLeadership() -> futures::Future<Result> {
+  GaugeScopedCounter counter(metrics->replicatedStateNumberWaitingForLeader);
   return logLeader->waitForLeadership().thenValue(
-      [](replicated_log::WaitForResult const&) { return Result{}; });
+      [counter =
+           std::move(counter)](replicated_log::WaitForResult const&) mutable {
+        counter.fire();
+        return Result{};
+      });
 }
 
 template<typename S>

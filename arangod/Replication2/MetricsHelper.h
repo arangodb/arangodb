@@ -46,6 +46,10 @@ struct MeasureTimeGuard {
 struct GaugeScopedCounter {
   explicit GaugeScopedCounter(
       std::shared_ptr<metrics::Gauge<std::uint64_t>>) noexcept;
+  GaugeScopedCounter(GaugeScopedCounter const&) = delete;
+  GaugeScopedCounter(GaugeScopedCounter&&) noexcept = default;
+  GaugeScopedCounter& operator=(GaugeScopedCounter const&) = delete;
+  GaugeScopedCounter& operator=(GaugeScopedCounter&&) noexcept = default;
   ~GaugeScopedCounter();
 
   void fire() noexcept;
