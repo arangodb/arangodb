@@ -756,7 +756,10 @@ namespace iresearch {
                    definition.get(StaticStrings::ViewIdField));
   }
 
-  IndexFactory::processIndexInBackground(definition, normalized);
+  if (definition.hasKey(arangodb::StaticStrings::IndexInBackground)) {
+    IndexFactory::processIndexInBackground(definition, normalized);
+  }
+
   IndexFactory::processIndexParallelism(definition, normalized);
 
   if (primarySort) {
