@@ -230,6 +230,8 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
 
 namespace debug {
 
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+
 struct NoOpStream {
   template<typename T>
   auto operator<<(T const&) noexcept -> NoOpStream& {
@@ -261,6 +263,8 @@ struct AssertionLogger {
 
   static thread_local std::ostringstream assertionStringStream;
 };
+
+#else  // #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 
 struct AssertionConditionalStream {
   bool condition{false};
@@ -297,6 +301,8 @@ struct AssertionConditionalLogger {
 
   static thread_local AssertionConditionalStream assertionStringStream;
 };
+
+#endif  // #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 
 }  // namespace debug
 }  // namespace arangodb
