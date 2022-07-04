@@ -735,6 +735,8 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // In the next round this will lead to a leadership election.
   checkLeaderHealthy(ctx, log, health);
 
+  checkConfigUpdated(ctx, log, health);
+
   // Check whether a participant was added in Target that is not in Plan.
   // If so, add it to Plan.
   //
@@ -770,9 +772,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // If the configuration differs between Target and Plan,
   // apply the new configuration.
   checkParticipantWithFlagsToUpdate(ctx, log, health);
-
-  // TODO: This has not been implemented yet!
-  checkConfigUpdated(ctx, log, health);
 
   // Check whether we have converged, and if so, report and set version
   // to target version
