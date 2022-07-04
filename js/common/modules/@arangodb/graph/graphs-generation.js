@@ -155,7 +155,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return {vertices, edges};
     };
 
-    // Creates a graph with size many vertices such that for each pair (v,w) of distinct vertices,
+// Creates a graph with size many vertices such that for each pair (v,w) of distinct vertices,
 // (v,w) or (w,v) is an edge (or both). There are no self-loops.
 // The parameter kind has the following meaning:
 //  - "bidirected": for all distinct vertices v,w, there are edges (v,w) and (w,v)
