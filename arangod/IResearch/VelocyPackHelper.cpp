@@ -68,7 +68,6 @@ arangodb::velocypack::Builder& addRef(arangodb::velocypack::Builder& builder,
   return builder;
 }
 
-
 enum AttributeType : uint8_t {
   AT_REG =
       arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
