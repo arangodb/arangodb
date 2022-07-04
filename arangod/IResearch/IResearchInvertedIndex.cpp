@@ -103,8 +103,7 @@ struct CheckFieldsAccess {
 };
 
 bool supportsFilterNode(
-    IndexId id,
-    std::vector<std::vector<basics::AttributeName>> const& fields,
+    IndexId id, std::vector<std::vector<basics::AttributeName>> const& fields,
     aql::AstNode const* node, aql::Variable const* reference,
     std::vector<InvertedIndexField> const& metaFields,
     AnalyzerProvider const* provider) {
@@ -128,9 +127,8 @@ bool supportsFilterNode(
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-  FilterContext const filterCtx{.analyzerProvider = provider,
-                                .analyzer = analyzer,
-                                .fields = metaFields};
+  FilterContext const filterCtx{
+      .analyzerProvider = provider, .analyzer = analyzer, .fields = metaFields};
 
   auto rv = FilterFactory::filter(nullptr, queryCtx, filterCtx, *node);
 
@@ -830,9 +828,9 @@ Result IResearchInvertedIndex::init(
   }
 
   TRI_ASSERT(_meta._sort.sortCompression());
-  auto r = initDataStore(pathExists, initCallback, static_cast<uint32_t>(_meta._version), isSorted(),
-                         _meta._storedValues.columns(),
-                         _meta._sort.sortCompression());
+  auto r = initDataStore(
+      pathExists, initCallback, static_cast<uint32_t>(_meta._version),
+      isSorted(), _meta._storedValues.columns(), _meta._sort.sortCompression());
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }

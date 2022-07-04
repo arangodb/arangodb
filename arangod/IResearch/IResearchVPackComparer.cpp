@@ -41,8 +41,7 @@ namespace arangodb {
 namespace iresearch {
 
 template<typename Sort>
-VPackComparer<Sort>::VPackComparer()
-    : _sort(nullptr), _size(0) {}
+VPackComparer<Sort>::VPackComparer() : _sort(nullptr), _size(0) {}
 
 template<typename Sort>
 bool VPackComparer<Sort>::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {

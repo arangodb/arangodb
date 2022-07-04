@@ -3480,15 +3480,14 @@ TEST_F(
         assertField<irs::numeric_token_stream, true>(
             server, *it, mangleNumeric("array[*].subobj.id"));
       },
-       [](auto& server, auto const& it) {
+      [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
                                             mangleNull("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
                                             mangleNull("never_present"));
-      }
-  };
+      }};
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
@@ -3623,8 +3622,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
                                             mangleNull("never_present"));
-      }
-  };
+      }};
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
@@ -3750,14 +3748,12 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
       R"({"not_keys": { "a":1, "b":2, "c":3}, "some_boost": 10})");
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
-    [](auto& server, auto const& it) {
-    assertField<irs::null_token_stream>(server, *it,
-                                        mangleNull("boost"));
-    },
-    [](auto& server, auto const& it) {
-      assertField<irs::null_token_stream>(server, *it,
-                                          mangleNull("keys"));
-    }};
+      [](auto& server, auto const& it) {
+        assertField<irs::null_token_stream>(server, *it, mangleNull("boost"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::null_token_stream>(server, *it, mangleNull("keys"));
+      }};
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));

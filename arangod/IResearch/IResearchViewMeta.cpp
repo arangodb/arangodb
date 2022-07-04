@@ -82,11 +82,8 @@ void IResearchViewMeta::storeFull(IResearchViewMeta&& other) noexcept {
   IResearchDataStoreMeta::storeFull(std::move(other));
 }
 
-
-
 bool IResearchViewMeta::operator==(
     IResearchViewMeta const& other) const noexcept {
-
   if (*static_cast<IResearchDataStoreMeta const*>(this) !=
       static_cast<IResearchDataStoreMeta const&>(other)) {
     return false;
@@ -188,7 +185,6 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 bool IResearchViewMeta::json(velocypack::Builder& builder,
                              IResearchViewMeta const* ignoreEqual /*= nullptr*/,
                              Mask const* mask /*= nullptr*/) const {
-
   if (!IResearchDataStoreMeta::json(builder, ignoreEqual, mask)) {
     return false;
   }

@@ -882,13 +882,9 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchAnyNested) {
       expected, &ctx);
 }
 
-
-
-
 // FAILING TESTS
 
 TEST_F(IResearchFilterNestedTest, testParseFailingCases) {
-
   // wrong ranges
   assertFilterParseFail(
       vocbase(),

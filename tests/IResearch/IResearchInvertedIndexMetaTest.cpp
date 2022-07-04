@@ -443,10 +443,9 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   constexpr std::array badJsons{
-      kWrongDefinition2, kWrongDefinition3, kWrongDefinition4,
-      kWrongDefinition5, kWrongDefinition6, kWrongDefinition8,
-      kWrongDefinition7,
-      kWrongDefinition11, kWrongDefinition12,
+      kWrongDefinition2,  kWrongDefinition3,  kWrongDefinition4,
+      kWrongDefinition5,  kWrongDefinition6,  kWrongDefinition8,
+      kWrongDefinition7,  kWrongDefinition11, kWrongDefinition12,
       kWrongDefinition13, kWrongDefinition14, kWrongDefinition15,
       kWrongDefinition16, kWrongDefinition17, kWrongDefinition18,
       kWrongDefinition20, kWrongDefinition21, kWrongDefinition22,
@@ -803,8 +802,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
               meta._sort.sortCompression());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX,
-              meta._version);
+    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
@@ -828,8 +826,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
               meta._sort.sortCompression());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX,
-              meta._version);
+    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
@@ -875,7 +872,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
   ASSERT_EQ(1, meta._fields.size());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
-  ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
+  ASSERT_EQ(meta._sort.sortCompression(),
+            irs::type<irs::compression::lz4>::id());
   ASSERT_FALSE(meta.dense());
   ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
   ASSERT_EQ(meta._consistency, Consistency::kEventual);
@@ -890,7 +888,6 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
     VPackObjectBuilder obj(&serialized);
     ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
   }
-
 }
 
 #if USE_ENTERPRISE

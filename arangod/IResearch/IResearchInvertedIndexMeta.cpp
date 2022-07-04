@@ -64,7 +64,8 @@ constexpr std::string_view kPrimarySortFieldName = "primarySort";
 constexpr std::string_view kVersionFieldName = "version";
 constexpr std::string_view kStoredValuesFieldName = "storedValues";
 constexpr std::string_view kConsistencyFieldName = "consistency";
-constexpr std::string_view kAnalyzerDefinitionsFieldName = "analyzerDefinitions";
+constexpr std::string_view kAnalyzerDefinitionsFieldName =
+    "analyzerDefinitions";
 }  // namespace
 
 namespace arangodb::iresearch {
@@ -332,7 +333,7 @@ bool IResearchInvertedIndexMeta::json(
   }
 
   {
-   VPackObjectBuilder obj(&builder, kPrimarySortFieldName);
+    VPackObjectBuilder obj(&builder, kPrimarySortFieldName);
     if (!_sort.toVelocyPack(builder)) {
       return false;
     }

@@ -120,9 +120,8 @@ struct Field {
 using MissingFieldsContainer = absl::flat_hash_set<std::string_view>;
 // "attribute" names are tmp strings so need to store them here.
 // but "path" is string_view to meta internals so just string_views.
-using MissingFieldsMap = absl::flat_hash_map<std::string, MissingFieldsContainer>;
-
-
+using MissingFieldsMap =
+    absl::flat_hash_map<std::string, MissingFieldsContainer>;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack accoring the specified
@@ -149,22 +148,16 @@ class FieldIterator {
 
   void reset(velocypack::Slice slice, IndexMetaStruct const& linkMeta);
 
-  bool  disableFlush() const noexcept {
-    return _disableFlush;
-  }
+  bool disableFlush() const noexcept { return _disableFlush; }
 
 #ifdef USE_ENTERPRISE
   bool onRootLevel() const noexcept;
 
   bool hasNested() const noexcept;
 
-  bool needDoc() const noexcept {
-    return _needDoc;
-  }
+  bool needDoc() const noexcept { return _needDoc; }
 
-  void setDisableFlush() noexcept {
-    _disableFlush = true;
-  }
+  void setDisableFlush() noexcept { _disableFlush = true; }
 #endif
 
  private:
@@ -186,14 +179,14 @@ class FieldIterator {
   struct Level {
     Level(velocypack::Slice slice, size_t nameLength, LevelMeta const& meta,
           Filter levelFilter, LevelType levelType,
-          std::optional<arangodb::iresearch::MissingFieldsContainer>&& missingTracker)
+          std::optional<arangodb::iresearch::MissingFieldsContainer>&&
+              missingTracker)
         : it(slice),
           nameLength(nameLength),
           meta(&meta),
           filter(levelFilter),
           type(levelType),
-          missingFields(missingTracker) {
-    }
+          missingFields(missingTracker) {}
 
     Iterator it;
     size_t nameLength;      // length of the name at the current level
@@ -258,7 +251,7 @@ class FieldIterator {
   bool _isDBServer;
   bool _disableFlush;
   MissingFieldsMap _missingFieldsMap;
- #ifdef USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
   std::vector<std::string> _nestingBuffers;
   bool _needDoc{false};
   bool _hasNested{false};

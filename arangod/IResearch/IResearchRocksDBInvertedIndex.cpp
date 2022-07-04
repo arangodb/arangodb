@@ -103,9 +103,9 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
         index->drop();
       }
     });
-   
-    auto initRes =
-        index->init(definition, pathExists, [this]() -> irs::directory_attributes {
+
+    auto initRes = index->init(
+        definition, pathExists, [this]() -> irs::directory_attributes {
           auto& selector = _server.getFeature<EngineSelectorFeature>();
           TRI_ASSERT(selector.isRocksDB());
           auto& engine = selector.engine<RocksDBEngine>();
@@ -199,8 +199,7 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
     IndexId id, LogicalCollection& collection, uint64_t objectId,
     std::string const& name)
     : IResearchInvertedIndex(id, collection),
-      RocksDBIndex(id, collection, name, {},
-                   false, true,
+      RocksDBIndex(id, collection, name, {}, false, true,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Invalid),
                    objectId, /*useCache*/ false,

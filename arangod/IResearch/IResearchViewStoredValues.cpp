@@ -168,7 +168,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
 bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
                                                std::string& errorField) {
   clear();
-  if ( !slice.isArray()) {
+  if (!slice.isArray()) {
     return false;
   }
   _storedColumns.reserve(slice.length());
