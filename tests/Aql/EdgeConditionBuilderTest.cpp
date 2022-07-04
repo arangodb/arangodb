@@ -183,10 +183,111 @@ TEST_F(EdgeConditionBuilderTest, modify_both_conditions) {
   auto out = condBuilder.getOutboundCondition()->clone(_ast);
   auto in = condBuilder.getInboundCondition()->clone(_ast);
 
-  assertIsFromAccess(out->getMember(0));
-  assertIsToAccess(in->getMember(0));
-  assertIsAttributeCompare(out->getMember(1), "foo", "bar");
-  assertIsAttributeCompare(in->getMember(1), "foo", "bar");
+  assertIsFromAccess(out, {{"foo", "bar"}});
+  assertIsToAccess(in, {{"foo", "bar"}});
+}
+
+TEST_F(EdgeConditionBuilderTest, depth_specific_conditions) {
+  std::string attr1 = "depth1";
+  std::string value1 = "value1";
+
+  std::string attr2 = "depth2";
+  std::string value2 = "value2";
+  auto d1Condition = createEqualityCondition(attr1, value1);
+  auto d2Condition = createEqualityCondition(attr2, value2);
+
+  condBuilder.addConditionForDepth(d1Condition, 1);
+  condBuilder.addConditionForDepth(d2Condition, 2);
+
+  {
+    // Should not alter default
+    auto out = condBuilder.getOutboundCondition()->clone(_ast);
+    auto in = condBuilder.getInboundCondition()->clone(_ast);
+    assertIsFromAccess(out, {});
+    assertIsToAccess(in, {});
+  }
+  {
+    // Should not alter Depth 0
+    auto out = condBuilder.getOutboundConditionForDepth(0, _ast);
+    auto in = condBuilder.getInboundConditionForDepth(0, _ast);
+    assertIsFromAccess(out, {});
+    assertIsToAccess(in, {});
+  }
+  {
+    // Should modify Depth 1
+    auto out = condBuilder.getOutboundConditionForDepth(1, _ast);
+    auto in = condBuilder.getInboundConditionForDepth(1, _ast);
+    assertIsFromAccess(out, {{attr1, value1}});
+    assertIsToAccess(in, {{attr1, value1}});
+  }
+  {
+    // Should modify Depth 2
+    auto out = condBuilder.getOutboundConditionForDepth(2, _ast);
+    auto in = condBuilder.getInboundConditionForDepth(2, _ast);
+    assertIsFromAccess(out, {{attr2, value2}});
+    assertIsToAccess(in, {{attr2, value2}});
+  }
+  {
+    // Should not alter Depth 3
+    auto out = condBuilder.getOutboundConditionForDepth(3, _ast);
+    auto in = condBuilder.getInboundConditionForDepth(3, _ast);
+    assertIsFromAccess(out, {});
+    assertIsToAccess(in, {});
+  }
+}
+
+TEST_F(EdgeConditionBuilderTest, merge_depth_with_base) {
+  std::string attr1 = "depth1";
+  std::string value1 = "value1";
+
+  std::string attr2 = "depth2";
+  std::string value2 = "value2";
+
+  std::string attr = "base";
+  std::string value = "baseValue";
+  auto baseCondition = createEqualityCondition(attr, value);
+  auto d1Condition = createEqualityCondition(attr1, value1);
+  auto d2Condition = createEqualityCondition(attr2, value2);
+
+  condBuilder.addConditionPart(baseCondition);
+  condBuilder.addConditionForDepth(d1Condition, 1);
+  condBuilder.addConditionForDepth(d2Condition, 2);
+
+  {
+    // Should not alter default
+    auto out = condBuilder.getOutboundCondition()->clone(_ast);
+    auto in = condBuilder.getInboundCondition()->clone(_ast);
+    assertIsFromAccess(out, {{attr, value}});
+    assertIsToAccess(in, {{attr, value}});
+  }
+  {
+    // Should not alter Depth 0
+    auto out = condBuilder.getOutboundConditionForDepth(0, _ast);
+    auto in = condBuilder.getInboundConditionForDepth(0, _ast);
+    assertIsFromAccess(out, {{attr, value}});
+    assertIsToAccess(in, {{attr, value}});
+  }
+  {
+    // Should modify Depth 1
+    auto out = condBuilder.getOutboundConditionForDepth(1, _ast);
+    auto in = condBuilder.getInboundConditionForDepth(1, _ast);
+    assertIsFromAccess(out, {{attr, value}, {attr1, value1}});
+    assertIsToAccess(in, {{attr, value}, {attr1, value1}});
+  }
+  {
+    // Should modify Depth 2
+    auto out = condBuilder.getOutboundConditionForDepth(2, _ast);
+    auto in = condBuilder.getInboundConditionForDepth(2, _ast);
+    assertIsFromAccess(out, {{attr, value}, {attr2, value2}});
+    assertIsToAccess(in, {{attr, value}, {attr2, value2}});
+  }
+  {
+    // Should not alter Depth 4
+    auto out = condBuilder.getOutboundConditionForDepth(4, _ast);
+    auto in = condBuilder.getInboundConditionForDepth(4, _ast);
+    assertIsFromAccess(out, {{attr, value}});
+    assertIsToAccess(in, {{attr, value}});
+  }
 }
 }
 }

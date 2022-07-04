@@ -62,7 +62,7 @@ class EdgeConditionBuilder {
   /// branch of a DNF => No OR contained.
   AstNode* _modCondition;
 
-  std::unordered_map<uint64_t, AstNode*> _depthConditions;
+  std::unordered_map<uint64_t, std::vector<AstNode const*>> _depthConditions;
 
   /// @brief indicator if we have attached the _from or _to condition to
   /// _modCondition
@@ -105,10 +105,12 @@ class EdgeConditionBuilder {
   AstNode* getInboundCondition();
 
   // Get the complete condition for outbound edges
-  AstNode* getOutboundConditionForDepth(uint64_t depth);
+  // Note: Caller will get a clone, and is allowed to modify it
+  AstNode* getOutboundConditionForDepth(uint64_t depth, Ast* ast);
 
   // Get the complete condition for inbound edges
-  AstNode* getInboundConditionForDepth(uint64_t depth);
+  // Note: Caller will get a clone, and is allowed to modify it
+  AstNode* getInboundConditionForDepth(uint64_t depth, Ast* ast);
 
   std::pair<
       std::vector<arangodb::graph::IndexAccessor>,

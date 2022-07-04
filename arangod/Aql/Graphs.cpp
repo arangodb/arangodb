@@ -98,6 +98,13 @@ void EdgeConditionBuilder::addConditionPart(AstNode const* part) {
   _modCondition->addMember(part);
 }
 
+// Add a condition on the edges that specific to the given depth
+void EdgeConditionBuilder::addConditionForDepth(AstNode const* condition, uint64_t depth) {
+  // This API on purpose takes all Conditions, the Optimizer has to know what can be optimized.
+  _depthConditions[depth].emplace_back(condition);
+}
+
+
 void EdgeConditionBuilder::swapSides(AstNode* cond) {
   TRI_ASSERT(cond != nullptr);
   TRI_ASSERT(cond == _fromCondition || cond == _toCondition);
@@ -131,6 +138,29 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
   TRI_ASSERT(_toCondition != nullptr);
   swapSides(_toCondition);
   return _modCondition;
+}
+
+
+// Get the complete condition for outbound edges
+AstNode* EdgeConditionBuilder::getOutboundConditionForDepth(uint64_t depth, Ast* ast) {
+  auto cond = getOutboundCondition()->clone(ast);
+  if (_depthConditions.contains(depth)) {
+    for (auto const* subCondition : _depthConditions[depth]) {
+      cond->addMember(subCondition);
+    }
+  }
+  return cond;
+}
+
+// Get the complete condition for inbound edges
+AstNode* EdgeConditionBuilder::getInboundConditionForDepth(uint64_t depth, Ast* ast) {
+  auto cond = getInboundCondition()->clone(ast);
+  if (_depthConditions.contains(depth)) {
+    for (auto const* subCondition : _depthConditions[depth]) {
+      cond->addMember(subCondition);
+    }
+  }
+  return cond;
 }
 
 EdgeConditionBuilderContainer::EdgeConditionBuilderContainer()

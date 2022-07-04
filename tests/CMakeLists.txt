@@ -114,6 +114,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
   Aql/DistinctCollectExecutorTest.cpp
+  Aql/EdgeConditionBuilderTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
