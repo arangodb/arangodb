@@ -216,12 +216,9 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
           }
         }
       } else if (en->getFirstDependency()->getType() == ExecutionNode::ASYNC) {
-        // TODO: I don't think we need to do anything here. Dependency are
-        // handled before
-        // TODO: This is just a WIP assert, make sure to delete this before
-        // merging
-        // TODO: We expect to end up here during planning.
-        // TRI_ASSERT(false);
+        // Nothing needs to be done here in this case. Dependencies are
+        // handled before.
+        continue;
       } else {
         return {TRI_ERROR_INTERNAL, "expecting a RemoteNode or a MutexNode"};
       }
