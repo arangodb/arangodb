@@ -243,6 +243,8 @@ struct AssertionNoOpLogger {
   void operator&(NoOpStream const& stream) const {}
 };
 
+#else  // #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+
 struct AssertionLogger {
   [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
@@ -263,8 +265,6 @@ struct AssertionLogger {
 
   static thread_local std::ostringstream assertionStringStream;
 };
-
-#else  // #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 
 struct AssertionConditionalStream {
   bool condition{false};
