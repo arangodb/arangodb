@@ -10,6 +10,8 @@ devel
 * Added a fully functional UI for Views that lets users view, modify mutable
   properties and delete views from the web UI.
 
+* Updated arangosync to v2.11.0-preview-2.
+
 * Add "AT LEAST" quantifier for array filters in AQL:
 
       `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
