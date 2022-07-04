@@ -6,6 +6,8 @@ devel
   in disck temporarily using rocksdb as a means to it, because then also the
   entries can be stored when inserted on disk using a customized comparator.
 
+* Updated arangosync to v2.11.0-preview-2.
+
 * Add "AT LEAST" quantifier for array filters in AQL:
 
       `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
