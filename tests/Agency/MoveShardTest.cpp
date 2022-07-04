@@ -32,6 +32,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
+#include "Basics/TimeString.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

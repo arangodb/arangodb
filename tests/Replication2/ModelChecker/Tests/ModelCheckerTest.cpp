@@ -196,13 +196,47 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_cycle_detector) {
 
   auto result = Engine::run(driver, test, {.x = 0},
                             {.iterations = 3, .seed = this->seed(ADB_HERE)});
-  EXPECT_TRUE(result.failed);
+  ASSERT_TRUE(result.failed);
+  ASSERT_TRUE(result.failed->cycle.has_value());
+  auto& cycle = *result.failed->cycle;
+  EXPECT_EQ(cycle.size(),
+            4);  // 0 -> 1 -> 2 -> 3 -> 4 -> 1 => Cycle of length 4
+  EXPECT_EQ(1, cycle[0].first->state.x);
+  EXPECT_EQ(2, cycle[1].first->state.x);
+  EXPECT_EQ(3, cycle[2].first->state.x);
+  EXPECT_EQ(4, cycle[3].first->state.x);
+}
+
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_loop_detector) {
+  using Engine = TypeParam;
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 4) {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
+    } else {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x});
+    }
+    return result;
+  }};
+
+  auto test =
+      MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
+
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
+  ASSERT_TRUE(result.failed);
+  ASSERT_TRUE(result.failed->cycle.has_value());
+  auto& cycle = *result.failed->cycle;
+  EXPECT_EQ(cycle.size(),
+            1);  // 0 -> 1 -> 2 -> 3 -> 4 -> 4 => Cycle of length 1
+  EXPECT_EQ(4, cycle[0].first->state.x);
 }
 
 REGISTER_TYPED_TEST_CASE_P(TypedModelCheckerTest, simple_model_test,
                            simple_model_test_fail, simple_model_test_eventually,
                            simple_model_test_eventually_always,
                            simple_model_test_eventually_always_fail,
+                           simple_model_test_loop_detector,
                            simple_model_test_cycle_detector);
 
 using EngineTypes =
