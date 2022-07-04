@@ -224,10 +224,8 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, 0, upstreamCall};
     }
-    if (_returnNext < _rowIndexes.size()) {
-      doSorting();
-      _inputReady = true;
-    }
+    doSorting();
+    _inputReady = true;
   }
 
   while (_returnNext < _rowIndexes.size() && call.shouldSkip()) {
