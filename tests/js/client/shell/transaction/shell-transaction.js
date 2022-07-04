@@ -31,16 +31,17 @@
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
+const arangosh = require('@arangodb/arangosh');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').Helper;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const analyzers = require("@arangodb/analyzers");
+const request = require('@arangodb/request');
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
-const _ = require('lodash');
 
-var compareStringIds = function (l, r) {
+const compareStringIds = function (l, r) {
   'use strict';
   var i;
   if (l.length !== r.length) {
@@ -57,7 +58,7 @@ var compareStringIds = function (l, r) {
   return 0;
 };
 
-var sortedKeys = function (col) {
+const sortedKeys = function (col) {
   'use strict';
   var keys = [ ];
 
@@ -68,6 +69,30 @@ var sortedKeys = function (col) {
   keys.sort();
   return keys;
 };
+
+const getDBServers = function (db) {
+  let requestResult = db._connection.GET("/_admin/cluster/health");
+  arangosh.checkRequestResult(requestResult);
+  let dbServers = {};
+  for (const [serverId, serverInfo] of Object.entries(requestResult.Health)) {
+    if (serverInfo.Role === "DBServer") {
+      dbServers[serverId] = serverInfo.Endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+    }
+  }
+  return dbServers;
+};
+
+const getLocalValue = function (endpoint, db, col, key) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/document/${col}/${key}`,
+    headers: {
+      "X-Arango-Allow-Dirty-Read": true
+    },
+  });
+  arangosh.checkRequestResult(res);
+  return res.json;
+};
+
 
 function transactionRevisionsSuite (dbParams) {
   'use strict';
@@ -4823,7 +4848,7 @@ function transactionDatabaseSuite() {
 /**
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
  */
-function transactionReplication2ReplicateOperation() {
+function transactionReplication2ReplicateOperationSuite() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   var cn = 'UnitTestsTransaction';
@@ -4873,7 +4898,8 @@ function transactionReplication2ReplicateOperation() {
             break;
           }
         }
-        assertTrue(abortFound, `Could not find Abort operation in log ${log.id()}! Log entries: ${entries}`);
+        assertTrue(abortFound, `Could not find Abort operation in log ${log.id()}!\n` +
+            `Log entries: ${JSON.stringify(entries)}`);
       }
     },
 
@@ -4912,12 +4938,132 @@ function transactionReplication2ReplicateOperation() {
             break;
           }
         }
-        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}! Log entries: ${entries}`);
+        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}!\n` +
+            `Log entries: ${JSON.stringify(entries)}`);
       }
     },
   };
 }
 
+/**
+ * This test suite checks the correctness of replicated operations with respect to the follower contents.
+ * All tests must use a single shard, so we don't have to guess where the keys are saved.
+ * writeConcern must be equal to replicationFactor, so we replicate all documents on all followers.
+ */
+function transactionReplicationOnFollowersSuite(dbParams) {
+  'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
+  const numberOfShards = 1;
+  var cn = 'UnitTestsTransaction';
+  var c = null;
+  var isReplication2 = dbParams.replicationVersion === "2";
+
+  return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
+
+    setUp: function () {
+      db._drop(cn);
+      let rc = Object.keys(getDBServers(db)).length;
+      c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": rc, "replicationFactor": rc});
+    },
+
+    tearDown: function () {
+      if (c !== null) {
+        c.drop();
+      }
+
+      c = null;
+    },
+
+    testFollowerAbort: function () {
+      let trx = db._createTransaction({
+        collections: { write: c.name()  }
+      });
+      let tc = trx.collection(c.name());
+      tc.insert({ _key: "foo" });
+      trx.abort();
+
+      let shards = c.shards();
+      let dbServers = getDBServers(db);
+      let localValues = {};
+      for (const endpoint of Object.values(dbServers)) {
+        localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+      }
+      var replication2Log = '';
+      if (isReplication2) {
+        let log = db._replicatedLog(shards[0].slice(1));
+        let entries = log.head(1000);
+        replication2Log = `Log entries: ${JSON.stringify(entries)}`;
+      }
+      for (const [endpoint, res] of Object.entries(localValues)) {
+        assertTrue(res.code === 404,
+            `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
+            `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
+            `\n${replication2Log}`);
+      }
+    },
+
+    testFollowerSaveAndCommit: function () {
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc = trx.collection(cn);
+        tc.save({ _key: "foo" });
+      } catch(err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
+      let shards = c.shards();
+      let dbServers = getDBServers(db);
+      let localValues = {};
+      for (const endpoint of Object.values(dbServers)) {
+        localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+      }
+
+      var replication2Log = '';
+      if (isReplication2) {
+        let log = db._replicatedLog(shards[0].slice(1));
+        let entries = log.head(1000);
+        replication2Log = `Log entries: ${JSON.stringify(entries)}`;
+      }
+
+      for (const [endpoint, res] of Object.entries(localValues)) {
+        assertTrue(res.code === undefined,
+            `Error while reading key from ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+            `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
+        assertEqual(res._key, "foo",
+            `Wrong key returned by ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+            `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
+      }
+
+      // All ids and revisions should be equal
+      for (let idx = 1; idx < localValues.length; ++idx) {
+        assertEqual(localValues[idx - 1]._rev, localValues[idx]._rev, `_rev mismatch ${JSON.stringify(localValues)}` +
+            `\n${replication2Log}`);
+        assertEqual(localValues[idx - 1]._id, localValues[idx]._id, `_id mismatch ${JSON.stringify(localValues)}` +
+            `\n${replication2Log}`);
+      }
+    },
+  };
+}
 
 function makeTestSuites(testSuite) {
   let suiteV1 = {};
@@ -4969,6 +5115,9 @@ function transactionIteratorSuiteV2() { return makeTestSuites(transactionIterato
 function transactionOverlapSuiteV1() { return makeTestSuites(transactionOverlapSuite)[0]; }
 function transactionOverlapSuiteV2() { return makeTestSuites(transactionOverlapSuite)[1]; }
 
+function transactionReplicationOnFollowersSuiteV1() {return makeTestSuites(transactionReplicationOnFollowersSuite)[0];}
+function transactionReplicationOnFollowersSuiteV2() {return makeTestSuites(transactionReplicationOnFollowersSuite)[1];}
+
 jsunity.run(transactionRevisionsSuiteV1);
 jsunity.run(transactionRollbackSuiteV1);
 jsunity.run(transactionInvocationSuiteV1);
@@ -4983,6 +5132,7 @@ jsunity.run(transactionTTLStreamSuiteV1);
 jsunity.run(transactionIteratorSuiteV1);
 jsunity.run(transactionOverlapSuiteV1);
 jsunity.run(transactionDatabaseSuite);
+jsunity.run(transactionReplicationOnFollowersSuiteV1);
 
 if (isReplication2Enabled) {
   let suites = [
@@ -4999,7 +5149,10 @@ if (isReplication2Enabled) {
     transactionTTLStreamSuiteV2,
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
-    transactionReplication2ReplicateOperation,
+    transactionReplication2ReplicateOperationSuite,
+    /** Currently disabled integration tests - TDD
+     * transactionReplicationOnFollowersSuiteV2
+     */
   ];
 
   for (const suite of suites) {
