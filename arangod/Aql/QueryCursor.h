@@ -48,7 +48,8 @@ class SharedAqlItemBlockPtr;
 class QueryResultCursor final : public arangodb::Cursor {
  public:
   QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
-                    size_t batchSize, double ttl, bool hasCount);
+                    size_t batchSize, double ttl, bool hasCount,
+                    bool allowDirtyReads);
 
   ~QueryResultCursor() = default;
 
@@ -74,11 +75,16 @@ class QueryResultCursor final : public arangodb::Cursor {
   /// If no extras are set this will return a NONE slice.
   arangodb::velocypack::Slice extra() const;
 
+  /// @brief Remember, if we dirty reads were allowed:
+  bool allowDirtyReads() const override final { return _allowDirtyReads; }
+
  private:
   DatabaseGuard _guard;
   aql::QueryResult _result;
   arangodb::velocypack::ArrayIterator _iterator;
   bool _cached;
+  bool _allowDirtyReads;  // since we do no longer have the transaction or
+                          // query, we have to remember!
 };
 
 /// Cursor managing a query from which it continuously gets
@@ -118,6 +124,9 @@ class QueryStreamCursor final : public arangodb::Cursor {
     if (_query != nullptr) {
       auto& trx = _query->trxForOptimization();
       return trx.state()->options().allowDirtyReads;
+    } else {
+      LOG_DEVEL
+          << "Tried to ask query for dirty reads, but _query is already gone!";
     }
     return false;
   }

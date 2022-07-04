@@ -264,6 +264,7 @@ RestStatus RestCursorHandler::processQuery() {
         "Illegal state in RestCursorHandler, query not found.");
   }
 
+  bool allowDirtyReads = false;
   {
     // always clean up
     auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
@@ -276,14 +277,18 @@ RestStatus RestCursorHandler::processQuery() {
       return RestStatus::WAITING;
     }
     TRI_ASSERT(state == aql::ExecutionState::DONE);
+
+    if (_query->trxForOptimization().state()->options().allowDirtyReads) {
+      allowDirtyReads = true;
+    }
   }
 
   // We cannot get into HASMORE here, or we would lose results.
-  return handleQueryResult();
+  return handleQueryResult(allowDirtyReads);
 }
 
 // non stream case, result is complete
-RestStatus RestCursorHandler::handleQueryResult() {
+RestStatus RestCursorHandler::handleQueryResult(bool allowDirtyReads) {
   TRI_ASSERT(_query == nullptr);
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -315,6 +320,10 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // result is smaller than batchSize and will be returned directly. no need
     // to create a cursor
 
+    if (allowDirtyReads) {
+      setOutgoingDirtyReadsHeader(true);
+    }
+
     VPackOptions options = VPackOptions::Defaults;
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
@@ -331,10 +340,6 @@ RestStatus RestCursorHandler::handleQueryResult() {
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
-    }
-
-    if (_cursor->allowDirtyReads()) {
-      setOutgoingDirtyReadsHeader(true);
     }
 
     VPackBuffer<uint8_t> buffer;
@@ -381,12 +386,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize,
-                                             ttl, count);
+                                             ttl, count, allowDirtyReads);
     // throws if a coordinator soft shutdown is ongoing
-
-    if (_cursor->allowDirtyReads()) {
-      setOutgoingDirtyReadsHeader(true);
-    }
 
     return generateCursorResult(rest::ResponseCode::CREATED);
   }

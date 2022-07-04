@@ -51,12 +51,13 @@ using namespace arangodb::basics;
 QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
                                      aql::QueryResult&& result,
                                      size_t batchSize, double ttl,
-                                     bool hasCount)
+                                     bool hasCount, bool allowDirtyReads)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.data->slice()),
-      _cached(_result.cached) {
+      _cached(_result.cached),
+      _allowDirtyReads(allowDirtyReads) {
   TRI_ASSERT(_result.data->slice().isArray());
 }
 
