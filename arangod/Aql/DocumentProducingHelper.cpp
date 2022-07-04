@@ -515,10 +515,11 @@ IndexIterator::CoveringCallback aql::getCallback(
       context.getPhysical().read(
           context.getTrxPtr(), token,
           [&](LocalDocumentId const&, VPackSlice s) -> bool {
-            InputAqlItemRow const& input = context.getInputRow();
             OutputAqlItemRow& output = context.getOutputRow();
-            RegisterId registerId = context.getOutputRegister();
             TRI_ASSERT(!output.isFull());
+
+            RegisterId registerId = context.getOutputRegister();
+            InputAqlItemRow const& input = context.getInputRow();
 
             if (context.getProjections().empty()) {
               output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId,
