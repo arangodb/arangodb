@@ -103,7 +103,7 @@ audit_server -- --dumpAgencyOnError true
 
 # Full Tests Single Server
 authentication_parameters single full weight=1000
-authentication_serve single full weight=1000
+authentication_server single full weight=1000
 config single full weight=1000
 foxx_manager single full weight=500
 queryCacheAuthorization single full weight=500
