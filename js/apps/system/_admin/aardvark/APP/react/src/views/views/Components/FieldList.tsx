@@ -1,28 +1,22 @@
 import React, { useContext } from "react";
-import { map } from "lodash";
-import {
-  ArangoTable,
-  ArangoTD,
-  ArangoTH
-} from "../../../components/arango/table";
-import Badge from "../../../components/arango/badges";
+import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import { IconButton } from "../../../components/arango/buttons";
-import { ViewContext } from "../ViewLinksReactView";
+import { ViewContext } from "../constants";
+import { Link as HashLink, Link, useRouteMatch } from "react-router-dom";
 
 type FieldListProps = {
-  fields: object | any;
+  fields: object | undefined;
   disabled: boolean | undefined;
   basePath: string;
-  viewField: any;
 };
 
-const FieldView = ({
+const FieldList = ({
   fields,
   disabled,
-  basePath,
-  viewField
+  basePath
 }: FieldListProps) => {
   const { dispatch } = useContext(ViewContext);
+  const match = useRouteMatch();
 
   const removeField = (field: string | number) => {
     dispatch({
@@ -37,62 +31,37 @@ const FieldView = ({
   const getFieldRemover = (field: string | number) => () => {
     removeField(field);
   };
+
+  const fieldKeys = Object.keys(fields || {});
+
   return (
     <ArangoTable style={{ marginLeft: 0 }}>
-      <thead>
-        <tr>
-          <ArangoTH seq={disabled ? 0 : 1} style={{ width: "8%" }}>
-            Field
-          </ArangoTH>
-          <ArangoTH seq={disabled ? 1 : 2} style={{ width: "72%" }}>
-            Analyzers
-          </ArangoTH>
-          {disabled ? null : (
-            <ArangoTH seq={0} style={{ width: "20%" }}>
-              Action
-            </ArangoTH>
-          )}
-        </tr>
-      </thead>
       <tbody>
-        {map(fields, (properties, fld) => (
+        {fieldKeys.length
+          ? fieldKeys.map(fld =>
           <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
-            <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
-            <ArangoTD seq={disabled ? 1 : 2}>
-              {properties &&
-                map(properties.analyzers, a => <Badge key={a} name={a} />)}
-              {/* {showField && (
-                <LinkPropertiesInput
-                  formState={properties}
-                  disabled={disabled}
-                  basePath={`${basePath}.fields[${fld}]`}
-                  dispatch={
-                    (dispatch as unknown) as Dispatch<
-                      DispatchArgs<LinkProperties>
-                    >
-                  }
-                />
-              )} */}
-            </ArangoTD>
-            {disabled ? null : (
-              <ArangoTD seq={0} valign={"middle"}>
-                <IconButton
-                  icon={"trash-o"}
-                  type={"danger"}
-                  onClick={getFieldRemover(fld)}
-                />
-                <IconButton
-                  icon={"edit"}
-                  type={"warning"}
-                  onClick={() => viewField(fld, properties)}
-                />
-              </ArangoTD>
-            )}
+            <ArangoTD seq={0}>{fld}</ArangoTD>
+            {disabled ? null : <ArangoTD seq={1} valign={"middle"}>
+              <IconButton icon={"trash-o"} type={"danger"} onClick={getFieldRemover(fld)}/>
+              <Link to={`${match.url}/${fld}`}><IconButton icon={"edit"} type={"warning"}/></Link>
+            </ArangoTD>}
+          </tr>)
+          : <tr style={{ borderBottom: "1px  solid #DDD" }}>
+            <ArangoTD seq={0} colSpan={2}>No sub-fields.</ArangoTD>
           </tr>
-        ))}
+        }
       </tbody>
+      <tfoot>
+      <tr>
+        <ArangoTD seq={0}>
+          <HashLink to={`${match.url}/_add`}>
+            <i className={'fa fa-plus-circle'}/>
+          </HashLink>
+        </ArangoTD>
+      </tr>
+      </tfoot>
     </ArangoTable>
   );
 };
 
-export default FieldView;
+export default FieldList;

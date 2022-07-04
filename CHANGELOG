@@ -1,6 +1,20 @@
 devel
 -----
 
+* Changed default Linux CI compiler to gcc-11.
+
+* Updated arangosync to v2.11.0-preview-2.
+
+* Add "AT LEAST" quantifier for array filters in AQL:
+
+      `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
+      `RETURN [1,2,3] AT LEAST (2) IN [1,2,3,4,5]`
+
+* Added a fully functional UI for Views that lets users view, modify mutable
+  properties and delete views from the web UI.
+
+* Changed default macOS CI compiler to LLVM clang-14.
+
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
   read-only APIs. This header has already been used for active failover
