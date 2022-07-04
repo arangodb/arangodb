@@ -191,7 +191,12 @@ auto LeaderStateManager<S>::recoverEntries() -> futures::Future<Result> {
   LOG_CTX("5af0d", DEBUG, loggerContext)
       << "starting recovery on range " << result->range();
 
-  return machine->recoverEntries(std::move(result));
+  MeasureTimeGuard timeGuard(metrics->replicatedStateRecoverEntriesRtt);
+  return machine->recoverEntries(std::move(result))
+      .then([guard = std::move(timeGuard)](auto&& res) mutable {
+        guard.fire();
+        return std::move(res.get());
+      });
 }
 
 template<typename S>
