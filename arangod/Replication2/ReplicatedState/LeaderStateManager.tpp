@@ -48,7 +48,8 @@ void LeaderStateManager<S>::run() noexcept {
       };
 
   auto const handleErrors = [weak = this->weak_from_this()](
-                                futures::Try<futures::Unit>&& tryResult) {
+                                futures::Try<futures::Unit>&&
+                                    tryResult) noexcept {
     // TODO Instead of capturing "this", should we capture the loggerContext
     // instead?
     if (auto self = weak.lock(); self != nullptr) {
@@ -61,27 +62,24 @@ void LeaderStateManager<S>::run() noexcept {
         return;
       } catch (basics::Exception const& ex) {
         LOG_CTX("0dcf7", FATAL, self->loggerContext)
-            << "Caught unhandled exception in replicated state "
-               "machine: "
-            << ex.message();
+            << "Caught unhandled exception in replicated state machine: "
+            << ex.message() << " (exception location: " << ex.location() << ")";
         FATAL_ERROR_EXIT();
       } catch (std::exception const& ex) {
         LOG_CTX("506c2", FATAL, self->loggerContext)
-            << "Caught unhandled exception in replicated state "
-               "machine: "
+            << "Caught unhandled exception in replicated state machine: "
             << ex.what();
         FATAL_ERROR_EXIT();
       } catch (...) {
         LOG_CTX("6788b", FATAL, self->loggerContext)
-            << "Caught unhandled exception in replicated state "
-               "machine.";
+            << "Caught unhandled exception in replicated state machine.";
         FATAL_ERROR_EXIT();
       }
     }
   };
 
-  auto const transitionTo = [this](LeaderInternalState state) {
-    return [state, weak = this->weak_from_this()](futures::Unit) {
+  auto const transitionTo = [this](LeaderInternalState state) noexcept {
+    return [state, weak = this->weak_from_this()](futures::Unit) noexcept {
       if (auto self = weak.lock(); self != nullptr) {
         self->guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
@@ -108,7 +106,6 @@ void LeaderStateManager<S>::run() noexcept {
     } break;
     case LeaderInternalState::kWaitingForLeadershipEstablished: {
       waitForLeadership()
-          .thenValue(throwResultOnErrorAsCorrespondingException)
           .thenValue(transitionTo(LeaderInternalState::kRecoveryInProgress))
           .thenFinal(handleErrors);
     } break;
@@ -137,13 +134,17 @@ void LeaderStateManager<S>::run() noexcept {
 }
 
 template<typename S>
-auto LeaderStateManager<S>::waitForLeadership() -> futures::Future<Result> {
+auto LeaderStateManager<S>::waitForLeadership() noexcept
+    -> futures::Future<futures::Unit> try {
   return logLeader->waitForLeadership().thenValue(
-      [](replicated_log::WaitForResult const&) { return Result{}; });
+      [](replicated_log::WaitForResult const&) { return futures::Unit(); });
+} catch (...) {
+  return futures::Try<futures::Unit>(std::current_exception());
 }
 
 template<typename S>
-auto LeaderStateManager<S>::recoverEntries() -> futures::Future<Result> {
+auto LeaderStateManager<S>::recoverEntries() noexcept
+    -> futures::Future<Result> try {
   LOG_CTX("53ba1", TRACE, loggerContext) << "LeaderStateManager established";
   auto f = guardedData.doUnderLock([&](GuardedData& data) {
     TRI_ASSERT(data.internalState == LeaderInternalState::kRecoveryInProgress)
@@ -156,8 +157,8 @@ auto LeaderStateManager<S>::recoverEntries() -> futures::Future<Result> {
 
   if (!f.isReady()) {
     LOG_CTX("4448d", ERR, loggerContext)
-        << "Logic error: Stream is not ready yet. Will wait for it. Please "
-           "report this error to arangodb.com";
+        << "Logic error: Stream is not ready yet. Will wait for it. "
+           "Please report this error to arangodb.com";
     TRI_ASSERT(false);
   }
   auto&& result = f.get();
@@ -188,6 +189,8 @@ auto LeaderStateManager<S>::recoverEntries() -> futures::Future<Result> {
       << "starting recovery on range " << result->range();
 
   return machine->recoverEntries(std::move(result));
+} catch (...) {
+  return futures::Try<Result>(std::current_exception());
 }
 
 template<typename S>
@@ -311,4 +314,25 @@ template<typename S>
 LeaderStateManager<S>::~LeaderStateManager() {
   metrics->replicatedStateNumberLeaders->fetch_sub(1);
 }
+
+template<typename S>
+LeaderStateManager<S>::GuardedData::GuardedData(
+    LeaderStateManager& self, LeaderInternalState internalState,
+    std::unique_ptr<CoreType> core,
+    std::unique_ptr<ReplicatedStateToken> token) noexcept
+    : self(self),
+      internalState(internalState),
+      core(std::move(core)),
+      token(std::move(token)) {
+  TRI_ASSERT(this->core != nullptr);
+  TRI_ASSERT(this->token != nullptr);
+}
+
+template<typename S>
+void LeaderStateManager<S>::GuardedData::updateInternalState(
+    LeaderInternalState newState) noexcept {
+  internalState = newState;
+  lastInternalStateChange = std::chrono::system_clock::now();
+}
+
 }  // namespace arangodb::replication2::replicated_state

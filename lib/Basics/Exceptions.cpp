@@ -86,6 +86,8 @@ ErrorCode Exception::code() const noexcept { return _code; }
 /// @brief return exception message
 char const* Exception::what() const noexcept { return _errorMessage.c_str(); }
 
+SourceLocation Exception::location() const noexcept { return _location; }
+
 /// @brief append original error location to message
 void Exception::appendLocation() noexcept try {
   if (_code == TRI_ERROR_INTERNAL) {

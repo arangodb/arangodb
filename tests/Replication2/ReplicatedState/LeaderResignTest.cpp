@@ -75,12 +75,9 @@ TEST_F(ReplicatedStateLeaderResignTest, complete_run_without_resign) {
   auto index =
       logLeader->insertMultiplexedValue<State>(DefaultEntryType{"foo", "bar"});
   manager->run();
-  LOG_DEVEL << manager->getStatus();
   logLeader->triggerLeaderEstablished(index);
-  LOG_DEVEL << manager->getStatus();
   auto stateLeader = factory->getLatestLeader();
   stateLeader->resolveRecoveryOk();
-  LOG_DEVEL << manager->getStatus();
 }
 
 TEST_F(ReplicatedStateLeaderResignTest,
@@ -88,9 +85,7 @@ TEST_F(ReplicatedStateLeaderResignTest,
   auto index =
       logLeader->insertMultiplexedValue<State>(DefaultEntryType{"foo", "bar"});
   manager->run();
-  LOG_DEVEL << manager->getStatus();
   logLeader->triggerLeaderEstablished(index);
-  LOG_DEVEL << manager->getStatus();
   auto stateLeader = factory->getLatestLeader();
   auto [core, token, action] = std::move(*manager).resign();
   action.fire();
@@ -102,7 +97,6 @@ TEST_F(ReplicatedStateLeaderResignTest,
   auto index =
       logLeader->insertMultiplexedValue<State>(DefaultEntryType{"foo", "bar"});
   manager->run();
-  LOG_DEVEL << manager->getStatus();
   auto [core, token, action] = std::move(*manager).resign();
   action.fire();
   logLeader->triggerLeaderEstablished(index);
