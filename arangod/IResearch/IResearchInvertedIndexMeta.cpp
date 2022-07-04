@@ -60,272 +60,11 @@ constexpr std::string_view kFieldsFieldName = "fields";
 constexpr std::string_view kSortCompressionFieldName = "primarySortCompression";
 constexpr std::string_view kLocaleFieldName = "locale";
 constexpr std::string_view kOverrideFieldName = "override";
-
-// std::optional<InvertedIndexField> fromVelocyPack(
-//    VPackSlice slice, bool isNested,
-//    IResearchInvertedIndexMeta::AnalyzerDefinitions& analyzerDefinitions,
-//    AnalyzerPool::ptr versionSpecificIdentity, LinkVersion version,
-//    bool extendedNames, IResearchAnalyzerFeature& analyzers,
-//    InvertedIndexField const& defaults,
-//    irs::string_ref const defaultVocbase, std::string& errorField,
-//    std::string_view parentName) {
-//  std::optional<Features> features;
-//  std::vector<InvertedIndexField> nestedFields;
-//  AnalyzerPool::ptr analyzer;
-//  std::string expression;
-//  std::vector<basics::AttributeName> fieldParts;
-//  std::string shortName;
-//  std::string fieldName;
-//  bool isArray{false};
-//  bool trackListPositions{false};
-//  bool includeAllFields{false};
-//  bool overrideValue{false};
-//  if (slice.isString()) {
-//    try {
-//      analyzer = versionSpecificIdentity;
-//      shortName = versionSpecificIdentity->name();
-//      fieldName = slice.copyString();
-//      TRI_ParseAttributeString(fieldName, fieldParts, true);
-//      TRI_ASSERT(!fieldParts.empty());
-//    } catch (arangodb::basics::Exception const& err) {
-//      LOG_TOPIC("1d04c", ERR, arangodb::iresearch::TOPIC)
-//          << "Error parsing attribute: " << err.what();
-//      errorField = slice.stringView();
-//      return std::nullopt;
-//    }
-//  } else if (slice.isObject()) {
-//    auto nameSlice = slice.get(kNameFieldName);
-//    if (nameSlice.isString()) {
-//      fieldName = nameSlice.copyString();
-//      try {
-//        TRI_ParseAttributeString(nameSlice.stringView(), fieldParts, true);
-//        TRI_ASSERT(!fieldParts.empty());
-//      } catch (arangodb::basics::Exception const& err) {
-//        LOG_TOPIC("84c20", ERR, arangodb::iresearch::TOPIC)
-//            << "Error parsing attribute: " << err.what();
-//        errorField = kNameFieldName;
-//        return std::nullopt;
-//      }
-//      // and now set analyzers to the last one
-//      if (slice.hasKey(kAnalyzerFieldName)) {
-//        auto analyzerSlice = slice.get(kAnalyzerFieldName);
-//        if (analyzerSlice.isString()) {
-//          auto name = analyzerSlice.copyString();
-//          shortName = name;
-//          if (!defaultVocbase.null()) {
-//            name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
-//            shortName = IResearchAnalyzerFeature::normalize(
-//                name, defaultVocbase, false);
-//          }
-//
-//          bool found = false;
-//          if (!analyzerDefinitions.empty()) {
-//            auto it = analyzerDefinitions.find(irs::string_ref(name));
-//
-//            if (it != analyzerDefinitions.end()) {
-//              analyzer = *it;
-//              found = static_cast<bool>(analyzer);
-//
-//              if (ADB_UNLIKELY(!found)) {
-//                TRI_ASSERT(false);              // should not happen
-//                analyzerDefinitions.erase(it);  // remove null analyzer
-//              }
-//            }
-//          }
-//          if (!found) {
-//            // for cluster only check cache to avoid ClusterInfo locking
-//            // issues analyzer should have been populated via
-//            // 'analyzerDefinitions' above
-//            analyzer = analyzers.get(name,
-//            QueryAnalyzerRevisions::QUERY_LATEST,
-//                                     ServerState::instance()->isClusterRole());
-//            if (analyzer) {
-//              // Remap analyzer features to match version.
-//              AnalyzerPool::ptr remappedAnalyzer;
-//
-//              auto const res = IResearchAnalyzerFeature::copyAnalyzerPool(
-//                  remappedAnalyzer, *analyzer, LinkVersion{version},
-//                  extendedNames);
-//
-//              LOG_TOPIC_IF("2d81d", ERR, arangodb::iresearch::TOPIC,
-//              res.fail())
-//                  << "Error remapping analyzer '" << name
-//                  << "' Error:" << res.errorMessage();
-//              analyzer = remappedAnalyzer;
-//            }
-//          }
-//          if (!analyzer) {
-//            errorField = kAnalyzerFieldName;
-//            LOG_TOPIC("2d79d", ERR, arangodb::iresearch::TOPIC)
-//                << "Error loading analyzer '" << name << "'";
-//            return std::nullopt;
-//          }
-//          if (!found) {
-//            // save in referencedAnalyzers
-//            analyzerDefinitions.emplace(analyzer);
-//          }
-//        } else {
-//          errorField = kAnalyzerFieldName;
-//          return std::nullopt;
-//        }
-//      } else {
-//        analyzer = versionSpecificIdentity;
-//        shortName = versionSpecificIdentity->name();
-//      }
-//      {
-//        if (slice.hasKey(kFeaturesFieldName)) {
-//          Features tmp;
-//          auto featuresRes =
-//          tmp.fromVelocyPack(slice.get(kFeaturesFieldName)); if
-//          (featuresRes.fail()) {
-//            errorField = kFeaturesFieldName;
-//            LOG_TOPIC("2d52d", ERR, arangodb::iresearch::TOPIC)
-//                << "Error parsing features " << featuresRes.errorMessage();
-//            return std::nullopt;
-//          }
-//          features = std::move(tmp);
-//        }
-//      }
-//      if (slice.hasKey(kNestedFieldsFieldName)) {
-//        auto nestedSlice = slice.get(kNestedFieldsFieldName);
-//        if (!nestedSlice.isArray()) {
-//          errorField = kNestedFieldsFieldName;
-//          return std::nullopt;
-//        }
-//        std::string localError;
-//        std::string myPath;
-//        if (!parentName.empty()) {
-//          myPath += parentName;
-//          myPath += ".";
-//        }
-//        myPath += fieldName;
-//        kludge::mangleNested(myPath);
-//
-//        for (auto it = VPackArrayIterator(nestedSlice); it.valid(); ++it) {
-//          auto nested =
-//              fromVelocyPack(it.value(), true, analyzerDefinitions,
-//                             versionSpecificIdentity, version, extendedNames,
-//                             analyzers, defaultVocbase, *this, localError,
-//                             myPath);
-//          if (nested) {
-//            nestedFields.push_back(std::move(*nested));
-//          } else {
-//            errorField = kNestedFieldsFieldName;
-//            errorField.append("[")
-//                .append(std::to_string(it.index()))
-//                .append("].")
-//                .append(localError);
-//            return std::nullopt;
-//          }
-//        }
-//      }
-//      if (slice.hasKey(kExpressionFieldName)) {
-//        auto subSlice = slice.get(kExpressionFieldName);
-//        if (!subSlice.isString()) {
-//          errorField = kExpressionFieldName;
-//          return std::nullopt;
-//        }
-//        expression = subSlice.stringView();
-//      }
-//      if (slice.hasKey(kIsArrayFieldName)) {
-//        auto subSlice = slice.get(kIsArrayFieldName);
-//        if (!subSlice.isBool()) {
-//          errorField = kIsArrayFieldName;
-//          return std::nullopt;
-//        }
-//        isArray = subSlice.getBool();
-//      }
-//      if (slice.hasKey(kTrackListPositionsFieldName)) {
-//        auto subSlice = slice.get(kTrackListPositionsFieldName);
-//        if (!subSlice.isBool()) {
-//          errorField = kTrackListPositionsFieldName;
-//          return std::nullopt;
-//        }
-//        trackListPositions = subSlice.getBool();
-//      }
-//      if (slice.hasKey(kIncludeAllFieldsFieldName)) {
-//        auto subSlice = slice.get(kIncludeAllFieldsFieldName);
-//        if (!subSlice.isBool()) {
-//          errorField = kIncludeAllFieldsFieldName;
-//          return std::nullopt;
-//        }
-//        includeAllFields = subSlice.getBool();
-//      }
-//      if (slice.hasKey(kOverrideFieldName)) {
-//        auto subSlice = slice.get(kOverrideFieldName);
-//        if (!subSlice.isBoolean()) {
-//          errorField = kOverrideFieldName;
-//          return std::nullopt;
-//        }
-//        overrideValue = subSlice.getBoolean();
-//      }
-//    } else {
-//      errorField = kNameFieldName;
-//      return std::nullopt;
-//    }
-//  } else {
-//    errorField = "<String or object expected>";
-//    return std::nullopt;
-//  }
-//  // we only allow one expansion
-//  size_t expansionCount{0};
-//  std::for_each(fieldParts.begin(), fieldParts.end(),
-//                [&expansionCount](basics::AttributeName const& a) -> void {
-//                  if (a.shouldExpand) {
-//                    ++expansionCount;
-//                  }
-//                });
-//  if (expansionCount > 1 && !isNested) {
-//    LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
-//        << "Error parsing field: '" << kNameFieldName << "'. "
-//        << "Expansion is allowed only once.";
-//    errorField = kNameFieldName;
-//    return std::nullopt;
-//  } else if (expansionCount > 0 && isNested) {
-//    LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
-//        << "Error parsing field: '" << kNameFieldName << "'. "
-//        << "Expansion is not allowed for nested fields.";
-//    errorField = kNameFieldName;
-//    return std::nullopt;
-//  }
-//  bool const isAnalyzerPrimitive =
-//      !analyzer->accepts(AnalyzerValueType::Array |
-//      AnalyzerValueType::Object);
-//  return std::make_optional<InvertedIndexField>(
-//      std::move(fieldParts),
-//      FieldMeta::Analyzer(std::move(analyzer), std::move(shortName)),
-//      std::move(nestedFields), std::move(features), std::move(expression),
-//      isArray, includeAllFields, trackListPositions, overrideValue,
-//      isAnalyzerPrimitive, parentName);
-//}
-
-// void toVelocyPack(InvertedIndexField const& field, VPackBuilder& vpack) {
-//  TRI_ASSERT(vpack.isOpenArray());
-//  VPackObjectBuilder fieldObject(&vpack);
-//  vpack.add(kNameFieldName, VPackValue(field.toString()));
-//  vpack.add(kAnalyzerFieldName, VPackValue(field.analyzerName()));
-//  vpack.add(kIsArrayFieldName, VPackValue(field.isArray()));
-//  vpack.add(kTrackListPositionsFieldName,
-//            VPackValue(field.trackListPositions()));
-//  vpack.add(kIncludeAllFieldsFieldName, VPackValue(field.includeAllFields()));
-//  vpack.add(kOverrideFieldName, VPackValue(field.overrideValue()));
-//  if (field.features()) {
-//    VPackBuilder tmp;
-//    field.features()->toVelocyPack(tmp);
-//    vpack.add(kFeaturesFieldName, tmp.slice());
-//  }
-//  if (!field._fields.empty()) {
-//    VPackBuilder nestedFields;
-//    {
-//      VPackArrayBuilder nestedArray(&nestedFields);
-//      for (auto const& nested : field._fields) {
-//        toVelocyPack(nested, nestedFields);
-//      }
-//    }
-//    vpack.add(kNestedFieldsFieldName, nestedFields.slice());
-//  }
-//}
-
+constexpr std::string_view kPrimarySortFieldName = "primarySort";
+constexpr std::string_view kVersionFieldName = "version";
+constexpr std::string_view kStoredValuesFieldName = "storedValues";
+constexpr std::string_view kConsistencyFieldName = "consistency";
+constexpr std::string_view kAnalyzerDefinitionsFieldName = "analyzerDefinitions";
 }  // namespace
 
 namespace arangodb::iresearch {
@@ -351,58 +90,52 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 
   // consistency (optional)
   {
-    constexpr std::string_view kFieldName("consistency");
-    auto consistencySlice = slice.get(kFieldName);
+    auto consistencySlice = slice.get(kConsistencyFieldName);
     if (!consistencySlice.isNone()) {
       if (consistencySlice.isString()) {
         auto it = consistencyTypeMap.find(consistencySlice.stringView());
         if (it != consistencyTypeMap.end()) {
           _consistency = it->second;
         } else {
-          errorField = kFieldName;
+          errorField = kConsistencyFieldName;
           return false;
         }
       } else {
-        errorField = kFieldName;
+        errorField = kConsistencyFieldName;
         return false;
       }
     }
   }
-  // copied part begin FIXME: verify and move to common base class if possible
   {
     // optional stored values
-    constexpr std::string_view kFieldName("storedValues");
-
-    auto const field = slice.get(kFieldName);
+    auto const field = slice.get(kStoredValuesFieldName);
     if (!field.isNone() && !_storedValues.fromVelocyPack(field, errorField)) {
-      errorField = kFieldName;
+      errorField = kStoredValuesFieldName;
       return false;
     }
   }
   {
     // optional primarySort
-    constexpr std::string_view kFieldName("primarySort");
-    auto const field = slice.get(kFieldName);
+    auto const field = slice.get(kPrimarySortFieldName);
     if (!field.isNone() && !_sort.fromVelocyPack(field, errorField)) {
-      errorField = kFieldName;
+      errorField = kPrimarySortFieldName;
       return false;
     }
   }
   {
     // optional version
-    constexpr std::string_view kFieldName("version");
-    auto const field = slice.get(kFieldName);
+    auto const field = slice.get(kVersionFieldName);
     if (field.isNumber()) {
       auto version = field.getNumber<uint32_t>();
       if (version > static_cast<uint32_t>(LinkVersion::MAX)) {
-        errorField = kFieldName;
+        errorField = kVersionFieldName;
         return false;
       }
       _version = static_cast<LinkVersion>(version);
     } else if (field.isNone()) {
       _version = LinkVersion::MAX;  // not present -> last version
     } else {
-      errorField = kFieldName;
+      errorField = kVersionFieldName;
       return false;
     }
   }
@@ -427,15 +160,13 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     _analyzerDefinitions.clear();
 
     // optional object list
-    constexpr std::string_view kFieldName{"analyzerDefinitions"};
-
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
-    if (readAnalyzerDefinition && slice.hasKey(kFieldName)) {
-      auto field = slice.get(kFieldName);
+    if (readAnalyzerDefinition && slice.hasKey(kAnalyzerDefinitionsFieldName)) {
+      auto field = slice.get(kAnalyzerDefinitionsFieldName);
 
       if (!field.isArray()) {
-        errorField = kFieldName;
+        errorField = kAnalyzerDefinitionsFieldName;
         return false;
       }
 
@@ -443,8 +174,8 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
         auto value = *itr;
 
         if (!value.isObject()) {
-          errorField =
-              std::string{kFieldName} + "[" + std::to_string(itr.index()) + "]";
+          errorField = std::string{kAnalyzerDefinitionsFieldName} + "[" +
+                       std::to_string(itr.index()) + "]";
 
           return false;
         }
@@ -457,7 +188,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 
           if (!value.hasKey(kSubFieldName)  // missing required filed
               || !value.get(kSubFieldName).isString()) {
-            errorField = std::string{kFieldName} + "[" +
+            errorField = std::string{kAnalyzerDefinitionsFieldName} + "[" +
                          std::to_string(itr.index()) + "]." +
                          std::string{kSubFieldName};
 
@@ -478,7 +209,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
           auto typeSlice = value.get(kSubFieldName);
 
           if (!typeSlice.isString()) {
-            errorField = std::string{kFieldName} + "[" +
+            errorField = std::string{kAnalyzerDefinitionsFieldName} + "[" +
                          std::to_string(itr.index()) + "]." +
                          std::string{kSubFieldName};
             return false;
@@ -497,7 +228,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
             auto subField = value.get(kSubFieldName);
 
             if (!subField.isObject() && !subField.isNull()) {
-              errorField = std::string{kFieldName} + "[" +
+              errorField = std::string{kAnalyzerDefinitionsFieldName} + "[" +
                            std::to_string(itr.index()) + "]." +
                            std::string{kSubFieldName};
               return false;
@@ -515,7 +246,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
             auto subField = value.get(kSubFieldName);
             auto featuresRes = features.fromVelocyPack(subField);
             if (featuresRes.fail()) {
-              errorField = std::string{kFieldName}
+              errorField = std::string{kAnalyzerDefinitionsFieldName}
                                .append(" (")
                                .append(featuresRes.errorMessage())
                                .append(")");
@@ -592,13 +323,35 @@ bool IResearchInvertedIndexMeta::json(
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition) {
-    VPackArrayBuilder arrayScope(&builder, "analyzerDefinitions");
+    VPackArrayBuilder arrayScope(&builder, kAnalyzerDefinitionsFieldName);
 
     for (auto& entry : _analyzerDefinitions) {
       TRI_ASSERT(entry);  // ensured by emplace into 'analyzers' above
       entry->toVelocyPack(builder, defaultVocbase);
     }
   }
+
+  {
+   VPackObjectBuilder obj(&builder, kPrimarySortFieldName);
+    if (!_sort.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
+  {
+    VPackArrayBuilder arr(&builder, kStoredValuesFieldName);
+    if (!_storedValues.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
+  for (auto const& it : consistencyTypeMap) {
+    if (it.second == _consistency) {
+      builder.add(kConsistencyFieldName, VPackValue(it.first));
+    }
+  }
+
+  builder.add(kVersionFieldName, VPackValue(static_cast<uint32_t>(_version)));
 
   return InvertedIndexField::json(server, builder, *this, true, defaultVocbase);
 }
@@ -611,6 +364,10 @@ bool IResearchInvertedIndexMeta::operator==(
   }
 
   if (_sort != other._sort) {
+    return false;
+  }
+
+  if (_consistency != other._consistency) {
     return false;
   }
 
@@ -994,10 +751,19 @@ bool InvertedIndexField::init(
       return false;
     }
     std::string localError;
+    absl::flat_hash_set<std::string> fieldsDeduplicator;
     for (auto it = VPackArrayIterator(nestedSlice); it.valid(); ++it) {
       InvertedIndexField nested;
       if (nested.init(it.value(), analyzerDefinitions, version, extendedNames,
                       analyzers, *this, defaultVocbase, false, errorField)) {
+        if (!fieldsDeduplicator.emplace(nested.path()).second) {
+          errorField = fieldsAttributeName;
+          errorField.append("[")
+              .append(std::to_string(it.index()))
+              .append("]")
+              .append(" is duplicated");
+          return false;
+        }
         _fields.push_back(std::move(nested));
       } else {
         errorField = fieldsAttributeName;
@@ -1065,20 +831,21 @@ size_t IResearchInvertedIndexSort::memory() const noexcept {
 }
 bool IResearchInvertedIndexSort::toVelocyPack(
     velocypack::Builder& builder) const {
-  VPackObjectBuilder objectScope(&builder);
+  if (!builder.isOpenObject()) {
+    return false;
+  }
   {
-    VPackBuilder fields;
-    VPackArrayBuilder arrayScope(&fields);
+    VPackArrayBuilder arrayScope(&builder, kFieldsFieldName);
     std::string fieldName;
-    auto visitor = [&fields, &fieldName](
+    auto visitor = [&builder, &fieldName](
                        std::vector<basics::AttributeName> const& field,
                        bool direction) {
       fieldName.clear();
       basics::TRI_AttributeNamesToString(field, fieldName, true);
 
-      arangodb::velocypack::ObjectBuilder sortEntryBuilder(&fields);
-      fields.add(kFieldName, VPackValue(fieldName));
-      fields.add(kAscFieldName, VPackValue(direction));
+      arangodb::velocypack::ObjectBuilder sortEntryBuilder(&builder);
+      builder.add(kFieldName, VPackValue(fieldName));
+      builder.add(kAscFieldName, VPackValue(direction));
 
       return true;
     };
@@ -1086,7 +853,6 @@ bool IResearchInvertedIndexSort::toVelocyPack(
     if (!visit(visitor)) {
       return false;
     }
-    builder.add(kFieldsFieldName, fields.slice());
   }
 
   {
@@ -1108,7 +874,7 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
   }
 
   auto fieldsSlice = slice.get(kFieldsFieldName);
-  if (!fieldsSlice.isArray() || fieldsSlice.isEmptyArray()) {
+  if (!fieldsSlice.isArray()) {
     error = kFieldsFieldName;
     return false;
   }

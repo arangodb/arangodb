@@ -100,7 +100,9 @@ void serializationChecker(ArangodServer& server,
     VPackObjectBuilder obj(&serializedRhs);
     ASSERT_TRUE(metaLhs.json(server, serializedRhs, true, &vocbase));
   }
-
+  SCOPED_TRACE(::testing::Message("LHS:")
+               << serializedLhs.slice().toString()
+               << " RHS:" << serializedRhs.slice().toString());
   ASSERT_EQ(serializedLhs.slice().toString(), serializedRhs.slice().toString());
   ASSERT_EQ(metaLhs, metaRhs);  // FIXME: PrimarySort, StoredValues and etc
                                 // should present in metaRhs. At this momemnt we
@@ -296,22 +298,6 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
       ]
   })";
 
-  // "fields" in "primarySort" is empty
-  constexpr std::string_view kWrongDefinition10 = R"(
-  {
-      "fields": [
-          {
-              "name": "foo",
-              "analyzer": "identity"
-          }
-      ],
-      "primarySort": {
-         "fields":[],
-         "compression": "none",
-         "locale": "myLocale"
-      }
-  })";
-
   // wrong compression in "primarySort"
   constexpr std::string_view kWrongDefinition11 = R"(
   {
@@ -459,8 +445,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   constexpr std::array badJsons{
       kWrongDefinition2, kWrongDefinition3, kWrongDefinition4,
       kWrongDefinition5, kWrongDefinition6, kWrongDefinition8,
-      //    kWrongDefinition7, //FIXME: This definition is not failing
-      kWrongDefinition10, kWrongDefinition11, kWrongDefinition12,
+      kWrongDefinition7,
+      kWrongDefinition11, kWrongDefinition12,
       kWrongDefinition13, kWrongDefinition14, kWrongDefinition15,
       kWrongDefinition16, kWrongDefinition17, kWrongDefinition18,
       kWrongDefinition20, kWrongDefinition21, kWrongDefinition22,
