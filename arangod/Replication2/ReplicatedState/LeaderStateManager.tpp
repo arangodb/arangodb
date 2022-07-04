@@ -173,7 +173,7 @@ auto LeaderStateManager<S>::recoverEntries() -> futures::Future<Result> {
 
     if (core == nullptr) {
       LOG_CTX("6d9ee", DEBUG, loggerContext) << "core already gone ";
-      throw basics::Exception(
+      throw replicated_log::ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
     std::shared_ptr<IReplicatedLeaderState<S>> machine =
