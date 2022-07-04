@@ -33,6 +33,31 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
+/// @brief Prepares an edge condition builder
+/// this builder just contains the basic
+/// from and to conditions.
+EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast, Variable const* variable, AstNode const* exchangeableIdNode)
+    : _fromCondition(nullptr),
+      _toCondition(nullptr),
+      _modCondition(ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND)),
+      _containsCondition(true) {
+  // Prepare _from and _to conditions
+  auto ref = ast->createNodeReference(variable);
+  {
+    auto const* access = ast->createNodeAttributeAccess(
+        ref, StaticStrings::FromString);
+    _fromCondition = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   access, exchangeableIdNode);
+  }
+  {
+    auto const* access = ast->createNodeAttributeAccess(
+        ref, StaticStrings::ToString);
+    _toCondition = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   access, exchangeableIdNode);
+  }
+  _modCondition->addMember(_fromCondition);
+}
+
 EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast,
                                            EdgeConditionBuilder const& other)
     : _fromCondition(nullptr),
@@ -70,9 +95,6 @@ EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition)
 void EdgeConditionBuilder::addConditionPart(AstNode const* part) {
   TRI_ASSERT(_modCondition != nullptr);
   TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
-  TRI_ASSERT(!_containsCondition);
-  // The ordering is only maintained before we request a specific
-  // condition
   _modCondition->addMember(part);
 }
 
@@ -80,21 +102,17 @@ void EdgeConditionBuilder::swapSides(AstNode* cond) {
   TRI_ASSERT(cond != nullptr);
   TRI_ASSERT(cond == _fromCondition || cond == _toCondition);
   TRI_ASSERT(cond->type == NODE_TYPE_OPERATOR_BINARY_EQ);
-  if (_containsCondition) {
+  // TODO: Backwards compatibility check, we may get an old serialized version
+  // in the old one we need to re-arrange the conditions on parsing.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // If used correctly this class guarantuees that the last element
-    // of the nary-and is the _from or _to part and is exchangable.
-    TRI_ASSERT(_modCondition->numMembers() > 0);
-    auto changeNode =
-        _modCondition->getMemberUnchecked(_modCondition->numMembers() - 1);
-    TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
-#endif
-    _modCondition->changeMember(_modCondition->numMembers() - 1, cond);
-  } else {
-    _modCondition->addMember(cond);
-    _containsCondition = true;
-  }
+  // If used correctly this class guarantuees that the last element
+  // of the nary-and is the _from or _to part and is exchangable.
   TRI_ASSERT(_modCondition->numMembers() > 0);
+  auto changeNode =
+      _modCondition->getMemberUnchecked(0);
+  TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
+#endif
+  _modCondition->changeMember(0, cond);
 }
 
 AstNode* EdgeConditionBuilder::getOutboundCondition() {

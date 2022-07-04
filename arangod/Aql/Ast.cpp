@@ -36,7 +36,6 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
-#include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"

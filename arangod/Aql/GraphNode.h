@@ -272,6 +272,9 @@ class GraphNode : public ExecutionNode {
   /// @brief Pseudo string value node to hold the last visited vertex id.
   AstNode* _tmpIdNode;
 
+  /// @brief
+  // EdgeConditionBuilder _edgeConditionBuilder
+
   /// @brief input graphInfo only used for serialization & info
   arangodb::velocypack::Builder _graphInfo;
 

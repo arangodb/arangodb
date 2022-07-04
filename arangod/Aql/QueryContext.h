@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/Collections.h"
-#include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"

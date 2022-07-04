@@ -32,8 +32,13 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
+namespace graph {
+struct IndexAccessor;
+}
+
 namespace aql {
 struct AstNode;
+struct Variable;
 
 // Helper class to generate AQL AstNode conditions
 // that can be handed over to Indexes in order to
@@ -57,6 +62,8 @@ class EdgeConditionBuilder {
   /// branch of a DNF => No OR contained.
   AstNode* _modCondition;
 
+  std::unordered_map<uint64_t, AstNode*> _depthConditions;
+
   /// @brief indicator if we have attached the _from or _to condition to
   /// _modCondition
   bool _containsCondition;
@@ -65,12 +72,20 @@ class EdgeConditionBuilder {
   explicit EdgeConditionBuilder(AstNode*);
 
   // Create the _fromCondition for the first time.
-  virtual void buildFromCondition() = 0;
+  virtual void buildFromCondition(){};
 
   // Create the _toCondition for the first time.
-  virtual void buildToCondition() = 0;
+  virtual void buildToCondition(){};
 
  public:
+  /// @brief Prepares an edge condition builder
+  /// this builder just contains the basic
+  /// from and to conditions, referencing the given variable as Edge
+  /// The exchangeableIdNode will contain the vertex _id value to
+  /// search for.
+  explicit EdgeConditionBuilder(Ast* ast, Variable const* variable,
+                                AstNode const* exchangeableIdNode);
+
   virtual ~EdgeConditionBuilder() = default;
 
   EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
@@ -80,11 +95,25 @@ class EdgeConditionBuilder {
   // the direction e.g. `label == foo`
   void addConditionPart(AstNode const*);
 
+  // Add a condition on the edges that specific to the given depth
+  void addConditionForDepth(AstNode const*, uint64_t depth);
+
   // Get the complete condition for outbound edges
   AstNode* getOutboundCondition();
 
   // Get the complete condition for inbound edges
   AstNode* getInboundCondition();
+
+  // Get the complete condition for outbound edges
+  AstNode* getOutboundConditionForDepth(uint64_t depth);
+
+  // Get the complete condition for inbound edges
+  AstNode* getInboundConditionForDepth(uint64_t depth);
+
+  std::pair<
+      std::vector<arangodb::graph::IndexAccessor>,
+      std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
+  buildIndexAccessors();
 
  private:
   // Internal helper to swap _from and _to parts

@@ -266,6 +266,10 @@ struct AstNode {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::ostream& toStream(std::ostream& os, int indent) const;
   void dump(int indent) const;
+
+  friend  std::ostream& operator<<(std::ostream& out, AstNode const& node) {
+    return node.toStream(out, 0);
+  }
 #endif
 
   /// @brief compute the value for a constant value node
