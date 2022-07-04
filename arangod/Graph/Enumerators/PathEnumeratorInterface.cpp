@@ -51,7 +51,8 @@ auto PathEnumeratorInterface::createEnumerator(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (type == PathEnumeratorType::K_SHORTEST_PATH) {
         TRI_ASSERT(enumeratorOptions.getMinDepth() == 0);
-        TRI_ASSERT(enumeratorOptions.getMaxDepth() == std::numeric_limits<uint64_t>::max());
+        TRI_ASSERT(enumeratorOptions.getMaxDepth() ==
+                   std::numeric_limits<uint64_t>::max());
       }
 #endif
       return std::make_unique<KPathEnumerator<ProviderName>>(

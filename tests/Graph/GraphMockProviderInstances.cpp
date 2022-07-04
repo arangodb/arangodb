@@ -102,7 +102,6 @@ template class ::arangodb::graph::QueueTracer<
 template class ::arangodb::graph::QueueTracer<
     LifoQueue<MockGraphProvider::Step>>;
 
-
 template class ::arangodb::graph::TwoSidedEnumerator<
     BFSConfiguration<MockGraphProvider, VertexUniquenessLevel::PATH,
                      EdgeUniquenessLevel::PATH, false>>;
@@ -117,8 +116,8 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     BFSConfiguration<MockGraphProvider, VertexUniquenessLevel::GLOBAL,
                      EdgeUniquenessLevel::PATH, true>>;
 
-template auto
-::arangodb::graph::PathEnumeratorInterface::createEnumerator<tests::graph::MockGraphProvider>(
+template auto ::arangodb::graph::PathEnumeratorInterface::createEnumerator<
+    tests::graph::MockGraphProvider>(
     arangodb::aql::QueryContext& query,
     tests::graph::MockGraphProvider::Options&& forwardProviderOptions,
     tests::graph::MockGraphProvider::Options&& backwardProviderOptions,
