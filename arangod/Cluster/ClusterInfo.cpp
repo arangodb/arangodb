@@ -116,6 +116,10 @@ struct ShardStatistics {
 };
 
 namespace {
+
+std::string const kMetricsServerId = "Plan/Metrics/ServerId";
+std::string const kMetricsRebootId = "Plan/Metrics/RebootId";
+
 void addToShardStatistics(arangodb::ShardStatistics& stats,
                           containers::FlatHashSet<std::string>& servers,
                           arangodb::velocypack::Slice databaseSlice,
@@ -1025,6 +1029,8 @@ void ClusterInfo::loadPlan() {
   decltype(_plannedCollections) newCollections;
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
+  decltype(_shardToShardGroupLeader) newShardToShardGroupLeader;
+  decltype(_shardGroups) newShardGroups;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
   decltype(_newStuffByDatabase) newStuffByDatabase;
@@ -1041,6 +1047,8 @@ void ClusterInfo::loadPlan() {
     newCollections = _plannedCollections;
     newShards = _shards;
     newShardServers = _shardServers;
+    newShardToShardGroupLeader = _shardToShardGroupLeader;
+    newShardGroups = _shardGroups;
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     newStuffByDatabase = _newStuffByDatabase;
@@ -1097,6 +1105,8 @@ void ClusterInfo::loadPlan() {
                 newShards.erase(shardName);
                 newShardServers.erase(shardName);
                 newShardToName.erase(shardName);
+                newShardToShardGroupLeader.erase(shardName);
+                newShardGroups.erase(shardName);
               }
             }
           }
@@ -1449,6 +1459,10 @@ void ClusterInfo::loadPlan() {
               newShards.erase(shardId);
               newShardServers.erase(shardId);
               newShardToName.erase(shardId);
+              // We try to erase the shard ID anyway, no problem if it is
+              // not in there, should it be a shard group leader!
+              newShardToShardGroupLeader.erase(shardId);
+              newShardGroups.erase(shardId);
             }
             collectionsPath.pop_back();
           }
@@ -1547,6 +1561,59 @@ void ClusterInfo::loadPlan() {
 
         TRI_ASSERT(false);
         continue;
+      }
+    }
+    // Now that the loop is completed, we have to run through it one more
+    // time to get the shard groups done:
+    for (auto const& colPair : *databaseCollections) {
+      if (colPair.first == colPair.second.collection->name()) {
+        // Every collection shows up once with its ID and once with its name.
+        // We only want it once, so we only take it when we see the ID, not
+        // the name as key:
+        continue;
+      }
+      auto const& groupLeader =
+          colPair.second.collection->distributeShardsLike();
+      if (!groupLeader.empty()) {
+        auto groupLeaderCol = newShards.find(groupLeader);
+        if (groupLeaderCol != newShards.end()) {
+          auto col = newShards.find(
+              std::to_string(colPair.second.collection->id().id()));
+          if (col != newShards.end()) {
+            if (col->second->size() == 0) {
+              // Can happen for smart edge collections. But in this case we
+              // can ignore the collection.
+              continue;
+            }
+            TRI_ASSERT(groupLeaderCol->second->size() == col->second->size());
+            for (size_t i = 0; i < col->second->size(); ++i) {
+              newShardToShardGroupLeader.try_emplace(
+                  col->second->at(i), groupLeaderCol->second->at(i));
+              auto it = newShardGroups.find(groupLeaderCol->second->at(i));
+              if (it == newShardGroups.end()) {
+                // Need to create a new list:
+                auto list = std::make_shared<std::vector<ShardID>>();
+                list->reserve(2);
+                // group leader as well as member:
+                list->emplace_back(groupLeaderCol->second->at(i));
+                list->emplace_back(col->second->at(i));
+                newShardGroups.try_emplace(groupLeaderCol->second->at(i),
+                                           std::move(list));
+              } else {
+                // Need to add us to the list:
+                it->second->push_back(col->second->at(i));
+              }
+            }
+          } else {
+            LOG_TOPIC("12f32", WARN, Logger::CLUSTER)
+                << "loadPlan: Strange, could not find collection: "
+                << colPair.second.collection->name();
+          }
+        } else {
+          LOG_TOPIC("22312", WARN, Logger::CLUSTER)
+              << "loadPlan: Strange, could not find proto collection: "
+              << groupLeader;
+        }
       }
     }
     newCollections.insert_or_assign(databaseName,
@@ -1649,6 +1716,8 @@ void ClusterInfo::loadPlan() {
     _plannedCollections.swap(newCollections);
     _shards.swap(newShards);
     _shardServers.swap(newShardServers);
+    _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
+    _shardGroups.swap(newShardGroups);
     _shardToName.swap(newShardToName);
   }
 
@@ -4442,6 +4511,101 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
   return Result(TRI_ERROR_NO_ERROR);
 }
 
+void ClusterInfo::initMetricsState() {
+  auto rebootId = ServerState::instance()->getRebootId().value();
+  auto serverId = ServerState::instance()->getId();
+
+  VPackBuilder builderRebootId;
+  builderRebootId.add(VPackValue{rebootId});
+  VPackBuilder builderServerId;
+  builderServerId.add(VPackValue{serverId});
+
+  AgencyWriteTransaction const write{
+      {{kMetricsRebootId, AgencyValueOperationType::SET,
+        builderRebootId.slice()},
+       {kMetricsServerId, AgencyValueOperationType::SET,
+        builderServerId.slice()}},
+      {{kMetricsRebootId, AgencyPrecondition::Type::EMPTY, true},
+       {kMetricsServerId, AgencyPrecondition::Type::EMPTY, true}}};
+  AgencyComm ac{_server};
+  while (!server().isStopping()) {
+    auto const r = ac.sendTransactionWithFailover(write);
+    if (r.successful() ||
+        r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+      return;
+    }
+    LOG_TOPIC("bfdc3", WARN, Logger::CLUSTER)
+        << "Failed to self-propose leader with httpCode: " << r.httpCode();
+  }
+}
+
+ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
+  auto& ac = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [result, index] = ac.read({AgencyCommHelper::path(kMetricsServerId),
+                                  AgencyCommHelper::path(kMetricsRebootId)});
+  auto data = result->slice().at(0).get(std::initializer_list<std::string_view>{
+      AgencyCommHelper::path(), "Plan", "Metrics"});
+  auto leaderRebootId = data.get("RebootId").getNumber<uint64_t>();
+  auto leaderServerId = data.get("ServerId").stringView();
+  auto ourRebootId = ServerState::instance()->getRebootId().value();
+  auto ourServerId = ServerState::instance()->getId();
+  if (wantLeader) {
+    // remove old callback (with _metricsGuard call)
+    // then store new callback or understand we are leader
+    _metricsGuard = {};
+  }
+  if (ourRebootId == leaderRebootId && ourServerId == leaderServerId) {
+    return {std::nullopt};
+  }
+  if (wantLeader) {
+    _metricsGuard = _rebootTracker.callMeOnChange(
+        {std::string{leaderServerId}, RebootId{leaderRebootId}},
+        [this, leaderRebootId, serverId = std::string{leaderServerId}] {
+          proposeMetricsLeader(leaderRebootId, serverId);
+        },
+        "Try to propose current server as a new leader for cluster metrics");
+  }
+  return {std::string{leaderServerId}};
+}
+
+void ClusterInfo::proposeMetricsLeader(uint64_t oldRebootId,
+                                       std::string_view oldServerId) {
+  AgencyComm ac{_server};
+  auto rebootId = ServerState::instance()->getRebootId().value();
+  auto serverId = ServerState::instance()->getId();
+
+  VPackBuilder builderOldRebootId;
+  builderOldRebootId.add(VPackValue{oldRebootId});
+  VPackBuilder builderOldServerId;
+  builderOldServerId.add(VPackValue{oldServerId});
+  VPackBuilder builderRebootId;
+  builderRebootId.add(VPackValue{rebootId});
+  VPackBuilder builderServerId;
+  builderServerId.add(VPackValue{serverId});
+
+  AgencyWriteTransaction const write{
+      {{kMetricsRebootId, AgencyValueOperationType::SET,
+        builderRebootId.slice()},
+       {kMetricsServerId, AgencyValueOperationType::SET,
+        builderServerId.slice()}},
+      {{kMetricsRebootId, AgencyPrecondition::Type::VALUE,
+        builderOldRebootId.slice()},
+       {kMetricsServerId, AgencyPrecondition::Type::VALUE,
+        builderOldServerId.slice()}}};
+  auto const r = ac.sendTransactionWithFailover(write);
+  if (r.successful()) {
+    return;
+  }
+  if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+    LOG_TOPIC("bfdc5", TRACE, Logger::CLUSTER)
+        << "Failed to self-propose leader";
+  } else {
+    // We don't need retry here, because we have retry in ClusterMetricsFeature
+    LOG_TOPIC("bfdc6", WARN, Logger::CLUSTER)
+        << "Failed to self-propose leader with httpCode: " << r.httpCode();
+  }
+}
+
 AnalyzerModificationTransaction::Ptr
 ClusterInfo::createAnalyzersCleanupTrans() {
   if (AnalyzerModificationTransaction::getPendingCount() ==
@@ -6064,20 +6228,40 @@ void ClusterInfo::setFailedServers(
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void ClusterInfo::setServers(
     containers::FlatHashMap<ServerID, std::string> servers) {
-  WRITE_LOCKER(readLocker, _serversProt.lock);
+  WRITE_LOCKER(writeLocker, _serversProt.lock);
   _servers = std::move(servers);
 }
 
 void ClusterInfo::setServerAliases(
     containers::FlatHashMap<ServerID, std::string> aliases) {
-  WRITE_LOCKER(readLocker, _serversProt.lock);
+  WRITE_LOCKER(writeLocker, _serversProt.lock);
   _serverAliases = std::move(aliases);
 }
 
 void ClusterInfo::setServerAdvertisedEndpoints(
     containers::FlatHashMap<ServerID, std::string> advertisedEndpoints) {
-  WRITE_LOCKER(readLocker, _serversProt.lock);
+  WRITE_LOCKER(writeLocker, _serversProt.lock);
   _serverAdvertisedEndpoints = std::move(advertisedEndpoints);
+}
+
+void ClusterInfo::setShardToShardGroupLeader(
+    containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader) {
+  WRITE_LOCKER(writeLocker, _planProt.lock);
+  _shardToShardGroupLeader = std::move(shardToShardGroupLeader);
+}
+
+void ClusterInfo::setShardGroups(
+    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>
+        shardGroups) {
+  WRITE_LOCKER(writeLocker, _planProt.lock);
+  _shardGroups = std::move(shardGroups);
+}
+
+void ClusterInfo::setShardIds(
+    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+        shardIds) {
+  WRITE_LOCKER(writeLocker, _currentProt.lock);
+  _shardIds = std::move(shardIds);
 }
 #endif
 
@@ -6945,6 +7129,26 @@ VPackBuilder ClusterInfo::toVelocyPack() {
             }
           }
         }
+        dump.add(VPackValue("shardToShardGroupLeader"));
+        {
+          VPackObjectBuilder d(&dump);
+          for (auto const& s : _shardToShardGroupLeader) {
+            dump.add(s.first, VPackValue(s.second));
+          }
+        }
+        dump.add(VPackValue("shardGroups"));
+        {
+          VPackObjectBuilder d(&dump);
+          for (auto const& s : _shardGroups) {
+            dump.add(VPackValue(s.first));
+            {
+              VPackArrayBuilder d2(&dump);
+              for (auto const& ss : *s.second) {
+                dump.add(VPackValue(ss));
+              }
+            }
+          }
+        }
         dump.add(VPackValue("shards"));
         {
           VPackObjectBuilder d(&dump);
@@ -7012,13 +7216,12 @@ void ClusterInfo::triggerWaiting(
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp =
-        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !_server.isStopping()) {
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp] { pp->setValue(Result()); });
+      scheduler->queue(
+          RequestLane::CLUSTER_INTERNAL,
+          [pp = std::move(pit->second)]() mutable { pp.setValue(Result()); });
     } else {
-      pp->setValue(Result(_syncerShutdownCode));
+      pit->second.setValue(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }

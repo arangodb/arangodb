@@ -4820,6 +4820,105 @@ function transactionDatabaseSuite() {
   };
 }
 
+/**
+ * This test suite checks the correctness of replicated operations with respect to replicated log contents.
+ */
+function transactionReplication2ReplicateOperation() {
+  'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
+  var cn = 'UnitTestsTransaction';
+  var c = null;
+
+  return {
+    setUpAll: function () {
+      db._createDatabase(dbn, {replicationVersion: "2"});
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
+
+    setUp: function () {
+      db._drop(cn);
+      c = db._create(cn, {numberOfShards: 4});
+    },
+
+    tearDown: function () {
+      if (c !== null) {
+        c.drop();
+      }
+
+      c = null;
+    },
+
+    testTransactionAbortLogEntry: function () {
+      let trx = db._createTransaction({
+        collections: { write: c.name()  }
+      });
+      let tc = trx.collection(c.name());
+      tc.insert({ _key: 'test2', value: 2 });
+      trx.abort();
+
+      let shards = c.shards();
+      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+
+      for (const log of logs) {
+        let entries = log.head(1000);
+        let abortFound = false;
+        for (const entry of entries) {
+          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
+            abortFound = true;
+            break;
+          }
+        }
+        assertTrue(abortFound, `Could not find Abort operation in log ${log.id()}! Log entries: ${entries}`);
+      }
+    },
+
+    testTransactionCommitLogEntry: function () {
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc = trx.collection(cn);
+
+        tc.save({ _key: 'foo' });
+        tc.save({ _key: 'bar' });
+
+      } catch(err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
+      let shards = c.shards();
+      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+
+      for (const log of logs) {
+        let entries = log.head(1000);
+        let commitFound = false;
+        for (const entry of entries) {
+          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Commit") {
+            commitFound = true;
+            break;
+          }
+        }
+        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}! Log entries: ${entries}`);
+      }
+    },
+  };
+}
+
+
 function makeTestSuites(testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
@@ -4900,6 +4999,7 @@ if (isReplication2Enabled) {
     transactionTTLStreamSuiteV2,
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
+    transactionReplication2ReplicateOperation,
   ];
 
   for (const suite of suites) {

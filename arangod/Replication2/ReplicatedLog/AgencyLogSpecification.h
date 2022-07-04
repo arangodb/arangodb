@@ -288,7 +288,6 @@ struct LogCurrent {
 
   // Will be nullopt until a leader has been assumed leadership
   std::optional<Leader> leader;
-  std::optional<std::uint64_t> targetVersion;
 
   // Temporary hack until Actions are de-serializable.
   struct ActionDummy {

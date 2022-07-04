@@ -52,8 +52,8 @@ inline constexpr auto StringFollower = std::string_view{"follower"};
 enum class LeaderInternalState {
   kUninitializedState,
   kWaitingForLeadershipEstablished,
-  kIngestingExistingLog,
   kRecoveryInProgress,
+  kServiceStarting,
   kServiceAvailable,
 };
 

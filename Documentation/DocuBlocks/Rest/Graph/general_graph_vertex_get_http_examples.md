@@ -72,9 +72,10 @@ A message created for this error.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to update vertices in the graph  you at least need to have the following privileges:<br>
-  1. `Read Only` access on the Database.
-  2. `Read Only` access on the given collection.
+In order to update vertices in the graph  you at least need to have the following privileges:
+
+1. `Read Only` access on the Database.
+2. `Read Only` access on the given collection.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).

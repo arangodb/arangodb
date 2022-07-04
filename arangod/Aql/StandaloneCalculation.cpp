@@ -74,12 +74,12 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   }
 
   /// @brief commit a transaction
-  [[nodiscard]] arangodb::Result commitTransaction(
+  [[nodiscard]] futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods*) override {
     updateStatus(
         arangodb::transaction::Status::COMMITTED);  // simulate state changes to
                                                     // make ASSERTS happy
-    return {};
+    return Result{};
   }
 
   /// @brief abort a transaction
