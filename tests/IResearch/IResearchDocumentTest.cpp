@@ -3922,6 +3922,51 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_includeAllFields_subobject) 
   ASSERT_FALSE(it.valid());
 }
 
+
+TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
+  auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
+      R"({"includeAllFields":true, "fields" : [
+            {"name": "boost.foo.bar", "analyzer":"iresearch-document-string"}, 
+            {"name": "boost.foo"}]})");
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({"boost": { "foo":{"bar":{"bas":{"a":"1"}}}}})");
+
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
+  std::string error;
+  ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
+                             error, sysVocbase.get()->name()));
+
+  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+                                arangodb::IndexId(0));
+  it.reset(json->slice(), indexMeta);
+
+  std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
+      [](auto& server, auto const& it) {
+        assertField<TypedAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("boost.foo.bar.bas.a"),
+            "iresearch-document-string");
+      }
+  };
+
+  size_t fieldIdx{};
+  for (auto& assertField : assertFields) {
+    SCOPED_TRACE(testing::Message("Field Idx: ") << (fieldIdx++));
+    ASSERT_TRUE(it.valid());
+    assertField(server, it);
+    ++it;
+  }
+
+  ASSERT_FALSE(it.valid());
+}
+
+
 #if USE_ENTERPRISE
 #include "tests/IResearch/IResearchDocumentTestEE.h"
 #endif
