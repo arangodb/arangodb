@@ -353,6 +353,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
   Aql/EnumerateListExecutor.cpp
+  Aql/EnumeratePathsExecutor.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionBlockImpl.cpp
   Aql/ExecutionEngine.cpp
@@ -381,7 +382,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/IndexNodeOptimizerRules.cpp
   Aql/InputAqlItemRow.cpp
   Aql/InsertModifier.cpp
-  Aql/KShortestPathsExecutor.cpp
   Aql/LateMaterializedExpressionContext.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp

@@ -35,7 +35,7 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/KShortestPathsExecutor.h"
+#include "Aql/EnumeratePathsExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"

@@ -44,7 +44,7 @@
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/KShortestPathsExecutor.h"
+#include "Aql/EnumeratePathsExecutor.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationExecutor.h"

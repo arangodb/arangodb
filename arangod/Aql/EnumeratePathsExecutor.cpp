@@ -21,7 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "KShortestPathsExecutor.h"
+#include "EnumeratePathsExecutor.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionNode.h"
