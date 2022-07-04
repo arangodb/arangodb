@@ -161,18 +161,23 @@ exports.getChecksum = function (endpoint, name) {
     reconnectRetry(primaryEndpoint, "_system", "root", "");
   }
 };
-exports.getMetricRaw = function (endpoint, tags) {
+
+exports.getRawMetric = function (endpoint, tags) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW('/_admin/metrics' + tags);
-    if (res.code !== 200) {
-      throw "error fetching metric";
-    }
-    return res.body;
+    return arango.GET_RAW('/_admin/metrics' + tags);
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
+};
+
+exports.getAllMetric = function (endpoint, tags) {
+  let res = exports.getRawMetric(endpoint, tags);
+  if (res.code !== 200) {
+    throw "error fetching metric";
+  }
+  return res.body;
 };
 
 function getMetricName(text, name) {
@@ -185,17 +190,8 @@ function getMetricName(text, name) {
 }
 
 exports.getMetric = function (endpoint, name) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW("/_admin/metrics");
-    if (res.code !== 200) {
-      throw "error fetching metric";
-    }
-    return getMetricName(res.body, name);
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
+  let text = exports.getAllMetric(endpoint, '');
+  return getMetricName(text, name);
 };
 
 exports.getMetricSingle = function (name) {

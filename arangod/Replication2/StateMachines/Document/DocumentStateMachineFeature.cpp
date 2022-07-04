@@ -58,5 +58,6 @@ DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)
   startsAfter<ClusterFeature>();
   startsAfter<MaintenanceFeature>();
   startsAfter<ReplicatedStateAppFeature>();
+  onlyEnabledWith<ClusterFeature>();
   onlyEnabledWith<ReplicatedStateAppFeature>();
 }

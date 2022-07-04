@@ -37,6 +37,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/AstResources.h"
 #include "Aql/AttributeNamePath.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
@@ -274,7 +275,10 @@ class Ast {
   AstNode* createNodeParameterDatasource(std::string_view name);
 
   /// @brief create an AST quantifier node
-  AstNode* createNodeQuantifier(int64_t);
+  AstNode* createNodeQuantifier(Quantifier::Type type);
+
+  /// @brief create an AST quantifier node
+  AstNode* createNodeQuantifier(Quantifier::Type type, AstNode const* value);
 
   /// @brief create an AST unary operator
   AstNode* createNodeUnaryOperator(AstNodeType, AstNode const*);
