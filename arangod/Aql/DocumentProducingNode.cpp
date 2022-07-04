@@ -113,6 +113,9 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
     _filter->toVelocyPack(builder, flags);
 
     _filterProjections.toVelocyPack(builder, "filterProjections");
+  } else {
+    builder.add("filterProjections", VPackValue(VPackValueType::Array));
+    builder.close();
   }
 
   // "producesResult" is read by AQL explainer. don't remove it!
