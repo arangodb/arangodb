@@ -240,14 +240,16 @@ inline bool acceptAll(std::string& buffer,
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
-
+  bool result = defaultAccept;
   buffer.append(key.c_str(), key.size());
   for (auto& nested : context->_fields) {
-    if (nested.toString() == key && !nested._fields.empty()) {
-      return false;
+    if (!nested._fields.empty()) {
+      // this filter accepts only "value" fields
+      continue;
     }
     auto fullName = nested.path();
     if (fullName.starts_with(buffer)) {
+      result = true;
       if (buffer == nested.attributeString()) {
         if (value.value.isObject() &&
             !nested.analyzer()->accepts(
@@ -280,12 +282,13 @@ inline bool acceptAll(std::string& buffer,
         }
       }
       if (fullName == buffer) {
+        // found specific rule. use it.
         context = &nested;
+        break;
       }
-      return true;
     }
   }
-  return defaultAccept;
+  return result;
 }
 
 inline bool inArrayInverted(
