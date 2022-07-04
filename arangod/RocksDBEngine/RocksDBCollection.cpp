@@ -100,6 +100,25 @@ using DocumentCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
 // we don't do this preflight check for smaller batches though.
 constexpr size_t preflightThreshold = 100;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void validateNoExternals(velocypack::Slice value) {
+  // recursively validate there the to-be-stored document
+  // does not contain any VelocyPack Externals. this would be
+  // invalid, because Externals are just pointers to memory,
+  // and so they must never be persisted.
+  TRI_ASSERT(!value.isExternal());
+  if (value.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(value)) {
+      validateNoExternals(it);
+    }
+  } else if (value.isObject()) {
+    for (auto it : VPackObjectIterator(value, true)) {
+      validateNoExternals(it.value);
+    }
+  }
+}
+#endif
+
 // verify that the structure of a saved document is actually as expected
 void verifyDocumentStructure(velocypack::Slice document,
                              bool isEdgeCollection) {
@@ -141,6 +160,8 @@ void verifyDocumentStructure(velocypack::Slice document,
   ++p;
   TRI_ASSERT(VPackSlice(p).isString());
   // p += VPackSlice(p).byteSize();
+
+  validateNoExternals(document);
 #endif
 }
 

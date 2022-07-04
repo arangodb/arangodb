@@ -32,9 +32,8 @@ const db = require("@arangodb").db;
 const internal = require("internal");
 const isCluster = internal.isCluster();
 const errors = internal.errors;
-var aqlfunctions = require("@arangodb/aql/functions");
+const aqlfunctions = require("@arangodb/aql/functions");
 const cn = "UnitTestsCollection";
-
 
 function ComputedValuesAfterCreateCollectionTestSuite() {
   'use strict';
@@ -55,11 +54,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     testWithoutReturnKeywordOnExpression: function() {
       try {
         collection.properties({
-          computedValues: [{
-            name: "newValue",
-            expression: "CONCAT(@doc.value1, '+')",
-            override: false
-          }]
+          computedValues: [
+            {
+              name: "newValue",
+              expression: "CONCAT(@doc.value1, '+')",
+              override: false
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -69,11 +70,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testCreateOnEmptyChangeAfterInsert: function() {
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: false
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: false
+          }
+        ]
       });
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
@@ -115,12 +118,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testComputedValuesOnlyOnInsert: function() {
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: true,
-          computeOn: ["insert"]
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: true,
+            computeOn: ["insert"]
+          }
+        ]
       });
 
       if (isCluster) {
@@ -161,12 +166,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testComputedValuesOnlyOnUpdate: function() {
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: true,
-          computeOn: ["update"]
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: true,
+            computeOn: ["update"]
+          }
+        ]
       });
 
       if (isCluster) {
@@ -207,12 +214,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testComputedValuesOnlyOnReplace: function() {
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: true,
-          computeOn: ["replace"]
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: true,
+            computeOn: ["replace"]
+          }
+        ]
       });
 
       if (isCluster) {
@@ -251,11 +260,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testCreateAccessNonTopLevel: function() {
       collection.properties({
-        computedValues: [{
-          name: "value3",
-          expression: "RETURN CONCAT(LEFT(@doc.value1, 3), RIGHT(@doc.value2.animal, 2))",
-          override: false
-        }]
+        computedValues: [
+          {
+            name: "value3",
+            expression: "RETURN CONCAT(LEFT(@doc.value1, 3), RIGHT(@doc.value2.animal, 2))",
+            override: false
+          }
+        ]
       });
 
       if (isCluster) {
@@ -291,11 +302,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       collection.insert(docs);
 
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: false
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: false
+          }
+        ]
       });
 
       if (isCluster) {
@@ -333,11 +346,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     testAccessRevOnCreate: function() {
       try {
         collection.properties({
-          computedValues: [{
-            name: "_rev",
-            expression: "RETURN CONCAT(@doc.value1, '+')",
-            override: false
-          }]
+          computedValues: [
+            {
+              name: "_rev",
+              expression: "RETURN CONCAT(@doc.value1, '+')",
+              override: false
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -348,11 +363,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     testAccessKeyOnCreate: function() {
       try {
         collection.properties({
-          computedValues: [{
-            name: "_key",
-            expression: "RETURN CONCAT(@doc.value1, '+')",
-            override: false
-          }]
+          computedValues: [
+            {
+              name: "_key",
+              expression: "RETURN CONCAT(@doc.value1, '+')",
+              override: false
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -363,11 +380,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     testAccessIdOnCreate: function() {
       try {
         collection.properties({
-          computedValues: [{
-            name: "_id",
-            expression: "RETURN CONCAT(@doc.value1, '+')",
-            override: false
-          }]
+          computedValues: [
+            {
+              name: "_id",
+              expression: "RETURN CONCAT(@doc.value1, '+')",
+              override: false
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -393,11 +412,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     testNotAllowedFor: function() {
       try {
         collection.properties({
-          computedValues: [{
-            name: "newValue",
-            expression: "RETURN (FOR i IN 1..10 RETURN i)",
-            override: false
-          }]
+          computedValues: [
+            {
+              name: "newValue",
+              expression: "RETURN (FOR i IN 1..10 RETURN i)",
+              override: false
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -408,11 +429,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     testNowAllowedLet: function() {
       try {
         collection.properties({
-          computedValues: [{
-            name: "newValue",
-            expression: "RETURN (LET temp1 = (RETURN 1))",
-            override: false
-          }]
+          computedValues: [
+            {
+              name: "newValue",
+              expression: "RETURN (LET temp1 = (RETURN 1))",
+              override: false
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -434,11 +457,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           },
           "level": "moderate",
           "message": "Schema validation failed"
-        }, computedValues: [{
-          name: "value1",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: true
-        }]
+        }, computedValues: [
+          {
+            name: "value1",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: true
+          }
+        ]
       });
 
       if (isCluster) {
@@ -524,15 +549,17 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testRedefineComputedValueUpdateOverride: function() {
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: false
-        }, {
-          name: "value3",
-          expression: "return CONCAT(@doc.concatValues, ' ')",
-          override: false
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: false
+          }, {
+            name: "value3",
+            expression: "return CONCAT(@doc.concatValues, ' ')",
+            override: false
+          }
+        ]
       });
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
@@ -563,17 +590,19 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
 
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          computeOn: ["update"],
-          override: true
-        }, {
-          name: "value3",
-          expression: "return CONCAT(@doc.concatValues, '+', @doc.value1)",
-          computeOn: ["update"],
-          override: true
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            computeOn: ["update"],
+            override: true
+          }, {
+            name: "value3",
+            expression: "return CONCAT(@doc.concatValues, '+', @doc.value1)",
+            computeOn: ["update"],
+            override: true
+          }
+        ]
       });
 
       if (isCluster) {
@@ -595,15 +624,17 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testRedefineComputedValueUpdateNoOverride: function() {
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: false
-        }, {
-          name: "value3",
-          expression: "return CONCAT(@doc.concatValues, ' ')",
-          override: false
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: false
+          }, {
+            name: "value3",
+            expression: "return CONCAT(@doc.concatValues, ' ')",
+            override: false
+          }
+        ]
       });
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
@@ -634,17 +665,19 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
 
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          computeOn: ["update"],
-          override: false
-        }, {
-          name: "value3",
-          expression: "return CONCAT(@doc.concatValues, '+', @doc.value1)",
-          computeOn: ["update"],
-          override: false
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            computeOn: ["update"],
+            override: false
+          }, {
+            name: "value3",
+            expression: "return CONCAT(@doc.concatValues, '+', @doc.value1)",
+            computeOn: ["update"],
+            override: false
+          }
+        ]
       });
 
       if (isCluster) {
@@ -666,15 +699,17 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testCompoundComputedValues: function() {
       collection.properties({
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          override: false
-        }, {
-          name: "value3",
-          expression: "return CONCAT(@doc.concatValues, ' ')",
-          override: false
-        }]
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            override: false
+          }, {
+            name: "value3",
+            expression: "return CONCAT(@doc.concatValues, ' ')",
+            override: false
+          }
+        ]
       });
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
@@ -724,12 +759,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       specialFunctions.forEach((el) => {
         try {
           collection.properties({
-            computedValues: [{
-              name: "newValue",
-              expression: `RETURN ${el}`,
-              override: false,
-              computeOn: ["insert"]
-            }]
+            computedValues: [
+              {
+                name: "newValue",
+                expression: `RETURN ${el}`,
+                override: false,
+                computeOn: ["insert"]
+              }
+            ]
           });
           fail();
         } catch (error) {
@@ -744,12 +781,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       try {
         collection.properties({
-          computedValues: [{
-            name: "newValue",
-            expression: `RETURN UnitTests::cv(1)`,
-            override: false,
-            computeOn: ["insert"]
-          }]
+          computedValues: [
+            {
+              name: "newValue",
+              expression: `RETURN UnitTests::cv(1)`,
+              override: false,
+              computeOn: ["insert"]
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -761,12 +800,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
     testArrayOperator: function() {
       collection.properties({
-        computedValues: [{
-          name: "newValue",
-          expression: `RETURN @doc.values[* RETURN CURRENT]`,
-          override: false,
-          computeOn: ["insert"]
-        }]
+        computedValues: [
+          {
+            name: "newValue",
+            expression: `RETURN @doc.values[* RETURN CURRENT]`,
+            override: false,
+            computeOn: ["insert"]
+          }
+        ]
       });
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
@@ -795,15 +836,16 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-
     testArrayOperatorWithInline: function() {
       collection.properties({
-        computedValues: [{
-          name: "newValue",
-          expression: `RETURN @doc.values[* FILTER CURRENT % 2 == 0 LIMIT 0,1 RETURN CURRENT]`,
-          override: false,
-          computeOn: ["insert"]
-        }]
+        computedValues: [
+          {
+            name: "newValue",
+            expression: `RETURN @doc.values[* FILTER CURRENT % 2 == 0 LIMIT 0,1 RETURN CURRENT]`,
+            override: false,
+            computeOn: ["insert"]
+          }
+        ]
       });
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
@@ -830,8 +872,50 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(el.values, [1, 2, 3, 4, 5, 6, 7, 8]);
         assertEqual(el.newValue, [2]);
       });
-    }
+    },
 
+    testArrayOperatorWithInlineAndLargeValues: function() {
+      collection.properties({
+        computedValues: [
+          {
+            name: "newValue",
+            expression: `RETURN @doc.values[* LIMIT 1,3 RETURN CURRENT]`,
+            override: false,
+            computeOn: ["insert"]
+          }
+        ]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+
+      let values = [];
+      for (let i = 0; i < 10; ++i) {
+        values.push("this-is-a-long-test-string-too-long-for-sso-" + i);
+      }
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({values});
+      }
+      collection.insert(docs);
+
+      const expected = [ values[1], values[2], values[3] ];
+      const res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      assertEqual(res.length, 100);
+      res.forEach(el => {
+        assertEqual(el.values, values, el);
+        assertEqual(el.newValue, expected, el);
+      });
+    }
 
   };
 }
@@ -844,12 +928,13 @@ function ComputedValuesOnCollectionCreationOverrideTestSuite() {
     setUp: function() {
       internal.db._drop(cn);
       collection = internal.db._create(cn, {
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          computeOn: ["insert", "update", "replace"],
-          override: true
-        }
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            computeOn: ["insert", "update", "replace"],
+            override: true
+          }
         ]
       });
     },
@@ -928,12 +1013,13 @@ function ComputedValuesOnCollectionCreationNoOverrideTestSuite() {
     setUp: function() {
       internal.db._drop(cn);
       collection = internal.db._create(cn, {
-        computedValues: [{
-          name: "concatValues",
-          expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-          computeOn: ["insert", "update", "replace"],
-          override: false
-        }
+        computedValues: [
+          {
+            name: "concatValues",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            computeOn: ["insert", "update", "replace"],
+            override: false
+          }
         ]
       });
     },
@@ -1024,13 +1110,14 @@ function ComputedValuesClusterShardsTestSuite() {
     testAccessShardKeys: function() {
       try {
         collection.properties({
-          computedValues:
-            [{
+          computedValues: [
+            {
               name: "value1",
               expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
               computeOn: ["insert", "update", "replace"],
               override: false
-            }]
+            }
+          ]
         });
         fail();
       } catch (error) {
@@ -1039,10 +1126,6 @@ function ComputedValuesClusterShardsTestSuite() {
     },
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ComputedValuesOnCollectionCreationOverrideTestSuite);
 jsunity.run(ComputedValuesOnCollectionCreationNoOverrideTestSuite);

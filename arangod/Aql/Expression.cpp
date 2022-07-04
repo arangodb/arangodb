@@ -1718,7 +1718,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         if (!isBoolean) {
           AqlValue sub = executeSimpleExpression(ctx, projectionNode,
                                                  localMustDestroy, false);
-          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
+          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ true,
                            /*allowUnindexed*/ false);
           if (localMustDestroy) {
             sub.destroy();
