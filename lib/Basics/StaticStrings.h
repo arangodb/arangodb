@@ -160,6 +160,7 @@ class StaticStrings {
   static std::string const ProducesResult;
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
+  static std::string const Parallelism;
 
   // HTTP headers
   static std::string const Accept;

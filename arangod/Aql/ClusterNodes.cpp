@@ -462,9 +462,8 @@ GatherNode::GatherNode(ExecutionPlan* plan,
         VelocyPackHelper::getNumericValue<decltype(_limit)>(base, "limit", 0);
   }
 
-  // TODO: Use static string here
   setParallelism(parallelismFromString(
-      VelocyPackHelper::getStringValue(base, "parallelism", "")));
+      VelocyPackHelper::getStringValue(base, StaticStrings::Parallelism, "")));
 }
 
 GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,
