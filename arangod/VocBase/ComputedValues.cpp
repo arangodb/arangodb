@@ -67,8 +67,11 @@ std::underlying_type<arangodb::ComputeValuesOn>::type mustComputeOnValue(
 namespace arangodb {
 // expression context used for calculating computed values inside
 ComputedValuesExpressionContext::ComputedValuesExpressionContext(
-    transaction::Methods& trx)
-    : aql::ExpressionContext(), _trx(trx), _failOnWarning(false) {}
+    transaction::Methods& trx, LogicalCollection& collection)
+    : aql::ExpressionContext(),
+      _trx(trx),
+      _collection(collection),
+      _failOnWarning(false) {}
 
 TRI_vocbase_t& ComputedValuesExpressionContext::vocbase() const {
   return _trx.vocbase();
@@ -83,6 +86,9 @@ void ComputedValuesExpressionContext::registerWarning(ErrorCode errorCode,
   if (_failOnWarning) {
     // treat as an error if we are supposed to treat warnings as errors
     registerError(errorCode, msg);
+  } else {
+    std::string error = buildLogMessage("warning", msg);
+    LOG_TOPIC("6a31d", WARN, Logger::TRANSACTIONS) << error;
   }
 }
 
@@ -90,13 +96,29 @@ void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
                                                     char const* msg) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
 
-  if (msg == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, "computed values runtime error");
+  std::string error = buildLogMessage("error", msg);
+  LOG_TOPIC("2a37f", WARN, Logger::TRANSACTIONS) << error;
+  THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, error);
+}
+
+std::string ComputedValuesExpressionContext::buildLogMessage(
+    std::string_view type, char const* msg) const {
+  std::string error;
+
+  error.append("computed values expression evaluation produced a runtime ")
+      .append(type)
+      .append(" for collection '")
+      .append(_collection.vocbase().name())
+      .append("/")
+      .append(_collection.name())
+      .append("'");
+
+  if (msg != nullptr) {
+    error.append(": ");
+    error.append(msg);
   }
 
-  std::string error("computed values runtime error: ");
-  error.append(msg);
-  THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, error);
+  return error;
 }
 
 icu::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
