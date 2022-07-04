@@ -28,6 +28,7 @@
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Graph/Enumerators/PathEnumeratorInterface.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>

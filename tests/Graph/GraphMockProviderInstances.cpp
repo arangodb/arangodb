@@ -24,6 +24,7 @@
 #include "./MockGraphProvider.h"
 #include "Graph/Enumerators/OneSidedEnumerator.cpp"
 #include "Graph/Enumerators/TwoSidedEnumerator.cpp"
+#include "Graph/Enumerators/PathEnumeratorInterface.cpp"
 #include "Graph/PathManagement/PathResult.cpp"
 #include "Graph/PathManagement/PathStore.cpp"
 #include "Graph/PathManagement/SingleProviderPathResult.cpp"
@@ -115,3 +116,13 @@ template class ::arangodb::graph::TwoSidedEnumerator<
 template class ::arangodb::graph::TwoSidedEnumerator<
     BFSConfiguration<MockGraphProvider, VertexUniquenessLevel::GLOBAL,
                      EdgeUniquenessLevel::PATH, true>>;
+
+template auto
+::arangodb::graph::PathEnumeratorInterface::createEnumerator<tests::graph::MockGraphProvider>(
+    arangodb::aql::QueryContext& query,
+    tests::graph::MockGraphProvider::Options&& forwardProviderOptions,
+    tests::graph::MockGraphProvider::Options&& backwardProviderOptions,
+    arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
+    arangodb::graph::PathValidatorOptions validatorOptions,
+    PathEnumeratorType type, bool useTracing)
+    -> std::unique_ptr<arangodb::graph::PathEnumeratorInterface>;
