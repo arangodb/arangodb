@@ -163,7 +163,7 @@ class EnumeratePathsNode : public virtual GraphNode {
  private:
   std::vector<arangodb::graph::IndexAccessor> buildIndexes(bool reverse) const;
 
-  void kShortestPathsCloneHelper(ExecutionPlan& plan, EnumeratePathsNode& c,
+  void enumeratePathsCloneHelper(ExecutionPlan& plan, EnumeratePathsNode& c,
                                  bool withProperties) const;
 
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)

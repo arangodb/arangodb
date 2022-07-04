@@ -270,7 +270,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan& plan,
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _distributeVariable(nullptr) {
-  other.kShortestPathsCloneHelper(plan, *this, false);
+  other.enumeratePathsCloneHelper(plan, *this, false);
 }
 
 void EnumeratePathsNode::setStartInVariable(Variable const* inVariable) {
@@ -352,12 +352,12 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::_makeExecutionBlockImpl(
       std::move(enumeratorOptions), std::move(validatorOptions),
       opts->query().resourceMonitor());
 
-  auto executorInfos = KShortestPathsExecutorInfos(
+  auto executorInfos = EnumeratePathsExecutorInfos(
       outputRegister, engine.getQuery(), std::move(kPathUnique),
       std::move(sourceInput), std::move(targetInput));
 
   return std::make_unique<
-      ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
+      ExecutionBlockImpl<EnumeratePathsExecutor<KPathRefactored>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 };
 
@@ -462,11 +462,11 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     }
   } else {
     auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
-    auto executorInfos = KShortestPathsExecutorInfos(
+    auto executorInfos = EnumeratePathsExecutorInfos(
         outputRegister, engine.getQuery(), std::move(finder),
         std::move(sourceInput), std::move(targetInput));
     return std::make_unique<ExecutionBlockImpl<
-        KShortestPathsExecutor<graph::KShortestPathsFinder>>>(
+        EnumeratePathsExecutor<graph::KShortestPathsFinder>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
@@ -484,12 +484,12 @@ ExecutionNode* EnumeratePathsNode::clone(ExecutionPlan* plan,
       _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj,
       _distributeVariable);
 
-  kShortestPathsCloneHelper(*plan, *c, withProperties);
+  enumeratePathsCloneHelper(*plan, *c, withProperties);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void EnumeratePathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
+void EnumeratePathsNode::enumeratePathsCloneHelper(ExecutionPlan& plan,
                                                    EnumeratePathsNode& c,
                                                    bool withProperties) const {
   graphCloneHelper(plan, c, withProperties);
