@@ -245,27 +245,6 @@ struct AssertionNoOpLogger {
 
 #else  // #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 
-struct AssertionLogger {
-  [[noreturn]] void operator&(std::ostringstream const& stream) const {
-    std::string message = stream.str();
-    arangodb::CrashHandler::assertionFailure(
-        file, line, function, expr,
-        message.empty() ? nullptr : message.c_str());
-  }
-
-  // can be removed in C++20 because of LWG 1203
-  [[noreturn]] void operator&(std::ostream const& stream) const {
-    operator&(static_cast<std::ostringstream const&>(stream));
-  }
-
-  const char* file;
-  int line;
-  const char* function;
-  const char* expr;
-
-  static thread_local std::ostringstream assertionStringStream;
-};
-
 struct AssertionConditionalStream {
   bool condition{false};
   std::ostringstream stream;
@@ -303,6 +282,27 @@ struct AssertionConditionalLogger {
 };
 
 #endif  // #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+
+struct AssertionLogger {
+  [[noreturn]] void operator&(std::ostringstream const& stream) const {
+    std::string message = stream.str();
+    arangodb::CrashHandler::assertionFailure(
+        file, line, function, expr,
+        message.empty() ? nullptr : message.c_str());
+  }
+
+  // can be removed in C++20 because of LWG 1203
+  [[noreturn]] void operator&(std::ostream const& stream) const {
+    operator&(static_cast<std::ostringstream const&>(stream));
+  }
+
+  const char* file;
+  int line;
+  const char* function;
+  const char* expr;
+
+  static thread_local std::ostringstream assertionStringStream;
+};
 
 }  // namespace debug
 }  // namespace arangodb
