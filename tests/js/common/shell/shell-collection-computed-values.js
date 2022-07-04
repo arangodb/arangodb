@@ -122,6 +122,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           computeOn: ["insert"]
         }]
       });
+
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -160,6 +168,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           computeOn: ["update"]
         }]
       });
+
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -198,6 +214,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           computeOn: ["replace"]
         }]
       });
+
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -234,6 +258,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         }]
       });
 
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -266,6 +297,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           override: false
         }]
       });
+
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
@@ -402,6 +440,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           override: true
         }]
       });
+
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
         // have been applied on the DB servers. all we can do is sleep
@@ -537,6 +576,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         }]
       });
 
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
       res = db._query(`FOR doc IN ${cn} UPDATE doc WITH {value2: "123"} IN ${cn} RETURN {oldConcatValues: OLD.concatValues, new: NEW}`).toArray();
       assertEqual(res.length, 100);
       res.forEach((el, index) => {
@@ -600,6 +646,13 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           override: false
         }]
       });
+
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       res = db._query(`FOR doc IN ${cn} UPDATE doc WITH {value2: "123"} IN ${cn} RETURN {oldValue3: OLD.value3, oldConcatValues: OLD.concatValues, new: NEW}`).toArray();
       assertEqual(res.length, 100);
@@ -706,7 +759,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testArayOperator: function() {
+    testArrayOperator: function() {
       collection.properties({
         computedValues: [{
           name: "newValue",
@@ -742,8 +795,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    /*
-    testArayOperatorWithInline: function() {
+
+    testArrayOperatorWithInline: function() {
       collection.properties({
         computedValues: [{
           name: "newValue",
@@ -778,7 +831,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(el.newValue, [2]);
       });
     }
-     */
+
 
   };
 }
