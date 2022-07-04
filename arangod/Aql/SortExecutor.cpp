@@ -136,8 +136,11 @@ SortExecutor::~SortExecutor() {
 
 void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
                                 ExecutorState& state) {
+  size_t numDataRows = inputRange.countDataRows();
   size_t memoryUsageForRowIndexes =
-      inputRange.countDataRows() * sizeof(AqlItemMatrix::RowIndex);
+      numDataRows * sizeof(AqlItemMatrix::RowIndex);
+
+  _rowIndexes.reserve(numDataRows);
 
   ResourceUsageScope guard(_infos.getResourceMonitor(),
                            memoryUsageForRowIndexes);
@@ -160,30 +163,18 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
+  ExecutorState state = ExecutorState::HASMORE;
   if (!_inputReady) {
     auto inputBlock = inputRange.getBlock();
     if (inputBlock != nullptr) {
       _inputBlocks.emplace_back(inputBlock);
     }
-  }
-
-  if (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty()) {
-    // Bail out if called too often,
-    // Bail out on no elements
-    return {ExecutorState::DONE, NoStats{}, upstreamCall};
-  }
-
-  ExecutorState state = ExecutorState::HASMORE;
-
-  if (!_inputReady) {
     consumeInput(inputRange, state);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, upstreamCall};
     }
-    if (_returnNext < _rowIndexes.size()) {
-      doSorting();
-      _inputReady = true;
-    }
+    doSorting();
+    _inputReady = true;
   }
 
   while (_returnNext < _rowIndexes.size() && !output.isFull()) {
@@ -229,15 +220,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     if (inputBlock != nullptr) {
       _inputBlocks.emplace_back(inputBlock);
     }
-  }
-
-  if (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty()) {
-    // Bail out if called too often,
-    // Bail out on no elements
-    return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
-  }
-
-  if (!_inputReady) {
     consumeInput(inputRange, state);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, 0, upstreamCall};
