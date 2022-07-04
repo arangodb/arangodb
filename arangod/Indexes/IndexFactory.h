@@ -142,6 +142,14 @@ class IndexFactory {
   static void processIndexInBackground(velocypack::Slice definition,
                                        velocypack::Builder& builder);
 
+  /// @brief Default number of thread to use for index creation
+  static constexpr size_t kDefaultParallelism = 2;
+
+  /// @brief process the "parallelism" value and add it to the json
+  static void processIndexParallelism(velocypack::Slice definition,
+                                      velocypack::Builder& builder,
+                                      size_t defaulValue = kDefaultParallelism);
+
   /// @brief process the "unique" flag and add it to the json
   static void processIndexUniqueFlag(velocypack::Slice definition,
                                      velocypack::Builder& builder);

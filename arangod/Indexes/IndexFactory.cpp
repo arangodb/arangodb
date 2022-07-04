@@ -530,9 +530,17 @@ void IndexFactory::processIndexCacheEnabled(VPackSlice definition,
 
 void IndexFactory::processIndexInBackground(VPackSlice definition,
                                             VPackBuilder& builder) {
-  bool bck = basics::VelocyPackHelper::getBooleanValue(
+  bool const bck = basics::VelocyPackHelper::getBooleanValue(
       definition, StaticStrings::IndexInBackground, false);
   builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
+}
+
+void IndexFactory::processIndexParallelism(VPackSlice definition,
+                                           VPackBuilder& builder,
+                                           size_t defaultParallelism) {
+  size_t const parallelism = basics::VelocyPackHelper::getNumericValue(
+      definition, StaticStrings::IndexParallelism, defaultParallelism);
+  builder.add(StaticStrings::IndexParallelism, VPackValue(parallelism));
 }
 
 /// @brief process the unique flag and add it to the json
@@ -615,6 +623,14 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
     processIndexDeduplicateFlag(definition, builder);
     // "inBackground"
     processIndexInBackground(definition, builder);
+    // "parallelism"
+#ifdef USE_SST_INGESTION
+    processIndexParallelism(definition, builder);
+#else
+    // Writing throughput through the WAL converges at 2 threads.
+    builder.add(StaticStrings::IndexParallelism,
+                velocypack::Value{IndexFactory::kDefaultParallelism});
+#endif
     // "cacheEnabled"
     processIndexCacheEnabled(definition, builder);
   }
