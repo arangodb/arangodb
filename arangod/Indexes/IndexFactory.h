@@ -145,10 +145,13 @@ class IndexFactory {
   /// @brief Default number of thread to use for index creation
   static constexpr size_t kDefaultParallelism = 2;
 
+  // FIXME(gnusi): determine at runtime
+  /// @brief Max possible number of threads for index creation.
+  static constexpr size_t kMaxParallelism = 16;
+
   /// @brief process the "parallelism" value and add it to the json
   static void processIndexParallelism(velocypack::Slice definition,
-                                      velocypack::Builder& builder,
-                                      size_t defaulValue = kDefaultParallelism);
+                                      velocypack::Builder& builder);
 
   /// @brief process the "unique" flag and add it to the json
   static void processIndexUniqueFlag(velocypack::Slice definition,

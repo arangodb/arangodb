@@ -192,10 +192,6 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   Result fillIndexBackground(Locker& locker);
 
  private:
-  // FIXME(gnusi): determine at runtime
-  // Max possible number of threads for index creation.
-  static constexpr size_t kMaxNumThreads = 16;
-
   static constexpr uint64_t kThreadBatchSize = 100000;
   static constexpr size_t kSingleThreadThreshold = 120000;
 

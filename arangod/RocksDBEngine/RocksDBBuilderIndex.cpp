@@ -485,9 +485,10 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(
       _wrapped{std::move(wp)},
       _docsProcessed{0},
       _numDocsHint{numDocsHint},
-      _numThreads{numDocsHint > kSingleThreadThreshold
-                      ? std::clamp(numTheads, size_t{1}, kMaxNumThreads)
-                      : size_t{1}} {
+      _numThreads{
+          numDocsHint > kSingleThreadThreshold
+              ? std::clamp(numTheads, size_t{1}, IndexFactory::kMaxParallelism)
+              : size_t{1}} {
   TRI_ASSERT(_wrapped);
 }
 
