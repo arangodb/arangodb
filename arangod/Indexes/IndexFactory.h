@@ -142,7 +142,7 @@ class IndexFactory {
   static void processIndexInBackground(velocypack::Slice definition,
                                        velocypack::Builder& builder);
 
-  /// @brief Default number of thread to use for index creation
+  /// @brief Default number of threads to use for index creation
   static constexpr size_t kDefaultParallelism = 2;
 
   /// @brief process the "parallelism" value and add it to the json
