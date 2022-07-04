@@ -1,37 +1,22 @@
-import React, { MouseEventHandler, useContext } from "react";
-import {
-  ArangoTable,
-  ArangoTD,
-  ArangoTH
-} from "../../../components/arango/table";
+import React, { useContext, useState } from "react";
+import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
 import { IconButton } from "../../../components/arango/buttons";
-import Link from "./Link";
-import { map } from "lodash";
-import { ViewContext } from "../ViewLinksReactView";
+import { FormState, ViewContext, ViewProps } from "../constants";
+import Modal, { ModalFooter, ModalHeader } from "../../../components/modal/Modal";
+import { Link as HashLink, useRouteMatch } from 'react-router-dom';
+import { SaveButton } from "../Actions";
+import { chain, size } from "lodash";
 
-type CollProps = {
-  links: {};
-  addClick: MouseEventHandler<HTMLElement>;
-  viewLink: (link: {} | []) => void;
-  icon: string;
+type DeleteButtonProps = {
+  collection: string;
+  modalCid: string;
 };
 
-const LinkList = ({ links, addClick, icon, viewLink }: CollProps) => {
-  const checkLinks = (links: any) => {
-    let linksArr = [];
-    if (links) {
-      for (const l in links) {
-        linksArr.push({ name: l, link: links[l] });
-      }
-    }
-    return linksArr;
-  };
-
-  const linksArr = checkLinks(links);
-
+const DeleteButton = ({ collection, modalCid }: DeleteButtonProps) => {
+  const [show, setShow] = useState(false);
   const { dispatch } = useContext(ViewContext);
 
-  const removeLink = (collection: string | number) => {
+  const removeLink = async () => {
     dispatch({
       type: "setField",
       field: {
@@ -41,62 +26,74 @@ const LinkList = ({ links, addClick, icon, viewLink }: CollProps) => {
     });
   };
 
-  const getLinkRemover = (collection: string | number) => () => {
-    removeLink(collection);
-  };
+  return <>
+    <IconButton icon={'trash-o'} type={'danger'} onClick={() => setShow(true)}/>
+    <Modal show={show} setShow={setShow} cid={modalCid}>
+      <ModalHeader title={`Delete Link "${collection}"?`}/>
+      <ModalFooter>
+        <button className="button-close" onClick={() => setShow(false)}>Close</button>
+        <button className="button-danger" style={{ float: 'right' }} onClick={removeLink}>Delete</button>
+      </ModalFooter>
+    </Modal>
+  </>;
+};
+
+const LinkList = ({ name }: ViewProps) => {
+  const { formState: fs, isAdminUser, changed, setChanged } = useContext(ViewContext);
+  const match = useRouteMatch();
+
+  const formState = fs as FormState;
+  const validLinks = chain(formState.links || {}).toPairs().filter(pair => pair[1] !== null).value();
 
   return (
-    <div className="contentIn" id="indexHeaderContent">
-      <ArangoTable className={"edit-index-table arango-table"}>
-        <thead>
+    <div id="modal-dialog">
+      <div className="modal-body">
+        <ArangoTable className={"edit-index-table arango-table"}>
+          <thead>
           <tr className="figuresHeader">
-            <ArangoTH seq={0}>Link Name</ArangoTH>
-            <ArangoTH seq={1}>Properties</ArangoTH>
-            <ArangoTH seq={1}>Root Analyzers</ArangoTH>
-            <ArangoTH seq={3}>Action</ArangoTH>
+            <ArangoTH seq={0}>Collection</ArangoTH>
+            <ArangoTH seq={1}>Actions</ArangoTH>
           </tr>
-        </thead>
+          </thead>
 
-        <tbody>
-          {links &&
-            map(linksArr, (p, key) => (
-              <Link
-                name={p.name}
-                analyzers={p.link.analyzers}
-                includeAllFields={p.link.includeAllFields}
-                action={
-                  <>
-                    <IconButton
-                      icon={"trash-o"}
-                      type={"danger"}
-                      onClick={getLinkRemover}
-                    />
-                    <IconButton
-                      icon={"eye"}
-                      type={"warning"}
-                      onClick={() => viewLink(p.name)}
-                    />
-                  </>
-                }
-                key={key}
-                linkKey={key}
-              />
-            ))}
-        </tbody>
-        <tfoot>
-          <tr>
-            <ArangoTD seq={0}> </ArangoTD>
-            <ArangoTD seq={1}> </ArangoTD>
-            <ArangoTD seq={2}> </ArangoTD>
-            <ArangoTD seq={3}>
-              <i className={`fa ${icon}`} onClick={addClick} />
-            </ArangoTD>
-          </tr>
-        </tfoot>
-      </ArangoTable>
-
-      <div id="modal-dialog">
-        <div className="modal-footer" style={{ border: "none" }} />
+          <tbody>
+          {
+            size(validLinks)
+              ? validLinks.map(pair =>
+                <tr key={pair[0]}>
+                  <ArangoTD seq={0}>{pair[0]}</ArangoTD>
+                  <ArangoTD seq={1}>
+                    <DeleteButton collection={pair[0]} modalCid={`modal-content-view-${pair[0]}`}/>
+                    <HashLink to={`/${pair[0]}`}>
+                      <IconButton icon={"edit"} type={"warning"}/>
+                    </HashLink>
+                  </ArangoTD>
+                </tr>
+              )
+              : <tr>
+                <ArangoTD seq={0} colSpan={2}>No links.</ArangoTD>
+              </tr>
+          }
+          </tbody>
+          {
+            isAdminUser
+              ? <tfoot>
+              <tr>
+                <ArangoTD seq={0} colSpan={2}>
+                  <HashLink to={`${match.url}_add`}>
+                    <i className={'fa fa-plus-circle'}/>
+                  </HashLink>
+                </ArangoTD>
+              </tr>
+              </tfoot>
+              : null
+          }
+        </ArangoTable>
+        {
+          isAdminUser && changed
+            ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+            : null
+        }
       </div>
     </div>
   );
