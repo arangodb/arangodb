@@ -92,14 +92,35 @@ class Query;
 namespace arangodb::iresearch {
 namespace {
 
-aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const&,
-                              std::span<aql::AqlValue const>) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
+[[maybe_unused]] aql::AqlValue eeFunction(aql::ExpressionContext*,
+                                          aql::AstNode const& node,
+                                          std::span<aql::AqlValue const>) {
+  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
+
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  TRI_ASSERT(impl);
+
+  THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter functions EXISTS, PHRASE "
-      " are designed to be used only within a corresponding SEARCH statement "
+      "ArangoSearch filter function '%s' "
+      " is available in ArangoDB Enterprise Edition only.",
+      impl->name.c_str());
+}
+
+aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const& node,
+                              std::span<aql::AqlValue const>) {
+  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
+
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  TRI_ASSERT(impl);
+
+  THROW_ARANGO_EXCEPTION_FORMAT(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "ArangoSearch filter function '%s' "
+      " is designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
-      " Please ensure function signature is correct.");
+      " Please ensure function signature is correct.",
+      impl->name.c_str());
 }
 
 // Function body for ArangoSearch context functions ANALYZER/BOOST.
@@ -531,18 +552,18 @@ bool upgradeSingleServerArangoSearchView0_1(
 void registerFilters(aql::AqlFunctionFeature& functions) {
   using arangodb::iresearch::addFunction;
 
-  auto flags = aql::Function::makeFlags(
+  constexpr auto flags = aql::Function::makeFlags(
       aql::Function::Flags::Deterministic, aql::Function::Flags::Cacheable,
       aql::Function::Flags::CanRunOnDBServerCluster,
       aql::Function::Flags::CanRunOnDBServerOneShard,
       aql::Function::Flags::CanUseInAnalyzer);
 
-  auto flagsNoAnalyzer = aql::Function::makeFlags(
+  constexpr auto flagsNoAnalyzer = aql::Function::makeFlags(
       aql::Function::Flags::Deterministic, aql::Function::Flags::Cacheable,
       aql::Function::Flags::CanRunOnDBServerCluster,
       aql::Function::Flags::CanRunOnDBServerOneShard);
 
-  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ]).
+  // (attribute, ["analyzer"|"type"|"string"|"numeric"|"bool"|"null"]).
   // cannot be used in analyzers!
   addFunction(functions,
               {"EXISTS", ".|.,.", flagsNoAnalyzer, &dummyFilterFunc});
@@ -558,6 +579,12 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 
   // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &minMatchFunc});
+
+  // attribute, target, threshold, analyzer
+  addFunction(functions, {"MINHASH_MATCH", ".,.,.,.", flags, &eeFunction});
+
+  // array, analyzer
+  addFunction(functions, {"MINHASH", ".,.", flags, &eeFunction});
 
   // (filter expression, boost)
   addFunction(functions, {"BOOST", ".,.", flags, &contextFunc});

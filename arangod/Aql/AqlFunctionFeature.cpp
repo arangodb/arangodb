@@ -198,26 +198,28 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
+
+  // (attribute, target, max distance,
+  // [include transpositions, max terms, prefix])
   add({"LEVENSHTEIN_MATCH", ".,.,.|.,.,.", flags,
-       &Functions::LevenshteinMatch});  // (attribute, target, max distance,
-                                        // [include transpositions, max terms,
-                                        // prefix])
+       &Functions::LevenshteinMatch});
 
   auto flagsNoAnalyzer = Function::makeFlags(FF::Deterministic, FF::Cacheable,
                                              FF::CanRunOnDBServerCluster,
                                              FF::CanRunOnDBServerOneShard);
 
-  add({"NGRAM_MATCH", ".,.|.,.", flagsNoAnalyzer,
-       &Functions::NgramMatch});  // (attribute, target, [threshold, analyzer])
-                                  // OR (attribute, target, [analyzer])
-  add({"NGRAM_SIMILARITY", ".,.,.", flags,
-       &Functions::NgramSimilarity});  // (attribute, target, ngram size)
+  // (attribute, target, [threshold, analyzer])
+  // OR (attribute, target, [analyzer])
+  add({"NGRAM_MATCH", ".,.|.,.", flagsNoAnalyzer, &Functions::NgramMatch});
+  // (attribute, target, ngram size)
+  add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity});
+
+  // (attribute, target, ngram size)
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags,
-       &Functions::NgramPositionalSimilarity});  // (attribute, target, ngram
-                                                 // size)
-  add({"IN_RANGE", ".,.,.,.,.", flags,
-       &Functions::InRange});  // (attribute, lower, upper, include lower,
-                               // include upper)
+       &Functions::NgramPositionalSimilarity});
+
+  // (attribute, lower, upper, include lower,  include upper)
+  add({"IN_RANGE", ".,.,.,.,.", flags, &Functions::InRange});
 
   // special flags:
   // not deterministic and not cacheable
