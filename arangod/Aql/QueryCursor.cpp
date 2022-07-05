@@ -51,13 +51,12 @@ using namespace arangodb::basics;
 QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
                                      aql::QueryResult&& result,
                                      size_t batchSize, double ttl,
-                                     bool hasCount, bool allowDirtyReads)
+                                     bool hasCount)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.data->slice()),
-      _cached(_result.cached),
-      _allowDirtyReads(allowDirtyReads) {
+      _cached(_result.cached) {
   TRI_ASSERT(_result.data->slice().isArray());
 }
 
@@ -153,11 +152,14 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
       _query(std::move(q)),
       _queryResultPos(0),
-      _finalization(false) {
+      _finalization(false),
+      _allowDirtyReads(false) {
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
+  _allowDirtyReads = _query->allowDirtyReads();  // is set after prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     debugKillQuery();
   }
+
   // In all the following ASSERTs it is valid (though unlikely) that the query
   // is already killed In the cluster this kill operation will trigger cleanup
   // side-effects, such as changing the STATE and commiting / aborting the

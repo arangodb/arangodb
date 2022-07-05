@@ -48,7 +48,7 @@ class RestSimpleHandler : public RestCursorHandler {
   ///        queryResult.
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus handleQueryResult(bool allowDirtyReads) override final;
+  RestStatus handleQueryResult() override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle result of a remove-by-keys query

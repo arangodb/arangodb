@@ -98,7 +98,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(builder.get() != nullptr);
 
   arangodb::Cursor* cursor = cursors->createFromQueryResult(
-      std::move(result), static_cast<size_t>(batchSize), ttl, true, false);
+      std::move(result), static_cast<size_t>(batchSize), ttl, true);
   TRI_ASSERT(cursor != nullptr);
   auto sg = arangodb::scopeGuard([&]() noexcept { cursors->release(cursor); });
 

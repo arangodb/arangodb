@@ -99,7 +99,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   ///        to not be interrupted and is guaranteed to get a complete
   ///        queryResult.
   //////////////////////////////////////////////////////////////////////////////
-  virtual RestStatus handleQueryResult(bool allowDirtyReads);
+  virtual RestStatus handleQueryResult();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query was canceled

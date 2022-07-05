@@ -48,7 +48,7 @@ struct QueryResult {
   QueryResult(QueryResult&& other) = default;
   QueryResult& operator=(QueryResult&& other) = default;
 
-  QueryResult() : result(), cached(false) {}
+  QueryResult() : result(), cached(false), allowDirtyReads(false) {}
 
   explicit QueryResult(Result const& res) : result(res), cached(false) {}
 
@@ -90,6 +90,11 @@ struct QueryResult {
   std::shared_ptr<arangodb::velocypack::Builder> data;
   std::shared_ptr<arangodb::velocypack::Builder> extra;
   std::shared_ptr<transaction::Context> context;
+  bool allowDirtyReads;  // indicate that query was done with dirty reads,
+                         // we need to preserve this here, since query results
+                         // can live longer than their query objects and the
+                         // transaction therein and we might still need the
+                         // information to produce the outgoing HTTP header!
 };
 }  // namespace aql
 }  // namespace arangodb

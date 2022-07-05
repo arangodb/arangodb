@@ -109,8 +109,7 @@ std::string queryString(TRI_edge_direction_e dir) {
 
 aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
                             TRI_edge_direction_e dir,
-                            std::string const& vertexId,
-                            bool& allowDirtyReads) {
+                            std::string const& vertexId, bool allowDirtyReads) {
   auto bindParameters = std::make_shared<VPackBuilder>();
   bindParameters->openObject();
   bindParameters->add("@collection", VPackValue(cname));
@@ -125,14 +124,6 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   auto query = arangodb::aql::Query::create(
       ctx, aql::QueryString(queryString(dir)), std::move(bindParameters),
       std::move(options));
-  // The following deserves an explanation: The above flag `allowDirtyReads`
-  // indicates if the client has requested dirty reads for this particular
-  // request. However, if this is happening in the context of a streaming
-  // transaction, then it is the transaction which decides. Therefore, we
-  // have to hand back the actual information if dirty reads are allowed
-  // with the decision from the transaction state:
-  allowDirtyReads =
-      query->trxForOptimization().state()->options().allowDirtyReads;
   return query->executeSync();
 }
 }  // namespace
@@ -201,7 +192,10 @@ bool RestEdgesHandler::readEdges() {
 
   auto queryResult = ::queryEdges(_vocbase, collectionName, direction,
                                   startVertex, allowDirtyReads);
-  if (allowDirtyReads) {  // could have been changed in ::queryEdges!
+  if (queryResult.allowDirtyReads) {
+    // Note that this is not necessarily the same as `allowDirtyReads` above!
+    // This is, because this particular query could be in the context of a
+    // transcation doing dirty reads!
     setOutgoingDirtyReadsHeader(true);
   }
   if (queryResult.result.fail()) {

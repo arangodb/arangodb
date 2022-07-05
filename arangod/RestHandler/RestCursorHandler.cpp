@@ -264,7 +264,6 @@ RestStatus RestCursorHandler::processQuery() {
         "Illegal state in RestCursorHandler, query not found.");
   }
 
-  bool allowDirtyReads = false;
   {
     // always clean up
     auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
@@ -277,18 +276,14 @@ RestStatus RestCursorHandler::processQuery() {
       return RestStatus::WAITING;
     }
     TRI_ASSERT(state == aql::ExecutionState::DONE);
-
-    if (_query->trxForOptimization().state()->options().allowDirtyReads) {
-      allowDirtyReads = true;
-    }
   }
 
   // We cannot get into HASMORE here, or we would lose results.
-  return handleQueryResult(allowDirtyReads);
+  return handleQueryResult();
 }
 
 // non stream case, result is complete
-RestStatus RestCursorHandler::handleQueryResult(bool allowDirtyReads) {
+RestStatus RestCursorHandler::handleQueryResult() {
   TRI_ASSERT(_query == nullptr);
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -320,7 +315,7 @@ RestStatus RestCursorHandler::handleQueryResult(bool allowDirtyReads) {
     // result is smaller than batchSize and will be returned directly. no need
     // to create a cursor
 
-    if (allowDirtyReads) {
+    if (_queryResult.allowDirtyReads) {
       setOutgoingDirtyReadsHeader(true);
     }
 
@@ -386,7 +381,7 @@ RestStatus RestCursorHandler::handleQueryResult(bool allowDirtyReads) {
     TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize,
-                                             ttl, count, allowDirtyReads);
+                                             ttl, count);
     // throws if a coordinator soft shutdown is ongoing
 
     return generateCursorResult(rest::ResponseCode::CREATED);

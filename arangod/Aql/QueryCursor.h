@@ -48,8 +48,7 @@ class SharedAqlItemBlockPtr;
 class QueryResultCursor final : public arangodb::Cursor {
  public:
   QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
-                    size_t batchSize, double ttl, bool hasCount,
-                    bool allowDirtyReads);
+                    size_t batchSize, double ttl, bool hasCount);
 
   ~QueryResultCursor() = default;
 
@@ -76,15 +75,15 @@ class QueryResultCursor final : public arangodb::Cursor {
   arangodb::velocypack::Slice extra() const;
 
   /// @brief Remember, if we dirty reads were allowed:
-  bool allowDirtyReads() const override final { return _allowDirtyReads; }
+  bool allowDirtyReads() const override final {
+    return _result.allowDirtyReads;
+  }
 
  private:
   DatabaseGuard _guard;
   aql::QueryResult _result;
   arangodb::velocypack::ArrayIterator _iterator;
   bool _cached;
-  bool _allowDirtyReads;  // since we do no longer have the transaction or
-                          // query, we have to remember!
 };
 
 /// Cursor managing a query from which it continuously gets
@@ -121,14 +120,9 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // The following method returns, if the transaction the query is using
   // allows dirty reads (reads from followers).
   virtual bool allowDirtyReads() const override final {
-    if (_query != nullptr) {
-      auto& trx = _query->trxForOptimization();
-      return trx.state()->options().allowDirtyReads;
-    } else {
-      LOG_DEVEL
-          << "Tried to ask query for dirty reads, but _query is already gone!";
-    }
-    return false;
+    // We got this information from the query directly in the constructor,
+    // when `prepareQuery` has been called:
+    return _allowDirtyReads;
   }
 
  private:
@@ -155,6 +149,9 @@ class QueryStreamCursor final : public arangodb::Cursor {
   transaction::Methods::StatusChangeCallback _stateChangeCb;
 
   bool _finalization;
+
+  bool _allowDirtyReads;  // keep this information when the query is already
+                          // gone.
 };
 
 }  // namespace aql
