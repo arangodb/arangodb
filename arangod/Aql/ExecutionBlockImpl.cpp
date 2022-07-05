@@ -26,7 +26,6 @@
 
 #include "ExecutionBlockImpl.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CalculationExecutor.h"

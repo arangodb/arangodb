@@ -296,7 +296,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
-  Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
   Aql/AqlCallList.cpp
   Aql/AqlCallSet.cpp

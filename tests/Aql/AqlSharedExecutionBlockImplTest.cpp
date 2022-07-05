@@ -27,7 +27,6 @@
 #include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CountCollectExecutor.h"
@@ -65,7 +64,7 @@ using InsertExecutor =
  * Right now we use the following Executors:
  *   FilterExecutor => SingleRowFetcher, non-passthrough
  *   IdExecutor => SingleRowFetcher, passthrough
- *   SortExecutor => AllRowsFetcher;
+ *   SortExecutor => SingleRowFetcher, passthrough;
  *   UnsortedGatherExecutor => MultiDependencySingleRowFetcher
  *   Insert/Update => SideEffectExecutor
  */
