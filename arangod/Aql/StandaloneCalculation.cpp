@@ -246,7 +246,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     Parser parser(queryContext, *ast, qs);
     parser.parse();
     ast->validateAndOptimize(queryContext.trxForOptimization(),
-                             /*optimizeNonCacheable*/ false);
+                             {.optimizeNonCacheable = false});
     AstNode* astRoot = const_cast<AstNode*>(ast->root());
     TRI_ASSERT(astRoot);
     TRI_ASSERT(astRoot->type == NODE_TYPE_ROOT);

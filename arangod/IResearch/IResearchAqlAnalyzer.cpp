@@ -478,8 +478,13 @@ bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
               return node;
             }
           });
+      // we have to set "optimizeNonCacheable" to false here, so that the
+      // queryString expression gets re-evaluated every time, and does not
+      // store the computed results once (e.g. when using a queryString such
+      // as "RETURN DATE_NOW()" you always want the current date to be
+      // returned, and not a date once stored)
       ast->validateAndOptimize(_query->trxForOptimization(),
-                               /*optimizeNonCacheable*/ true);
+                               {.optimizeNonCacheable = false});
 
       std::unique_ptr<ExecutionPlan> plan =
           ExecutionPlan::instantiateFromAst(ast, true);

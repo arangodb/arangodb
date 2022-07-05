@@ -2360,9 +2360,9 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
 /// bind parameter injection. merging this pass with the regular AST
 /// optimizations saves one extra pass over the AST
 void Ast::validateAndOptimize(transaction::Methods& trx,
-                              bool optimizeNonCacheable) {
+                              Ast::ValidateAndOptimizeOptions const& options) {
   ::ValidateAndOptimizeContext context(trx);
-  context.optimizeNonCacheable = optimizeNonCacheable;
+  context.optimizeNonCacheable = options.optimizeNonCacheable;
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;

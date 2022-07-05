@@ -28,6 +28,7 @@
 namespace arangodb {
 
 class ComputedValues;
+class LogicalCollection;
 struct ValidatorBase;
 
 namespace aql {
@@ -40,7 +41,7 @@ class Methods;
 struct BatchOptions {
   BatchOptions();
   ~BatchOptions();
-  void ensureComputedValuesContext(Methods& trx);
+  void ensureComputedValuesContext(Methods& trx, LogicalCollection& collection);
 
   bool validateShardKeysOnUpdateReplace = false;
   bool validateSmartJoinAttribute = false;

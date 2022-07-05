@@ -152,7 +152,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
   }
 
   // nothing else to do
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 PhysicalCollection* ClusterCollection::clone(LogicalCollection& logical) const {
@@ -168,7 +168,8 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
                VPackValue(Helper::getBooleanValue(
                    _info.slice(), StaticStrings::CacheEnabled, false)));
 
-    // TODO: computedValues?
+    // note: computed values do not need to be handled here, as they are added
+    // by LogicalCollection::appendVPack()
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     // do nothing

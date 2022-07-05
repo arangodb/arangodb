@@ -48,6 +48,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
+#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
@@ -365,7 +366,8 @@ void Expression::prepareForExecution() {
     case JSON: {
       if (_data == nullptr) {
         // generate a constant value
-        velocypack::Builder builder;
+        velocypack::Buffer<uint8_t> buffer;
+        velocypack::Builder builder(buffer);
         _node->toVelocyPackValue(builder);
 
         _data = new uint8_t[static_cast<size_t>(builder.size())];
@@ -1718,7 +1720,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         if (!isBoolean) {
           AqlValue sub = executeSimpleExpression(ctx, projectionNode,
                                                  localMustDestroy, false);
-          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
+          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ true,
                            /*allowUnindexed*/ false);
           if (localMustDestroy) {
             sub.destroy();

@@ -632,7 +632,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
 
   if (batchOptions.computedValues != nullptr) {
     // add all remaining computed attributes, if we need to
-    batchOptions.ensureComputedValuesContext(trx);
+    batchOptions.ensureComputedValuesContext(trx, collection);
     batchOptions.computedValues->mergeComputedAttributes(
         *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
         ComputeValuesOn::kUpdate, builder);
@@ -774,7 +774,7 @@ Result transaction::helpers::newObjectForInsert(
 
   if (batchOptions.computedValues != nullptr) {
     // add all remaining computed attributes, if we need to
-    batchOptions.ensureComputedValuesContext(trx);
+    batchOptions.ensureComputedValuesContext(trx, collection);
     batchOptions.computedValues->mergeComputedAttributes(
         *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
         ComputeValuesOn::kInsert, builder);
@@ -879,7 +879,7 @@ Result transaction::helpers::newObjectForReplace(
 
   if (batchOptions.computedValues != nullptr) {
     // add all remaining computed attributes, if we need to
-    batchOptions.ensureComputedValuesContext(trx);
+    batchOptions.ensureComputedValuesContext(trx, collection);
     batchOptions.computedValues->mergeComputedAttributes(
         *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
         ComputeValuesOn::kReplace, builder);

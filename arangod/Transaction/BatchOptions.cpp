@@ -36,10 +36,10 @@ transaction::BatchOptions::BatchOptions() = default;
 transaction::BatchOptions::~BatchOptions() = default;
 
 void transaction::BatchOptions::ensureComputedValuesContext(
-    transaction::Methods& trx) {
+    transaction::Methods& trx, LogicalCollection& collection) {
   if (computedValuesContext == nullptr) {
     computedValuesContext =
-        std::make_unique<ComputedValuesExpressionContext>(trx);
+        std::make_unique<ComputedValuesExpressionContext>(trx, collection);
   }
 }
 

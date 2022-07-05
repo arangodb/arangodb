@@ -33,11 +33,13 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
 struct ValidatorBase;
 
 namespace aql {
@@ -67,7 +69,8 @@ enum class ComputeValuesOn : uint8_t {
 // expression context used for calculating computed values inside
 class ComputedValuesExpressionContext final : public aql::ExpressionContext {
  public:
-  explicit ComputedValuesExpressionContext(transaction::Methods& trx);
+  explicit ComputedValuesExpressionContext(transaction::Methods& trx,
+                                           LogicalCollection& collection);
 
   void registerWarning(ErrorCode errorCode, char const* msg) override;
 
@@ -104,7 +107,10 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   void clearVariable(aql::Variable const* variable) noexcept override;
 
  private:
+  std::string buildLogMessage(std::string_view type, char const* msg) const;
+
   transaction::Methods& _trx;
+  LogicalCollection& _collection;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   bool _failOnWarning;
 
