@@ -3,6 +3,9 @@ devel
 
 * Made the SortExecutor receive its input incrementally, instead of receiving
   a whole matrix containing all input at once.
+  This is to be used later in conjunction with rocksdb temporary storage of the
+  entries for queries with a large amount of entries in the input not to be 
+  held in memory and also for the rocksdb storage to store the entries in order.
 
 * Fix thread ids and thread names in log output for threads that are not
   started directly by ArangoDB code, but indirectly via library code.
@@ -34,10 +37,6 @@ devel
   not-yet-officially committed data. Use at your own risk if performance
   is more important than correctness or if you know that data does not
   change.
-
-  This is to be used later in conjunction with rocksdb temporary storage of the
-  entries for queries with a large amount of entries in the input not to be 
-  held in memory and also for the rocksdb storage to store the entries in order.
 
 * Changed HTTP response code for error number 1521 from 500 to 400.
 
