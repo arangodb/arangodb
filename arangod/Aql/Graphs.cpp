@@ -21,17 +21,81 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
 
+#include "Graphs.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Condition.h"
+#include "Aql/NonConstExpressionContainer.h"
+#include "Aql/OptimizerUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
-#include "Graphs.h"
+#include "Graph/Providers/BaseProviderOptions.h"
+
+#include <velocypack/Iterator.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
+using namespace arangodb::graph;
+
+namespace {
+void calculateMemberToUpdate(std::string const& memberString,
+                             std::optional<size_t>& memberToUpdate,
+                             Variable const* tmpVariable,
+                             AstNode* indexCondition) {
+  std::pair<Variable const*, std::vector<AttributeName>>
+      pathCmp;
+  for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
+    // We search through the nary-and and look for EQ - _from/_to
+    auto eq = indexCondition->getMemberUnchecked(x);
+    if (eq->type != AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // No equality. Skip
+      continue;
+    }
+    TRI_ASSERT(eq->numMembers() == 2);
+    // It is sufficient to only check member one.
+    // We build the condition this way.
+    auto mem = eq->getMemberUnchecked(0);
+    if (mem->isAttributeAccessForVariable(pathCmp, true)) {
+      if (pathCmp.first != tmpVariable) {
+        continue;
+      }
+      if (pathCmp.second.size() == 1 &&
+          pathCmp.second[0].name == memberString) {
+        memberToUpdate = x;
+        break;
+      }
+      continue;
+    }
+  }
+}
+
+auto generateExpression(ExecutionPlan const* plan, Variable const* variable,
+                        AstNode* remainderCondition,
+                        AstNode* indexCondition)
+    -> std::unique_ptr<Expression> {
+  ::arangodb::containers::HashSet<size_t> toRemove;
+  auto ast = plan->getAst();
+  Condition::collectOverlappingMembers(plan, variable, remainderCondition,
+                                            indexCondition, toRemove, nullptr,
+                                            false);
+  size_t n = remainderCondition->numMembers();
+
+  if (n != toRemove.size()) {
+    // Slow path need to explicitly remove nodes.
+    for (; n > 0; --n) {
+      // Now n is one more than the idx we actually check
+      if (toRemove.find(n - 1) != toRemove.end()) {
+        // This index has to be removed.
+        remainderCondition->removeMemberUnchecked(n - 1);
+      }
+    }
+    return std::make_unique<Expression>(ast, remainderCondition);
+  }
+  return nullptr;
+}
+}  // namespace
 
 /// @brief Prepares an edge condition builder
 /// this builder just contains the basic
@@ -161,6 +225,61 @@ AstNode* EdgeConditionBuilder::getInboundConditionForDepth(uint64_t depth, Ast* 
     }
   }
   return cond;
+}
+
+std::pair<
+    std::vector<IndexAccessor>,
+    std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+EdgeConditionBuilder::buildIndexAccessors(
+    ExecutionPlan const* plan, Variable const* tmpVar,
+    std::unordered_map<VariableId, VarInfo> const& varInfo,
+    std::vector<std::pair<Collection*, TRI_edge_direction_e>> const&
+        collections) {
+  auto ast = plan->getAst();
+  std::vector<IndexAccessor> indexAccessors{};
+  constexpr bool onlyEdgeIndexes = false;
+  // arbitrary value for "number of edges in collection" used here. the
+  // actual value does not matter much. 1000 has historically worked fine.
+  constexpr size_t itemsInCollection = 1000;
+
+  for (size_t i = 0; i < collections.size(); ++i) {
+    auto& [edgeCollection, dir] = collections[i];
+    TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+
+    AstNode* condition =
+        (dir == TRI_EDGE_IN) ? getInboundCondition() : getOutboundCondition();
+    AstNode* indexCondition = condition->clone(ast);
+    std::shared_ptr<Index> indexToUse;
+
+    bool res = utils::getBestIndexHandleForFilterCondition(
+        *edgeCollection, indexCondition, tmpVar, itemsInCollection,
+        IndexHint(), indexToUse, onlyEdgeIndexes);
+    if (!res) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "expected edge index not found");
+    }
+
+    std::optional<size_t> memberToUpdate{std::nullopt};
+    ::calculateMemberToUpdate(dir == TRI_EDGE_IN ? StaticStrings::ToString
+                                                 : StaticStrings::FromString,
+                              memberToUpdate, tmpVar, indexCondition);
+
+    AstNode* remainderCondition = condition->clone(ast);
+    std::unique_ptr<Expression> expression =
+        ::generateExpression(plan, tmpVar, remainderCondition, indexCondition);
+
+    auto container = utils::extractNonConstPartsOfIndexCondition(
+        ast, varInfo, false, false, indexCondition, tmpVar);
+    indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
+                                memberToUpdate, std::move(expression),
+                                std::move(container), i, dir);
+  }
+
+  return std::make_pair<
+      std::vector<IndexAccessor>,
+      std::unordered_map<uint64_t,
+                         std::vector<IndexAccessor>>>(
+      std::move(indexAccessors), {});
 }
 
 EdgeConditionBuilderContainer::EdgeConditionBuilderContainer()

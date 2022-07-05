@@ -22,17 +22,23 @@
 
 #include "gtest/gtest.h"
 
-#include "AqlExecutorTestCase.h"
+#include "./Graph/GraphTestTools.h"
+#include "./Mocks/MockGraph.h"
+
 #include "Aql/Graphs.h"
+#include "Aql/Collection.h"
+#include "Graph/Providers/BaseProviderOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::graph;
+using namespace arangodb::tests::graph;
+using namespace arangodb::tests::mocks;
 
 namespace arangodb {
 namespace tests {
 namespace aql {
-class EdgeConditionBuilderTest
-    : public AqlExecutorTestCase<false> {
+class EdgeConditionBuilderTest : public ::testing::Test {
  public:
   struct ExpectedCondition {
     friend std::ostream& operator<<(std::ostream& out,
@@ -47,12 +53,32 @@ class EdgeConditionBuilderTest
   };
 
  protected:
+  std::unique_ptr<GraphTestSetup> s{std::make_unique<GraphTestSetup>()};
+  std::unique_ptr<MockGraphDatabase> singleServer{std::make_unique<MockGraphDatabase>(s->server, "testVocbase")};
+  MockGraph graph{};
+  std::shared_ptr<arangodb::aql::Query> query{nullptr};
+
   std::string const fakeId{"fakeId"};
-  Ast* _ast{fakedQuery->ast()};
-  Variable const* _variable{_ast->variables()->createTemporaryVariable()};
-  AstNode const* _idNode{_ast->createNodeValueString(fakeId.data(), fakeId.length())};
-  AstNode const* _varRefNode{_ast->createNodeReference(_variable)};
-  EdgeConditionBuilder condBuilder{_ast, _variable, _idNode};
+  Ast* _ast{nullptr};
+  Variable* _variable{nullptr};
+  AstNode* _idNode{nullptr};
+  AstNode* _varRefNode{nullptr};
+  std::unordered_map<VariableId, VarInfo> _varInfo;
+
+  EdgeConditionBuilderTest() {
+    singleServer->addGraph(graph);
+
+    // We now have collections "v" and "e"
+    query = singleServer->getQuery("RETURN 1", {"v", "e"});
+    _ast = query->ast();
+    _variable = _ast->variables()->createTemporaryVariable();
+    _idNode = _ast->createNodeValueString(fakeId.data(), fakeId.length());
+    _varRefNode = _ast->createNodeReference(_variable);
+  }
+
+  EdgeConditionBuilder makeTestee() {
+      return EdgeConditionBuilder{_ast, _variable, _idNode};
+  }
 
   // NOTE: Make sure to RETAIN the equalTo content, the Ast will only reference it.
   AstNode* createEqualityCondition(std::string const& attribute, std::string const& equalTo) {
@@ -72,7 +98,8 @@ class EdgeConditionBuilderTest
         << "Found: " << compare->getStringValue() << " expected: " << equalTo;
     std::vector<arangodb::basics::AttributeName> actual{};
     arangodb::basics::AttributeName expected{attribute};
-    auto queryPair = std::make_pair(_variable, actual);
+    Variable const* var = _variable;
+    auto queryPair = std::make_pair(var, actual);
     EXPECT_TRUE(access->isAttributeAccessForVariable(queryPair)) << access;
     EXPECT_TRUE(arangodb::basics::AttributeName::isIdentical(queryPair.second,
                                                              {expected}, false))
@@ -102,7 +129,8 @@ class EdgeConditionBuilderTest
       return false;
     }
     std::vector<arangodb::basics::AttributeName> actualAttributes{};
-    auto queryPair = std::make_pair(_variable, actualAttributes);
+    Variable const* var = _variable;
+    auto queryPair = std::make_pair(var, actualAttributes);
     if (!access->isAttributeAccessForVariable(queryPair) ||
         !arangodb::basics::AttributeName::isIdentical(queryPair.second,
                                                       expected.path, false)) {
@@ -161,6 +189,18 @@ class EdgeConditionBuilderTest
     otherConditions.emplace_back(StaticStrings::ToString, fakeId);
     assertAllConditionsMatch(fullCondition, otherConditions);
   }
+
+  // Just a helper method to hand in the vast amount of parameters...
+  std::pair<
+      std::vector<arangodb::graph::IndexAccessor>,
+      std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
+  buildIndexAccessors(
+      EdgeConditionBuilder& condBuilder,
+      std::vector<std::pair<arangodb::aql::Collection*, TRI_edge_direction_e>> const&
+          collections) {
+    return condBuilder.buildIndexAccessors(query->plan(), _variable,
+                                           _varInfo, collections);
+  }
 };
 
 std::ostream& operator<<(std::ostream& out,
@@ -169,13 +209,21 @@ std::ostream& operator<<(std::ostream& out,
 }
 
 TEST_F(EdgeConditionBuilderTest, default_base_edge_conditions) {
+  auto condBuilder = makeTestee();
   auto out = condBuilder.getOutboundCondition()->clone(_ast);
   auto in = condBuilder.getInboundCondition()->clone(_ast);
   assertIsFromAccess(out, {});
   assertIsToAccess(in, {});
+
+
+  std::vector<std::pair<arangodb::aql::Collection*, TRI_edge_direction_e>> cols{{query->collections().get("e"), TRI_EDGE_OUT}};
+  auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+  // No Depth-Specific Conditions
+  EXPECT_TRUE(specific.empty());
 }
 
 TEST_F(EdgeConditionBuilderTest, modify_both_conditions) {
+  auto condBuilder = makeTestee();
   std::string attr = "foo";
   std::string value = "bar";
   auto readValue = createEqualityCondition(attr, value);
@@ -188,6 +236,7 @@ TEST_F(EdgeConditionBuilderTest, modify_both_conditions) {
 }
 
 TEST_F(EdgeConditionBuilderTest, depth_specific_conditions) {
+  auto condBuilder = makeTestee();
   std::string attr1 = "depth1";
   std::string value1 = "value1";
 
@@ -237,6 +286,7 @@ TEST_F(EdgeConditionBuilderTest, depth_specific_conditions) {
 }
 
 TEST_F(EdgeConditionBuilderTest, merge_depth_with_base) {
+  auto condBuilder = makeTestee();
   std::string attr1 = "depth1";
   std::string value1 = "value1";
 

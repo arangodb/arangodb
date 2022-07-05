@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Aql/VariableGenerator.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -39,6 +40,8 @@ struct IndexAccessor;
 namespace aql {
 struct AstNode;
 struct Variable;
+class ExecutionPlan;
+struct VarInfo;
 
 // Helper class to generate AQL AstNode conditions
 // that can be handed over to Indexes in order to
@@ -115,7 +118,11 @@ class EdgeConditionBuilder {
   std::pair<
       std::vector<arangodb::graph::IndexAccessor>,
       std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
-  buildIndexAccessors();
+  buildIndexAccessors(
+      ExecutionPlan const* plan, Variable const* tmpVar,
+      std::unordered_map<VariableId, VarInfo> const& varInfo,
+      std::vector<std::pair<aql::Collection*, TRI_edge_direction_e>> const&
+          collections);
 
  private:
   // Internal helper to swap _from and _to parts
