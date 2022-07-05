@@ -167,9 +167,6 @@ TYPED_TEST_P(InputRangeTest, test_block_only_datarows) {
     SCOPED_TRACE("Testing state: " + stateToString(finalState));
     auto block = buildBlock<1>(this->manager(), {{1}, {2}, {3}});
     auto testee = this->buildRange(finalState, block);
-    auto upstreamState = finalState == MainQueryState::DONE
-                             ? ExecutorState::DONE
-                             : ExecutorState::HASMORE;
 
     if constexpr (std::is_same_v<decltype(testee),
                                  MultiAqlItemBlockInputRange>) {
