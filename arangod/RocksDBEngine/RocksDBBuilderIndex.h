@@ -70,9 +70,9 @@ class IndexCreatorThread final : public Thread {
  public:
   IndexCreatorThread(bool isUniqueIndex, bool isForeground, uint64_t batchSize,
                      std::atomic<uint64_t>& docsProcessed,
-                     std::shared_ptr<SharedWorkEnv> sharedWorkEnv,
-                     RocksDBCollection* rcoll, rocksdb::DB* rootDB,
-                     RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
+                     SharedWorkEnv& sharedWorkEnv, RocksDBCollection* rcoll,
+                     rocksdb::DB* rootDB, RocksDBIndex& ridx,
+                     rocksdb::Snapshot const* snap,
                      rocksdb::Options const& dbOptions,
                      std::string const& idxPath);
 
@@ -86,7 +86,7 @@ class IndexCreatorThread final : public Thread {
   bool _isForeground = false;
   uint64_t _batchSize;
   std::atomic<uint64_t>& _docsProcessed;
-  std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
+  SharedWorkEnv* _sharedWorkEnv;
   RocksDBCollection* _rcoll;
   rocksdb::DB* _rootDB;
   RocksDBIndex& _ridx;
@@ -108,7 +108,7 @@ class IndexCreatorThread final : public Thread {
 class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
  public:
   explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex>,
-                               uint64_t numDocsHint);
+                               uint64_t numDocsHint, size_t parallelism);
 
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(
@@ -190,15 +190,15 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   /// @brief fill the index, assume already locked exclusively
   /// @param locker locks and unlocks the collection
   Result fillIndexBackground(Locker& locker);
-  // it's public for SharedWorkEnv to access
-  static constexpr size_t kNumThreads = 2;
 
  private:
   static constexpr uint64_t kThreadBatchSize = 100000;
   static constexpr size_t kSingleThreadThreshold = 120000;
+
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
-  std::uint64_t _numDocsHint;
   std::atomic<uint64_t> _docsProcessed;
+  uint64_t const _numDocsHint;
+  size_t const _numThreads;
 };
 
 }  // namespace arangodb

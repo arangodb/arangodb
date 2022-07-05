@@ -10,6 +10,11 @@ devel
 * Added a fully functional UI for Views that lets users view, modify mutable
   properties and delete views from the web UI.
 
+* Fix thread ids and thread names in log output for threads that are not
+  started directly by ArangoDB code, but indirectly via library code.
+  Previously, the ids of these threads were always reported as "1", and
+  the thread name was "main". Now return proper thread ids and names.
+
 * Changed default Linux CI compiler to gcc-11.
 
 * Updated arangosync to v2.11.0-preview-2.
