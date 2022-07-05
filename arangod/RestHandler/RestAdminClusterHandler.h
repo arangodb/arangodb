@@ -62,6 +62,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const QueryJobStatus;
   static std::string const RemoveServer;
   static std::string const RebalanceShards;
+  static std::string const Rebalance;
   static std::string const ShardStatistics;
   static std::string const FailureOracle;
 
@@ -95,6 +96,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   RestStatus handleRemoveServer();
   RestStatus handleRebalanceShards();
+  RestStatus handleRebalance();
 
   RestStatus handleFailureOracle();
 

@@ -285,6 +285,7 @@ std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
 std::string const RestAdminClusterHandler::CancelJob = "cancelAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
+std::string const RestAdminClusterHandler::Rebalance = "rebalance";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
 std::string const RestAdminClusterHandler::FailureOracle = "failureOracle";
 
@@ -358,6 +359,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRemoveServer();
     } else if (command == RebalanceShards) {
       return handleRebalanceShards();
+    } else if (command == Rebalance) {
+      return handleRebalance();
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
     } else {
@@ -2133,6 +2136,30 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
           }));
+}
+
+RestStatus RestAdminClusterHandler::handleRebalance() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  switch (request()->requestType()) {
+    case rest::RequestType::POST:
+    case rest::RequestType::GET:
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      return RestStatus::DONE;
+  }
+
+  return RestStatus::DONE;
 }
 
 RestStatus RestAdminClusterHandler::handleFailureOracle() {
