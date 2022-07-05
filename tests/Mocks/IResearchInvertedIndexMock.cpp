@@ -22,18 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchInvertedIndexMock.h"
-#include "IResearch/IResearchLinkHelper.h"
 
 namespace arangodb {
 namespace iresearch {
 
 IResearchInvertedIndexMock::IResearchInvertedIndexMock(
-    IndexId iid, arangodb::LogicalCollection &collection)
-    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()),
+    IndexId iid, arangodb::LogicalCollection &collection,
+    const std::string &idxName,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const &attributes,
+    bool unique, bool sparse)
+    : Index(iid, collection, idxName, attributes, unique, sparse),
       IResearchInvertedIndex(iid, collection) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  _unique = false; // cannot be unique since multiple fields are indexed
-  _sparse = true;  // always sparse
+  //  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  //  _unique = false; // cannot be unique since multiple fields are indexed
+  //  _sparse = true;  // always sparse
 }
 
 } // namespace iresearch

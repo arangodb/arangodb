@@ -37,6 +37,7 @@
 #include "Mocks/Servers.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -58,27 +59,28 @@ class IResearchQueryTest
     : public ::testing::TestWithParam<arangodb::iresearch::LinkVersion>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR> {
- protected:
+protected:
   arangodb::tests::mocks::MockAqlServer server;
 
- private:
-  TRI_vocbase_t* _vocbase;
+private:
+  TRI_vocbase_t *_vocbase;
 
- protected:
+protected:
   IResearchQueryTest() : server(false) {
     arangodb::tests::init(true);
 
     server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
     server.startFeatures();
 
-    auto& analyzers =
+    auto &analyzers =
         server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    auto &dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(
         testDBInfo(server.server()),
-        _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+        _vocbase); // required for IResearchAnalyzerFeature::emplace(...)
 
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
@@ -92,12 +94,12 @@ class IResearchQueryTest
         VPackParser::fromJson("\"abc\"")->slice(),
         arangodb::iresearch::Features(
             {}, irs::IndexFeatures::FREQ |
-                    irs::IndexFeatures::POS));  // required for PHRASE
+                    irs::IndexFeatures::POS)); // required for PHRASE
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
         result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice()); // cache analyzer
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -108,7 +110,7 @@ class IResearchQueryTest
         arangodb::iresearch::Features{
             arangodb::iresearch::FieldFeatures::NORM,
             irs::IndexFeatures::FREQ |
-                irs::IndexFeatures::POS});  // cache analyzer
+                irs::IndexFeatures::POS}); // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto sysVocbase =
@@ -123,7 +125,7 @@ class IResearchQueryTest
                           VPackParser::fromJson("\"abc\"")->slice(),
                           arangodb::iresearch::Features{
                               irs::IndexFeatures::FREQ |
-                              irs::IndexFeatures::POS});  // required for PHRASE
+                              irs::IndexFeatures::POS}); // required for PHRASE
 
     res = analyzers.emplace(
         result, "_system::ngram_test_analyzer13", "ngram",
@@ -132,7 +134,7 @@ class IResearchQueryTest
             ->slice(),
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
-            irs::IndexFeatures::POS});  // required for PHRASE
+            irs::IndexFeatures::POS}); // required for PHRASE
 
     res = analyzers.emplace(
         result, "_system::ngram_test_analyzer2", "ngram",
@@ -141,16 +143,16 @@ class IResearchQueryTest
             ->slice(),
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
-            irs::IndexFeatures::POS});  // required for PHRASE
+            irs::IndexFeatures::POS}); // required for PHRASE
 
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
         result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice()); // cache analyzer
     EXPECT_TRUE(res.ok());
 
-    auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
+    auto &functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
     // register fake non-deterministic function in order to suppress
     // optimizations
     functions.add(arangodb::aql::Function{
@@ -159,7 +161,7 @@ class IResearchQueryTest
             // fake non-deterministic
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
-        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
+        [](arangodb::aql::ExpressionContext *, arangodb::aql::AstNode const &,
            arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -175,7 +177,7 @@ class IResearchQueryTest
             arangodb::aql::Function::Flags::Cacheable,
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
-        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
+        [](arangodb::aql::ExpressionContext *, arangodb::aql::AstNode const &,
            arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -195,12 +197,12 @@ class IResearchQueryTest
         nullptr);
     arangodb::iresearch::addFunction(functions, customScorer);
 
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    auto &dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     arangodb::tests::setDatabasePath(
-        dbPathFeature);  // ensure test data is stored in a unique directory
+        dbPathFeature); // ensure test data is stored in a unique directory
   }
 
-  TRI_vocbase_t& vocbase() {
+  TRI_vocbase_t &vocbase() {
     TRI_ASSERT(_vocbase != nullptr);
     return *_vocbase;
   }
@@ -208,4 +210,4 @@ class IResearchQueryTest
   arangodb::iresearch::LinkVersion linkVersion() const noexcept {
     return GetParam();
   }
-};  // IResearchQueryTest
+}; // IResearchQueryTest

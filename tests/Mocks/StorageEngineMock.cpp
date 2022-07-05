@@ -1549,8 +1549,22 @@ std::shared_ptr<arangodb::iresearch::IResearchInvertedIndexMock>
 StorageEngineMock::buildInvertedIndexMock(
     arangodb::IndexId id, arangodb::LogicalCollection &collection,
     VPackSlice const &info) {
+
+  std::string name;
+
+  if (info.isObject()) {
+    VPackSlice sub = info.get(arangodb::StaticStrings::IndexName);
+    if (sub.isString()) {
+      name = sub.copyString();
+    }
+  }
+
   auto index = std::shared_ptr<arangodb::iresearch::IResearchInvertedIndexMock>(
-      new arangodb::iresearch::IResearchInvertedIndexMock(id, collection));
+      new arangodb::iresearch::IResearchInvertedIndexMock(id, collection, name,
+                                                          {}, false, true));
+  bool pathExists;
+  auto result = index->init(info, pathExists);
+  std::cout << "RESULT = " << result << std::endl;
 
   return index;
 }
