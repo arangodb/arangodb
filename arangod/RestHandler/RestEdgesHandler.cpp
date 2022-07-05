@@ -108,16 +108,21 @@ std::string queryString(TRI_edge_direction_e dir) {
 
 aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
                             TRI_edge_direction_e dir,
-                            std::string const& vertexId) {
+                            std::string const& vertexId, bool allowDirtyReads) {
   auto bindParameters = std::make_shared<VPackBuilder>();
   bindParameters->openObject();
   bindParameters->add("@collection", VPackValue(cname));
   bindParameters->add("vertex", VPackValue(vertexId));
   bindParameters->close();
 
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  aql::QueryOptions options;
+  if (allowDirtyReads) {
+    options.transactionOptions.allowDirtyReads = true;
+  }
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(vocbase),
-      aql::QueryString(queryString(dir)), std::move(bindParameters));
+      ctx, aql::QueryString(queryString(dir)), std::move(bindParameters),
+      std::move(options));
   return query->executeSync();
 }
 }  // namespace
@@ -172,8 +177,20 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
-  auto queryResult =
-      ::queryEdges(_vocbase, collectionName, direction, startVertex);
+  // Check if dirty reads are allowed:
+  found = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  bool allowDirtyReads = false;
+  if (found && StringUtils::boolean(val)) {
+    // This will be used in `createTransaction` below, if that creates
+    // a new transaction. Otherwise, we use the default given by the
+    // existing transaction.
+    allowDirtyReads = true;
+  }
+
+  auto queryResult = ::queryEdges(_vocbase, collectionName, direction,
+                                  startVertex, allowDirtyReads);
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -261,11 +278,23 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   std::unordered_set<std::string> foundEdges;
 
+  // Check if dirty reads are allowed:
+  bool found = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  bool allowDirtyReads = false;
+  if (found && StringUtils::boolean(val)) {
+    // This will be used in `createTransaction` below, if that creates
+    // a new transaction. Otherwise, we use the default given by the
+    // existing transaction.
+    allowDirtyReads = true;
+  }
+
   std::shared_ptr<transaction::Context> ctx;
   for (VPackSlice it : VPackArrayIterator(body)) {
     std::string startVertex = it.copyString();
-    auto queryResult =
-        ::queryEdges(_vocbase, collectionName, direction, startVertex);
+    auto queryResult = ::queryEdges(_vocbase, collectionName, direction,
+                                    startVertex, allowDirtyReads);
 
     if (queryResult.result.fail()) {
       if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||

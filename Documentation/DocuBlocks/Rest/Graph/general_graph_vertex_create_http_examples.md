@@ -69,9 +69,10 @@ Will only be present if returnNew is true.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to insert vertices into the graph  you at least need to have the following privileges:<br>
-  1. `Read Only` access on the Database.
-  2. `Write` access on the given collection.
+In order to insert vertices into the graph  you at least need to have the following privileges:
+
+1. `Read Only` access on the Database.
+2. `Write` access on the given collection.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).

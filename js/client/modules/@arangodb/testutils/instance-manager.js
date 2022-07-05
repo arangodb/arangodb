@@ -37,7 +37,7 @@ const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
-
+const netstat = require('node-netstat');
 /* Functions: */
 const toArgv = internal.toArgv;
 const executeExternal = internal.executeExternal;
@@ -82,6 +82,7 @@ class instanceManager {
     this.restKeyFile = '';
     this.tcpdump = null;
     this.JWT = null;
+    this.cleanup = options.cleanup && options.server === undefined;
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
     }
@@ -93,11 +94,14 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
   }
 
-  destructor() {
+  destructor(cleanup) {
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
     });
     this.stopTcpDump();
+    if (this.cleanup && cleanup) {
+      this._cleanup();
+    }
   }
   getStructure() {
     let d = [];
@@ -121,6 +125,7 @@ class instanceManager {
       arangods: d,
       restKeyFile: this.restKeyFile,
       tcpdump: this.tcpdump,
+      cleanup: this.cleanup
     };
   }
   setFromStructure(struct) {
@@ -137,6 +142,7 @@ class instanceManager {
     this.endpoint = struct['endpoint'];
     this.restKeyFile = struct['restKeyFile'];
     this.tcpdump = struct['tcpdump'];
+    this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {
       let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig);
       this.arangods.push(oneArangod);
@@ -153,6 +159,14 @@ class instanceManager {
         }
       });
     }
+  }
+
+  _cleanup() {
+    this.arangods.forEach(instance => { instance.cleanup(); });
+    if (this.options.extremeVerbosity) {
+      print(CYAN + "cleaning up manager's Directory: " + this.rootDir + RESET);
+    }
+    fs.removeDirectoryRecursive(this.rootDir, true);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief prepares all instances required for a deployment
@@ -540,11 +554,35 @@ class instanceManager {
     return true;
   }
 
+  getNetstat() {
+    let ret = {};
+    this.arangods.forEach( arangod => {
+      ret[arangod.name] = arangod.netstat;;
+    });
+    return ret;
+  }
 
+  printNetstat() {
+    this.arangods.forEach( arangod => {
+      print(arangod.name + " => " + JSON.stringify(arangod.netstat));
+    });
+  }
 
   // skipHealthCheck can be set to true to avoid a call to /_admin/cluster/health
   // on the coordinator. This is necessary if only the agency is running yet.
   checkInstanceAlive({skipHealthCheck = false} = {}) {
+    this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
+    let obj = this;
+    netstat({platform: process.platform}, function (data) {
+      // skip server ports, we know what we bound.
+      if (data.state !== 'LISTEN') {
+        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+      }
+    });
+    if (!this.options.noStartStopLogs) {
+      this.printNetstat();
+    }
+    
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
         (this.url !== this.agencyConfig.urls[0])
@@ -862,7 +900,7 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines();
     });
-    pu.cleanupDBDirectoriesRemove(this.rootDir);
+    this.cleanup = shutdownSuccess;
     return shutdownSuccess;
   }
 
@@ -1003,6 +1041,7 @@ class instanceManager {
           arangod.killWithCoreDump();
           arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
         });
+        this.cleanup = false;
         throw new Error('cluster startup timed out after 10 minutes!');
       }
     }

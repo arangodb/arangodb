@@ -179,6 +179,9 @@ class ConfigBuilder {
     }
     this.config['output-directory'] = fs.join(this.rootDir, dir);
   }
+  getOutputDirectory() {
+    return this.config['output-directory'];
+  }
   setInputDirectory(dir, createDatabase) {
     if (this.type !== 'restore') {
       throw '"input-directory" is not supported for binary: ' + this.type;
@@ -602,68 +605,6 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
   return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
 }
 
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief cleans up the database directory
-// //////////////////////////////////////////////////////////////////////////////
-
-function cleanupLastDirectory (options) {
-  if (options.cleanup) {
-    while (cleanupDirectories.length) {
-      const cleanupDirectory = cleanupDirectories.shift();
-      if (options.extremeVerbosity === true) {
-        print(Date() + " Cleaning up: " + cleanupDirectory);
-      }
-      // Avoid attempting to remove the same directory multiple times
-      if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
-          (fs.exists(cleanupDirectory))) {
-        let i = 0;
-        while (i < 5) {
-          try {
-            fs.removeDirectoryRecursive(cleanupDirectory, true);
-            return;
-          } catch (x) {
-            print(Date() + ' failed to delete directory "' + cleanupDirectory + '" - "' +
-                  x + '" - Will retry in 5 seconds"');
-            sleep(5);
-          }
-          i += 1;
-        }
-        print(Date() + ' failed to delete directory "' + cleanupDirectory + '" - "' +
-              '" - Deferring cleanup for test run end."');
-        cleanupDirectories.unshift(cleanupDirectory);
-      }
-      break;
-    }
-  }
-}
-
-function cleanupDBDirectories (options) {
-  if (options.cleanup) {
-    while (cleanupDirectories.length) {
-      const cleanupDirectory = cleanupDirectories.shift();
-
-      // Avoid attempting to remove the same directory multiple times
-      if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
-          (fs.exists(cleanupDirectory))) {
-        fs.removeDirectoryRecursive(cleanupDirectory, true);
-      }
-    }
-  }
-}
-
-function cleanupDBDirectoriesAppend (appendThis) {
-  cleanupDirectories.unshift(appendThis);
-}
-
-function cleanupDBDirectoriesRemove (removeThis) {
-  cleanupDirectories = cleanupDirectories.filter(dir => { return dir === removeThis;});
-}
-
-function getCleanupDBDirectories () {
-  return JSON.stringify(cleanupDirectories);
-}
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief loads the JWT secret from the various ways possible
 // //////////////////////////////////////////////////////////////////////////////
@@ -946,11 +887,6 @@ exports.run = {
   arangoBackup: runArangoBackup
 };
 
-exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
-exports.cleanupDBDirectories = cleanupDBDirectories;
-exports.cleanupLastDirectory = cleanupLastDirectory;
-exports.getCleanupDBDirectories = getCleanupDBDirectories;
-exports.cleanupDBDirectoriesRemove = cleanupDBDirectoriesRemove;
 exports.executableExt = executableExt;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;

@@ -1316,7 +1316,7 @@ auto LogicalCollection::waitForDocumentStateLeader() -> std::shared_ptr<
           TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER, stream.str());
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
           "Could not get any status from replicated state");
     }
   }
