@@ -94,18 +94,13 @@ namespace {
 
 aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const& node,
                               std::span<aql::AqlValue const>) {
-  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
-
-  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
-  TRI_ASSERT(impl);
-
   THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
       "ArangoSearch filter function '%s' "
       " is designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
       " Please ensure function signature is correct.",
-      impl->name.c_str());
+      getFunctionName(node).data());
 }
 
 // Function body for ArangoSearch context functions ANALYZER/BOOST.

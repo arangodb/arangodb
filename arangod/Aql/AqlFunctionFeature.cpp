@@ -274,6 +274,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"BIT_DECONSTRUCT", ".", flags, &functions::BitDeconstruct});
   add({"BIT_TO_STRING", ".,.", flags, &functions::BitToString});
   add({"BIT_FROM_STRING", ".", flags, &functions::BitFromString});
+  add({"MINHASH_ERROR", ".", flags, &functions::MinHashError});
 
   // special flags:
   // not deterministic and not cacheable
@@ -347,8 +348,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"DECAY_EXP", ".,.,.,.,.,", flags, &functions::DecayExp});
   add({"DECAY_LINEAR", ".,.,.,.,.,", flags, &functions::DecayLinear});
 
-  // array, numHashes
-  add({"MINHASH", ".,.", flags, &functions::MinHash});
+  // array, numHashes, [hash functions("vpack"|"city")]
+  add({"MINHASH", ".,.|.", flags, &functions::MinHash});
 
   add({"COSINE_SIMILARITY", ".,.", flags, &functions::CosineSimilarity});
   add({"L1_DISTANCE", ".,.", flags, &functions::L1Distance});

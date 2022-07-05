@@ -59,6 +59,12 @@ void registerWarning(ExpressionContext* expressionContext,
 void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
                                     char const* functionName);
 
+// Returns zero-terminated function name from the given FCALL node.
+std::string_view getFunctionName(const AstNode& node) noexcept;
+
+AqlValue const& extractFunctionParameterValue(
+    VPackFunctionParametersView parameters, size_t position);
+
 namespace functions {
 
 /// @brief helper function. not callable as a "normal" AQL function
@@ -566,6 +572,9 @@ aql::AqlValue NotImplementedEE(aql::ExpressionContext*, aql::AstNode const&,
 
 aql::AqlValue MinHash(aql::ExpressionContext*, aql::AstNode const&,
                       std::span<aql::AqlValue const>);
+
+aql::AqlValue MinHashError(aql::ExpressionContext*, aql::AstNode const&,
+                           std::span<aql::AqlValue const>);
 
 aql::AqlValue MinHashMatch(aql::ExpressionContext*, aql::AstNode const&,
                            std::span<aql::AqlValue const>);

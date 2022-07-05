@@ -251,16 +251,6 @@ void registerICUWarning(ExpressionContext* expressionContext,
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg.c_str());
 }
 
-/// @brief extract a function parameter from the arguments
-inline AqlValue const& extractFunctionParameterValue(
-    VPackFunctionParametersView parameters, size_t position) {
-  if (position >= parameters.size()) {
-    // parameter out of range
-    return ::emptyAqlValue;
-  }
-  return parameters[position];
-}
-
 /// @brief convert a number value into an AqlValue
 AqlValue numberValue(double value, bool nullify) {
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL ||
@@ -538,7 +528,7 @@ bool parameterToTimePoint(ExpressionContext* expressionContext,
                           tp_sys_clock_ms& tp, char const* AFN,
                           size_t parameterIndex) {
   AqlValue const& value =
-      extractFunctionParameterValue(parameters, parameterIndex);
+      aql::extractFunctionParameterValue(parameters, parameterIndex);
 
   if (value.isNumber()) {
     int64_t v = value.toInt64();
@@ -649,7 +639,8 @@ bool getBooleanParameter(VPackFunctionParametersView parameters,
 std::string extractCollectionName(transaction::Methods* trx,
                                   VPackFunctionParametersView parameters,
                                   size_t position) {
-  AqlValue const& value = extractFunctionParameterValue(parameters, position);
+  AqlValue const& value =
+      aql::extractFunctionParameterValue(parameters, position);
 
   std::string identifier;
 
@@ -694,7 +685,7 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
   size_t const n = parameters.size();
 
   for (size_t i = startParameter; i < n; ++i) {
-    AqlValue const& param = extractFunctionParameterValue(parameters, i);
+    AqlValue const& param = aql::extractFunctionParameterValue(parameters, i);
 
     if (param.isString()) {
       names.emplace(param.slice().copyString());
@@ -935,7 +926,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   auto& vopts = expressionContext->trx().vpackOptions();
 
   // use the first argument as the preliminary result
-  AqlValue const& initial = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& initial = aql::extractFunctionParameterValue(parameters, 0);
   AqlValueMaterializer materializer(&vopts);
   VPackSlice initialSlice = materializer.slice(initial, true);
 
@@ -966,7 +957,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
 
   // merge in all other arguments
   for (size_t i = 1; i < n; ++i) {
-    AqlValue const& param = extractFunctionParameterValue(parameters, i);
+    AqlValue const& param = aql::extractFunctionParameterValue(parameters, i);
 
     if (!param.isObject()) {
       registerInvalidArgumentWarning(expressionContext, funcName);
@@ -1033,7 +1024,7 @@ AqlValue dateFromParameters(ExpressionContext* expressionContext,
     }
 
     for (uint8_t i = 0; i < parameters.size(); i++) {
-      AqlValue const& value = extractFunctionParameterValue(parameters, i);
+      AqlValue const& value = aql::extractFunctionParameterValue(parameters, i);
 
       // All Parameters have to be a number or a string
       if (!value.isNumber() && !value.isString()) {
@@ -1042,9 +1033,9 @@ AqlValue dateFromParameters(ExpressionContext* expressionContext,
       }
     }
 
-    date::years y{extractFunctionParameterValue(parameters, 0).toInt64()};
-    date::months m{extractFunctionParameterValue(parameters, 1).toInt64()};
-    date::days d{extractFunctionParameterValue(parameters, 2).toInt64()};
+    date::years y{aql::extractFunctionParameterValue(parameters, 0).toInt64()};
+    date::months m{aql::extractFunctionParameterValue(parameters, 1).toInt64()};
+    date::days d{aql::extractFunctionParameterValue(parameters, 2).toInt64()};
 
     if ((y < date::years{0} || y > date::years{9999}) ||
         (m < date::months{0}) || (d < date::days{0})) {
@@ -1061,16 +1052,18 @@ AqlValue dateFromParameters(ExpressionContext* expressionContext,
     milliseconds ms(0);
 
     if (parameters.size() >= 4) {
-      h = hours((extractFunctionParameterValue(parameters, 3).toInt64()));
+      h = hours((aql::extractFunctionParameterValue(parameters, 3).toInt64()));
     }
     if (parameters.size() >= 5) {
-      min = minutes((extractFunctionParameterValue(parameters, 4).toInt64()));
+      min = minutes(
+          (aql::extractFunctionParameterValue(parameters, 4).toInt64()));
     }
     if (parameters.size() >= 6) {
-      s = seconds((extractFunctionParameterValue(parameters, 5).toInt64()));
+      s = seconds(
+          (aql::extractFunctionParameterValue(parameters, 5).toInt64()));
     }
     if (parameters.size() == 7) {
-      int64_t v = extractFunctionParameterValue(parameters, 6).toInt64();
+      int64_t v = aql::extractFunctionParameterValue(parameters, 6).toInt64();
       if (v > 999) {
         v = 999;
       }
@@ -1192,8 +1185,8 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
                               VPackFunctionParametersView parameters,
                               char const* func, bool contains) {
   auto* vopts = &expressionContext->trx().vpackOptions();
-  AqlValue const& p1 = extractFunctionParameterValue(parameters, 0);
-  AqlValue const& p2 = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& p1 = aql::extractFunctionParameterValue(parameters, 0);
+  AqlValue const& p2 = aql::extractFunctionParameterValue(parameters, 1);
 
   if (!p1.isObject()) {
     registerWarning(expressionContext, func,
@@ -1352,17 +1345,26 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
   }
 }
 
-irs::string_ref getFunctionName(const AstNode& node) {
+}  // namespace
+
+namespace arangodb {
+namespace aql {
+
+AqlValue const& extractFunctionParameterValue(
+    VPackFunctionParametersView parameters, size_t position) {
+  if (position >= parameters.size()) {
+    // parameter out of range
+    return ::emptyAqlValue;
+  }
+  return parameters[position];
+}
+
+std::string_view getFunctionName(const AstNode& node) noexcept {
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
   auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
   TRI_ASSERT(impl != nullptr);
   return impl->name;
 }
-
-}  // namespace
-
-namespace arangodb {
-namespace aql {
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
@@ -1639,7 +1641,7 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto const& attribute = extractFunctionParameterValue(args, 0);
+  auto const& attribute = aql::extractFunctionParameterValue(args, 0);
   if (ADB_UNLIKELY(!attribute.isString())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
@@ -1647,14 +1649,14 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
   auto const attributeValue =
       arangodb::iresearch::getStringRef(attribute.slice());
 
-  auto const& target = extractFunctionParameterValue(args, 1);
+  auto const& target = aql::extractFunctionParameterValue(args, 1);
   if (ADB_UNLIKELY(!target.isString())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
   auto const targetValue = arangodb::iresearch::getStringRef(target.slice());
 
-  auto const& ngramSize = extractFunctionParameterValue(args, 2);
+  auto const& ngramSize = aql::extractFunctionParameterValue(args, 2);
   if (ADB_UNLIKELY(!ngramSize.isNumber())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
@@ -1714,14 +1716,14 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto const& attribute = extractFunctionParameterValue(args, 0);
+  auto const& attribute = aql::extractFunctionParameterValue(args, 0);
   if (ADB_UNLIKELY(!attribute.isString())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
   auto const attributeValue = iresearch::getStringRef(attribute.slice());
 
-  auto const& target = extractFunctionParameterValue(args, 1);
+  auto const& target = aql::extractFunctionParameterValue(args, 1);
   if (ADB_UNLIKELY(!target.isString())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
@@ -1732,7 +1734,7 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
       arangodb::iresearch::FilterConstants::DefaultNgramMatchThreshold;
   size_t analyzerPosition = 2;
   if (argc > 3) {  // 4 args given. 3rd is threshold
-    auto const& thresholdArg = extractFunctionParameterValue(args, 2);
+    auto const& thresholdArg = aql::extractFunctionParameterValue(args, 2);
     analyzerPosition = 3;
     if (ADB_UNLIKELY(!thresholdArg.isNumber())) {
       arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
@@ -1748,7 +1750,7 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   }
 
   auto const& analyzerArg =
-      extractFunctionParameterValue(args, analyzerPosition);
+      aql::extractFunctionParameterValue(args, analyzerPosition);
   if (ADB_UNLIKELY(!analyzerArg.isString())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
@@ -1823,7 +1825,7 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
                                      VPackFunctionParametersView args) {
   static char const* AFN = "LEVENSHTEIN_MATCH";
 
-  auto const& maxDistance = extractFunctionParameterValue(args, 2);
+  auto const& maxDistance = aql::extractFunctionParameterValue(args, 2);
 
   if (ADB_UNLIKELY(!maxDistance.isNumber())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
@@ -1834,7 +1836,8 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
   int64_t maxDistanceValue = maxDistance.toInt64();
 
   if (args.size() > 3) {
-    auto const& withTranspositions = extractFunctionParameterValue(args, 3);
+    auto const& withTranspositions =
+        aql::extractFunctionParameterValue(args, 3);
 
     if (ADB_UNLIKELY(!withTranspositions.isBoolean())) {
       registerInvalidArgumentWarning(ctx, AFN);
@@ -1871,10 +1874,10 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
     return AqlValue{AqlValueHintNull{}};
   }
 
-  auto const& lhs = extractFunctionParameterValue(args, 0);
+  auto const& lhs = aql::extractFunctionParameterValue(args, 0);
   auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs.slice())
                                        : irs::bytes_ref::EMPTY;
-  auto const& rhs = extractFunctionParameterValue(args, 1);
+  auto const& rhs = aql::extractFunctionParameterValue(args, 1);
   auto const rhsValue = rhs.isString() ? iresearch::getBytesRef(rhs.slice())
                                        : irs::bytes_ref::EMPTY;
 
@@ -1899,11 +1902,11 @@ AqlValue functions::InRange(ExpressionContext* ctx, AstNode const&,
   }
 
   auto* vopts = &ctx->trx().vpackOptions();
-  auto const& attributeVal = extractFunctionParameterValue(args, 0);
-  auto const& lowerVal = extractFunctionParameterValue(args, 1);
-  auto const& upperVal = extractFunctionParameterValue(args, 2);
-  auto const& includeLowerVal = extractFunctionParameterValue(args, 3);
-  auto const& includeUpperVal = extractFunctionParameterValue(args, 4);
+  auto const& attributeVal = aql::extractFunctionParameterValue(args, 0);
+  auto const& lowerVal = aql::extractFunctionParameterValue(args, 1);
+  auto const& upperVal = aql::extractFunctionParameterValue(args, 2);
+  auto const& includeLowerVal = aql::extractFunctionParameterValue(args, 3);
+  auto const& includeUpperVal = aql::extractFunctionParameterValue(args, 4);
 
   if (ADB_UNLIKELY(!includeLowerVal.isBoolean())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
@@ -1938,14 +1941,14 @@ AqlValue functions::InRange(ExpressionContext* ctx, AstNode const&,
 /// @brief function TO_BOOL
 AqlValue functions::ToBool(ExpressionContext*, AstNode const&,
                            VPackFunctionParametersView parameters) {
-  AqlValue const& a = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& a = aql::extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.toBoolean()));
 }
 
 /// @brief function TO_ARRAY
 AqlValue functions::ToArray(ExpressionContext* ctx, AstNode const&,
                             VPackFunctionParametersView parameters) {
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& value = aql::extractFunctionParameterValue(parameters, 0);
 
   if (value.isArray()) {
     // return copy of the original array
@@ -1981,7 +1984,7 @@ AqlValue functions::ToArray(ExpressionContext* ctx, AstNode const&,
 /// @brief function LENGTH
 AqlValue functions::Length(ExpressionContext*, AstNode const&,
                            VPackFunctionParametersView parameters) {
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& value = aql::extractFunctionParameterValue(parameters, 0);
   if (value.isArray()) {
     // shortcut!
     return AqlValue(AqlValueHintUInt(value.length()));
@@ -2024,8 +2027,9 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
 
   auto* trx = &expressionContext->trx();
   auto const& vopts = trx->vpackOptions();
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  AqlValue const& searchValue = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& value = aql::extractFunctionParameterValue(parameters, 0);
+  AqlValue const& searchValue =
+      aql::extractFunctionParameterValue(parameters, 1);
 
   transaction::StringLeaser buf1(trx);
   arangodb::velocypack::StringSink adapter(buf1.get());
@@ -2044,7 +2048,7 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
 
   if (parameters.size() >= 3) {
     AqlValue const& optionalStartOffset =
-        extractFunctionParameterValue(parameters, 2);
+        aql::extractFunctionParameterValue(parameters, 2);
     startOffset = optionalStartOffset.toInt64();
     if (startOffset < 0) {
       return AqlValue(AqlValueHintInt(-1));
@@ -2054,7 +2058,7 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
   maxEnd = uBuf.length();
   if (parameters.size() == 4) {
     AqlValue const& optionalEndMax =
-        extractFunctionParameterValue(parameters, 3);
+        aql::extractFunctionParameterValue(parameters, 3);
     if (!optionalEndMax.isNull(true)) {
       maxEnd = optionalEndMax.toInt64();
       if ((maxEnd < startOffset) || (maxEnd < 0)) {
@@ -2097,8 +2101,9 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
 
   auto* trx = &expressionContext->trx();
   auto const& vopts = trx->vpackOptions();
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  AqlValue const& searchValue = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& value = aql::extractFunctionParameterValue(parameters, 0);
+  AqlValue const& searchValue =
+      aql::extractFunctionParameterValue(parameters, 1);
 
   transaction::StringLeaser buf1(trx);
   arangodb::velocypack::StringSink adapter(buf1.get());
@@ -7222,14 +7227,15 @@ AqlValue handleBitOperation(
   auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
   TRI_ASSERT(impl != nullptr);
 
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& value = aql::extractFunctionParameterValue(parameters, 0);
 
   if (parameters.size() == 2) {
     // expect two numbers as individual parameters
     if (value.isNumber()) {
       auto result1 = bitOperationValue<uint64_t>(value.slice());
       if (result1.has_value()) {
-        AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
+        AqlValue const& value2 =
+            aql::extractFunctionParameterValue(parameters, 1);
         if (value2.isNumber()) {
           auto result2 = bitOperationValue<uint64_t>(value2.slice());
           if (result2.has_value()) {
@@ -7312,11 +7318,12 @@ AqlValue functions::BitXOr(ExpressionContext* expressionContext,
 template<typename T1, typename T2>
 std::optional<std::pair<T1, T2>> binaryBitFunctionParameters(
     VPackFunctionParametersView parameters) {
-  AqlValue const& value1 = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& value1 = aql::extractFunctionParameterValue(parameters, 0);
   if (value1.isNumber()) {
     auto result1 = bitOperationValue<T1>(value1.slice());
     if (result1.has_value()) {
-      AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
+      AqlValue const& value2 =
+          aql::extractFunctionParameterValue(parameters, 1);
       if (value2.isNumber()) {
         auto result2 = bitOperationValue<T2>(value2.slice());
         if (result2.has_value() &&
@@ -9271,18 +9278,22 @@ AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
                        AstNode const& node,
                        VPackFunctionParametersView parameters,
                        F&& decayFuncFactory) {
-  AqlValue const& argValue = extractFunctionParameterValue(parameters, 0);
-  AqlValue const& originValue = extractFunctionParameterValue(parameters, 1);
-  AqlValue const& scaleValue = extractFunctionParameterValue(parameters, 2);
-  AqlValue const& offsetValue = extractFunctionParameterValue(parameters, 3);
-  AqlValue const& decayValue = extractFunctionParameterValue(parameters, 4);
+  AqlValue const& argValue = aql::extractFunctionParameterValue(parameters, 0);
+  AqlValue const& originValue =
+      aql::extractFunctionParameterValue(parameters, 1);
+  AqlValue const& scaleValue =
+      aql::extractFunctionParameterValue(parameters, 2);
+  AqlValue const& offsetValue =
+      aql::extractFunctionParameterValue(parameters, 3);
+  AqlValue const& decayValue =
+      aql::extractFunctionParameterValue(parameters, 4);
 
   // check type of arguments
   if ((!argValue.isRange() && !argValue.isArray() && !argValue.isNumber()) ||
       !originValue.isNumber() || !scaleValue.isNumber() ||
       !offsetValue.isNumber() || !decayValue.isNumber()) {
     registerInvalidArgumentWarning(expressionContext,
-                                   getFunctionName(node).c_str());
+                                   getFunctionName(node).data());
     return AqlValue(AqlValueHintNull());
   }
 
@@ -9299,14 +9310,14 @@ AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
   error |= failed;
 
   if (error) {
-    registerWarning(expressionContext, getFunctionName(node).c_str(),
+    registerWarning(expressionContext, getFunctionName(node).data(),
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
   // check that parameters are correct
   if (scale <= 0 || offset < 0 || decay <= 0 || decay >= 1) {
-    registerWarning(expressionContext, getFunctionName(node).c_str(),
+    registerWarning(expressionContext, getFunctionName(node).data(),
                     TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
     return AqlValue(AqlValueHintNull());
   }
@@ -9331,8 +9342,8 @@ AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
       VPackArrayBuilder arrayBuilder(&builder);
       for (VPackSlice currArg : VPackArrayIterator(slice)) {
         if (!currArg.isNumber()) {
-          registerWarning(expressionContext, getFunctionName(node).c_str(),
-                          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          aql::registerWarning(expressionContext, getFunctionName(node).data(),
+                               TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
           return AqlValue(AqlValueHintNull());
         }
         double arg = currArg.getNumber<double>();
@@ -9409,8 +9420,8 @@ AqlValue DistanceImpl(arangodb::aql::ExpressionContext* expressionContext,
     auto rhsLength = rhs.length();
 
     if (lhsLength != rhsLength) {
-      registerWarning(expressionContext, getFunctionName(node).c_str(),
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      aql::registerWarning(expressionContext, getFunctionName(node).data(),
+                           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -9418,14 +9429,14 @@ AqlValue DistanceImpl(arangodb::aql::ExpressionContext* expressionContext,
   };
 
   // extract arguments
-  AqlValue const& argLhs = extractFunctionParameterValue(parameters, 0);
-  AqlValue const& argRhs = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& argLhs = aql::extractFunctionParameterValue(parameters, 0);
+  AqlValue const& argRhs = aql::extractFunctionParameterValue(parameters, 1);
 
   // check type of arguments
   if (!argLhs.isArray() || !argRhs.isArray() || argLhs.length() == 0 ||
       argRhs.length() == 0) {
     registerInvalidArgumentWarning(expressionContext,
-                                   getFunctionName(node).c_str());
+                                   getFunctionName(node).data());
     return AqlValue(AqlValueHintNull());
   }
 
@@ -9450,8 +9461,8 @@ AqlValue DistanceImpl(arangodb::aql::ExpressionContext* expressionContext,
       VPackArrayBuilder arrayBuilder(&builder);
       for (VPackSlice currRow : VPackArrayIterator(matrix)) {
         if (!currRow.isArray()) {
-          registerWarning(expressionContext, getFunctionName(node).c_str(),
-                          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          aql::registerWarning(expressionContext, getFunctionName(node).data(),
+                               TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
           return AqlValue(AqlValueHintNull());
         }
 
@@ -9486,7 +9497,7 @@ AqlValue functions::CosineSimilarity(
       auto lhsSlice = lhs.at(i);
       auto rhsSlice = rhs.at(i);
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
-        registerWarning(expressionContext, getFunctionName(node).c_str(),
+        registerWarning(expressionContext, getFunctionName(node).data(),
                         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return AqlValue(AqlValueHintNull());
       }
@@ -9501,8 +9512,8 @@ AqlValue functions::CosineSimilarity(
 
     double denominator = std::sqrt(lhsSum) * std::sqrt(rhsSum);
     if (denominator == 0.0) {
-      registerWarning(expressionContext, getFunctionName(node).c_str(),
-                      TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+      aql::registerWarning(expressionContext, getFunctionName(node).data(),
+                           TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -9525,8 +9536,8 @@ AqlValue functions::L1Distance(
       auto lhsSlice = lhs.at(i);
       auto rhsSlice = rhs.at(i);
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
-        registerWarning(expressionContext, getFunctionName(node).c_str(),
-                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        aql::registerWarning(expressionContext, getFunctionName(node).data(),
+                             TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return AqlValue(AqlValueHintNull());
       }
 
@@ -9552,7 +9563,7 @@ AqlValue functions::L2Distance(
       auto lhsSlice = lhs.at(i);
       auto rhsSlice = rhs.at(i);
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
-        registerWarning(expressionContext, getFunctionName(node).c_str(),
+        registerWarning(expressionContext, getFunctionName(node).data(),
                         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return AqlValue(AqlValueHintNull());
       }
@@ -9578,21 +9589,22 @@ AqlValue functions::NotImplemented(ExpressionContext* expressionContext,
 aql::AqlValue functions::NotImplementedEE(aql::ExpressionContext*,
                                           aql::AstNode const& node,
                                           std::span<aql::AqlValue const>) {
-  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
-
-  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
-  TRI_ASSERT(impl);
-
   THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
       "Function '%s' is available in ArangoDB Enterprise Edition only.",
-      impl->name.c_str());
+      getFunctionName(node).data());
 }
 
 #ifndef USE_ENTERPRISE
 aql::AqlValue functions::MinHash(aql::ExpressionContext* ctx,
                                  aql::AstNode const& node,
                                  std::span<aql::AqlValue const> values) {
+  return NotImplementedEE(ctx, node, values);
+}
+
+aql::AqlValue functions::MinHashError(aql::ExpressionContext* ctx,
+                                      aql::AstNode const& node,
+                                      std::span<aql::AqlValue const> values) {
   return NotImplementedEE(ctx, node, values);
 }
 
