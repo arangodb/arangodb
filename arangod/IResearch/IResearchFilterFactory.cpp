@@ -1393,24 +1393,29 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
 
 std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
     irs::boolean_filter*& filter, aql::AstNodeType arrayComparison,
-    const aql::AstNode* qualifierNode, size_t arraySize) {
-  TRI_ASSERT(qualifierNode);
-  auto qualifierType = qualifierNode->getIntValue(true);
+    const aql::AstNode* quantifierNode, size_t arraySize) {
+  TRI_ASSERT(quantifierNode);
+  auto quantifierType =
+      static_cast<aql::Quantifier::Type>(quantifierNode->getIntValue(true));
   aql::AstNodeType expansionNodeType = aql::NODE_TYPE_ROOT;
   if (0 == arraySize) {
     expansionNodeType = aql::NODE_TYPE_ROOT;  // no subfilters expansion needed
-    switch (qualifierType) {
-      case aql::Quantifier::ANY:
+    switch (quantifierType) {
+      case aql::Quantifier::Type::kAny:
         if (filter) {
           filter->add<irs::empty>();
         }
         break;
-      case aql::Quantifier::ALL:
-      case aql::Quantifier::NONE:
+      case aql::Quantifier::Type::kAll:
+      case aql::Quantifier::Type::kNone:
         if (filter) {
           filter->add<irs::all>();
         }
         break;
+      case aql::Quantifier::Type::kAtLeast:
+        // TODO: handle at least!!
+        TRI_ASSERT(false);
+
       default:
         TRI_ASSERT(false);  // new qualifier added ?
         return std::make_pair(
@@ -1420,8 +1425,8 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
     }
   } else {
     // NONE is inverted ALL so do conversion
-    if (aql::Quantifier::NONE == qualifierType) {
-      qualifierType = aql::Quantifier::ALL;
+    if (aql::Quantifier::Type::kNone == quantifierType) {
+      quantifierType = aql::Quantifier::Type::kAll;
       switch (arrayComparison) {
         case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
         case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
@@ -1451,8 +1456,8 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
               aql::AstNodeType::NODE_TYPE_ROOT);
       }
     }
-    switch (qualifierType) {
-      case aql::Quantifier::ALL:
+    switch (quantifierType) {
+      case aql::Quantifier::Type::kAll:
         // calculate node type for expanding operation
         // As soon as array is left argument but for filter we place document to
         // the left we reverse comparison operation
@@ -1509,7 +1514,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
                 aql::AstNodeType::NODE_TYPE_ROOT);
         }
         break;
-      case aql::Quantifier::ANY: {
+      case aql::Quantifier::Type::kAny: {
         switch (arrayComparison) {
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -1564,6 +1569,10 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
         }
         break;
       }
+      case aql::Quantifier::Type::kAtLeast:
+        // TODO: handle at least!!
+        TRI_ASSERT(false);
+
       default:
         TRI_ASSERT(false);  // new qualifier added ?
         return std::make_pair(
@@ -1672,10 +1681,10 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
   auto const* attributeNode = node.getMemberUnchecked(1);
   TRI_ASSERT(attributeNode);
 
-  auto const* qualifierNode = node.getMemberUnchecked(2);
-  TRI_ASSERT(qualifierNode);
+  auto const* quantifierNode = node.getMemberUnchecked(2);
+  TRI_ASSERT(quantifierNode);
 
-  if (qualifierNode->type != aql::NODE_TYPE_QUANTIFIER) {
+  if (quantifierNode->type != aql::NODE_TYPE_QUANTIFIER) {
     return {TRI_ERROR_BAD_PARAMETER,
             "wrong qualifier node type for Array comparison operator"};
   }
@@ -1703,7 +1712,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     Result buildRes;
     aql::AstNodeType arrayExpansionNodeType;
     std::tie(buildRes, arrayExpansionNodeType) =
-        buildBinaryArrayComparisonPreFilter(filter, node.type, qualifierNode,
+        buildBinaryArrayComparisonPreFilter(filter, node.type, quantifierNode,
                                             n);
     if (!buildRes.ok()) {
       return buildRes;
@@ -1797,7 +1806,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       Result buildRes;
       aql::AstNodeType arrayExpansionNodeType;
       std::tie(buildRes, arrayExpansionNodeType) =
-          buildBinaryArrayComparisonPreFilter(filter, node.type, qualifierNode,
+          buildBinaryArrayComparisonPreFilter(filter, node.type, quantifierNode,
                                               n);
       if (!buildRes.ok()) {
         return buildRes;

@@ -308,6 +308,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
                          .commitStatus = std::nullopt};
 
   current.supervision.emplace(LogCurrentSupervision{});
+  current.supervision->assumedWriteConcern = 3;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -453,6 +454,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
+  current.supervision->assumedWriteConcern = 3;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 

@@ -57,6 +57,7 @@
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 #include "StorageEngine/HealthData.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -1146,7 +1147,13 @@ void Supervision::waitForIndexCommitted(index_t index) {
   }
 }
 
-void Supervision::notify() noexcept { _cv.signal(); }
+void Supervision::notify() noexcept {
+  {
+    CONDITION_LOCKER(guard, _cv);
+    _shouldRunAgain = true;
+  }
+  _cv.signal();
+}
 
 void Supervision::waitForSupervisionNode() {
   // First wait until somebody has initialized the ArangoDB data, before
@@ -1196,40 +1203,47 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
+      _shouldRunAgain =
+          false;  // we start running, no reason to run again, yet.
       try {
         auto lapStart = std::chrono::steady_clock::now();
-
         {
-          MUTEX_LOCKER(locker, _lock);
+          guard.unlock();
+          ScopeGuard scopeGuard([&]() noexcept { guard.lock(); });
 
-          // Only modifiy this condition with extreme care:
-          // Supervision needs to wait until the agent has finished leadership
-          // preparation or else the local agency snapshot might be behind its
-          // last state.
-          if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
-            step();
-          } else {
-            // Once we lose leadership, we need to restart building our snapshot
-            if (_lastUpdateIndex > 0) {
-              _lastUpdateIndex = 0;
+          {
+            MUTEX_LOCKER(locker, _lock);
+
+            // Only modifiy this condition with extreme care:
+            // Supervision needs to wait until the agent has finished leadership
+            // preparation or else the local agency snapshot might be behind its
+            // last state.
+            if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
+              step();
+            } else {
+              // Once we lose leadership, we need to restart building our
+              // snapshot
+              if (_lastUpdateIndex > 0) {
+                _lastUpdateIndex = 0;
+              }
             }
           }
-        }
 
-        // If anything was rafted, we need to wait until it is replicated,
-        // otherwise it is not "committed" in the Raft sense. However, let's
-        // only wait for our changes not for new ones coming in during the wait.
-        if (_agent->leading()) {
-          waitForIndexCommitted(_agent->index());
+          // If anything was rafted, we need to wait until it is replicated,
+          // otherwise it is not "committed" in the Raft sense. However, let's
+          // only wait for our changes not for new ones coming in during the
+          // wait.
+          if (_agent->leading()) {
+            waitForIndexCommitted(_agent->index());
+          }
         }
-
         auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
                            std::chrono::steady_clock::now() - lapStart)
                            .count();
 
         _supervision_runtime_msec.count(lapTime / 1000);
 
-        if (lapTime < 1000000) {
+        if (!_shouldRunAgain && lapTime < 1000000) {
           // wait returns false if timeout was reached
           _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
         }
