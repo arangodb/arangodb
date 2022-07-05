@@ -74,7 +74,7 @@ class QueryResultCursor final : public arangodb::Cursor {
   /// If no extras are set this will return a NONE slice.
   arangodb::velocypack::Slice extra() const;
 
-  /// @brief Remember, if we dirty reads were allowed:
+  /// @brief Remember, if dirty reads were allowed:
   bool allowDirtyReads() const override final {
     return _result.allowDirtyReads;
   }

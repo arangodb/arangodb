@@ -388,7 +388,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   if (_activeTrx->state()->options().allowDirtyReads) {
     setOutgoingDirtyReadsHeader(true);
-  };
+  }
 
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options)
@@ -860,7 +860,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
 
   if (_activeTrx->state()->options().allowDirtyReads) {
     setOutgoingDirtyReadsHeader(true);
-  };
+  }
 
   return waitForFuture(
       _activeTrx->documentAsync(cname, search, opOptions)
