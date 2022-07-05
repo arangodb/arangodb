@@ -140,7 +140,7 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
   size_t memoryUsageForRowIndexes =
       numDataRows * sizeof(AqlItemMatrix::RowIndex);
 
-  _rowIndexes.reserve(numDataRows);
+  _rowIndexes.reserve(_rowIndexes.size() + numDataRows);
 
   ResourceUsageScope guard(_infos.getResourceMonitor(),
                            memoryUsageForRowIndexes);
@@ -229,8 +229,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   }
 
   while (_returnNext < _rowIndexes.size() && call.shouldSkip()) {
-    InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
-                          _rowIndexes[_returnNext].second);
     _returnNext++;
     call.didSkip(1);
   }
