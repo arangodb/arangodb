@@ -1104,7 +1104,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
   TRI_ASSERT(
       node.attribute && node.attribute->isDeterministic() &&
       aql::NODE_TYPE_FCALL == node.attribute->type &&
-      &aql::Functions::GeoDistance ==
+      &aql::functions::GeoDistance ==
           reinterpret_cast<aql::Function const*>(node.attribute->getData())
               ->implementation);
   TRI_ASSERT(node.value && node.value->isDeterministic());

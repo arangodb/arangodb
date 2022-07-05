@@ -731,7 +731,7 @@ void appendAsString(VPackOptions const& vopts,
   AqlValueMaterializer materializer(&vopts);
   VPackSlice slice = materializer.slice(value, false);
 
-  Functions::Stringify(&vopts, buffer, slice);
+  functions::Stringify(&vopts, buffer, slice);
 }
 
 /// @brief Checks if the given list contains the element
@@ -1416,7 +1416,7 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
 }  // namespace arangodb
 
 /// @brief append the VelocyPack value to a string buffer
-void Functions::Stringify(VPackOptions const* vopts,
+void functions::Stringify(VPackOptions const* vopts,
                           arangodb::velocypack::StringSink& buffer,
                           VPackSlice const& slice) {
   if (slice.isNull()) {
@@ -1440,49 +1440,49 @@ void Functions::Stringify(VPackOptions const* vopts,
 }
 
 /// @brief function IS_NULL
-AqlValue Functions::IsNull(ExpressionContext*, AstNode const&,
+AqlValue functions::IsNull(ExpressionContext*, AstNode const&,
                            VPackFunctionParametersView parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isNull(true)));
 }
 
 /// @brief function IS_BOOL
-AqlValue Functions::IsBool(ExpressionContext*, AstNode const&,
+AqlValue functions::IsBool(ExpressionContext*, AstNode const&,
                            VPackFunctionParametersView parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isBoolean()));
 }
 
 /// @brief function IS_NUMBER
-AqlValue Functions::IsNumber(ExpressionContext*, AstNode const&,
+AqlValue functions::IsNumber(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isNumber()));
 }
 
 /// @brief function IS_STRING
-AqlValue Functions::IsString(ExpressionContext*, AstNode const&,
+AqlValue functions::IsString(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isString()));
 }
 
 /// @brief function IS_ARRAY
-AqlValue Functions::IsArray(ExpressionContext*, AstNode const&,
+AqlValue functions::IsArray(ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isArray()));
 }
 
 /// @brief function IS_OBJECT
-AqlValue Functions::IsObject(ExpressionContext*, AstNode const&,
+AqlValue functions::IsObject(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.isObject()));
 }
 
 /// @brief function TYPENAME
-AqlValue Functions::Typename(ExpressionContext*, AstNode const&,
+AqlValue functions::Typename(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   char const* type = value.getTypeString();
@@ -1491,7 +1491,7 @@ AqlValue Functions::Typename(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function TO_NUMBER
-AqlValue Functions::ToNumber(ExpressionContext*, AstNode const&,
+AqlValue functions::ToNumber(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   bool failed;
@@ -1505,7 +1505,7 @@ AqlValue Functions::ToNumber(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function TO_STRING
-AqlValue Functions::ToString(ExpressionContext* expr, AstNode const&,
+AqlValue functions::ToString(ExpressionContext* expr, AstNode const&,
                              VPackFunctionParametersView parameters) {
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -1518,7 +1518,7 @@ AqlValue Functions::ToString(ExpressionContext* expr, AstNode const&,
 }
 
 /// @brief function TO_BASE64
-AqlValue Functions::ToBase64(ExpressionContext* expr, AstNode const&,
+AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
                              VPackFunctionParametersView parameters) {
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -1535,7 +1535,7 @@ AqlValue Functions::ToBase64(ExpressionContext* expr, AstNode const&,
 }
 
 /// @brief function TO_HEX
-AqlValue Functions::ToHex(ExpressionContext* expr, AstNode const&,
+AqlValue functions::ToHex(ExpressionContext* expr, AstNode const&,
                           VPackFunctionParametersView parameters) {
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -1552,7 +1552,7 @@ AqlValue Functions::ToHex(ExpressionContext* expr, AstNode const&,
 }
 
 /// @brief function ENCODE_URI_COMPONENT
-AqlValue Functions::EncodeURIComponent(ExpressionContext* expr, AstNode const&,
+AqlValue functions::EncodeURIComponent(ExpressionContext* expr, AstNode const&,
                                        VPackFunctionParametersView parameters) {
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -1569,7 +1569,7 @@ AqlValue Functions::EncodeURIComponent(ExpressionContext* expr, AstNode const&,
 }
 
 /// @brief function UUID
-AqlValue Functions::Uuid(ExpressionContext*, AstNode const&,
+AqlValue functions::Uuid(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   boost::uuids::uuid uuid;
   {
@@ -1582,7 +1582,7 @@ AqlValue Functions::Uuid(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function SOUNDEX
-AqlValue Functions::Soundex(ExpressionContext* expr, AstNode const&,
+AqlValue functions::Soundex(ExpressionContext* expr, AstNode const&,
                             VPackFunctionParametersView parameters) {
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -1600,7 +1600,7 @@ AqlValue Functions::Soundex(ExpressionContext* expr, AstNode const&,
 }
 
 /// @brief function LEVENSHTEIN_DISTANCE
-AqlValue Functions::LevenshteinDistance(
+AqlValue functions::LevenshteinDistance(
     ExpressionContext* expr, AstNode const&,
     VPackFunctionParametersView parameters) {
   auto& trx = expr->trx();
@@ -1682,21 +1682,21 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
 }  // namespace
 
 /// Executes NGRAM_SIMILARITY based on binary ngram similarity
-AqlValue Functions::NgramSimilarity(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::NgramSimilarity(ExpressionContext* ctx, AstNode const&,
                                     VPackFunctionParametersView args) {
   static char const* AFN = "NGRAM_SIMILARITY";
   return NgramSimilarityHelper<true>(AFN, ctx, args);
 }
 
 /// Executes NGRAM_POSITIONAL_SIMILARITY based on positional ngram similarity
-AqlValue Functions::NgramPositionalSimilarity(
+AqlValue functions::NgramPositionalSimilarity(
     ExpressionContext* ctx, AstNode const&, VPackFunctionParametersView args) {
   static char const* AFN = "NGRAM_POSITIONAL_SIMILARITY";
   return NgramSimilarityHelper<false>(AFN, ctx, args);
 }
 
 /// Executes NGRAM_MATCH based on binary ngram similarity
-AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
                                VPackFunctionParametersView args) {
   TRI_ASSERT(ctx);
   static char const* AFN = "NGRAM_MATCH";
@@ -1818,7 +1818,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
 }
 
 /// Executes LEVENSHTEIN_MATCH
-AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx,
+AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
                                      AstNode const& node,
                                      VPackFunctionParametersView args) {
   static char const* AFN = "LEVENSHTEIN_MATCH";
@@ -1854,7 +1854,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx,
   if (withTranspositionsValue &&
       maxDistanceValue > arangodb::iresearch::kMaxDamerauLevenshteinDistance) {
     // fallback to LEVENSHTEIN_DISTANCE
-    auto const dist = Functions::LevenshteinDistance(ctx, node, args);
+    auto const dist = functions::LevenshteinDistance(ctx, node, args);
     TRI_ASSERT(dist.isNumber());
 
     return AqlValue{AqlValueHintBool{dist.toInt64() <= maxDistanceValue}};
@@ -1884,7 +1884,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx,
 }
 
 /// @brief function IN_RANGE
-AqlValue Functions::InRange(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::InRange(ExpressionContext* ctx, AstNode const&,
                             VPackFunctionParametersView args) {
   static char const* AFN = "IN_RANGE";
 
@@ -1936,14 +1936,14 @@ AqlValue Functions::InRange(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function TO_BOOL
-AqlValue Functions::ToBool(ExpressionContext*, AstNode const&,
+AqlValue functions::ToBool(ExpressionContext*, AstNode const&,
                            VPackFunctionParametersView parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.toBoolean()));
 }
 
 /// @brief function TO_ARRAY
-AqlValue Functions::ToArray(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::ToArray(ExpressionContext* ctx, AstNode const&,
                             VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -1979,7 +1979,7 @@ AqlValue Functions::ToArray(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function LENGTH
-AqlValue Functions::Length(ExpressionContext*, AstNode const&,
+AqlValue functions::Length(ExpressionContext*, AstNode const&,
                            VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (value.isArray()) {
@@ -2017,7 +2017,7 @@ AqlValue Functions::Length(ExpressionContext*, AstNode const&,
 
 /// @brief function FIND_FIRST
 /// FIND_FIRST(text, search, start, end) → position
-AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
+AqlValue functions::FindFirst(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   static char const* AFN = "FIND_FIRST";
@@ -2090,7 +2090,7 @@ AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
 
 /// @brief function FIND_LAST
 /// FIND_FIRST(text, search, start, end) → position
-AqlValue Functions::FindLast(ExpressionContext* expressionContext,
+AqlValue functions::FindLast(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   static char const* AFN = "FIND_LAST";
@@ -2165,7 +2165,7 @@ AqlValue Functions::FindLast(ExpressionContext* expressionContext,
 }
 
 /// @brief function REVERSE
-AqlValue Functions::Reverse(ExpressionContext* expressionContext,
+AqlValue functions::Reverse(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   static char const* AFN = "REVERSE";
@@ -2218,7 +2218,7 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext,
 }
 
 /// @brief function FIRST
-AqlValue Functions::First(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::First(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "FIRST";
@@ -2240,7 +2240,7 @@ AqlValue Functions::First(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function LAST
-AqlValue Functions::Last(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Last(ExpressionContext* expressionContext, AstNode const&,
                          VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "LAST";
@@ -2264,7 +2264,7 @@ AqlValue Functions::Last(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function NTH
-AqlValue Functions::Nth(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Nth(ExpressionContext* expressionContext, AstNode const&,
                         VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "NTH";
@@ -2295,7 +2295,7 @@ AqlValue Functions::Nth(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function CONTAINS
-AqlValue Functions::Contains(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
                              VPackFunctionParametersView parameters) {
   auto* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -2360,7 +2360,7 @@ AqlValue Functions::Contains(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function CONCAT
-AqlValue Functions::Concat(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
                            VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -2401,7 +2401,7 @@ AqlValue Functions::Concat(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function CONCAT_SEPARATOR
-AqlValue Functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
                                     VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -2463,7 +2463,7 @@ AqlValue Functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function CHAR_LENGTH
-AqlValue Functions::CharLength(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::CharLength(ExpressionContext* ctx, AstNode const&,
                                VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto* vopts = &trx->vpackOptions();
@@ -2511,7 +2511,7 @@ AqlValue Functions::CharLength(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function LOWER
-AqlValue Functions::Lower(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
                           VPackFunctionParametersView parameters) {
   std::string utf8;
   transaction::Methods* trx = &ctx->trx();
@@ -2532,7 +2532,7 @@ AqlValue Functions::Lower(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function UPPER
-AqlValue Functions::Upper(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
                           VPackFunctionParametersView parameters) {
   std::string utf8;
   transaction::Methods* trx = &ctx->trx();
@@ -2553,7 +2553,7 @@ AqlValue Functions::Upper(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function SUBSTRING
-AqlValue Functions::Substring(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
                               VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -2593,7 +2593,7 @@ AqlValue Functions::Substring(ExpressionContext* ctx, AstNode const&,
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::Substitute(ExpressionContext* expressionContext,
+AqlValue functions::Substitute(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   static char const* AFN = "SUBSTITUTE";
@@ -2857,7 +2857,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
 }
 
 /// @brief function LEFT str, length
-AqlValue Functions::Left(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::Left(ExpressionContext* ctx, AstNode const&,
                          VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -2881,7 +2881,7 @@ AqlValue Functions::Left(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function RIGHT
-AqlValue Functions::Right(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::Right(ExpressionContext* ctx, AstNode const&,
                           VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -2951,7 +2951,7 @@ void rtrimInternal(int32_t& startOffset, int32_t& endOffset,
 }  // namespace
 
 /// @brief function TRIM
-AqlValue Functions::Trim(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
                          VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "TRIM";
@@ -3015,7 +3015,7 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function LTRIM
-AqlValue Functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "LTRIM";
@@ -3061,7 +3061,7 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function RTRIM
-AqlValue Functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "RTRIM";
@@ -3107,7 +3107,7 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function LIKE
-AqlValue Functions::Like(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
                          VPackFunctionParametersView parameters) {
   static char const* AFN = "LIKE";
 
@@ -3150,7 +3150,7 @@ AqlValue Functions::Like(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function SPLIT
-AqlValue Functions::Split(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   static char const* AFN = "SPLIT";
 
@@ -3288,7 +3288,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function REGEX_MATCHES
-AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
+AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "REGEX_MATCHES";
@@ -3367,7 +3367,7 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
 }
 
 /// @brief function REGEX_SPLIT
-AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
+AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   static char const* AFN = "REGEX_SPLIT";
@@ -3500,7 +3500,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
 }
 
 /// @brief function REGEX_TEST
-AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
+AqlValue functions::RegexTest(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   static char const* AFN = "REGEX_TEST";
@@ -3544,7 +3544,7 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
 }
 
 /// @brief function REGEX_REPLACE
-AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
+AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "REGEX_REPLACE";
@@ -3593,7 +3593,7 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_NOW
-AqlValue Functions::DateNow(ExpressionContext*, AstNode const&,
+AqlValue functions::DateNow(ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView) {
   auto millis = std::chrono::duration_cast<duration<int64_t, std::milli>>(
       system_clock::now().time_since_epoch());
@@ -3602,7 +3602,7 @@ AqlValue Functions::DateNow(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function DATE_ISO8601
-AqlValue Functions::DateIso8601(ExpressionContext* expressionContext,
+AqlValue functions::DateIso8601(ExpressionContext* expressionContext,
                                 AstNode const&,
                                 VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_ISO8601";
@@ -3610,7 +3610,7 @@ AqlValue Functions::DateIso8601(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_TIMESTAMP
-AqlValue Functions::DateTimestamp(ExpressionContext* expressionContext,
+AqlValue functions::DateTimestamp(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_TIMESTAMP";
@@ -3618,7 +3618,7 @@ AqlValue Functions::DateTimestamp(ExpressionContext* expressionContext,
 }
 
 /// @brief function IS_DATESTRING
-AqlValue Functions::IsDatestring(ExpressionContext*, AstNode const&,
+AqlValue functions::IsDatestring(ExpressionContext*, AstNode const&,
                                  VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -3633,7 +3633,7 @@ AqlValue Functions::IsDatestring(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function DATE_DAYOFWEEK
-AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
+AqlValue functions::DateDayOfWeek(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_DAYOFWEEK";
@@ -3647,7 +3647,7 @@ AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_YEAR
-AqlValue Functions::DateYear(ExpressionContext* expressionContext,
+AqlValue functions::DateYear(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_YEAR";
@@ -3663,7 +3663,7 @@ AqlValue Functions::DateYear(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_MONTH
-AqlValue Functions::DateMonth(ExpressionContext* expressionContext,
+AqlValue functions::DateMonth(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_MONTH";
@@ -3679,7 +3679,7 @@ AqlValue Functions::DateMonth(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_DAY
-AqlValue Functions::DateDay(ExpressionContext* expressionContext,
+AqlValue functions::DateDay(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_DAY";
@@ -3696,7 +3696,7 @@ AqlValue Functions::DateDay(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_HOUR
-AqlValue Functions::DateHour(ExpressionContext* expressionContext,
+AqlValue functions::DateHour(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_HOUR";
@@ -3712,7 +3712,7 @@ AqlValue Functions::DateHour(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_MINUTE
-AqlValue Functions::DateMinute(ExpressionContext* expressionContext,
+AqlValue functions::DateMinute(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_MINUTE";
@@ -3728,7 +3728,7 @@ AqlValue Functions::DateMinute(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_SECOND
-AqlValue Functions::DateSecond(ExpressionContext* expressionContext,
+AqlValue functions::DateSecond(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_SECOND";
@@ -3744,7 +3744,7 @@ AqlValue Functions::DateSecond(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_MILLISECOND
-AqlValue Functions::DateMillisecond(ExpressionContext* expressionContext,
+AqlValue functions::DateMillisecond(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_MILLISECOND";
@@ -3759,7 +3759,7 @@ AqlValue Functions::DateMillisecond(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_DAYOFYEAR
-AqlValue Functions::DateDayOfYear(ExpressionContext* expressionContext,
+AqlValue functions::DateDayOfYear(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_DAYOFYEAR";
@@ -3780,7 +3780,7 @@ AqlValue Functions::DateDayOfYear(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_ISOWEEK
-AqlValue Functions::DateIsoWeek(ExpressionContext* expressionContext,
+AqlValue functions::DateIsoWeek(ExpressionContext* expressionContext,
                                 AstNode const&,
                                 VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_ISOWEEK";
@@ -3797,7 +3797,7 @@ AqlValue Functions::DateIsoWeek(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_LEAPYEAR
-AqlValue Functions::DateLeapYear(ExpressionContext* expressionContext,
+AqlValue functions::DateLeapYear(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_LEAPYEAR";
@@ -3813,7 +3813,7 @@ AqlValue Functions::DateLeapYear(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_QUARTER
-AqlValue Functions::DateQuarter(ExpressionContext* expressionContext,
+AqlValue functions::DateQuarter(ExpressionContext* expressionContext,
                                 AstNode const&,
                                 VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_QUARTER";
@@ -3834,7 +3834,7 @@ AqlValue Functions::DateQuarter(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_DAYS_IN_MONTH
-AqlValue Functions::DateDaysInMonth(ExpressionContext* expressionContext,
+AqlValue functions::DateDaysInMonth(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_DAYS_IN_MONTH";
@@ -3853,7 +3853,7 @@ AqlValue Functions::DateDaysInMonth(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_TRUNC
-AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
+AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_TRUNC";
@@ -3904,7 +3904,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_UTCTOLOCAL
-AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
+AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
                                    AstNode const&,
                                    VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_UTCTOLOCAL";
@@ -3979,7 +3979,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_LOCALTOUTC
-AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
+AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
                                    AstNode const&,
                                    VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_LOCALTOUTC";
@@ -4053,7 +4053,7 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_TIMEZONE
-AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
+AqlValue functions::DateTimeZone(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   auto const* zone = date::current_zone();
@@ -4066,7 +4066,7 @@ AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_TIMEZONES
-AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext,
+AqlValue functions::DateTimeZones(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   auto& list = date::get_tzdb_list();
@@ -4089,7 +4089,7 @@ AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_ADD
-AqlValue Functions::DateAdd(ExpressionContext* expressionContext,
+AqlValue functions::DateAdd(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_ADD";
@@ -4132,7 +4132,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_SUBTRACT
-AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
+AqlValue functions::DateSubtract(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_SUBTRACT";
@@ -4175,7 +4175,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_DIFF
-AqlValue Functions::DateDiff(ExpressionContext* expressionContext,
+AqlValue functions::DateDiff(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_DIFF";
@@ -4266,7 +4266,7 @@ AqlValue Functions::DateDiff(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_COMPARE
-AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
+AqlValue functions::DateCompare(ExpressionContext* expressionContext,
                                 AstNode const&,
                                 VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_COMPARE";
@@ -4387,7 +4387,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
 }
 
 /// @brief function DATE_ROUND
-AqlValue Functions::DateRound(ExpressionContext* expressionContext,
+AqlValue functions::DateRound(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_ROUND";
@@ -4444,7 +4444,7 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
 }
 
 /// @brief function PASSTHRU
-AqlValue Functions::Passthru(ExpressionContext*, AstNode const&,
+AqlValue functions::Passthru(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   if (parameters.empty()) {
     return AqlValue(AqlValueHintNull());
@@ -4454,7 +4454,7 @@ AqlValue Functions::Passthru(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function UNSET
-AqlValue Functions::Unset(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Unset(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   static char const* AFN = "UNSET";
 
@@ -4478,7 +4478,7 @@ AqlValue Functions::Unset(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function UNSET_RECURSIVE
-AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
+AqlValue functions::UnsetRecursive(ExpressionContext* expressionContext,
                                    AstNode const&,
                                    VPackFunctionParametersView parameters) {
   static char const* AFN = "UNSET_RECURSIVE";
@@ -4504,7 +4504,7 @@ AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
 }
 
 /// @brief function KEEP
-AqlValue Functions::Keep(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Keep(ExpressionContext* expressionContext, AstNode const&,
                          VPackFunctionParametersView parameters) {
   static char const* AFN = "KEEP";
 
@@ -4529,7 +4529,7 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function KEEP_RECURSIVE
-AqlValue Functions::KeepRecursive(ExpressionContext* expressionContext,
+AqlValue functions::KeepRecursive(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   static char const* AFN = "KEEP_RECURSIVE";
@@ -4555,7 +4555,7 @@ AqlValue Functions::KeepRecursive(ExpressionContext* expressionContext,
 }
 
 /// @brief function TRANSLATE
-AqlValue Functions::Translate(ExpressionContext* expressionContext,
+AqlValue functions::Translate(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -4581,7 +4581,7 @@ AqlValue Functions::Translate(ExpressionContext* expressionContext,
   } else {
     transaction::StringLeaser buffer(trx);
     arangodb::velocypack::StringSink adapter(buffer.get());
-    Functions::Stringify(vopts, adapter, key.slice());
+    functions::Stringify(vopts, adapter, key.slice());
     result = slice.get(*buffer);
   }
 
@@ -4599,13 +4599,13 @@ AqlValue Functions::Translate(ExpressionContext* expressionContext,
 }
 
 /// @brief function MERGE
-AqlValue Functions::Merge(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Merge(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   return ::mergeParameters(expressionContext, parameters, "MERGE", false);
 }
 
 /// @brief function MERGE_RECURSIVE
-AqlValue Functions::MergeRecursive(ExpressionContext* expressionContext,
+AqlValue functions::MergeRecursive(ExpressionContext* expressionContext,
                                    AstNode const&,
                                    VPackFunctionParametersView parameters) {
   return ::mergeParameters(expressionContext, parameters, "MERGE_RECURSIVE",
@@ -4613,7 +4613,7 @@ AqlValue Functions::MergeRecursive(ExpressionContext* expressionContext,
 }
 
 /// @brief function HAS
-AqlValue Functions::Has(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Has(ExpressionContext* expressionContext, AstNode const&,
                         VPackFunctionParametersView parameters) {
   size_t const n = parameters.size();
   if (n < 2) {
@@ -4641,7 +4641,7 @@ AqlValue Functions::Has(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function ATTRIBUTES
-AqlValue Functions::Attributes(ExpressionContext* expressionContext,
+AqlValue functions::Attributes(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   size_t const n = parameters.size();
@@ -4709,7 +4709,7 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
 }
 
 /// @brief function VALUES
-AqlValue Functions::Values(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Values(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
   size_t const n = parameters.size();
 
@@ -4765,7 +4765,7 @@ AqlValue Functions::Values(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function MIN
-AqlValue Functions::Min(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Min(ExpressionContext* expressionContext, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -4799,7 +4799,7 @@ AqlValue Functions::Min(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function MAX
-AqlValue Functions::Max(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Max(ExpressionContext* expressionContext, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -4829,7 +4829,7 @@ AqlValue Functions::Max(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function SUM
-AqlValue Functions::Sum(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Sum(ExpressionContext* expressionContext, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -4863,7 +4863,7 @@ AqlValue Functions::Sum(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function AVERAGE
-AqlValue Functions::Average(ExpressionContext* expressionContext,
+AqlValue functions::Average(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   static char const* AFN = "AVERAGE";
@@ -4909,7 +4909,7 @@ AqlValue Functions::Average(ExpressionContext* expressionContext,
 }
 
 /// @brief function PRODUCT
-AqlValue Functions::Product(ExpressionContext* expressionContext,
+AqlValue functions::Product(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -4945,7 +4945,7 @@ AqlValue Functions::Product(ExpressionContext* expressionContext,
 }
 
 /// @brief function SLEEP
-AqlValue Functions::Sleep(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Sleep(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -4976,7 +4976,7 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function COLLECTIONS
-AqlValue Functions::Collections(ExpressionContext* exprCtx, AstNode const&,
+AqlValue functions::Collections(ExpressionContext* exprCtx, AstNode const&,
                                 VPackFunctionParametersView parameters) {
   transaction::BuilderLeaser builder(&exprCtx->trx());
   builder->openArray();
@@ -5006,7 +5006,7 @@ AqlValue Functions::Collections(ExpressionContext* exprCtx, AstNode const&,
 }
 
 /// @brief function RANDOM_TOKEN
-AqlValue Functions::RandomToken(ExpressionContext*, AstNode const&,
+AqlValue functions::RandomToken(ExpressionContext*, AstNode const&,
                                 VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -5022,7 +5022,7 @@ AqlValue Functions::RandomToken(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function IPV4_FROM_NUMBER
-AqlValue Functions::IpV4FromNumber(ExpressionContext* expressionContext,
+AqlValue functions::IpV4FromNumber(ExpressionContext* expressionContext,
                                    AstNode const&,
                                    VPackFunctionParametersView parameters) {
   static char const* AFN = "IPV4_FROM_NUMBER";
@@ -5068,7 +5068,7 @@ AqlValue Functions::IpV4FromNumber(ExpressionContext* expressionContext,
 }
 
 /// @brief function IPV4_TO_NUMBER
-AqlValue Functions::IpV4ToNumber(ExpressionContext* expressionContext,
+AqlValue functions::IpV4ToNumber(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "IPV4_TO_NUMBER";
@@ -5129,7 +5129,7 @@ AqlValue Functions::IpV4ToNumber(ExpressionContext* expressionContext,
 }
 
 /// @brief function IS_IPV4
-AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
@@ -5181,7 +5181,7 @@ AqlValue Functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function MD5
-AqlValue Functions::Md5(ExpressionContext* exprCtx, AstNode const&,
+AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
                         VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &exprCtx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -5209,7 +5209,7 @@ AqlValue Functions::Md5(ExpressionContext* exprCtx, AstNode const&,
 }
 
 /// @brief function SHA1
-AqlValue Functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
+AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
                          VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &exprCtx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -5237,7 +5237,7 @@ AqlValue Functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
 }
 
 /// @brief function SHA512
-AqlValue Functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
+AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
                            VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &exprCtx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -5265,7 +5265,7 @@ AqlValue Functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
 }
 
 /// @brief function Crc32
-AqlValue Functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
+AqlValue functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
                           VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &exprCtx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -5282,7 +5282,7 @@ AqlValue Functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
 }
 
 /// @brief function Fnv64
-AqlValue Functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
+AqlValue functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
                           VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &exprCtx->trx();
   auto const& vopts = trx->vpackOptions();
@@ -5299,7 +5299,7 @@ AqlValue Functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
 }
 
 /// @brief function HASH
-AqlValue Functions::Hash(ExpressionContext*, AstNode const&,
+AqlValue functions::Hash(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -5311,7 +5311,7 @@ AqlValue Functions::Hash(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function IS_KEY
-AqlValue Functions::IsKey(ExpressionContext*, AstNode const&,
+AqlValue functions::IsKey(ExpressionContext*, AstNode const&,
                           VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (!value.isString()) {
@@ -5325,7 +5325,7 @@ AqlValue Functions::IsKey(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function COUNT_DISTINCT
-AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
+AqlValue functions::CountDistinct(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -5361,7 +5361,7 @@ AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
 }
 
 /// @brief function UNIQUE
-AqlValue Functions::Unique(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Unique(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "UNIQUE";
@@ -5406,7 +5406,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function SORTED_UNIQUE
-AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
+AqlValue functions::SortedUnique(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -5445,7 +5445,7 @@ AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
 }
 
 /// @brief function SORTED
-AqlValue Functions::Sorted(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Sorted(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "SORTED";
@@ -5489,7 +5489,7 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function UNION
-AqlValue Functions::Union(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Union(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   static char const* AFN = "UNION";
 
@@ -5531,7 +5531,7 @@ AqlValue Functions::Union(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function UNION_DISTINCT
-AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
+AqlValue functions::UnionDistinct(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   static char const* AFN = "UNION_DISTINCT";
@@ -5591,7 +5591,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
 }
 
 /// @brief function INTERSECTION
-AqlValue Functions::Intersection(ExpressionContext* expressionContext,
+AqlValue functions::Intersection(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "INTERSECTION";
@@ -5663,7 +5663,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
 }
 
 /// @brief function JACCARD
-AqlValue Functions::Jaccard(ExpressionContext* ctx, AstNode const&,
+AqlValue functions::Jaccard(ExpressionContext* ctx, AstNode const&,
                             VPackFunctionParametersView args) {
   static char const* AFN = "JACCARD";
 
@@ -5718,7 +5718,7 @@ AqlValue Functions::Jaccard(ExpressionContext* ctx, AstNode const&,
 }
 
 /// @brief function OUTERSECTION
-AqlValue Functions::Outersection(ExpressionContext* expressionContext,
+AqlValue functions::Outersection(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "OUTERSECTION";
@@ -5777,7 +5777,7 @@ AqlValue Functions::Outersection(ExpressionContext* expressionContext,
 }
 
 /// @brief function DISTANCE
-AqlValue Functions::Distance(ExpressionContext* expressionContext,
+AqlValue functions::Distance(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   static char const* AFN = "DISTANCE";
@@ -5832,7 +5832,7 @@ AqlValue Functions::Distance(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_DISTANCE
-AqlValue Functions::GeoDistance(ExpressionContext* exprCtx, AstNode const&,
+AqlValue functions::GeoDistance(ExpressionContext* exprCtx, AstNode const&,
                                 VPackFunctionParametersView parameters) {
   constexpr char const AFN[] = "GEO_DISTANCE";
   geo::ShapeContainer shape1, shape2;
@@ -5864,7 +5864,7 @@ AqlValue Functions::GeoDistance(ExpressionContext* exprCtx, AstNode const&,
 }
 
 /// @brief function GEO_IN_RANGE
-AqlValue Functions::GeoInRange(ExpressionContext* ctx, AstNode const& node,
+AqlValue functions::GeoInRange(ExpressionContext* ctx, AstNode const& node,
                                VPackFunctionParametersView args) {
   TRI_ASSERT(ctx);
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
@@ -5965,7 +5965,7 @@ AqlValue Functions::GeoInRange(ExpressionContext* ctx, AstNode const& node,
 }
 
 /// @brief function GEO_CONTAINS
-AqlValue Functions::GeoContains(ExpressionContext* expressionContext,
+AqlValue functions::GeoContains(ExpressionContext* expressionContext,
                                 AstNode const& node,
                                 VPackFunctionParametersView parameters) {
   return ::geoContainsIntersect(expressionContext, node, parameters,
@@ -5973,7 +5973,7 @@ AqlValue Functions::GeoContains(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_INTERSECTS
-AqlValue Functions::GeoIntersects(ExpressionContext* expressionContext,
+AqlValue functions::GeoIntersects(ExpressionContext* expressionContext,
                                   AstNode const& node,
                                   VPackFunctionParametersView parameters) {
   return ::geoContainsIntersect(expressionContext, node, parameters,
@@ -5981,7 +5981,7 @@ AqlValue Functions::GeoIntersects(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_EQUALS
-AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
+AqlValue functions::GeoEquals(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6017,7 +6017,7 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_AREA
-AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
+AqlValue functions::GeoArea(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6047,7 +6047,7 @@ AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
 }
 
 /// @brief function IS_IN_POLYGON
-AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
+AqlValue functions::IsInPolygon(ExpressionContext* expressionContext,
                                 AstNode const&,
                                 VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6109,7 +6109,7 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
 /// @brief geo constructors
 
 /// @brief function GEO_POINT
-AqlValue Functions::GeoPoint(ExpressionContext* expressionContext,
+AqlValue functions::GeoPoint(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6156,7 +6156,7 @@ AqlValue Functions::GeoPoint(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_MULTIPOINT
-AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
+AqlValue functions::GeoMultiPoint(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6220,7 +6220,7 @@ AqlValue Functions::GeoMultiPoint(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_POLYGON
-AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
+AqlValue functions::GeoPolygon(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6269,7 +6269,7 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_MULTIPOLYGON
-AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
+AqlValue functions::GeoMultiPolygon(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6353,7 +6353,7 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_LINESTRING
-AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
+AqlValue functions::GeoLinestring(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6417,7 +6417,7 @@ AqlValue Functions::GeoLinestring(ExpressionContext* expressionContext,
 }
 
 /// @brief function GEO_MULTILINESTRING
-AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
+AqlValue functions::GeoMultiLinestring(ExpressionContext* expressionContext,
                                        AstNode const&,
                                        VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6501,7 +6501,7 @@ AqlValue Functions::GeoMultiLinestring(ExpressionContext* expressionContext,
 }
 
 /// @brief function FLATTEN
-AqlValue Functions::Flatten(ExpressionContext* expressionContext,
+AqlValue functions::Flatten(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -6539,7 +6539,7 @@ AqlValue Functions::Flatten(ExpressionContext* expressionContext,
 }
 
 /// @brief function ZIP
-AqlValue Functions::Zip(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
                         VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "ZIP";
@@ -6598,7 +6598,7 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function JSON_STRINGIFY
-AqlValue Functions::JsonStringify(ExpressionContext* exprCtx, AstNode const&,
+AqlValue functions::JsonStringify(ExpressionContext* exprCtx, AstNode const&,
                                   VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &exprCtx->trx();
   auto* vopts = &trx->vpackOptions();
@@ -6616,7 +6616,7 @@ AqlValue Functions::JsonStringify(ExpressionContext* exprCtx, AstNode const&,
 }
 
 /// @brief function JSON_PARSE
-AqlValue Functions::JsonParse(ExpressionContext* expressionContext,
+AqlValue functions::JsonParse(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   static char const* AFN = "JSON_PARSE";
@@ -6647,7 +6647,7 @@ AqlValue Functions::JsonParse(ExpressionContext* expressionContext,
 }
 
 /// @brief function PARSE_IDENTIFIER
-AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
+AqlValue functions::ParseIdentifier(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
   static char const* AFN = "PARSE_IDENTIFIER";
@@ -6696,7 +6696,7 @@ AqlValue Functions::ParseIdentifier(ExpressionContext* expressionContext,
 }
 
 /// @brief function Slice
-AqlValue Functions::Slice(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Slice(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "SLICE";
@@ -6764,7 +6764,7 @@ AqlValue Functions::Slice(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function Minus
-AqlValue Functions::Minus(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Minus(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   static char const* AFN = "MINUS";
 
@@ -6828,7 +6828,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function Document
-AqlValue Functions::Document(ExpressionContext* expressionContext,
+AqlValue functions::Document(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -6915,7 +6915,7 @@ AqlValue Functions::Document(ExpressionContext* expressionContext,
 }
 
 /// @brief function MATCHES
-AqlValue Functions::Matches(ExpressionContext* expressionContext,
+AqlValue functions::Matches(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   static char const* AFN = "MATCHES";
@@ -7002,7 +7002,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext,
 }
 
 /// @brief function ROUND
-AqlValue Functions::Round(ExpressionContext*, AstNode const&,
+AqlValue functions::Round(ExpressionContext*, AstNode const&,
                           VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7013,7 +7013,7 @@ AqlValue Functions::Round(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function ABS
-AqlValue Functions::Abs(ExpressionContext*, AstNode const&,
+AqlValue functions::Abs(ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7022,7 +7022,7 @@ AqlValue Functions::Abs(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function CEIL
-AqlValue Functions::Ceil(ExpressionContext*, AstNode const&,
+AqlValue functions::Ceil(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7031,7 +7031,7 @@ AqlValue Functions::Ceil(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function FLOOR
-AqlValue Functions::Floor(ExpressionContext*, AstNode const&,
+AqlValue functions::Floor(ExpressionContext*, AstNode const&,
                           VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7040,7 +7040,7 @@ AqlValue Functions::Floor(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function SQRT
-AqlValue Functions::Sqrt(ExpressionContext*, AstNode const&,
+AqlValue functions::Sqrt(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7049,7 +7049,7 @@ AqlValue Functions::Sqrt(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function POW
-AqlValue Functions::Pow(ExpressionContext*, AstNode const&,
+AqlValue functions::Pow(ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& baseValue = extractFunctionParameterValue(parameters, 0);
   AqlValue const& expValue = extractFunctionParameterValue(parameters, 1);
@@ -7061,7 +7061,7 @@ AqlValue Functions::Pow(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function LOG
-AqlValue Functions::Log(ExpressionContext*, AstNode const&,
+AqlValue functions::Log(ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7070,7 +7070,7 @@ AqlValue Functions::Log(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function LOG2
-AqlValue Functions::Log2(ExpressionContext*, AstNode const&,
+AqlValue functions::Log2(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7079,7 +7079,7 @@ AqlValue Functions::Log2(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function LOG10
-AqlValue Functions::Log10(ExpressionContext*, AstNode const&,
+AqlValue functions::Log10(ExpressionContext*, AstNode const&,
                           VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7088,7 +7088,7 @@ AqlValue Functions::Log10(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function EXP
-AqlValue Functions::Exp(ExpressionContext*, AstNode const&,
+AqlValue functions::Exp(ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7097,7 +7097,7 @@ AqlValue Functions::Exp(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function EXP2
-AqlValue Functions::Exp2(ExpressionContext*, AstNode const&,
+AqlValue functions::Exp2(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7106,7 +7106,7 @@ AqlValue Functions::Exp2(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function SIN
-AqlValue Functions::Sin(ExpressionContext*, AstNode const&,
+AqlValue functions::Sin(ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7115,7 +7115,7 @@ AqlValue Functions::Sin(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function COS
-AqlValue Functions::Cos(ExpressionContext*, AstNode const&,
+AqlValue functions::Cos(ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7124,7 +7124,7 @@ AqlValue Functions::Cos(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function TAN
-AqlValue Functions::Tan(ExpressionContext*, AstNode const&,
+AqlValue functions::Tan(ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7133,7 +7133,7 @@ AqlValue Functions::Tan(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function ASIN
-AqlValue Functions::Asin(ExpressionContext*, AstNode const&,
+AqlValue functions::Asin(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7142,7 +7142,7 @@ AqlValue Functions::Asin(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function ACOS
-AqlValue Functions::Acos(ExpressionContext*, AstNode const&,
+AqlValue functions::Acos(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7151,7 +7151,7 @@ AqlValue Functions::Acos(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function ATAN
-AqlValue Functions::Atan(ExpressionContext*, AstNode const&,
+AqlValue functions::Atan(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7160,7 +7160,7 @@ AqlValue Functions::Atan(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function ATAN2
-AqlValue Functions::Atan2(ExpressionContext*, AstNode const&,
+AqlValue functions::Atan2(ExpressionContext*, AstNode const&,
                           VPackFunctionParametersView parameters) {
   AqlValue value1 = extractFunctionParameterValue(parameters, 0);
   AqlValue value2 = extractFunctionParameterValue(parameters, 1);
@@ -7171,7 +7171,7 @@ AqlValue Functions::Atan2(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function RADIANS
-AqlValue Functions::Radians(ExpressionContext*, AstNode const&,
+AqlValue functions::Radians(ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7181,7 +7181,7 @@ AqlValue Functions::Radians(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function DEGREES
-AqlValue Functions::Degrees(ExpressionContext*, AstNode const&,
+AqlValue functions::Degrees(ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -7191,7 +7191,7 @@ AqlValue Functions::Degrees(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function PI
-AqlValue Functions::Pi(ExpressionContext*, AstNode const&,
+AqlValue functions::Pi(ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView parameters) {
   // acos(-1) == PI
   return ::numberValue(std::acos(-1.0), true);
@@ -7202,7 +7202,7 @@ std::optional<T> bitOperationValue(VPackSlice input) {
   if (input.isNumber() && input.getNumber<double>() >= 0) {
     uint64_t result = input.getNumber<uint64_t>();
     if (result <=
-        static_cast<uint64_t>(Functions::bitFunctionsMaxSupportedValue)) {
+        static_cast<uint64_t>(functions::bitFunctionsMaxSupportedValue)) {
       TRI_ASSERT(result <= UINT32_MAX);
       // value is valid
       return std::optional<T>{static_cast<T>(result)};
@@ -7283,7 +7283,7 @@ AqlValue handleBitOperation(
 }
 
 /// @brief function BIT_AND
-AqlValue Functions::BitAnd(ExpressionContext* expressionContext,
+AqlValue functions::BitAnd(ExpressionContext* expressionContext,
                            AstNode const& node,
                            VPackFunctionParametersView parameters) {
   return handleBitOperation(
@@ -7292,7 +7292,7 @@ AqlValue Functions::BitAnd(ExpressionContext* expressionContext,
 }
 
 /// @brief function BIT_OR
-AqlValue Functions::BitOr(ExpressionContext* expressionContext,
+AqlValue functions::BitOr(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
   return handleBitOperation(
@@ -7301,7 +7301,7 @@ AqlValue Functions::BitOr(ExpressionContext* expressionContext,
 }
 
 /// @brief function BIT_XOR
-AqlValue Functions::BitXOr(ExpressionContext* expressionContext,
+AqlValue functions::BitXOr(ExpressionContext* expressionContext,
                            AstNode const& node,
                            VPackFunctionParametersView parameters) {
   return handleBitOperation(
@@ -7321,7 +7321,7 @@ std::optional<std::pair<T1, T2>> binaryBitFunctionParameters(
         auto result2 = bitOperationValue<T2>(value2.slice());
         if (result2.has_value() &&
             result2.value() <=
-                static_cast<T2>(Functions::bitFunctionsMaxSupportedBits)) {
+                static_cast<T2>(functions::bitFunctionsMaxSupportedBits)) {
           return std::optional<std::pair<T1, T2>>{
               {result1.value(), result2.value()}};
         }
@@ -7333,7 +7333,7 @@ std::optional<std::pair<T1, T2>> binaryBitFunctionParameters(
 }
 
 /// @brief function BIT_NEGATE
-AqlValue Functions::BitNegate(ExpressionContext* expressionContext,
+AqlValue functions::BitNegate(ExpressionContext* expressionContext,
                               AstNode const& node,
                               VPackFunctionParametersView parameters) {
   auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
@@ -7350,13 +7350,13 @@ AqlValue Functions::BitNegate(ExpressionContext* expressionContext,
 }
 
 /// @brief function BIT_TEST
-AqlValue Functions::BitTest(ExpressionContext* expressionContext,
+AqlValue functions::BitTest(ExpressionContext* expressionContext,
                             AstNode const& node,
                             VPackFunctionParametersView parameters) {
   auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
   if (result.has_value()) {
     auto [testee, index] = result.value();
-    if (index < Functions::bitFunctionsMaxSupportedBits) {
+    if (index < functions::bitFunctionsMaxSupportedBits) {
       return AqlValue(AqlValueHintBool((testee & (uint64_t(1) << index)) != 0));
     }
   }
@@ -7367,7 +7367,7 @@ AqlValue Functions::BitTest(ExpressionContext* expressionContext,
 }
 
 /// @brief function BIT_SHIFT_LEFT
-AqlValue Functions::BitShiftLeft(ExpressionContext* expressionContext,
+AqlValue functions::BitShiftLeft(ExpressionContext* expressionContext,
                                  AstNode const& node,
                                  VPackFunctionParametersView parameters) {
   auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
@@ -7378,7 +7378,7 @@ AqlValue Functions::BitShiftLeft(ExpressionContext* expressionContext,
       auto width = bitOperationValue<uint64_t>(value.slice());
       if (width.has_value() &&
           width.value() <=
-              static_cast<uint64_t>(Functions::bitFunctionsMaxSupportedBits)) {
+              static_cast<uint64_t>(functions::bitFunctionsMaxSupportedBits)) {
         // mask the lower bits of the result with up to 32 active bits
         return AqlValue(AqlValueHintUInt((testee << shift) &
                                          ((uint64_t(1) << width.value()) - 1)));
@@ -7392,7 +7392,7 @@ AqlValue Functions::BitShiftLeft(ExpressionContext* expressionContext,
 }
 
 /// @brief function BIT_SHIFT_RIGHT
-AqlValue Functions::BitShiftRight(ExpressionContext* expressionContext,
+AqlValue functions::BitShiftRight(ExpressionContext* expressionContext,
                                   AstNode const& node,
                                   VPackFunctionParametersView parameters) {
   auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
@@ -7403,7 +7403,7 @@ AqlValue Functions::BitShiftRight(ExpressionContext* expressionContext,
       auto width = bitOperationValue<uint32_t>(value.slice());
       if (width.has_value() &&
           width.value() <=
-              static_cast<uint64_t>(Functions::bitFunctionsMaxSupportedBits)) {
+              static_cast<uint64_t>(functions::bitFunctionsMaxSupportedBits)) {
         // mask the lower bits of the result with up to 32 active bits
         return AqlValue(AqlValueHintUInt((testee >> shift) &
                                          ((uint64_t(1) << width.value()) - 1)));
@@ -7417,7 +7417,7 @@ AqlValue Functions::BitShiftRight(ExpressionContext* expressionContext,
 }
 
 /// @brief function BIT_POPCOUNT
-AqlValue Functions::BitPopcount(ExpressionContext* expressionContext,
+AqlValue functions::BitPopcount(ExpressionContext* expressionContext,
                                 AstNode const& node,
                                 VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -7437,7 +7437,7 @@ AqlValue Functions::BitPopcount(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintNull());
 }
 
-AqlValue Functions::BitConstruct(ExpressionContext* expressionContext,
+AqlValue functions::BitConstruct(ExpressionContext* expressionContext,
                                  AstNode const& node,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "BIT_CONSTRUCT";
@@ -7454,7 +7454,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext,
       auto currentValue = bitOperationValue<uint64_t>(v);
       bool valid = currentValue.has_value();
       if (valid) {
-        if (currentValue.value() >= Functions::bitFunctionsMaxSupportedBits) {
+        if (currentValue.value() >= functions::bitFunctionsMaxSupportedBits) {
           valid = false;
         }
       }
@@ -7473,7 +7473,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintNull());
 }
 
-AqlValue Functions::BitDeconstruct(ExpressionContext* expressionContext,
+AqlValue functions::BitDeconstruct(ExpressionContext* expressionContext,
                                    AstNode const& node,
                                    VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -7486,7 +7486,7 @@ AqlValue Functions::BitDeconstruct(ExpressionContext* expressionContext,
       transaction::BuilderLeaser builder(trx);
       builder->openArray();
       uint32_t compare = 1;
-      for (uint32_t i = 0; i < Functions::bitFunctionsMaxSupportedBits; ++i) {
+      for (uint32_t i = 0; i < functions::bitFunctionsMaxSupportedBits; ++i) {
         // potential improvement: use C++20's std::countr_zero()
         if ((num.value() & compare) != 0) {
           builder->add(VPackValue(i));
@@ -7504,15 +7504,15 @@ AqlValue Functions::BitDeconstruct(ExpressionContext* expressionContext,
 }
 
 /// @brief function BIT_TO_STRING
-AqlValue Functions::BitToString(ExpressionContext* expressionContext,
+AqlValue functions::BitToString(ExpressionContext* expressionContext,
                                 AstNode const& node,
                                 VPackFunctionParametersView parameters) {
   auto result = binaryBitFunctionParameters<uint64_t, uint64_t>(parameters);
   if (result.has_value()) {
     auto [testee, index] = result.value();
-    TRI_ASSERT(index <= Functions::bitFunctionsMaxSupportedBits);
+    TRI_ASSERT(index <= functions::bitFunctionsMaxSupportedBits);
 
-    char buffer[Functions::bitFunctionsMaxSupportedBits];
+    char buffer[functions::bitFunctionsMaxSupportedBits];
     char* p = &buffer[0];
 
     if (index > 0) {
@@ -7533,7 +7533,7 @@ AqlValue Functions::BitToString(ExpressionContext* expressionContext,
 }
 
 /// @brief function BIT_FROM_STRING
-AqlValue Functions::BitFromString(ExpressionContext* expressionContext,
+AqlValue functions::BitFromString(ExpressionContext* expressionContext,
                                   AstNode const& node,
                                   VPackFunctionParametersView parameters) {
   static char const* AFN = "BIT_FROM_STRING";
@@ -7545,7 +7545,7 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext,
     char const* e = p + v.size();
 
     if (static_cast<uint64_t>(e - p) <=
-        Functions::bitFunctionsMaxSupportedBits) {
+        functions::bitFunctionsMaxSupportedBits) {
       uint64_t result = 0;
       while (p != e) {
         char c = *p;
@@ -7568,14 +7568,14 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext,
 }
 
 /// @brief function RAND
-AqlValue Functions::Rand(ExpressionContext*, AstNode const&,
+AqlValue functions::Rand(ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView parameters) {
   // This random functionality is not too good yet...
   return ::numberValue(static_cast<double>(std::rand()) / RAND_MAX, true);
 }
 
 /// @brief function FIRST_DOCUMENT
-AqlValue Functions::FirstDocument(ExpressionContext*, AstNode const&,
+AqlValue functions::FirstDocument(ExpressionContext*, AstNode const&,
                                   VPackFunctionParametersView parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -7589,7 +7589,7 @@ AqlValue Functions::FirstDocument(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function FIRST_LIST
-AqlValue Functions::FirstList(ExpressionContext*, AstNode const&,
+AqlValue functions::FirstList(ExpressionContext*, AstNode const&,
                               VPackFunctionParametersView parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -7603,7 +7603,7 @@ AqlValue Functions::FirstList(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function PUSH
-AqlValue Functions::Push(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Push(ExpressionContext* expressionContext, AstNode const&,
                          VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "PUSH";
@@ -7651,7 +7651,7 @@ AqlValue Functions::Push(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function POP
-AqlValue Functions::Pop(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Pop(ExpressionContext* expressionContext, AstNode const&,
                         VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "POP";
@@ -7685,7 +7685,7 @@ AqlValue Functions::Pop(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function APPEND
-AqlValue Functions::Append(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Append(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "APPEND";
@@ -7758,7 +7758,7 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function UNSHIFT
-AqlValue Functions::Unshift(ExpressionContext* expressionContext,
+AqlValue functions::Unshift(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -7806,7 +7806,7 @@ AqlValue Functions::Unshift(ExpressionContext* expressionContext,
 }
 
 /// @brief function SHIFT
-AqlValue Functions::Shift(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Shift(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "SHIFT";
@@ -7844,7 +7844,7 @@ AqlValue Functions::Shift(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function REMOVE_VALUE
-AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
+AqlValue functions::RemoveValue(ExpressionContext* expressionContext,
                                 AstNode const&,
                                 VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -7902,7 +7902,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
 }
 
 /// @brief function REMOVE_VALUES
-AqlValue Functions::RemoveValues(ExpressionContext* expressionContext,
+AqlValue functions::RemoveValues(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -7944,7 +7944,7 @@ AqlValue Functions::RemoveValues(ExpressionContext* expressionContext,
 }
 
 /// @brief function REMOVE_NTH
-AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
+AqlValue functions::RemoveNth(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -7993,7 +7993,7 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
 }
 
 /// @brief function ReplaceNth
-AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
+AqlValue functions::ReplaceNth(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -8066,7 +8066,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
 }
 
 /// @brief function NOT_NULL
-AqlValue Functions::NotNull(ExpressionContext*, AstNode const&,
+AqlValue functions::NotNull(ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView parameters) {
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
@@ -8079,14 +8079,14 @@ AqlValue Functions::NotNull(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function CURRENT_DATABASE
-AqlValue Functions::CurrentDatabase(ExpressionContext* expressionContext,
+AqlValue functions::CurrentDatabase(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
   return AqlValue(expressionContext->vocbase().name());
 }
 
 /// @brief function CURRENT_USER
-AqlValue Functions::CurrentUser(ExpressionContext*, AstNode const&,
+AqlValue functions::CurrentUser(ExpressionContext*, AstNode const&,
                                 VPackFunctionParametersView parameters) {
   std::string const& username = ExecContext::current().user();
   if (username.empty()) {
@@ -8096,7 +8096,7 @@ AqlValue Functions::CurrentUser(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function COLLECTION_COUNT
-AqlValue Functions::CollectionCount(ExpressionContext* expressionContext,
+AqlValue functions::CollectionCount(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -8123,7 +8123,7 @@ AqlValue Functions::CollectionCount(ExpressionContext* expressionContext,
 }
 
 /// @brief function CHECK_DOCUMENT
-AqlValue Functions::CheckDocument(ExpressionContext* expressionContext,
+AqlValue functions::CheckDocument(ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -8141,7 +8141,7 @@ AqlValue Functions::CheckDocument(ExpressionContext* expressionContext,
 }
 
 /// @brief function VARIANCE_SAMPLE
-AqlValue Functions::VarianceSample(ExpressionContext* expressionContext,
+AqlValue functions::VarianceSample(ExpressionContext* expressionContext,
                                    AstNode const&,
                                    VPackFunctionParametersView parameters) {
   static char const* AFN = "VARIANCE_SAMPLE";
@@ -8172,7 +8172,7 @@ AqlValue Functions::VarianceSample(ExpressionContext* expressionContext,
 }
 
 /// @brief function VARIANCE_POPULATION
-AqlValue Functions::VariancePopulation(ExpressionContext* expressionContext,
+AqlValue functions::VariancePopulation(ExpressionContext* expressionContext,
                                        AstNode const&,
                                        VPackFunctionParametersView parameters) {
   static char const* AFN = "VARIANCE_POPULATION";
@@ -8203,7 +8203,7 @@ AqlValue Functions::VariancePopulation(ExpressionContext* expressionContext,
 }
 
 /// @brief function STDDEV_SAMPLE
-AqlValue Functions::StdDevSample(ExpressionContext* expressionContext,
+AqlValue functions::StdDevSample(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "STDDEV_SAMPLE";
@@ -8234,7 +8234,7 @@ AqlValue Functions::StdDevSample(ExpressionContext* expressionContext,
 }
 
 /// @brief function STDDEV_POPULATION
-AqlValue Functions::StdDevPopulation(ExpressionContext* expressionContext,
+AqlValue functions::StdDevPopulation(ExpressionContext* expressionContext,
                                      AstNode const&,
                                      VPackFunctionParametersView parameters) {
   static char const* AFN = "STDDEV_POPULATION";
@@ -8265,7 +8265,7 @@ AqlValue Functions::StdDevPopulation(ExpressionContext* expressionContext,
 }
 
 /// @brief function MEDIAN
-AqlValue Functions::Median(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Median(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
   static char const* AFN = "MEDIAN";
 
@@ -8299,7 +8299,7 @@ AqlValue Functions::Median(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function PERCENTILE
-AqlValue Functions::Percentile(ExpressionContext* expressionContext,
+AqlValue functions::Percentile(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   static char const* AFN = "PERCENTILE";
@@ -8399,7 +8399,7 @@ AqlValue Functions::Percentile(ExpressionContext* expressionContext,
 }
 
 /// @brief function RANGE
-AqlValue Functions::Range(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Range(ExpressionContext* expressionContext, AstNode const&,
                           VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "RANGE";
@@ -8452,7 +8452,7 @@ AqlValue Functions::Range(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function POSITION
-AqlValue Functions::Position(ExpressionContext* expressionContext,
+AqlValue functions::Position(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -8499,7 +8499,7 @@ AqlValue Functions::Position(ExpressionContext* expressionContext,
 }
 
 /// @brief function CALL
-AqlValue Functions::Call(ExpressionContext* expressionContext,
+AqlValue functions::Call(ExpressionContext* expressionContext,
                          AstNode const& node,
                          VPackFunctionParametersView parameters) {
   static char const* AFN = "CALL";
@@ -8527,7 +8527,7 @@ AqlValue Functions::Call(ExpressionContext* expressionContext,
 }
 
 /// @brief function APPLY
-AqlValue Functions::Apply(ExpressionContext* expressionContext,
+AqlValue functions::Apply(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
   static char const* AFN = "APPLY";
@@ -8576,14 +8576,14 @@ AqlValue Functions::Apply(ExpressionContext* expressionContext,
 }
 
 /// @brief function VERSION
-AqlValue Functions::Version(ExpressionContext* expressionContext,
+AqlValue functions::Version(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   return AqlValue(rest::Version::getServerVersion());
 }
 
 /// @brief function IS_SAME_COLLECTION
-AqlValue Functions::IsSameCollection(ExpressionContext* expressionContext,
+AqlValue functions::IsSameCollection(ExpressionContext* expressionContext,
                                      AstNode const&,
                                      VPackFunctionParametersView parameters) {
   static char const* AFN = "IS_SAME_COLLECTION";
@@ -8601,7 +8601,7 @@ AqlValue Functions::IsSameCollection(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintNull());
 }
 
-AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
+AqlValue functions::PregelResult(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParametersView parameters) {
   static char const* AFN = "PREGEL_RESULT";
@@ -8653,7 +8653,7 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
   return AqlValue(std::move(buffer));
 }
 
-AqlValue Functions::Assert(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Assert(ExpressionContext* expressionContext, AstNode const&,
                            VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "ASSERT";
@@ -8672,7 +8672,7 @@ AqlValue Functions::Assert(ExpressionContext* expressionContext, AstNode const&,
   return AqlValue(AqlValueHintBool(true));
 }
 
-AqlValue Functions::Warn(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Warn(ExpressionContext* expressionContext, AstNode const&,
                          VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "WARN";
@@ -8693,7 +8693,7 @@ AqlValue Functions::Warn(ExpressionContext* expressionContext, AstNode const&,
   return AqlValue(AqlValueHintBool(true));
 }
 
-AqlValue Functions::Fail(ExpressionContext* expressionContext, AstNode const&,
+AqlValue functions::Fail(ExpressionContext* expressionContext, AstNode const&,
                          VPackFunctionParametersView parameters) {
   if (parameters.size() == 0) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FAIL_CALLED, "");
@@ -8713,7 +8713,7 @@ AqlValue Functions::Fail(ExpressionContext* expressionContext, AstNode const&,
 }
 
 /// @brief function DATE_FORMAT
-AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
+AqlValue functions::DateFormat(ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView params) {
   static char const* AFN = "DATE_FORMAT";
@@ -8733,7 +8733,7 @@ AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
       arangodb::basics::formatDate(aqlFormatString.slice().copyString(), tp));
 }
 
-AqlValue Functions::ShardId(ExpressionContext* expressionContext,
+AqlValue functions::ShardId(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
   // Expecting 2 parameters
@@ -8792,7 +8792,7 @@ AqlValue Functions::ShardId(ExpressionContext* expressionContext,
 }
 
 /// @brief function DECODE_REV
-AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
+AqlValue functions::DecodeRev(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   auto const rev = extractFunctionParameterValue(parameters, 0);
@@ -8838,7 +8838,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
   return AqlValue(builder->slice(), builder->size());
 }
 
-AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
+AqlValue functions::SchemaGet(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -8880,7 +8880,7 @@ AqlValue Functions::SchemaGet(ExpressionContext* expressionContext,
   return AqlValue(slice, builder->size());
 }
 
-AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
+AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
                                    AstNode const&,
                                    VPackFunctionParametersView parameters) {
   // SCHEMA_VALIDATE(doc, schema object) -> { valid (bool), [errorMessage
@@ -8945,7 +8945,7 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   return AqlValue(resultBuilder->slice(), resultBuilder->size());
 }
 
-AqlValue Functions::Interleave(
+AqlValue functions::Interleave(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -9000,7 +9000,7 @@ AqlValue Functions::Interleave(
   return AqlValue(builder->slice(), builder->size());
 }
 
-AqlValue Functions::CallGreenspun(
+AqlValue functions::CallGreenspun(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -9064,7 +9064,7 @@ static AqlValue ConvertToObject(transaction::Methods& trx, VPackSlice input,
   return AqlValue{builder->slice()};
 }
 
-AqlValue Functions::MakeDistributeInput(
+AqlValue functions::MakeDistributeInput(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -9085,7 +9085,7 @@ AqlValue Functions::MakeDistributeInput(
   return AqlValue{input};
 }
 
-AqlValue Functions::MakeDistributeInputWithKeyCreation(
+AqlValue functions::MakeDistributeInputWithKeyCreation(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   transaction::Methods& trx = expressionContext->trx();
@@ -9171,7 +9171,7 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
   return AqlValue{input};
 }
 
-AqlValue Functions::MakeDistributeGraphInput(
+AqlValue functions::MakeDistributeGraphInput(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   transaction::Methods& trx = expressionContext->trx();
@@ -9232,7 +9232,7 @@ AqlValue Functions::MakeDistributeGraphInput(
 }
 
 #ifdef USE_ENTERPRISE
-AqlValue Functions::SelectSmartDistributeGraphInput(
+AqlValue functions::SelectSmartDistributeGraphInput(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   AqlValue const& from = extractFunctionParameterValue(parameters, 0);
@@ -9345,7 +9345,7 @@ AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue Functions::DecayGauss(
+AqlValue functions::DecayGauss(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
     VPackFunctionParametersView parameters) {
   auto gaussDecayFactory = [](const double origin, const double scale,
@@ -9362,7 +9362,7 @@ AqlValue Functions::DecayGauss(
   return decayFuncImpl(expressionContext, node, parameters, gaussDecayFactory);
 }
 
-AqlValue Functions::DecayExp(
+AqlValue functions::DecayExp(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
     VPackFunctionParametersView parameters) {
   auto expDecayFactory = [](const double origin, const double scale,
@@ -9379,7 +9379,7 @@ AqlValue Functions::DecayExp(
   return decayFuncImpl(expressionContext, node, parameters, expDecayFactory);
 }
 
-AqlValue Functions::DecayLinear(
+AqlValue functions::DecayLinear(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
     VPackFunctionParametersView parameters) {
   auto linearDecayFactory = [](const double origin, const double scale,
@@ -9472,7 +9472,7 @@ AqlValue DistanceImpl(arangodb::aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue Functions::CosineSimilarity(
+AqlValue functions::CosineSimilarity(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
     VPackFunctionParametersView parameters) {
   auto cosineSimilarityFunc = [expressionContext, &node](
@@ -9513,7 +9513,7 @@ AqlValue Functions::CosineSimilarity(
                       cosineSimilarityFunc);
 }
 
-AqlValue Functions::L1Distance(
+AqlValue functions::L1Distance(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
     VPackFunctionParametersView parameters) {
   auto L1DistFunc = [expressionContext, &node](const VPackSlice lhs,
@@ -9540,7 +9540,7 @@ AqlValue Functions::L1Distance(
   return DistanceImpl(expressionContext, node, parameters, L1DistFunc);
 }
 
-AqlValue Functions::L2Distance(
+AqlValue functions::L2Distance(
     arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
     VPackFunctionParametersView parameters) {
   auto L2DistFunc = [expressionContext, &node](const VPackSlice lhs,
@@ -9568,9 +9568,37 @@ AqlValue Functions::L2Distance(
   return DistanceImpl(expressionContext, node, parameters, L2DistFunc);
 }
 
-AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
+AqlValue functions::NotImplemented(ExpressionContext* expressionContext,
                                    AstNode const&,
-                                   VPackFunctionParametersView params) {
+                                   VPackFunctionParametersView) {
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
 }
+
+aql::AqlValue functions::NotImplementedEE(aql::ExpressionContext*,
+                                          aql::AstNode const& node,
+                                          std::span<aql::AqlValue const>) {
+  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
+
+  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  TRI_ASSERT(impl);
+
+  THROW_ARANGO_EXCEPTION_FORMAT(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Function '%s' is available in ArangoDB Enterprise Edition only.",
+      impl->name.c_str());
+}
+
+#ifndef USE_ENTERPRISE
+aql::AqlValue functions::MinHash(aql::ExpressionContext* ctx,
+                                 aql::AstNode const& node,
+                                 std::span<aql::AqlValue const> values) {
+  return NotImplementedEE(ctx, node, values);
+}
+
+aql::AqlValue functions::MinHashMatch(aql::ExpressionContext* ctx,
+                                      aql::AstNode const& node,
+                                      std::span<aql::AqlValue const> values) {
+  return NotImplementedEE(ctx, node, values);
+}
+#endif

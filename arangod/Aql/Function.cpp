@@ -232,6 +232,6 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
 
   builder.add("stub",
-              velocypack::Value(implementation == &Functions::NotImplemented));
+              velocypack::Value(implementation == &functions::NotImplemented));
   builder.close();
 }

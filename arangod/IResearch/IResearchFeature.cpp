@@ -92,21 +92,6 @@ class Query;
 namespace arangodb::iresearch {
 namespace {
 
-[[maybe_unused]] aql::AqlValue eeFunction(aql::ExpressionContext*,
-                                          aql::AstNode const& node,
-                                          std::span<aql::AqlValue const>) {
-  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
-
-  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
-  TRI_ASSERT(impl);
-
-  THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter function '%s' "
-      " is available in ArangoDB Enterprise Edition only.",
-      impl->name.c_str());
-}
-
 aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const& node,
                               std::span<aql::AqlValue const>) {
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
@@ -580,12 +565,6 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &minMatchFunc});
 
-  // attribute, target, threshold, analyzer
-  addFunction(functions, {"MINHASH_MATCH", ".,.,.,.", flags, &eeFunction});
-
-  // array, analyzer
-  addFunction(functions, {"MINHASH", ".,.", flags, &eeFunction});
-
   // (filter expression, boost)
   addFunction(functions, {"BOOST", ".,.", flags, &contextFunc});
 
@@ -849,13 +828,13 @@ bool isFilter(aql::Function const& func) noexcept {
          func.implementation == &contextFunc ||
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
-         func.implementation == &aql::Functions::GeoContains ||
-         func.implementation == &aql::Functions::GeoInRange ||
-         func.implementation == &aql::Functions::GeoIntersects ||
-         func.implementation == &aql::Functions::LevenshteinMatch ||
-         func.implementation == &aql::Functions::Like ||
-         func.implementation == &aql::Functions::NgramMatch ||
-         func.implementation == &aql::Functions::InRange;
+         func.implementation == &aql::functions::GeoContains ||
+         func.implementation == &aql::functions::GeoInRange ||
+         func.implementation == &aql::functions::GeoIntersects ||
+         func.implementation == &aql::functions::LevenshteinMatch ||
+         func.implementation == &aql::functions::Like ||
+         func.implementation == &aql::functions::NgramMatch ||
+         func.implementation == &aql::functions::InRange;
 }
 
 bool isScorer(aql::Function const& func) noexcept {
