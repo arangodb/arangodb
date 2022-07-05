@@ -94,6 +94,15 @@ struct ShardImbalance {
   }
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, ShardImbalance& x) {
+  return f.object(x).fields(
+      f.field("sizeUsed", x.sizeUsed), f.field("targetSize", x.targetSize),
+      f.field("numberShards", x.numberShards),
+      f.field("totalUsed", x.totalUsed), f.field("totalShards", x.totalShards),
+      f.field("imbalance", x.imbalance));
+}
+
 struct LeaderImbalance {
   std::vector<double> weightUsed;  // number of shards * weight
                                    // for shard leaderships for each dbserver
@@ -113,6 +122,17 @@ struct LeaderImbalance {
     leaderDupl.resize(numberDBServers, 0);
   }
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, LeaderImbalance& x) {
+  return f.object(x).fields(f.field("weightUsed", x.weightUsed),
+                            f.field("targetWeight", x.targetWeight),
+                            f.field("numberShards", x.numberShards),
+                            f.field("leaderDupl", x.leaderDupl),
+                            f.field("totalWeight", x.totalWeight),
+                            f.field("imbalance", x.imbalance),
+                            f.field("totalShards", x.totalShards));
+}
 
 struct MoveShardJob {
   uint32_t shardId;  // index in shard list

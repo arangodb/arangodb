@@ -37,6 +37,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
 #include "Basics/TimeString.h"
+#include "Cluster/AutoRebalance.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -56,6 +57,7 @@
 #include "Sharding/ShardDistributionReporter.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/Databases.h"
+#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -2153,6 +2155,22 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
   switch (request()->requestType()) {
     case rest::RequestType::POST:
     case rest::RequestType::GET:
+    {
+      VPackBuilder builder;
+      auto p = collectRebalanceInformation();
+      auto leader = p.computeLeaderImbalance();
+      auto shard = p.computeShardImbalance();
+      {
+        VPackObjectBuilder ob(&builder);
+        builder.add(VPackValue("leader"));
+        velocypack::serialize(builder, leader);
+        builder.add(VPackValue("shards"));
+        velocypack::serialize(builder, shard);
+      }
+
+      generateOk(rest::ResponseCode::OK, builder.slice());
+      return RestStatus::DONE;
+    }
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -2160,6 +2178,62 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
   }
 
   return RestStatus::DONE;
+}
+
+cluster::AutoRebalanceProblem
+RestAdminClusterHandler::collectRebalanceInformation() {
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  cluster::AutoRebalanceProblem p;
+  p.zones.emplace_back(cluster::Zone{.id = "ZONE"});
+
+  std::unordered_map<ServerID, std::size_t> serverToIndex;
+
+  for (auto const& server : ci.getCurrentDBServers()) {
+    serverToIndex[server] = p.dbServers.size();
+    auto& ref = p.dbServers.emplace_back();
+    ref.id = server;
+    ref.zone = 0;
+    ref.volumeSize = 1;
+    ref.freeDiskSize = 1;
+    ref.CPUcapacity = 1;
+  }
+
+  for (auto const& db : ci.databases()) {
+    std::size_t dbIndex = p.databases.size();
+    auto& databaseRef = p.databases.emplace_back();
+    databaseRef.id = dbIndex;
+    databaseRef.name = db;
+
+    for (auto const& collection : ci.getCollections(db)) {
+      std::size_t colIndex = p.collections.size();
+      auto& collectionRef = p.collections.emplace_back();
+      collectionRef.id = colIndex;
+      collectionRef.name = collection->name();
+      collectionRef.dbId = dbIndex;
+
+      for (auto const& shard : *collection->shardIds()) {
+        std::size_t shardIndex = p.shards.size();
+        auto& shardRef = p.shards.emplace_back();
+        shardRef.name = shard.first;
+        shardRef.leader = serverToIndex.at(shard.second[0]);
+        shardRef.id = shardIndex;
+        shardRef.collectionId = colIndex;
+        shardRef.replicationFactor = shard.second.size();
+        bool first = true;
+        for (auto const& server : shard.second) {
+          if (first) {
+            first = false;
+            continue;
+          }
+          shardRef.followers.emplace_back(serverToIndex.at(server));
+        }
+
+      }
+    }
+  }
+
+  return p;
 }
 
 RestStatus RestAdminClusterHandler::handleFailureOracle() {

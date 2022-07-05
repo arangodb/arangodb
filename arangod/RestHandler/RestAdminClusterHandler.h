@@ -34,7 +34,9 @@
 #include <utility>
 
 namespace arangodb {
-
+namespace cluster {
+struct AutoRebalanceProblem;
+}
 class RestAdminClusterHandler : public RestVocbaseBaseHandler {
  public:
   RestAdminClusterHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
@@ -192,5 +194,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
+
+  cluster::AutoRebalanceProblem collectRebalanceInformation();
 };
 }  // namespace arangodb
