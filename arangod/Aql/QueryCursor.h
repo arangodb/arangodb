@@ -24,11 +24,9 @@
 
 #pragma once
 
-#include "Aql/Query.h"
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Common.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
 #include "VocBase/vocbase.h"

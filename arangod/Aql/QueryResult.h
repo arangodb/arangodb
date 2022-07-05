@@ -50,9 +50,11 @@ struct QueryResult {
 
   QueryResult() : result(), cached(false), allowDirtyReads(false) {}
 
-  explicit QueryResult(Result const& res) : result(res), cached(false) {}
+  explicit QueryResult(Result const& res)
+      : result(res), cached(false), allowDirtyReads(false) {}
 
-  explicit QueryResult(Result&& res) : result(std::move(res)), cached(false) {}
+  explicit QueryResult(Result&& res)
+      : result(std::move(res)), cached(false), allowDirtyReads(false) {}
 
   virtual ~QueryResult() = default;
 
@@ -85,16 +87,16 @@ struct QueryResult {
  public:
   Result result;
   bool cached;
-  std::unordered_set<std::string> bindParameters;
-  std::vector<std::string> collectionNames;
-  std::shared_ptr<arangodb::velocypack::Builder> data;
-  std::shared_ptr<arangodb::velocypack::Builder> extra;
-  std::shared_ptr<transaction::Context> context;
   bool allowDirtyReads;  // indicate that query was done with dirty reads,
                          // we need to preserve this here, since query results
                          // can live longer than their query objects and the
                          // transaction therein and we might still need the
                          // information to produce the outgoing HTTP header!
+  std::unordered_set<std::string> bindParameters;
+  std::vector<std::string> collectionNames;
+  std::shared_ptr<arangodb::velocypack::Builder> data;
+  std::shared_ptr<arangodb::velocypack::Builder> extra;
+  std::shared_ptr<transaction::Context> context;
 };
 }  // namespace aql
 }  // namespace arangodb
