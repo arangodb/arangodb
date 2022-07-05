@@ -58,6 +58,9 @@ namespace tests {
 namespace graph {
 
 class MockGraphProviderOptions {
+  using WeightCallback = std::function<double(
+      double originalWeight, arangodb::velocypack::Slice edge)>;
+
  public:
   enum class LooseEndBehaviour { NEVER, ALWAYS };
   MockGraphProviderOptions(MockGraph const& data, LooseEndBehaviour looseEnds,
@@ -69,10 +72,27 @@ class MockGraphProviderOptions {
   MockGraph const& data() const { return _data; }
   bool reverse() const { return _reverse; }
 
+  bool hasWeightMethod() const { return _weightCallback.has_value(); };
+
+  double weightEdge(double prefixWeight,
+                    arangodb::velocypack::Slice edge) const {
+    if (!hasWeightMethod()) {
+      // We do not have a weight. Hardcode.
+      return prefixWeight + 1;
+    }
+    return _weightCallback.value()(prefixWeight, edge);
+  };
+
+  void setWeightEdgeCallback(WeightCallback callback) {
+    _weightCallback = std::move(callback);
+  };
+
  private:
   MockGraph const& _data;
   LooseEndBehaviour _looseEnds;
   bool _reverse;
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 };
 
 class MockGraphProvider {
@@ -173,6 +193,8 @@ class MockGraphProvider {
     Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
     Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
          size_t depth);
+    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
+         size_t depth, double weight);
     ~Step() = default;
 
     bool operator<(Step const& other) const noexcept {
@@ -183,10 +205,12 @@ class MockGraphProvider {
       if (_edge.isValid()) {
         return "<Step><Vertex>: " + _vertex.getID().toString() +
                ", <Edge>:" + _edge.toString() +
-               ", previous: " + basics::StringUtils::itoa(getPrevious());
+               ", previous: " + basics::StringUtils::itoa(getPrevious()) +
+               ", weight: " + basics::StringUtils::ftoa(getWeight());
       } else {
         return "<Step><Vertex>: " + _vertex.getID().toString() +
-               ", previous: " + basics::StringUtils::itoa(getPrevious());
+               ", previous: " + basics::StringUtils::itoa(getPrevious()) +
+               ", weight: " + basics::StringUtils::ftoa(getWeight());
       }
     }
 

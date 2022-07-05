@@ -71,7 +71,6 @@ auto PathEnumeratorInterface::createEnumerator(
   return nullptr;
 }
 
-// TODO: FIXME - Move this to tests if possible
 template auto PathEnumeratorInterface::createEnumerator<
     SingleServerProvider<arangodb::graph::SingleServerProviderStep>>(
     arangodb::aql::QueryContext& query,

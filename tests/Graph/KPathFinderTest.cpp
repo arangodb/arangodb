@@ -374,7 +374,7 @@ TEST_P(KPathFinderTest, path_depth_2) {
   VPackBuilder result;
   auto finder = pathFinder(2, 2);
 
-  // Source and target are direkt neighbors, there is only one path between them
+  // Source and target are direct neighbors, there is only one path between them
   auto source = vId(1);
   auto target = vId(3);
 

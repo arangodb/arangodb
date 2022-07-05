@@ -77,6 +77,13 @@ MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
       _edge(e),
       _isProcessable(isProcessable) {}
 
+MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
+                              bool isProcessable, size_t depth, double weight)
+    : arangodb::graph::BaseStep<Step>{prev, depth, weight},
+      _vertex(v),
+      _edge(e),
+      _isProcessable(isProcessable) {}
+
 MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
                                      MockGraphProviderOptions opts,
                                      arangodb::ResourceMonitor&)
@@ -230,7 +237,7 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
         VPackHashedStringRef fromH{edge._from.c_str(),
                                    static_cast<uint32_t>(edge._from.length())};
         result.push_back(Step{previousIndex, fromH, edge, decideProcessable(),
-                              (source.getDepth() + 1)});
+                              (source.getDepth() + 1), edge._weight});
 
         LOG_TOPIC("78158", TRACE, Logger::GRAPHS)
             << "  <MockGraphProvider> added <Step><Vertex>: " << fromH
@@ -247,8 +254,9 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
            _fromIndex[source.getVertex().getID().toString()]) {
         VPackHashedStringRef toH{edge._to.c_str(),
                                  static_cast<uint32_t>(edge._to.length())};
+
         result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
-                              (source.getDepth() + 1)});
+                              (source.getDepth() + 1), edge._weight});
 
         LOG_TOPIC("78159", TRACE, Logger::GRAPHS)
             << "  <MockGraphProvider - default> added <Step><Vertex>: " << toH

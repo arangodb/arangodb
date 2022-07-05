@@ -502,8 +502,7 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 // BFS for equal weights on edges
 // Weighted for weightAttribute
 #define MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(provider)          \
-  MAKE_TWO_SIDED_ENUMERATORS_UNIQUENESS(provider, BFSConfiguration) \
-  MAKE_TWO_SIDED_ENUMERATORS_UNIQUENESS(provider, WeightedConfiguration)
+  MAKE_TWO_SIDED_ENUMERATORS_UNIQUENESS(provider, BFSConfiguration)
 
 MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(
     SingleServerProvider<SingleServerProviderStep>)
