@@ -105,9 +105,13 @@ std::string ComputedValuesExpressionContext::buildLogMessage(
     std::string_view type, char const* msg) const {
   std::string error;
 
+  // note: on DB servers, the error message will contain the shard name
+  // rather than the collection name.
   error.append("computed values expression evaluation produced a runtime ")
       .append(type)
-      .append(" for collection '")
+      .append(" for attribute '")
+      .append(_name)
+      .append("' of collection '")
       .append(_collection.vocbase().name())
       .append("/")
       .append(_collection.name())
@@ -175,13 +179,14 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
                                              std::string_view expressionString,
                                              ComputeValuesOn mustComputeOn,
                                              bool doOverride,
-                                             bool failOnWarning)
+                                             bool failOnWarning, bool keepNull)
     : _vocbase(vocbase),
       _name(name),
       _expressionString(expressionString),
       _mustComputeOn(mustComputeOn),
       _override(doOverride),
       _failOnWarning(failOnWarning),
+      _keepNull(keepNull),
       _queryContext(StandaloneCalculation::buildQueryContext(_vocbase)),
       _rootNode(nullptr) {
   Ast* ast = _queryContext->ast();
@@ -271,6 +276,7 @@ void ComputedValues::ComputedValue::toVelocyPack(
   result.close();  // computeOn
   result.add("override", VPackValue(_override));
   result.add("failOnWarning", VPackValue(_failOnWarning));
+  result.add("keepNull", VPackValue(_keepNull));
   result.close();
 }
 
@@ -286,6 +292,10 @@ bool ComputedValues::ComputedValue::failOnWarning() const noexcept {
   return _failOnWarning;
 }
 
+bool ComputedValues::ComputedValue::keepNull() const noexcept {
+  return _keepNull;
+}
+
 aql::Variable const* ComputedValues::ComputedValue::tempVariable()
     const noexcept {
   return _tempVariable;
@@ -299,6 +309,12 @@ void ComputedValues::ComputedValue::computeAttribute(
   bool mustDestroy;
   AqlValue result = _expression->execute(&ctx, mustDestroy);
   AqlValueGuard guard(result, mustDestroy);
+
+  if (!_keepNull && result.isNull(true)) {
+    // the expression produced a value of null, but we don't want
+    // to keep null values
+    return;
+  }
 
   auto const& vopts = ctx.trx().vpackOptions();
   AqlValueMaterializer materializer(&vopts);
@@ -393,6 +409,8 @@ void ComputedValues::mergeComputedAttributes(
     if (cv.doOverride() || !keysWritten.contains(cv.name())) {
       // update "failOnWarning" flag for each computation
       cvec.failOnWarning(cv.failOnWarning());
+      // update "name" vlaue for each computation (for errors/warnings)
+      cvec.setName(cv.name());
       // inject document into temporary variable (@doc)
       cvec.setVariable(cv.tempVariable(), input);
       // if "computeAttribute" throws, then the operation is
@@ -457,15 +475,10 @@ Result ComputedValues::buildDefinitions(
           "invalid 'computedValues' entry: 'override' must be a boolean");
     }
 
-    ComputeValuesOn mustComputeOn = static_cast<ComputeValuesOn>(
-        ::mustComputeOnValue(ComputeValuesOn::kInsert) ||
-        ::mustComputeOnValue(ComputeValuesOn::kUpdate) ||
-        ::mustComputeOnValue(ComputeValuesOn::kReplace));
+    ComputeValuesOn mustComputeOn = ComputeValuesOn::kNever;
 
     VPackSlice on = it.get("computeOn");
     if (on.isArray()) {
-      mustComputeOn = ComputeValuesOn::kNever;
-
       for (auto const& onValue : VPackArrayIterator(on)) {
         if (!onValue.isString()) {
           return res.reset(
@@ -502,11 +515,14 @@ Result ComputedValues::buildDefinitions(
             "invalid 'computedValues' entry: empty 'computeOn' value");
       }
     } else if (on.isNone()) {
-      // default for "computeOn" is just "insert"
+      // default for "computeOn" is ["insert", "update", "replace"]
       mustComputeOn = static_cast<ComputeValuesOn>(
-          ::mustComputeOnValue(mustComputeOn) |
-          ::mustComputeOnValue(ComputeValuesOn::kInsert));
+          ::mustComputeOnValue(ComputeValuesOn::kInsert) |
+          ::mustComputeOnValue(ComputeValuesOn::kUpdate) |
+          ::mustComputeOnValue(ComputeValuesOn::kReplace));
       _attributesForInsert.emplace(n, _values.size());
+      _attributesForUpdate.emplace(n, _values.size());
+      _attributesForReplace.emplace(n, _values.size());
     } else {
       return res.reset(
           TRI_ERROR_BAD_PARAMETER,
@@ -536,6 +552,11 @@ Result ComputedValues::buildDefinitions(
       failOnWarning = fow.getBoolean();
     }
 
+    bool keepNull = true;
+    if (VPackSlice kn = it.get("keepNull"); kn.isBoolean()) {
+      keepNull = kn.getBoolean();
+    }
+
     // check for duplicate names in the array
     if (!names.emplace(name.stringView()).second) {
       using namespace std::literals::string_literals;
@@ -548,7 +569,7 @@ Result ComputedValues::buildDefinitions(
     try {
       _values.emplace_back(vocbase, name.stringView(), expression.stringView(),
                            mustComputeOn, doOverride.getBoolean(),
-                           failOnWarning);
+                           failOnWarning, keepNull);
     } catch (std::exception const& ex) {
       return res.reset(TRI_ERROR_BAD_PARAMETER,
                        "invalid 'computedValues' entry: "s + ex.what());

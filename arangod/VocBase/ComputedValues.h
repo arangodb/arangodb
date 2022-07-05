@@ -76,7 +76,9 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 
   void registerError(ErrorCode errorCode, char const* msg) override;
 
-  void failOnWarning(bool value) { _failOnWarning = value; }
+  void failOnWarning(bool value) noexcept { _failOnWarning = value; }
+
+  void setName(std::string_view name) noexcept { _name = name; }
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override;
@@ -112,6 +114,11 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   transaction::Methods& _trx;
   LogicalCollection& _collection;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+
+  // current runtime (execution) state follows...
+  // current attribute name
+  std::string_view _name;
+  // current setting of "failOnWarning"
   bool _failOnWarning;
 
   containers::FlatHashMap<aql::Variable const*, arangodb::velocypack::Slice>
@@ -124,7 +131,7 @@ class ComputedValues {
     ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
                   std::string_view expressionString,
                   ComputeValuesOn mustComputeOn, bool doOverride,
-                  bool failOnWarning);
+                  bool failOnWarning, bool keepNull);
     ComputedValue(ComputedValue const&) = delete;
     ComputedValue& operator=(ComputedValue const&) = delete;
     ComputedValue(ComputedValue&&) = default;
@@ -137,6 +144,7 @@ class ComputedValues {
     std::string_view name() const noexcept;
     bool doOverride() const noexcept;
     bool failOnWarning() const noexcept;
+    bool keepNull() const noexcept;
     aql::Variable const* tempVariable() const noexcept;
 
    private:
@@ -146,6 +154,7 @@ class ComputedValues {
     ComputeValuesOn _mustComputeOn;
     bool _override;
     bool _failOnWarning;
+    bool _keepNull;
     std::unique_ptr<aql::QueryContext> _queryContext;
 
     std::unique_ptr<aql::Expression> _expression;

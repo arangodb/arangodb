@@ -1,31 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, fail */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Julia Puget
-////////////////////////////////////////////////////////////////////////////////
+/*global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertUndefined, fail */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -66,6 +40,240 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       } catch (error) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
       }
+    },
+    
+    testKeepNullTrue: function() {
+      collection.properties({
+        computedValues: [
+          {
+            name: "newValue",
+            expression: "RETURN @doc.foxx",
+            override: true,
+            keepNull: true,
+          }
+        ]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+      assertTrue(colProperties.computedValues[0].keepNull);
+
+      collection.insert({});
+      assertEqual(1, collection.count());
+      // computed value must be null
+      assertNull(collection.toArray()[0].newValue);
+    },
+    
+    testKeepNullFalse: function() {
+      collection.properties({
+        computedValues: [
+          {
+            name: "newValue",
+            expression: "RETURN @doc.foxx",
+            override: true,
+            keepNull: false,
+          }
+        ]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+      assertFalse(colProperties.computedValues[0].keepNull);
+
+      collection.insert({});
+      assertEqual(1, collection.count());
+      // computed value must not be there
+      assertUndefined(collection.toArray()[0].newValue);
+    },
+    
+    testExpressionWithAssert: function() {
+      // expression must not be executed immediately
+      collection.properties({
+        computedValues: [
+          {
+            name: "value",
+            expression: "RETURN ASSERT(false, 'piff!')",
+            override: false,
+          }
+        ]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "value");
+
+      try {
+        // inserting any document into the collection will fail with
+        // assertion error
+        collection.insert({});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_QUERY_USER_ASSERT.code, err.errorNum);
+        assertMatch(/for attribute 'value'/, err.errorMessage);
+        assertMatch(/piff!/, err.errorMessage);
+      }
+    },
+    
+    testExpressionWithWarning: function() {
+      collection.properties({
+        computedValues: [
+          {
+            name: "newValue",
+            expression: "RETURN 42 / @doc.value",
+            override: false,
+            failOnWarning: false,
+          }
+        ]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+
+      collection.insert({});
+      assertEqual(1, collection.count());
+      // computed value must be null
+      assertNull(collection.toArray()[0].newValue);
+    },
+    
+    testExpressionWithWarningAndFailOnWarning: function() {
+      collection.properties({
+        computedValues: [
+          {
+            name: "newValue",
+            expression: "RETURN 42 / @doc.value",
+            override: false,
+            failOnWarning: true,
+          }
+        ]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+
+      try {
+        // inserting any document into the collection will fail with
+        // assertion error
+        collection.insert({});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, err.errorNum);
+        assertMatch(/for attribute 'newValue'/, err.errorMessage);
+        assertMatch(/division by zero/, err.errorMessage);
+      }
+    },
+    
+    testDefaultValueForComputeOn: function() {
+      collection.properties({
+        computedValues: [
+          {
+            name: "value",
+            expression: "RETURN 'foo'",
+            override: false,
+            // computeOn not set
+          }
+        ]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "value");
+      assertEqual(colProperties.computedValues[0].computeOn, ["insert", "update", "replace"]);
+    },
+
+    testSetStringValueForComputeOn: function() {
+      try {
+        collection.properties({
+          computedValues: [
+            {
+              name: "value",
+              expression: "RETURN 'foo'",
+              override: false,
+              computeOn: "insert",
+            }
+          ]
+        });
+        fail();
+      } catch (error) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
+      }
+    },
+    
+    testSetArrayValueForComputeOn: function() {
+      collection.properties({
+        computedValues: [
+          {
+            name: "value",
+            expression: "RETURN 'foo'",
+            override: false,
+            computeOn: ["insert", "replace"],
+          }
+        ]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "value");
+      assertEqual(colProperties.computedValues[0].computeOn, ["insert", "replace"]);
     },
 
     testCreateOnEmptyChangeAfterInsert: function() {
@@ -1187,7 +1395,6 @@ function ComputedValuesClusterShardsTestSuite() {
             {
               name: "value1",
               expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-              computeOn: ["insert", "update", "replace"],
               override: false
             }
           ]
