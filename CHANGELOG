@@ -19,6 +19,8 @@ devel
   not-yet-officially committed data. Use at your own risk if performance
   is more important than correctness or if you know that data does not
   change.
+  The responses which can contain dirty reads will have set the HTTP header
+  "x-arango-potential-dirty-read" set to "true".
 
 * Changed HTTP response code for error number 1521 from 500 to 400.
 
