@@ -385,7 +385,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
 
-  // We need to preserve the information aout dirty reads, since the
+  // We need to preserve the information about dirty reads, since the
   // transaction who knows might be gone before we have produced the
   // result:
   _allowDirtyReads = _trx->state()->options().allowDirtyReads;

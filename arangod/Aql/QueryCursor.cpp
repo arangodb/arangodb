@@ -155,7 +155,7 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
       _finalization(false),
       _allowDirtyReads(false) {
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
-  _allowDirtyReads = _query->allowDirtyReads();  // is set after prepareQuery!
+  _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     debugKillQuery();
   }
