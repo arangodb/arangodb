@@ -3,9 +3,15 @@ devel
 
 * Made the SortExecutor receive its input incrementally, instead of receiving
   a whole matrix containing all input at once.
-  This is to be used later in conjunction with rocksdb temporary storage of the
-  entries for queries with a large amount of entries in the input not to be 
-  held in memory and also for the rocksdb storage to store the entries in order.
+
+* Optimization for index post-filtering (early pruning): in case an index
+  is used for lookups, and the index covers the IndexNode's post-filter
+  condition, then loading the full document from the storage engine is
+  now deferred until the filter condition is evaluated and it is established
+  that the document matches the filter condition.
+
+* Added a fully functional UI for Views that lets users view, modify mutable
+  properties and delete views from the web UI.
 
 * Fix thread ids and thread names in log output for threads that are not
   started directly by ArangoDB code, but indirectly via library code.
@@ -20,9 +26,6 @@ devel
 
       `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
       `RETURN [1,2,3] AT LEAST (2) IN [1,2,3,4,5]`
-
-* Added a fully functional UI for Views that lets users view, modify mutable
-  properties and delete views from the web UI.
 
 * Changed default macOS CI compiler to LLVM clang-14.
 

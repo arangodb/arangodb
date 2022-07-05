@@ -85,6 +85,9 @@ class Projections {
 
   static bool isCoveringIndexPosition(uint16_t position) noexcept;
 
+  /// @brief reset all projections
+  void clear() noexcept;
+
   /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,
                           std::shared_ptr<arangodb::Index> const& index);
@@ -103,6 +106,8 @@ class Projections {
 
   /// @brief number of projections
   size_t size() const noexcept { return _projections.size(); }
+
+  bool contains(Projection const& other) const noexcept;
 
   /// @brief checks if we have a single attribute projection on the attribute
   bool isSingle(std::string const& attribute) const noexcept;
