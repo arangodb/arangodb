@@ -1,30 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, AQL_EXPLAIN */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+/*global assertEqual, assertNotEqual, AQL_EXPLAIN */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -181,6 +156,49 @@ function filterProjectionsPlansTestSuite () {
       let queries = [
         [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN doc.value3`, 'persistent', ['value2'], ['value3'] ],
         [`FOR doc IN ${cn} FILTER doc.value1 == 93 FILTER doc.value2 == 1 RETURN [doc.value3, doc.value4]`, 'persistent', ['value2'], ['value3', 'value4'] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].filterProjections, query);
+        assertEqual(query[3], nodes[0].projections, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        
+        // query must not contain any FILTER nodes
+        nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
+        assertEqual(0, nodes.length);
+      });
+    },
+    
+    testPersistentStoredValuesSubAttributesMulti : function () {
+      c.ensureIndex({ type: "persistent", fields: ["foo.bar"], storedValues: ["moo"] });
+      let queries = [
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 FILTER doc.moo.baz != 1 FILTER doc.moo.qux == 2 RETURN doc.value`, 'persistent', ['moo'], ['value'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 FILTER doc.moo.baz != 1 FILTER doc.moo.qux != 3 RETURN [doc.foo.bar, doc.value]`, 'persistent', ['moo'], [['foo', 'bar'], 'value'] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].filterProjections, query);
+        assertEqual(query[3], nodes[0].projections, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      });
+    },
+    
+    testPersistentSubAttributesMixBetweenIndexFieldsAndStoredValues : function () {
+      c.ensureIndex({ type: "persistent", fields: ["foo.bar"], storedValues: ["foo.bark"] });
+      
+      let queries = [
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 FILTER doc.foo.bark != 1 RETURN doc.value`, 'persistent', [['foo', 'bark']], ['value'] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 FILTER doc.foo.bark != 1 RETURN [doc.foo.bar, doc.value]`, 'persistent', [['foo', 'bark']], [['foo', 'bar'], 'value'] ],
       ];
 
       queries.forEach(function(query) {
