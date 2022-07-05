@@ -1,6 +1,9 @@
 devel
 -----
 
+* Made the SortExecutor receive its input incrementally, instead of receiving
+  a whole matrix containing all input at once.
+
 * Optimization for index post-filtering (early pruning): in case an index
   is used for lookups, and the index covers the IndexNode's post-filter
   condition, then loading the full document from the storage engine is
