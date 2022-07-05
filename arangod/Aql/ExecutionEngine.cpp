@@ -218,7 +218,6 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
       } else if (en->getFirstDependency()->getType() == ExecutionNode::ASYNC) {
         // Nothing needs to be done here in this case. Dependencies are
         // handled before.
-        continue;
       } else {
         return {TRI_ERROR_INTERNAL, "expecting a RemoteNode or a MutexNode"};
       }
