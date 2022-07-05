@@ -934,6 +934,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           }
         ]
       });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
@@ -967,6 +973,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           }
         ]
       });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
 
       let valuesCreated = {};
       for (let i = 0; i < 100; ++i) {
