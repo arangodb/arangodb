@@ -190,6 +190,28 @@ class EdgeConditionBuilderTest : public ::testing::Test {
     assertAllConditionsMatch(fullCondition, otherConditions);
   }
 
+  void assertIsEdgeIndexAccess(arangodb::graph::IndexAccessor const& accessor, std::vector<ExpectedCondition> const& otherConditions, TRI_edge_direction_e dir) {
+    EXPECT_EQ(accessor.direction(), dir);
+    EXPECT_EQ(accessor.indexHandle()->type(), Index::TRI_IDX_TYPE_EDGE_INDEX);
+    ExpectedCondition indexCond{(dir == TRI_EDGE_OUT ? StaticStrings::FromString : StaticStrings::ToString), fakeId};
+    auto cond = accessor.getCondition();
+    EXPECT_EQ(cond->numMembers(), 1);
+    EXPECT_TRUE(testMatchesAttributeCompare(cond->getMember(0), indexCond)) << *cond->getMember(0) << " vs " << indexCond;
+    if (otherConditions.empty()) {
+      EXPECT_EQ(accessor.getExpression(), nullptr);
+    } else {
+      assertAllConditionsMatch(accessor.getExpression()->node(), otherConditions);
+    }
+  }
+
+  void assertIsFromEdgeIndexAccess(arangodb::graph::IndexAccessor const& accessor, std::vector<ExpectedCondition> const& otherConditions) {
+    assertIsEdgeIndexAccess(accessor,otherConditions, TRI_EDGE_OUT);
+  }
+
+  void assertIsToEdgeIndexAccess(arangodb::graph::IndexAccessor const& accessor, std::vector<ExpectedCondition> const& otherConditions) {
+    assertIsEdgeIndexAccess(accessor,otherConditions, TRI_EDGE_IN);
+  }
+
   // Just a helper method to hand in the vast amount of parameters...
   std::pair<
       std::vector<arangodb::graph::IndexAccessor>,
@@ -201,6 +223,11 @@ class EdgeConditionBuilderTest : public ::testing::Test {
     return condBuilder.buildIndexAccessors(query->plan(), _variable,
                                            _varInfo, collections);
   }
+
+  std::vector<std::pair<arangodb::aql::Collection*, TRI_edge_direction_e>> prepareCollection(TRI_edge_direction_e dir){
+    return {{query->collections().get("e"), dir}};
+  }
+
 };
 
 std::ostream& operator<<(std::ostream& out,
@@ -216,10 +243,24 @@ TEST_F(EdgeConditionBuilderTest, default_base_edge_conditions) {
   assertIsToAccess(in, {});
 
 
-  std::vector<std::pair<arangodb::aql::Collection*, TRI_edge_direction_e>> cols{{query->collections().get("e"), TRI_EDGE_OUT}};
-  auto [base, specific] = buildIndexAccessors(condBuilder, cols);
-  // No Depth-Specific Conditions
-  EXPECT_TRUE(specific.empty());
+  {
+    // Can prepare out Edges
+    auto cols = prepareCollection(TRI_EDGE_OUT);
+    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+    // No Depth-Specific Conditions
+    EXPECT_TRUE(specific.empty());
+    EXPECT_EQ(base.size(), 1);
+    assertIsFromEdgeIndexAccess(base.at(0), {});
+  }
+  {
+    // Can prepare in Edges
+    auto cols = prepareCollection(TRI_EDGE_IN);
+    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+    // No Depth-Specific Conditions
+    EXPECT_TRUE(specific.empty());
+    EXPECT_EQ(base.size(), 1);
+    assertIsToEdgeIndexAccess(base.at(0), {});
+  }
 }
 
 TEST_F(EdgeConditionBuilderTest, modify_both_conditions) {
@@ -233,6 +274,25 @@ TEST_F(EdgeConditionBuilderTest, modify_both_conditions) {
 
   assertIsFromAccess(out, {{"foo", "bar"}});
   assertIsToAccess(in, {{"foo", "bar"}});
+
+  {
+    // Can prepare out Edges
+    auto cols = prepareCollection(TRI_EDGE_OUT);
+    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+    // No Depth-Specific Conditions
+    EXPECT_TRUE(specific.empty());
+    EXPECT_EQ(base.size(), 1);
+    assertIsFromEdgeIndexAccess(base.at(0), {{"foo", "bar"}});
+  }
+  {
+    // Can prepare in Edges
+    auto cols = prepareCollection(TRI_EDGE_IN);
+    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+    // No Depth-Specific Conditions
+    EXPECT_TRUE(specific.empty());
+    EXPECT_EQ(base.size(), 1);
+    assertIsToEdgeIndexAccess(base.at(0), {{"foo", "bar"}});
+  }
 }
 
 TEST_F(EdgeConditionBuilderTest, depth_specific_conditions) {
@@ -282,6 +342,39 @@ TEST_F(EdgeConditionBuilderTest, depth_specific_conditions) {
     auto in = condBuilder.getInboundConditionForDepth(3, _ast);
     assertIsFromAccess(out, {});
     assertIsToAccess(in, {});
+  }
+
+  {
+    // Can prepare out Edges
+    auto cols = prepareCollection(TRI_EDGE_OUT);
+    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+
+    EXPECT_EQ(base.size(), 1);
+    assertIsFromEdgeIndexAccess(base.at(0), {});
+    ASSERT_EQ(specific.size(), 2);
+    ASSERT_TRUE(specific.contains(1));
+    EXPECT_EQ(specific.at(1).size(), 1);
+    assertIsFromEdgeIndexAccess(specific.at(1).at(0), {{attr1, value1}});
+
+    ASSERT_TRUE(specific.contains(2));
+    EXPECT_EQ(specific.at(2).size(), 1);
+    assertIsFromEdgeIndexAccess(specific.at(2).at(0), {{attr2, value2}});
+  }
+  {
+    // Can prepare in Edges
+    auto cols = prepareCollection(TRI_EDGE_IN);
+    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+
+    EXPECT_EQ(base.size(), 1);
+    assertIsToEdgeIndexAccess(base.at(0), {});
+    ASSERT_EQ(specific.size(), 2);
+    ASSERT_TRUE(specific.contains(1));
+    EXPECT_EQ(specific.at(1).size(), 1);
+    assertIsToEdgeIndexAccess(specific.at(1).at(0), {{attr1, value1}});
+
+    ASSERT_TRUE(specific.contains(2));
+    EXPECT_EQ(specific.at(2).size(), 1);
+    assertIsToEdgeIndexAccess(specific.at(2).at(0), {{attr2, value2}});
   }
 }
 
@@ -337,6 +430,39 @@ TEST_F(EdgeConditionBuilderTest, merge_depth_with_base) {
     auto in = condBuilder.getInboundConditionForDepth(4, _ast);
     assertIsFromAccess(out, {{attr, value}});
     assertIsToAccess(in, {{attr, value}});
+  }
+
+  {
+    // Can prepare out Edges
+    auto cols = prepareCollection(TRI_EDGE_OUT);
+    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+
+    EXPECT_EQ(base.size(), 1);
+    assertIsFromEdgeIndexAccess(base.at(0), {{attr, value}});
+    ASSERT_EQ(specific.size(), 2);
+    ASSERT_TRUE(specific.contains(1));
+    EXPECT_EQ(specific.at(1).size(), 1);
+    assertIsFromEdgeIndexAccess(specific.at(1).at(0), {{attr, value}, {attr1, value1}});
+
+    ASSERT_TRUE(specific.contains(2));
+    EXPECT_EQ(specific.at(2).size(), 1);
+    assertIsFromEdgeIndexAccess(specific.at(2).at(0), {{attr, value}, {attr2, value2}});
+  }
+  {
+    // Can prepare in Edges
+    auto cols = prepareCollection(TRI_EDGE_IN);
+    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+
+    EXPECT_EQ(base.size(), 1);
+    assertIsToEdgeIndexAccess(base.at(0), {{attr, value}});
+    ASSERT_EQ(specific.size(), 2);
+    ASSERT_TRUE(specific.contains(1));
+    EXPECT_EQ(specific.at(1).size(), 1);
+    assertIsToEdgeIndexAccess(specific.at(1).at(0), {{attr, value}, {attr1, value1}});
+
+    ASSERT_TRUE(specific.contains(2));
+    EXPECT_EQ(specific.at(2).size(), 1);
+    assertIsToEdgeIndexAccess(specific.at(2).at(0), {{attr, value}, {attr2, value2}});
   }
 }
 }

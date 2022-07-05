@@ -275,11 +275,51 @@ EdgeConditionBuilder::buildIndexAccessors(
                                 std::move(container), i, dir);
   }
 
+  std::unordered_map<uint64_t,
+                     std::vector<IndexAccessor>> depthIndexAccessors{};
+  for (auto const& [depth, conditions] : _depthConditions) {
+    std::vector<IndexAccessor> localIndexAccessors{};
+    for (size_t i = 0; i < collections.size(); ++i) {
+      auto& [edgeCollection, dir] = collections[i];
+      TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+
+      AstNode* condition = (dir == TRI_EDGE_IN)
+                               ? getInboundConditionForDepth(depth, ast)
+                               : getOutboundConditionForDepth(depth, ast);
+      AstNode* indexCondition = condition->clone(ast);
+      std::shared_ptr<Index> indexToUse;
+
+      bool res = utils::getBestIndexHandleForFilterCondition(
+          *edgeCollection, indexCondition, tmpVar, itemsInCollection,
+          IndexHint(), indexToUse, onlyEdgeIndexes);
+      if (!res) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "expected edge index not found");
+      }
+
+      std::optional<size_t> memberToUpdate{std::nullopt};
+      ::calculateMemberToUpdate(dir == TRI_EDGE_IN ? StaticStrings::ToString
+                                                   : StaticStrings::FromString,
+                                memberToUpdate, tmpVar, indexCondition);
+
+      AstNode* remainderCondition = condition->clone(ast);
+      std::unique_ptr<Expression> expression =
+          ::generateExpression(plan, tmpVar, remainderCondition, indexCondition);
+
+      auto container = utils::extractNonConstPartsOfIndexCondition(
+          ast, varInfo, false, false, indexCondition, tmpVar);
+      localIndexAccessors.emplace_back(std::move(indexToUse), indexCondition,
+                                  memberToUpdate, std::move(expression),
+                                  std::move(container), i, dir);
+    }
+    depthIndexAccessors.emplace(depth, std::move(localIndexAccessors));
+  }
+
   return std::make_pair<
       std::vector<IndexAccessor>,
       std::unordered_map<uint64_t,
                          std::vector<IndexAccessor>>>(
-      std::move(indexAccessors), {});
+      std::move(indexAccessors), std::move(depthIndexAccessors));
 }
 
 EdgeConditionBuilderContainer::EdgeConditionBuilderContainer()
