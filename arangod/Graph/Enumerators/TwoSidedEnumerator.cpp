@@ -56,11 +56,10 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template<class Configuration>
-TwoSidedEnumerator<Configuration>::
-    Ball::Ball(Direction dir, ProviderType&& provider,
-               GraphOptions const& options,
-               PathValidatorOptions validatorOptions,
-               arangodb::ResourceMonitor& resourceMonitor)
+TwoSidedEnumerator<Configuration>::Ball::Ball(
+    Direction dir, ProviderType&& provider, GraphOptions const& options,
+    PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
       _interior(resourceMonitor),
       _queue(resourceMonitor),
@@ -176,9 +175,8 @@ auto TwoSidedEnumerator<Configuration>::Ball::fetchResults(ResultList& results)
 }
 
 template<class Configuration>
-auto TwoSidedEnumerator<Configuration>::
-    Ball::computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
-        -> void {
+auto TwoSidedEnumerator<Configuration>::Ball::computeNeighbourhoodOfNextVertex(
+    Ball& other, ResultList& results) -> void {
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
@@ -217,17 +215,17 @@ auto TwoSidedEnumerator<Configuration>::
 }
 
 template<class Configuration>
-void TwoSidedEnumerator<Configuration>::
-    Ball::testDepthZero(Ball& other, ResultList& results) {
+void TwoSidedEnumerator<Configuration>::Ball::testDepthZero(
+    Ball& other, ResultList& results) {
   for (auto const& step : _shell) {
     other.matchResultsInShell(step, results, _validator);
   }
 }
 
 template<class Configuration>
-auto TwoSidedEnumerator<Configuration>::
-    Ball::matchResultsInShell(Step const& match, ResultList& results,
-                              PathValidatorType const& otherSideValidator) -> void {
+auto TwoSidedEnumerator<Configuration>::Ball::matchResultsInShell(
+    Step const& match, ResultList& results,
+    PathValidatorType const& otherSideValidator) -> void {
   auto [first, last] = _shell.equal_range(match);
   if (_direction == FORWARD) {
     while (first != last) {
@@ -253,9 +251,8 @@ auto TwoSidedEnumerator<Configuration>::
 }
 
 template<class Configuration>
-auto TwoSidedEnumerator<Configuration>::
-    Ball::buildPath(Step const& vertexInShell,
-                    PathResult<ProviderType, Step>& path) -> void {
+auto TwoSidedEnumerator<Configuration>::Ball::buildPath(
+    Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
     _interior.buildPath(vertexInShell, path);
   } else {
@@ -269,12 +266,10 @@ auto TwoSidedEnumerator<Configuration>::Ball::provider() -> ProviderType& {
 }
 
 template<class Configuration>
-TwoSidedEnumerator<Configuration>::
-    TwoSidedEnumerator(ProviderType&& forwardProvider,
-                       ProviderType&& backwardProvider,
-                       TwoSidedEnumeratorOptions&& options,
-                       PathValidatorOptions validatorOptions,
-                       arangodb::ResourceMonitor& resourceMonitor)
+TwoSidedEnumerator<Configuration>::TwoSidedEnumerator(
+    ProviderType&& forwardProvider, ProviderType&& backwardProvider,
+    TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
       _left{Direction::FORWARD, std::move(forwardProvider), _options,
             validatorOptions, resourceMonitor},
@@ -377,7 +372,8 @@ bool TwoSidedEnumerator<Configuration>::getNextPath(VPackBuilder& result) {
 }
 
 template<class Configuration>
-auto TwoSidedEnumerator<Configuration>::getNextPath_New() -> PathResultInterface* {
+auto TwoSidedEnumerator<Configuration>::getNextPath_New()
+    -> PathResultInterface* {
   while (!isDone()) {
     searchMoreResults();
 
@@ -476,8 +472,6 @@ auto TwoSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
   return stats;
 }
 
-
-
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
@@ -487,7 +481,6 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
       configuration<provider, vertexUniqueness, edgeUniqueness, false>>;     \
   template class ::arangodb::graph::TwoSidedEnumerator<                      \
       configuration<provider, vertexUniqueness, edgeUniqueness, true>>;
-
 
 // PATH_PATH for K_PATH and K_Shortest_Paths
 // GLOBAL_PATH for Shortest_Path
@@ -501,7 +494,7 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 // BFS for equal weights on edges
 // Weighted for weightAttribute
-#define MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(provider)          \
+#define MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(provider) \
   MAKE_TWO_SIDED_ENUMERATORS_UNIQUENESS(provider, BFSConfiguration)
 
 MAKE_TWO_SIDED_ENUMERATORS_CONFIGURATION(
