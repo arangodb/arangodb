@@ -1,7 +1,7 @@
 param(
 [int] $AgentCount = 1,
 [int] $CoordinatorCount = 1,
-[int] $DBServerCount = 2,
+[int] $DBServerCount = 3,
 [int] $AgentStartPort = 4001,
 [int] $CoordinatorStartPort = 8530,
 [int] $DBServerStartPort = 8629,
