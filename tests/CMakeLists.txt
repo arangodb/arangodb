@@ -251,6 +251,7 @@ set(ARANGODB_TESTS_SOURCES
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
+  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp

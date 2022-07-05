@@ -33,12 +33,16 @@
 #include <Pregel/Common.h>
 
 namespace arangodb::pregel {
-struct WorkerStatus {
+struct Status {
   TimeStamp timeStamp = std::chrono::system_clock::now();
+  bool operator==(Status const&) const = default;
+  auto operator+(Status const& otherStatus) const -> Status {
+    return Status{.timeStamp = std::max(timeStamp, otherStatus.timeStamp)};
+  };
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, WorkerStatus& x) {
+auto inspect(Inspector& f, Status& x) {
   return f.object(x).fields(
       f.field(timeStampString, x.timeStamp)
           .transformWith(inspection::TimeStampTransformer{}));
