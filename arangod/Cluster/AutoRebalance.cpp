@@ -31,7 +31,7 @@
 
 #include "AutoRebalance.h"
 
-using namespace arangodb::cluster;
+using namespace arangodb::cluster::rebalance;
 
 namespace {
 

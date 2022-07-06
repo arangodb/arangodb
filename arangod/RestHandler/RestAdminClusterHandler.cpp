@@ -2154,7 +2154,7 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
 
   switch (request()->requestType()) {
     case rest::RequestType::POST: {
-      std::vector<cluster::MoveShardJob> moves;
+      std::vector<cluster::rebalance::MoveShardJob> moves;
       moves.reserve(1000);
       auto p = collectRebalanceInformation();
       p.optimize(true, true, true, 1000, moves);
@@ -2176,7 +2176,7 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
       }
     }
     case rest::RequestType::PUT: {
-      std::vector<cluster::MoveShardJob> moves;
+      std::vector<cluster::rebalance::MoveShardJob> moves;
       moves.reserve(1000);
       auto p = collectRebalanceInformation();
       p.optimize(true, true, true, 1000, moves);
@@ -2257,12 +2257,12 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
   return RestStatus::DONE;
 }
 
-cluster::AutoRebalanceProblem
+cluster::rebalance::AutoRebalanceProblem
 RestAdminClusterHandler::collectRebalanceInformation() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
-  cluster::AutoRebalanceProblem p;
-  p.zones.emplace_back(cluster::Zone{.id = "ZONE"});
+  cluster::rebalance::AutoRebalanceProblem p;
+  p.zones.emplace_back(cluster::rebalance::Zone{.id = "ZONE"});
 
   std::unordered_map<ServerID, std::size_t> serverToIndex;
 

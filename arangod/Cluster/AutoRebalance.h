@@ -32,7 +32,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace arangodb::cluster {
+namespace arangodb::cluster::rebalance {
 struct Zone {
   std::string id;
 };
@@ -198,4 +198,4 @@ struct AutoRebalanceProblem {
       bool considerLeaderChanges, bool considerFollowerMoves,
       bool considerLeaderMoves) const;
 };
-}  // namespace arangodb::cluster
+}  // namespace arangodb::cluster::rebalance
