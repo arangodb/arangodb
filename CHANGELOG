@@ -1,6 +1,14 @@
 devel
 -----
 
+* Pregel SSSP now supports `resultField` as well as `_resultField` as 
+  parameter name to specify the field into which results are stored.
+  The name `_resultField` will be deprecated in future.
+
+* Web UI: Fixes a GraphViewer issue related to display issues with node
+  and edge labels. Boolean node or edge values could not be used as label
+  values (ES-1084).
+
 * Made the SortExecutor receive its input incrementally, instead of receiving
   a whole matrix containing all input at once.
 
