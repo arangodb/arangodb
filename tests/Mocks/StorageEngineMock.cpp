@@ -1559,12 +1559,20 @@ StorageEngineMock::buildInvertedIndexMock(
     }
   }
 
+  arangodb::iresearch::IResearchInvertedIndexMeta meta;
+  std::string errField;
+  meta.init(collection.vocbase().server(), info, false, errField,
+            collection.vocbase().name());
+
+  auto attrs = arangodb::iresearch::IResearchInvertedIndex::fields(meta);
   auto index = std::shared_ptr<arangodb::iresearch::IResearchInvertedIndexMock>(
       new arangodb::iresearch::IResearchInvertedIndexMock(id, collection, name,
-                                                          {}, false, true));
+                                                          attrs, false, true));
+
   bool pathExists;
   auto result = index->init(info, pathExists);
   std::cout << "RESULT = " << result << std::endl;
+  std::cout << "pathExists = " << pathExists << std::endl;
 
   return index;
 }

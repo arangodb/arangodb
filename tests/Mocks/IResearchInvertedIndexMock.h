@@ -27,6 +27,7 @@
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Indexes/Index.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -50,7 +51,32 @@ public:
   void toVelocyPack(
       VPackBuilder &builder,
       std::underlying_type<Index::Serialize>::type flags) const override {
-    return Index::toVelocyPack(builder, flags);
+
+    auto const forPersistence =
+        Index::hasFlag(flags, Index::Serialize::Internals);
+
+    VPackObjectBuilder objectBuilder(&builder);
+    IResearchInvertedIndex::toVelocyPack(
+        IResearchDataStore::collection().vocbase().server(),
+        &IResearchDataStore::collection().vocbase(), builder, forPersistence);
+
+    auto objectId = 42;
+    if (forPersistence) {
+      //      TRI_ASSERT(objectId() != 0); // If we store it, it cannot be 0
+      builder.add(arangodb::StaticStrings::ObjectId,
+                  VPackValue(std::to_string(objectId)));
+    }
+
+    // can't use Index::toVelocyPack as it will try to output 'fields'
+    // but we have custom storage format
+    builder.add(arangodb::StaticStrings::IndexId,
+                arangodb::velocypack::Value(std::to_string(_iid.id())));
+    builder.add(arangodb::StaticStrings::IndexType,
+                arangodb::velocypack::Value(oldtypeName(type())));
+    builder.add(arangodb::StaticStrings::IndexName,
+                arangodb::velocypack::Value(name()));
+    builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
+    builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
   }
 
   size_t memory() const override {
@@ -117,7 +143,7 @@ public:
                           size_t itemsInIndex) const override {
 
     return IResearchInvertedIndex::supportsFilterCondition(
-        IResearchDataStore::id(), this->_fields, allIndexes, node, reference,
+        IResearchDataStore::id(), _fields, allIndexes, node, reference,
         itemsInIndex);
   }
 
