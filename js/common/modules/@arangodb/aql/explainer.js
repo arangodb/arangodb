@@ -1158,10 +1158,18 @@ function processQuery(query, explain, planIndex) {
   };
 
   var iterateIndexes = function (idx, i, node, types, variable) {
-    var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
+    let what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan';
+    if (node.producesResult || !node.hasOwnProperty('producesResult')) {
+      if (node.indexCoversProjections) {
+        what += ', index only';
+      } 
+    } else {
+      what += ', scan only';
+    }
     if (node.readOwnWrites) {
       what += "; read own writes";
     }
+
     if (types.length === 0 || what !== types[types.length - 1]) {
       types.push(what);
     }
@@ -1334,7 +1342,7 @@ function processQuery(query, explain, planIndex) {
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
-          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
           '   ' + annotation(indexAnnotation);
 
       case 'TraversalNode':

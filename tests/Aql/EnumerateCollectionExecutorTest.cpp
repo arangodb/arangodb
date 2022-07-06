@@ -35,7 +35,6 @@
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -79,8 +78,6 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   std::shared_ptr<VPackBuilder> json;
   std::shared_ptr<LogicalCollection> collection;
 
-  Ast ast;
-
   Variable outVariable;
   bool varUsedLater;
   ExecutionEngine* engine;
@@ -100,13 +97,15 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
-        ast(*fakedQuery.get()),
+        collection(vocbase.lookupCollection("UnitTestCollection")
+                       ? vocbase.lookupCollection("UnitTestCollection")
+                       : vocbase.createCollection(json->slice())),
         outVariable("name", 1, false),
         varUsedLater(false),
         engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase,
                       arangodb::AccessMode::Type::READ,
-                      arangodb::aql::Collection::Hint::None),
+                      arangodb::aql::Collection::Hint::Collection),
         random(false),
         count(false),
         registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
@@ -114,13 +113,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable,
                       varUsedLater, nullptr, projections, {}, random, count,
                       arangodb::ReadOwnWrites::no),
-        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
-    try {
-      collection = vocbase.createCollection(json->slice());
-    } catch (std::exception const&) {
-      // ignore, already created the collection
-    }
-  }
+        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
 TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
@@ -274,7 +267,6 @@ class EnumerateCollectionExecutorTestProduce
 
   SharedAqlItemBlockPtr block;
   NoStats stats;
-  Ast ast;
 
   // needed for infos
   Variable outVariable;
@@ -292,14 +284,15 @@ class EnumerateCollectionExecutorTestProduce
       : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
-        collection(vocbase.createCollection(json->slice())),
-        ast(*fakedQuery.get()),
+        collection(vocbase.lookupCollection("UnitTestCollection")
+                       ? vocbase.lookupCollection("UnitTestCollection")
+                       : vocbase.createCollection(json->slice())),
         outVariable("name", 1, false),
         varUsedLater(true),
         engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase,
                       arangodb::AccessMode::Type::READ,
-                      arangodb::aql::Collection::Hint::None),
+                      arangodb::aql::Collection::Hint::Collection),
         random(false),
         count(false),
         registerInfos({}, RegIdSet{1}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
