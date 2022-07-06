@@ -2140,7 +2140,77 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
           }));
 }
 
+namespace {
+struct RebalanceOptions {
+  std::uint64_t version;
+  std::size_t maximumNumberOfMoves;
+  bool leaderChanges;
+  bool moveLeaders;
+  bool moveFollowers;
+  double piFactor;
+  std::vector<DatabaseID> databasesExcluded;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, RebalanceOptions& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("maximumNumberOfMoves", x.maximumNumberOfMoves)
+          .fallback(std::size_t{1000}),
+      f.field("leaderChanges", x.leaderChanges).fallback(false),
+      f.field("moveLeaders", x.moveLeaders).fallback(false),
+      f.field("moveFollowers", x.moveFollowers).fallback(true),
+      f.field("piFactor", x.piFactor).fallback(256e6),
+      f.field("databasesExcluded", x.databasesExcluded)
+          .fallback(std::vector<DatabaseID>{}));
+};
+
+}  // namespace
+
 RestStatus RestAdminClusterHandler::handleRebalance() {
+  auto const readRebalanceOptions = [&]() -> std::optional<RebalanceOptions> {
+    bool parseSuccess = false;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {  // error message generated in parseVPackBody
+      return std::nullopt;
+    }
+
+    auto opts = velocypack::deserialize<RebalanceOptions>(body);
+    if (opts.maximumNumberOfMoves > 5000) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "at most 5000 moves allowed");
+      return std::nullopt;
+    }
+
+    if (opts.version != 1) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "unknown version provided");
+      return std::nullopt;
+    }
+
+    return opts;
+  };
+
+  auto const getOptimizationMoves =
+      [&]() -> std::optional<
+                std::pair<cluster::rebalance::AutoRebalanceProblem,
+                          std::vector<cluster::rebalance::MoveShardJob>>> {
+    std::vector<cluster::rebalance::MoveShardJob> moves;
+
+    auto options = readRebalanceOptions();
+    if (!options) {
+      return std::nullopt;
+    }
+
+    auto p = collectRebalanceInformation(options->databasesExcluded);
+    moves.reserve(options->maximumNumberOfMoves);
+    p.setPiFactor(options->piFactor);
+    p.optimize(options->leaderChanges, options->moveFollowers,
+               options->moveLeaders, options->maximumNumberOfMoves, moves);
+
+    return std::make_pair(std::move(p), std::move(moves));
+  };
+
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
@@ -2154,12 +2224,12 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
 
   switch (request()->requestType()) {
     case rest::RequestType::POST: {
-      std::vector<cluster::rebalance::MoveShardJob> moves;
-      moves.reserve(1000);
-      auto p = collectRebalanceInformation();
-      p.optimize(true, true, true, 1000, moves);
-
       {
+        auto result = getOptimizationMoves();
+        if (!result.has_value()) {
+          return RestStatus::DONE;
+        }
+        auto& [p, moves] = *result;
         VPackBuilder builder;
         {
           VPackArrayBuilder ab(&builder);
@@ -2176,16 +2246,15 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
       }
     }
     case rest::RequestType::PUT: {
-      std::vector<cluster::rebalance::MoveShardJob> moves;
-      moves.reserve(1000);
-      auto p = collectRebalanceInformation();
-      p.optimize(true, true, true, 1000, moves);
-
+      auto result = getOptimizationMoves();
+      if (!result.has_value()) {
+        return RestStatus::DONE;
+      }
+      auto& [p, moves] = *result;
       if (moves.empty()) {
         generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
         return RestStatus::DONE;
       }
-
       VPackBuffer<uint8_t> trx;
       {
         VPackBuilder builder(trx);
@@ -2202,7 +2271,7 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
           auto& shard = p.shards[move.shardId];
           auto& col = p.collections[shard.collectionId];
           write = std::move(write).emplace(
-              jobToDoPath->str(), [&](VPackBuilder& builder) {
+              jobToDoPath->str(), [&, &p = p](VPackBuilder& builder) {
                 builder.add("type", VPackValue("moveShard"));
                 builder.add("database", VPackValue(_vocbase.name()));
                 builder.add("collection", VPackValue(col.name));
@@ -2234,7 +2303,7 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
     }
     case rest::RequestType::GET: {
       VPackBuilder builder;
-      auto p = collectRebalanceInformation();
+      auto p = collectRebalanceInformation({});
       auto leader = p.computeLeaderImbalance();
       auto shard = p.computeShardImbalance();
       {
@@ -2258,7 +2327,8 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
 }
 
 cluster::rebalance::AutoRebalanceProblem
-RestAdminClusterHandler::collectRebalanceInformation() {
+RestAdminClusterHandler::collectRebalanceInformation(
+    std::vector<std::string> const& excludedDatabases) {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   cluster::rebalance::AutoRebalanceProblem p;
@@ -2292,6 +2362,11 @@ RestAdminClusterHandler::collectRebalanceInformation() {
   }
 
   for (auto const& db : ci.databases()) {
+    if (std::find(excludedDatabases.begin(), excludedDatabases.end(), db) !=
+        excludedDatabases.end()) {
+      continue;
+    }
+
     std::size_t dbIndex = p.databases.size();
     auto& databaseRef = p.databases.emplace_back();
     databaseRef.id = dbIndex;

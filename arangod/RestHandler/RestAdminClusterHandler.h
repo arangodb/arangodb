@@ -195,6 +195,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
 
-  cluster::rebalance::AutoRebalanceProblem collectRebalanceInformation();
+  cluster::rebalance::AutoRebalanceProblem collectRebalanceInformation(
+      std::vector<std::string> const& excludedDatabases);
 };
 }  // namespace arangodb
