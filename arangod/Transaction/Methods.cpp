@@ -97,10 +97,12 @@ BatchOptions buildBatchOptions(OperationOptions const& options,
       batchOptions.validateSmartJoinAttribute =
           collection.hasSmartJoinAttribute();
     }
+
     if (options.validate) {
       batchOptions.schema = collection.schema();
     }
-    std::shared_ptr<ComputedValues> cv = collection.computedValues();
+
+    auto cv = collection.computedValues();
     if (cv != nullptr) {
       bool pick = false;
 
@@ -180,7 +182,7 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection,
     return true;
   }
 
-  std::string const& s = collection.smartJoinAttribute();
+  auto const& s = collection.smartJoinAttribute();
 
   VPackSlice n = newValue.get(s);
   if (!n.isString()) {

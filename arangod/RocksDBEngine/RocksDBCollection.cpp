@@ -1788,8 +1788,6 @@ Result RocksDBCollection::modifyDocument(
 }
 
 /// @brief lookup document in cache and / or rocksdb
-/// @param readCache attempt to read from cache
-/// @param fillCache fill cache with found document
 Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
                                          LocalDocumentId documentId,
                                          velocypack::Builder& builder,
@@ -1853,8 +1851,6 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
 }
 
 /// @brief lookup document in cache and / or rocksdb
-/// @param readCache attempt to read from cache
-/// @param fillCache fill cache with found document
 arangodb::Result RocksDBCollection::lookupDocumentVPack(
     transaction::Methods* trx, LocalDocumentId const& documentId,
     rocksdb::PinnableSlice& ps, bool readCache, bool fillCache,

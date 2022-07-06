@@ -167,13 +167,11 @@ Result removeKeysOutsideRange(
                                  builder.slice(), options);
           }
 
-          if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-            // ignore not found, we remove conflicting docs ahead of time
-            THROW_ARANGO_EXCEPTION(r);
-          }
-
           if (r.ok()) {
             ++stats.numDocsRemoved;
+          } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+            // ignore not found, we remove conflicting docs ahead of time
+            THROW_ARANGO_EXCEPTION(r);
           }
         }
 
@@ -349,13 +347,11 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           }
         }
 
-        if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-          // ignore not found, we remove conflicting docs ahead of time
-          return r;
-        }
-
         if (r.ok()) {
           ++stats.numDocsRemoved;
+        } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+          // ignore not found, we remove conflicting docs ahead of time
+          return r;
         }
 
         ++nextStart;
@@ -419,13 +415,11 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         }
       }
 
-      if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // ignore not found, we remove conflicting docs ahead of time
-        return r;
-      }
-
       if (r.ok()) {
         ++stats.numDocsRemoved;
+      } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // ignore not found, we remove conflicting docs ahead of time
+        return r;
       }
     }
     ++nextStart;
@@ -592,6 +586,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         if (r.ok()) {
           ++stats.numDocsRemoved;
         }
+        // if a conflict document cannot be removed because it doesn't exist,
+        // we do not care, because the goal is deletion anyway. if it fails
+        // for some other reason, the following re-insert will likely complain.
+        // so intentionally no special error handling here.
 
         return r;
       };
@@ -891,13 +889,11 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
               }
             }
 
-            if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-              // ignore not found, we remove conflicting docs ahead of time
-              THROW_ARANGO_EXCEPTION(r);
-            }
-
             if (r.ok()) {
               ++stats.numDocsRemoved;
+            } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+              // ignore not found, we remove conflicting docs ahead of time
+              THROW_ARANGO_EXCEPTION(r);
             }
 
             return;

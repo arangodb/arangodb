@@ -259,13 +259,12 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
       try {
         newSchema = std::make_shared<ValidatorJsonSchema>(schema);
       } catch (std::exception const& ex) {
-        using namespace std::literals::string_literals;
         return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
-                "Error when building schema: "s + ex.what()};
+                absl::StrCat("Error when building schema: ", ex.what())};
       }
     }
 
-    std::atomic_store_explicit(&_schema, newSchema, std::memory_order_relaxed);
+    std::atomic_store_explicit(&_schema, newSchema, std::memory_order_release);
   }
 
   return {};
@@ -1195,16 +1194,16 @@ std::shared_ptr<ComputedValues> LogicalCollection::computedValues() const {
 }
 
 void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
-  if (schema != nullptr) {
-    schema->toVelocyPack(b);
+  auto s = schema();
+  if (s != nullptr) {
+    s->toVelocyPack(b);
   } else {
     b.add(VPackSlice::nullSlice());
   }
 }
 
 std::shared_ptr<ValidatorBase> LogicalCollection::schema() const {
-  return std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  return std::atomic_load_explicit(&_schema, std::memory_order_acquire);
 }
 
 Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
@@ -1228,8 +1227,6 @@ Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
 Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
                                    VPackSlice modifiedDoc, VPackSlice oldDoc,
                                    VPackOptions const* options) const {
-  //  auto schema = std::atomic_load_explicit(&_schema,
-  //  std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(modifiedDoc, oldDoc, false, options);
     if (res.fail()) {

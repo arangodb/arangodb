@@ -212,6 +212,10 @@ arangodb::Result fetchRevisions(
       }
     }
 
+    // if a conflict document cannot be removed because it doesn't exist,
+    // we do not care, because the goal is deletion anyway. if it fails
+    // for some other reason, the following re-insert will likely complain.
+    // so intentionally no special error handling here.
     if (r.ok()) {
       ++stats.numDocsRemoved;
     }

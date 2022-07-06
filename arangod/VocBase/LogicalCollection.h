@@ -485,11 +485,11 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<ShardingInfo> _sharding;
 
   // `_computedValues` must be used with atomic accessors only!!
-  // We use relaxed access (load/store) as we only care about atomicity.
+  // We use acquire/release access (load/store) as we only care about atomicity.
   std::shared_ptr<ComputedValues> _computedValues;
 
   // `_schema` must be used with atomic accessors only!!
-  // We use relaxed access (load/store) as we only care about atomicity.
+  // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
 
   // This is a bitmap entry of InternalValidatorType entries.

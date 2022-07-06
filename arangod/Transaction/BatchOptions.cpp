@@ -26,8 +26,6 @@
 #include "Aql/ExpressionContext.h"
 #include "VocBase/ComputedValues.h"
 
-using namespace arangodb;
-
 namespace arangodb::transaction {
 
 BatchOptions::BatchOptions() = default;

@@ -46,6 +46,17 @@
 
 using namespace arangodb;
 
+namespace {
+
+bool isSystemAttribute(std::string_view key) noexcept {
+  return key.size() >= 3 && key[0] == '_' &&
+         (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
+          key == StaticStrings::RevString || key == StaticStrings::FromString ||
+          key == StaticStrings::ToString);
+}
+
+}  // namespace
+
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
 /// be the first one
@@ -469,11 +480,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
     while (it.valid()) {
       auto current = *it;
       auto key = current.key.stringView();
-      if (key.size() >= 3 && key[0] == '_' &&
-          (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
-           key == StaticStrings::RevString ||
-           key == StaticStrings::FromString ||
-           key == StaticStrings::ToString)) {
+      if (::isSystemAttribute(key)) {
         // note _from and _to and ignore _id, _key and _rev
         if (collection.type() == TRI_COL_TYPE_EDGE) {
           if (key == StaticStrings::FromString) {
@@ -502,11 +509,10 @@ Result transaction::helpers::mergeObjectsForUpdate(
 
   // _from, _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    bool extendedNames = trx.vocbase().server().hasFeature<DatabaseFeature>() &&
-                         trx.vocbase()
-                             .server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNamesForCollections();
+    auto& server = trx.vocbase().server();
+    bool extendedNames =
+        server.hasFeature<DatabaseFeature>() &&
+        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
 
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
@@ -558,13 +564,9 @@ Result transaction::helpers::mergeObjectsForUpdate(
     VPackObjectIterator it(oldValue, true);
     while (it.valid()) {
       auto current = (*it);
-      std::string_view key(current.key.stringView());
+      auto key = current.key.stringView();
       // exclude system attributes in old value now
-      if (key.size() >= 3 && key[0] == '_' &&
-          (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
-           key == StaticStrings::RevString ||
-           key == StaticStrings::FromString ||
-           key == StaticStrings::ToString)) {
+      if (::isSystemAttribute(key)) {
         it.next();
         continue;
       }
@@ -705,11 +707,10 @@ Result transaction::helpers::newObjectForInsert(
 
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    bool extendedNames = trx.vocbase().server().hasFeature<DatabaseFeature>() &&
-                         trx.vocbase()
-                             .server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNamesForCollections();
+    auto& server = trx.vocbase().server();
+    bool extendedNames =
+        server.hasFeature<DatabaseFeature>() &&
+        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
 
     VPackSlice fromSlice = value.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -812,11 +813,10 @@ Result transaction::helpers::newObjectForReplace(
 
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    bool extendedNames = trx.vocbase().server().hasFeature<DatabaseFeature>() &&
-                         trx.vocbase()
-                             .server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNamesForCollections();
+    auto& server = trx.vocbase().server();
+    bool extendedNames =
+        server.hasFeature<DatabaseFeature>() &&
+        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
 
     VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -859,7 +859,8 @@ Result transaction::helpers::newObjectForReplace(
   // add other attributes after the system attributes
   VPackObjectIterator it(newValue, true);
   while (it.valid()) {
-    std::string_view key(it.key().stringView());
+    auto key = it.key().stringView();
+
     // _id, _key, _rev, _from, _to. minimum size here is 3
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&

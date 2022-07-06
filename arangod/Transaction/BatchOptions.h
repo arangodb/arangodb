@@ -33,7 +33,7 @@ struct ValidatorBase;
 
 namespace aql {
 class ExpressionContext;
-}
+}  // namespace aql
 
 namespace transaction {
 class Methods;

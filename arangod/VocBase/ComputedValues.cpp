@@ -111,8 +111,7 @@ std::string ComputedValuesExpressionContext::buildLogMessage(
                    _collection.vocbase().name(), "/", _collection.name(), "'");
 
   if (msg != nullptr) {
-    error.append(": ");
-    error.append(msg);
+    absl::StrAppend(&error, ": ", msg);
   }
 
   return error;

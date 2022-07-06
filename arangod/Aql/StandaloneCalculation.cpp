@@ -236,8 +236,6 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                                             std::string_view parameterName,
                                             std::string_view errorContext,
                                             bool isComputedValue) {
-  using namespace std::string_literals;
-
   try {
     CalculationQueryContext queryContext(vocbase);
     auto ast = queryContext.ast();
@@ -255,21 +253,21 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     // analyzers run.
     if (ast->willUseV8()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "V8 usage is forbidden"s + std::string{errorContext}};
+              absl::StrCat("V8 usage is forbidden", errorContext)};
     }
 
     // no modification (as data access is forbidden) but to give more clear
     // error message
     if (ast->containsModificationNode()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "DML is forbidden"s + std::string{errorContext}};
+              absl::StrCat("DML is forbidden", errorContext)};
     }
 
     // no traversal (also data access is forbidden) but to give more clear error
     // message
     if (ast->containsTraversal()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Traversal usage is forbidden"s + std::string{errorContext}};
+              absl::StrCat("Traversal usage is forbidden", errorContext)};
     }
 
     std::string errorMessage;
@@ -367,26 +365,22 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                       arangodb::aql::Function::Flags::CanReadDocuments) ||
                   !func->hasFlag(
                       arangodb::aql::Function::Flags::CanUseInAnalyzer)) {
-                errorMessage = "Function '";
-                errorMessage.append(func->name)
-                    .append("' is forbidden")
-                    .append(std::string{errorContext});
+                errorMessage = absl::StrCat("Function '", func->name,
+                                            " is forbidden", errorContext);
                 return false;
               }
             } break;
             case arangodb::aql::NODE_TYPE_PARAMETER: {
               if (node->getStringView() != parameterName) {
-                errorMessage = "Invalid bind parameter '";
-                errorMessage.append(node->getStringView()).append("' found");
+                errorMessage = absl::StrCat("Invalid bind parameter '",
+                                            node->getStringView(), "' found");
                 return false;
               }
             } break;
             // by default everything else is forbidden
             default:
-              errorMessage = "Node type '";
-              errorMessage.append(node->getTypeString())
-                  .append("' is forbidden")
-                  .append(std::string{errorContext});
+              errorMessage = absl::StrCat("Node type '", node->getTypeString(),
+                                          "' is forbidden", errorContext);
               return false;
           }
           return true;
@@ -396,16 +390,18 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
         (astRoot->numMembers() != 1 ||
          astRoot->getMember(0)->type != NODE_TYPE_RETURN)) {
       // computed values expressions must start with a RETURN statement
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Computation expression needs to start with a RETURN statement"s +
-                  std::string{errorContext}};
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat(
+              "Computation expression needs to start with a RETURN statement",
+              errorContext)};
     }
 
     if (!errorMessage.empty()) {
       return {TRI_ERROR_BAD_PARAMETER, errorMessage};
     }
   } catch (arangodb::basics::Exception const& e) {
-    return {TRI_ERROR_QUERY_PARSE, e.message() + std::string{errorContext}};
+    return {TRI_ERROR_QUERY_PARSE, absl::StrCat(e.message(), errorContext)};
   } catch (std::exception const& e) {
     return {TRI_ERROR_QUERY_PARSE, e.what()};
   } catch (...) {
