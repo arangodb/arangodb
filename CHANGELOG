@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added CSP recommended headers to Aardvaark app for better security.
+
 * Changed default Linux CI compiler to gcc-11.
 
 * Updated arangosync to v2.11.0-preview-2.
