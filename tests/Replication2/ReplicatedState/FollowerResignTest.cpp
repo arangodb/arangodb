@@ -119,6 +119,8 @@ struct ReplicatedStateFollowerResignTest : test::ReplicatedLogTest {
     // first, because without that we end up back in kTransferSnapshot when
     // we get back here.
     ADB_PROD_ASSERT(false) << "unsupported state " << to_string(state);
+    // silence warnings
+    return nullptr;
   }
 };
 
