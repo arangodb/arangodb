@@ -186,7 +186,10 @@ std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
 std::string const StaticStrings::BatchContentType(
     "application/x-arango-batchpart");
-std::string const StaticStrings::CacheControl("cache-control");
+std::string const StaticStrings::CacheControl("Cache-Control");
+std::string const StaticStrings::CacheControlValue(
+    "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, "
+    "max-age=0, s-maxage=0");
 std::string const StaticStrings::Close("Close");
 std::string const StaticStrings::ClusterCommSource("x-arango-source");
 std::string const StaticStrings::Code("code");
@@ -229,6 +232,17 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
+std::string const StaticStrings::ContentSecurityPolicy(
+    "Content-Security-Policy");
+ std::string const StaticStrings::ContentSecurityPolicyValue(
+     "frame-ancestors 'self'; form-action 'self';");
+std::string const StaticStrings::Pragma("Pragma");
+std::string const StaticStrings::PragmaValue("no-cache");
+std::string const StaticStrings::Expires("Expires");
+std::string const StaticStrings::ExpiresValue("0");
+std::string const StaticStrings::HSTS("Strict-Transport-Security");
+std::string const StaticStrings::HSTSValue(
+    "max-age=31536000 ; includeSubDomains");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(
