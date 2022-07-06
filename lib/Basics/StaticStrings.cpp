@@ -234,8 +234,8 @@ std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
 std::string const StaticStrings::ContentSecurityPolicy(
     "Content-Security-Policy");
- std::string const StaticStrings::ContentSecurityPolicyValue(
-     "frame-ancestors 'self'; form-action 'self';");
+std::string const StaticStrings::ContentSecurityPolicyValue(
+    "frame-ancestors 'self'; form-action 'self';");
 std::string const StaticStrings::Pragma("Pragma");
 std::string const StaticStrings::PragmaValue("no-cache");
 std::string const StaticStrings::Expires("Expires");
