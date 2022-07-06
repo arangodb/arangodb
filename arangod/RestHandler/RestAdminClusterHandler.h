@@ -99,6 +99,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRemoveServer();
   RestStatus handleRebalanceShards();
   RestStatus handleRebalance();
+  RestStatus handleRebalanceGet();
 
   RestStatus handleFailureOracle();
 

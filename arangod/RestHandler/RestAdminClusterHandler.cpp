@@ -2167,14 +2167,47 @@ auto inspect(Inspector& f, RebalanceOptions& x) {
 
 }  // namespace
 
-RestStatus RestAdminClusterHandler::handleRebalance() {
-  auto const readRebalanceOptions = [&]() -> std::optional<RebalanceOptions> {
-    bool parseSuccess = false;
-    VPackSlice body = this->parseVPackBody(parseSuccess);
-    if (!parseSuccess) {  // error message generated in parseVPackBody
-      return std::nullopt;
-    }
+RestStatus RestAdminClusterHandler::handleRebalanceGet() {
+  VPackBuilder builder;
+  auto p = collectRebalanceInformation({});
+  auto leader = p.computeLeaderImbalance();
+  auto shard = p.computeShardImbalance();
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add(VPackValue("leader"));
+    velocypack::serialize(builder, leader);
+    builder.add(VPackValue("shards"));
+    velocypack::serialize(builder, shard);
+  }
 
+  generateOk(rest::ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleRebalance() {
+  using namespace cluster::rebalance;
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() == rest::RequestType::GET) {
+    return handleRebalanceGet();
+  }
+
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+
+  auto const readRebalanceOptions = [&]() -> std::optional<RebalanceOptions> {
     auto opts = velocypack::deserialize<RebalanceOptions>(body);
     if (opts.maximumNumberOfMoves > 5000) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2193,9 +2226,8 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
 
   auto const getOptimizationMoves =
       [&]() -> std::optional<
-                std::pair<cluster::rebalance::AutoRebalanceProblem,
-                          std::vector<cluster::rebalance::MoveShardJob>>> {
-    std::vector<cluster::rebalance::MoveShardJob> moves;
+                std::pair<AutoRebalanceProblem, std::vector<MoveShardJob>>> {
+    std::vector<MoveShardJob> moves;
 
     auto options = readRebalanceOptions();
     if (!options) {
@@ -2211,25 +2243,15 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
     return std::make_pair(std::move(p), std::move(moves));
   };
 
-  if (!ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on coordinators");
+  auto result = getOptimizationMoves();
+  if (!result.has_value()) {
     return RestStatus::DONE;
   }
-
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
-  }
+  auto& [p, moves] = *result;
 
   switch (request()->requestType()) {
     case rest::RequestType::POST: {
       {
-        auto result = getOptimizationMoves();
-        if (!result.has_value()) {
-          return RestStatus::DONE;
-        }
-        auto& [p, moves] = *result;
         VPackBuilder builder;
         {
           VPackArrayBuilder ab(&builder);
@@ -2246,11 +2268,6 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
       }
     }
     case rest::RequestType::PUT: {
-      auto result = getOptimizationMoves();
-      if (!result.has_value()) {
-        return RestStatus::DONE;
-      }
-      auto& [p, moves] = *result;
       if (moves.empty()) {
         generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
         return RestStatus::DONE;
@@ -2300,22 +2317,6 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
                   generateError(result.asResult());
                 }
               }));
-    }
-    case rest::RequestType::GET: {
-      VPackBuilder builder;
-      auto p = collectRebalanceInformation({});
-      auto leader = p.computeLeaderImbalance();
-      auto shard = p.computeShardImbalance();
-      {
-        VPackObjectBuilder ob(&builder);
-        builder.add(VPackValue("leader"));
-        velocypack::serialize(builder, leader);
-        builder.add(VPackValue("shards"));
-        velocypack::serialize(builder, shard);
-      }
-
-      generateOk(rest::ResponseCode::OK, builder.slice());
-      return RestStatus::DONE;
     }
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
