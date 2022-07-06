@@ -326,7 +326,9 @@ static arangodb::Result fillIndex(
     // if an error occured drop() will be called
     LOG_TOPIC("dfa3b", DEBUG, Logger::ENGINES)
         << "snapshot captured " << numDocsWritten << " " << res.errorMessage();
-  } else {
+  }
+#ifdef USE_ENTERPRISE
+  else {
     std::deque<std::pair<uint64_t, uint64_t>> partitions;
     it->Seek(bounds.start());
     if (it->Valid()) {
@@ -349,6 +351,7 @@ static arangodb::Result fillIndex(
 #endif
     }
   }
+#endif
   return res;
 }
 
