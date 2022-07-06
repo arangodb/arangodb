@@ -1,8 +1,8 @@
 import { FormState } from "../../constants";
 import { FormProps } from "../../../../utils/constants";
 import React, { ChangeEvent, useEffect, useState } from "react";
-import { find, sortBy } from "lodash";
-import useSWR from "swr";
+import { find, sortBy, pick } from "lodash";
+import useSWRImmutable from "swr/immutable";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { validateAndFix } from "../../helpers";
 import { IconButton } from "../../../../components/arango/buttons";
@@ -14,7 +14,7 @@ type CopyFromInputProps = {
 const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const [sortedViews, setSortedViews] = useState(sortBy(views, 'name'));
   const [selectedView, setSelectedView] = useState(sortedViews[0]);
-  const { data } = useSWR(`/view/${selectedView.name}/properties`, (path) => getApiRouteForCurrentDB().get(path));
+  const { data } = useSWRImmutable(`/view/${selectedView.name}/properties`, (path) => getApiRouteForCurrentDB().get(path));
 
   const fullView = data ? data.body : selectedView;
 
@@ -22,16 +22,10 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
     setSortedViews(sortBy(views, 'name'));
   }, [views]);
 
-  useEffect(() => {
-    let tempSelectedView = find(sortedViews, { name: selectedView.name });
-    if (!tempSelectedView) {
-      setSelectedView(sortedViews[0]);
-    }
-  }, [selectedView.name, sortedViews]);
-
   const copyFormState = () => {
-    fullView.name = formState.name;
     validateAndFix(fullView);
+    Object.assign(fullView, pick(formState, 'id', 'name', 'primarySort', 'primarySortCompression',
+      'storedValues', 'writebufferIdle', 'writebufferActive', 'writebufferSizeMax'));
 
     dispatch({
       type: 'setFormState',
@@ -41,10 +35,7 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   };
 
   const updateSelectedView = (event: ChangeEvent<HTMLSelectElement>) => {
-    let tempSelectedView = find(sortedViews, { name: event.target.value });
-    if (!tempSelectedView) {
-      tempSelectedView = sortedViews[0];
-    }
+    const tempSelectedView = find(sortedViews, { name: event.target.value }) || sortedViews[0];
 
     setSelectedView(tempSelectedView);
   };

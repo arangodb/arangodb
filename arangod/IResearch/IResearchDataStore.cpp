@@ -732,8 +732,6 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
   auto& impl = basics::downCast<IResearchFlushSubscription>(*subscription);
 
   try {
-    auto const lastTickBeforeCommit = _engine->currentTick();
-
     std::unique_lock commitLock{_commitMutex, std::try_to_lock};
     if (!commitLock.owns_lock()) {
       if (!wait) {
@@ -751,7 +749,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
 
       commitLock.lock();
     }
-
+    auto const lastTickBeforeCommit = _engine->currentTick();
     auto const lastCommittedTick = _lastCommittedTick;
 
     try {

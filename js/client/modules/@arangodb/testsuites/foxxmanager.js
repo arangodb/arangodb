@@ -73,7 +73,7 @@ function foxxManager (options) {
 
   print('Shutting down...');
   results['shutdown'] = instanceManager.shutdownInstance();
-  instanceManager.destructor();
+  instanceManager.destructor(results.status);
   print('done.');
 
   return results;
