@@ -2153,9 +2153,86 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
   }
 
   switch (request()->requestType()) {
-    case rest::RequestType::POST:
-    case rest::RequestType::GET:
-    {
+    case rest::RequestType::POST: {
+      std::vector<cluster::MoveShardJob> moves;
+      moves.reserve(1000);
+      auto p = collectRebalanceInformation();
+      p.optimize(true, true, true, 1000, moves);
+
+      {
+        VPackBuilder builder;
+        {
+          VPackArrayBuilder ab(&builder);
+          for (auto const& move : moves) {
+            VPackObjectBuilder ob(&builder);
+            builder.add("from", VPackValue(p.dbServers[move.from].id));
+            builder.add("to", VPackValue(p.dbServers[move.to].id));
+            builder.add("shardId", VPackValue(p.shards[move.shardId].name));
+            builder.add("isLeader", VPackValue(move.isLeader));
+          }
+        }
+        generateOk(rest::ResponseCode::OK, builder.slice());
+        return RestStatus::DONE;
+      }
+    }
+    case rest::RequestType::PUT: {
+      std::vector<cluster::MoveShardJob> moves;
+      moves.reserve(1000);
+      auto p = collectRebalanceInformation();
+      p.optimize(true, true, true, 1000, moves);
+
+      if (moves.empty()) {
+        generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+        return RestStatus::DONE;
+      }
+
+      VPackBuffer<uint8_t> trx;
+      {
+        VPackBuilder builder(trx);
+        auto write = arangodb::agency::envelope::into_builder(builder).write();
+
+        auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+        std::string timestamp =
+            timepointToString(std::chrono::system_clock::now());
+        for (auto const& move : moves) {
+          std::string jobId = std::to_string(ci.uniqid());
+          auto jobToDoPath =
+              arangodb::cluster::paths::root()->arango()->target()->toDo()->job(
+                  jobId);
+          auto& shard = p.shards[move.shardId];
+          auto& col = p.collections[shard.collectionId];
+          write = std::move(write).emplace(
+              jobToDoPath->str(), [&](VPackBuilder& builder) {
+                builder.add("type", VPackValue("moveShard"));
+                builder.add("database", VPackValue(_vocbase.name()));
+                builder.add("collection", VPackValue(col.name));
+                builder.add("jobId", VPackValue(jobId));
+                builder.add("shard", VPackValue(p.shards[move.shardId].name));
+                builder.add("fromServer",
+                            VPackValue(p.dbServers[move.from].id));
+                builder.add("toServer", VPackValue(p.dbServers[move.to].id));
+                builder.add("isLeader", VPackValue(move.isLeader));
+                builder.add("creator",
+                            VPackValue(ServerState::instance()->getId()));
+                builder.add("timeCreated", VPackValue(timestamp));
+              });
+        }
+        std::move(write).end().done();
+      }
+
+      return waitForFuture(
+          AsyncAgencyComm()
+              .sendWriteTransaction(20s, std::move(trx))
+              .thenValue([this](AsyncAgencyCommResult&& result) {
+                if (result.ok() && result.statusCode() == 200) {
+                  generateOk(rest::ResponseCode::ACCEPTED,
+                             VPackSlice::noneSlice());
+                } else {
+                  generateError(result.asResult());
+                }
+              }));
+    }
+    case rest::RequestType::GET: {
       VPackBuilder builder;
       auto p = collectRebalanceInformation();
       auto leader = p.computeLeaderImbalance();
@@ -2189,14 +2266,29 @@ RestAdminClusterHandler::collectRebalanceInformation() {
 
   std::unordered_map<ServerID, std::size_t> serverToIndex;
 
+  auto const getDBServerIndex = [&](std::string const& server) {
+    auto serverName = server;
+    if (serverName.starts_with("_")) {
+      serverName = serverName.substr(1);
+    }
+
+    if (auto iter = serverToIndex.find(serverName);
+        iter != std::end(serverToIndex)) {
+      return iter->second;
+    } else {
+      auto idx = serverToIndex[serverName] = p.dbServers.size();
+      auto& ref = p.dbServers.emplace_back();
+      ref.id = serverName;
+      ref.zone = 0;
+      ref.volumeSize = 1;
+      ref.freeDiskSize = 1;
+      ref.CPUcapacity = 1;
+      return idx;
+    }
+  };
+
   for (auto const& server : ci.getCurrentDBServers()) {
-    serverToIndex[server] = p.dbServers.size();
-    auto& ref = p.dbServers.emplace_back();
-    ref.id = server;
-    ref.zone = 0;
-    ref.volumeSize = 1;
-    ref.freeDiskSize = 1;
-    ref.CPUcapacity = 1;
+    std::ignore = getDBServerIndex(server);
   }
 
   for (auto const& db : ci.databases()) {
@@ -2205,30 +2297,52 @@ RestAdminClusterHandler::collectRebalanceInformation() {
     databaseRef.id = dbIndex;
     databaseRef.name = db;
 
+    struct CollectionMetaData {
+      std::size_t index = 0;
+      std::size_t distributeShardsLikeCounter = 1;
+    };
+
+    std::unordered_map<std::string, CollectionMetaData>
+        distributeShardsLikeCounter;
+
     for (auto const& collection : ci.getCollections(db)) {
-      std::size_t colIndex = p.collections.size();
-      auto& collectionRef = p.collections.emplace_back();
-      collectionRef.id = colIndex;
-      collectionRef.name = collection->name();
-      collectionRef.dbId = dbIndex;
+      if (auto const& like = collection->distributeShardsLike();
+          !like.empty()) {
+        distributeShardsLikeCounter[like].distributeShardsLikeCounter += 1;
+      } else {
+        std::size_t index = p.collections.size();
+        auto& ref = p.collections.emplace_back();
+        ref.id = index;
+        ref.name = std::to_string(collection->id().id());
+        ref.dbId = dbIndex;
+        ref.weight = 1.0;
+        distributeShardsLikeCounter[ref.name].index = index;
 
-      for (auto const& shard : *collection->shardIds()) {
-        std::size_t shardIndex = p.shards.size();
-        auto& shardRef = p.shards.emplace_back();
-        shardRef.name = shard.first;
-        shardRef.leader = serverToIndex.at(shard.second[0]);
-        shardRef.id = shardIndex;
-        shardRef.collectionId = colIndex;
-        shardRef.replicationFactor = shard.second.size();
-        bool first = true;
-        for (auto const& server : shard.second) {
-          if (first) {
-            first = false;
-            continue;
+        for (auto const& shard : *collection->shardIds()) {
+          std::size_t shardIndex = p.shards.size();
+          ref.shards.push_back(shardIndex);
+          auto& shardRef = p.shards.emplace_back();
+          shardRef.name = shard.first;
+          shardRef.leader = getDBServerIndex(shard.second[0]);
+          shardRef.id = shardIndex;
+          shardRef.collectionId = index;
+          shardRef.replicationFactor = shard.second.size();
+          shardRef.weight = 1.;
+          bool first = true;
+          for (auto const& server : shard.second) {
+            if (first) {
+              first = false;
+              continue;
+            }
+            shardRef.followers.emplace_back(getDBServerIndex(server));
           }
-          shardRef.followers.emplace_back(serverToIndex.at(server));
         }
+      }
+    }
 
+    for (auto const& [id, count] : distributeShardsLikeCounter) {
+      for (auto const& shardId : p.collections[count.index].shards) {
+        p.shards[shardId].weight += count.distributeShardsLikeCounter;
       }
     }
   }
