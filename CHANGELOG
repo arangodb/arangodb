@@ -1,5 +1,7 @@
 devel
 -----
+* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
+  explain outputs for AQL queries.
 
 * Changed default Linux CI compiler to gcc-11.
 
