@@ -1390,8 +1390,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
       auto [state, stats, skippedLocal, call] =
           executeSkipRowsRange(_lastRange, clientCall);
 
-      if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix,
-                                MultiAqlItemBlockInputRange>) {
+      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
         // The executor will have used all rows.
         // However we need to drop them from the input
         // here.
@@ -1409,8 +1408,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
       auto [state, stats, skippedLocal, call] =
           executeSkipRowsRange(_lastRange, dummy);
 
-      if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix,
-                                MultiAqlItemBlockInputRange>) {
+      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
         // The executor will have used all rows.
         // However we need to drop them from the input
         // here.

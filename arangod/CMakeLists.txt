@@ -304,7 +304,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlFunctionsInternalCache.cpp
   Aql/AqlItemBlock.cpp
-  Aql/AqlItemBlockInputMatrix.cpp
   Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
