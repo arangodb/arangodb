@@ -23,10 +23,9 @@
 
 #include "RocksDBBuilderIndex.h"
 
-// we will not use the multithreaded index creation that uses rocksdb's sst
-// file ingestion until rocksdb external file ingestion is fixed to have
-// correct sequence numbers for the files without gaps
+#ifdef USE_ENTERPRISE
 #undef USE_SST_INGESTION
+#endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -35,9 +34,11 @@
 #include "Basics/files.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
-#ifdef USE_SST_INGESTION
-#include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
+
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -52,10 +53,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
-#endif
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/options.h>
@@ -124,7 +121,7 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
       }
     }
   }
-#ifndef USE_SST_INGESTION
+#if defined USE_ENTERPRISE && defined USE_SST_INGESTION
   docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
 #endif
   return {};
@@ -706,8 +703,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
                               .getFeature<EngineSelectorFeature>()
                               .engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
-
-#ifdef USE_SST_INGESTION
+#if defined USE_ENTERPRISE && defined USE_SST_INGESTION
   RocksDBFilePurgePreventer nonPurger(&engine);
 #endif
 
