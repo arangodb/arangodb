@@ -626,8 +626,9 @@ void captureArrayFilterArgumentExpressions(
           } else if (node->type == NODE_TYPE_FCALL) {
             if (!evaluateFCalls) {  // FIXME(Dronplane): we should never execute
                                     // index-backed functions. But how to track
-                                    // it? -> execute only functions that does not touch
-                                    // index variable and local temp variables!
+                                    // it? -> execute only functions that does
+                                    // not touch index variable and local temp
+                                    // variables!
               captureFCallArgumentExpressions(ast, varInfo, node, localPath,
                                               indexVariable, result);
             } else {

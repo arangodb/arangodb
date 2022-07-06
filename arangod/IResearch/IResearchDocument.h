@@ -178,8 +178,7 @@ class FieldIterator {
 
   struct Level {
     Level(velocypack::Slice slice, size_t nameLength,
-          IndexMetaStruct const& meta,
-          Filter levelFilter, LevelType levelType,
+          IndexMetaStruct const& meta, Filter levelFilter, LevelType levelType,
           std::optional<arangodb::iresearch::MissingFieldsContainer>&&
               missingTracker)
         : it(slice),
@@ -190,7 +189,7 @@ class FieldIterator {
           missingFields(missingTracker) {}
 
     Iterator it;
-    size_t nameLength;      // length of the name at the current level
+    size_t nameLength;            // length of the name at the current level
     IndexMetaStruct const* meta;  // metadata
     Filter filter;
     LevelType type;

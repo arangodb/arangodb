@@ -3876,8 +3876,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_IncludeAllFields_simple) {
   ASSERT_FALSE(it.valid());
 }
 
-
-TEST_F(IResearchDocumentTest, InvertedFieldIterator_includeAllFields_subobject) {
+TEST_F(IResearchDocumentTest,
+       InvertedFieldIterator_includeAllFields_subobject) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
       R"({"fields" : [{"name": "boost.foo"},
                       {"name": "booster", "includeAllFields":true, "analyzer":"iresearch-document-string"}]})");
@@ -3932,8 +3932,6 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_includeAllFields_subobject) 
   ASSERT_FALSE(it.valid());
 }
 
-
-
 TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
       R"({"includeAllFields":true, "fields" : [
@@ -3964,10 +3962,10 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
       [](auto& server, auto const& it) {
         assertField<TypedAnalyzer, true>(
-            server, *it, mangleInvertedIndexStringIdentity("boost.foo.bar.bas.a"),
+            server, *it,
+            mangleInvertedIndexStringIdentity("boost.foo.bar.bas.a"),
             "iresearch-document-string");
-      }
-  };
+      }};
 
   size_t fieldIdx{};
   for (auto& assertField : assertFields) {
@@ -3979,8 +3977,6 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   ASSERT_FALSE(it.valid());
 }
 
-
 #if USE_ENTERPRISE
 #include "tests/IResearch/IResearchDocumentTestEE.h"
 #endif
-

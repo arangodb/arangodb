@@ -289,9 +289,9 @@ inline bool acceptAll(
       // this case is just skipped. Just like regular indicies do.
       return false;
     } else if (value.value.isObject() && !context->_includeAllFields &&
-        context->_subFields.empty() &&
-        !context->_analyzers->front()._pool->accepts(
-            arangodb::iresearch::AnalyzerValueType::Object)) {
+               context->_subFields.empty() &&
+               !context->_analyzers->front()._pool->accepts(
+                   arangodb::iresearch::AnalyzerValueType::Object)) {
       THROW_ARANGO_EXCEPTION_FORMAT(
           TRI_ERROR_NOT_IMPLEMENTED,
           "Inverted index does not support indexing objects and "
@@ -370,12 +370,13 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
 
 #ifdef USE_ENTERPRISE
 void gatherNestedNulls(std::string_view parent,
-                  arangodb::iresearch::MissingFieldsMap& map,
-                  arangodb::iresearch::InvertedIndexField const& field);
+                       arangodb::iresearch::MissingFieldsMap& map,
+                       arangodb::iresearch::InvertedIndexField const& field);
 #endif
 
 arangodb::iresearch::MissingFieldsMap gatherMissingFields(
-    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const& field) {
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
+        field) {
   arangodb::iresearch::MissingFieldsMap map;
   for (auto const& f : field._meta->_fields) {
     // always monitor on root level plain fields to track completely missing
@@ -440,8 +441,8 @@ FieldIterator<IndexMetaStruct>::FieldIterator(
 }
 
 template<typename IndexMetaStruct>
-void FieldIterator<IndexMetaStruct>::reset(
-    VPackSlice doc, IndexMetaStruct const& linkMeta) {
+void FieldIterator<IndexMetaStruct>::reset(VPackSlice doc,
+                                           IndexMetaStruct const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
@@ -453,8 +454,7 @@ void FieldIterator<IndexMetaStruct>::reset(
   _disableFlush = false;
   // push the provided 'doc' on stack and initialize current value
   auto const filter = getFilter(doc, linkMeta);
-  _missingFieldsMap =
-      gatherMissingFields(linkMeta);
+  _missingFieldsMap = gatherMissingFields(linkMeta);
 #ifdef USE_ENTERPRISE
   // this is set for root level as general mark.
   _hasNested = MetaTraits::hasNested(linkMeta);
@@ -464,8 +464,7 @@ void FieldIterator<IndexMetaStruct>::reset(
 }
 
 template<typename IndexMetaStruct>
-void FieldIterator<IndexMetaStruct>::setBoolValue(
-    VPackSlice const value) {
+void FieldIterator<IndexMetaStruct>::setBoolValue(VPackSlice const value) {
   TRI_ASSERT(value.isBool());
 
   arangodb::iresearch::kludge::mangleBool(_nameBuffer);
@@ -482,8 +481,7 @@ void FieldIterator<IndexMetaStruct>::setBoolValue(
 }
 
 template<typename IndexMetaStruct>
-void FieldIterator<IndexMetaStruct>::setNumericValue(
-    VPackSlice const value) {
+void FieldIterator<IndexMetaStruct>::setNumericValue(VPackSlice const value) {
   TRI_ASSERT(value.isNumber());
 
   arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
@@ -502,8 +500,7 @@ void FieldIterator<IndexMetaStruct>::setNumericValue(
 }
 
 template<typename IndexMetaStruct>
-void FieldIterator<IndexMetaStruct>::setNullValue(
-    VPackSlice const value) {
+void FieldIterator<IndexMetaStruct>::setNullValue(VPackSlice const value) {
   TRI_ASSERT(value.isNull());
 
   arangodb::iresearch::kludge::mangleNull(_nameBuffer);
@@ -834,7 +831,6 @@ void FieldIterator<IndexMetaStruct>::next() {
               _begin = analyzers.data() + context->_primitiveOffset;
               _end = analyzers.data() + analyzers.size();
             }
-
           }
           _prefixLength = _nameBuffer.size();  // save current prefix length
           _valueSlice = valueSlice;

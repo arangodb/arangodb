@@ -618,7 +618,8 @@ bool InvertedIndexField::init(
           // save in referencedAnalyzers
           analyzerDefinitions.emplace(analyzer);
         }
-        _analyzers[0] = FieldMeta::Analyzer(std::move(analyzer), std::move(shortName));
+        _analyzers[0] =
+            FieldMeta::Analyzer(std::move(analyzer), std::move(shortName));
       } else {
         errorField = kAnalyzerFieldName;
         return false;
@@ -968,7 +969,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         current->_primitiveOffset = f._primitiveOffset;
         current->_includeAllFields = f._includeAllFields;
         current->_trackListPositions = f._trackListPositions;
-      } 
+      }
     }
 #ifdef USE_ENTERPRISE
     if (!f._fields.empty()) {
