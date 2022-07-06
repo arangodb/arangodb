@@ -180,9 +180,20 @@ struct ReplaceAnyServerActor : OnceActorBase<ReplaceAnyServerActor> {
 
   replication2::ParticipantId newServer;
 };
+
 struct ReplaceSpecificServerActor : OnceActorBase<ReplaceSpecificServerActor> {
   explicit ReplaceSpecificServerActor(replication2::ParticipantId oldServer,
                                       replication2::ParticipantId newServer);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  replication2::ParticipantId oldServer;
+  replication2::ParticipantId newServer;
+};
+
+struct ReplaceSpecificLogServerActor
+    : OnceActorBase<ReplaceSpecificLogServerActor> {
+  explicit ReplaceSpecificLogServerActor(replication2::ParticipantId oldServer,
+                                         replication2::ParticipantId newServer);
   auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
 
   replication2::ParticipantId oldServer;
@@ -194,6 +205,29 @@ struct SetLeaderActor : OnceActorBase<SetLeaderActor> {
   auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
 
   replication2::ParticipantId newLeader;
+};
+
+struct SetWriteConcernActor : OnceActorBase<SetWriteConcernActor> {
+  explicit SetWriteConcernActor(size_t writeConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newWriteConcern;
+};
+
+struct SetSoftWriteConcernActor : OnceActorBase<SetSoftWriteConcernActor> {
+  explicit SetSoftWriteConcernActor(size_t softWriteConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newSoftWriteConcern;
+};
+
+struct SetBothWriteConcernActor : OnceActorBase<SetBothWriteConcernActor> {
+  explicit SetBothWriteConcernActor(size_t writeConcern,
+                                    size_t softWriteConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newWriteConcern;
+  size_t newSoftWriteConcern;
 };
 
 }  // namespace arangodb::test

@@ -29,7 +29,7 @@ const Checkbox = ({ id, checked, onChange, label, inline, disabled }: CheckboxPr
   }, [id]);
 
   if (inline && label) {
-    return <label htmlFor={thisId} className="pure-checkbox">
+    return <label htmlFor={thisId} className="pure-checkbox" style={{ width: "fit-content" }}>
       <StyledCheckbox id={thisId} checked={checked || false} onChange={onChange} disabled={disabled}/>
       &nbsp;{label}
     </label>;

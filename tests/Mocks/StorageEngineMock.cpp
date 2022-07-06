@@ -1998,8 +1998,8 @@ arangodb::Result TransactionStateMock::beginTransaction(
   return arangodb::Result();
 }
 
-arangodb::Result TransactionStateMock::commitTransaction(
-    arangodb::transaction::Methods* trx) {
+arangodb::futures::Future<arangodb::Result>
+TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   resetTransactionId();

@@ -64,13 +64,15 @@ class DocumentProducingNode {
 
   arangodb::aql::Projections& projections() noexcept;
 
-  void setProjections(arangodb::aql::Projections projections);
+  virtual void setProjections(arangodb::aql::Projections projections);
 
   /// @brief remember the condition to execute for early filtering
-  void setFilter(std::unique_ptr<Expression> filter);
+  virtual void setFilter(std::unique_ptr<Expression> filter);
 
   /// @brief return the early pruning condition for the node
   Expression* filter() const { return _filter.get(); }
+
+  arangodb::aql::Projections const& filterProjections() const noexcept;
 
   /// @brief whether or not the node has an early pruning filter condition
   bool hasFilter() const { return _filter != nullptr; }
@@ -107,6 +109,8 @@ class DocumentProducingNode {
 
   /// @brief produce only the following attributes
   arangodb::aql::Projections _projections;
+
+  arangodb::aql::Projections _filterProjections;
 
   /// @brief early filtering condition
   std::unique_ptr<Expression> _filter;
