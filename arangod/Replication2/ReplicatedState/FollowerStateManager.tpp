@@ -119,9 +119,9 @@ void FollowerStateManager<S>::run() noexcept {
 
   // Note that because `transitionWith` locks the self-ptr before calling `fn`,
   // fn itself is allowed to just capture and use `this`.
-  auto const transitionWith = [this]<typename F>(F&& fn) {
+  auto const transitionWith = [that = this]<typename F>(F&& fn) {
     return [
-      weak = this->weak_from_this(), fn = std::forward<F>(fn)
+      weak = that->weak_from_this(), fn = std::forward<F>(fn)
     ]<typename T, typename F1 = F>(T && arg) mutable {
       if (auto self = weak.lock(); self != nullptr) {
         auto const state = std::invoke([&] {

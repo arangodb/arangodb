@@ -52,6 +52,8 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     : _outVariable(
           Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
       _projections(arangodb::aql::Projections::fromVelocyPack(slice)),
+      _filterProjections(arangodb::aql::Projections::fromVelocyPack(
+          slice, "filterProjections")),
       _count(false),
       _useCache(true),
       _maxProjections(kMaxProjections) {
@@ -109,6 +111,11 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   if (_filter != nullptr) {
     builder.add(VPackValue(StaticStrings::Filter));
     _filter->toVelocyPack(builder, flags);
+
+    _filterProjections.toVelocyPack(builder, "filterProjections");
+  } else {
+    builder.add("filterProjections", VPackValue(VPackValueType::Array));
+    builder.close();
   }
 
   // "producesResult" is read by AQL explainer. don't remove it!
@@ -146,6 +153,11 @@ arangodb::aql::Projections const& DocumentProducingNode::projections()
 
 arangodb::aql::Projections& DocumentProducingNode::projections() noexcept {
   return _projections;
+}
+
+arangodb::aql::Projections const& DocumentProducingNode::filterProjections()
+    const noexcept {
+  return _filterProjections;
 }
 
 void DocumentProducingNode::setProjections(

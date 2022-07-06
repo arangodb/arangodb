@@ -1,78 +1,45 @@
 import React, { useContext } from "react";
-import ViewLayout from "./ViewLayout";
+import ViewLinkLayout from "./ViewLinkLayout";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
-import { IconButton } from "../../../components/arango/buttons";
-import { ViewContext } from "../ViewLinksReactView";
+import { FormState, ViewContext } from "../constants";
+import { SaveButton } from "../Actions";
 
 interface LinkViewProps {
-  links: {};
+  links: FormState['links'];
   disabled: boolean | undefined;
-  view?: string | undefined;
-  link?: string;
-  field?: string;
+  link: string;
+  name: string;
 }
 
 const LinkView = ({
-  links,
-  disabled,
-  view,
-  link,
-  field
-}: LinkViewProps) => {
-  const { dispatch } = useContext(ViewContext);
+                    links,
+                    disabled,
+                    link,
+                    name
+                  }: LinkViewProps) => {
+  const { formState, dispatch, isAdminUser, changed, setChanged } = useContext(ViewContext);
 
-  const removeLink = (collection: string | number) => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: `links[${collection}]`,
-        value: null
-      }
-    });
-  };
-
-  const getLinkRemover = (collection: string | number) => () => {
-    removeLink(collection);
-  };
-
-  const loopLinks = (links: object | any) => {
-    for (const l in links) {
-      if (link === l) {
-        return links[l];
-      }
-    }
-  };
-  const newLink = loopLinks(links);
-
-  return (
-    <ViewLayout view={view} link={link} field={field}>
-      <ArangoTable>
+  return links && links[link]
+    ? <ViewLinkLayout fragments={[link]}>
+      <ArangoTable style={{ border: 'none' }}>
         <tbody>
-          <tr key={newLink} style={{ borderBottom: "1px  solid #DDD" }}>
-          <ArangoTD seq={disabled ? 1 : 2}>
-            <LinkPropertiesInput
-              formState={newLink}
-              disabled={disabled || !newLink}
-              dispatch={dispatch}
-              basePath={`links[${link}]`}
-            />
+        <tr>
+          <ArangoTD seq={0}>
+            <LinkPropertiesInput formState={links[link] || {}} disabled={disabled} dispatch={dispatch}
+                                 basePath={`links[${link}]`}/>
           </ArangoTD>
-
-          {/* <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD> */}
-          {disabled ? null : (
-            <ArangoTD seq={0} valign={"middle"}>
-              <IconButton
-                icon={"trash-o"}
-                type={"danger"}
-                onClick={getLinkRemover(newLink)}
-              />
-            </ArangoTD>
-          )}
         </tr>
         </tbody>
       </ArangoTable>
-    </ViewLayout>
-  );
+      {
+        isAdminUser && changed
+          ? <div className="tab-pane tab-pane-modal active" id="Save">
+            <SaveButton view={formState as FormState} setChanged={setChanged} oldName={name}/>
+          </div>
+          : null
+      }
+    </ViewLinkLayout>
+    : null;
 };
 export default LinkView;

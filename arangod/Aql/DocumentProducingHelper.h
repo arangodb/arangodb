@@ -32,7 +32,6 @@
 
 #include "Aql/types.h"
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "Aql/AttributeNamePath.h"
 #include "Aql/Projections.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/IndexIterator.h"
@@ -79,7 +78,11 @@ struct DocumentProducingFunctionContext {
 
   arangodb::aql::Projections const& getProjections() const noexcept;
 
+  arangodb::aql::Projections const& getFilterProjections() const noexcept;
+
   transaction::Methods* getTrxPtr() const noexcept;
+
+  PhysicalCollection& getPhysical() const noexcept;
 
   bool getAllowCoveringIndexOptimization() const noexcept;
 
@@ -99,6 +102,8 @@ struct DocumentProducingFunctionContext {
   OutputAqlItemRow& getOutputRow() const noexcept;
 
   RegisterId getOutputRegister() const noexcept;
+
+  ReadOwnWrites getReadOwnWrites() const noexcept;
 
   bool checkUniqueness(LocalDocumentId const& token);
 
@@ -128,8 +133,10 @@ struct DocumentProducingFunctionContext {
   OutputAqlItemRow* _outputRow;
   aql::QueryContext& _query;
   transaction::Methods& _trx;
+  PhysicalCollection& _physical;
   Expression* _filter;
   arangodb::aql::Projections const& _projections;
+  arangodb::aql::Projections const& _filterProjections;
   uint64_t _numScanned;
   uint64_t _numFiltered;
 
@@ -143,6 +150,8 @@ struct DocumentProducingFunctionContext {
 
   RegisterId const _outputRegister;
   Variable const* _outputVariable;
+
+  ReadOwnWrites const _readOwnWrites;
 
   // note: it is fine if this counter overflows
   uint_fast16_t _killCheckCounter = 0;
@@ -159,6 +168,7 @@ struct DocumentProducingFunctionContext {
 
 namespace DocumentProducingCallbackVariant {
 struct WithProjectionsCoveredByIndex {};
+struct WithFilterCoveredByIndex {};
 struct WithProjectionsNotCoveredByIndex {};
 struct DocumentCopy {};
 }  // namespace DocumentProducingCallbackVariant
@@ -166,6 +176,11 @@ struct DocumentCopy {};
 template<bool checkUniqueness, bool skip>
 IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+
+template<bool checkUniqueness, bool skip>
+IndexIterator::CoveringCallback getCallback(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
 template<bool checkUniqueness, bool skip>

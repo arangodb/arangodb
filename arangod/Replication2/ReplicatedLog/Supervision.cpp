@@ -690,6 +690,11 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
+  if (log.plan->participantsConfig.generation !=
+      current.leader->committedParticipantsConfig->generation) {
+    return;
+  }
+
   if (target.version.has_value() &&
       (!current.supervision.has_value() ||
        target.version != current.supervision->targetVersion)) {
@@ -730,6 +735,8 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // In the next round this will lead to a leadership election.
   checkLeaderHealthy(ctx, log, health);
 
+  checkConfigUpdated(ctx, log, health);
+
   // Check whether a participant was added in Target that is not in Plan.
   // If so, add it to Plan.
   //
@@ -765,9 +772,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // If the configuration differs between Target and Plan,
   // apply the new configuration.
   checkParticipantWithFlagsToUpdate(ctx, log, health);
-
-  // TODO: This has not been implemented yet!
-  checkConfigUpdated(ctx, log, health);
 
   // Check whether we have converged, and if so, report and set version
   // to target version
@@ -901,15 +905,12 @@ auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
                    .end();
   }
 
-  return envelope
-      .write()
-      // this is here to trigger all waitForPlan, even if we only
-      // update current.
-      .inc(paths::plan()->version()->str())
+  return envelope.write()
       .cond(actx.hasModificationFor<LogPlanSpecification>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx).emplace_object(
-                  planPath, [&](VPackBuilder& builder) {
+              return std::move(trx)
+                  .inc(paths::plan()->version()->str())
+                  .emplace_object(planPath, [&](VPackBuilder& builder) {
                     velocypack::serialize(
                         builder, actx.getValue<LogPlanSpecification>());
                   });

@@ -26,7 +26,6 @@
 
 #include "ExecutionBlockImpl.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CalculationExecutor.h"
@@ -869,7 +868,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               SingleRemoteModificationExecutor<Remove>,
               SingleRemoteModificationExecutor<Update>,
               SingleRemoteModificationExecutor<Replace>,
-              SingleRemoteModificationExecutor<Upsert>,
+              SingleRemoteModificationExecutor<Upsert>, SortExecutor,
               MaterializeExecutor<RegisterId>,
               MaterializeExecutor<std::string const&>>),
       "Unexpected executor for SkipVariants::EXECUTOR");
@@ -1391,8 +1390,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
       auto [state, stats, skippedLocal, call] =
           executeSkipRowsRange(_lastRange, clientCall);
 
-      if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix,
-                                MultiAqlItemBlockInputRange>) {
+      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
         // The executor will have used all rows.
         // However we need to drop them from the input
         // here.
@@ -1410,8 +1408,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
       auto [state, stats, skippedLocal, call] =
           executeSkipRowsRange(_lastRange, dummy);
 
-      if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix,
-                                MultiAqlItemBlockInputRange>) {
+      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
         // The executor will have used all rows.
         // However we need to drop them from the input
         // here.

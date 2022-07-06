@@ -305,6 +305,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/FakeFailureOracle.h
   Replication2/Mocks/FakeFollower.cpp
   Replication2/Mocks/FakeFollower.h
+  Replication2/Mocks/FakeLeader.cpp Replication2/Mocks/FakeLeader.h
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
@@ -349,6 +350,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
+  Replication2/ReplicatedState/LeaderResignTest.cpp
   Replication2/ReplicatedState/MaintenanceTest.cpp
   Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp

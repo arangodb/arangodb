@@ -47,11 +47,8 @@ AgencyCallback::AgencyCallback(ArangodServer& server, std::string key,
     : key(std::move(key)),
       _server(server),
       _cb(std::move(cb)),
-      _needsValue(needsValue) {
-  if (_needsValue && needsInitialValue) {
-    refetchAndUpdate(true, false);
-  }
-}
+      _needsValue(needsValue),
+      _needsInitialValue(needsInitialValue) {}
 
 AgencyCallback::AgencyCallback(ArangodServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
@@ -129,11 +126,18 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
   auto newData = std::make_shared<VPackBuilder>();
   newData->add(result[0].get(kv));
 
+  auto const callCheckValue = [&] {
+    if (_lastSeenIndex < idx) {
+      _lastSeenIndex = idx;
+      checkValue(std::move(newData), idx, forceCheck);
+    }
+  };
+
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);
-    checkValue(std::move(newData), idx, forceCheck);
+    callCheckValue();
   } else {
-    checkValue(std::move(newData), idx, forceCheck);
+    callCheckValue();
   }
 }
 

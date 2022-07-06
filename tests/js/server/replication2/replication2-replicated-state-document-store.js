@@ -26,6 +26,8 @@
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
+const request = require('@arangodb/request');
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
@@ -38,7 +40,75 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-/*
+const dumpLog = function (shardId) {
+  let log = db._replicatedLog(shardIdToLogId(shardId));
+  return log.head(1000);
+};
+
+function makeTestSuites(testSuite) {
+  let suiteV1 = {};
+  let suiteV2 = {};
+  deriveTestSuite(testSuite({}), suiteV1, "_V1");
+  deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
+  return [suiteV1, suiteV2];
+}
+
+/**
+ * Returns the value of a key from a follower.
+ */
+const getLocalValue = function (endpoint, db, col, key) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/document/${col}/${key}`,
+    headers: {
+      "X-Arango-Allow-Dirty-Read": true
+    },
+  });
+  lh.checkRequestResult(res, true);
+  return res.json;
+};
+
+/**
+ * Checks if a given key exists (or not) on all followers.
+ */
+const checkFollowersValue = function (endpoints, shardId, key, value, isReplication2) {
+  let localValues = {};
+  for (const endpoint of Object.values(endpoints)) {
+    localValues[endpoint] = getLocalValue(endpoint, database, shardId, key);
+  }
+
+  var replication2Log = '';
+  if (isReplication2) {
+    replication2Log = `Log entries: ${JSON.stringify(dumpLog(shardId))}`;
+  }
+  let extraErrorMessage = `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`;
+
+  for (const [endpoint, res] of Object.entries(localValues)) {
+    if (value === null) {
+      assertTrue(res.code === 404,
+          `Expected 404 while reading key from ${endpoint}/${database}/${shardId}, ` +
+          `but the response was ${JSON.stringify(res)}.\n` + extraErrorMessage);
+    } else {
+      assertTrue(res.code === undefined,
+          `Error while reading key from ${endpoint}/${database}/${shardId}, ` +
+          `got: ${JSON.stringify(res)}.\n` + extraErrorMessage);
+      assertEqual(res.value, value,
+          `Wrong value returned by ${endpoint}/${database}/${shardId}, expected ${value} but ` +
+          `got: ${JSON.stringify(res)}. ` + extraErrorMessage);
+    }
+  }
+
+  if (value !== null) {
+    // All ids and revisions should be equal
+    for (let idx = 1; idx < localValues.length; ++idx) {
+      assertEqual(localValues[idx - 1]._rev, localValues[idx]._rev, `_rev mismatch ${JSON.stringify(localValues)}` +
+          `\n${replication2Log}`);
+      assertEqual(localValues[idx - 1]._id, localValues[idx]._id, `_id mismatch ${JSON.stringify(localValues)}` +
+          `\n${replication2Log}`);
+    }
+  }
+};
+
+/**
  * Returns first entry with the same key and type as the document provided.
  * If no document is provided, all entries of the specified type are returned.
  */
@@ -65,7 +135,7 @@ const mergeLogs = function(logs) {
   return logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
 };
 
-/*
+/**
  * Check if all the documents are in the logs and have the provided type.
  */
 const searchDocs = function(logs, docs, opType) {
@@ -73,11 +143,11 @@ const searchDocs = function(logs, docs, opType) {
   for (const doc of docs) {
     let entry = getDocumentEntries(allEntries, opType, doc);
     assertTrue(entry !== null);
-    assertEqual(entry.payload[1].operation, opType);
+    assertEqual(entry.payload[1].operation, opType, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
   }
 };
 
-/*
+/**
  * Unroll all array entries from all logs and optionally filter by name.
  */
 const getArrayElements = function(logs, opType, name) {
@@ -275,10 +345,134 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
           found.push(colName);
         }
       }
-      assertEqual(found.length, 2);
+      assertEqual(found.length, 2, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
+    },
+  };
+};
+
+/**
+ * This test suite checks the correctness of replicated operations with respect to the follower contents.
+ * All tests must use a single shard, so we don't have to guess where the keys are saved.
+ * writeConcern must be equal to replicationFactor, so we replicate all documents on all followers.
+ */
+const replicatedStateFollowerSuite = function (dbParams) {
+  let previousDatabase, databaseExisted = true;
+  let isReplication2 = dbParams.replicationVersion === "2";
+
+  return {
+    setUpAll: function () {
+      previousDatabase = db._name();
+      if (!_.includes(db._databases(), database)) {
+        db._createDatabase(database, dbParams);
+        databaseExisted = false;
+      }
+      db._useDatabase(database);
     },
 
-    };
+    tearDownAll: function () {
+      db._useDatabase(previousDatabase);
+      if (!databaseExisted) {
+        db._dropDatabase(database);
+      }
+    },
+
+    setUp: function (testName) {
+      lh.registerAgencyTestBegin(testName);
+      let rc = lh.dbservers.length;
+      db._create(collectionName, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
+    },
+
+    tearDown: function (testName) {
+      if (db._collection(collectionName) !== null) {
+        db._drop(collectionName);
+      }
+      lh.registerAgencyTestEnd(testName);
+    },
+
+    testFollowersSingleDocument: function() {
+      let collection = db._collection(collectionName);
+      let shardId = collection.shards()[0];
+      let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
+
+      let handle = collection.insert({_key: "foo", value: "bar"});
+      checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
+
+      handle = collection.update(handle, {value: "baz"});
+      checkFollowersValue(endpoints, shardId, "foo", "baz", isReplication2);
+
+      handle = collection.replace(handle, {_key: "foo", value: "bar"});
+      checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
+
+      collection.remove(handle);
+      checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
+    },
+
+    testFollowersMultiDocuments: function() {
+      let collection = db._collection(collectionName);
+      let shardId = collection.shards()[0];
+      let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
+      let documents = [...Array(3).keys()].map(i => {return {_key: `foo${i}`, value: i};});
+
+      let handles = collection.insert(documents);
+      for (let doc of documents) {
+        checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
+      }
+
+      let updates = documents.map(doc => {return {value: doc.value * 2};});
+      handles = collection.update(handles, updates);
+      for (let doc of documents) {
+        checkFollowersValue(endpoints, shardId, doc._key, doc.value * 2, isReplication2);
+      }
+
+      handles = collection.replace(handles, documents);
+      for (let doc of documents) {
+        checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
+      }
+
+      collection.remove(handles);
+      for (let doc of documents) {
+        checkFollowersValue(endpoints, shardId, doc._key, null, isReplication2);
+      }
+    },
+
+    testFollowersAql: function() {
+      let collection = db._collection(collectionName);
+      let shardId = collection.shards()[0];
+      let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
+      let documents = [...Array(3).keys()].map(i => {return {_key: `foo${i}`, value: i};});
+
+      db._query(`FOR i in 0..9 INSERT {_key: CONCAT('foo', i), value: i} INTO ${collectionName}`);
+      for (let doc of documents) {
+        checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
+      }
+
+      db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, value: doc.value * 2} IN ${collectionName}`);
+      for (let doc of documents) {
+        checkFollowersValue(endpoints, shardId, doc._key, doc.value * 2, isReplication2);
+      }
+
+      db._query(`FOR doc IN ${collectionName} REPLACE {_key: doc._key, value: CONCAT(doc._key, "bar")} IN ${collectionName}`);
+      for (let doc of documents) {
+        checkFollowersValue(endpoints, shardId, doc._key, doc._key + "bar", isReplication2);
+      }
+
+      db._query(`FOR doc IN ${collectionName} REMOVE doc IN ${collectionName}`);
+      for (let doc of documents) {
+        checkFollowersValue(endpoints, shardId, doc._key, null, isReplication2);
+      }
+    },
+
+    testFollowersTruncate: function() {
+      let collection = db._collection(collectionName);
+      let shardId = collection.shards()[0];
+      let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
+
+      collection.insert({_key: "foo", value: "bar"});
+      checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
+      collection.truncate();
+      checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
+    }
+  };
 };
 
 const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function () {
@@ -309,7 +503,7 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
       db._dropDatabase(database);
       for (const shard of shards) {
         let {plan} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
-        assertEqual(plan, undefined);
+        assertEqual(plan, undefined, `Expected nothing in plan for shard ${shard}, got ${JSON.stringify(plan)}`);
       }
     },
   };
@@ -340,13 +534,20 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
       let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       for (const shard of collection.shards()) {
         let {target} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
-        assertEqual(target, undefined);
+        assertEqual(target, undefined, `Expected nothing in target for shard ${shard}, got ${JSON.stringify(target)}`);
       }
     },
   };
 };
 
+function replicatedStateFollowerSuiteV1() { return makeTestSuites(replicatedStateFollowerSuite)[0]; }
+function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStateFollowerSuite)[1]; }
+
 jsunity.run(replicatedStateDocumentStoreSuiteReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteReplication1);
+jsunity.run(replicatedStateFollowerSuiteV1);
+/** Currently disabled integration tests - TDD
+ * jsunity.run(replicatedStateFollowerSuiteV2);
+ */
 return jsunity.done();
