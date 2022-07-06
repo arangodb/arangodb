@@ -57,7 +57,6 @@ const loadGraphGenerators = function (isSmart) {
 };
 
 // TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
-// TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
 const pregelRunSmallInstance = function (algName, graphName, parameters) {
     const pid = pregel.start(algName, graphName, parameters);
     const maxWaitTimeSecs = 120;
