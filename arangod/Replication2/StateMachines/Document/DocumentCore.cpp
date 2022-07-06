@@ -44,15 +44,13 @@ DocumentCore::DocumentCore(
   auto shardResult = _shardHandler->createLocalShard(_gid, _params.collectionId,
                                                      collectionProperties);
   TRI_ASSERT(shardResult.ok());
-  auto shardId = shardResult.get();
+  _shardId = shardResult.get();
 
   auto commResult = _agencyHandler->reportShardInCurrent(
-      _gid.database, _params.collectionId, shardId, collectionProperties);
+      _gid.database, _params.collectionId, _shardId, collectionProperties);
   TRI_ASSERT(shardResult.ok());
 
-  LOG_CTX("b7e0d", TRACE, loggerContext) << "Created shard " << shardId;
+  LOG_CTX("b7e0d", TRACE, loggerContext) << "Created shard " << _shardId;
 }
 
-auto DocumentCore::getCollectionId() -> std::string_view {
-  return _params.collectionId;
-}
+auto DocumentCore::getShardId() -> std::string_view { return _shardId; }

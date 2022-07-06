@@ -26,7 +26,6 @@
 
 #include "ExecutionBlockImpl.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CalculationExecutor.h"
@@ -869,7 +868,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               SingleRemoteModificationExecutor<Remove>,
               SingleRemoteModificationExecutor<Update>,
               SingleRemoteModificationExecutor<Replace>,
-              SingleRemoteModificationExecutor<Upsert>,
+              SingleRemoteModificationExecutor<Upsert>, SortExecutor,
               MaterializeExecutor<RegisterId>,
               MaterializeExecutor<std::string const&>>),
       "Unexpected executor for SkipVariants::EXECUTOR");

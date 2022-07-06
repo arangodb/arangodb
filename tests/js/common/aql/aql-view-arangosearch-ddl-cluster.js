@@ -29,18 +29,28 @@ var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
-const {getMetricRaw} = require("@arangodb/test-helper");
+const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchFeatureDDLTestSuite () {
+let triggerMetrics = function () {
+  let coordinators = getEndpointsByType("coordinator");
+  getRawMetric(coordinators[0], '?mode=write_global');
+  for (let i = 1; i < coordinators.length; i++) {
+    let c = coordinators[i];
+    getRawMetric(c, '?mode=trigger_global');
+  }
+  require('internal').sleep(1);
+};
+
+function IResearchFeatureDDLTestSuite() {
   return {
-    setUpAll : function () {
+    setUpAll: function () {
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._useDatabase("_system");
 
       db._dropView("TestView");
@@ -161,30 +171,39 @@ function IResearchFeatureDDLTestSuite () {
 
     testAddDuplicateAnalyzers : function() {
       db._useDatabase("_system");
-      try { db._dropDatabase("TestDuplicateDB"); } catch (e) {}
-      try { analyzers.remove("myIdentity", true); } catch (e) {}
-        
+      try {
+        db._dropDatabase("TestDuplicateDB");
+      } catch (e) {
+      }
+      try {
+        analyzers.remove("myIdentity", true);
+      } catch (e) {
+      }
+
       analyzers.save("myIdentity", "identity");
       db._createDatabase("TestDuplicateDB");
       db._useDatabase("TestDuplicateDB");
       analyzers.save("myIdentity", "identity");
       db._create("TestCollection0");
 
-      var view = db._createView("TestView", "arangosearch", 
-        { links : 
-          { "TestCollection0" : 
-            { includeAllFields: true, analyzers: 
-                [ "identity", "identity", 
-                "TestDuplicateDB::myIdentity" , "myIdentity", 
-                "::myIdentity", "_system::myIdentity" 
-                ]
-            } 
-          }
+      var view = db._createView("TestView", "arangosearch",
+        {
+          links:
+            {
+              "TestCollection0":
+                {
+                  includeAllFields: true, analyzers:
+                    ["identity", "identity",
+                      "TestDuplicateDB::myIdentity", "myIdentity",
+                      "::myIdentity", "_system::myIdentity"
+                    ]
+                }
+            }
         }
-        );
+      );
       var properties = view.properties();
       assertEqual(3, Object.keys(properties.links.TestCollection0.analyzers).length);
-      
+
       let expectedAnalyzers = new Set();
       expectedAnalyzers.add("identity");
       expectedAnalyzers.add("myIdentity");
@@ -600,7 +619,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       col0.save({ name: "quarter", text: "quick over" });
-      
+
       result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].name);
@@ -750,19 +769,19 @@ function IResearchFeatureDDLTestSuite () {
     testViewModifyImmutableProperties: function() {
       db._dropView("TestView");
 
-      var view = db._createView("TestView", "arangosearch", { 
+      var view = db._createView("TestView", "arangosearch", {
         writebufferActive: 25,
         writebufferIdle: 12,
         writebufferSizeMax: 44040192,
         locale: "C",
         version: 1,
-        primarySortCompression:"none",
+        primarySortCompression: "none",
         primarySort: [
-          { field: "my.Nested.field", direction: "asc" },
-          { field: "another.field", asc: false }
+          {field: "my.Nested.field", direction: "asc"},
+          {field: "another.field", asc: false}
         ],
         "cleanupIntervalStep": 42,
-        "commitIntervalMsec": 12345 
+        "commitIntervalMsec": 12345
       });
 
       var properties = view.properties();
@@ -791,14 +810,14 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
-      view.properties({ 
+      view.properties({
         writebufferActive: 225,
         writebufferIdle: 112,
         writebufferSizeMax: 414040192,
         locale: "en_EN.UTF-8",
         version: 2,
-        primarySort: [ { field: "field", asc: false } ],
-        primarySortCompression:"lz4",
+        primarySort: [{field: "field", asc: false}],
+        primarySortCompression: "lz4",
         "cleanupIntervalStep": 442
       }, false); // full update
 
@@ -930,8 +949,7 @@ function IResearchFeatureDDLTestSuite () {
       });
       view.properties({ links: { [colName]: { includeAllFields: true } } });
 
-      getMetricRaw(arango.getEndpoint(), '');
-      require('internal').sleep(5);
+      triggerMetrics();
 
       // check link stats
       {
@@ -952,8 +970,7 @@ function IResearchFeatureDDLTestSuite () {
       col.save({ foo: 'bar' });
       col.save({ foo: 'baz' });
 
-      getMetricRaw(arango.getEndpoint(), '');
-      require('internal').sleep(5);
+      triggerMetrics();
 
       // check link stats
       {
@@ -976,8 +993,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual('bar', res[0].foo);
       assertEqual('baz', res[1].foo);
 
-      getMetricRaw(arango.getEndpoint(), '');
-      require('internal').sleep(5);
+      triggerMetrics();
 
       // check link stats
       {
@@ -1002,8 +1018,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(1, res.length);
       assertEqual('baz', res[0].foo);
 
-      getMetricRaw(arango.getEndpoint(), '');
-      require('internal').sleep(5);
+      triggerMetrics();
 
       // check link stats
       {
@@ -1027,8 +1042,7 @@ function IResearchFeatureDDLTestSuite () {
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(0, res.length);
 
-      getMetricRaw(arango.getEndpoint(), '');
-      require('internal').sleep(5);
+      triggerMetrics();
 
       // check link stats
       {
@@ -1163,29 +1177,32 @@ function IResearchFeatureDDLTestSuite () {
     testAnalyzerWithStopwordsNameConflict : function() {
       const dbName = "TestNameConflictDB";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
 
       db._create("col1");
       db._create("col2");
-      analyzers.save("custom_analyzer", 
-        "text", 
-        { 
-          locale: "en.UTF-8", 
-          case: "lower", 
-          stopwords: ["the", "of", "inc", "co", "plc", "ltd", "ag"], 
-          accent: false, 
+      analyzers.save("custom_analyzer",
+        "text",
+        {
+          locale: "en.UTF-8",
+          case: "lower",
+          stopwords: ["the", "of", "inc", "co", "plc", "ltd", "ag"],
+          accent: false,
           stemming: false
         },
-        ["position", "norm","frequency"]);
+        ["position", "norm", "frequency"]);
 
       let v = db._createView("view1", "arangosearch", {
         "links": {
           "col1": {
             "analyzers": ["identity"],
-            "fields": { "name": { "analyzers": ["custom_analyzer"]}},
+            "fields": {"name": {"analyzers": ["custom_analyzer"]}},
             "includeAllFields": false,
             "storeValues": "none",
             "trackListPositions": false
@@ -1240,7 +1257,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(1, properties.links.col2.analyzers.length);
       assertTrue(String === properties.links.col2.analyzers[0].constructor);
       assertEqual("identity", properties.links.col2.analyzers[0]);
-      
+
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },

@@ -386,6 +386,10 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
     return RestStatus::DONE;
   }
 
+  if (_activeTrx->state()->options().allowDirtyReads) {
+    setOutgoingDirtyReadsHeader(true);
+  }
+
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options)
           .thenValue([=, this,
@@ -852,6 +856,10 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   VPackSlice const search = this->parseVPackBody(success);
   if (!success) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
+  }
+
+  if (_activeTrx->state()->options().allowDirtyReads) {
+    setOutgoingDirtyReadsHeader(true);
   }
 
   return waitForFuture(

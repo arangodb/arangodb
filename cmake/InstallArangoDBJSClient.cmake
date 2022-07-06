@@ -36,6 +36,8 @@ install(
   DIRECTORY ${ARANGODB_SOURCE_DIR}/js/node
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX "^.*/eslint"                                       EXCLUDE
+  REGEX "^.*/node-netstat"                                 EXCLUDE
+  REGEX "^.*/is-wsl"                                       EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
   REGEX "^.*/.*-no-eslint"                                 EXCLUDE

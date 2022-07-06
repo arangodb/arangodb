@@ -296,7 +296,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
-  Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
   Aql/AqlCallList.cpp
   Aql/AqlCallSet.cpp
@@ -617,6 +616,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/UnconfiguredStateManager.tpp Replication2/ReplicatedState/UnconfiguredStateManager.h
   Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
+  Replication2/ReplicatedState/ReplicatedStateMetrics.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
   Replication2/ReplicatedState/Supervision.cpp
