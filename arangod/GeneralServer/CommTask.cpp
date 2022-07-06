@@ -381,12 +381,10 @@ void CommTask::finishExecution(GeneralResponse& res,
                             StaticStrings::ContentSecurityPolicyValue);
     res.setHeaderNCIfNotSet(StaticStrings::CacheControl,
                             StaticStrings::CacheControlValue);
-    res.setHeaderNCIfNotSet(StaticStrings::Pragma,
-                            StaticStrings::PragmaValue);
+    res.setHeaderNCIfNotSet(StaticStrings::Pragma, StaticStrings::PragmaValue);
     res.setHeaderNCIfNotSet(StaticStrings::Expires,
                             StaticStrings::ExpiresValue);
-    res.setHeaderNCIfNotSet(StaticStrings::HSTS,
-                            StaticStrings::HSTSValue);
+    res.setHeaderNCIfNotSet(StaticStrings::HSTS, StaticStrings::HSTSValue);
   }
 
   // add "x-arango-queue-time-seconds" header
