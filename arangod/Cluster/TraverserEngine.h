@@ -28,6 +28,8 @@
 
 #include "Aql/Collections.h"
 #include "Basics/Common.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 
 struct TRI_vocbase_t;
 
@@ -110,12 +112,6 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(arangodb::velocypack::Slice, size_t,
-                arangodb::velocypack::Builder&);
-
-  graph::EdgeCursor* getCursor(std::string_view nextVertex,
-                               uint64_t currentDepth);
-
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
 
@@ -129,9 +125,20 @@ class BaseTraverserEngine : public BaseEngine {
   // Inject all variables from VPack information
   void injectVariables(arangodb::velocypack::Slice variables);
 
-  aql::VariableGenerator const* variables() const;
-
   graph::BaseOptions const& options() const override;
+
+ protected:
+  std::pair<std::vector<graph::IndexAccessor>,
+            std::unordered_map<uint64_t, std::vector<graph::IndexAccessor>>>
+  parseIndexAccessors(arangodb::velocypack::Slice info, bool lastInFirstOut) const;
+
+  graph::SingleServerBaseProviderOptions produceProviderOptions(
+      arangodb::velocypack::Slice info, bool lastInFirstOut);
+
+  graph::EdgeCursor* getCursor(std::string_view nextVertex,
+                               uint64_t currentDepth);
+
+  aql::VariableGenerator const* variables() const;
 
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
@@ -185,11 +192,17 @@ class TraverserEngine : public BaseTraverserEngine {
 
   ~TraverserEngine();
 
+  void getEdges(arangodb::velocypack::Slice, size_t,
+                arangodb::velocypack::Builder&);
+
   void smartSearch(arangodb::velocypack::Slice,
                    arangodb::velocypack::Builder&) override;
 
   void smartSearchUnified(arangodb::velocypack::Slice,
                           arangodb::velocypack::Builder&) override;
+
+ private:
+  graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep> _provider;
 };
 
 }  // namespace traverser

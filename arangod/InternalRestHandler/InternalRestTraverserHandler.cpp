@@ -193,8 +193,8 @@ void InternalRestTraverserHandler::queryEngine() {
                         "expecting 'depth' to be an integer value");
           return;
         }
-        // Safe cast BaseTraverserEngines are all of type TRAVERSER
-        auto eng = static_cast<BaseTraverserEngine*>(engine);
+        // Safe cast TraverserEngines are all of type TRAVERSER
+        auto eng = static_cast<TraverserEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
 
         VPackSlice variables = body.get("variables");

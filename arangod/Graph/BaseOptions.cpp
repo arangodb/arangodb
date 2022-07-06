@@ -601,7 +601,7 @@ arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx()
   return _expressionCtx;
 }
 
-aql::Variable const* BaseOptions::tmpVar() { return _tmpVar; }
+aql::Variable const* BaseOptions::tmpVar() const { return _tmpVar; }
 
 void BaseOptions::isQueryKilledCallback() const {
   if (query().killed()) {
