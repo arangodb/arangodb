@@ -245,7 +245,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
 struct IResearchInvertedIndexMetaIndexingContext {
   IResearchInvertedIndexMetaIndexingContext(
       IResearchInvertedIndexMeta const& field, bool add = true)
-      : _analyzers(field._analyzers),
+      : _analyzers(&field._analyzers),
         _primitiveOffset(field._primitiveOffset),
         _meta(&field),
         _includeAllFields(field._includeAllFields),
@@ -262,8 +262,7 @@ struct IResearchInvertedIndexMetaIndexingContext {
   absl::flat_hash_map<std::string_view,
                       IResearchInvertedIndexMetaIndexingContext>
       _subFields;
-  std::reference_wrapper<std::array<FieldMeta::Analyzer, 1> const>
-      _analyzers;
+  std::array<FieldMeta::Analyzer, 1> const* _analyzers;
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
   bool _isArray{false};

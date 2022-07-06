@@ -1669,14 +1669,14 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   return dataPath;
 }
 
-template Result IResearchDataStore::insert<FieldIterator<FieldMeta, FieldMeta>,
+template Result
+IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                            IResearchLinkMeta>(
     transaction::Methods& trx, LocalDocumentId documentId,
     velocypack::Slice doc, IResearchLinkMeta const& meta);
 
 template Result IResearchDataStore::insert<
-    FieldIterator<IResearchInvertedIndexMetaIndexingContext,
-                  IResearchInvertedIndexMetaIndexingContext>,
+    FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
     IResearchInvertedIndexMetaIndexingContext>(
     transaction::Methods& trx, LocalDocumentId documentId,
     velocypack::Slice doc,

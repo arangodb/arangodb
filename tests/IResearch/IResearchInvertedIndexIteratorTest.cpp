@@ -53,7 +53,6 @@ using StoredFields = std::vector<std::vector<std::string>>;
 using Fields = std::vector<std::string>;
 using SortFields = std::vector<std::pair<std::string, bool>>;
 using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
-    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext,
     arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext>;
 
 class SimpleDataSetProvider {

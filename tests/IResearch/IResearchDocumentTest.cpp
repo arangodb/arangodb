@@ -74,11 +74,9 @@
 namespace {
 
 using IResearchLinkIterator =
-    arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta,
-                                       arangodb::iresearch::FieldMeta>;
+    arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta>;
 
 using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
-    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext,
     arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext>;
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();

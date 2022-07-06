@@ -141,8 +141,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                 bool /*performChecks*/) override {
     IResearchInvertedIndexMetaIndexingContext ctx(meta());
     return IResearchDataStore::insert<
-        FieldIterator<IResearchInvertedIndexMetaIndexingContext,
-                      IResearchInvertedIndexMetaIndexingContext>,
+        FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
         IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx);
   }
 

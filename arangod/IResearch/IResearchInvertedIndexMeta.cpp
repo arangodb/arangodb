@@ -960,16 +960,11 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         TRI_ASSERT(emplaceRes.first->second._isArray == a.shouldExpand);
         current = &(emplaceRes.first->second);
       } else {
-        //auto oldCurrent = current;
         current = &(emplaceRes.first->second);
         current->_isArray = a.shouldExpand;
-        //current->_analyzers = oldCurrent->_analyzers;
-        //current->_primitiveOffset = oldCurrent->_primitiveOffset;
-        //current->_includeAllFields = oldCurrent->_includeAllFields;
-        //current->_trackListPositions = oldCurrent->_trackListPositions;
       }
       if (i == f._attribute.size() - 1) {
-        current->_analyzers = f._analyzers;
+        current->_analyzers = &f._analyzers;
         current->_primitiveOffset = f._primitiveOffset;
         current->_includeAllFields = f._includeAllFields;
         current->_trackListPositions = f._trackListPositions;
