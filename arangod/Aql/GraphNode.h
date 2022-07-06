@@ -207,6 +207,22 @@ class GraphNode : public ExecutionNode {
 
   void setEdgeProjections(Projections projections);
 
+  /// @brief register a filter condition on a given search depth.
+  ///        If this condition is not fulfilled a traversal will abort.
+  ///        The condition will contain the local variable for it's accesses.
+  void registerCondition(bool, uint64_t, AstNode const*);
+
+  /// @brief register a filter condition for all search depths
+  ///        If this condition is not fulfilled a traversal will abort.
+  ///        The condition will contain the local variable for it's accesses.
+  void registerGlobalCondition(bool, AstNode const*);
+
+  /// @brief Build the index accessors for all collections.
+  std::pair<
+      std::vector<arangodb::graph::IndexAccessor>,
+      std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
+  buildIndexAccessors() const;
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection
@@ -273,7 +289,19 @@ class GraphNode : public ExecutionNode {
   AstNode* _tmpIdNode;
 
   /// @brief
-  // EdgeConditionBuilder _edgeConditionBuilder
+  /// The Container to prepare edge-lookups, including
+  /// selecting indexes, and handling depth specific filters
+  EdgeConditionBuilder _edgeConditionBuilder;
+
+  /// @brief variables that are inside of the condition
+  VarSet _conditionVariables;
+
+  /// @brief The global vertex condition
+  std::vector<AstNode const*> _globalVertexConditions;
+
+  /// @brief List of all depth specific conditions for vertices
+  std::unordered_map<uint64_t, AstNode*> _vertexConditions;
+
 
   /// @brief input graphInfo only used for serialization & info
   arangodb::velocypack::Builder _graphInfo;

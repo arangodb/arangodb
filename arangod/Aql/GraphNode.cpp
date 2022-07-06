@@ -180,6 +180,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _edgeConditionBuilder{_plan->getAst(), _tmpObjVariable, _tmpIdNode},
       _defaultDirection(parseDirection(direction)),
       _optionsBuilt(false),
       _isSmart(false),
@@ -364,6 +365,8 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
       _tmpIdNode(nullptr),
+      // TODO: This does not work, need to be initialized after _tmpObj and _tmpId!!
+      _edgeConditionBuilder{plan->getAst(), _tmpObjVariable, _tmpIdNode},
       _defaultDirection(
           uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
               base.get("defaultDirection")))),
@@ -529,6 +532,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _edgeConditionBuilder{_plan->getAst(), _tmpObjVariable, _tmpIdNode},
       _defaultDirection(defaultDirection),
       _optionsBuilt(false),
       _isSmart(false),
@@ -572,6 +576,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _edgeConditionBuilder{_plan->getAst(), _tmpObjVariable, _tmpIdNode},
       _defaultDirection(other._defaultDirection),
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
@@ -583,7 +588,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
 }
 
 GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
-    : ExecutionNode(nullptr, ExecutionNodeId{0}), _defaultDirection() {
+    : ExecutionNode(nullptr, ExecutionNodeId{0}), _edgeConditionBuilder{nullptr, nullptr, nullptr}, _defaultDirection() {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
@@ -988,6 +993,54 @@ bool GraphNode::isEdgeOutVariableUsedLater() const {
 
 void GraphNode::setEdgeOutput(Variable const* outVar) {
   _edgeOutVariable = outVar;
+}
+
+void GraphNode::registerGlobalCondition(bool isConditionOnEdge,
+                                        AstNode const* condition) {
+  Ast::getReferencedVariables(condition, _conditionVariables);
+  if (isConditionOnEdge) {
+    _edgeConditionBuilder.addConditionPart(condition);
+  } else {
+    _globalVertexConditions.emplace_back(condition);
+  }
+}
+
+void GraphNode::registerCondition(bool isConditionOnEdge,
+                                  uint64_t conditionLevel,
+                                  AstNode const* condition) {
+  Ast::getReferencedVariables(condition, _conditionVariables);
+  if (isConditionOnEdge) {
+    _edgeConditionBuilder.addConditionForDepth(condition, conditionLevel);
+  } else {
+    auto [it, emplaced] = _vertexConditions.try_emplace(
+        conditionLevel, arangodb::lazyConstruct([&] {
+          auto cond = _plan->getAst()->createNodeNaryOperator(
+              NODE_TYPE_OPERATOR_NARY_AND);
+          cond->addMember(condition);
+          return cond;
+        }));
+    if (!emplaced) {
+      it->second->addMember(condition);
+    }
+  }
+}
+
+/// @brief Build the index accessors for all collections.
+std::pair<
+    std::vector<arangodb::graph::IndexAccessor>,
+    std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
+GraphNode::buildIndexAccessors() const {
+  // NOTE: This is a helper function to satisfy ConditionBuilder API
+  // We can modify the _edgeColls and _directions to be of the correct type
+  // in the Node, however that was another refactoring we did not start
+  // by the time this code was added.
+  std::vector<std::pair<aql::Collection*, TRI_edge_direction_e>> collections{};
+  collections.reserve(_edgeColls.size());
+  for (size_t i = 0; i < _edgeColls.size(); ++i) {
+    collections.emplace_back(_edgeColls[i], _directions[i]);
+  }
+  return _edgeConditionBuilder.buildIndexAccessors(
+      _plan, _tmpObjVariable, getRegisterPlan()->varInfo, collections);
 }
 
 std::vector<aql::Collection*> const& GraphNode::edgeColls() const {

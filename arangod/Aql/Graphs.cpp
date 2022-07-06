@@ -169,7 +169,7 @@ void EdgeConditionBuilder::addConditionForDepth(AstNode const* condition, uint64
 }
 
 
-void EdgeConditionBuilder::swapSides(AstNode* cond) {
+void EdgeConditionBuilder::swapSides(AstNode* modCondition, AstNode* cond) const {
   TRI_ASSERT(cond != nullptr);
   TRI_ASSERT(cond == _fromCondition || cond == _toCondition);
   TRI_ASSERT(cond->type == NODE_TYPE_OPERATOR_BINARY_EQ);
@@ -180,10 +180,14 @@ void EdgeConditionBuilder::swapSides(AstNode* cond) {
   // of the nary-and is the _from or _to part and is exchangable.
   TRI_ASSERT(_modCondition->numMembers() > 0);
   auto changeNode =
-      _modCondition->getMemberUnchecked(0);
+      modCondition->getMemberUnchecked(0);
   TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
 #endif
-  _modCondition->changeMember(0, cond);
+  modCondition->changeMember(0, cond);
+}
+
+void EdgeConditionBuilder::swapSides(AstNode* cond) {
+  swapSides(_modCondition, cond);
 }
 
 AstNode* EdgeConditionBuilder::getOutboundCondition() {
@@ -204,12 +208,30 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
   return _modCondition;
 }
 
+// Get the complete condition for outbound edges
+// Note: Caller will get a clone, and is allowed to modify it
+AstNode* EdgeConditionBuilder::getOutboundCondition(Ast* ast) const {
+  TRI_ASSERT(_fromCondition != nullptr);
+  auto baseCondition = _modCondition->clone(ast);
+  swapSides(baseCondition, _fromCondition);
+  return baseCondition;
+}
+
+// Get the complete condition for inbound edges
+// Note: Caller will get a clone, and is allowed to modify it
+AstNode* EdgeConditionBuilder::getInboundCondition(Ast* ast) const {
+  TRI_ASSERT(_toCondition != nullptr);
+  auto baseCondition = _modCondition->clone(ast);
+  swapSides(baseCondition, _toCondition);
+  return baseCondition;
+}
+
 
 // Get the complete condition for outbound edges
-AstNode* EdgeConditionBuilder::getOutboundConditionForDepth(uint64_t depth, Ast* ast) {
-  auto cond = getOutboundCondition()->clone(ast);
+AstNode* EdgeConditionBuilder::getOutboundConditionForDepth(uint64_t depth, Ast* ast) const {
+  auto cond = getOutboundCondition(ast);
   if (_depthConditions.contains(depth)) {
-    for (auto const* subCondition : _depthConditions[depth]) {
+    for (auto const* subCondition : _depthConditions.at(depth)) {
       cond->addMember(subCondition);
     }
   }
@@ -217,10 +239,10 @@ AstNode* EdgeConditionBuilder::getOutboundConditionForDepth(uint64_t depth, Ast*
 }
 
 // Get the complete condition for inbound edges
-AstNode* EdgeConditionBuilder::getInboundConditionForDepth(uint64_t depth, Ast* ast) {
-  auto cond = getInboundCondition()->clone(ast);
+AstNode* EdgeConditionBuilder::getInboundConditionForDepth(uint64_t depth, Ast* ast) const {
+  auto cond = getInboundCondition(ast);
   if (_depthConditions.contains(depth)) {
-    for (auto const* subCondition : _depthConditions[depth]) {
+    for (auto const* subCondition : _depthConditions.at(depth)) {
       cond->addMember(subCondition);
     }
   }
@@ -234,7 +256,7 @@ EdgeConditionBuilder::buildIndexAccessors(
     ExecutionPlan const* plan, Variable const* tmpVar,
     std::unordered_map<VariableId, VarInfo> const& varInfo,
     std::vector<std::pair<Collection*, TRI_edge_direction_e>> const&
-        collections) {
+        collections) const {
   auto ast = plan->getAst();
   std::vector<IndexAccessor> indexAccessors{};
   constexpr bool onlyEdgeIndexes = false;
@@ -246,8 +268,9 @@ EdgeConditionBuilder::buildIndexAccessors(
     auto& [edgeCollection, dir] = collections[i];
     TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
 
+    // TODO Check if we can reduce one clone by now.
     AstNode* condition =
-        (dir == TRI_EDGE_IN) ? getInboundCondition() : getOutboundCondition();
+        (dir == TRI_EDGE_IN) ? getInboundCondition(ast) : getOutboundCondition(ast);
     AstNode* indexCondition = condition->clone(ast);
     std::shared_ptr<Index> indexToUse;
 

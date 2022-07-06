@@ -109,11 +109,19 @@ class EdgeConditionBuilder {
 
   // Get the complete condition for outbound edges
   // Note: Caller will get a clone, and is allowed to modify it
-  AstNode* getOutboundConditionForDepth(uint64_t depth, Ast* ast);
+  AstNode* getOutboundCondition(Ast* ast) const;
 
   // Get the complete condition for inbound edges
   // Note: Caller will get a clone, and is allowed to modify it
-  AstNode* getInboundConditionForDepth(uint64_t depth, Ast* ast);
+  AstNode* getInboundCondition(Ast* ast) const;
+
+  // Get the complete condition for outbound edges
+  // Note: Caller will get a clone, and is allowed to modify it
+  AstNode* getOutboundConditionForDepth(uint64_t depth, Ast* ast) const;
+
+  // Get the complete condition for inbound edges
+  // Note: Caller will get a clone, and is allowed to modify it
+  AstNode* getInboundConditionForDepth(uint64_t depth, Ast* ast) const;
 
   std::pair<
       std::vector<arangodb::graph::IndexAccessor>,
@@ -122,11 +130,14 @@ class EdgeConditionBuilder {
       ExecutionPlan const* plan, Variable const* tmpVar,
       std::unordered_map<VariableId, VarInfo> const& varInfo,
       std::vector<std::pair<aql::Collection*, TRI_edge_direction_e>> const&
-          collections);
+          collections) const;
 
  private:
   // Internal helper to swap _from and _to parts
   void swapSides(AstNode* condition);
+
+  // Internal helper to swap _from and _to parts
+  void swapSides(AstNode* fullCondition, AstNode* fromOrToCondition) const;
 };
 
 // Wrapper around EdgeConditionBuilder that takes responsibility for all

@@ -188,16 +188,6 @@ class TraversalNode : public virtual GraphNode {
   /// @brief check whether an access is inside the specified range
   bool isInRange(uint64_t, bool) const;
 
-  /// @brief register a filter condition on a given search depth.
-  ///        If this condition is not fulfilled a traversal will abort.
-  ///        The condition will contain the local variable for it's accesses.
-  void registerCondition(bool, uint64_t, AstNode const*);
-
-  /// @brief register a filter condition for all search depths
-  ///        If this condition is not fulfilled a traversal will abort.
-  ///        The condition will contain the local variable for it's accesses.
-  void registerGlobalCondition(bool, AstNode const*);
-
   /// @brief register a filter condition to be applied before the result is
   /// returned.
   ///        This condition validates the edge
@@ -213,12 +203,6 @@ class TraversalNode : public virtual GraphNode {
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
-
-  std::vector<arangodb::graph::IndexAccessor> buildIndexAccessor(
-      TraversalEdgeConditionBuilder& conditionBuilder) const;
-  std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
-  std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>
-  buildUsedDepthBasedIndexes() const;
 
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
@@ -257,9 +241,6 @@ class TraversalNode : public virtual GraphNode {
   /// @brief early abort traversal conditions:
   std::unique_ptr<Condition> _condition;
 
-  /// @brief variables that are inside of the condition
-  VarSet _conditionVariables;
-
   /// @brief The hard coded condition on _from
   AstNode* _fromCondition;
 
@@ -273,15 +254,9 @@ class TraversalNode : public virtual GraphNode {
   ///        _from and _to checks
   std::vector<AstNode const*> _globalEdgeConditions;
 
-  /// @brief The global vertex condition
-  std::vector<AstNode const*> _globalVertexConditions;
-
   /// @brief List of all depth specific conditions for edges
   std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
       _edgeConditions;
-
-  /// @brief List of all depth specific conditions for vertices
-  std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
   /// @brief the hashSet for variables used in pruning
   VarSet _pruneVariables;

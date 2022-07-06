@@ -514,133 +514,6 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 }
 
-std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
-    TraversalEdgeConditionBuilder& conditionBuilder) const {
-  std::vector<IndexAccessor> indexAccessors{};
-  auto ast = _plan->getAst();
-  size_t numEdgeColls = _edgeColls.size();
-  bool onlyEdgeIndexes = false;
-
-  auto calculateMemberToUpdate = [&](std::string const& memberString,
-                                     std::optional<size_t>& memberToUpdate,
-                                     aql::AstNode* indexCondition) {
-    std::pair<arangodb::aql::Variable const*,
-              std::vector<basics::AttributeName>>
-        pathCmp;
-    for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
-      // We search through the nary-and and look for EQ - _from/_to
-      auto eq = indexCondition->getMemberUnchecked(x);
-      if (eq->type !=
-          arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        // No equality. Skip
-        continue;
-      }
-      TRI_ASSERT(eq->numMembers() == 2);
-      // It is sufficient to only check member one.
-      // We build the condition this way.
-      auto mem = eq->getMemberUnchecked(0);
-      if (mem->isAttributeAccessForVariable(pathCmp, true)) {
-        if (pathCmp.first != _tmpObjVariable) {
-          continue;
-        }
-        if (pathCmp.second.size() == 1 &&
-            pathCmp.second[0].name == memberString) {
-          memberToUpdate = x;
-          break;
-        }
-        continue;
-      }
-    }
-  };
-
-  auto generateExpression =
-      [&](aql::AstNode* remainderCondition,
-          aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
-    ::arangodb::containers::HashSet<size_t> toRemove;
-    aql::Condition::collectOverlappingMembers(
-        _plan, options()->tmpVar(), remainderCondition, indexCondition,
-        toRemove, nullptr, false);
-    size_t n = remainderCondition->numMembers();
-
-    if (n != toRemove.size()) {
-      // Slow path need to explicitly remove nodes.
-      for (; n > 0; --n) {
-        // Now n is one more than the idx we actually check
-        if (toRemove.find(n - 1) != toRemove.end()) {
-          // This index has to be removed.
-          remainderCondition->removeMemberUnchecked(n - 1);
-        }
-      }
-      return std::make_unique<aql::Expression>(_plan->getAst(),
-                                               remainderCondition);
-    }
-    return nullptr;
-  };
-
-  for (size_t i = 0; i < numEdgeColls; ++i) {
-    auto dir = _directions[i];
-    TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
-
-    aql::AstNode* condition = (dir == TRI_EDGE_IN)
-                                  ? conditionBuilder.getInboundCondition()
-                                  : conditionBuilder.getOutboundCondition();
-    aql::AstNode* indexCondition = condition->clone(ast);
-    std::shared_ptr<Index> indexToUse;
-
-    // arbitrary value for "number of edges in collection" used here. the
-    // actual value does not matter much. 1000 has historically worked fine.
-    constexpr size_t itemsInCollection = 1000;
-
-    bool res = aql::utils::getBestIndexHandleForFilterCondition(
-        *_edgeColls[i], indexCondition, options()->tmpVar(), itemsInCollection,
-        aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-    if (!res) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "expected edge index not found");
-    }
-
-    std::optional<size_t> memberToUpdate{std::nullopt};
-    calculateMemberToUpdate(dir == TRI_EDGE_IN ? StaticStrings::ToString
-                                               : StaticStrings::FromString,
-                            memberToUpdate, indexCondition);
-
-    aql::AstNode* remainderCondition = condition->clone(ast);
-    std::unique_ptr<aql::Expression> expression =
-        generateExpression(remainderCondition, indexCondition);
-
-    auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-        ast, getRegisterPlan()->varInfo, false, false, indexCondition,
-        options()->tmpVar());
-    indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
-                                memberToUpdate, std::move(expression),
-                                std::move(container), i, dir);
-  }
-
-  return indexAccessors;
-}
-
-std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
-    const {
-  TraversalEdgeConditionBuilder globalEdgeConditionBuilder(this);
-
-  for (auto& it : _globalEdgeConditions) {
-    globalEdgeConditionBuilder.addConditionPart(it);
-  }
-
-  return buildIndexAccessor(globalEdgeConditionBuilder);
-}
-
-std::unordered_map<uint64_t, std::vector<IndexAccessor>>
-TraversalNode::buildUsedDepthBasedIndexes() const {
-  std::unordered_map<uint64_t, std::vector<IndexAccessor>> result{};
-  for (auto const& [depth, builder] : _edgeConditions) {
-    TRI_ASSERT(builder != nullptr);
-    result.emplace(depth, buildIndexAccessor(*builder));
-  }
-
-  return result;
-}
-
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine,
     std::vector<std::pair<Variable const*, RegisterId>>&&
@@ -730,14 +603,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
     TRI_ASSERT(!isSmart);
-    std::pair<std::vector<IndexAccessor>,
-              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-        usedIndexes{};
-    usedIndexes.first = buildUsedIndexes();
-    usedIndexes.second = buildUsedDepthBasedIndexes();
     auto singleServerBaseProviderOptions =
         getSingleServerProviderOptions(
-            std::move(usedIndexes),
+            buildIndexAccessors(),
             filterConditionVariables);
     auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
                                                   // SingleServer, Cluster...
@@ -1200,47 +1068,6 @@ void TraversalNode::setCondition(
   }
 
   _condition = std::move(condition);
-}
-
-void TraversalNode::registerCondition(bool isConditionOnEdge,
-                                      uint64_t conditionLevel,
-                                      AstNode const* condition) {
-  Ast::getReferencedVariables(condition, _conditionVariables);
-  if (isConditionOnEdge) {
-    auto [it, emplaced] = _edgeConditions.try_emplace(
-        conditionLevel,
-        arangodb::lazyConstruct(
-            [&]() -> std::unique_ptr<TraversalEdgeConditionBuilder> {
-              auto builder =
-                  std::make_unique<TraversalEdgeConditionBuilder>(this);
-              builder->addConditionPart(condition);
-              return builder;
-            }));
-    if (!emplaced) {
-      it->second->addConditionPart(condition);
-    }
-  } else {
-    auto [it, emplaced] = _vertexConditions.try_emplace(
-        conditionLevel, arangodb::lazyConstruct([&] {
-          auto cond = _plan->getAst()->createNodeNaryOperator(
-              NODE_TYPE_OPERATOR_NARY_AND);
-          cond->addMember(condition);
-          return cond;
-        }));
-    if (!emplaced) {
-      it->second->addMember(condition);
-    }
-  }
-}
-
-void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
-                                            AstNode const* condition) {
-  Ast::getReferencedVariables(condition, _conditionVariables);
-  if (isConditionOnEdge) {
-    _globalEdgeConditions.emplace_back(condition);
-  } else {
-    _globalVertexConditions.emplace_back(condition);
-  }
 }
 
 void TraversalNode::registerPostFilterCondition(AstNode const* condition) {
