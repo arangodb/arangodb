@@ -23,6 +23,7 @@
 
 #include "SortExecutor.h"
 
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
@@ -213,6 +214,9 @@ void SortExecutor::consumeInputForStorage() {
 
 void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
                                 ExecutorState& state) {
+  size_t numDataRows = inputRange.countDataRows();
+  size_t memoryUsageForRowIndexes =
+      numDataRows * sizeof(AqlItemMatrix::RowIndex);
   _rowIndexes.reserve(_rowIndexes.size() + numDataRows);
 
   ResourceUsageScope guard(_infos.getResourceMonitor(),
@@ -224,8 +228,7 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
     // This executor is passthrough. it has enough place to write.
     _rowIndexes.emplace_back(
         std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
-    if (_rowIndexes.size() >= 5) {
-      //  if (_memoryUsage >= kMemoryLowerBound) {
+    if (_memoryUsage >= kMemoryLowerBound) {
       _mustStoreInput = true;
       consumeInputForStorage();
     }
@@ -304,6 +307,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     _curBlock = inputRange.getBlock();
     if (_curBlock != nullptr) {
       _memoryUsage += _curBlock->getMemoryUsage();
+
       if (!_mustStoreInput) {
         _inputBlocks.emplace_back(_curBlock);
       }
