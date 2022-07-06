@@ -927,7 +927,7 @@ if (NOT MSVC)
   set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES}
     GeneralServer/AcceptorUnixDomain.cpp
     RestServer/DaemonFeature.cpp
-    RestServer/SupervisorFeature.cpp Cluster/AutoRebalance.cpp Cluster/AutoRebalance.h Cluster/AutoRebalanceMethods.cpp Cluster/AutoRebalanceMethods.h)
+    RestServer/SupervisorFeature.cpp)
 endif()
 
 include(ClusterEngine/CMakeLists.txt)
