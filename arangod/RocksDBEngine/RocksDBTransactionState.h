@@ -72,7 +72,8 @@ class RocksDBTransactionState : public TransactionState {
   [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  [[nodiscard]] Result commitTransaction(transaction::Methods* trx) override;
+  [[nodiscard]] futures::Future<Result> commitTransaction(
+      transaction::Methods* trx) override;
 
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
@@ -149,7 +150,7 @@ class RocksDBTransactionState : public TransactionState {
 #endif
 
  protected:
-  virtual Result doCommit() = 0;
+  virtual futures::Future<Result> doCommit() = 0;
   virtual Result doAbort() = 0;
 
  private:

@@ -64,13 +64,16 @@
       'view/:name/info': 'viewInfo',
       'view/:name/consolidation': 'viewConsolidation',
       'view/:name/links': 'viewLinks',
+      'view/:name/links/*link': 'viewLinks',
       'view/:name/json': 'viewJSON',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
     },
 
-    execute: function (callback, args) {
+    execute: function (callback, args, handler, skipDirtyViewCheck = false) {
+      const self = this;
+
       if (this.lastRoute === '#queries') {
         // cleanup input editors
         this.queryView.removeInputEditors();
@@ -80,75 +83,113 @@
         this.queryView.removeResults();
       }
 
+      let skipExecute = false, goBack = true;
       if (this.lastRoute) {
         // service replace logic
         const replaceUrlFirst = this.lastRoute.split('/')[0];
         const replaceUrlSecond = this.lastRoute.split('/')[1];
         const replaceUrlThird = this.lastRoute.split('/')[2];
-        if (replaceUrlFirst !== '#service') {
-          if (window.App.replaceApp) {
-            if (replaceUrlSecond !== 'install' && replaceUrlThird) {
-              window.App.replaceApp = false;
+
+        if (!skipDirtyViewCheck && replaceUrlFirst === '#view' && args[0] !== replaceUrlSecond &&
+          window.sessionStorage.getItem(`${replaceUrlSecond}-changed`)) {
+          skipExecute = true;
+          const tableContent = [
+            window.modalView.createReadOnlyEntry('unsavedConfirmationDialog', null,
+              `
+                You have unsaved changes made to view: ${replaceUrlSecond}. If you navigate away
+                from this page, your changes will be lost. If you are sure, click on 'Discard' to
+                discard your changes and move away. Else, click 'Cancel' to go back to the view.
+              `)
+          ];
+
+          const buttons = [
+            window.modalView.createDeleteButton('Discard', function () {
+              window.sessionStorage.removeItem(replaceUrlSecond);
+              window.sessionStorage.removeItem(`${replaceUrlSecond}-changed`);
+              goBack = false;
+              window.modalView.hide();
+
+              self.execute(callback, args, handler, true);
+            })
+          ];
+
+          window.modalView.show('modalTable.ejs', 'You have unsaved changes!', buttons, tableContent, undefined, undefined, undefined, true);
+        }
+
+        $('#modal-dialog').on('hide', function () {
+          if (goBack) {
+            window.history.back();
+          }
+        });
+
+        if (!skipExecute) {
+          if (replaceUrlFirst !== '#service') {
+            if (window.App.replaceApp) {
+              if (replaceUrlSecond !== 'install' && replaceUrlThird) {
+                window.App.replaceApp = false;
+                // console.log('set replace to false!');
+              }
+            } else {
               // console.log('set replace to false!');
+              window.App.replaceApp = false;
             }
-          } else {
-            // console.log('set replace to false!');
-            window.App.replaceApp = false;
           }
-        }
 
-        if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split(
-          '/').length === 3) {
-          this.documentView.cleanupEditor();
-        }
-
-        if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
-          // dom graph cleanup
-          d3.selectAll('svg > *').remove();
-        }
-
-        if (this.lastRoute === '#logger') {
-          if (this.loggerView.logLevelView) {
-            this.loggerView.logLevelView.remove();
+          if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split(
+            '/').length === 3) {
+            this.documentView.cleanupEditor();
           }
-          if (this.loggerView.logTopicView) {
-            this.loggerView.logTopicView.remove();
-          }
-        }
 
-        if (this.lastRoute === '#shards') {
-          if (this.shardsView) {
-            this.shardsView.remove();
+          if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
+            // dom graph cleanup
+            d3.selectAll('svg > *').remove();
           }
-        }
 
-        // react unmounting
-        ReactDOM.unmountComponentAtNode(document.getElementById('content'));
+          if (this.lastRoute === '#logger') {
+            if (this.loggerView.logLevelView) {
+              this.loggerView.logLevelView.remove();
+            }
+            if (this.loggerView.logTopicView) {
+              this.loggerView.logTopicView.remove();
+            }
+          }
+
+          if (this.lastRoute === '#shards') {
+            if (this.shardsView) {
+              this.shardsView.remove();
+            }
+          }
+
+          // react unmounting
+          ReactDOM.unmountComponentAtNode(document.getElementById('content'));
+        }
       }
 
-      this.lastRoute = window.location.hash;
-      // this function executes before every route call
-      $('#subNavigationBar .breadcrumb').html('');
-      $('#subNavigationBar .bottom').html('');
-      $('#loadingScreen').hide();
-      $('#content').show();
-      if (callback) {
-        callback.apply(this, args);
-      }
-
-      if (this.lastRoute === '#services') {
-        window.App.replaceApp = false;
-      }
-
-      if (this.graphViewer) {
-        if (this.graphViewer.graphSettingsView) {
-          this.graphViewer.graphSettingsView.hide();
+      if (!skipExecute) {
+        this.lastRoute = window.location.hash;
+        // this function executes before every route call
+        $('#subNavigationBar .breadcrumb').html('');
+        $('#subNavigationBar .bottom').html('');
+        $('#loadingScreen').hide();
+        $('#content').show();
+        if (callback) {
+          callback.apply(this, args);
         }
-      }
-      if (this.queryView) {
-        if (this.queryView.graphViewer) {
-          if (this.queryView.graphViewer.graphSettingsView) {
-            this.queryView.graphViewer.graphSettingsView.hide();
+
+        if (this.lastRoute === '#services') {
+          window.App.replaceApp = false;
+        }
+
+        if (this.graphViewer) {
+          if (this.graphViewer.graphSettingsView) {
+            this.graphViewer.graphSettingsView.hide();
+          }
+        }
+        if (this.queryView) {
+          if (this.queryView.graphViewer) {
+            if (this.queryView.graphViewer.graphSettingsView) {
+              this.queryView.graphViewer.graphSettingsView.hide();
+            }
           }
         }
       }
@@ -348,7 +389,7 @@
 
       this.init.then(() => {
         if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
-          // no privileges to use cluster/nodes from the web UI
+          // no privileges to use cluster/nodes from the web interface
           this.routes[''] = 'collections';
           this.navigate('#collections', { trigger: true });
           return;
@@ -385,7 +426,7 @@
 
       this.init.then(() => {
         if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
-          // no privileges to use cluster/nodes from the web UI
+          // no privileges to use cluster/nodes from the web interface
           this.routes[''] = 'collections';
           this.navigate('#collections', { trigger: true });
           return;

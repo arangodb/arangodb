@@ -78,8 +78,6 @@ let optionsDocumentation = [
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '   - `sleepBeforeShutdown`: let the system rest before terminating it',
   '',
-  '   - `storageEngine`: set to `rocksdb` - defaults to `rocksdb`',
-  '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
   '                   conjunction with `server`.',
@@ -96,7 +94,7 @@ let optionsDocumentation = [
   '   - `agency`: if set to true agency tests are done',
   '   - `agencySize`: number of agents in agency',
   '   - `agencySupervision`: run supervision in agency',
-  '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
+  '   - `oneTestTimeout`: how long a single js testsuite  should run',
   '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
   '   - `memprof`: take snapshots (requries memprof enabled build)',
   '   - `test`: path to single test to execute for "single" test target, ',
@@ -201,7 +199,7 @@ const optionsDefaults = {
   'exceptionCount': 1,
   'sanitizer': false,
   'activefailover': false,
-  'singles': 2,
+  'singles': 1,
   'setInterruptable': ! internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
@@ -219,7 +217,6 @@ const optionsDefaults = {
       global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
       global.ARANGODB_CLIENT_VERSION(true).tsan === 'true'),
   'skipTimeCritical': false,
-  'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
   'testOutputDirectory': 'out',
@@ -544,29 +541,10 @@ function iterateTests(cases, options) {
     result.failed = failed;
     result.status = status;
     results[currentTest] = result;
-
-    if (status && localOptions.cleanup && shutdownSuccess ) {
-      pu.cleanupLastDirectory(localOptions);
-    } else {
-      cleanup = false;
-    }
-    pu.aggregateFatalErrors(currentTest);
   }
 
   results.status = globalStatus;
   results.crashed = pu.serverCrashed;
-
-  if (options.server === undefined) {
-    if (cleanup && globalStatus && !pu.serverCrashed) {
-      pu.cleanupDBDirectories(options);
-    } else {
-      print('not cleaning up as some tests weren\'t successful:\n' +
-            pu.getCleanupDBDirectories() + " " +
-            cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed + "\n");
-    }
-  } else {
-    print("not cleaning up since we didn't start the server ourselves\n");
-  }
 
   if (options.extremeVerbosity === true) {
     rp.yamlDumpResults(options, results);
@@ -588,17 +566,26 @@ function unitTest (cases, options) {
     options = {};
   }
   loadTestSuites(options);
+
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
-
+  if (options.memprof) {
+    process.env['MALLOC_CONF'] = 'prof:true';
+  }
   options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
 
+  if (options.extremeVerbosity) {
+    print(JSON.stringify(options));
+  }
   if (options.failed ||
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);
   }
   if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline();
+  }
+  if (options.activefailover && (options.singles === 1)) {
+    options.singles =  2;
   }
   
   try {
@@ -615,6 +602,10 @@ function unitTest (cases, options) {
         message: err.message
       }]
     };
+  }
+
+  if (options.encryptionAtRest && !pu.isEnterpriseClient) {
+    options.encryptionAtRest = false;
   }
 
   arango.forceJson(options.forceJson);

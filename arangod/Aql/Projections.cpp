@@ -96,13 +96,22 @@ bool Projections::isCoveringIndexPosition(uint16_t position) noexcept {
   return position != kNoCoveringIndexPosition;
 }
 
+void Projections::clear() noexcept {
+  _projections.clear();
+  _datasourceId = DataSourceId::none();
+  _index.reset();
+}
+
 /// @brief set the index context for projections using an index
 void Projections::setCoveringContext(
     DataSourceId const& id, std::shared_ptr<arangodb::Index> const& index) {
-  TRI_ASSERT(_index == nullptr);
-
   _datasourceId = id;
   _index = index;
+}
+
+bool Projections::contains(Projection const& other) const noexcept {
+  return std::any_of(_projections.begin(), _projections.end(),
+                     [&](Projection const& p) { return p.path == other.path; });
 }
 
 /// @brief checks if we have a single attribute projection on the attribute
@@ -264,7 +273,12 @@ void Projections::toVelocyPackFromIndex(
 }
 
 void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
-  b.add(::projectionsKey, VPackValue(VPackValueType::Array));
+  toVelocyPack(b, ::projectionsKey);
+}
+
+void Projections::toVelocyPack(arangodb::velocypack::Builder& b,
+                               std::string_view key) const {
+  b.add(key, VPackValue(VPackValueType::Array));
   for (auto const& it : _projections) {
     if (it.path.size() == 1) {
       // projection on a top-level attribute. will be returned as a string
@@ -285,9 +299,14 @@ void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
 
 /*static*/ Projections Projections::fromVelocyPack(
     arangodb::velocypack::Slice slice) {
+  return fromVelocyPack(slice, ::projectionsKey);
+}
+
+/*static*/ Projections Projections::fromVelocyPack(
+    arangodb::velocypack::Slice slice, std::string_view key) {
   std::vector<arangodb::aql::AttributeNamePath> projections;
 
-  VPackSlice p = slice.get(::projectionsKey);
+  VPackSlice p = slice.get(key);
   if (p.isArray()) {
     for (auto const& it : arangodb::velocypack::ArrayIterator(p)) {
       if (it.isString()) {

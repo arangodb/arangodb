@@ -54,7 +54,7 @@ struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
-
+struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
 
@@ -65,7 +65,9 @@ struct ReplicatedStateBase {
   virtual ~ReplicatedStateBase() = default;
 
   virtual void flush(StateGeneration plannedGeneration) = 0;
-  virtual void start(std::unique_ptr<ReplicatedStateToken> token) = 0;
+  virtual void start(
+      std::unique_ptr<ReplicatedStateToken> token,
+      std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
   virtual void forceRebuild() = 0;
   [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
@@ -96,13 +98,17 @@ struct ReplicatedState final
 
   explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
                            std::shared_ptr<Factory> factory,
-                           LoggerContext loggerContext);
+                           LoggerContext loggerContext,
+                           std::shared_ptr<ReplicatedStateMetrics>);
+  ~ReplicatedState() override;
 
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
    */
   void flush(StateGeneration planGeneration) override;
-  void start(std::unique_ptr<ReplicatedStateToken> token) override;
+  void start(
+      std::unique_ptr<ReplicatedStateToken> token,
+      std::optional<velocypack::SharedSlice> const& coreParameter) override;
 
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
@@ -178,6 +184,7 @@ struct ReplicatedState final
   Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
   DatabaseID const database;
+  std::shared_ptr<ReplicatedStateMetrics> const metrics;
 };
 
 template<typename S>

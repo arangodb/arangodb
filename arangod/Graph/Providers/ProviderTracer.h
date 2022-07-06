@@ -94,6 +94,7 @@ class ProviderTracer {
   aql::TraversalStats stealStats();
 
   [[nodiscard]] transaction::Methods* trx();
+  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();

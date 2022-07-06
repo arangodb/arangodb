@@ -224,6 +224,12 @@ void reportPrimaryIndexInconsistency(arangodb::Result const& res,
   }
 }
 
+size_t getParallelism(velocypack::Slice slice) {
+  return basics::VelocyPackHelper::getNumericValue(
+      slice, StaticStrings::IndexParallelism,
+      IndexFactory::kDefaultParallelism);
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -287,7 +293,7 @@ RocksDBCollection::~RocksDBCollection() {
 }
 
 Result RocksDBCollection::updateProperties(VPackSlice const& slice,
-                                           bool doSync) {
+                                           bool /*doSync*/) {
   _cacheEnabled = _cacheManager != nullptr && !_logicalCollection.system() &&
                   !_logicalCollection.isAStub() &&
                   !ServerState::instance()->isCoordinator() &&
@@ -387,7 +393,7 @@ void RocksDBCollection::prepareIndexes(
                       _logicalCollection.name() + "'";
     LOG_TOPIC("0ef34", ERR, arangodb::Logger::ENGINES) << msg;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for (auto it : _indexes) {
+    for (auto const& it : _indexes) {
       LOG_TOPIC("19e0b", ERR, arangodb::Logger::ENGINES)
           << "- " << it->context();
     }
@@ -496,8 +502,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
     // Step 3. add index to collection entry (for removal after a crash)
     auto buildIdx = std::make_shared<RocksDBBuilderIndex>(
-        std::static_pointer_cast<RocksDBIndex>(newIdx),
-        _meta.numberDocuments());
+        std::static_pointer_cast<RocksDBIndex>(newIdx), _meta.numberDocuments(),
+        getParallelism(info));
     if (!engine.inRecovery()) {
       // manually modify collection entry, other methods need lock
       RocksDBKey key;  // read collection info from database
@@ -540,6 +546,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     // Step 4. fill index
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
+
     if (inBackground) {
       // allow concurrent inserts into index
       {
@@ -1497,7 +1504,7 @@ void RocksDBCollection::figuresSpecific(
       builder.add("indexes", VPackValue(VPackValueType::Array));
 
       RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-      for (auto it : _indexes) {
+      for (auto const& it : _indexes) {
         auto type = it->type();
         if (type == Index::TRI_IDX_TYPE_UNKNOWN ||
             type == Index::TRI_IDX_TYPE_IRESEARCH_LINK ||
@@ -1703,7 +1710,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                          RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& documentId,
                                          VPackSlice doc,
-                                         OperationOptions const& options,
+                                         OperationOptions const& /*options*/,
                                          RevisionId const& revisionId) const {
   savepoint.prepareOperation(revisionId);
 

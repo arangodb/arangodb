@@ -2,7 +2,7 @@ name: clang-format
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ devel ]
+    branches: [ devel, staging/replication-2.0 ]
     paths:
       - "arangod/**"
       - "client-tools/**"

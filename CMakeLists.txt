@@ -607,8 +607,8 @@ if (MSVC)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
-    message(WARNING "ArangoDB requires g++ 10.0 or newer, building with older compiler versions is unsupported")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
+    message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "11.9.9")
     message(WARNING "ArangoDB doesn't support g++ 12.0 yet, building with newer compiler versions is unsupported")
   endif()
@@ -1254,6 +1254,7 @@ link_libraries(
   absl::node_hash_set
   absl::node_hash_map
   absl::synchronization
+  absl::strings
 )
 
 
@@ -1417,6 +1418,7 @@ if (BUILD_SEPP)
     tests/sepp/RocksDBOptions.cpp
     tests/sepp/Server.cpp
     tests/sepp/ValueGenerators/RandomStringGenerator.cpp
+    tests/sepp/Workloads/GetByPrimaryKey.cpp
     tests/sepp/Workloads/InsertDocuments.cpp
     tests/sepp/Workloads/IterateDocuments.cpp
   )

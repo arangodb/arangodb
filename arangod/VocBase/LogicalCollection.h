@@ -61,6 +61,16 @@ namespace transaction {
 class Methods;
 }
 
+namespace replication2::replicated_state {
+template<typename S>
+struct ReplicatedState;
+namespace document {
+struct DocumentState;
+struct DocumentLeaderState;
+struct DocumentFollowerState;
+}  // namespace document
+}  // namespace replication2::replicated_state
+
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
 /// additionally, do not put any volatile state into this object in the
@@ -112,7 +122,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
-  static replication2::LogId shardIdToStateId(ShardID const& shardId);
+  static replication2::LogId shardIdToStateId(std::string_view shardId);
+  static std::optional<replication2::LogId> tryShardIdToStateId(
+      std::string_view shardId);
 
   // SECTION: Meta Information
   Version version() const { return _version; }
@@ -158,6 +170,9 @@ class LogicalCollection : public LogicalDataSource {
   bool hasSmartJoinAttribute() const noexcept {
     return !_smartJoinAttribute.empty();
   }
+  bool hasSmartGraphAttribute() const noexcept {
+    return !_smartGraphAttribute.empty();
+  }
 
   bool isLocalSmartEdgeCollection() const noexcept;
   bool isRemoteSmartEdgeCollection() const noexcept;
@@ -170,6 +185,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmart() const noexcept { return false; }
   bool isSmartChild() const noexcept { return false; }
   bool hasSmartJoinAttribute() const noexcept { return false; }
+  bool hasSmartGraphAttribute() const noexcept { return false; }
 
   bool isLocalSmartEdgeCollection() const noexcept { return false; }
   bool isRemoteSmartEdgeCollection() const noexcept { return false; }
@@ -222,6 +238,16 @@ class LogicalCollection : public LogicalDataSource {
                                 std::string& shardID,
                                 bool& usesDefaultShardKeys,
                                 std::string_view key = std::string_view());
+
+  auto getDocumentState()
+      -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
+          replication2::replicated_state::document::DocumentState>>;
+  auto getDocumentStateLeader() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentLeaderState>;
+  auto waitForDocumentStateLeader() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentLeaderState>;
+  auto getDocumentStateFollower() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentFollowerState>;
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 

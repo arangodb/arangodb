@@ -77,6 +77,17 @@ bool AgencyCache::start() {
   return true;
 }
 
+consensus::index_t AgencyCache::get(
+    arangodb::velocypack::Builder& result,
+    std::shared_ptr<const cluster::paths::Path> const& path) const {
+  result.clear();
+  std::shared_lock g(_storeLock);
+  if (_commitIndex > 0) {
+    _readDB.get(path->str(), result, false);
+  }
+  return _commitIndex;
+}
+
 // Fill existing Builder from readDB, mainly /Plan /Current
 index_t AgencyCache::get(VPackBuilder& result, std::string const& path) const {
   result.clear();

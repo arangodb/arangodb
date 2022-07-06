@@ -29,10 +29,13 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Sharding/ShardingStrategyEE.h"
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -414,4 +417,16 @@ ShardingStrategyHash::ShardingStrategyHash(ShardingInfo* sharding)
   }
 
   ::preventUseOnSmartEdgeCollection(_sharding->collection(), NAME);
+}
+
+bool ShardingStrategyHash::isCompatible(const ShardingStrategy* other) const {
+#ifdef USE_ENTERPRISE
+  return (name() == other->name() ||
+          other->name() == ShardingStrategyEnterpriseHexSmartVertex::NAME) &&
+         (_sharding->shardKeys().size() == 1 &&
+          (_sharding->shardKeys().at(0) == StaticStrings::PrefixOfKeyString ||
+           _sharding->shardKeys().at(0) == StaticStrings::PostfixOfKeyString));
+#else
+  return name() == other->name();
+#endif
 }

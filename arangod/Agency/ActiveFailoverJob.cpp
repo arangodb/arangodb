@@ -27,6 +27,7 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/Store.h"
+#include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
 #include "VocBase/voc-types.h"
 

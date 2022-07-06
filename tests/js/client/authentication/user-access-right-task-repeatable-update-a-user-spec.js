@@ -76,7 +76,7 @@ const executeJS = (code) => {
   let httpOptions = pu.makeAuthorizationHeaders({
     username: username,
     password: password
-  });
+  }, {});
   httpOptions.method = 'POST';
   httpOptions.timeout = 1800;
   httpOptions.returnBodyOnError = true;

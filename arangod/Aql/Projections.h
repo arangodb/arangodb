@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -84,6 +85,9 @@ class Projections {
 
   static bool isCoveringIndexPosition(uint16_t position) noexcept;
 
+  /// @brief reset all projections
+  void clear() noexcept;
+
   /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,
                           std::shared_ptr<arangodb::Index> const& index);
@@ -102,6 +106,8 @@ class Projections {
 
   /// @brief number of projections
   size_t size() const noexcept { return _projections.size(); }
+
+  bool contains(Projection const& other) const noexcept;
 
   /// @brief checks if we have a single attribute projection on the attribute
   bool isSingle(std::string const& attribute) const noexcept;
@@ -126,11 +132,22 @@ class Projections {
                              IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
 
-  /// @brief serialize the projections to velocypack
+  /// @brief serialize the projections to velocypack, under the attribute
+  /// name "projections"
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
+  /// @brief serialize the projections to velocypack, under a custom
+  /// attribute name
+  void toVelocyPack(arangodb::velocypack::Builder& b,
+                    std::string_view attributeName) const;
 
-  /// @brief build projections from velocypack
+  /// @brief build projections from velocypack, looking for the attribute
+  /// name "projections"
   static Projections fromVelocyPack(arangodb::velocypack::Slice slice);
+
+  /// @brief build projections from velocypack, looking for a custom
+  /// attribute name
+  static Projections fromVelocyPack(arangodb::velocypack::Slice slice,
+                                    std::string_view attributeName);
 
  private:
   /// @brief shared init function

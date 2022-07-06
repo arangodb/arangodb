@@ -36,6 +36,7 @@
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
@@ -54,6 +55,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
+
+using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 BaseOptions::LookupInfo::LookupInfo(TRI_edge_direction_e direction)
     : indexCondition(nullptr),
@@ -157,7 +160,7 @@ BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
 }
 
 void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
-  result.openObject();
+  VPackObjectBuilder objectGuard(&result);
 
   // direction
   TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
@@ -190,7 +193,6 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   result.add("condMemberToUpdate", VPackValue(conditionMemberToUpdate));
   result.add(VPackValue("nonConstContainer"));
   _nonConstContainer.toVelocyPack(result);
-  result.close();
 }
 
 double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
@@ -274,6 +276,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _vertexProjections{},
+      _edgeProjections{},
       _refactor(true) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
@@ -285,6 +289,9 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _maxProjections{other._maxProjections},
+      _vertexProjections{other._vertexProjections},
+      _edgeProjections{other._edgeProjections},
       _refactor(other._refactor) {
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
@@ -322,19 +329,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
     itCollections.next();
   }
 
-  // parallelism is optional
-  read = info.get("parallelism");
-  if (read.isInteger()) {
-    _parallelism = read.getNumber<size_t>();
-  }
-  _refactor = basics::VelocyPackHelper::getBooleanValue(
-      info, StaticStrings::GraphRefactorFlag, false);
-
-  TRI_ASSERT(_produceVertices);
-  read = info.get("produceVertices");
-  if (read.isBool() && !read.getBool()) {
-    _produceVertices = false;
-  }
+  parseShardIndependentFlags(info);
 }
 
 BaseOptions::~BaseOptions() = default;
@@ -502,8 +497,7 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("tmpVar"));
   TRI_ASSERT(_tmpVar != nullptr);
   _tmpVar->toVelocyPack(result);
-
-  result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
+  toVelocyPackBase(result);
 }
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(
@@ -613,4 +607,66 @@ void BaseOptions::isQueryKilledCallback() const {
   if (query().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+}
+
+void BaseOptions::setVertexProjections(Projections projections) {
+  _vertexProjections = std::move(projections);
+}
+
+void BaseOptions::setEdgeProjections(Projections projections) {
+  _edgeProjections = std::move(projections);
+}
+
+void BaseOptions::setMaxProjections(size_t projections) noexcept {
+  _maxProjections = projections;
+}
+
+size_t BaseOptions::getMaxProjections() const noexcept {
+  return _maxProjections;
+}
+
+Projections const& BaseOptions::getVertexProjections() const {
+  return _vertexProjections;
+}
+
+Projections const& BaseOptions::getEdgeProjections() const {
+  return _edgeProjections;
+}
+
+void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("parallelism", VPackValue(_parallelism));
+  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
+  builder.add("produceVertices", VPackValue(_produceVertices));
+  builder.add(StaticStrings::MaxProjections, VPackValue(getMaxProjections()));
+
+  if (!_vertexProjections.empty()) {
+    _vertexProjections.toVelocyPack(builder, "vertexProjections");
+  }
+
+  if (!_edgeProjections.empty()) {
+    _edgeProjections.toVelocyPack(builder, "edgeProjections");
+  }
+}
+
+void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
+  // parallelism is optional
+  _parallelism = VPackHelper::getNumericValue<size_t>(info, "parallelism", 1);
+
+  TRI_ASSERT(_produceVertices);
+  _produceVertices =
+      VPackHelper::getBooleanValue(info, "produceVertices", true);
+
+  // TODO: For some reason _produceEdges has not been deserialized (skipped
+  // in refactoring to avoid side-effects)
+
+  // read back projections
+  setMaxProjections(VPackHelper::getNumericValue<size_t>(
+      info, StaticStrings::MaxProjections,
+      DocumentProducingNode::kMaxProjections));
+  _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
+  _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+
+  _refactor = basics::VelocyPackHelper::getBooleanValue(
+      info, StaticStrings::GraphRefactorFlag, false);
 }

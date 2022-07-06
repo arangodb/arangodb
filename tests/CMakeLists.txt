@@ -313,6 +313,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/PersistedLog.h
   Replication2/Mocks/PersistedLog.h
   Replication2/Mocks/ReplicatedLogMetricsMock.cpp
+  Replication2/Mocks/ReplicatedStateMetricsMock.cpp
   Replication2/ModelChecker/ModelChecker.cpp
   Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
   Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
@@ -334,6 +335,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/MaintenanceTests.cpp
   Replication2/ReplicatedLog/MultiTermTest.cpp
   Replication2/ReplicatedLog/ParticipantResignTest.cpp
+  Replication2/ReplicatedLog/ParticipantsHealthTest.cpp
   Replication2/ReplicatedLog/ReplicatedLogTest.cpp
   Replication2/ReplicatedLog/RewriteLogTest.cpp
   Replication2/ReplicatedLog/RocksDBLogTest.cpp
@@ -348,6 +350,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
   Replication2/ReplicatedState/MaintenanceTest.cpp
+  Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
   Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
@@ -362,6 +365,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
+  Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
+  Replication2/ReplicatedLog/MetricsTest.cpp
 )
 
 set(ARANGODB_GRAPH_TEST_SOURCES

@@ -34,7 +34,9 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
+const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
 const toArgv = require('internal').toArgv;
 
@@ -50,7 +52,7 @@ const testPaths = {
 // / @brief TEST: agency_restart
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params) {
+function runArangodRecovery (params, agencyConfig) {
   let additionalParams= {
     'log.foreground-tty': 'true',
     'javascript.enabled': 'true',
@@ -61,66 +63,47 @@ function runArangodRecovery (params) {
   };
 
   let argv = [];
-
   let binary = pu.ARANGOD_BIN;
-  let crashLogDir = fs.join(fs.getTempPath(), 'crash');
-  fs.makeDirectoryRecursive(crashLogDir);
-  pu.cleanupDBDirectoriesAppend(crashLogDir);
-
-  let crashLog = fs.join(crashLogDir, 'crash.log');
 
   if (params.setup) {
     additionalParams['javascript.script-parameter'] = 'setup';
-    try {
-      // clean up crash log before next test
-      fs.remove(crashLog);
-    } catch (err) {}
-
 
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
-    pu.cleanupDBDirectoriesAppend(params.testDir);
-    let dataDir = fs.join(params.testDir, 'data');
-    let appDir = fs.join(params.testDir, 'app');
-    let tmpDir = fs.join(params.testDir, 'tmp');
-    fs.makeDirectoryRecursive(params.testDir);
-    fs.makeDirectoryRecursive(dataDir);
-    fs.makeDirectoryRecursive(tmpDir);
-    fs.makeDirectoryRecursive(appDir);
 
-    let args = pu.makeArgs.arangod(params.options, appDir, '', tmpDir);
     // enable development debugging if extremeVerbosity is set
+    let args = Object.assign({
+      'server.rest-server': 'false',
+      'javascript.script': params.script,
+      'log.output': 'file://' + params.crashLog
+    }, params.options.extraArgs);
+
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
     }
-    args = Object.assign(args, params.options.extraArgs);
-    args = Object.assign(args, {
-      'database.directory': fs.join(dataDir + 'db'),
-      'server.rest-server': 'false',
-      'javascript.script': params.script
-    });
-      
-    args['log.output'] = 'file://' + crashLog;
-    params.args = args;
+    params['instance'] = new inst.instance(params.options,
+                                           inst.instanceRole.agent,
+                                           args, {}, 'tcp', params.rootDir, '',
+                                           agencyConfig);
 
-    argv = toArgv(Object.assign(params.args, additionalParams));
+    argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
     additionalParams['javascript.script-parameter'] = 'recovery';
-    argv = toArgv(Object.assign(params.args, additionalParams));
-    
+    argv = toArgv(Object.assign(params.instance.args, additionalParams));
+
     if (params.options.rr) {
       binary = 'rr';
       argv.unshift(pu.ARANGOD_BIN);
     }
   }
-    
-  process.env["crash-log"] = crashLog;
-  params.instanceInfo.pid = pu.executeAndWait(
+
+  process.env["crash-log"] = params.crashLog;
+  params.instance.pid = pu.executeAndWait(
     binary,
     argv,
     params.options,
     'recovery',
-    params.instanceInfo.rootDir,
+    params.instance.rootDir,
     !params.setup && params.options.coreCheck);
 }
 
@@ -142,11 +125,7 @@ function agencyRestart (options) {
 
   let agencyRestartTests = tu.splitBuckets(options, tu.scanTestPaths(testPaths['agency-restart'], options));
   let count = 0;
-  let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.join(fs.getTempPath(), 'agency-restart');
-  fs.makeDirectoryRecursive(tempDir);
-  process.env.TMPDIR = tempDir;
-  pu.cleanupDBDirectoriesAppend(tempDir);
+  let tmpMgr = new tmpDirMmgr('agency-restart', options);
 
   for (let i = 0; i < agencyRestartTests.length; ++i) {
     let test = agencyRestartTests[i];
@@ -157,45 +136,48 @@ function agencyRestart (options) {
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
-        tempDir: tempDir,
-        instanceInfo: {
-          rootDir: fs.join(fs.getTempPath(), 'agency-restart', count.toString())
-        },
+        tempDir: tmpMgr.tempDir,
+        rootDir: fs.join(fs.getTempPath(), 'agency-restart', count.toString()),
         options: _.cloneDeep(options),
         script: test,
         setup: true,
         count: count,
-        testDir: ""
+        testDir: "",
+        crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
+        crashLog: ""
       };
-      runArangodRecovery(params);
+      fs.makeDirectoryRecursive(params.crashLogDir);
+      params.crashLog = fs.join(params.crashLogDir, 'crash.log');
+      let agencyConfig = new inst.agencyConfig(options, null);
+      runArangodRecovery(params, agencyConfig);
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.args['temp.path'], {
+        tu.writeTestResult(params.instance.args['temp.path'], {
           failed: 1,
-          status: false, 
+          status: false,
           message: "unable to run agency_restart test " + test,
           duration: -1
         });
       } catch (er) {}
-      runArangodRecovery(params);
+      runArangodRecovery(params, agencyConfig);
 
       results[test] = tu.readTestResult(
-        params.args['temp.path'],
+        params.instance.args['temp.path'],
         {
           status: false
         },
         test
       );
-      if (!results[test].status) {
+      if (results[test].status && options.cleanup) {
+        fs.removeDirectoryRecursive(params.testDir, true);
+        fs.removeDirectoryRecursive(params.crashLogDir, true);
+      } else {
         print("Not cleaning up " + params.testDir);
-        results.status = false;
-      }
-      else {
-        pu.cleanupLastDirectory(params.options);
+        results.status &= results[test].status;
       }
     } else {
       if (options.extremeVerbosity) {
@@ -203,7 +185,7 @@ function agencyRestart (options) {
       }
     }
   }
-  process.env.TMPDIR = orgTmp;
+  tmpMgr.destructor(results.status);
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {

@@ -458,15 +458,26 @@ static void DocumentVocbaseCol(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
+  TRI_GET_GLOBALS();
 
   // first and only argument should be a document handle or key or an object
-  if (args.Length() != 1) {
+  if (args.Length() < 1 || args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "document(<document-id> or <document-key> or <object> or <array>)");
   }
 
   OperationOptions options;
   options.ignoreRevs = false;
+
+  if (args.Length() == 2 && args[1]->IsObject()) {
+    v8::Local<v8::Object> optsObj = v8::Local<v8::Object>::Cast(args[1]);
+    TRI_GET_GLOBAL_STRING(AllowDirtyReadsKey);
+    if (TRI_HasProperty(context, isolate, optsObj, AllowDirtyReadsKey)) {
+      options.allowDirtyReads =
+          TRI_ObjectToBoolean(isolate, optsObj->Get(context, AllowDirtyReadsKey)
+                                           .FromMaybe(v8::Local<v8::Value>()));
+    }
+  }
 
   // Find collection and vocbase
   auto* col = UnwrapCollection(isolate, args.Holder());
