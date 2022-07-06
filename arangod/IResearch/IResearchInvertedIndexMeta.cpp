@@ -702,7 +702,7 @@ bool InvertedIndexField::init(
       errorField = kNameFieldName;
       return false;
     } else if (expansionCount > 0 && !parent._attribute.empty()) {
-      LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("2646d", ERR, arangodb::iresearch::TOPIC)
           << "Error parsing field: '" << kNameFieldName << "'. "
           << "Expansion is not allowed for nested fields.";
       errorField = kNameFieldName;
