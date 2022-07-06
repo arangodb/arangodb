@@ -278,8 +278,8 @@ class PhysicalCollection {
   bool const _extendedNames; /* for collections */
 
   mutable basics::ReadWriteLock _indexesLock;
-  mutable std::atomic<std::thread::id>
-      _indexesLockWriteOwner;  // current thread owning '_indexesLock'
+  // current thread owning '_indexesLock'
+  mutable std::atomic<std::thread::id> _indexesLockWriteOwner;
   IndexContainerType _indexes;
 };
 

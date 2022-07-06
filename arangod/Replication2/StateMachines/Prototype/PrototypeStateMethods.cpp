@@ -528,7 +528,8 @@ struct PrototypeStateMethodsCoordinator final
                   if (result.fail()) {
                     return {result.result()};
                   }
-                  return self->_clusterInfo.waitForPlan(result.get())
+                  return self->_clusterInfo
+                      .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
                       .thenValue([resp = std::move(resp)](auto&& result) mutable
                                  -> ResultT<CreateResult> {
                         if (result.fail()) {
