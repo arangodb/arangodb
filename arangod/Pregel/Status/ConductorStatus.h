@@ -61,11 +61,11 @@ struct ConductorStatus {
     }
     return status;
   }
-  auto updateWorkerStatus(ServerID const& id, Status const& status) -> void {
+  auto updateWorkerStatus(ServerID const& id, Status&& status) -> void {
     workers.at(id) = status;
   }
   auto accumulate() const -> AccumulatedConductorStatus {
-    Status aggregate = std::accumulate(
+    auto aggregate = std::accumulate(
         workers.begin(), workers.end(), Status{.timeStamp = TimeStamp::min()},
         [](Status const& accumulation,
            std::unordered_map<ServerID, Status>::value_type const& workers) {

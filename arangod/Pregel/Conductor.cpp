@@ -333,7 +333,7 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
 
   LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
 
-  _status.updateWorkerStatus(sender, update);
+  _status.updateWorkerStatus(sender, std::move(update));
 }
 
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {

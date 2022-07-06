@@ -169,7 +169,7 @@ void Worker<V, E, M>::setupWorker() {
       statusUpdateMsg.add(Utils::executionNumberKey,
                           VPackValue(_config.executionNumber()));
       statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = Status{};
+      auto update = _graphStore->status();
       serialize(statusUpdateMsg, update);
     }
 

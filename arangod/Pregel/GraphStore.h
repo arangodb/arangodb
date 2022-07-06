@@ -28,6 +28,7 @@
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/Reports.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -72,6 +73,8 @@ class GraphStore final {
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
+
+  Status status() const { return _observables.observe(); }
 
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
@@ -134,6 +137,8 @@ class GraphStore final {
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
   std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
+
+  Observables _observables;
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
