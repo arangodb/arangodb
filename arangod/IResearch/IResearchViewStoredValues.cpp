@@ -23,6 +23,7 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "IResearchViewStoredValues.h"
+#include "Containers/FlatHashSet.h"
 
 namespace {
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
@@ -172,7 +173,7 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
     return false;
   }
   _storedColumns.reserve(slice.length());
-  std::unordered_set<std::string> uniqueColumns;
+  containers::FlatHashSet<std::string> uniqueColumns;
   std::vector<irs::string_ref> fieldNames;
   int idx = -1;
   for (auto columnSlice : VPackArrayIterator(slice)) {

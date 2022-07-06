@@ -48,10 +48,6 @@ class IResearchInvertedIndexSort {
                std::string_view(rhs._locale.getName());
   }
 
-  bool operator!=(IResearchInvertedIndexSort const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   auto sortCompression() const noexcept { return _sortCompression; }
 
   void clear() noexcept {
@@ -173,6 +169,8 @@ struct InvertedIndexField {
   bool _isArray{false};
   /// @brief force computed value to override existing value
   bool _overrideValue{false};
+  /// @brief if the field is with expansion - calculated value
+  bool _hasExpansion{false};
   /// @brief attribute path
   std::vector<basics::AttributeName> _attribute;
   /// @brief AQL expression to be computed as field value
@@ -181,8 +179,6 @@ struct InvertedIndexField {
   std::string _path;
   /// @brief path to attribute before expansion - calculated value
   std::string _attributeName;
-  /// @brief if the field is with expansion - calculated value
-  bool _hasExpansion{false};
 };
 
 struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,

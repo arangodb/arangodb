@@ -250,11 +250,13 @@ class FieldIterator {
 
   bool _isDBServer;
   bool _disableFlush;
+#ifdef USE_ENTERPRISE
+  bool _needDoc{false};
+  bool _hasNested{false};
+#endif
   MissingFieldsMap _missingFieldsMap;
 #ifdef USE_ENTERPRISE
   std::vector<std::string> _nestingBuffers;
-  bool _needDoc{false};
-  bool _hasNested{false};
 #endif
 };  // FieldIterator
 

@@ -749,7 +749,7 @@ bool InvertedIndexField::init(
       return false;
     }
     std::string localError;
-    absl::flat_hash_set<std::string> fieldsDeduplicator;
+    containers::FlatHashSet<std::string> fieldsDeduplicator;
     for (auto it = VPackArrayIterator(nestedSlice); it.valid(); ++it) {
       InvertedIndexField nested;
       if (nested.init(it.value(), analyzerDefinitions, version, extendedNames,
