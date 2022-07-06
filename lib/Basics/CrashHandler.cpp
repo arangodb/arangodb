@@ -220,15 +220,12 @@ size_t buildLogMessage(char* s, std::string_view context, int signal,
       uint64_t(arangodb::Thread::currentThreadNumber()), p);
 
 #ifdef __linux__
-  char const* name = arangodb::Thread::currentThreadName();
-#else
-  char const* name = nullptr;
+  arangodb::ThreadNameFetcher nameFetcher;
+  std::string_view name = nameFetcher.get();
+  appendNullTerminatedString(" [", p);
+  appendNullTerminatedString(name, p);
+  appendNullTerminatedString("]", p);
 #endif
-  if (name != nullptr && *name != '\0') {
-    appendNullTerminatedString(" [", p);
-    appendNullTerminatedString(name, p);
-    appendNullTerminatedString("]", p);
-  }
 
   appendNullTerminatedString(" caught unexpected signal ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
@@ -319,9 +316,9 @@ void logBacktrace() try {
     return;
   }
 
-  char const* currentThreadName = arangodb::Thread::currentThreadName();
-  if (currentThreadName != nullptr &&
-      strcmp("Logging", currentThreadName) == 0) {
+  arangodb::ThreadNameFetcher nameFetcher;
+  std::string_view currentThreadName = nameFetcher.get();
+  if (currentThreadName == arangodb::Logger::logThreadName) {
     // we must not log a backtrace from the logging thread itself. if we would
     // do, we may cause a deadlock
     return;
@@ -338,12 +335,9 @@ void logBacktrace() try {
 
     p += arangodb::basics::StringUtils::itoa(
         uint64_t(arangodb::Thread::currentThreadNumber()), p);
-    char const* name = arangodb::Thread::currentThreadName();
-    if (name != nullptr && *name != '\0') {
-      appendNullTerminatedString(" [", p);
-      appendNullTerminatedString(name, p);
-      appendNullTerminatedString("]", p);
-    }
+    appendNullTerminatedString(" [", p);
+    appendNullTerminatedString(currentThreadName, p);
+    appendNullTerminatedString("]", p);
 
     LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH)
         << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
