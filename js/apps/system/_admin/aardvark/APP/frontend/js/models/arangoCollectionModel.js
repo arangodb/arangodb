@@ -343,7 +343,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/properties'),
         data: JSON.stringify({ computedValues: computedValues }),
         contentType: 'application/json',
         processData: false,
