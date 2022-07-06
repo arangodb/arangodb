@@ -532,7 +532,8 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
       break;
     }
     case NODE_TYPE_QUANTIFIER: {
-      setIntValue(Quantifier::fromString(slice.get("quantifier").copyString()));
+      setIntValue(static_cast<int64_t>(
+          Quantifier::fromString(slice.get("quantifier").stringView())));
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -1062,8 +1063,9 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     builder.add("sorted", VPackValue(getBoolValue()));
   }
   if (type == NODE_TYPE_QUANTIFIER) {
-    std::string const quantifier(Quantifier::stringify(getIntValue(true)));
-    builder.add("quantifier", VPackValue(quantifier));
+    builder.add("quantifier",
+                VPackValue(Quantifier::stringify(
+                    static_cast<Quantifier::Type>(getIntValue(true)))));
   }
 
   if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
@@ -2178,7 +2180,8 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
 
     getMember(0)->stringify(buffer, failIfLong);
     buffer.push_back(' ');
-    buffer.append(Quantifier::stringify(getMember(2)->getIntValue(true)));
+    buffer.append(Quantifier::stringify(
+        static_cast<Quantifier::Type>(getMember(2)->getIntValue(true))));
     buffer.push_back(' ');
     buffer.append((*it).second);
     buffer.push_back(' ');

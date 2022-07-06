@@ -354,6 +354,10 @@ function ahuacatlParseTestSuite () {
 
     testLineNumbers : function () {
       var queries = [
+        [ "RETURN \"\n", [ 2, 1 ] ],
+        [ "RETURN \"\nfuxx", [ 2, 5 ] ],
+        [ "RETURN '\n", [ 2, 1 ] ],
+        [ "RETURN '\nfuxx", [ 2, 5 ] ],
         [ "RETURN 1 +", [ 1, 10 ] ],
         [ "RETURN 1 + ", [ 1, 11 ] ],
         [ "RETURN 1 + ", [ 1, 11 ] ],
@@ -381,8 +385,8 @@ function ahuacatlParseTestSuite () {
           var matches = err.errorMessage.match(/at position (\d+):(\d+)/);
           var line = parseInt(matches[1], 10);
           var column = parseInt(matches[2], 10);
-          assertEqual(query[1][0], line);
-          assertEqual(query[1][1], column);
+          assertEqual(query[1][0], line, query);
+          assertEqual(query[1][1], column, query);
         }
       });
     },
