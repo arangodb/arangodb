@@ -37,7 +37,6 @@
 #include "search/cost.hpp"
 #include <search/proxy_filter.hpp>
 
-
 namespace arangodb {
 namespace iresearch {
 class IResearchInvertedIndex : public IResearchDataStore {
