@@ -82,6 +82,51 @@ using Future = futures::Future<T>;
 
 namespace {
 
+BatchOptions buildBatchOptions(OperationOptions const& options,
+                               LogicalCollection& collection,
+                               TRI_voc_document_operation_e opType,
+                               bool isDBServer) {
+  BatchOptions batchOptions;
+
+  if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
+    if (isDBServer) {
+      batchOptions.validateShardKeysOnUpdateReplace =
+          opType != TRI_VOC_DOCUMENT_OPERATION_INSERT &&
+          (collection.shardKeys().size() > 1 ||
+           collection.shardKeys()[0] != StaticStrings::KeyString);
+      batchOptions.validateSmartJoinAttribute =
+          collection.hasSmartJoinAttribute();
+    }
+    if (options.validate) {
+      batchOptions.schema = collection.schema();
+    }
+    std::shared_ptr<ComputedValues> cv = collection.computedValues();
+    if (cv != nullptr) {
+      bool pick = false;
+
+      if (opType == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+        pick = cv->mustComputeValuesOnInsert();
+        if (options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
+          pick |= cv->mustComputeValuesOnReplace();
+        } else if (options.overwriteMode ==
+                   OperationOptions::OverwriteMode::Update) {
+          pick |= cv->mustComputeValuesOnUpdate();
+        }
+      } else if (opType == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+        pick |= cv->mustComputeValuesOnUpdate();
+      } else if (opType == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+        pick |= cv->mustComputeValuesOnReplace();
+      }
+
+      if (pick) {
+        batchOptions.computedValues = std::move(cv);
+      }
+    }
+  }
+
+  return batchOptions;
+}
+
 /// @brief check if a list of attributes have the same values in two vpack
 /// documents
 bool shardKeysChanged(LogicalCollection const& collection,
@@ -90,7 +135,7 @@ bool shardKeysChanged(LogicalCollection const& collection,
   TRI_ASSERT(oldValue.isObject());
   TRI_ASSERT(newValue.isObject());
 
-  std::vector<std::string> const& shardKeys = collection.shardKeys();
+  auto const& shardKeys = collection.shardKeys();
 
   for (auto const& shardKey : shardKeys) {
     if (shardKey == StaticStrings::KeyString) {
@@ -1200,38 +1245,14 @@ Future<OperationResult> transaction::Methods::insertLocal(
   }
 
   // set up batch options
-  BatchOptions batchOptions;
-  if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
-    if (_state->isDBServer()) {
-      // not necessary on insert
-      batchOptions.validateShardKeysOnUpdateReplace = false;
-      batchOptions.validateSmartJoinAttribute =
-          collection->hasSmartJoinAttribute();
-    }
-    if (options.validate) {
-      batchOptions.schema = collection->schema();
-    }
-    std::shared_ptr<ComputedValues> cv = collection->computedValues();
-    if (cv != nullptr) {
-      bool pick = false;
-      if (options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
-        pick = cv->mustComputeValuesOnReplace();
-      } else if (options.overwriteMode ==
-                 OperationOptions::OverwriteMode::Update) {
-        pick = cv->mustComputeValuesOnUpdate();
-      } else {
-        pick = cv->mustComputeValuesOnInsert();
-      }
-      if (pick) {
-        batchOptions.computedValues = std::move(cv);
-      }
-    }
-  }
+  BatchOptions batchOptions = ::buildBatchOptions(
+      options, *collection, TRI_VOC_DOCUMENT_OPERATION_INSERT,
+      _state->isDBServer());
 
   bool excludeAllFromReplication =
-      (replicationType != ReplicationType::LEADER ||
-       (followers->empty() &&
-        collection->replicationVersion() != replication::Version::TWO));
+      replicationType != ReplicationType::LEADER ||
+      (followers->empty() &&
+       collection->replicationVersion() != replication::Version::TWO);
 
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
@@ -1243,14 +1264,15 @@ Future<OperationResult> transaction::Methods::insertLocal(
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
     newDocumentBuilder->clear();
 
+    if (!value.isObject()) {
+      return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
+    }
+
     LocalDocumentId oldDocumentId;
     RevisionId oldRevisionId = RevisionId::none();
     VPackSlice key;
 
     Result res;
-    if (!value.isObject()) {
-      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    }
 
     if (options.isOverwriteModeSet() &&
         options.overwriteMode != OperationOptions::OverwriteMode::Conflict) {
@@ -1309,7 +1331,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
         return res;
       }
 
-      if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+      if (options.overwriteMode == OperationOptions::OverwriteMode::Update ||
+          options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
         // in case of unique constraint violation: (partially) update existing
         // document.
         previousDocumentBuilder->clear();
@@ -1323,34 +1346,18 @@ Future<OperationResult> transaction::Methods::insertLocal(
           res = modifyLocalHelper(
               *collection, value, oldDocumentId, oldRevisionId,
               previousDocumentBuilder->slice(), newRevisionId,
-              *newDocumentBuilder, options, batchOptions, /*isUpdate*/ true);
+              *newDocumentBuilder, options, batchOptions,
+              /*isUpdate*/ options.overwriteMode ==
+                  OperationOptions::OverwriteMode::Update);
         }
 
         TRI_ASSERT(res.fail() || newDocumentBuilder->slice().isObject());
 
-        if (res.ok() && oldRevisionId == newRevisionId) {
+        if (res.ok() && oldRevisionId == newRevisionId &&
+            options.overwriteMode == OperationOptions::OverwriteMode::Update) {
           // did not actually update - intentionally do not fill replicationData
           excludeFromReplication |= true;
         }
-      } else if (options.overwriteMode ==
-                 OperationOptions::OverwriteMode::Replace) {
-        // in case of unique constraint violation: replace existing document.
-        // this is also the default behavior for "overwrite: true".
-        previousDocumentBuilder->clear();
-        res = collection->getPhysical()->lookupDocument(
-            *this, oldDocumentId, *previousDocumentBuilder,
-            /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
-
-        if (res.ok()) {
-          TRI_ASSERT(previousDocumentBuilder->slice().isObject());
-
-          res = modifyLocalHelper(
-              *collection, value, oldDocumentId, oldRevisionId,
-              previousDocumentBuilder->slice(), newRevisionId,
-              *newDocumentBuilder, options, batchOptions, /*isUpdate*/ false);
-        }
-
-        TRI_ASSERT(res.fail() || newDocumentBuilder->slice().isObject());
       } else {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1421,9 +1428,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
     for (VPackSlice s : VPackArrayIterator(value)) {
       TRI_IF_FAILURE("insertLocal::fakeResult1") { res.reset(TRI_ERROR_DEBUG); }
-      if (res.ok()) {
-        res = workForOneDocument(s, true);
-      }
+      res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(replicationType == ReplicationType::FOLLOWER
                               ? nullptr
@@ -1446,12 +1451,6 @@ Future<OperationResult> transaction::Methods::insertLocal(
     }
   }
   replicationData->close();
-
-  // LOG_DEVEL << "INSERT. VALUE: " << value.toJson()
-  //          << ", RESULTBUILDER: " << resultBuilder.slice().toJson()
-  //          << ", REPLICATIONDATA: " << replicationData->slice().toJson()
-  //          << ", SILENT: " << options.silent << ", MODE: "
-  //          << options.stringifyOverwriteMode(options.overwriteMode);
 
   // on a follower, our result should always be an empty array or object
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
@@ -1663,29 +1662,16 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   }
 
   // set up batch options
-  BatchOptions batchOptions;
-  if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
-    if (_state->isDBServer()) {
-      batchOptions.validateShardKeysOnUpdateReplace =
-          (collection->shardKeys().size() > 1 ||
-           collection->shardKeys()[0] != StaticStrings::KeyString);
-      batchOptions.validateSmartJoinAttribute =
-          collection->hasSmartJoinAttribute();
-    }
-    if (options.validate) {
-      batchOptions.schema = collection->schema();
-    }
-    std::shared_ptr<ComputedValues> cv = collection->computedValues();
-    if (cv != nullptr && ((isUpdate && cv->mustComputeValuesOnUpdate()) ||
-                          (!isUpdate && cv->mustComputeValuesOnReplace()))) {
-      batchOptions.computedValues = std::move(cv);
-    }
-  }
+  BatchOptions batchOptions =
+      ::buildBatchOptions(options, *collection,
+                          isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
+                                   : TRI_VOC_DOCUMENT_OPERATION_REPLACE,
+                          _state->isDBServer());
 
   bool excludeAllFromReplication =
-      (replicationType != ReplicationType::LEADER ||
-       (followers->empty() &&
-        collection->replicationVersion() != replication::Version::TWO));
+      replicationType != ReplicationType::LEADER ||
+      (followers->empty() &&
+       collection->replicationVersion() != replication::Version::TWO);
 
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
@@ -1701,17 +1687,15 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     newDocumentBuilder->clear();
     previousDocumentBuilder->clear();
 
-    Result res;
-
     if (!newValue.isObject()) {
-      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+      return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
     }
 
     VPackSlice key = newValue.get(StaticStrings::KeyString);
     if (key.isNone()) {
-      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
     } else if (!key.isString() || key.stringView().empty()) {
-      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD};
     }
 
     // replace and update are two operations each, thus this can and must not be
@@ -1719,16 +1703,15 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
     std::pair<LocalDocumentId, RevisionId> lookupResult;
-    res = collection->getPhysical()->lookupKey(
+    Result res = collection->getPhysical()->lookupKey(
         this, key.stringView(), lookupResult, ReadOwnWrites::yes);
     if (res.fail()) {
-      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
     }
 
     TRI_ASSERT(lookupResult.first.isSet());
     TRI_ASSERT(lookupResult.second.isSet());
-    LocalDocumentId oldDocumentId = lookupResult.first;
-    RevisionId oldRevisionId = lookupResult.second;
+    auto [oldDocumentId, oldRevisionId] = lookupResult;
 
     previousDocumentBuilder->clear();
     res = collection->getPhysical()->lookupDocument(
@@ -1823,9 +1806,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   }
   replicationData->close();
 
-  // LOG_DEVEL << "MODIFY: RESULTBUILDER: " << resultBuilder.slice().toJson()
-  //          << ", REPLICATIONDATA: " << replicationData->slice().toJson();
-
   // on a follower, our result should always be an empty array or object
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              (newValue.isArray() && resultBuilder.slice().isEmptyArray()) ||
@@ -1901,8 +1881,6 @@ Result transaction::Methods::modifyLocalHelper(
     }
   }
 
-  Result res;
-
   if (!options.ignoreRevs) {
     // Check old revision:
     auto checkRevision = [](RevisionId expected, RevisionId found) noexcept {
@@ -1912,8 +1890,7 @@ Result transaction::Methods::modifyLocalHelper(
     RevisionId expectedRevision = RevisionId::fromSlice(value);
     if (expectedRevision.isSet() &&
         !checkRevision(expectedRevision, previousRevisionId)) {
-      return res.reset(TRI_ERROR_ARANGO_CONFLICT,
-                       "conflict, _rev values do not match");
+      return {TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match"};
     }
   }
 
@@ -1925,6 +1902,7 @@ Result transaction::Methods::modifyLocalHelper(
                        batchOptions.computedValues == nullptr);
 
   // merge old and new values
+  Result res;
   if (isUpdate) {
     res = mergeObjectsForUpdate(*this, collection, previousDocument, value,
                                 isNoOpUpdate, previousRevisionId, newRevisionId,
@@ -1941,7 +1919,7 @@ Result transaction::Methods::modifyLocalHelper(
       TRI_ASSERT(batchOptions.computedValues == nullptr);
       TRI_ASSERT(previousRevisionId == newRevisionId);
       trackWaitForSync(collection, options);
-      return res;
+      return {};
     }
 
     TRI_ASSERT(newRevisionId.isSet());
@@ -1950,13 +1928,13 @@ Result transaction::Methods::modifyLocalHelper(
     if (batchOptions.validateShardKeysOnUpdateReplace &&
         shardKeysChanged(collection, previousDocument,
                          newDocumentBuilder.slice(), isUpdate)) {
-      return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+      return {TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES};
     }
 
     if (batchOptions.validateSmartJoinAttribute &&
         smartJoinAttributeChanged(collection, previousDocument,
                                   newDocumentBuilder.slice(), isUpdate)) {
-      return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
+      return {TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE};
     }
 
     // note: schema can be a nullptr here, but we need to call validate()
@@ -2043,9 +2021,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
   }
 
   bool excludeAllFromReplication =
-      (replicationType != ReplicationType::LEADER ||
-       (followers->empty() &&
-        collection->replicationVersion() != replication::Version::TWO));
+      replicationType != ReplicationType::LEADER ||
+      (followers->empty() &&
+       collection->replicationVersion() != replication::Version::TWO);
 
   // total result that is going to be returned to the caller, append-only
   VPackBuilder resultBuilder;
@@ -2058,9 +2036,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
   transaction::BuilderLeaser keyBuilder(this);
 
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
-    Result res;
-
     std::string_view key;
+
     if (value.isString()) {
       key = value.stringView();
       // strip everything before a / (likely an _id value)
@@ -2073,28 +2050,26 @@ Future<OperationResult> transaction::Methods::removeLocal(
       }
     } else if (value.isObject()) {
       VPackSlice keySlice = value.get(StaticStrings::KeyString);
-      if (!keySlice.isString()) {
-        return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      if (keySlice.isString()) {
+        key = keySlice.stringView();
       }
-      key = keySlice.stringView();
     }
 
     // primary key must not be empty
     if (key.empty()) {
-      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
     }
 
     std::pair<LocalDocumentId, RevisionId> lookupResult;
-    res = collection->getPhysical()->lookupKey(this, key, lookupResult,
-                                               ReadOwnWrites::yes);
+    Result res = collection->getPhysical()->lookupKey(this, key, lookupResult,
+                                                      ReadOwnWrites::yes);
     if (res.fail()) {
-      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
     }
 
     TRI_ASSERT(lookupResult.first.isSet());
     TRI_ASSERT(lookupResult.second.isSet());
-    LocalDocumentId oldDocumentId = lookupResult.first;
-    RevisionId oldRevisionId = lookupResult.second;
+    auto [oldDocumentId, oldRevisionId] = lookupResult;
 
     previousDocumentBuilder->clear();
     res = collection->getPhysical()->lookupDocument(
@@ -2121,7 +2096,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
 
     if (res.ok() && !excludeFromReplication) {
-      replicationData->openObject(true);
+      replicationData->openObject(/*unindexed*/ true);
       replicationData->add(StaticStrings::KeyString, VPackValue(key));
 
       char ridBuffer[arangodb::basics::maxUInt64StringSize];
@@ -2162,11 +2137,6 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
   }
   replicationData->close();
-
-  // LOG_DEVEL << "REMOVE. VALUE: " << value.toJson()
-  //          << ", RESULTBUILDER: " << resultBuilder.slice().toJson()
-  //          << ", REPLICATIONDATA: " << replicationData->slice().toJson()
-  //          << ", SILENT: " << options.silent;
 
   // on a follower, our result should always be an empty array or object
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
@@ -2229,8 +2199,6 @@ Result transaction::Methods::removeLocalHelper(
     velocypack::Slice previousDocument, OperationOptions& options) {
   TRI_IF_FAILURE("LogicalCollection::remove") { return {TRI_ERROR_DEBUG}; }
 
-  Result res;
-
   // check revisions only if value is a proper object. if value is simply
   // a key, we cannot check the revisions.
   if (!options.ignoreRevs && value.isObject()) {
@@ -2242,12 +2210,11 @@ Result transaction::Methods::removeLocalHelper(
     RevisionId expectedRevision = RevisionId::fromSlice(value);
     if (expectedRevision.isSet() &&
         !checkRevision(expectedRevision, previousRevisionId)) {
-      return res.reset(TRI_ERROR_ARANGO_CONFLICT,
-                       "conflict, _rev values do not match");
+      return {TRI_ERROR_ARANGO_CONFLICT, "conflict, _rev values do not match"};
     }
   }
 
-  res = collection.getPhysical()->remove(
+  Result res = collection.getPhysical()->remove(
       *this, previousDocumentId, previousRevisionId, previousDocument, options);
 
   if (res.ok()) {

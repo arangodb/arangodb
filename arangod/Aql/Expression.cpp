@@ -92,7 +92,7 @@ void Expression::variables(VarSet& result) const {
 /// @brief execute the expression
 AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(ctx != nullptr);
-  prepareForExecution(*ctx);
+  prepareForExecution();
 
   TRI_ASSERT(_type != UNPROCESSED);
 
@@ -165,7 +165,7 @@ void Expression::replaceAttributeAccess(
 void Expression::freeInternals() noexcept {
   switch (_type) {
     case JSON:
-      delete[] _data;
+      velocypack_free(_data);
       _data = nullptr;
       break;
 
@@ -358,25 +358,6 @@ void Expression::initAccessor() {
   TRI_ASSERT(_accessor != nullptr);
 }
 
-/// @brief prepare the expression for execution, providing an
-/// expression context. this can have performance advantages over
-/// prepareForExecution() without an ExpressionContext
-void Expression::prepareForExecution(ExpressionContext& ctx) {
-  TRI_ASSERT(_type != UNPROCESSED);
-
-  if (_type == JSON && _data == nullptr) {
-    // generate a constant value, using a recycled Builder from
-    // the context
-    transaction::BuilderLeaser builder(&ctx.trx());
-    _node->toVelocyPackValue(*builder.get());
-
-    _data = new uint8_t[static_cast<size_t>(builder->size())];
-    memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
-  } else if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
-    initAccessor();
-  }
-}
-
 /// @brief prepare the expression for execution, without an
 /// ExpressionContext.
 void Expression::prepareForExecution() {
@@ -388,8 +369,22 @@ void Expression::prepareForExecution() {
     velocypack::Builder builder(buffer);
     _node->toVelocyPackValue(builder);
 
-    _data = new uint8_t[static_cast<size_t>(builder.size())];
-    memcpy(_data, builder.data(), static_cast<size_t>(builder.size()));
+    if (buffer.usesLocalMemory()) {
+      // Buffer has data in its local memory. because we
+      // don't want to keep the whole Buffer object, we allocate
+      // the required space ourselves and copy things over.
+      _data = static_cast<uint8_t*>(
+          velocypack_malloc(static_cast<size_t>(buffer.size())));
+      if (_data == nullptr) {
+        // malloc returned a nullptr
+        throw std::bad_alloc();
+      }
+      memcpy(_data, buffer.data(), static_cast<size_t>(buffer.size()));
+    } else {
+      // we can simply steal the data from the Buffer. we
+      // own the data now.
+      _data = buffer.steal();
+    }
   } else if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
     initAccessor();
   }

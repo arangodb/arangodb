@@ -57,8 +57,12 @@
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
+
+#include <span>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
@@ -283,22 +287,23 @@ Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
 
     // computed values will be removed if empty array is given
     if (!computedValues.isEmptyArray()) {
+      auto const& sk = shardKeys();
       try {
         newValue =
             std::make_shared<ComputedValues>(vocbase()
                                                  .server()
                                                  .getFeature<DatabaseFeature>()
                                                  .getCalculationVocbase(),
-                                             shardKeys(), computedValues);
+                                             std::span(sk), computedValues);
       } catch (std::exception const& ex) {
-        using namespace std::literals::string_literals;
-        return {TRI_ERROR_BAD_PARAMETER,
-                "Error when validating computedValues: "s + ex.what()};
+        return {
+            TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Error when validating computedValues: ", ex.what())};
       }
     }
 
     std::atomic_store_explicit(&_computedValues, newValue,
-                               std::memory_order_relaxed);
+                               std::memory_order_release);
   }
 
   return {};
@@ -1177,17 +1182,16 @@ bool LogicalCollection::skipForAqlWrite(velocypack::Slice document,
 #endif
 
 void LogicalCollection::computedValuesToVelocyPack(VPackBuilder& b) const {
-  auto computedValues =
-      std::atomic_load_explicit(&_computedValues, std::memory_order_relaxed);
-  if (computedValues != nullptr) {
-    computedValues->toVelocyPack(b);
+  auto cv = computedValues();
+  if (cv != nullptr) {
+    cv->toVelocyPack(b);
   } else {
     b.add(VPackSlice::nullSlice());
   }
 }
 
 std::shared_ptr<ComputedValues> LogicalCollection::computedValues() const {
-  return std::atomic_load_explicit(&_computedValues, std::memory_order_relaxed);
+  return std::atomic_load_explicit(&_computedValues, std::memory_order_acquire);
 }
 
 void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {

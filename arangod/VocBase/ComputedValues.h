@@ -32,6 +32,7 @@
 #include "Containers/FlatHashSet.h"
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -90,8 +91,7 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression) override;
 
-  ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice const& params) override;
+  ValidatorBase* buildValidator(velocypack::Slice const& params) override;
 
   TRI_vocbase_t& vocbase() const override;
 
@@ -103,7 +103,7 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
                                  bool& mustDestroy) const override;
 
   void setVariable(aql::Variable const* variable,
-                   arangodb::velocypack::Slice value) override;
+                   velocypack::Slice value) override;
 
   // unregister a temporary variable from the ExpressionContext.
   void clearVariable(aql::Variable const* variable) noexcept override;
@@ -121,8 +121,7 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   // current setting of "failOnWarning"
   bool _failOnWarning;
 
-  containers::FlatHashMap<aql::Variable const*, arangodb::velocypack::Slice>
-      _variables;
+  containers::FlatHashMap<aql::Variable const*, velocypack::Slice> _variables;
 };
 
 class ComputedValues {
@@ -167,7 +166,7 @@ class ComputedValues {
 
  public:
   explicit ComputedValues(TRI_vocbase_t& vocbase,
-                          std::vector<std::string> const& shardKeys,
+                          std::span<std::string const> shardKeys,
                           velocypack::Slice params);
   ComputedValues(ComputedValues const&) = delete;
   ComputedValues& operator=(ComputedValues const&) = delete;
@@ -194,7 +193,7 @@ class ComputedValues {
       velocypack::Builder& output) const;
 
   Result buildDefinitions(TRI_vocbase_t& vocbase,
-                          std::vector<std::string> const& shardKeys,
+                          std::span<std::string const> shardKeys,
                           velocypack::Slice params);
 
   // individual instructions for computed values

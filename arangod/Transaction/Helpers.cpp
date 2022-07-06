@@ -468,7 +468,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
       auto current = *it;
-      std::string_view key(current.key.stringView());
+      auto key = current.key.stringView();
       if (key.size() >= 3 && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
@@ -754,7 +754,7 @@ Result transaction::helpers::newObjectForInsert(
   // add other attributes after the system attributes
   VPackObjectIterator it(value, true);
   while (it.valid()) {
-    std::string_view key(it.key().stringView());
+    auto key = it.key().stringView();
     // _id, _key, _rev, _from, _to. minimum size here is 3
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&

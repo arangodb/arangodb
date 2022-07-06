@@ -25,22 +25,20 @@
 
 #include "Aql/ExpressionContext.h"
 #include "VocBase/ComputedValues.h"
-#include "VocBase/Validators.h"
 
 using namespace arangodb;
-using namespace arangodb::transaction;
 
-namespace arangodb {
+namespace arangodb::transaction {
 
-transaction::BatchOptions::BatchOptions() = default;
-transaction::BatchOptions::~BatchOptions() = default;
+BatchOptions::BatchOptions() = default;
+BatchOptions::~BatchOptions() = default;
 
-void transaction::BatchOptions::ensureComputedValuesContext(
-    transaction::Methods& trx, LogicalCollection& collection) {
+void BatchOptions::ensureComputedValuesContext(Methods& trx,
+                                               LogicalCollection& collection) {
   if (computedValuesContext == nullptr) {
     computedValuesContext =
         std::make_unique<ComputedValuesExpressionContext>(trx, collection);
   }
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::transaction

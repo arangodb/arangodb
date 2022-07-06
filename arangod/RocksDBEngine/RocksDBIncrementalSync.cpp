@@ -107,7 +107,7 @@ Result removeKeysOutsideRange(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
         std::string_view docKey(RocksDBKey::primaryKey(rocksKey));
         if (docKey.compare(lowRef) < 0) {
-          LocalDocumentId documentId = RocksDBValue::documentId(rocksValue);
+          auto documentId = RocksDBValue::documentId(rocksValue);
 
           builder.clear();
           Result r = physical->lookupDocument(
@@ -329,14 +329,13 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
       if (res > 0) {
         // we have a local key that is not present remotely
         std::pair<LocalDocumentId, RevisionId> lookupResult;
-        Result r = physical->lookupKey(trx, localKey, lookupResult,
-                                       ReadOwnWrites::yes);
+        auto r = physical->lookupKey(trx, localKey, lookupResult,
+                                     ReadOwnWrites::yes);
 
         if (r.ok()) {
           TRI_ASSERT(lookupResult.first.isSet());
           TRI_ASSERT(lookupResult.second.isSet());
-          LocalDocumentId documentId = lookupResult.first;
-          RevisionId revisionId = lookupResult.second;
+          auto [documentId, revisionId] = lookupResult;
 
           tempBuilder->clear();
           r = physical->lookupDocument(*trx, documentId, *tempBuilder,
@@ -406,8 +405,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
       if (r.ok()) {
         TRI_ASSERT(lookupResult.first.isSet());
         TRI_ASSERT(lookupResult.second.isSet());
-        LocalDocumentId documentId = lookupResult.first;
-        RevisionId revisionId = lookupResult.second;
+        auto [documentId, revisionId] = lookupResult;
 
         tempBuilder->clear();
         r = physical->lookupDocument(*trx, documentId, *tempBuilder,
@@ -454,7 +452,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   }
   keyBuilder->close();
 
-  std::string const keyJsonString(keyBuilder->slice().toJson());
+  auto const keyJsonString(keyBuilder->slice().toJson());
 
   // this will be very verbose, so intentionally not active
   // LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
@@ -577,8 +575,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         if (r.ok()) {
           TRI_ASSERT(lookupResult.first.isSet());
           TRI_ASSERT(lookupResult.second.isSet());
-          LocalDocumentId documentId = lookupResult.first;
-          RevisionId revisionId = lookupResult.second;
+          auto [documentId, revisionId] = lookupResult;
 
           tempBuilder->clear();
           r = physical->lookupDocument(*trx, documentId, *tempBuilder,
@@ -880,8 +877,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             if (r.ok()) {
               TRI_ASSERT(lookupResult.first.isSet());
               TRI_ASSERT(lookupResult.second.isSet());
-              LocalDocumentId documentId = lookupResult.first;
-              RevisionId revisionId = lookupResult.second;
+              auto [documentId, revisionId] = lookupResult;
 
               tempBuilder.clear();
               r = physical->lookupDocument(

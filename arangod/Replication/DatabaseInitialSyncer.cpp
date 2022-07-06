@@ -122,9 +122,8 @@ arangodb::Result removeRevisions(
     arangodb::transaction::BuilderLeaser tempBuilder(&trx);
 
     double t = TRI_microtime();
-    for (arangodb::RevisionId const& rid : toRemove) {
-      arangodb::LocalDocumentId documentId =
-          arangodb::LocalDocumentId::create(rid);
+    for (auto const& rid : toRemove) {
+      auto documentId = arangodb::LocalDocumentId::create(rid);
 
       tempBuilder->clear();
       auto r = physical->lookupDocument(trx, documentId, *tempBuilder,
@@ -136,14 +135,12 @@ arangodb::Result removeRevisions(
                              options);
       }
 
-      if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      if (r.ok()) {
+        ++stats.numDocsRemoved;
+      } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // ignore not found, we remove conflicting docs ahead of time
         stats.waitedForRemovals += TRI_microtime() - t;
         return r;
-      }
-
-      if (r.ok()) {
-        ++stats.numDocsRemoved;
       }
     }
 
@@ -195,14 +192,13 @@ arangodb::Result fetchRevisions(
 
   auto removeConflict = [&](auto const& conflictingKey) -> Result {
     std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
-    arangodb::Result r = physical->lookupKey(&trx, conflictingKey, lookupResult,
-                                             arangodb::ReadOwnWrites::yes);
+    auto r = physical->lookupKey(&trx, conflictingKey, lookupResult,
+                                 arangodb::ReadOwnWrites::yes);
 
     if (r.ok()) {
       TRI_ASSERT(lookupResult.first.isSet());
       TRI_ASSERT(lookupResult.second.isSet());
-      arangodb::LocalDocumentId documentId = lookupResult.first;
-      arangodb::RevisionId revisionId = lookupResult.second;
+      auto [documentId, revisionId] = lookupResult;
 
       tempBuilder->clear();
       r = physical->lookupDocument(trx, documentId, *tempBuilder,

@@ -159,7 +159,6 @@ void verifyDocumentStructure(velocypack::Slice document,
   TRI_ASSERT(*p == basics::VelocyPackHelper::RevAttribute);
   ++p;
   TRI_ASSERT(VPackSlice(p).isString());
-  // p += VPackSlice(p).byteSize();
 
   validateNoExternals(document);
 #endif
@@ -212,7 +211,7 @@ struct TimeTracker {
   using Count = void (*)(Metrics& metrics, float time) noexcept;
 
   explicit TimeTracker(std::optional<Metrics>& metrics, Count count) noexcept
-      : metrics{metrics}, count{count} {
+      : metrics{metrics.has_value() ? &*metrics : nullptr}, count{count} {
     if (metrics) {
       // time measurement is not free. only do it if metrics are enabled
       start = std::chrono::steady_clock::now();
@@ -230,7 +229,7 @@ struct TimeTracker {
   }
 
  private:
-  std::optional<TransactionStatistics::ReadWriteMetrics>& metrics;
+  Metrics* metrics;
   Count count;
   std::chrono::time_point<std::chrono::steady_clock> start;
 };
@@ -1193,7 +1192,7 @@ Result RocksDBCollection::update(transaction::Methods& trx,
 
   return performUpdateOrReplace(trx, previousDocumentId, previousRevisionId,
                                 previousDocument, newRevisionId, newDocument,
-                                options, /*isUpdate*/ true);
+                                options, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 }
 
 Result RocksDBCollection::replace(transaction::Methods& trx,
@@ -1210,14 +1209,14 @@ Result RocksDBCollection::replace(transaction::Methods& trx,
 
   return performUpdateOrReplace(trx, previousDocumentId, previousRevisionId,
                                 previousDocument, newRevisionId, newDocument,
-                                options, /*isUpdate*/ false);
+                                options, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 }
 
 Result RocksDBCollection::performUpdateOrReplace(
-    transaction::Methods& trx, LocalDocumentId const& previousDocumentId,
+    transaction::Methods& trx, LocalDocumentId previousDocumentId,
     RevisionId previousRevisionId, velocypack::Slice previousDocument,
     RevisionId newRevisionId, velocypack::Slice newDocument,
-    OperationOptions const& options, bool isUpdate) {
+    OperationOptions const& options, TRI_voc_document_operation_e opType) {
   TRI_ASSERT(previousRevisionId.isSet());
   TRI_ASSERT(previousDocument.isObject());
   TRI_ASSERT(newRevisionId.isSet());
@@ -1233,8 +1232,6 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   TRI_ASSERT(!state->isReadOnlyTransaction());
 
-  auto opType = isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
-                         : TRI_VOC_DOCUMENT_OPERATION_REPLACE;
   RocksDBSavePoint savepoint(_logicalCollection.id(), *state, opType);
 
   Result res = modifyDocument(&trx, savepoint, previousDocumentId,
@@ -1414,10 +1411,10 @@ void RocksDBCollection::figuresSpecific(
 
 Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          RocksDBSavePoint& savepoint,
-                                         LocalDocumentId const& documentId,
+                                         LocalDocumentId documentId,
                                          VPackSlice doc,
                                          OperationOptions const& options,
-                                         RevisionId const& revisionId) const {
+                                         RevisionId revisionId) const {
   savepoint.prepareOperation(revisionId);
 
   // Coordinator doesn't know index internals
@@ -1544,10 +1541,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
 Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                          RocksDBSavePoint& savepoint,
-                                         LocalDocumentId const& documentId,
+                                         LocalDocumentId documentId,
                                          VPackSlice doc,
                                          OperationOptions const& /*options*/,
-                                         RevisionId const& revisionId) const {
+                                         RevisionId revisionId) const {
   savepoint.prepareOperation(revisionId);
 
   // Coordinator doesn't know index internals
@@ -1641,10 +1638,9 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
 Result RocksDBCollection::modifyDocument(
     transaction::Methods* trx, RocksDBSavePoint& savepoint,
-    LocalDocumentId const& oldDocumentId, VPackSlice oldDoc,
-    LocalDocumentId const& newDocumentId, VPackSlice newDoc,
-    RevisionId oldRevisionId, RevisionId newRevisionId,
-    OperationOptions const& options) const {
+    LocalDocumentId oldDocumentId, VPackSlice oldDoc,
+    LocalDocumentId newDocumentId, VPackSlice newDoc, RevisionId oldRevisionId,
+    RevisionId newRevisionId, OperationOptions const& options) const {
   savepoint.prepareOperation(newRevisionId);
 
   // Coordinator doesn't know index internals
@@ -1805,8 +1801,6 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
   RocksDBKeyLeaser key(&trx);
   key->constructDocument(objectId(), documentId);
 
-  Result res;
-
   bool lockTimeout = false;
   if (readCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
@@ -1817,7 +1811,7 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
       builder.add(
           VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
       TRI_ASSERT(builder.slice().isObject());
-      return res;  // all good
+      return {};  // all good
     }
 
     if (f.result() == TRI_ERROR_LOCK_TIMEOUT) {
@@ -1840,7 +1834,7 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
         << "NOT FOUND rev: " << documentId.id()
         << " trx: " << trx.state()->id().id() << " objectID " << objectId()
         << " name: " << _logicalCollection.name();
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    return rocksutils::convertStatus(s, rocksutils::document);
   }
 
   if (fillCache && useCache() && !lockTimeout) {
@@ -1855,7 +1849,7 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
   builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
   TRI_ASSERT(builder.slice().isObject());
 
-  return res;
+  return {};
 }
 
 /// @brief lookup document in cache and / or rocksdb
@@ -1883,7 +1877,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
           rocksdb::Slice(reinterpret_cast<char const*>(f.value()->value()),
                          f.value()->valueSize()));
       // TODO we could potentially use the PinSlice method ?!
-      return res;  // all good
+      return {};  // all good
     }
     if (f.result() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
@@ -1904,7 +1898,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         << "NOT FOUND rev: " << documentId.id()
         << " trx: " << trx->state()->id().id() << " objectID " << objectId()
         << " name: " << _logicalCollection.name();
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    return rocksutils::convertStatus(s, rocksutils::document);
   }
 
   if (fillCache && useCache() && !lockTimeout) {
@@ -1916,7 +1910,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         static_cast<uint64_t>(ps.size())};
   }
 
-  return res;
+  return {};
 }
 
 Result RocksDBCollection::lookupDocumentVPack(
@@ -1937,7 +1931,7 @@ Result RocksDBCollection::lookupDocumentVPack(
     if (f.found()) {
       cb(documentId,
          VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
-      return Result{};
+      return {};
     }
   }
 

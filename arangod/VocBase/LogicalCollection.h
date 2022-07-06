@@ -92,7 +92,7 @@ class LogicalCollection : public LogicalDataSource {
                     bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
-  ~LogicalCollection();
+  ~LogicalCollection() override;
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 

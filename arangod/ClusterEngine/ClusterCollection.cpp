@@ -320,7 +320,7 @@ bool ClusterCollection::dropIndex(IndexId iid) {
 }
 
 std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(
-    transaction::Methods* /*trx*/, ReadOwnWrites) const {
+    transaction::Methods* /*trx*/, ReadOwnWrites /*readOwnWrites*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -343,7 +343,7 @@ Result ClusterCollection::lookupKey(
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                std::string_view /*key*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites) const {
+                               ReadOwnWrites /*readOwnWrites*/) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -351,15 +351,14 @@ Result ClusterCollection::read(transaction::Methods* /*trx*/,
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                LocalDocumentId const& /*documentId*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites) const {
+                               ReadOwnWrites /*readOwnWrites*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::lookupDocument(transaction::Methods& /*trx*/,
-                                         LocalDocumentId /*documentId*/,
-                                         velocypack::Builder& /*builder*/,
-                                         bool /*readCache*/, bool /*fillCache*/,
-                                         ReadOwnWrites) const {
+Result ClusterCollection::lookupDocument(
+    transaction::Methods& /*trx*/, LocalDocumentId /*documentId*/,
+    velocypack::Builder& /*builder*/, bool /*readCache*/, bool /*fillCache*/,
+    ReadOwnWrites /*readOwnWrites*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -367,7 +366,7 @@ Result ClusterCollection::lookupDocument(transaction::Methods& /*trx*/,
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
                                      ManagedDocumentResult& /*result*/,
-                                     ReadOwnWrites) const {
+                                     ReadOwnWrites /*readOwnWrites*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

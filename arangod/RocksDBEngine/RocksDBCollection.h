@@ -26,6 +26,7 @@
 #include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/vocbase.h"
 
 namespace rocksdb {
 class PinnableSlice;
@@ -156,10 +157,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  private:
   [[nodiscard]] Result performUpdateOrReplace(
-      transaction::Methods& trx, LocalDocumentId const& previousDocumentId,
+      transaction::Methods& trx, LocalDocumentId previousDocumentId,
       RevisionId previousRevisionId, velocypack::Slice previousDocument,
       RevisionId newRevisionId, velocypack::Slice newDocument,
-      OperationOptions const& options, bool isUpdate);
+      OperationOptions const& options, TRI_voc_document_operation_e opType);
 
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
@@ -175,22 +176,22 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
                                   RocksDBSavePoint& savepoint,
-                                  LocalDocumentId const& documentId,
+                                  LocalDocumentId documentId,
                                   arangodb::velocypack::Slice doc,
                                   OperationOptions const& options,
-                                  RevisionId const& revisionId) const;
+                                  RevisionId revisionId) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
                                   RocksDBSavePoint& savepoint,
-                                  LocalDocumentId const& documentId,
+                                  LocalDocumentId documentId,
                                   arangodb::velocypack::Slice doc,
                                   OperationOptions const& options,
-                                  RevisionId const& revisionId) const;
+                                  RevisionId revisionId) const;
 
   arangodb::Result modifyDocument(
       transaction::Methods* trx, RocksDBSavePoint& savepoint,
-      LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
-      LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+      LocalDocumentId oldDocumentId, velocypack::Slice oldDoc,
+      LocalDocumentId newDocumentId, velocypack::Slice newDoc,
       RevisionId oldRevisionId, RevisionId newRevisionId,
       OperationOptions const& options) const;
 

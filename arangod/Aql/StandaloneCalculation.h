@@ -41,7 +41,7 @@ class StandaloneCalculation {
   static arangodb::Result validateQuery(TRI_vocbase_t& vocbase,
                                         std::string_view queryString,
                                         std::string_view parameterName,
-                                        char const* errorContext,
+                                        std::string_view errorContext,
                                         bool isComputedValue);
 };
 

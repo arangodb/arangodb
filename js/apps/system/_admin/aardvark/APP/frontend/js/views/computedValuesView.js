@@ -22,7 +22,11 @@
     render: function () {
       this.breadcrumb();
       arangoHelper.buildCollectionSubNav(this.collectionName, 'Computed Values');
-      $(this.el).html(this.template.render({}));
+      $(this.el).html(this.template.render({
+        parsedVersion: window.versionHelper.toDocuVersion(
+          window.frontendConfig.version.version
+        )
+      }));
       this.renderEditor();
       this.getCollectionProperties();
       this.editor.focus();

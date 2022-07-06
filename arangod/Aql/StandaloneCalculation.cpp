@@ -234,10 +234,8 @@ std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
 Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                                             std::string_view queryString,
                                             std::string_view parameterName,
-                                            char const* errorContext,
+                                            std::string_view errorContext,
                                             bool isComputedValue) {
-  TRI_ASSERT(errorContext != nullptr);
-
   using namespace std::string_literals;
 
   try {
@@ -256,20 +254,22 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     // Forbid all V8 related stuff as it is not available on DBServers where
     // analyzers run.
     if (ast->willUseV8()) {
-      return {TRI_ERROR_BAD_PARAMETER, "V8 usage is forbidden"s + errorContext};
+      return {TRI_ERROR_BAD_PARAMETER,
+              "V8 usage is forbidden"s + std::string{errorContext}};
     }
 
     // no modification (as data access is forbidden) but to give more clear
     // error message
     if (ast->containsModificationNode()) {
-      return {TRI_ERROR_BAD_PARAMETER, "DML is forbidden"s + errorContext};
+      return {TRI_ERROR_BAD_PARAMETER,
+              "DML is forbidden"s + std::string{errorContext}};
     }
 
     // no traversal (also data access is forbidden) but to give more clear error
     // message
     if (ast->containsTraversal()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Traversal usage is forbidden"s + errorContext};
+              "Traversal usage is forbidden"s + std::string{errorContext}};
     }
 
     std::string errorMessage;
@@ -292,7 +292,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
               if (isComputedValue) {
                 errorMessage =
                     absl::StrCat("Node type '", node->getTypeString(),
-                                 "' is forbidden", errorContext);
+                                 "' is forbidden", std::string{errorContext});
                 return false;
               }
             }
@@ -370,7 +370,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                 errorMessage = "Function '";
                 errorMessage.append(func->name)
                     .append("' is forbidden")
-                    .append(errorContext);
+                    .append(std::string{errorContext});
                 return false;
               }
             } break;
@@ -386,7 +386,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
               errorMessage = "Node type '";
               errorMessage.append(node->getTypeString())
                   .append("' is forbidden")
-                  .append(errorContext);
+                  .append(std::string{errorContext});
               return false;
           }
           return true;
@@ -398,14 +398,14 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
       // computed values expressions must start with a RETURN statement
       return {TRI_ERROR_BAD_PARAMETER,
               "Computation expression needs to start with a RETURN statement"s +
-                  errorContext};
+                  std::string{errorContext}};
     }
 
     if (!errorMessage.empty()) {
       return {TRI_ERROR_BAD_PARAMETER, errorMessage};
     }
   } catch (arangodb::basics::Exception const& e) {
-    return {TRI_ERROR_QUERY_PARSE, e.message() + errorContext};
+    return {TRI_ERROR_QUERY_PARSE, e.message() + std::string{errorContext}};
   } catch (std::exception const& e) {
     return {TRI_ERROR_QUERY_PARSE, e.what()};
   } catch (...) {

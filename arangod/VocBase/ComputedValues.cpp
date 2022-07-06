@@ -41,6 +41,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -48,23 +50,21 @@
 #include <string_view>
 #include <type_traits>
 
-using namespace arangodb;
-using namespace arangodb::aql;
-
 namespace {
 // name of bind parameter variable that contains the current document
 constexpr std::string_view docParameter("doc");
 
 // helper function to turn an enum class value into its underlying type
-std::underlying_type<arangodb::ComputeValuesOn>::type mustComputeOnValue(
+std::underlying_type_t<arangodb::ComputeValuesOn> mustComputeOnValue(
     arangodb::ComputeValuesOn mustComputeOn) {
-  return static_cast<std::underlying_type<arangodb::ComputeValuesOn>::type>(
+  return static_cast<std::underlying_type_t<arangodb::ComputeValuesOn>>(
       mustComputeOn);
 }
 
 }  // namespace
 
 namespace arangodb {
+
 // expression context used for calculating computed values inside
 ComputedValuesExpressionContext::ComputedValuesExpressionContext(
     transaction::Methods& trx, LogicalCollection& collection)
@@ -103,19 +103,12 @@ void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
 
 std::string ComputedValuesExpressionContext::buildLogMessage(
     std::string_view type, char const* msg) const {
-  std::string error;
-
   // note: on DB servers, the error message will contain the shard name
   // rather than the collection name.
-  error.append("computed values expression evaluation produced a runtime ")
-      .append(type)
-      .append(" for attribute '")
-      .append(_name)
-      .append("' of collection '")
-      .append(_collection.vocbase().name())
-      .append("/")
-      .append(_collection.name())
-      .append("'");
+  std::string error =
+      absl::StrCat("computed values expression evaluation produced a runtime ",
+                   type, " for attribute '", _name, "' of collection '",
+                   _collection.vocbase().name(), "/", _collection.name(), "'");
 
   if (msg != nullptr) {
     error.append(": ");
@@ -138,14 +131,14 @@ icu::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
 }
 
 icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
-    AqlValue splitExpression, velocypack::Options const* opts,
+    aql::AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
                                                       isEmptyExpression);
 }
 
-arangodb::ValidatorBase* ComputedValuesExpressionContext::buildValidator(
-    arangodb::velocypack::Slice const& params) {
+ValidatorBase* ComputedValuesExpressionContext::buildValidator(
+    velocypack::Slice const& params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
@@ -153,16 +146,16 @@ aql::AqlValue ComputedValuesExpressionContext::getVariableValue(
     aql::Variable const* variable, bool doCopy, bool& mustDestroy) const {
   auto it = _variables.find(variable);
   if (it == _variables.end()) {
-    return AqlValue(AqlValueHintNull());
+    return aql::AqlValue(aql::AqlValueHintNull());
   }
   if (doCopy) {
-    return AqlValue(AqlValueHintSliceCopy(it->second));
+    return aql::AqlValue(aql::AqlValueHintSliceCopy(it->second));
   }
-  return AqlValue(AqlValueHintSliceNoCopy(it->second));
+  return aql::AqlValue(aql::AqlValueHintSliceNoCopy(it->second));
 }
 
-void ComputedValuesExpressionContext::setVariable(
-    aql::Variable const* variable, arangodb::velocypack::Slice value) {
+void ComputedValuesExpressionContext::setVariable(aql::Variable const* variable,
+                                                  velocypack::Slice value) {
   TRI_ASSERT(variable != nullptr);
   _variables[variable] = value;
 }
@@ -187,12 +180,12 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
       _override(doOverride),
       _failOnWarning(failOnWarning),
       _keepNull(keepNull),
-      _queryContext(StandaloneCalculation::buildQueryContext(_vocbase)),
+      _queryContext(aql::StandaloneCalculation::buildQueryContext(_vocbase)),
       _rootNode(nullptr) {
-  Ast* ast = _queryContext->ast();
+  aql::Ast* ast = _queryContext->ast();
 
-  auto qs = QueryString(expressionString);
-  Parser parser(*_queryContext, *ast, qs);
+  auto qs = aql::QueryString(expressionString);
+  aql::Parser parser(*_queryContext, *ast, qs);
   // will throw if there is any error, but the expression should have been
   // validated before
   parser.parse();
@@ -207,7 +200,7 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
 
   if (_failOnWarning) {
     // rethrow any warnings during query inspection
-    QueryWarnings const& warnings = _queryContext->warnings();
+    auto const& warnings = _queryContext->warnings();
     if (!warnings.empty()) {
       auto const& allWarnings = warnings.all();
       TRI_ASSERT(!allWarnings.empty());
@@ -220,12 +213,12 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
   // replaced with, e.g. @doc -> temp_1. that way we only have to set the value
   // for the temporary variable during expression calculation, so we can use a
   // const Ast.
-  ast->scopes()->start(AQL_SCOPE_MAIN);
+  ast->scopes()->start(aql::AQL_SCOPE_MAIN);
   _tempVariable = ast->variables()->createTemporaryVariable();
 
   _rootNode = ast->traverseAndModify(
-      const_cast<AstNode*>(ast->root()), [&](AstNode* node) {
-        if (node->type == NODE_TYPE_PARAMETER) {
+      const_cast<aql::AstNode*>(ast->root()), [&](aql::AstNode* node) {
+        if (node->type == aql::NODE_TYPE_PARAMETER) {
           // already validated before that only @doc is used as bind parameter
           TRI_ASSERT(node->getStringView() == ::docParameter);
           node = ast->createNodeReference(_tempVariable);
@@ -239,14 +232,14 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
   // - ROOT
   //   - RETURN
   //     - expression
-  TRI_ASSERT(_rootNode->type == NODE_TYPE_ROOT);
+  TRI_ASSERT(_rootNode->type == aql::NODE_TYPE_ROOT);
   TRI_ASSERT(_rootNode->numMembers() == 1);
-  TRI_ASSERT(_rootNode->getMember(0)->type == NODE_TYPE_RETURN);
+  TRI_ASSERT(_rootNode->getMember(0)->type == aql::NODE_TYPE_RETURN);
   TRI_ASSERT(_rootNode->getMember(0)->numMembers() == 1);
   _rootNode = _rootNode->getMember(0)->getMember(0);
 
   // build Expression object from Ast
-  _expression = std::make_unique<Expression>(ast, _rootNode);
+  _expression = std::make_unique<aql::Expression>(ast, _rootNode);
   _expression->prepareForExecution();
   TRI_ASSERT(!_expression->willUseV8());
   TRI_ASSERT(_expression->canRunOnDBServer(true));
@@ -302,13 +295,13 @@ aql::Variable const* ComputedValues::ComputedValue::tempVariable()
 }
 
 void ComputedValues::ComputedValue::computeAttribute(
-    ExpressionContext& ctx, velocypack::Slice input,
+    aql::ExpressionContext& ctx, velocypack::Slice input,
     velocypack::Builder& output) const {
   TRI_ASSERT(_expression != nullptr);
 
   bool mustDestroy;
-  AqlValue result = _expression->execute(&ctx, mustDestroy);
-  AqlValueGuard guard(result, mustDestroy);
+  aql::AqlValue result = _expression->execute(&ctx, mustDestroy);
+  aql::AqlValueGuard guard(result, mustDestroy);
 
   if (!_keepNull && result.isNull(true)) {
     // the expression produced a value of null, but we don't want
@@ -317,12 +310,12 @@ void ComputedValues::ComputedValue::computeAttribute(
   }
 
   auto const& vopts = ctx.trx().vpackOptions();
-  AqlValueMaterializer materializer(&vopts);
+  aql::AqlValueMaterializer materializer(&vopts);
   output.add(_name, materializer.slice(result, false));
 }
 
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
-                               std::vector<std::string> const& shardKeys,
+                               std::span<std::string const> shardKeys,
                                velocypack::Slice params) {
   Result res = buildDefinitions(vocbase, shardKeys, params);
   if (res.fail()) {
@@ -350,15 +343,12 @@ void ComputedValues::mergeComputedAttributes(
     containers::FlatHashSet<std::string_view> const& keysWritten,
     ComputeValuesOn mustComputeOn, velocypack::Builder& output) const {
   if (mustComputeOn == ComputeValuesOn::kInsert) {
-    // insert case
     mergeComputedAttributes(ctx, _attributesForInsert, trx, input, keysWritten,
                             output);
   } else if (mustComputeOn == ComputeValuesOn::kUpdate) {
-    // update case
     mergeComputedAttributes(ctx, _attributesForUpdate, trx, input, keysWritten,
                             output);
   } else if (mustComputeOn == ComputeValuesOn::kReplace) {
-    // replace case
     mergeComputedAttributes(ctx, _attributesForReplace, trx, input, keysWritten,
                             output);
   } else {
@@ -401,11 +391,10 @@ void ComputedValues::mergeComputedAttributes(
   }
 
   // now add all the computed attributes
-  ComputedValuesExpressionContext& cvec =
-      basics::downCast<ComputedValuesExpressionContext>(ctx);
+  auto& cvec = basics::downCast<ComputedValuesExpressionContext>(ctx);
 
   for (auto const& it : attributes) {
-    ComputedValue const& cv = _values[it.second];
+    auto const& cv = _values[it.second];
     if (cv.doOverride() || !keysWritten.contains(cv.name())) {
       // update "failOnWarning" flag for each computation
       cvec.failOnWarning(cv.failOnWarning());
@@ -424,9 +413,9 @@ void ComputedValues::mergeComputedAttributes(
   output.close();
 }
 
-Result ComputedValues::buildDefinitions(
-    TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
-    velocypack::Slice params) {
+Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
+                                        std::span<std::string const> shardKeys,
+                                        velocypack::Slice params) {
   if (params.isNone() || params.isNull()) {
     return {};
   }
@@ -435,44 +424,40 @@ Result ComputedValues::buildDefinitions(
     return {TRI_ERROR_BAD_PARAMETER, "'computedValues' must be an array"};
   }
 
-  using namespace std::literals::string_literals;
-
   containers::FlatHashSet<std::string_view> names;
-  Result res;
 
   for (auto it : VPackArrayIterator(params)) {
     VPackSlice name = it.get("name");
     if (!name.isString() || name.getStringLength() == 0) {
-      return res.reset(
-          TRI_ERROR_BAD_PARAMETER,
-          "invalid 'computedValues' entry: invalid attribute name");
+      return {TRI_ERROR_BAD_PARAMETER,
+              "invalid 'computedValues' entry: invalid attribute name"};
     }
 
-    std::string_view n = name.stringView();
+    auto n = name.stringView();
 
     if (n == StaticStrings::IdString || n == StaticStrings::RevString ||
         n == StaticStrings::KeyString || n == StaticStrings::FromString ||
         n == StaticStrings::ToString) {
-      return res.reset(
+      return {
           TRI_ERROR_BAD_PARAMETER,
-          "invalid 'computedValues' entry: '"s + name.copyString() +
-              "' attribute must not be computed via computation expression");
+          absl::StrCat(
+              "invalid 'computedValues' entry: '", name.stringView(),
+              "' attribute must not be computed via computation expression")};
     }
 
     // forbid computedValues on shardKeys!
     for (auto const& key : shardKeys) {
       if (key == n) {
-        return res.reset(TRI_ERROR_BAD_PARAMETER,
-                         "invalid 'computedValues' entry: cannot compute "
-                         "values for shard key attributes");
+        return {TRI_ERROR_BAD_PARAMETER,
+                "invalid 'computedValues' entry: cannot compute "
+                "values for shard key attributes"};
       }
     }
 
     VPackSlice doOverride = it.get("override");
     if (!doOverride.isBoolean()) {
-      return res.reset(
-          TRI_ERROR_BAD_PARAMETER,
-          "invalid 'computedValues' entry: 'override' must be a boolean");
+      return {TRI_ERROR_BAD_PARAMETER,
+              "invalid 'computedValues' entry: 'override' must be a boolean"};
     }
 
     ComputeValuesOn mustComputeOn = ComputeValuesOn::kNever;
@@ -481,11 +466,11 @@ Result ComputedValues::buildDefinitions(
     if (on.isArray()) {
       for (auto const& onValue : VPackArrayIterator(on)) {
         if (!onValue.isString()) {
-          return res.reset(
-              TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: invalid 'computeOn' value");
+          return {TRI_ERROR_BAD_PARAMETER,
+                  "invalid 'computedValues' entry: invalid 'computeOn' value"};
         }
-        std::string_view ov = onValue.stringView();
+
+        auto ov = onValue.stringView();
         if (ov == "insert") {
           mustComputeOn = static_cast<ComputeValuesOn>(
               ::mustComputeOnValue(mustComputeOn) |
@@ -502,17 +487,16 @@ Result ComputedValues::buildDefinitions(
               ::mustComputeOnValue(ComputeValuesOn::kReplace));
           _attributesForReplace.emplace(n, _values.size());
         } else {
-          return res.reset(
-              TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: invalid 'computeOn' value: '"s +
-                  onValue.copyString() + "'");
+          return {TRI_ERROR_BAD_PARAMETER,
+                  absl::StrCat("invalid 'computedValues' entry: invalid "
+                               "'computeOn' value: '",
+                               ov, "'")};
         }
       }
 
       if (mustComputeOn == ComputeValuesOn::kNever) {
-        return res.reset(
-            TRI_ERROR_BAD_PARAMETER,
-            "invalid 'computedValues' entry: empty 'computeOn' value");
+        return {TRI_ERROR_BAD_PARAMETER,
+                "invalid 'computedValues' entry: empty 'computeOn' value"};
       }
     } else if (on.isNone()) {
       // default for "computeOn" is ["insert", "update", "replace"]
@@ -524,27 +508,24 @@ Result ComputedValues::buildDefinitions(
       _attributesForUpdate.emplace(n, _values.size());
       _attributesForReplace.emplace(n, _values.size());
     } else {
-      return res.reset(
-          TRI_ERROR_BAD_PARAMETER,
-          "invalid 'computedValues' entry: invalid 'computeOn' value");
+      return {TRI_ERROR_BAD_PARAMETER,
+              "invalid 'computedValues' entry: invalid 'computeOn' value"};
     }
 
     VPackSlice expression = it.get("expression");
     if (!expression.isString()) {
-      return res.reset(
-          TRI_ERROR_BAD_PARAMETER,
-          "invalid 'computedValues' entry: invalid 'expression' value");
+      return {TRI_ERROR_BAD_PARAMETER,
+              "invalid 'computedValues' entry: invalid 'expression' value"};
     }
 
     // validate the actual expression
-    res.reset(StandaloneCalculation::validateQuery(
+    Result res = aql::StandaloneCalculation::validateQuery(
         vocbase, expression.stringView(), ::docParameter,
-        " in computation expression", /*isComputedValue*/ true));
+        " in computation expression", /*isComputedValue*/ true);
     if (res.fail()) {
-      std::string errorMsg = "invalid 'computedValues' entry: ";
-      errorMsg.append(res.errorMessage());
-      res.reset(TRI_ERROR_BAD_PARAMETER, std::move(errorMsg));
-      break;
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("invalid 'computedValues' entry: ", res.errorMessage())};
     }
 
     bool failOnWarning = false;
@@ -559,11 +540,10 @@ Result ComputedValues::buildDefinitions(
 
     // check for duplicate names in the array
     if (!names.emplace(name.stringView()).second) {
-      using namespace std::literals::string_literals;
-      return res.reset(
-          TRI_ERROR_BAD_PARAMETER,
-          "invalid 'computedValues' entry: duplicate attribute name '"s +
-              name.copyString() + "'");
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat(
+                  "invalid 'computedValues' entry: duplicate attribute name '",
+                  name.stringView(), "'")};
     }
 
     try {
@@ -571,24 +551,25 @@ Result ComputedValues::buildDefinitions(
                            mustComputeOn, doOverride.getBoolean(),
                            failOnWarning, keepNull);
     } catch (std::exception const& ex) {
-      return res.reset(TRI_ERROR_BAD_PARAMETER,
-                       "invalid 'computedValues' entry: "s + ex.what());
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("invalid 'computedValues' entry: ", ex.what())};
     }
   }
 
-  return res;
+  return {};
 }
 
 void ComputedValues::toVelocyPack(velocypack::Builder& result) const {
   if (_values.empty()) {
     result.add(VPackSlice::emptyArraySlice());
-  } else {
-    result.openArray();
-    for (auto const& it : _values) {
-      it.toVelocyPack(result);
-    }
-    result.close();
+    return;
   }
+
+  result.openArray();
+  for (auto const& it : _values) {
+    it.toVelocyPack(result);
+  }
+  result.close();
 }
 
 }  // namespace arangodb

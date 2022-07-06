@@ -40,6 +40,10 @@ class Methods;
 
 struct BatchOptions {
   BatchOptions();
+  BatchOptions(BatchOptions const&) = delete;
+  BatchOptions& operator=(BatchOptions const&) = delete;
+  BatchOptions(BatchOptions&&) = default;
+  BatchOptions& operator=(BatchOptions&&) = default;
   ~BatchOptions();
   void ensureComputedValuesContext(Methods& trx, LogicalCollection& collection);
 

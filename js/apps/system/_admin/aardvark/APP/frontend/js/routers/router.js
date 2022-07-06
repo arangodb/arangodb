@@ -815,13 +815,13 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            self.settingsView = new window.ComputedValuesView({
+            self.computedValuesView = new window.ComputedValuesView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
                 name: colname
               })
             });
-            self.settingsView.render();
+            self.computedValuesView.render();
           }
         });
       });
@@ -836,13 +836,13 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            self.settingsView = new window.ValidationView({
+            self.validationView = new window.ValidationView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
                 name: colname
               })
             });
-            self.settingsView.render();
+            self.validationView.render();
           }
         });
       });
@@ -1264,11 +1264,11 @@
       if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
       }
-      if (this.validationView && Backbone.history.getFragment().indexOf('cComputedValues') > -1) {
-        this.settingsView.resize();
+      if (this.computedValuesView && Backbone.history.getFragment().indexOf('cComputedValues') > -1) {
+        this.computedValuesView.resize();
       }
       if (this.validationView && Backbone.history.getFragment().indexOf('cSchema') > -1) {
-        this.settingsView.resize();
+        this.validationView.resize();
       }
     },
 
