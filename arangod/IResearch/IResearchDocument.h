@@ -170,10 +170,10 @@ class FieldIterator {
                                          VPackSlice slice);
 
   enum class LevelType {
-    NORMAL = 0,
-    NESTED_ROOT,
-    NESTED_FIELDS,
-    NESTED_OBJECTS
+    kNormal = 0,
+    kNestedRoot,
+    kNestedFields,
+    kNestedObjects
   };
 
   struct Level {
@@ -207,7 +207,7 @@ class FieldIterator {
   using MetaTraits = IndexMetaTraits<IndexMetaStruct>;
   void setRoot();
 
-  enum class NestedNullsResult { NONE, CONTINUE, RETURN };
+  enum class NestedNullsResult { kNone, kContinue, kReturn };
   auto processNestedNulls();
 #endif
 

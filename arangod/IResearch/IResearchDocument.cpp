@@ -744,11 +744,11 @@ void FieldIterator<IndexMetaStruct>::next() {
         if (top().missingFields && !top().missingFields->empty()) {
 #ifdef USE_ENTERPRISE
           switch (processNestedNulls()) {
-            case NestedNullsResult::CONTINUE:
+            case NestedNullsResult::kContinue:
               continue;
-            case NestedNullsResult::RETURN:
+            case NestedNullsResult::kReturn:
               return;
-            case NestedNullsResult::NONE:
+            case NestedNullsResult::kNone:
               // NO-OP
               break;
           }
