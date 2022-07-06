@@ -468,13 +468,9 @@ class RestrictToSingleShardChecker final
         break;
       }
 
-      case EN::ENUMERATE_COLLECTION: {
-        handleSourceNode(en);
-        break;
-      }
-
+      case EN::ENUMERATE_COLLECTION:
       case EN::INDEX: {
-        handleIndexNode(en);
+        handleDocumentNode(en);
         handleSourceNode(en);
         break;
       }
@@ -527,7 +523,10 @@ class RestrictToSingleShardChecker final
     }
   }
 
-  void handleIndexNode(arangodb::aql::ExecutionNode const* en) {
+  void handleDocumentNode(arangodb::aql::ExecutionNode const* en) {
+    TRI_ASSERT(en->getType() == arangodb::aql::ExecutionNode::INDEX ||
+               en->getType() ==
+                   arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION);
     auto collection = ::getCollection(en);
     auto variable = ::getOutVariable(en);
     auto shardId = ::getSingleShardId(_plan, en, collection, variable);
@@ -688,14 +687,18 @@ std::string getSingleShardId(
     return std::string();
   }
 
-  TRI_ASSERT(node->getType() == EN::INDEX || node->getType() == EN::FILTER ||
-             node->getType() == EN::INSERT || node->getType() == EN::UPDATE ||
-             node->getType() == EN::REPLACE || node->getType() == EN::REMOVE);
+  TRI_ASSERT(node->getType() == EN::INDEX ||
+             node->getType() == EN::ENUMERATE_COLLECTION ||
+             node->getType() == EN::FILTER || node->getType() == EN::INSERT ||
+             node->getType() == EN::UPDATE || node->getType() == EN::REPLACE ||
+             node->getType() == EN::REMOVE);
 
   arangodb::aql::Variable const* inputVariable = nullptr;
-  if (node->getType() == EN::INDEX) {
-    inputVariable = ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
-                        ->outVariable();
+  if (node->getType() == EN::INDEX ||
+      node->getType() == EN::ENUMERATE_COLLECTION) {
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::DocumentProducingNode const*>(node)
+            ->outVariable();
   } else if (node->getType() == EN::FILTER) {
     inputVariable =
         ExecutionNode::castTo<arangodb::aql::FilterNode const*>(node)
@@ -808,12 +811,21 @@ std::string getSingleShardId(
     }
     auto const* condition = c->condition();
 
-    if (condition == nullptr) {
-      return std::string();
+    if (condition != nullptr) {
+      arangodb::aql::AstNode const* root = condition->root();
+      ::findShardKeysInExpression(root, inputVariable, toFind, builder);
     }
+  }
 
-    arangodb::aql::AstNode const* root = condition->root();
-    ::findShardKeysInExpression(root, inputVariable, toFind, builder);
+  if (!toFind.empty() && (node->getType() == EN::INDEX ||
+                          node->getType() == EN::ENUMERATE_COLLECTION)) {
+    auto en = dynamic_cast<arangodb::aql::DocumentProducingNode const*>(node);
+    TRI_ASSERT(en != nullptr);
+
+    if (en->hasFilter()) {
+      arangodb::aql::AstNode const* root = en->filter()->node();
+      ::findShardKeysInExpression(root, inputVariable, toFind, builder);
+    }
   }
 
   builder.close();
@@ -888,14 +900,14 @@ bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
   if (traversal->vertexOutVariable() != nullptr) {
     useVertexProjections = arangodb::aql::utils::findProjections(
         traversal, traversal->vertexOutVariable(), /*expectedAttribute*/ "",
-        attributes);
+        /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useVertexProjections && options->producePathsVertices() &&
       pathOutVariable != nullptr) {
     useVertexProjections = arangodb::aql::utils::findProjections(
         traversal, pathOutVariable, arangodb::StaticStrings::GraphQueryVertices,
-        attributes);
+        /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useVertexProjections && !attributes.empty() &&
@@ -912,14 +924,14 @@ bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
   if (traversal->edgeOutVariable() != nullptr) {
     useEdgeProjections = arangodb::aql::utils::findProjections(
         traversal, traversal->edgeOutVariable(), /*expectedAttribute*/ "",
-        attributes);
+        /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useEdgeProjections && options->producePathsEdges() &&
       pathOutVariable != nullptr) {
     useEdgeProjections = arangodb::aql::utils::findProjections(
         traversal, pathOutVariable, arangodb::StaticStrings::GraphQueryEdges,
-        attributes);
+        /*excludeStartNodeFilterCondition*/ false, attributes);
   }
 
   if (useEdgeProjections) {
@@ -3533,7 +3545,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     auto current = node;
     while (current != nullptr) {
       if (current->getType() == EN::INDEX) {
-        auto indexNode = ExecutionNode::castTo<IndexNode const*>(current);
+        auto indexNode = ExecutionNode::castTo<IndexNode*>(current);
 
         // found an index node, now check if the expression is covered by the
         // index
@@ -3562,10 +3574,9 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
-              CalculationNode* cn = new CalculationNode(
+              CalculationNode* cn = plan->createNode<CalculationNode>(
                   plan.get(), plan->nextId(), std::move(expr),
                   calculationNode->outVariable());
-              plan->registerNode(cn);
               plan->replaceNode(setter, cn);
               modified = true;
               handled = true;

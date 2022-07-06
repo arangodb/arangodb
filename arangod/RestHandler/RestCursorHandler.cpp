@@ -34,6 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -313,6 +314,10 @@ RestStatus RestCursorHandler::handleQueryResult() {
   if (n <= batchSize) {
     // result is smaller than batchSize and will be returned directly. no need
     // to create a cursor
+
+    if (_queryResult.allowDirtyReads) {
+      setOutgoingDirtyReadsHeader(true);
+    }
 
     VPackOptions options = VPackOptions::Defaults;
     options.buildUnindexedArrays = true;
@@ -596,6 +601,10 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     builder.clear();
     TRI_ASSERT(r.ok());
     return RestStatus::WAITING;
+  }
+
+  if (_cursor->allowDirtyReads()) {
+    setOutgoingDirtyReadsHeader(true);
   }
 
   if (r.ok()) {

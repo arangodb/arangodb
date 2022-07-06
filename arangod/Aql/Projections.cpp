@@ -96,13 +96,22 @@ bool Projections::isCoveringIndexPosition(uint16_t position) noexcept {
   return position != kNoCoveringIndexPosition;
 }
 
+void Projections::clear() noexcept {
+  _projections.clear();
+  _datasourceId = DataSourceId::none();
+  _index.reset();
+}
+
 /// @brief set the index context for projections using an index
 void Projections::setCoveringContext(
     DataSourceId const& id, std::shared_ptr<arangodb::Index> const& index) {
-  TRI_ASSERT(_index == nullptr);
-
   _datasourceId = id;
   _index = index;
+}
+
+bool Projections::contains(Projection const& other) const noexcept {
+  return std::any_of(_projections.begin(), _projections.end(),
+                     [&](Projection const& p) { return p.path == other.path; });
 }
 
 /// @brief checks if we have a single attribute projection on the attribute
