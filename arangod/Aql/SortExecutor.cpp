@@ -217,8 +217,12 @@ void SortExecutor::consumeInputForStorage() {
 
 void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
                                 ExecutorState& state) {
+  size_t numDataRows = inputRange.countDataRows();
+
   size_t memoryUsageForRowIndexes =
-      inputRange.countDataRows() * sizeof(AqlItemMatrix::RowIndex);
+      numDataRows * sizeof(AqlItemMatrix::RowIndex);
+
+  _rowIndexes.reserve(numDataRows);
 
   ResourceUsageScope guard(_infos.getResourceMonitor(),
                            memoryUsageForRowIndexes);
@@ -303,6 +307,7 @@ Result SortExecutor::ingestFilesForStorage() {
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
+  ExecutorState state = ExecutorState::HASMORE;
 
   if (!_inputReady) {
     _curBlock = inputRange.getBlock();
@@ -312,30 +317,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
         _inputBlocks.emplace_back(_curBlock);
       }
     }
-  }
-
-  if ((!_mustStoreInput &&
-       (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty())) ||
-      (_mustStoreInput &&
-       (_returnNext >= _curEntryId &&
-        inputRange.upstreamState() == ExecutorState::DONE))) {
-    // Bail out if called too often,
-    // Bail out on no elements
-    if (_mustStoreInput) {
-      auto status = deleteRangeInStorage();
-      if (!status.ok()) {
-        LOG_TOPIC("20e7f", FATAL, arangodb::Logger::STARTUP)
-            << "unable to delete range in RocksDB storage: "
-            << status.errorMessage();
-        FATAL_ERROR_EXIT();
-      }
-    }
-    return {ExecutorState::DONE, NoStats{}, upstreamCall};
-  }
-
-  ExecutorState state = ExecutorState::HASMORE;
-
-  if (!_inputReady) {
     consumeInput(inputRange, state);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, upstreamCall};
@@ -448,28 +429,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
         _inputBlocks.emplace_back(_curBlock);
       }
     }
-  }
-
-  if ((!_mustStoreInput &&
-       (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty())) ||
-      (_mustStoreInput &&
-       (_returnNext >= _curEntryId &&
-        inputRange.upstreamState() == ExecutorState::DONE))) {
-    // Bail out if called too often,
-    // Bail out on no elements
-    if (_mustStoreInput) {
-      auto status = deleteRangeInStorage();
-      if (!status.ok()) {
-        LOG_TOPIC("c7490", FATAL, arangodb::Logger::STARTUP)
-            << "unable to delete range in RocksDB storage: "
-            << status.errorMessage();
-        FATAL_ERROR_EXIT();
-      }
-    }
-    return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
-  }
-
-  if (!_inputReady) {
     consumeInput(inputRange, state);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, 0, upstreamCall};
