@@ -271,12 +271,39 @@ void FollowerStateManager<S>::registerError(Result error) {
 template<typename S>
 auto FollowerStateManager<S>::backOffSnapshotRetry()
     -> futures::Future<futures::Unit> {
+  constexpr static auto countSuffix = [](auto count) {
+    switch (count) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
+    }
+  };
+  constexpr static auto fmtTime = [](auto duration) {
+    using namespace std::chrono_literals;
+    using namespace std::chrono;
+    if (duration < 10us) {
+      return fmt::format("{}ns", duration_cast<nanoseconds>(duration).count());
+    } else if (duration < 10ms) {
+      return fmt::format("{}us", duration_cast<microseconds>(duration).count());
+    } else if (duration < 10s) {
+      return fmt::format("{}ms", duration_cast<milliseconds>(duration).count());
+    } else if (duration < 10min) {
+      return fmt::format("{}s", duration_cast<seconds>(duration).count());
+    } else {
+      return fmt::format("{}min", duration_cast<minutes>(duration).count());
+    }
+  };
+
   auto const retryCount = this->_guardedData.getLockedGuard()->errorCounter;
   auto const duration = calcRetryDuration(retryCount);
   LOG_CTX("2ea59", TRACE, loggerContext)
-      << "retry snapshot transfer after "
-      << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
-      << "ms";
+      << "retry snapshot transfer after " << fmtTime(duration) << ", "
+      << retryCount << countSuffix(retryCount) << " retry";
   return delayedFuture(duration);
 }
 

@@ -367,6 +367,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/TestLogSpecification.h
   Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   Replication2/ReplicatedLog/MetricsTest.cpp
+  Replication2/ReplicatedState/FollowerResignTest.cpp
 )
 
 set(ARANGODB_GRAPH_TEST_SOURCES
