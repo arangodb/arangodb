@@ -23,14 +23,10 @@
 
 #include "SortExecutor.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
-#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
@@ -217,12 +213,7 @@ void SortExecutor::consumeInputForStorage() {
 
 void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
                                 ExecutorState& state) {
-  size_t numDataRows = inputRange.countDataRows();
-
-  size_t memoryUsageForRowIndexes =
-      numDataRows * sizeof(AqlItemMatrix::RowIndex);
-
-  _rowIndexes.reserve(numDataRows);
+  _rowIndexes.reserve(_rowIndexes.size() + numDataRows);
 
   ResourceUsageScope guard(_infos.getResourceMonitor(),
                            memoryUsageForRowIndexes);
@@ -493,34 +484,3 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
 }
-
-/*
-[[nodiscard]] auto SortExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputMatrix const& input, AqlCall const& call) const noexcept
-    -> size_t {
-  size_t rowsAvailable = input.countDataRows();
-  if (_input != nullptr) {
-    if (_returnNext < _sortedIndexes.size()) {
-      TRI_ASSERT(_returnNext <= rowsAvailable);
-      // if we have input, we are enumerating rows
-      // In a block within the given matrix.
-      // Unfortunately there could be more than
-      // one full block in the matrix and we do not know
-      // in which block we are.
-      // So if we are in the first block this will be accurate
-      rowsAvailable -= _returnNext;
-      // If we are in a later block, we will allocate space
-      // again for the first block.
-      // Nevertheless this is highly unlikely and
-      // only is bad if we sort few elements within highly nested
-      // subqueries.
-    }
-    // else we are in DONE state and not yet reset.
-    // We do not exactly now how many rows will be there
-  }
-  if (input.countShadowRows() == 0) {
-    return std::min(call.getLimit(), rowsAvailable);
-  }
-  return rowsAvailable;
-}
- */

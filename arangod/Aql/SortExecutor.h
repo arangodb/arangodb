@@ -132,7 +132,7 @@ class SortExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * @return ExecutorState, the stats, and a new Call that needs to be sent to
    * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
@@ -141,18 +141,12 @@ class SortExecutor {
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * @return ExecutorState, the stats, and a new Call that needs to be sent to
    * upstream
    */
 
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
-
-  /*
-  [[nodiscard]] auto expectedNumberOfRowsNew(
-      AqlItemBlockInputMatrix const& input, AqlCall const& call) const noexcept
-      -> size_t;
-      */
 
  private:
   void doSorting();

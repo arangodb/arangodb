@@ -27,7 +27,6 @@
 #include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CountCollectExecutor.h"
@@ -65,7 +64,7 @@ using InsertExecutor =
  * Right now we use the following Executors:
  *   FilterExecutor => SingleRowFetcher, non-passthrough
  *   IdExecutor => SingleRowFetcher, passthrough
- *   SortExecutor => AllRowsFetcher;
+ *   SortExecutor => SingleRowFetcher, passthrough;
  *   UnsortedGatherExecutor => MultiDependencySingleRowFetcher
  *   Insert/Update => SideEffectExecutor
  */
@@ -330,15 +329,6 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                   std::move(skip));
     }
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
-                                 AqlItemBlockInputMatrix>) {
-      _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
-      _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{MainQueryState::DONE,
-                                                 _aqlItemBlockMatrix.get()};
-      testee.testInjectInputRange(std::move(fakedInternalRange),
-                                  std::move(skip));
-    }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  MultiAqlItemBlockInputRange>) {
       MultiAqlItemBlockInputRange fakedInternalRange{MainQueryState::DONE, 0,
                                                      1};
@@ -407,15 +397,6 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                  AqlItemBlockInputRange>) {
       AqlItemBlockInputRange fakedInternalRange{MainQueryState::HASMORE, 0,
                                                 leftoverBlock, 0};
-      testee.testInjectInputRange(std::move(fakedInternalRange),
-                                  std::move(skip));
-    }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
-                                 AqlItemBlockInputMatrix>) {
-      _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
-      _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{MainQueryState::HASMORE,
-                                                 _aqlItemBlockMatrix.get()};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
     }

@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlock.h"

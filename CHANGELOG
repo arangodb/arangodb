@@ -6,12 +6,37 @@ devel
   in disck temporarily using rocksdb as a means to it, because then also the
   entries can be stored when inserted on disk using a customized comparator.
 
+* Web UI: Fixes a GraphViewer issue related to display issues with node
+  and edge labels. Boolean node or edge values could not be used as label
+  values (ES-1084).
+
+* Made the SortExecutor receive its input incrementally, instead of receiving
+  a whole matrix containing all input at once.
+
+* Optimization for index post-filtering (early pruning): in case an index
+  is used for lookups, and the index covers the IndexNode's post-filter
+  condition, then loading the full document from the storage engine is
+  now deferred until the filter condition is evaluated and it is established
+  that the document matches the filter condition.
+
+* Added a fully functional UI for Views that lets users view, modify mutable
+  properties and delete views from the web UI.
+
+* Fix thread ids and thread names in log output for threads that are not
+  started directly by ArangoDB code, but indirectly via library code.
+  Previously, the ids of these threads were always reported as "1", and
+  the thread name was "main". Now return proper thread ids and names.
+
+* Changed default Linux CI compiler to gcc-11.
+
 * Updated arangosync to v2.11.0-preview-2.
 
 * Add "AT LEAST" quantifier for array filters in AQL:
 
       `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
       `RETURN [1,2,3] AT LEAST (2) IN [1,2,3,4,5]`
+
+* Changed default macOS CI compiler to LLVM clang-14.
 
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
@@ -24,6 +49,8 @@ devel
   not-yet-officially committed data. Use at your own risk if performance
   is more important than correctness or if you know that data does not
   change.
+  The responses which can contain dirty reads will have set the HTTP header
+  "x-arango-potential-dirty-read" set to "true".
 
 * Changed HTTP response code for error number 1521 from 500 to 400.
 
