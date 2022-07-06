@@ -43,6 +43,8 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -288,10 +290,9 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
               // these nodes are only ok for analyzer expressions, but
               // not for computed values
               if (isComputedValue) {
-                errorMessage = "Node type '";
-                errorMessage.append(node->getTypeString())
-                    .append("' is forbidden")
-                    .append(errorContext);
+                errorMessage =
+                    absl::StrCat("Node type '", node->getTypeString(),
+                                 "' is forbidden", errorContext);
                 return false;
               }
             }
