@@ -159,6 +159,9 @@ class Expression {
   void prepareForExecution();
 
  private:
+  // prepare the expression for execution
+  void prepareForExecution(ExpressionContext& ctx);
+
   // free the internal data structures
   void freeInternals() noexcept;
 

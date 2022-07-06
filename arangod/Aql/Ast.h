@@ -561,7 +561,7 @@ class Ast {
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(transaction::Methods&,
                                 AqlFunctionsInternalCache&, AstNode*,
-                                bool optimizeNonCacheable);
+                                ValidateAndOptimizeOptions const& options);
 
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
   AstNode* optimizeIndexedAccess(AstNode*);

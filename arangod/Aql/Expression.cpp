@@ -92,7 +92,7 @@ void Expression::variables(VarSet& result) const {
 /// @brief execute the expression
 AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(ctx != nullptr);
-  prepareForExecution();
+  prepareForExecution(*ctx);
 
   TRI_ASSERT(_type != UNPROCESSED);
 
@@ -358,31 +358,40 @@ void Expression::initAccessor() {
   TRI_ASSERT(_accessor != nullptr);
 }
 
-/// @brief prepare the expression for execution
+/// @brief prepare the expression for execution, providing an
+/// expression context. this can have performance advantages over
+/// prepareForExecution() without an ExpressionContext
+void Expression::prepareForExecution(ExpressionContext& ctx) {
+  TRI_ASSERT(_type != UNPROCESSED);
+
+  if (_type == JSON && _data == nullptr) {
+    // generate a constant value, using a recycled Builder from
+    // the context
+    transaction::BuilderLeaser builder(&ctx.trx());
+    _node->toVelocyPackValue(*builder.get());
+
+    _data = new uint8_t[static_cast<size_t>(builder->size())];
+    memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
+  } else if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
+    initAccessor();
+  }
+}
+
+/// @brief prepare the expression for execution, without an
+/// ExpressionContext.
 void Expression::prepareForExecution() {
   TRI_ASSERT(_type != UNPROCESSED);
 
-  switch (_type) {
-    case JSON: {
-      if (_data == nullptr) {
-        // generate a constant value
-        velocypack::Buffer<uint8_t> buffer;
-        velocypack::Builder builder(buffer);
-        _node->toVelocyPackValue(builder);
+  if (_type == JSON && _data == nullptr) {
+    // generate a constant value, using an on-stack Builder
+    velocypack::Buffer<uint8_t> buffer;
+    velocypack::Builder builder(buffer);
+    _node->toVelocyPackValue(builder);
 
-        _data = new uint8_t[static_cast<size_t>(builder.size())];
-        memcpy(_data, builder.data(), static_cast<size_t>(builder.size()));
-      }
-      break;
-    }
-    case ATTRIBUTE_ACCESS: {
-      if (_accessor == nullptr) {
-        initAccessor();
-      }
-      break;
-    }
-    default: {
-    }
+    _data = new uint8_t[static_cast<size_t>(builder.size())];
+    memcpy(_data, builder.data(), static_cast<size_t>(builder.size()));
+  } else if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
+    initAccessor();
   }
 }
 

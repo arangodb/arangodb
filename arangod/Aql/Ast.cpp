@@ -84,7 +84,6 @@ struct ValidateAndOptimizeContext {
   uint64_t recursionDepth = 0;  // current depth of the tree we walk
   bool hasSeenAnyWriteNode = false;
   bool hasSeenWriteNodeInCurrentScope = false;
-  bool optimizeNonCacheable = true;
 };
 
 auto doNothingVisitor = [](AstNode const*) {};
@@ -2362,7 +2361,6 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
 void Ast::validateAndOptimize(transaction::Methods& trx,
                               Ast::ValidateAndOptimizeOptions const& options) {
   ::ValidateAndOptimizeContext context(trx);
-  context.optimizeNonCacheable = options.optimizeNonCacheable;
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
@@ -2573,9 +2571,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
 
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
-        return this->optimizeFunctionCall(ctx->trx,
-                                          ctx->aqlFunctionsInternalCache, node,
-                                          ctx->optimizeNonCacheable);
+        return this->optimizeFunctionCall(
+            ctx->trx, ctx->aqlFunctionsInternalCache, node, options);
       }
       // optimization not allowed
       return node;
@@ -3696,7 +3693,7 @@ AstNode* Ast::optimizeAttributeAccess(
 AstNode* Ast::optimizeFunctionCall(
     transaction::Methods& trx,
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node,
-    bool optimizeNonCacheable) {
+    Ast::ValidateAndOptimizeOptions const& options) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
@@ -3803,7 +3800,8 @@ AstNode* Ast::optimizeFunctionCall(
     return node;
   }
 
-  if (!optimizeNonCacheable && !func->hasFlag(Function::Flags::Cacheable)) {
+  if (!options.optimizeNonCacheable &&
+      !func->hasFlag(Function::Flags::Cacheable)) {
     // non-cacheable function
     return node;
   }
