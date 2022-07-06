@@ -438,48 +438,44 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
           opts->getExpressionCtx(), {}, opts->collectionToShard(),
           opts->getVertexProjections(), opts->getEdgeProjections());
 
+      using Provider = SingleServerProvider<SingleServerProviderStep>;
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
-        if (isKPaths)  // TODO Anthony: Look for a cleaner approach
-          return _makeExecutionBlockImpl<
-              KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>,
-              SingleServerProvider<SingleServerProviderStep>,
-              SingleServerBaseProviderOptions>(
+        if (isKPaths) {  // TODO Anthony: Look for a cleaner approach
+          return _makeExecutionBlockImpl<KPathEnumerator<Provider>, Provider,
+                                         SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
-        else
-          return _makeExecutionBlockImpl<
-              AllShortestPathsEnumerator<
-                  SingleServerProvider<SingleServerProviderStep>>,
-              SingleServerProvider<SingleServerProviderStep>,
-              SingleServerBaseProviderOptions>(
+        } else {
+          return _makeExecutionBlockImpl<AllShortestPathsEnumerator<Provider>,
+                                         Provider,
+                                         SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
+        }
       } else {
-        if (isKPaths)  // TODO Anthony: Look for a cleaner approach
-          return _makeExecutionBlockImpl<
-              TracedKPathEnumerator<
-                  SingleServerProvider<SingleServerProviderStep>>,
-              ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-              SingleServerBaseProviderOptions>(
+        if (isKPaths) {  // TODO Anthony: Look for a cleaner approach
+          // _makeExecutionBlockImpl with only Enumerator
+          return _makeExecutionBlockImpl<TracedKPathEnumerator<Provider>,
+                                         ProviderTracer<Provider>,
+                                         SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
-        else
+        } else {
           return _makeExecutionBlockImpl<
-              TracedAllShortestPathsEnumerator<
-                  SingleServerProvider<SingleServerProviderStep>>,
-              ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-              SingleServerBaseProviderOptions>(
+              TracedAllShortestPathsEnumerator<Provider>,
+              ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
+        }
       }
     } else {
       auto cache = std::make_shared<RefactoredClusterTraverserCache>(
@@ -489,22 +485,24 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       ClusterBaseProviderOptions backwardProviderOptions(
           cache, engines(), true, opts->produceVertices());
 
-      if (isKPaths)  // TODO Anthony: Look for a cleaner approach
-        return _makeExecutionBlockImpl<
-            KPathEnumerator<ClusterProvider<ClusterProviderStep>>,
-            ClusterProvider<ClusterProviderStep>, ClusterBaseProviderOptions>(
+      using ClusterProvider = ClusterProvider<ClusterProviderStep>;
+      if (isKPaths) {  // TODO Anthony: Look for a cleaner approach
+        return _makeExecutionBlockImpl<KPathEnumerator<ClusterProvider>,
+                                       ClusterProvider,
+                                       ClusterBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, outputRegister, engine, sourceInput, targetInput,
             registerInfos);
-      else
+      } else {
         return _makeExecutionBlockImpl<
-            AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>,
-            ClusterProvider<ClusterProviderStep>, ClusterBaseProviderOptions>(
-            opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
-            registerInfos);
+            AllShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+            ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
+                                        std::move(backwardProviderOptions),
+                                        enumeratorOptions, validatorOptions,
+                                        outputRegister, engine, sourceInput,
+                                        targetInput, registerInfos);
+      }
     }
   } else {
     auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
