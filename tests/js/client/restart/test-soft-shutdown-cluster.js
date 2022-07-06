@@ -524,7 +524,7 @@ function testSuitePregel() {
       while (!testAlgoCheck(pid)) {
         console.warn("Pregel still running...");
         wait(0.2);
-        if (time() - startTime > 60) {
+        if (time() - startTime > 120) {
           assertTrue(false, "Pregel did not finish in time.");
         }
       }
