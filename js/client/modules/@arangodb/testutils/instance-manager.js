@@ -271,6 +271,10 @@ class instanceManager {
     }
   }
   launchInstance() {
+    if (this.options.hasOwnProperty('server')) {
+      print("external server configured - not testing readyness! " + this.options.server);
+      return;
+    }
     const startTime = time();
     try {
       this.arangods.forEach(arangod => arangod.startArango());
@@ -1092,6 +1096,11 @@ class instanceManager {
       }
       this.endpoint = d.endpoint;
       this.url = d.url;
+    }
+
+    if (this.options.hasOwnProperty('server')) {
+      arango.reconnect(this.endpoint, '_system', 'root', '');
+      return true;
     }
 
     try {
