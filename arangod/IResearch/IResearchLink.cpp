@@ -380,7 +380,7 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
 Result IResearchLink::insert(transaction::Methods& trx,
                              LocalDocumentId const documentId,
                              velocypack::Slice const doc) {
-  return IResearchDataStore::insert<FieldIterator<FieldMeta, FieldMeta>,
+  return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                     IResearchLinkMeta>(trx, documentId, doc,
                                                        _meta);
 }

@@ -298,7 +298,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
-  Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
   Aql/AqlCallList.cpp
   Aql/AqlCallSet.cpp
@@ -307,7 +306,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlFunctionsInternalCache.cpp
   Aql/AqlItemBlock.cpp
-  Aql/AqlItemBlockInputMatrix.cpp
   Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp

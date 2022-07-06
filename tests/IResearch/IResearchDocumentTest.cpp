@@ -74,12 +74,10 @@
 namespace {
 
 using IResearchLinkIterator =
-    arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta,
-                                       arangodb::iresearch::FieldMeta>;
+    arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta>;
 
 using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
-    arangodb::iresearch::IResearchInvertedIndexMeta,
-    arangodb::iresearch::InvertedIndexField>;
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext>;
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -3361,7 +3359,8 @@ TEST_F(
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  it.reset(json->slice(), tmp);
 
   for (auto& assertField : assertFields) {
     ASSERT_TRUE(it.valid());
@@ -3491,7 +3490,8 @@ TEST_F(
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  it.reset(json->slice(), tmp);
 
   size_t fieldIdx{};
   for (auto& assertField : assertFields) {
@@ -3626,7 +3626,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  it.reset(json->slice(), tmp);
 
   size_t fieldIdx{};
   for (auto& assertField : assertFields) {
@@ -3661,7 +3662,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_not_array_expansion) {
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  it.reset(json->slice(), tmp);
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
                                                mangleNumeric("boost"));
@@ -3691,7 +3693,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  it.reset(json->slice(), tmp);
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
                                                mangleNumeric("boost"));
@@ -3720,7 +3723,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  it.reset(json->slice(), tmp);
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
                                                mangleNumeric("boost"));
@@ -3738,7 +3742,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
-
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
@@ -3757,7 +3761,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
 
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  it.reset(json->slice(), tmp);
   ASSERT_TRUE(it.valid());
   auto& field = *it;
   std::string name(field.name());
@@ -3798,9 +3802,10 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_partial_path_match) {
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  it.reset(json->slice(), tmp);
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
       [](auto& server, auto const& it) {
@@ -3843,10 +3848,11 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_IncludeAllFields_simple) {
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
-
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  ASSERT_FALSE(tmp._subFields.empty());
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  it.reset(json->slice(), tmp);
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
       [](auto& server, auto const& it) {
@@ -3870,7 +3876,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_IncludeAllFields_simple) {
   ASSERT_FALSE(it.valid());
 }
 
-TEST_F(IResearchDocumentTest, InvertedFieldIterator_includeAllFields_subobject) {
+TEST_F(IResearchDocumentTest,
+       InvertedFieldIterator_includeAllFields_subobject) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
       R"({"fields" : [{"name": "boost.foo"},
                       {"name": "booster", "includeAllFields":true, "analyzer":"iresearch-document-string"}]})");
@@ -3890,9 +3897,12 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_includeAllFields_subobject) 
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  ASSERT_FALSE(tmp._subFields.empty());
+
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  it.reset(json->slice(), tmp);
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
       [](auto& server, auto const& it) {
@@ -3922,7 +3932,6 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_includeAllFields_subobject) 
   ASSERT_FALSE(it.valid());
 }
 
-
 TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
       R"({"includeAllFields":true, "fields" : [
@@ -3943,17 +3952,20 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
+  arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext tmp(indexMeta);
+  ASSERT_FALSE(tmp._subFields.empty());
+
   InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                 arangodb::IndexId(0));
-  it.reset(json->slice(), indexMeta);
+  it.reset(json->slice(), tmp);
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
       [](auto& server, auto const& it) {
         assertField<TypedAnalyzer, true>(
-            server, *it, mangleInvertedIndexStringIdentity("boost.foo.bar.bas.a"),
+            server, *it,
+            mangleInvertedIndexStringIdentity("boost.foo.bar.bas.a"),
             "iresearch-document-string");
-      }
-  };
+      }};
 
   size_t fieldIdx{};
   for (auto& assertField : assertFields) {
@@ -3962,10 +3974,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
     assertField(server, it);
     ++it;
   }
-
   ASSERT_FALSE(it.valid());
 }
-
 
 #if USE_ENTERPRISE
 #include "tests/IResearch/IResearchDocumentTestEE.h"

@@ -127,7 +127,7 @@ using MissingFieldsMap =
 /// @brief allows to iterate over the provided VPack accoring the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
-template<typename IndexMetaStruct, typename LevelMeta>
+template<typename IndexMetaStruct>
 class FieldIterator {
  public:
   explicit FieldIterator(arangodb::transaction::Methods& trx,
@@ -163,22 +163,22 @@ class FieldIterator {
  private:
   using AnalyzerIterator = FieldMeta::Analyzer const*;
 
-  using Filter = bool (*)(std::string& buffer, LevelMeta const*& rootMeta,
+  using Filter = bool (*)(std::string& buffer, IndexMetaStruct const*& rootMeta,
                           IteratorValue const& value);
 
   using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
                                          VPackSlice slice);
 
   enum class LevelType {
-    NORMAL = 0,
-    NESTED_ROOT,
-    NESTED_FIELDS,
-    NESTED_OBJECTS
+    kNormal = 0,
+    kNestedRoot,
+    kNestedFields,
+    kNestedObjects
   };
 
   struct Level {
-    Level(velocypack::Slice slice, size_t nameLength, LevelMeta const& meta,
-          Filter levelFilter, LevelType levelType,
+    Level(velocypack::Slice slice, size_t nameLength,
+          IndexMetaStruct const& meta, Filter levelFilter, LevelType levelType,
           std::optional<arangodb::iresearch::MissingFieldsContainer>&&
               missingTracker)
         : it(slice),
@@ -189,8 +189,8 @@ class FieldIterator {
           missingFields(missingTracker) {}
 
     Iterator it;
-    size_t nameLength;      // length of the name at the current level
-    LevelMeta const* meta;  // metadata
+    size_t nameLength;            // length of the name at the current level
+    IndexMetaStruct const* meta;  // metadata
     Filter filter;
     LevelType type;
     // TODO(Dronplane): Try to avoid copy.
@@ -204,15 +204,15 @@ class FieldIterator {
   }
 
 #ifdef USE_ENTERPRISE
-  using MetaTraits = IndexMetaTraits<LevelMeta>;
+  using MetaTraits = IndexMetaTraits<IndexMetaStruct>;
   void setRoot();
 
-  enum class NestedNullsResult { NONE, CONTINUE, RETURN };
+  enum class NestedNullsResult { kNone, kContinue, kReturn };
   auto processNestedNulls();
 #endif
 
   void popLevel();
-  bool pushLevel(VPackSlice value, LevelMeta const& meta, Filter filter);
+  bool pushLevel(VPackSlice value, IndexMetaStruct const& meta, Filter filter);
   void fieldSeen(std::string& name);
 
   // disallow copy and assign
@@ -250,11 +250,13 @@ class FieldIterator {
 
   bool _isDBServer;
   bool _disableFlush;
+#ifdef USE_ENTERPRISE
+  bool _needDoc{false};
+  bool _hasNested{false};
+#endif
   MissingFieldsMap _missingFieldsMap;
 #ifdef USE_ENTERPRISE
   std::vector<std::string> _nestingBuffers;
-  bool _needDoc{false};
-  bool _hasNested{false};
 #endif
 };  // FieldIterator
 

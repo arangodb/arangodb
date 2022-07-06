@@ -189,9 +189,9 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   normalized.add(arangodb::StaticStrings::IndexUnique,
                  arangodb::velocypack::Value(false));
 
-  bool bck = basics::VelocyPackHelper::getBooleanValue(
-      definition, arangodb::StaticStrings::IndexInBackground, false);
-  normalized.add(arangodb::StaticStrings::IndexInBackground, VPackValue(bck));
+  arangodb::IndexFactory::processIndexInBackground(definition, normalized);
+  arangodb::IndexFactory::processIndexParallelism(definition, normalized);
+
   return res;
 }
 

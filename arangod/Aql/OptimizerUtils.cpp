@@ -626,7 +626,9 @@ void captureArrayFilterArgumentExpressions(
           } else if (node->type == NODE_TYPE_FCALL) {
             if (!evaluateFCalls) {  // FIXME(Dronplane): we should never execute
                                     // index-backed functions. But how to track
-                                    // it?
+                                    // it? -> execute only functions that does
+                                    // not touch index variable and local temp
+                                    // variables!
               captureFCallArgumentExpressions(ast, varInfo, node, localPath,
                                               indexVariable, result);
             } else {
@@ -764,6 +766,7 @@ namespace arangodb::aql::utils {
 // some data in it.
 bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
+                     bool excludeStartNodeFilterCondition,
                      std::unordered_set<AttributeNamePath>& attributes) {
   using EN = arangodb::aql::ExecutionNode;
 
@@ -876,6 +879,18 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           attributes.emplace(AttributeNamePath(it.attributePath));
         }
       }
+    } else if (current->getType() == EN::ENUMERATE_COLLECTION) {
+      EnumerateCollectionNode const* en =
+          ExecutionNode::castTo<EnumerateCollectionNode const*>(current);
+
+      if ((!excludeStartNodeFilterCondition || current != n) &&
+          en->hasFilter()) {
+        if (!Ast::getReferencedAttributesRecursive(
+                en->filter()->node(), v,
+                /*expectedAttribute*/ expectedAttribute, attributes)) {
+          return false;
+        }
+      }
     } else if (current->getType() == EN::INDEX) {
       IndexNode const* indexNode =
           ExecutionNode::castTo<IndexNode const*>(current);
@@ -885,6 +900,15 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           !tryAndExtractProjectionsFromExpression(indexNode,
                                                   condition->root())) {
         return false;
+      }
+
+      if ((!excludeStartNodeFilterCondition || current != n) &&
+          indexNode->hasFilter()) {
+        if (!Ast::getReferencedAttributesRecursive(
+                indexNode->filter()->node(), v,
+                /*expectedAttribute*/ expectedAttribute, attributes)) {
+          return false;
+        }
       }
     } else {
       // all other node types mandate a check

@@ -76,7 +76,6 @@ const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
 }
 
 IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
-  _analyzers.emplace_back(IResearchAnalyzerFeature::identity());
   _primitiveOffset = 1;
 }
 
@@ -535,7 +534,7 @@ bool InvertedIndexField::init(
     TRI_ASSERT(!rootMode);
     try {
       TRI_ASSERT(!parent._analyzers.empty());
-      _analyzers.push_back(parent.analyzer());
+      _analyzers[0] = parent.analyzer();
       TRI_ParseAttributeString(slice.stringView(), fieldParts, true);
       TRI_ASSERT(!fieldParts.empty());
     } catch (arangodb::basics::Exception const& err) {
@@ -564,7 +563,6 @@ bool InvertedIndexField::init(
     }
 
     if (slice.hasKey(kAnalyzerFieldName)) {
-      _analyzers.clear();
       AnalyzerPool::ptr analyzer;
       auto analyzerSlice = slice.get(kAnalyzerFieldName);
       if (analyzerSlice.isString()) {
@@ -620,15 +618,14 @@ bool InvertedIndexField::init(
           // save in referencedAnalyzers
           analyzerDefinitions.emplace(analyzer);
         }
-        TRI_ASSERT(_analyzers.empty());
-        _analyzers.emplace_back(std::move(analyzer), std::move(shortName));
+        _analyzers[0] =
+            FieldMeta::Analyzer(std::move(analyzer), std::move(shortName));
       } else {
         errorField = kAnalyzerFieldName;
         return false;
       }
     } else if (!rootMode) {
-      TRI_ASSERT(_analyzers.empty());
-      _analyzers.push_back(parent.analyzer());
+      _analyzers[0] = parent.analyzer();
     }
     if (slice.hasKey(kFeaturesFieldName)) {
       Features tmp;
@@ -705,7 +702,7 @@ bool InvertedIndexField::init(
       errorField = kNameFieldName;
       return false;
     } else if (expansionCount > 0 && !parent._attribute.empty()) {
-      LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("2646d", ERR, arangodb::iresearch::TOPIC)
           << "Error parsing field: '" << kNameFieldName << "'. "
           << "Expansion is not allowed for nested fields.";
       errorField = kNameFieldName;
@@ -752,7 +749,7 @@ bool InvertedIndexField::init(
       return false;
     }
     std::string localError;
-    absl::flat_hash_set<std::string> fieldsDeduplicator;
+    containers::FlatHashSet<std::string> fieldsDeduplicator;
     for (auto it = VPackArrayIterator(nestedSlice); it.valid(); ++it) {
       InvertedIndexField nested;
       if (nested.init(it.value(), analyzerDefinitions, version, extendedNames,
@@ -949,5 +946,37 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
   }
 
   return true;
+}
+
+void IResearchInvertedIndexMetaIndexingContext::addField(
+    InvertedIndexField const& field) {
+  for (auto const& f : field._fields) {
+    auto current = this;
+    for (size_t i = 0; i < f._attribute.size(); ++i) {
+      auto const& a = f._attribute[i];
+      auto emplaceRes = current->_subFields.emplace(
+          a.name, IResearchInvertedIndexMetaIndexingContext{*_meta, false});
+
+      if (!emplaceRes.second) {
+        TRI_ASSERT(emplaceRes.first->second._isArray == a.shouldExpand);
+        current = &(emplaceRes.first->second);
+      } else {
+        current = &(emplaceRes.first->second);
+        current->_isArray = a.shouldExpand;
+      }
+      if (i == f._attribute.size() - 1) {
+        current->_analyzers = &f._analyzers;
+        current->_primitiveOffset = f._primitiveOffset;
+        current->_includeAllFields = f._includeAllFields;
+        current->_trackListPositions = f._trackListPositions;
+      }
+    }
+#ifdef USE_ENTERPRISE
+    if (!f._fields.empty()) {
+      current->_hasNested = true;
+      current->addField(f);
+    }
+#endif
+  }
 }
 }  // namespace arangodb::iresearch
