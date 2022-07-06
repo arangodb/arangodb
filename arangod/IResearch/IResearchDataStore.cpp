@@ -1675,10 +1675,11 @@ template Result IResearchDataStore::insert<FieldIterator<FieldMeta, FieldMeta>,
     velocypack::Slice doc, IResearchLinkMeta const& meta);
 
 template Result IResearchDataStore::insert<
-    FieldIterator<IResearchInvertedIndexMeta, InvertedIndexField>,
-    IResearchInvertedIndexMeta>(transaction::Methods& trx,
-                                LocalDocumentId documentId,
-                                velocypack::Slice doc,
-                                IResearchInvertedIndexMeta const& meta);
+    FieldIterator<IResearchInvertedIndexMetaIndexingContext,
+                  IResearchInvertedIndexMetaIndexingContext>,
+    IResearchInvertedIndexMetaIndexingContext>(
+    transaction::Methods& trx, LocalDocumentId documentId,
+    velocypack::Slice doc,
+    IResearchInvertedIndexMetaIndexingContext const& meta);
 
 }  // namespace arangodb::iresearch

@@ -127,6 +127,7 @@ using MissingFieldsMap =
 /// @brief allows to iterate over the provided VPack accoring the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
+// FIXME(Dronplane): no need 2 arguments anymore?
 template<typename IndexMetaStruct, typename LevelMeta>
 class FieldIterator {
  public:

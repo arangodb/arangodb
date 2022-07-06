@@ -156,7 +156,7 @@ struct InvertedIndexField {
   /// @brief nested fields
   std::vector<InvertedIndexField> _fields;
   /// @brief analyzer to apply. Array to comply with old views definition
-  absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
+  std::array<FieldMeta::Analyzer, 1> _analyzers{FieldMeta::Analyzer(nullptr)};
   /// @brief override for field features
   Features _features;
   /// @brief start point for non primitive analyzers
@@ -235,13 +235,45 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   IResearchInvertedIndexSort _sort;
   // stored values associated with the link
   IResearchViewStoredValues _storedValues;
-  // Not used in the inverted index but need this member for compliance with
-  // the LinkMeta interface
-  irs::string_ref _collectionName;
   // the version of the iresearch interface e.g. which how data is stored in
   // iresearch (default == MAX) IResearchInvertedIndexMeta
   LinkVersion _version{LinkVersion::MAX};
   Consistency _consistency{Consistency::kEventual};
   bool _hasNested{false};
 };
+
+struct IResearchInvertedIndexMetaIndexingContext {
+  IResearchInvertedIndexMetaIndexingContext(
+      IResearchInvertedIndexMeta const& field, bool add = true)
+      : _analyzers(field._analyzers),
+        _primitiveOffset(field._primitiveOffset),
+        _meta(&field),
+        _includeAllFields(field._includeAllFields),
+        _trackListPositions(field._trackListPositions),
+        _sort(field._sort),
+        _storedValues(field._storedValues) {
+    if (add) {
+      addField(field);
+    }
+  }
+
+  void addField(InvertedIndexField const& field);
+
+  absl::flat_hash_map<std::string_view,
+                      IResearchInvertedIndexMetaIndexingContext>
+      _subFields;
+  std::reference_wrapper<std::array<FieldMeta::Analyzer, 1> const>
+      _analyzers;
+  size_t _primitiveOffset;
+  IResearchInvertedIndexMeta const* _meta;
+  bool _isArray{false};
+  bool _hasNested{false};
+  bool _includeAllFields;
+  bool _trackListPositions;
+  ValueStorage const _storeValues{ValueStorage::ID};
+  std::string _collectionName;
+  IResearchInvertedIndexSort const& _sort;
+  IResearchViewStoredValues const& _storedValues;
+};
+
 }  // namespace arangodb::iresearch
