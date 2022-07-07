@@ -374,6 +374,8 @@ RestStatus RestAdminClusterHandler::execute() {
     std::string const& command = suffixes.at(0);
     if (command == FailureOracle) {
       return handleFailureOracle();
+    } else if (command == Rebalance) {
+      return handleRebalance();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
@@ -436,8 +438,8 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
                 ctx->server, agency.get(rootPath->plan()->vec()),
                 agency.get(rootPath->current()->vec()));
 
-            // if the server is still in the list, it was neither in plan nor in
-            // current
+            // if the server is still in the list, it was neither in plan nor
+            // in current
             if (isResponsible) {
               auto planVersionPath = rootPath->plan()->version();
               // do a write transaction if server is no longer used
@@ -1845,8 +1847,9 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                             AsyncAgencyComm::RequestType::READ,
                             VPackBuffer<uint8_t>())
           .thenValue([self](AsyncAgencyCommResult&& result) {
-            // this lambda has to capture self since collect returns early on an
-            // exception and the RestHandler might be freed too early otherwise
+            // this lambda has to capture self since collect returns early on
+            // an exception and the RestHandler might be freed too early
+            // otherwise
 
             if (result.fail() || result.statusCode() != fuerte::StatusOK) {
               THROW_ARANGO_EXCEPTION(result.asResult());
@@ -1988,10 +1991,10 @@ void theSimpleStupidOne(
     std::map<std::string, std::unordered_set<CollectionShardPair>>& shardMap,
     std::vector<MoveShardDescription>& moves, std::uint32_t numMoveShards) {
   // If you dislike this algorithm feel free to add a new one.
-  // shardMap is a map from dbserver to a set of shards located on that server.
-  // your algorithm has to fill `moves` with the move shard operations that it
-  // wants to execute. Please fill in all values of the `MoveShardDescription`
-  // struct.
+  // shardMap is a map from dbserver to a set of shards located on that
+  // server. your algorithm has to fill `moves` with the move shard operations
+  // that it wants to execute. Please fill in all values of the
+  // `MoveShardDescription` struct.
 
   std::unordered_set<std::string> movedShards;
   while (moves.size() < numMoveShards) {
@@ -2168,6 +2171,12 @@ auto inspect(Inspector& f, RebalanceOptions& x) {
 }  // namespace
 
 RestStatus RestAdminClusterHandler::handleRebalanceGet() {
+  if (request()->suffixes().size() != 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_admin/cluster/rebalance");
+    return RestStatus::DONE;
+  }
+
   VPackBuilder builder;
   auto p = collectRebalanceInformation({});
   auto leader = p.computeLeaderImbalance();
@@ -2184,31 +2193,68 @@ RestStatus RestAdminClusterHandler::handleRebalanceGet() {
   return RestStatus::DONE;
 }
 
-RestStatus RestAdminClusterHandler::handleRebalance() {
+RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  auto batch = velocypack::deserialize<std::vector<MoveShardDescription>>(
+      _request->payload());
+
+  if (batch.empty()) {
+    generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+    return RestStatus::DONE;
+  }
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    auto write = arangodb::agency::envelope::into_builder(builder).write();
+
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    std::string timestamp = timepointToString(std::chrono::system_clock::now());
+    for (auto const& move : batch) {
+      std::string jobId = std::to_string(ci.uniqid());
+      auto jobToDoPath =
+          arangodb::cluster::paths::root()->arango()->target()->toDo()->job(
+              jobId);
+      write = std::move(write).emplace(
+          jobToDoPath->str(), [&](VPackBuilder& builder) {
+            builder.add("type", VPackValue("moveShard"));
+            builder.add("database", VPackValue(_vocbase.name()));
+            builder.add("collection", VPackValue(move.collection));
+            builder.add("jobId", VPackValue(jobId));
+            builder.add("shard", VPackValue(move.shard));
+            builder.add("fromServer", VPackValue(move.from));
+            builder.add("toServer", VPackValue(move.to));
+            builder.add("isLeader", VPackValue(move.isLeader));
+            builder.add("creator",
+                        VPackValue(ServerState::instance()->getId()));
+            builder.add("timeCreated", VPackValue(timestamp));
+          });
+    }
+    std::move(write).end().done();
+  }
+
+  return waitForFuture(AsyncAgencyComm()
+                           .sendWriteTransaction(20s, std::move(trx))
+                           .thenValue([this](AsyncAgencyCommResult&& result) {
+                             if (result.ok() && result.statusCode() == 200) {
+                               generateOk(rest::ResponseCode::ACCEPTED,
+                                          VPackSlice::noneSlice());
+                             } else {
+                               generateError(result.asResult());
+                             }
+                           }));
+
+  return RestStatus::DONE;
+}
+RestStatus RestAdminClusterHandler::handleRebalancePlan() {
   using namespace cluster::rebalance;
-  if (!ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on coordinators");
-    return RestStatus::DONE;
-  }
-
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
-  }
-
-  if (request()->requestType() == rest::RequestType::GET) {
-    return handleRebalanceGet();
-  }
-
-  bool parseSuccess = false;
-  VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {  // error message generated in parseVPackBody
-    return RestStatus::DONE;
-  }
 
   auto const readRebalanceOptions = [&]() -> std::optional<RebalanceOptions> {
-    auto opts = velocypack::deserialize<RebalanceOptions>(body);
+    auto opts = velocypack::deserialize<RebalanceOptions>(_request->payload());
     if (opts.maximumNumberOfMoves > 5000) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "at most 5000 moves allowed");
@@ -2256,10 +2302,13 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
         {
           VPackArrayBuilder ab(&builder);
           for (auto const& move : moves) {
+            auto const& shard = p.shards[move.shardId];
             VPackObjectBuilder ob(&builder);
             builder.add("from", VPackValue(p.dbServers[move.from].id));
             builder.add("to", VPackValue(p.dbServers[move.to].id));
-            builder.add("shardId", VPackValue(p.shards[move.shardId].name));
+            builder.add("shard", VPackValue(shard.name));
+            builder.add("collection",
+                        VPackValue(p.collections[shard.collectionId].name));
             builder.add("isLeader", VPackValue(move.isLeader));
           }
         }
@@ -2325,6 +2374,40 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
   }
 
   return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleRebalance() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() == rest::RequestType::GET) {
+    return handleRebalanceGet();
+  }
+
+  bool parseSuccess = false;
+  std::ignore = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+
+  if (auto const& suff = request()->suffixes(); suff.size() == 2) {
+    if (suff[1] != "execute") {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expect /_admin/cluster/rebalance[/execute]");
+      return RestStatus::DONE;
+    }
+    return handleRebalanceExecute();
+  }
+
+  return handleRebalancePlan();
 }
 
 cluster::rebalance::AutoRebalanceProblem

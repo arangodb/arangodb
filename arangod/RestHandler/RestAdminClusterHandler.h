@@ -100,6 +100,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRebalanceShards();
   RestStatus handleRebalance();
   RestStatus handleRebalanceGet();
+  RestStatus handleRebalanceExecute();
+  RestStatus handleRebalancePlan();
 
   RestStatus handleFailureOracle();
 
@@ -199,4 +201,13 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   cluster::rebalance::AutoRebalanceProblem collectRebalanceInformation(
       std::vector<std::string> const& excludedDatabases);
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, RestAdminClusterHandler::MoveShardDescription& x) {
+  return f.object(x).fields(f.field("collection", x.collection),
+                            f.field("shard", x.shard), f.field("from", x.from),
+                            f.field("to", x.to),
+                            f.field("isLeader", x.isLeader));
+}
+
 }  // namespace arangodb
