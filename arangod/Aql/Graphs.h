@@ -135,9 +135,6 @@ class EdgeConditionBuilder {
  private:
   // Internal helper to swap _from and _to parts
   void swapSides(AstNode* condition);
-
-  // Internal helper to swap _from and _to parts
-  void swapSides(AstNode* fullCondition, AstNode* fromOrToCondition) const;
 };
 
 // Wrapper around EdgeConditionBuilder that takes responsibility for all

@@ -104,7 +104,7 @@ EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast, Variable const* variable, A
     : _fromCondition(nullptr),
       _toCondition(nullptr),
       _modCondition(ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND)),
-      _containsCondition(true) {
+      _containsCondition(false) {
   // Prepare _from and _to conditions
   auto ref = ast->createNodeReference(variable);
   {
@@ -119,7 +119,6 @@ EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast, Variable const* variable, A
     _toCondition = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                                    access, exchangeableIdNode);
   }
-  _modCondition->addMember(_fromCondition);
 }
 
 EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast,
@@ -169,25 +168,26 @@ void EdgeConditionBuilder::addConditionForDepth(AstNode const* condition, uint64
 }
 
 
-void EdgeConditionBuilder::swapSides(AstNode* modCondition, AstNode* cond) const {
+void EdgeConditionBuilder::swapSides(AstNode* cond) {
   TRI_ASSERT(cond != nullptr);
   TRI_ASSERT(cond == _fromCondition || cond == _toCondition);
   TRI_ASSERT(cond->type == NODE_TYPE_OPERATOR_BINARY_EQ);
-  // TODO: Backwards compatibility check, we may get an old serialized version
-  // in the old one we need to re-arrange the conditions on parsing.
+  if (_containsCondition) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // If used correctly this class guarantuees that the last element
-  // of the nary-and is the _from or _to part and is exchangable.
-  TRI_ASSERT(_modCondition->numMembers() > 0);
-  auto changeNode =
-      modCondition->getMemberUnchecked(0);
-  TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
+    // If used correctly this class guarantuees that the last element
+    // of the nary-and is the _from or _to part and is exchangable.
+    TRI_ASSERT(_modCondition->numMembers() > 0);
+    auto toChange = _modCondition->numMembers() - 1;
+    auto changeNode =
+        _modCondition->getMemberUnchecked(toChange);
+    TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
 #endif
-  modCondition->changeMember(0, cond);
-}
-
-void EdgeConditionBuilder::swapSides(AstNode* cond) {
-  swapSides(_modCondition, cond);
+    _modCondition->changeMember(toChange, cond);
+  } else {
+    _modCondition->addMember(cond);
+    _containsCondition = true;
+  }
+  TRI_ASSERT(_modCondition->numMembers() > 0);
 }
 
 AstNode* EdgeConditionBuilder::getOutboundCondition() {
@@ -213,7 +213,14 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
 AstNode* EdgeConditionBuilder::getOutboundCondition(Ast* ast) const {
   TRI_ASSERT(_fromCondition != nullptr);
   auto baseCondition = _modCondition->clone(ast);
-  swapSides(baseCondition, _fromCondition);
+  // This is a bit confusing, if someone used the non-const API
+  // the _modCondition contains _from or _to as last member, so we need to drop it first
+  // otherwise we can just append _from or _to
+  if (_containsCondition) {
+    TRI_ASSERT(baseCondition->numMembers() > 0);
+    baseCondition->removeMemberUnchecked(baseCondition->numMembers() - 1);
+  }
+  baseCondition->addMember(_fromCondition->clone(ast));
   return baseCondition;
 }
 
@@ -222,7 +229,14 @@ AstNode* EdgeConditionBuilder::getOutboundCondition(Ast* ast) const {
 AstNode* EdgeConditionBuilder::getInboundCondition(Ast* ast) const {
   TRI_ASSERT(_toCondition != nullptr);
   auto baseCondition = _modCondition->clone(ast);
-  swapSides(baseCondition, _toCondition);
+  // This is a bit confusing, if someone used the non-const API
+  // the _modCondition contains _from or _to as last member, so we need to drop it first
+  // otherwise we can just append _from or _to
+  if (_containsCondition) {
+    TRI_ASSERT(baseCondition->numMembers() > 0);
+    baseCondition->removeMemberUnchecked(baseCondition->numMembers() - 1);
+  }
+  baseCondition->addMember(_toCondition->clone(ast));
   return baseCondition;
 }
 
@@ -232,7 +246,7 @@ AstNode* EdgeConditionBuilder::getOutboundConditionForDepth(uint64_t depth, Ast*
   auto cond = getOutboundCondition(ast);
   if (_depthConditions.contains(depth)) {
     for (auto const* subCondition : _depthConditions.at(depth)) {
-      cond->addMember(subCondition);
+      cond->addMember(subCondition->clone(ast));
     }
   }
   return cond;
@@ -243,7 +257,7 @@ AstNode* EdgeConditionBuilder::getInboundConditionForDepth(uint64_t depth, Ast* 
   auto cond = getInboundCondition(ast);
   if (_depthConditions.contains(depth)) {
     for (auto const* subCondition : _depthConditions.at(depth)) {
-      cond->addMember(subCondition);
+      cond->addMember(subCondition->clone(ast));
     }
   }
   return cond;
