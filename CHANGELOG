@@ -2,7 +2,7 @@ devel
 -----
 
 * Very verbose warning from failing to parse GEO JSON in search. Has lead to
-  Billions of log lines on deployed services.
+  billions of log lines on deployed services.
 
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
