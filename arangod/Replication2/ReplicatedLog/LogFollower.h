@@ -50,11 +50,11 @@ class LogFollower : public ILogFollower,
                     public std::enable_shared_from_this<LogFollower> {
  public:
   ~LogFollower() override;
-  static auto construct(LoggerContext const&,
-                        std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-                        ParticipantId id, std::unique_ptr<LogCore> logCore,
-                        LogTerm term, std::optional<ParticipantId> leaderId)
-      -> std::shared_ptr<LogFollower>;
+  static auto construct(
+      LoggerContext const&, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+      ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+      std::optional<ParticipantId> leaderId) -> std::shared_ptr<LogFollower>;
 
   // follower only
   [[nodiscard]] auto appendEntries(AppendEntriesRequest)
@@ -88,6 +88,7 @@ class LogFollower : public ILogFollower,
  private:
   LogFollower(LoggerContext const&,
               std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+              std::shared_ptr<ReplicatedLogGlobalSettings const> options,
               ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
               std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
 
@@ -120,6 +121,7 @@ class LogFollower : public ILogFollower,
     WaitForBag _waitForResignQueue;
   };
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
+  std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   LoggerContext const _loggerContext;
   ParticipantId const _participantId;
   std::optional<ParticipantId> const _leaderId;

@@ -39,24 +39,36 @@ should be a JSON object containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
-`traditional`, `autoincrement`, `uuid` and `padded`.<br>
-The `traditional` key generator generates numerical keys in ascending order.
-The sequence of keys is not guaranteed to be gap-free.<br>
-The `autoincrement` key generator generates numerical keys in ascending order,
-the initial offset and the spacing can be configured (**note**: `autoincrement`
-is currently only supported for non-sharded collections).
-The sequence of generated keys is not guaranteed to be gap-free, because a new key
-will be generated on every document insert attempt, not just for successful
-inserts.<br>
-The `padded` key generator generates keys of a fixed length (16 bytes) in
-ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
-engine, which will slightly benefit keys that are inserted in lexicographically
-ascending order. The key generator can be used in a single-server or cluster.
-The sequence of generated keys is not guaranteed to be gap-free.<br>
-The `uuid` key generator generates universally unique 128 bit keys, which
-are stored in hexadecimal human-readable format. This key generator can be used
-in a single-server or cluster to generate "seemingly random" keys. The keys
-produced by this key generator are not lexicographically sorted.
+`traditional`, `autoincrement`, `uuid` and `padded`.
+
+- The `traditional` key generator generates numerical keys in ascending order.
+  The sequence of keys is not guaranteed to be gap-free.
+
+- The `autoincrement` key generator generates numerical keys in ascending order,
+  the initial offset and the spacing can be configured (**note**: `autoincrement`
+  is currently only supported for non-sharded collections).
+  The sequence of generated keys is not guaranteed to be gap-free, because a new key
+  will be generated on every document insert attempt, not just for successful
+  inserts.
+
+- The `padded` key generator generates keys of a fixed length (16 bytes) in
+  ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
+  engine, which will slightly benefit keys that are inserted in lexicographically
+  ascending order. The key generator can be used in a single-server or cluster.
+  The sequence of generated keys is not guaranteed to be gap-free.
+
+- The `uuid` key generator generates universally unique 128 bit keys, which
+  are stored in hexadecimal human-readable format. This key generator can be used
+  in a single-server or cluster to generate "seemingly random" keys. The keys
+  produced by this key generator are not lexicographically sorted.
+
+Please note that keys are only guaranteed to be truly ascending in single
+server deployments and for collections that only have a single shard (that includes
+collections in a OneShard database).
+The reason is that for collections with more than a single shard, document keys
+are generated on coordinator(s). For collections with a single shard, the document
+keys are generated on the leader DB server, which has full control over the key
+sequence.
 
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}
 if set to `true`, then it is allowed to supply own key values in the
@@ -74,9 +86,10 @@ Not used for other key generator types.
 
 @RESTBODYPARAM{type,integer,optional,int64}
 (The default is `2`): the type of the collection to create.
-The following values for `type` are valid:<br>
- - `2`: document collection
- - `3`: edge collection
+The following values for `type` are valid:
+
+- `2`: document collection
+- `3`: edge collection
 
 @RESTBODYPARAM{cacheEnabled,boolean,optional,}
 Whether the in-memory hash cache for documents should be enabled for this

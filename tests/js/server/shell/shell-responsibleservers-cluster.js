@@ -45,7 +45,7 @@ function ResponsibleServersSuite() {
     },
     
     testCheckNonExistingCollection : function () {
-      [ "xxxxx", "s-1234", "fuppe!", "" ].forEach(function(arg) {
+      [ "xxxxx", "s-1234", "fuppe!", "S12345", "" ].forEach(function(arg) {
         try {
           ArangoClusterInfo.getResponsibleServers([ arg ]);
           fail();

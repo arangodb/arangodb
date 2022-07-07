@@ -32,6 +32,7 @@
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedServer.h"
+#include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
@@ -211,7 +212,6 @@ Supervision::Supervision(ArangodServer& server)
       _jobIdMax(0),
       _lastUpdateIndex(0),
       _haveAborts(false),
-      _selfShutdown(false),
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
@@ -1015,7 +1015,140 @@ void Supervision::reportStatus(std::string const& status) {
   }
 }
 
-void Supervision::run() {
+void Supervision::step() {
+  _lock.assertLockedByCurrentThread();
+  if (_jobId == 0 || _jobId == _jobIdMax) {
+    getUniqueIds();  // cannot fail but only hang
+  }
+  LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION) << "Begin updateSnapshot";
+  updateSnapshot();
+  LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
+
+  if (!_upgraded) {
+    upgradeAgency();
+  }
+
+  bool maintenanceMode = false;
+  if (snapshot().has(supervisionMaintenance)) {
+    try {
+      if (snapshot().get(supervisionMaintenance).value().get().isString()) {
+        std::string tmp = snapshot()
+                              .get(supervisionMaintenance)
+                              .value()
+                              .get()
+                              .getString()
+                              .value();
+        if (tmp.size() < 18) {  // legacy behaviour
+          maintenanceMode = true;
+        } else {
+          auto const maintenanceExpires = stringToTimepoint(tmp);
+          if (maintenanceExpires >= std::chrono::system_clock::now()) {
+            maintenanceMode = true;
+          }
+        }
+      } else {  // legacy behaviour
+        maintenanceMode = true;
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
+          << "Supervision maintenace key in agency is not a string. "
+             "This should never happen and will prevent hot backups. "
+          << e.what();
+      return;
+    }
+  }
+
+  if (!maintenanceMode) {
+    reportStatus("Normal");
+
+    _haveAborts = false;
+
+    if (_agent->leaderFor() > 55 || earlyBird()) {
+      // 55 seconds is less than a minute, which fits to the
+      // 60 seconds timeout in /_admin/cluster/health
+
+      try {
+        LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION) << "Begin doChecks";
+        doChecks();
+        LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION) << "Finished doChecks";
+      } catch (std::exception const& e) {
+        LOG_TOPIC("e0869", ERR, Logger::SUPERVISION) << e.what();
+      } catch (...) {
+        LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
+            << "Supervision::doChecks() generated an uncaught "
+               "exception.";
+      }
+
+      // wait 5 min or until next scheduled run
+      if (_agent->leaderFor() > 300 &&
+          _nextServerCleanup < std::chrono::system_clock::now()) {
+        // Make sure that we have the latest and greatest information
+        // about heartbeats in _transient. Note that after a long
+        // Maintenance mode of the supervision, the `doChecks` above
+        // might have updated /arango/Supervision/Health in the
+        // transient store *just now above*. We need to reflect these
+        // changes in _transient.
+        _agent->executeTransientLocked([&]() {
+          if (_agent->transient().has(_agencyPrefix)) {
+            _transient = _agent->transient().get(_agencyPrefix);
+          }
+        });
+
+        LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
+            << "Begin cleanupExpiredServers";
+        cleanupExpiredServers(snapshot(), _transient);
+        LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
+            << "Finished cleanupExpiredServers";
+      }
+
+    } else {
+      LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
+          << "Postponing supervision for now, waiting for incoming "
+             "heartbeats: "
+          << _agent->leaderFor();
+    }
+    try {
+      LOG_TOPIC("7895a", TRACE, Logger::SUPERVISION) << "Begin handleJobs";
+      handleJobs();
+      LOG_TOPIC("febbc", TRACE, Logger::SUPERVISION) << "Finished handleJobs";
+    } catch (std::exception const& e) {
+      LOG_TOPIC("76123", WARN, Logger::SUPERVISION)
+          << "Caught exception in handleJobs(), error message: " << e.what();
+    }
+  } else {
+    reportStatus("Maintenance");
+  }
+}
+
+void Supervision::waitForIndexCommitted(index_t index) {
+  if (index != 0) {
+    auto wait_for_repl_start = std::chrono::steady_clock::now();
+
+    while (!this->isStopping() && _agent->leading()) {
+      auto result = _agent->waitFor(index);
+      if (result == Agent::raft_commit_t::TIMEOUT) {  // Oh snap
+        // Note that we can get UNKNOWN if we have lost leadership or
+        // if we are shutting down. In both cases we just leave the
+        // loop.
+        LOG_TOPIC("c72b0", WARN, Logger::SUPERVISION)
+            << "Waiting for commits to be done ... ";
+        continue;
+      } else {  // Good we can continue
+        break;
+      }
+    }
+
+    auto wait_for_repl_end = std::chrono::steady_clock::now();
+    auto repl_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       wait_for_repl_end - wait_for_repl_start)
+                       .count();
+    _supervision_runtime_wait_for_sync_msec.count(repl_ms);
+  }
+}
+
+void Supervision::notify() noexcept { _cv.signal(); }
+
+void Supervision::waitForSupervisionNode() {
   // First wait until somebody has initialized the ArangoDB data, before
   // that running the supervision does not make sense and will indeed
   // lead to horrible errors:
@@ -1051,6 +1184,11 @@ void Supervision::run() {
     LOG_TOPIC("9a79b", DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
                                                       "initialize its data.";
   }
+}
+
+void Supervision::run() {
+  // wait for cluster bootstrap
+  waitForSupervisionNode();
 
   bool shutdown = false;
   {
@@ -1064,131 +1202,12 @@ void Supervision::run() {
         {
           MUTEX_LOCKER(locker, _lock);
 
-          if (_snapshot != nullptr && isShuttingDown()) {
-            handleShutdown();
-          } else if (_selfShutdown) {
-            shutdown = true;
-            break;
-          }
-
           // Only modifiy this condition with extreme care:
           // Supervision needs to wait until the agent has finished leadership
           // preparation or else the local agency snapshot might be behind its
           // last state.
           if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
-            if (_jobId == 0 || _jobId == _jobIdMax) {
-              getUniqueIds();  // cannot fail but only hang
-            }
-            LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION)
-                << "Begin updateSnapshot";
-            updateSnapshot();
-            LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION)
-                << "Finished updateSnapshot";
-
-            if (!_upgraded) {
-              upgradeAgency();
-            }
-
-            bool maintenanceMode = false;
-            if (snapshot().has(supervisionMaintenance)) {
-              try {
-                if (snapshot()
-                        .get(supervisionMaintenance)
-                        .value()
-                        .get()
-                        .isString()) {
-                  std::string tmp = snapshot()
-                                        .get(supervisionMaintenance)
-                                        .value()
-                                        .get()
-                                        .getString()
-                                        .value();
-                  if (tmp.size() < 18) {  // legacy behaviour
-                    maintenanceMode = true;
-                  } else {
-                    auto const maintenanceExpires = stringToTimepoint(tmp);
-                    if (maintenanceExpires >=
-                        std::chrono::system_clock::now()) {
-                      maintenanceMode = true;
-                    }
-                  }
-                } else {  // legacy behaviour
-                  maintenanceMode = true;
-                }
-              } catch (std::exception const& e) {
-                LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
-                    << "Supervision maintenace key in agency is not a string. "
-                       "This should never happen and will prevent hot backups. "
-                    << e.what();
-                return;
-              }
-            }
-
-            if (!maintenanceMode) {
-              reportStatus("Normal");
-
-              _haveAborts = false;
-
-              if (_agent->leaderFor() > 55 || earlyBird()) {
-                // 55 seconds is less than a minute, which fits to the
-                // 60 seconds timeout in /_admin/cluster/health
-
-                try {
-                  LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION)
-                      << "Begin doChecks";
-                  doChecks();
-                  LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION)
-                      << "Finished doChecks";
-                } catch (std::exception const& e) {
-                  LOG_TOPIC("e0869", ERR, Logger::SUPERVISION) << e.what();
-                } catch (...) {
-                  LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
-                      << "Supervision::doChecks() generated an uncaught "
-                         "exception.";
-                }
-
-                // wait 5 min or until next scheduled run
-                if (_agent->leaderFor() > 300 &&
-                    _nextServerCleanup < std::chrono::system_clock::now()) {
-                  // Make sure that we have the latest and greatest information
-                  // about heartbeats in _transient. Note that after a long
-                  // Maintenance mode of the supervision, the `doChecks` above
-                  // might have updated /arango/Supervision/Health in the
-                  // transient store *just now above*. We need to reflect these
-                  // changes in _transient.
-                  _agent->executeTransientLocked([&]() {
-                    if (_agent->transient().has(_agencyPrefix)) {
-                      _transient = _agent->transient().get(_agencyPrefix);
-                    }
-                  });
-
-                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
-                      << "Begin cleanupExpiredServers";
-                  cleanupExpiredServers(snapshot(), _transient);
-                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
-                      << "Finished cleanupExpiredServers";
-                }
-
-              } else {
-                LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
-                    << "Postponing supervision for now, waiting for incoming "
-                       "heartbeats: "
-                    << _agent->leaderFor();
-              }
-              try {
-                LOG_TOPIC("7895a", TRACE, Logger::SUPERVISION)
-                    << "Begin handleJobs";
-                handleJobs();
-                LOG_TOPIC("febbc", TRACE, Logger::SUPERVISION)
-                    << "Finished handleJobs";
-              } catch (std::exception const& e) {
-                LOG_TOPIC("76123", WARN, Logger::SUPERVISION)
-                    << "Caught exception in handleJobs(), error message: "
-                    << e.what();
-              }
-            } else {
-              reportStatus("Maintenance");
-            }
+            step();
           } else {
             // Once we lose leadership, we need to restart building our snapshot
             if (_lastUpdateIndex > 0) {
@@ -1201,31 +1220,7 @@ void Supervision::run() {
         // otherwise it is not "committed" in the Raft sense. However, let's
         // only wait for our changes not for new ones coming in during the wait.
         if (_agent->leading()) {
-          index_t leaderIndex = _agent->index();
-          if (leaderIndex != 0) {
-            auto wait_for_repl_start = std::chrono::steady_clock::now();
-
-            while (!this->isStopping() && _agent->leading()) {
-              auto result = _agent->waitFor(leaderIndex);
-              if (result == Agent::raft_commit_t::TIMEOUT) {  // Oh snap
-                // Note that we can get UNKNOWN if we have lost leadership or
-                // if we are shutting down. In both cases we just leave the
-                // loop.
-                LOG_TOPIC("c72b0", WARN, Logger::SUPERVISION)
-                    << "Waiting for commits to be done ... ";
-                continue;
-              } else {  // Good we can continue
-                break;
-              }
-            }
-
-            auto wait_for_repl_end = std::chrono::steady_clock::now();
-            auto repl_ms =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    wait_for_repl_end - wait_for_repl_start)
-                    .count();
-            _supervision_runtime_wait_for_sync_msec.count(repl_ms);
-          }
+          waitForIndexCommitted(_agent->index());
         }
 
         auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -1235,6 +1230,7 @@ void Supervision::run() {
         _supervision_runtime_msec.count(lapTime / 1000);
 
         if (lapTime < 1000000) {
+          // wait returns false if timeout was reached
           _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
         }
       } catch (std::exception const& ex) {
@@ -1254,15 +1250,6 @@ void Supervision::run() {
   }
 }
 
-// Guarded by caller
-bool Supervision::isShuttingDown() {
-  _lock.assertLockedByCurrentThread();
-  if (_snapshot && snapshot().has("Shutdown")) {
-    return snapshot().hasAsBool("Shutdown").value();
-  }
-  return false;
-}
-
 std::string Supervision::serverHealthFunctional(Node const& snapshot,
                                                 std::string const& serverName) {
   std::string const serverStatus(healthPrefix + serverName + "/Status");
@@ -1276,70 +1263,6 @@ std::string Supervision::serverHealth(std::string const& serverName) {
   _lock.assertLockedByCurrentThread();
   return Supervision::serverHealthFunctional(snapshot(), serverName);
 }
-
-// Guarded by caller
-void Supervision::handleShutdown() {
-  _lock.assertLockedByCurrentThread();
-
-  _selfShutdown = true;
-  LOG_TOPIC("f1f68", DEBUG, Logger::SUPERVISION)
-      << "Waiting for clients to shut down";
-  auto const& serversRegistered =
-      snapshot().hasAsChildren(currentServersRegisteredPrefix).value().get();
-  bool serversCleared = true;
-  for (auto const& server : serversRegistered) {
-    if (server.first == "Version") {
-      continue;
-    }
-
-    LOG_TOPIC("d212a", DEBUG, Logger::SUPERVISION)
-        << "Waiting for " << server.first << " to shutdown";
-
-    if (serverHealth(server.first) != HEALTH_STATUS_GOOD) {
-      LOG_TOPIC("3db81", WARN, Logger::SUPERVISION)
-          << "Server " << server.first
-          << " did not shutdown properly it seems!";
-      continue;
-    }
-    serversCleared = false;
-  }
-
-  if (serversCleared) {
-    if (_agent->leading()) {
-      auto del = std::make_shared<Builder>();
-      {
-        VPackArrayBuilder txs(del.get());
-        {
-          VPackArrayBuilder tx(del.get());
-          {
-            VPackObjectBuilder o(del.get());
-            del->add(VPackValue(_agencyPrefix + "/Shutdown"));
-            {
-              VPackObjectBuilder oo(del.get());
-              del->add("op", VPackValue("delete"));
-            }
-          }
-        }
-      }
-      auto result = _agent->write(del);
-      if (result.indices.size() != 1) {
-        LOG_TOPIC("3bba4", ERR, Logger::SUPERVISION)
-            << "Invalid resultsize of " << result.indices.size()
-            << " found during shutdown";
-      } else {
-        if (!_agent->waitFor(result.indices.at(0))) {
-          LOG_TOPIC("d98af", ERR, Logger::SUPERVISION)
-              << "Result was not written to followers during shutdown";
-        }
-      }
-    }
-  }
-}
-
-struct ServerLists {
-  std::unordered_map<ServerID, uint64_t> dbservers;
-  std::unordered_map<ServerID, uint64_t> coordinators;
-};
 
 //  Get all planned servers
 //  If heartbeat in transient too old or missing
@@ -2982,8 +2905,14 @@ void arangodb::consensus::enforceReplicationFunctional(
 
   // We will loop over plannedDBs, so we use hasAsChildren
   auto const& plannedDBs = snapshot.hasAsChildren(planColPrefix).value().get();
+  auto const& databaseProperties =
+      snapshot.hasAsChildren("/Plan/Databases").value().get();
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
+    if (isReplicationTwoDB(databaseProperties, db_.first)) {
+      continue;
+    }
+
     auto const& db = *(db_.second);
     for (const auto& col_ : db.children()) {  // Planned collections
       auto const& col = *(col_.second);

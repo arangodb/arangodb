@@ -46,9 +46,6 @@ struct LogPlanConfig {
 
   LogPlanConfig() noexcept = default;
   LogPlanConfig(std::size_t effectiveWriteConcern, bool waitForSync) noexcept;
-  LogPlanConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-                bool waitForSync) noexcept;
-
   friend auto operator==(LogPlanConfig const& left,
                          LogPlanConfig const& right) noexcept -> bool = default;
 };
@@ -63,7 +60,7 @@ auto inspect(Inspector& f, LogPlanConfig& x) {
 struct ParticipantsConfig {
   std::size_t generation = 0;
   ParticipantsFlagsMap participants;
-  LogPlanConfig config;
+  LogPlanConfig config{};
 
   // to be defaulted soon
   friend auto operator==(ParticipantsConfig const& left,
@@ -200,12 +197,6 @@ struct LogCurrentSupervision {
                            WaitingForConfigCommitted const& s2) noexcept
         -> bool = default;
   };
-  struct ConfigChangeNotImplemented {
-    static constexpr std::string_view code = "ConfigChangeNotImplemented";
-    friend auto operator==(ConfigChangeNotImplemented const& s,
-                           ConfigChangeNotImplemented const& s2) noexcept
-        -> bool = default;
-  };
   struct LeaderElectionImpossible {
     static constexpr std::string_view code = "LeaderElectionImpossible";
     friend auto operator==(LeaderElectionImpossible const& s,
@@ -254,13 +245,20 @@ struct LogCurrentSupervision {
   using StatusMessage =
       std::variant<TargetLeaderInvalid, TargetLeaderExcluded,
                    TargetLeaderFailed, TargetNotEnoughParticipants,
-                   WaitingForConfigCommitted, ConfigChangeNotImplemented,
-                   LeaderElectionImpossible, LeaderElectionOutOfBounds,
-                   LeaderElectionQuorumNotReached, LeaderElectionSuccess,
-                   SwitchLeaderFailed, PlanNotAvailable, CurrentNotAvailable>;
+                   WaitingForConfigCommitted, LeaderElectionImpossible,
+                   LeaderElectionOutOfBounds, LeaderElectionQuorumNotReached,
+                   LeaderElectionSuccess, SwitchLeaderFailed, PlanNotAvailable,
+                   CurrentNotAvailable>;
 
   using StatusReport = std::vector<StatusMessage>;
 
+  // TODO / FIXME: This prevents assumedWriteConcern from
+  // being initialised to 0, which would prevent any progress
+  // at all and a broken log.
+  // Under normal operation assumedWriteConcern is set to the
+  // first effectiveWriteConcern that is calculated on creation
+  // of the log.
+  size_t assumedWriteConcern{1};
   std::optional<uint64_t> targetVersion;
   std::optional<StatusReport> statusReport;
   std::optional<clock::time_point> lastTimeModified;

@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "Basics/Common.h"
@@ -46,6 +47,7 @@ typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
+class ComputedValues;
 class FollowerInfo;
 class Index;
 class IndexIterator;
@@ -60,6 +62,16 @@ class ShardingInfo;
 namespace transaction {
 class Methods;
 }
+
+namespace replication2::replicated_state {
+template<typename S>
+struct ReplicatedState;
+namespace document {
+struct DocumentState;
+struct DocumentLeaderState;
+struct DocumentFollowerState;
+}  // namespace document
+}  // namespace replication2::replicated_state
 
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
@@ -112,7 +124,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
-  static replication2::LogId shardIdToStateId(ShardID const& shardId);
+  static replication2::LogId shardIdToStateId(std::string_view shardId);
+  static std::optional<replication2::LogId> tryShardIdToStateId(
+      std::string_view shardId);
 
   // SECTION: Meta Information
   Version version() const { return _version; }
@@ -133,6 +147,8 @@ class LogicalCollection : public LogicalDataSource {
   virtual std::vector<std::string> realNamesForRead() const {
     return std::vector<std::string>{name()};
   }
+
+  RevisionId newRevisionId() const;
 
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
@@ -227,6 +243,16 @@ class LogicalCollection : public LogicalDataSource {
                                 bool& usesDefaultShardKeys,
                                 std::string_view key = std::string_view());
 
+  auto getDocumentState()
+      -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
+          replication2::replicated_state::document::DocumentState>>;
+  auto getDocumentStateLeader() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentLeaderState>;
+  auto waitForDocumentStateLeader() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentLeaderState>;
+  auto getDocumentStateFollower() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentFollowerState>;
+
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
@@ -279,12 +305,8 @@ class LogicalCollection : public LogicalDataSource {
 
   using LogicalDataSource::properties;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
-  /// @param definition the properties being updated
-  /// @param partialUpdate modify only the specified properties (false == all)
-  //////////////////////////////////////////////////////////////////////////////
-  virtual Result properties(velocypack::Slice definition, bool partialUpdate);
+  virtual Result properties(velocypack::Slice definition);
 
   /// @brief return the figures for a collection
   virtual futures::Future<OperationResult> figures(
@@ -317,20 +339,6 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief compact-data operation
   void compact();
 
-  Result insert(transaction::Methods* trx, velocypack::Slice slice,
-                ManagedDocumentResult& result, OperationOptions& options);
-
-  Result update(transaction::Methods*, velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions&,
-                ManagedDocumentResult& previousMdr);
-
-  Result replace(transaction::Methods*, velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions&,
-                 ManagedDocumentResult& previousMdr);
-
-  Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, ManagedDocumentResult& previousMdr);
-
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully
   ///        created and only on Sinlge/DBServer
@@ -345,6 +353,11 @@ class LogicalCollection : public LogicalDataSource {
   ///        it at that moment.
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const& callback);
+
+  void computedValuesToVelocyPack(VPackBuilder&) const;
+
+  // return a pointer to the computed values. can be a nullptr
+  std::shared_ptr<ComputedValues> computedValues() const;
 
   void schemaToVelocyPack(VPackBuilder&) const;
 
@@ -400,6 +413,7 @@ class LogicalCollection : public LogicalDataSource {
                      bool safe) const override;
 
   Result updateSchema(VPackSlice schema);
+  Result updateComputedValues(VPackSlice computedValues);
 
   void decorateWithInternalEEValidators();
 
@@ -470,8 +484,12 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
 
+  // `_computedValues` must be used with atomic accessors only!!
+  // We use acquire/release access (load/store) as we only care about atomicity.
+  std::shared_ptr<ComputedValues> _computedValues;
+
   // `_schema` must be used with atomic accessors only!!
-  // We use relaxed access (load/store) as we only care about atomicity.
+  // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
 
   // This is a bitmap entry of InternalValidatorType entries.

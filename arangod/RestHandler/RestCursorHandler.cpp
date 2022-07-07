@@ -34,6 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -314,6 +315,10 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // result is smaller than batchSize and will be returned directly. no need
     // to create a cursor
 
+    if (_queryResult.allowDirtyReads) {
+      setOutgoingDirtyReadsHeader(true);
+    }
+
     VPackOptions options = VPackOptions::Defaults;
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
@@ -490,6 +495,17 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
   // "stream" option is important, so also accept it on top level and not only
   // inside options
   bool isStream = VelocyPackHelper::getBooleanValue(slice, "stream", false);
+
+  // Look for allowDirtyReads header:
+  bool allowDirtyReads = false;
+  bool found = false;
+  bool sawDirtyReads = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  if (found && StringUtils::boolean(val)) {
+    allowDirtyReads = true;
+  }
+
   if (opts.isObject()) {
     if (!isStream) {
       isStream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
@@ -499,6 +515,13 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
         continue;
       }
       std::string_view keyName = it.key.stringView();
+      if (keyName == "allowDirtyReads") {
+        // We will set the flag in the options, if either the HTTP header
+        // is set, or we see true here in the slice:
+        sawDirtyReads = true;
+        allowDirtyReads |= it.value.isTrue();
+        _options->add(keyName, VPackValue(allowDirtyReads));
+      }
       if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" ||
           keyName == "stream" || (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys
@@ -509,6 +532,9 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       }
       _options->add(keyName, it.value);
     }
+  }
+  if (!sawDirtyReads && allowDirtyReads) {
+    _options->add("allowDirtyReads", VPackValue(true));
   }
 
   if (ServerState::instance()->isDBServer()) {
@@ -575,6 +601,10 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     builder.clear();
     TRI_ASSERT(r.ok());
     return RestStatus::WAITING;
+  }
+
+  if (_cursor->allowDirtyReads()) {
+    setOutgoingDirtyReadsHeader(true);
   }
 
   if (r.ok()) {

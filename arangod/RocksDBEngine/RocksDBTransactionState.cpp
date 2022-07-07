@@ -211,7 +211,7 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 }
 
 /// @brief commit a transaction
-Result RocksDBTransactionState::commitTransaction(
+futures::Future<Result> RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
   LOG_TRX("5cb03", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
@@ -222,18 +222,20 @@ Result RocksDBTransactionState::commitTransaction(
     return Result(TRI_ERROR_DEBUG);
   }
 
-  arangodb::Result res = doCommit();
-  if (res.ok()) {
-    updateStatus(transaction::Status::COMMITTED);
-    cleanupTransaction();  // deletes trx
-    ++statistics()._transactionsCommitted;
-  } else {
-    // what if this fails?
-    std::ignore = abortTransaction(activeTrx);  // deletes trx
-  }
-  TRI_ASSERT(!_cacheTx);
-
-  return res;
+  auto self =
+      std::static_pointer_cast<RocksDBTransactionState>(shared_from_this());
+  return doCommit().thenValue([self = std::move(self), activeTrx](auto&& res) {
+    if (res.ok()) {
+      self->updateStatus(transaction::Status::COMMITTED);
+      self->cleanupTransaction();  // deletes trx
+      ++self->statistics()._transactionsCommitted;
+    } else {
+      // what if this fails?
+      std::ignore = self->abortTransaction(activeTrx);  // deletes trx
+    }
+    TRI_ASSERT(!self->_cacheTx);
+    return std::forward<Result>(res);
+  });
 }
 
 /// @brief abort and rollback a transaction
