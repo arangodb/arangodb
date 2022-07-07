@@ -136,7 +136,8 @@ class ComponentGenerator {
  * labels and the groups have the expected sizes.
  * @param algName
  * @param graphName
- * @param parameters
+ * @param parameters If parameters has attribute "test" (to test the test), only the result of the Pregel
+ *                   computation is printed, no real tests are performed.
  * @param expectedSizes
  */
 const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
@@ -790,8 +791,8 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
 
                 for (let i = 0; i < 3; ++i){
                     for (let j = i+1; j < 3; ++j){
-                        makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`);
-                        makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`);
+                        db[eColl].save(makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`));
+                        db[eColl].save(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
                     }
                 }
 
