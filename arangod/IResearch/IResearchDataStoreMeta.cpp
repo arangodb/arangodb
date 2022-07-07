@@ -285,13 +285,10 @@ bool IResearchDataStoreMeta::json(
   }
 
   if ((!ignoreEqual ||
-       _commitIntervalMsec !=
-           ignoreEqual->_commitIntervalMsec)
-      && (!mask || mask->_commitIntervalMsec)) {
-    builder.add(
-        StaticStrings::CommitIntervalMsec,
-        velocypack::Value(_commitIntervalMsec)
-    );
+       _commitIntervalMsec != ignoreEqual->_commitIntervalMsec) &&
+      (!mask || mask->_commitIntervalMsec)) {
+    builder.add(StaticStrings::CommitIntervalMsec,
+                velocypack::Value(_commitIntervalMsec));
   }
 
   if ((!ignoreEqual ||

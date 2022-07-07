@@ -246,8 +246,8 @@ void registerICUWarning(ExpressionContext* expressionContext,
   msg.append("in function '");
   msg.append(functionName);
   msg.append("()': ");
-  msg.append(basics::Exception::FillExceptionString(
-      TRI_ERROR_ARANGO_ICU_ERROR, u_errorName(status)));
+  msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
+                                                    u_errorName(status)));
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg.c_str());
 }
 
@@ -291,7 +291,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   if (y < 0 || y > 9999) {
     if (registerWarning) {
       aql::registerWarning(expressionContext, AFN,
-                                     TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+                           TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     }
     return AqlValue(AqlValueHintNull());
   }
@@ -725,8 +725,7 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
 
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
-void appendAsString(VPackOptions const& vopts,
-                    velocypack::StringSink& buffer,
+void appendAsString(VPackOptions const& vopts, velocypack::StringSink& buffer,
                     AqlValue const& value) {
   AqlValueMaterializer materializer(&vopts);
   VPackSlice slice = materializer.slice(value, false);
@@ -746,8 +745,8 @@ bool listContainsElement(VPackOptions const* vopts, AqlValue const& list,
 
   VPackArrayIterator it(slice);
   while (it.valid()) {
-    if (basics::VelocyPackHelper::equal(testeeSlice, it.value(),
-                                                  false, vopts)) {
+    if (basics::VelocyPackHelper::equal(testeeSlice, it.value(), false,
+                                        vopts)) {
       index = static_cast<size_t>(it.index());
       return true;
     }
@@ -762,8 +761,7 @@ bool listContainsElement(VPackOptions const* options, VPackSlice const& list,
                          VPackSlice const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
   for (size_t i = 0; i < static_cast<size_t>(list.length()); ++i) {
-    if (basics::VelocyPackHelper::equal(testee, list.at(i), false,
-                                                  options)) {
+    if (basics::VelocyPackHelper::equal(testee, list.at(i), false, options)) {
       index = i;
       return true;
     }
@@ -952,9 +950,9 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         registerInvalidArgumentWarning(expressionContext, funcName);
         return AqlValue(AqlValueHintNull());
       }
-      builder = velocypack::Collection::merge(
-          builder.slice(), it, /*mergeObjects*/ recursive,
-          /*nullMeansRemove*/ false);
+      builder = velocypack::Collection::merge(builder.slice(), it,
+                                              /*mergeObjects*/ recursive,
+                                              /*nullMeansRemove*/ false);
     }
     return AqlValue(builder.slice(), builder.size());
   }
@@ -976,9 +974,9 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     AqlValueMaterializer materializer(&vopts);
     VPackSlice slice = materializer.slice(param, false);
 
-    builder = velocypack::Collection::merge(
-        initialSlice, slice, /*mergeObjects*/ recursive,
-        /*nullMeansRemove*/ false);
+    builder = velocypack::Collection::merge(initialSlice, slice,
+                                            /*mergeObjects*/ recursive,
+                                            /*nullMeansRemove*/ false);
     initialSlice = builder.slice();
   }
   if (n == 1) {
@@ -1143,8 +1141,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = expressionContext;
-    auto sg =
-        scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
+    auto sg = scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
     VPackOptions const& options = trx.vpackOptions();
     std::string jsName;
@@ -1383,8 +1380,7 @@ void registerWarning(ExpressionContext* expressionContext,
     return;
   }
 
-  std::string msg =
-      basics::Exception::FillExceptionString(code, functionName);
+  std::string msg = basics::Exception::FillExceptionString(code, functionName);
   expressionContext->registerWarning(code, msg.c_str());
 }
 
@@ -1393,8 +1389,7 @@ void registerError(ExpressionContext* expressionContext,
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg =
-        aql::QueryWarnings::buildFormattedString(code, functionName);
+    msg = aql::QueryWarnings::buildFormattedString(code, functionName);
   } else {
     msg.append("in function '");
     msg.append(functionName);
@@ -1632,10 +1627,9 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
                                VPackFunctionParametersView args) {
   TRI_ASSERT(ctx);
   if (args.size() < 3) {
-    registerWarning(
-        ctx, AFN,
-        Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                         "Minimum 3 arguments are expected."});
+    registerWarning(ctx, AFN,
+                    Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                           "Minimum 3 arguments are expected."});
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1662,10 +1656,9 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
   auto const ngramSizeValue = ngramSize.toInt64();
 
   if (ADB_UNLIKELY(ngramSizeValue < 1)) {
-    aql::registerWarning(
-        ctx, AFN,
-        Result{TRI_ERROR_BAD_PARAMETER,
-                         "Invalid ngram size. Should be 1 or greater"});
+    aql::registerWarning(ctx, AFN,
+                         Result{TRI_ERROR_BAD_PARAMETER,
+                                "Invalid ngram size. Should be 1 or greater"});
     return aql::AqlValue{aql::AqlValueHintNull{}};
   }
 
@@ -1707,10 +1700,9 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
       3) {  // for const evaluation we need analyzer to be set explicitly (we
             // can`t access filter context) but we can`t set analyzer as
             // mandatory in function AQL signature - this will break SEARCH
-    registerWarning(
-        ctx, AFN,
-        Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                         "Minimum 3 arguments are expected."});
+    registerWarning(ctx, AFN,
+                    Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                           "Minimum 3 arguments are expected."});
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1728,8 +1720,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   }
   auto const targetValue = iresearch::getStringRef(target.slice());
 
-  auto threshold =
-      iresearch::FilterConstants::DefaultNgramMatchThreshold;
+  auto threshold = iresearch::FilterConstants::DefaultNgramMatchThreshold;
   size_t analyzerPosition = 2;
   if (argc > 3) {  // 4 args given. 3rd is threshold
     auto const& thresholdArg = extractFunctionParameterValue(args, 2);
@@ -1742,8 +1733,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
     if (threshold <= 0 || threshold > 1) {
       aql::registerWarning(
           ctx, AFN,
-          Result{TRI_ERROR_BAD_PARAMETER,
-                           "Threshold must be between 0 and 1"});
+          Result{TRI_ERROR_BAD_PARAMETER, "Threshold must be between 0 and 1"});
     }
   }
 
@@ -1754,8 +1744,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
     return aql::AqlValue{aql::AqlValueHintNull{}};
   }
   TRI_ASSERT(ctx != nullptr);
-  auto const analyzerId =
-      iresearch::getStringRef(analyzerArg.slice());
+  auto const analyzerId = iresearch::getStringRef(analyzerArg.slice());
   auto& server = ctx->vocbase().server();
   if (!server.hasFeature<iresearch::IResearchAnalyzerFeature>()) {
     aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
@@ -1769,8 +1758,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   if (!analyzer) {
     aql::registerWarning(
         ctx, AFN,
-        Result{TRI_ERROR_BAD_PARAMETER,
-                         "Unable to load requested analyzer"});
+        Result{TRI_ERROR_BAD_PARAMETER, "Unable to load requested analyzer"});
     return aql::AqlValue{aql::AqlValueHintNull{}};
   }
 
@@ -1891,10 +1879,9 @@ AqlValue Functions::InRange(ExpressionContext* ctx, AstNode const&,
   auto const argc = args.size();
 
   if (argc != 5) {
-    registerWarning(
-        ctx, AFN,
-        Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                         "5 arguments are expected."});
+    registerWarning(ctx, AFN,
+                    Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                           "5 arguments are expected."});
     return AqlValue(AqlValueHintNull());
   }
 
@@ -4787,8 +4774,8 @@ AqlValue Functions::Min(ExpressionContext* expressionContext, AstNode const&,
     if (it.isNull()) {
       continue;
     }
-    if (minValue.isNone() || basics::VelocyPackHelper::compare(
-                                 it, minValue, true, options) < 0) {
+    if (minValue.isNone() ||
+        basics::VelocyPackHelper::compare(it, minValue, true, options) < 0) {
       minValue = it;
     }
   }
@@ -4817,8 +4804,8 @@ AqlValue Functions::Max(ExpressionContext* expressionContext, AstNode const&,
   VPackSlice maxValue;
   auto options = trx->transactionContextPtr()->getVPackOptions();
   for (VPackSlice it : VPackArrayIterator(slice)) {
-    if (maxValue.isNone() || basics::VelocyPackHelper::compare(
-                                 it, maxValue, true, options) > 0) {
+    if (maxValue.isNone() ||
+        basics::VelocyPackHelper::compare(it, maxValue, true, options) > 0) {
       maxValue = it;
     }
   }
@@ -5196,8 +5183,7 @@ AqlValue Functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  rest::SslInterface::sslMD5(buffer->data(), buffer->length(), p,
-                                       length);
+  rest::SslInterface::sslMD5(buffer->data(), buffer->length(), p, length);
 
   // as hex
   char hex[33];
@@ -5224,8 +5210,7 @@ AqlValue Functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), p,
-                                        length);
+  rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), p, length);
 
   // as hex
   char hex[41];
@@ -5252,8 +5237,7 @@ AqlValue Functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), p,
-                                          length);
+  rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), p, length);
 
   // as hex
   char hex[129];
@@ -5345,8 +5329,7 @@ AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  containers::FlatHashSet<VPackSlice,
-                          basics::VelocyPackHelper::VPackHash,
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
                           basics::VelocyPackHelper::VPackEqual>
       values(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(options));
@@ -5380,8 +5363,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, AstNode const&,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  containers::FlatHashSet<VPackSlice,
-                          basics::VelocyPackHelper::VPackHash,
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
                           basics::VelocyPackHelper::VPackEqual>
       values(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(options));
@@ -5427,8 +5409,7 @@ AqlValue Functions::SortedUnique(ExpressionContext* expressionContext,
 
   basics::VelocyPackHelper::VPackLess<true> less(
       trx->transactionContext()->getVPackOptions(), &slice, &slice);
-  std::set<VPackSlice, basics::VelocyPackHelper::VPackLess<true>>
-      values(less);
+  std::set<VPackSlice, basics::VelocyPackHelper::VPackLess<true>> values(less);
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
       values.insert(it);
@@ -5465,8 +5446,7 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext, AstNode const&,
 
   basics::VelocyPackHelper::VPackLess<true> less(
       trx->transactionContext()->getVPackOptions(), &slice, &slice);
-  std::map<VPackSlice, size_t,
-           basics::VelocyPackHelper::VPackLess<true>>
+  std::map<VPackSlice, size_t, basics::VelocyPackHelper::VPackLess<true>>
       values(less);
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
@@ -5540,8 +5520,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
   auto* vopts = &trx->vpackOptions();
 
   size_t const n = parameters.size();
-  containers::FlatHashSet<VPackSlice,
-                          basics::VelocyPackHelper::VPackHash,
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
                           basics::VelocyPackHelper::VPackEqual>
       values(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(vopts));
@@ -5598,8 +5577,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
 
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, size_t, basics::VelocyPackHelper::VPackHash,
                      basics::VelocyPackHelper::VPackEqual>
       values(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(vopts));
@@ -5725,8 +5703,7 @@ AqlValue Functions::Outersection(ExpressionContext* expressionContext,
 
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, size_t, basics::VelocyPackHelper::VPackHash,
                      basics::VelocyPackHelper::VPackEqual>
       values(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(vopts));
@@ -6779,8 +6756,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext, AstNode const&,
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, size_t, basics::VelocyPackHelper::VPackHash,
                      basics::VelocyPackHelper::VPackEqual>
       contains(512, basics::VelocyPackHelper::VPackHash(),
                basics::VelocyPackHelper::VPackEqual(options));
@@ -8729,8 +8705,7 @@ AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  return AqlValue(
-      basics::formatDate(aqlFormatString.slice().copyString(), tp));
+  return AqlValue(basics::formatDate(aqlFormatString.slice().copyString(), tp));
 }
 
 AqlValue Functions::ShardId(ExpressionContext* expressionContext,
@@ -8812,8 +8787,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
 
   transaction::Methods* trx = &expressionContext->trx();
 
-  uint64_t timeMilli =
-      basics::HybridLogicalClock::extractTime(revInt);
+  uint64_t timeMilli = basics::HybridLogicalClock::extractTime(revInt);
   uint64_t count = basics::HybridLogicalClock::extractCount(revInt);
   time_t timeSeconds = timeMilli / 1000;
   uint64_t millis = timeMilli % 1000;
@@ -8945,9 +8919,9 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   return AqlValue(resultBuilder->slice(), resultBuilder->size());
 }
 
-AqlValue Functions::Interleave(
-    aql::ExpressionContext* expressionContext, AstNode const&,
-    VPackFunctionParametersView parameters) {
+AqlValue Functions::Interleave(aql::ExpressionContext* expressionContext,
+                               AstNode const&,
+                               VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "INTERLEAVE";
 
@@ -9000,9 +8974,9 @@ AqlValue Functions::Interleave(
   return AqlValue(builder->slice(), builder->size());
 }
 
-AqlValue Functions::CallGreenspun(
-    aql::ExpressionContext* expressionContext, AstNode const&,
-    VPackFunctionParametersView parameters) {
+AqlValue Functions::CallGreenspun(aql::ExpressionContext* expressionContext,
+                                  AstNode const&,
+                                  VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
   greenspun::Machine m;
   greenspun::InitMachine(m);
@@ -9345,9 +9319,9 @@ AqlValue decayFuncImpl(aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue Functions::DecayGauss(
-    aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue Functions::DecayGauss(aql::ExpressionContext* expressionContext,
+                               AstNode const& node,
+                               VPackFunctionParametersView parameters) {
   auto gaussDecayFactory = [](const double origin, const double scale,
                               const double offset, const double decay) {
     const double sigmaSqr = -(scale * scale) / (2 * std::log(decay));
@@ -9362,9 +9336,9 @@ AqlValue Functions::DecayGauss(
   return decayFuncImpl(expressionContext, node, parameters, gaussDecayFactory);
 }
 
-AqlValue Functions::DecayExp(
-    aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue Functions::DecayExp(aql::ExpressionContext* expressionContext,
+                             AstNode const& node,
+                             VPackFunctionParametersView parameters) {
   auto expDecayFactory = [](const double origin, const double scale,
                             const double offset, const double decay) {
     const double lambda = std::log(decay) / scale;
@@ -9379,9 +9353,9 @@ AqlValue Functions::DecayExp(
   return decayFuncImpl(expressionContext, node, parameters, expDecayFactory);
 }
 
-AqlValue Functions::DecayLinear(
-    aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue Functions::DecayLinear(aql::ExpressionContext* expressionContext,
+                                AstNode const& node,
+                                VPackFunctionParametersView parameters) {
   auto linearDecayFactory = [](const double origin, const double scale,
                                const double offset, const double decay) {
     const double s = scale / (1.0 - decay);
@@ -9472,9 +9446,9 @@ AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue Functions::CosineSimilarity(
-    aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue Functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
+                                     AstNode const& node,
+                                     VPackFunctionParametersView parameters) {
   auto cosineSimilarityFunc = [expressionContext, &node](
                                   const VPackSlice lhs, const VPackSlice rhs,
                                   const VPackValueLength& length) {
@@ -9513,9 +9487,9 @@ AqlValue Functions::CosineSimilarity(
                       cosineSimilarityFunc);
 }
 
-AqlValue Functions::L1Distance(
-    aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue Functions::L1Distance(aql::ExpressionContext* expressionContext,
+                               AstNode const& node,
+                               VPackFunctionParametersView parameters) {
   auto L1DistFunc = [expressionContext, &node](const VPackSlice lhs,
                                                const VPackSlice rhs,
                                                const VPackValueLength& length) {
@@ -9540,9 +9514,9 @@ AqlValue Functions::L1Distance(
   return DistanceImpl(expressionContext, node, parameters, L1DistFunc);
 }
 
-AqlValue Functions::L2Distance(
-    aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue Functions::L2Distance(aql::ExpressionContext* expressionContext,
+                               AstNode const& node,
+                               VPackFunctionParametersView parameters) {
   auto L2DistFunc = [expressionContext, &node](const VPackSlice lhs,
                                                const VPackSlice rhs,
                                                const VPackValueLength& length) {

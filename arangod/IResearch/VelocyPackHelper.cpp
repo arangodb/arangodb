@@ -37,12 +37,11 @@ namespace iresearch {
 namespace {
 template<typename T>
 velocypack::Builder& addRef(velocypack::Builder& builder,
-                                      irs::basic_string_ref<T> value) {
+                            irs::basic_string_ref<T> value) {
   // store nulls verbatim
   if (value.null()) {
-    builder.add(  // add value
-        velocypack::Value(
-            velocypack::ValueType::Null)  // value
+    builder.add(                                        // add value
+        velocypack::Value(velocypack::ValueType::Null)  // value
     );
   } else {
     builder.add(toValuePair(value));
@@ -52,42 +51,36 @@ velocypack::Builder& addRef(velocypack::Builder& builder,
 }
 
 template<typename T>
-velocypack::Builder& addRef(velocypack::Builder& builder,
-                                      irs::string_ref key,
-                                      irs::basic_string_ref<T> value) {
+velocypack::Builder& addRef(velocypack::Builder& builder, irs::string_ref key,
+                            irs::basic_string_ref<T> value) {
   // Builder uses memcpy(...) which cannot handle nullptr
   TRI_ASSERT(!key.null());
 
   // store nulls verbatim
   if (value.null()) {
-    builder.add(
-        key.c_str(), key.size(),
-        velocypack::Value(velocypack::ValueType::Null));
-  } else {
     builder.add(key.c_str(), key.size(),
-                toValuePair(value));
+                velocypack::Value(velocypack::ValueType::Null));
+  } else {
+    builder.add(key.c_str(), key.size(), toValuePair(value));
   }
 
   return builder;
 }
 
 enum AttributeType : uint8_t {
-  AT_REG =
-      basics::VelocyPackHelper::AttributeBase,  // regular attribute
+  AT_REG = basics::VelocyPackHelper::AttributeBase,   // regular attribute
   AT_KEY = basics::VelocyPackHelper::KeyAttribute,    // _key
   AT_REV = basics::VelocyPackHelper::RevAttribute,    // _rev
   AT_ID = basics::VelocyPackHelper::IdAttribute,      // _id
   AT_FROM = basics::VelocyPackHelper::FromAttribute,  // _from
   AT_TO = basics::VelocyPackHelper::ToAttribute       // _to
-};                                                              // AttributeType
+};                                                    // AttributeType
 
-static_assert(
-    adjacencyChecker<AttributeType>::checkAdjacency<
-        AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
-    "Values are not adjacent");
+static_assert(adjacencyChecker<AttributeType>::checkAdjacency<
+                  AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
+              "Values are not adjacent");
 
 }  // namespace
-
 
 bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
   // according to Helpers.cpp, see

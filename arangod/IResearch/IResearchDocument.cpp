@@ -103,9 +103,8 @@ void append(std::string& out, size_t value) {
   out.resize(size + written);
 }
 
-bool canHandleValue(
-    std::string const& key, VPackSlice const& value,
-    arangodb::iresearch::FieldMeta const& context) noexcept {
+bool canHandleValue(std::string const& key, VPackSlice const& value,
+                    arangodb::iresearch::FieldMeta const& context) noexcept {
   switch (value.type()) {
     case VPackValueType::None:
     case VPackValueType::Illegal:
@@ -178,8 +177,8 @@ arangodb::iresearch::FieldMeta const* findMeta(
 }
 
 bool inObjectFiltered(std::string& buffer,
-                             arangodb::iresearch::FieldMeta const*& context,
-                             arangodb::iresearch::IteratorValue const& value) {
+                      arangodb::iresearch::FieldMeta const*& context,
+                      arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
@@ -199,8 +198,8 @@ bool inObjectFiltered(std::string& buffer,
 }
 
 bool inObject(std::string& buffer,
-                     arangodb::iresearch::FieldMeta const*& context,
-                     arangodb::iresearch::IteratorValue const& value) {
+              arangodb::iresearch::FieldMeta const*& context,
+              arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
@@ -214,8 +213,8 @@ bool inObject(std::string& buffer,
 }
 
 bool inArrayOrdered(std::string& buffer,
-                           arangodb::iresearch::FieldMeta const*& context,
-                           arangodb::iresearch::IteratorValue const& value) {
+                    arangodb::iresearch::FieldMeta const*& context,
+                    arangodb::iresearch::IteratorValue const& value) {
   buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
   append(buffer, value.pos);
   buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
@@ -224,8 +223,8 @@ bool inArrayOrdered(std::string& buffer,
 }
 
 bool inArray(std::string& buffer,
-                    arangodb::iresearch::FieldMeta const*& context,
-                    arangodb::iresearch::IteratorValue const& value) noexcept {
+             arangodb::iresearch::FieldMeta const*& context,
+             arangodb::iresearch::IteratorValue const& value) noexcept {
   return canHandleValue(buffer, value.value, *context);
 }
 
@@ -252,7 +251,7 @@ Filter const valueAcceptors[] = {
     &inArrayOrdered};
 
 Filter getFilter(VPackSlice value,
-                        arangodb::iresearch::FieldMeta const& meta) noexcept {
+                 arangodb::iresearch::FieldMeta const& meta) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions +

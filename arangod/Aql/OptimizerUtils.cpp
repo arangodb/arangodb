@@ -625,7 +625,7 @@ void captureArrayFilterArgumentExpressions(
             // never dive into attribute access
             return false;
           } else if (node->type == NODE_TYPE_FCALL) {
-            if (!evaluateFCalls) {  
+            if (!evaluateFCalls) {
               // FIXME(Dronplane): we should never execute
               // index-backed functions. But how to track
               // it? -> execute only functions that does

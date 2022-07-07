@@ -1279,13 +1279,14 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // new analyzer creation, validate
   if (emplaceRes.second) {
     bool erase = true;  // potentially invalid insertion took place
-    auto cleanup = irs::make_finally([&erase, &analyzers, &emplaceRes]() noexcept {
-      // cppcheck-suppress knownConditionTrueFalse
-      if (erase) {
-        // ensure no broken analyzers are left behind
-        analyzers.erase(emplaceRes.first);
-      }
-    });
+    auto cleanup =
+        irs::make_finally([&erase, &analyzers, &emplaceRes]() noexcept {
+          // cppcheck-suppress knownConditionTrueFalse
+          if (erase) {
+            // ensure no broken analyzers are left behind
+            analyzers.erase(emplaceRes.first);
+          }
+        });
 
     // emplaceAnalyzer is used by Analyzers API where we don't actually use
     // features

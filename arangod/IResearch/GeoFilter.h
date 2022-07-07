@@ -101,9 +101,9 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
 
   using filter::prepare;
 
-  prepared::ptr prepare(
-      irs::index_reader const& rdr, irs::Order const& ord, irs::score_t boost,
-      irs::attribute_provider const* /*ctx*/) const override;
+  prepared::ptr prepare(irs::index_reader const& rdr, irs::Order const& ord,
+                        irs::score_t boost,
+                        irs::attribute_provider const* /*ctx*/) const override;
 };  // GeoFilter
 
 ////////////////////////////////////////////////////////////////////////////////
