@@ -128,8 +128,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/IndexNodeTest.cpp
   Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
-  Aql/KShortestPathsExecutorTest.cpp
-  Aql/KShortestPathNodeTest.cpp
+  Aql/EnumeratePathsExecutorTest.cpp
+  Aql/EnumeratePathsNodeTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
   Aql/NgramMatchFunctionTest.cpp

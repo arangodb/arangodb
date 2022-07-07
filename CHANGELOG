@@ -1,5 +1,7 @@
 devel
 -----
+* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
+  explain outputs for AQL queries.
 
 * Pregel SSSP now supports `resultField` as well as `_resultField` as 
   parameter name to specify the field into which results are stored.
