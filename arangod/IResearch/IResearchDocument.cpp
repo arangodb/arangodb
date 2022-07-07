@@ -659,7 +659,7 @@ bool FieldIterator<IndexMetaStruct>::setValue(
 #ifndef USE_ENTERPRISE
 template<typename IndexMetaStruct>
 bool FieldIterator<IndexMetaStruct>::pushLevel(
-    VPackSlice value, LevelMeta const& meta,
+    VPackSlice value, IndexMetaStruct const& meta,
     FieldIterator<IndexMetaStruct>::Filter filter) {
   std::optional<MissingFieldsContainer> missing;
   // missing fields are gathered for "root" e.g. empty stack
