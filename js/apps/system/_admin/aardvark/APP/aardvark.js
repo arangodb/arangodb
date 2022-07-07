@@ -1260,6 +1260,106 @@ authRouter.get('/g6graph/:name', function (req, res) {
 
     var tmpObjEdges = {};
     var tmpObjNodes = {};
+    var nodeLabel;
+    var nodeSize;
+    var sizeCategory;
+    var nodeObj;
+
+    const generateNodeObject = (node) => {
+      nodeNames[node._id] = true;
+
+      if (config.nodeLabel) {
+        if (config.nodeLabel.indexOf('.') > -1) {
+          nodeLabel = getAttributeByKey(node, config.nodeLabel);
+          if (nodeLabel === undefined || nodeLabel === '') {
+            nodeLabel = node._id;
+          }
+        } else {
+          nodeLabel = node[config.nodeLabel];
+        }
+      } else {
+        nodeLabel = node._key;
+      }
+
+      if (config.nodeLabelByCollection === 'true') {
+        nodeLabel += ' - ' + node._id.split('/')[0];
+      }
+      if (typeof nodeLabel === 'number') {
+        nodeLabel = JSON.stringify(nodeLabel);
+      }
+      
+      if (config.nodeSize && config.nodeSizeByEdges === 'false') {
+        // original code
+        nodeSize = node[config.nodeSize];
+        
+        sizeCategory = node[config.nodeSize] || '';
+        nodesSizeValues.push(node[config.nodeSize]);
+      }
+      var calculatedNodeColor = '#CBDF2F';
+      if (config.nodeColor !== undefined) {
+        if(!config.nodeColor.startsWith('#')) {
+          calculatedNodeColor = '#' + config.nodeColor;
+        } else {
+          calculatedNodeColor = config.nodeColor;
+        }
+      }
+        
+      nodeObj = {
+        id: node._id,
+        label: nodeLabel,
+        size: nodeSize || 40,
+        sizeCategory: sizeCategory || '',
+        style: {
+          fill: calculatedNodeColor,
+          label: {
+            value: nodeLabel
+          }
+        }
+      };
+
+      if (config.nodeColorByCollection === 'true') {
+        var coll = node._id.split('/')[0];
+        if (tmpObjNodes.hasOwnProperty(coll)) {
+          nodeObj.color = tmpObjNodes[coll];
+          nodeObj.style.fill = tmpObjNodes[coll] || '#ff0'; 
+        } else {
+          tmpObjNodes[coll] = colors.jans[Object.keys(tmpObjNodes).length];
+          nodeObj.color = tmpObjNodes[coll];
+        }
+      } else if (config.nodeColorAttribute !== '') {
+        if(node[config.nodeColorAttribute]) {
+          nodeObj.colorCategory = node[config.nodeColorAttribute] || '';
+          const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+          
+          const value2 = {
+            'name': node[config.nodeColorAttribute] || '',
+            'color': tempNodeColor
+          };
+
+          const nodesColorAttributeIndex = nodesColorAttributes.findIndex(object => object.name === value2.name);
+          if (nodesColorAttributeIndex === -1) {
+            nodesColorAttributes.push(value2);
+          }
+        }
+
+        var attr = node[config.nodeColorAttribute];
+        if (attr) {
+          if (tmpObjNodes.hasOwnProperty(attr)) {
+            nodeObj.color = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
+            nodeObj.style.fill = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
+            nodeObj[config.nodeColorAttribute] = attr;
+            nodeObj.attributeColor = tmpObjNodes[attr];
+          } else {
+            tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
+            nodeObj.color = tmpObjNodes[attr];
+            nodeObj.style.fill = tmpObjNodes[attr] || '#ff0'; 
+          }
+        }
+      }
+
+      nodeObj.sortColor = nodeObj.color;
+      return nodeObj;
+    }
 
     _.each(cursor.json, function (obj) {
       var edgeLabel = '';
@@ -1372,109 +1472,18 @@ authRouter.get('/g6graph/:name', function (req, res) {
         edgesObj[edge._id] = edgeObj;
       });
 
-      var nodeLabel;
-      var nodeSize;
-      var sizeCategory;
-      var nodeObj;
       _.each(obj.vertices, function (node) {
         if (node !== null) {
-          nodeNames[node._id] = true;
-
-          if (config.nodeLabel) {
-            if (config.nodeLabel.indexOf('.') > -1) {
-              nodeLabel = getAttributeByKey(node, config.nodeLabel);
-              if (nodeLabel === undefined || nodeLabel === '') {
-                nodeLabel = node._id;
-              }
-            } else {
-              nodeLabel = node[config.nodeLabel];
-            }
-          } else {
-            nodeLabel = node._key;
-          }
-
-          if (config.nodeLabelByCollection === 'true') {
-            nodeLabel += ' - ' + node._id.split('/')[0];
-          }
-          if (typeof nodeLabel === 'number') {
-            nodeLabel = JSON.stringify(nodeLabel);
-          }
-          
-          if (config.nodeSize && config.nodeSizeByEdges === 'false') {
-            // original code
-            nodeSize = node[config.nodeSize];
-
-            
-            sizeCategory = node[config.nodeSize] || '';
-            nodesSizeValues.push(node[config.nodeSize]);
-          }
-        var calculatedNodeColor = '#CBDF2F';
-        if (config.nodeColor !== undefined) {
-          if(!config.nodeColor.startsWith('#')) {
-            calculatedNodeColor = '#' + config.nodeColor;
-          } else {
-            calculatedNodeColor = config.nodeColor;
-          }
-        }
-         
-        nodeObj = {
-          id: node._id,
-          label: nodeLabel,
-          size: nodeSize || 40,
-          sizeCategory: sizeCategory || '',
-          style: {
-            fill: calculatedNodeColor,
-            label: {
-              value: nodeLabel
-            }
-          }
-        };
-
-          if (config.nodeColorByCollection === 'true') {
-            var coll = node._id.split('/')[0];
-            if (tmpObjNodes.hasOwnProperty(coll)) {
-              nodeObj.color = tmpObjNodes[coll];
-              nodeObj.style.fill = tmpObjNodes[coll] || '#ff0'; 
-            } else {
-              tmpObjNodes[coll] = colors.jans[Object.keys(tmpObjNodes).length];
-              nodeObj.color = tmpObjNodes[coll];
-            }
-          } else if (config.nodeColorAttribute !== '') {
-            if(node[config.nodeColorAttribute]) {
-              nodeObj.colorCategory = node[config.nodeColorAttribute] || '';
-              const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
-              
-              const value2 = {
-                'name': node[config.nodeColorAttribute] || '',
-                'color': tempNodeColor
-              };
-
-              const nodesColorAttributeIndex = nodesColorAttributes.findIndex(object => object.name === value2.name);
-              if (nodesColorAttributeIndex === -1) {
-                nodesColorAttributes.push(value2);
-              }
-            }
-
-            var attr = node[config.nodeColorAttribute];
-            if (attr) {
-              if (tmpObjNodes.hasOwnProperty(attr)) {
-                nodeObj.color = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
-                nodeObj.style.fill = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
-                nodeObj[config.nodeColorAttribute] = attr;
-                nodeObj.attributeColor = tmpObjNodes[attr];
-              } else {
-                tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
-                nodeObj.color = tmpObjNodes[attr];
-                nodeObj.style.fill = tmpObjNodes[attr] || '#ff0'; 
-              }
-            }
-          }
-
-          nodeObj.sortColor = nodeObj.color;
-          nodesObj[node._id] = nodeObj;
+          nodesObj[node._id] = generateNodeObject(node);
         }
       });
     });
+
+    // In case our AQL query did not deliver any nodes, we will put the "startVertex" into the "nodes" list
+    // as well (to be able to display at least the starting point of our graph)
+    if (Object.keys(nodesObj).length === 0) {
+      nodesObj[startVertex._id] = generateNodeObject(startVertex);
+    }
 
     _.each(nodesObj, function (node) {
       if (config.nodeSizeByEdges === 'true') {
