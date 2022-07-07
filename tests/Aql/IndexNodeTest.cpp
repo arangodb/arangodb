@@ -31,10 +31,12 @@
 #include "Cluster/ServerState.h"
 #include "Mocks/Servers.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
-#include "velocypack/Iterator.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
+
+#include <velocypack/Iterator.h>
 
 namespace {
 
@@ -102,16 +104,15 @@ TEST_F(IndexNodeTest, objectQuery) {
 
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-      EMPTY, arangodb::transaction::Options());
+      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+      {collection->name()}, EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
-  arangodb::ManagedDocumentResult mmdoc;
   auto jsonDocument = arangodb::velocypack::Parser::fromJson(
       "{\"_key\": \"doc\", \"obj\": {\"a\": \"a_val\", \"b\": \"b_val\", "
       "\"c\": \"c_val\"}}");
-  auto const res = collection->insert(&trx, jsonDocument->slice(), mmdoc, opt);
+  auto res = trx.insert(collection->name(), jsonDocument->slice(), opt);
   EXPECT_TRUE(res.ok());
   EXPECT_TRUE(trx.commit().ok());
 
@@ -184,12 +185,11 @@ TEST_F(IndexNodeTest, expansionQuery) {
 
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-      EMPTY, arangodb::transaction::Options());
+      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+      {collection->name()}, EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
-  arangodb::ManagedDocumentResult mmdoc;
   auto jsonDocument0 = arangodb::velocypack::Parser::fromJson(
       "{\"_key\": \"doc_0\", \"tags\": {\"hop\": [{\"foo\": {\"fo\": "
       "\"foo_val\"}, \"bar\": {\"br\": \"bar_val\"}, \"baz\": {\"bz\": "
@@ -198,11 +198,10 @@ TEST_F(IndexNodeTest, expansionQuery) {
       "{\"_key\": \"doc_1\", \"tags\": {\"hop\": [{\"foo\": {\"fo\": "
       "\"foo_val\"}}, {\"bar\": {\"br\": \"bar_val\"}}, {\"baz\": {\"bz\": "
       "\"baz_val_1\"}}]}}");
-  auto const res0 =
-      collection->insert(&trx, jsonDocument0->slice(), mmdoc, opt);
+  auto res0 = trx.insert(collection->name(), jsonDocument0->slice(), opt);
   EXPECT_TRUE(res0.ok());
-  auto const res1 =
-      collection->insert(&trx, jsonDocument1->slice(), mmdoc, opt);
+
+  auto res1 = trx.insert(collection->name(), jsonDocument1->slice(), opt);
   EXPECT_TRUE(res1.ok());
   EXPECT_TRUE(trx.commit().ok());
   auto queryString =
@@ -240,17 +239,16 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
 
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-      EMPTY, arangodb::transaction::Options());
+      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+      {collection->name()}, EMPTY, arangodb::transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
-  arangodb::ManagedDocumentResult mmdoc;
   auto jsonDocument = arangodb::velocypack::Parser::fromJson(
       "{\"tags\": {\"hop\": {\"foo\": {\"fo\": \"foo_val\"}, \"bar\": {\"br\": "
       "\"bar_val\"}, \"baz\": {\"bz\": \"baz_val\"}}}}");
-  auto const res = collection->insert(&trx, jsonDocument->slice(), mmdoc, opt);
+  auto res = trx.insert(collection->name(), jsonDocument->slice(), opt);
   EXPECT_TRUE(res.ok());
   EXPECT_TRUE(trx.commit().ok());
   auto queryString =
@@ -283,15 +281,14 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
 
   std::vector<std::string> const EMPTY;
   arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-      EMPTY, arangodb::transaction::Options());
+      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+      {collection->name()}, EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
-  arangodb::ManagedDocumentResult mmdoc;
   auto jsonDocument = arangodb::velocypack::Parser::fromJson(
       "{\"_key\": \"doc\", \"tags\": [\"foo_val\", \"bar_val\", \"baz_val\"]}");
-  auto const res = collection->insert(&trx, jsonDocument->slice(), mmdoc, opt);
+  auto res = trx.insert(collection->name(), jsonDocument->slice(), opt);
   EXPECT_TRUE(res.ok());
 
   EXPECT_TRUE(trx.commit().ok());

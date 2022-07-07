@@ -57,19 +57,19 @@ class TraversalStats;
 class QueryContext;
 
 template<class FinderType>
-class KShortestPathsExecutorInfos {
+class EnumeratePathsExecutorInfos {
   using InputVertex = GraphNode::InputVertex;
 
  public:
-  KShortestPathsExecutorInfos(RegisterId outputRegister, QueryContext& query,
+  EnumeratePathsExecutorInfos(RegisterId outputRegister, QueryContext& query,
                               std::unique_ptr<FinderType>&& finder,
                               InputVertex&& source, InputVertex&& target);
 
-  KShortestPathsExecutorInfos() = delete;
+  EnumeratePathsExecutorInfos() = delete;
 
-  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
-  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
-  ~KShortestPathsExecutorInfos() = default;
+  EnumeratePathsExecutorInfos(EnumeratePathsExecutorInfos&&) = default;
+  EnumeratePathsExecutorInfos(EnumeratePathsExecutorInfos const&) = delete;
+  ~EnumeratePathsExecutorInfos() = default;
 
   [[nodiscard]] auto finder() const -> FinderType&;
 
@@ -128,7 +128,7 @@ class KShortestPathsExecutorInfos {
  * @brief Implementation of ShortestPath Node
  */
 template<class FinderType>
-class KShortestPathsExecutor {
+class EnumeratePathsExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
@@ -137,16 +137,16 @@ class KShortestPathsExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = KShortestPathsExecutorInfos<FinderType>;
+  using Infos = EnumeratePathsExecutorInfos<FinderType>;
   using Stats = TraversalStats;
 
   using InputVertex = GraphNode::InputVertex;
 
-  KShortestPathsExecutor() = delete;
-  KShortestPathsExecutor(KShortestPathsExecutor&&) = default;
+  EnumeratePathsExecutor() = delete;
+  EnumeratePathsExecutor(EnumeratePathsExecutor&&) = default;
 
-  KShortestPathsExecutor(Fetcher& fetcher, Infos&);
-  ~KShortestPathsExecutor() = default;
+  EnumeratePathsExecutor(Fetcher& fetcher, Infos&);
+  ~EnumeratePathsExecutor() = default;
 
   /**
    * @brief Shutdown will be called once for every query
