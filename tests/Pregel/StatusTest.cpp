@@ -23,6 +23,7 @@
 
 #include <date/date.h>
 #include <chrono>
+#include <optional>
 #include "Pregel/Common.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
@@ -43,16 +44,63 @@ TEST(PregelStatus,
             Status{.timeStamp = laterStatus.timeStamp});
 }
 
+TEST(PregelStatus, adding_two_status_adds_measurements) {
+  auto earlierStatus =
+      Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
+             .verticesLoaded = 2,
+             .edgesLoaded = 119,
+             .memoryBytesUsed = 92228};
+  auto laterStatus = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
+                            .verticesLoaded = 987,
+                            .edgesLoaded = 1,
+                            .memoryBytesUsed = 322};
+
+  ASSERT_EQ(earlierStatus + laterStatus,
+            (Status{.timeStamp = laterStatus.timeStamp,
+                    .verticesLoaded = 989,
+                    .edgesLoaded = 120,
+                    .memoryBytesUsed = 92550}));
+}
+
+TEST(PregelStatus,
+     empty_option_measurements_are_discarded_when_adding_two_status) {
+  auto earlierStatus =
+      Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
+             .verticesLoaded = std::nullopt,
+             .edgesLoaded = std::nullopt,
+             .memoryBytesUsed = 92228};
+  auto laterStatus = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
+                            .verticesLoaded = std::nullopt,
+                            .edgesLoaded = 1,
+                            .memoryBytesUsed = std::nullopt};
+
+  ASSERT_EQ(earlierStatus + laterStatus,
+            (Status{.timeStamp = laterStatus.timeStamp,
+                    .verticesLoaded = std::nullopt,
+                    .edgesLoaded = 1,
+                    .memoryBytesUsed = 92228}));
+}
+
 TEST(PregelConductorStatus, accumulates_worker_status) {
   auto workers = std::unordered_map<arangodb::ServerID, Status>{
       {"worker_with_later_status",
-       Status{.timeStamp = date::sys_days{date::March / 7 / 2020}}},
+       Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
+              .verticesLoaded = 2,
+              .edgesLoaded = 119,
+              .memoryBytesUsed = 92228}},
       {"worker_with_earlier_status",
-       Status{.timeStamp = date::sys_days{date::March / 4 / 2020}}}};
+       Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
+              .verticesLoaded = 987,
+              .edgesLoaded = 1,
+              .memoryBytesUsed = 322}}};
   auto conductorStatus = ConductorStatus{.workers = workers};
 
-  ASSERT_EQ(conductorStatus.accumulate(),
-            (AccumulatedConductorStatus{
-                .status = workers.at("worker_with_later_status"),
-                .workers = workers}));
+  ASSERT_EQ(
+      conductorStatus.accumulate(),
+      (AccumulatedConductorStatus{
+          .status = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
+                           .verticesLoaded = 989,
+                           .edgesLoaded = 120,
+                           .memoryBytesUsed = 92550},
+          .workers = workers}));
 }

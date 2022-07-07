@@ -37,6 +37,7 @@
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
@@ -115,6 +116,10 @@ template<typename V, typename E>
 void GraphStore<V, E>::loadShards(
     WorkerConfig* config, std::function<void()> const& statusUpdateCallback,
     std::function<void()> const& finishedLoadingCallback) {
+  _observables.verticesLoaded = 0;
+  _observables.edgesLoaded = 0;
+  _observables.memoryBytesUsed = 0;
+
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
 
@@ -397,7 +402,7 @@ void GraphStore<V, E>::loadVertices(
       _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(segmentSize);
     }
     Vertex<V, E>* ventry = vertexBuff->appendElement();
-    _observables.memoryBytesUsed += sizeof(Vertex<V, E>);
+    *_observables.memoryBytesUsed += sizeof(Vertex<V, E>);
 
     VPackValueLength keyLen;
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
@@ -418,7 +423,7 @@ void GraphStore<V, E>::loadVertices(
     // actually copy in the key
     memcpy(keyBuff->end(), key, keyLen);
     keyBuff->advance(keyLen);
-    _observables.memoryBytesUsed += keyLen;
+    *_observables.memoryBytesUsed += keyLen;
 
     // load vertex data
     documentId = trx.extractIdString(slice);
@@ -435,7 +440,7 @@ void GraphStore<V, E>::loadVertices(
       loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices,
                 info);
     }
-    ++_observables.verticesLoaded;
+    ++(*_observables.verticesLoaded);
     return true;
   };
 
@@ -520,12 +525,12 @@ void GraphStore<V, E>::loadEdges(
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
-    ++_observables.edgesLoaded;
+    ++(*_observables.edgesLoaded);
     if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "too many edges for vertex");
     }
-    _observables.memoryBytesUsed += sizeof(Edge<E>);
+    *_observables.memoryBytesUsed += sizeof(Edge<E>);
 
     std::size_t pos = toValue.find('/');
     collectionName = std::string(toValue.substr(0, pos));
@@ -536,7 +541,7 @@ void GraphStore<V, E>::loadEdges(
     keyBuff->advance(key.size());
     // actually copy in the key
     memcpy(edge->_toKey, key.data(), key.size());
-    _observables.memoryBytesUsed += key.size();
+    *_observables.memoryBytesUsed += key.size();
 
     if (isCluster) {
       // resolve the shard of the target vertex.

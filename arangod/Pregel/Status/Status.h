@@ -26,6 +26,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include <Inspection/VPack.h>
@@ -34,17 +35,33 @@
 #include <Pregel/Common.h>
 
 namespace arangodb::pregel {
+
+template<typename T>
+auto add(std::optional<T> const& a, std::optional<T> const& b)
+    -> std::optional<T> {
+  if (a.has_value() && b.has_value()) {
+    return {a.value() + b.value()};
+  } else if (!a.has_value() && !b.has_value()) {
+    return {std::nullopt};
+  } else if (!a.has_value()) {
+    return {b};
+  } else {
+    return {a};
+  }
+}
+
 struct Status {
   TimeStamp timeStamp{std::chrono::system_clock::now()};
-  std::size_t verticesLoaded{0};
-  std::size_t edgesLoaded{0};
-  std::size_t memoryBytesUsed{0};
+  std::optional<std::size_t> verticesLoaded = std::nullopt;
+  std::optional<std::size_t> edgesLoaded = std::nullopt;
+  std::optional<std::size_t> memoryBytesUsed = std::nullopt;
   bool operator==(Status const&) const = default;
   auto operator+(Status const& other) const -> Status {
-    return Status{.timeStamp = std::max(timeStamp, other.timeStamp),
-                  .verticesLoaded = verticesLoaded + other.verticesLoaded,
-                  .edgesLoaded = edgesLoaded + other.edgesLoaded,
-                  .memoryBytesUsed = memoryBytesUsed + other.memoryBytesUsed};
+    return Status{
+        .timeStamp = std::max(timeStamp, other.timeStamp),
+        .verticesLoaded = add(verticesLoaded, other.verticesLoaded),
+        .edgesLoaded = add(edgesLoaded, other.edgesLoaded),
+        .memoryBytesUsed = add(memoryBytesUsed, other.memoryBytesUsed)};
   };
 };
 
@@ -59,13 +76,21 @@ auto inspect(Inspector& f, Status& x) {
 }
 
 struct Observables {
-  std::atomic<std::size_t> verticesLoaded{0};
-  std::atomic<std::size_t> edgesLoaded{0};
-  std::atomic<std::size_t> memoryBytesUsed{0};
+  std::optional<std::atomic<std::size_t>> verticesLoaded;
+  std::optional<std::atomic<std::size_t>> edgesLoaded;
+  std::optional<std::atomic<std::size_t>> memoryBytesUsed;
   auto observe() const -> Status {
-    return Status{.verticesLoaded = verticesLoaded.load(),
-                  .edgesLoaded = edgesLoaded.load(),
-                  .memoryBytesUsed = memoryBytesUsed.load()};
+    return Status{
+        .verticesLoaded = verticesLoaded.has_value()
+                              ? std::optional{verticesLoaded.value().load()}
+                              : std::nullopt,
+        .edgesLoaded = edgesLoaded.has_value()
+                           ? std::optional{edgesLoaded.value().load()}
+                           : std::nullopt,
+        .memoryBytesUsed = memoryBytesUsed.has_value()
+                               ? std::optional{memoryBytesUsed.value().load()}
+                               : std::nullopt};
   }
 };
+
 }  // namespace arangodb::pregel
