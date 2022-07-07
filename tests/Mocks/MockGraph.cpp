@@ -140,10 +140,7 @@ void MockGraph::storeEdgeData(TRI_vocbase_t& vocbase,
     b.clear();
     edge.addToBuilder(b);
     auto res = trx.insert(edgeShardName, b.slice(), options);
-    if (res.fail()) {
-      LOG_DEVEL << res.errorMessage() << " " << b.toJson();
-    }
-    EXPECT_TRUE((res.ok()));
+    EXPECT_TRUE(res.ok()) << res.errorMessage() << " " << b.toJson();
     added++;
   }
 

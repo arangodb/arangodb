@@ -46,7 +46,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Aql/LocalKShortestPathsNode.h"
+#include "Enterprise/Aql/LocalEnumeratePathsNode.h"
 #include "Enterprise/Aql/LocalShortestPathNode.h"
 #include "Enterprise/Aql/LocalTraversalNode.h"
 #endif
