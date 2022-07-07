@@ -1312,6 +1312,11 @@
             );
           } else {
             tableContent.push(
+              window.modalView.createSpacerEntry(
+                'newEdgeDefinitionsSpacer' + self.counter, 'Relation'
+              )
+            );
+            tableContent.push(
               window.modalView.createSelect2Entry(
                 'newEdgeDefinitions' + self.counter,
                 rowDescription.edgeDefinitions.title,
