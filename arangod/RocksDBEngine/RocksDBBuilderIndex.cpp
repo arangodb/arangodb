@@ -33,12 +33,10 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Containers/HashSet.h"
-#include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
-
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
-
+#include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -121,7 +119,8 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
       }
     }
   }
-#if defined USE_ENTERPRISE && defined USE_SST_INGESTION
+#if !defined USE_ENTERPRISE || \
+    defined USE_ENTERPRISE && !defined USE_SST_INGESTION
   docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
 #endif
   return {};
