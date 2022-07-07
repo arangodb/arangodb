@@ -30,8 +30,6 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 #include <atomic>
-#include <condition_variable>
-#include <mutex>
 
 namespace arangodb {
 

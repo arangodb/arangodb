@@ -339,11 +339,7 @@ static arangodb::Result fillIndex(
                               threadBatchSize, dbOptions, idxPath);
 #ifdef USE_SST_INGESTION
       if (res.ok()) {
-        for (auto const& fileName : TRI_FullTreeDirectory(idxPath.data())) {
-          TRI_UnlinkFile(
-              basics::FileUtils::buildFilename(idxPath.data(), fileName.data())
-                  .data());
-        }
+        cleanUpTempRocksDBDir(idxPath.data());
       }
 #endif
     }
