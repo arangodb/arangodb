@@ -28,6 +28,7 @@
 #include "Metrics/Metric.h"
 #include "Metrics/IBatch.h"
 #include "Metrics/MetricKey.h"
+#include "Metrics/CollectMode.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
@@ -62,7 +63,12 @@ class MetricsFeature final : public ArangodFeature {
   Metric* get(MetricKeyView const& key);
   bool remove(Builder const& builder);
 
-  void toPrometheus(std::string& result) const;
+  void toPrometheus(std::string& result, CollectMode mode) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief That used for collect some metrics
+  /// to array for ClusterMetricsFeature
+  //////////////////////////////////////////////////////////////////////////////
   void toVPack(velocypack::Builder& builder) const;
 
   ServerStatistics& serverStatistics() noexcept;

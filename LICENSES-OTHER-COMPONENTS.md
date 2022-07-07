@@ -205,6 +205,16 @@ _Enterprise Edition only_
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
+#### is-wsl
+
+* Name: is-wsl
+* Version: 2.2.0
+* Date: 2.12.2020
+* Project Home: https://github.com/sindresorhus/is-wsl
+* License: https://github.com/sindresorhus/is-wsl/blob/main/license
+* License Name: MIT License
+* License Id: MIT
+
 #### Jinja2
 
 * Name: Jinja2 Python Template Engine
@@ -1917,6 +1927,16 @@ Project Home: https://github.com/electerious/nice-try
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/nice-try/LICENSE
 License Name: MIT License
 License Id: MIT
+
+
+#### node-netstat
+
+Name: node-netstat
+Version: 1.8.0 + adjustments for ArangoDB
+Project Home: https://github.com/danielkrainas/node-netstat#readme
+License: http://unlicense.org/UNLICENSE
+License Name: Unlicense / Public Domain
+License Id: -
 
 #### once
 

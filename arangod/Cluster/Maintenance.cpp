@@ -61,6 +61,7 @@
 #include <velocypack/Slice.h>
 
 #include <algorithm>
+#include <array>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -99,9 +100,12 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
-  static std::vector<std::string> const compareProperties{
-      WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
+  static std::array<std::string, 6> const compareProperties{
+      StaticStrings::WaitForSyncString,
+      StaticStrings::Schema,
+      StaticStrings::CacheEnabled,
       StaticStrings::InternalValidatorTypes,
+      StaticStrings::ComputedValues,
       StaticStrings::GraphSmartGraphAttribute};
   auto result = std::make_shared<VPackBuilder>();
   {
@@ -418,7 +422,8 @@ static void handleLocalShard(
     containers::FlatHashSet<std::string>& indis, std::string const& serverId,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
-    MaintenanceFeature::ShardActionMap const& shardActionMap) {
+    MaintenanceFeature::ShardActionMap const& shardActionMap,
+    replication::Version replicationVersion) {
   // First check if the shard is locked:
   auto iter = shardActionMap.find(colname);
   if (iter != shardActionMap.end()) {
@@ -473,7 +478,8 @@ static void handleLocalShard(
    *      before it actually took ownership.
    */
 
-  if (activeResign || adjustResignState) {
+  if (replicationVersion != replication::Version::TWO &&
+      (activeResign || adjustResignState)) {
     description = std::make_shared<ActionDescription>(
         std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
                                            {DATABASE, dbname},
@@ -916,9 +922,12 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
           auto const& colname = lcol.key.copyString();
           auto const shardMap = getShardMap(plan);  // plan shards -> servers
+          auto rv = replicationVersion.find(dbname);
+          TRI_ASSERT(rv != replicationVersion.end());
+
           handleLocalShard(ldbname, colname, lcol.value, shardMap.slice(),
                            commonShrds, indis, serverId, actions, makeDirty,
-                           callNotify, shardActionMap);
+                           callNotify, shardActionMap, rv->second);
         }
       }
     }

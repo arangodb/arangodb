@@ -1,5 +1,93 @@
 devel
 -----
+* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
+  explain outputs for AQL queries.
+
+* Pregel SSSP now supports `resultField` as well as `_resultField` as 
+  parameter name to specify the field into which results are stored.
+  The name `_resultField` will be deprecated in future.
+
+* Web UI: Fixes a GraphViewer issue related to display issues with node
+  and edge labels. Boolean node or edge values could not be used as label
+  values (ES-1084).
+
+* Made the SortExecutor receive its input incrementally, instead of receiving
+  a whole matrix containing all input at once.
+
+* Optimization for index post-filtering (early pruning): in case an index
+  is used for lookups, and the index covers the IndexNode's post-filter
+  condition, then loading the full document from the storage engine is
+  now deferred until the filter condition is evaluated and it is established
+  that the document matches the filter condition.
+
+* Added a fully functional UI for Views that lets users view, modify mutable
+  properties and delete views from the web UI.
+
+* Fix thread ids and thread names in log output for threads that are not
+  started directly by ArangoDB code, but indirectly via library code.
+  Previously, the ids of these threads were always reported as "1", and
+  the thread name was "main". Now return proper thread ids and names.
+
+* Changed default Linux CI compiler to gcc-11.
+
+* Updated arangosync to v2.11.0-preview-2.
+
+* Add "AT LEAST" quantifier for array filters in AQL:
+
+      `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
+      `RETURN [1,2,3] AT LEAST (2) IN [1,2,3,4,5]`
+
+* Changed default macOS CI compiler to LLVM clang-14.
+
+* Introduce reading from followers in clusters. This works by offering
+  an additional HTTP header "x-arango-allow-dirty-read" for certain
+  read-only APIs. This header has already been used for active failover
+  deployments to allow reading from followers. Using this header leads
+  to the fact that coordinators are allowed to read from follower shards
+  instead only from leader shards. This can help to spread the read load
+  better across the cluster. Obviously, using this header can result in
+  "dirty reads", which are read results returning stale data or even
+  not-yet-officially committed data. Use at your own risk if performance
+  is more important than correctness or if you know that data does not
+  change.
+  The responses which can contain dirty reads will have set the HTTP header
+  "x-arango-potential-dirty-read" set to "true".
+
+* Changed HTTP response code for error number 1521 from 500 to 400.
+
+  Error 1521 (query collection lock failed) is nowadays only emitted by
+  traversals, when a collection is accessed during the traversal that has
+  not been specified in the WITH statement of the query. 
+  Thus returning HTTP 500 is not a good idea, as it is clearly a user error
+  that triggered the problem.
+
+* Renamed the `--frontend.*` startup options to `--web-interface.*`:
+
+  - `--frontend.proxy-request.check` -> `--web-interface.proxy-request.check`
+  - `--frontend.trusted-proxy` -> `--web-interface.trusted-proxy`
+  - `--frontend.version-check` -> `--web-interface.version-check`
+
+  The former startup options are still supported.
+
+* Added Enterprise Graph feature to enterprise version of ArangoDB.
+  The enterprise graph is another graph sharding model that we introduced,
+  it is less strict, and therefore easier to start with, then SmartGraphs,
+  as it does not require a smartGraphAttribute, and allows free choice of
+  vertex _key values. But still maintains performance gains as compared to
+  general-graphs. For more details please check documentation.
+
+* APM-135: Added multithreading to assigning non-unique indexes to documents,
+  in foreground or background mode. The number of index creation threads 
+  is hardcoded to 2 for now. Improvements for higher parallelism are expected
+  for future versions.
+
+* Issue 15592: Permit `MERGE_RECURSIVE()` to be called with a single argument.
+
+* Fixed issue 16337: arangoimport with `--headers-file` and `--merge-attributes`
+  merges column names instead of row values on the first line of a CSV file.
+
+  Additionally, floating-point numbers are now merged using their standard
+  string representation instead of with a fixed precision of 6 decimal places.
 
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
