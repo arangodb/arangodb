@@ -48,6 +48,8 @@ std::unordered_map<std::string,
     {"utc-datestring", arangodb::LogTimeFormats::TimeFormat::UTCDateString},
     {"utc-datestring-millis",
      arangodb::LogTimeFormats::TimeFormat::UTCDateStringMillis},
+    {"utc-datestring-micros",
+     arangodb::LogTimeFormats::TimeFormat::UTCDateStringMicros},
     {"local-datestring", arangodb::LogTimeFormats::TimeFormat::LocalDateString},
 };
 
@@ -82,6 +84,7 @@ bool isLocalFormat(TimeFormat format) {
 bool isStringFormat(TimeFormat format) {
   return format == TimeFormat::UTCDateString ||
          format == TimeFormat::UTCDateStringMillis ||
+         format == TimeFormat::UTCDateStringMicros ||
          format == TimeFormat::LocalDateString;
 }
 
@@ -162,11 +165,12 @@ void writeTime(std::string& out, TimeFormat format,
   } else {
     // all date-string variants handled here
     if (format == TimeFormat::UTCDateString ||
-        format == TimeFormat::UTCDateStringMillis) {
+        format == TimeFormat::UTCDateStringMillis ||
+        format == TimeFormat::UTCDateStringMicros) {
       // UTC datestring
       // UTC datestring with milliseconds
-      arangodb::tp_sys_clock_ms secs(
-          duration_cast<milliseconds>(tp.time_since_epoch()));
+      arangodb::tp_sys_clock_us secs(
+          duration_cast<microseconds>(tp.time_since_epoch()));
       auto days = floor<date::days>(secs);
       auto ymd = date::year_month_day(days);
       appendNumber(uint64_t(static_cast<int>(ymd.year())), out, 4);
@@ -184,8 +188,12 @@ void writeTime(std::string& out, TimeFormat format,
 
       if (format == TimeFormat::UTCDateStringMillis) {
         out.push_back('.');
-        appendNumber(uint64_t(day_time.subseconds().count()), out, 3);
+        appendNumber(uint64_t(day_time.subseconds().count()) / 1000, out, 3);
+      } else if (format == TimeFormat::UTCDateStringMicros) {
+        out.push_back('.');
+        appendNumber(uint64_t(day_time.subseconds().count()), out, 6);
       }
+
       out.push_back('Z');
     } else if (format == TimeFormat::LocalDateString) {
       // local datestring
