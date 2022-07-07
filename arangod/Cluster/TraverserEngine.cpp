@@ -60,6 +60,141 @@ static const std::string TYPE = "type";
 static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
+namespace {
+void parseLookupInfo(aql::QueryContext& query, VPackSlice conditionsArray,
+                     VPackSlice shards,
+                     bool lastInFirstOut,
+                     std::vector<IndexAccessor>& vectorToInsert) {
+  TRI_ASSERT(conditionsArray.isArray());
+  std::vector<IndexAccessor> indexesWithPriority;
+
+  for (size_t i = 0; i < conditionsArray.length(); ++i) {
+    auto oneInfo = conditionsArray.at(i);
+    transaction::Methods::IndexHandle idx;
+    {
+      // Parse Condition Member to Update
+      bool conditionNeedUpdate =
+          arangodb::basics::VelocyPackHelper::getBooleanValue(
+              oneInfo, "condNeedUpdate", false);
+      std::optional<size_t> memberToUpdate =
+          conditionNeedUpdate
+              ? std::optional(
+                    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+                        oneInfo, "condMemberToUpdate", 0))
+              : std::nullopt;
+
+      // Parse the Condition
+      auto cond = oneInfo.get("condition");
+      if (!cond.isObject()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "Each lookup requires condition to be an object");
+      }
+      aql::AstNode* condition = query.ast()->createNode(cond);
+
+      VPackSlice read = oneInfo.get("handle");
+      if (!read.isObject()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "Each lookup requires handle to be an object");
+      }
+
+      // Parse the IndexHandle
+      read = read.get("id");
+      if (!read.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER, "Each handle requires id to be a string");
+      }
+      std::string idxId = read.copyString();
+      aql::Collections const& collections = query.collections();
+
+      TRI_edge_direction_e dir = TRI_EDGE_ANY;
+      VPackSlice dirSlice = oneInfo.get(StaticStrings::GraphDirection);
+      if (dirSlice.isEqualString(StaticStrings::GraphDirectionInbound)) {
+        dir = TRI_EDGE_IN;
+      } else if (dirSlice.isEqualString(
+                     StaticStrings::GraphDirectionOutbound)) {
+        dir = TRI_EDGE_OUT;
+      }
+      if (dir == TRI_EDGE_ANY) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "Missing or invalid direction attribute in graph definition");
+      }
+
+      auto allShards = shards.at(i);
+      TRI_ASSERT(allShards.isArray());
+      for (auto const it : VPackArrayIterator(allShards)) {
+        if (!it.isString()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "Shards have to be a list of strings");
+        }
+        auto* coll = collections.get(it.copyString());
+        if (!coll) {
+          TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        }
+
+        read = oneInfo.get("expression");
+        std::unique_ptr<aql::Expression> exp =
+            read.isObject()
+                ? std::make_unique<aql::Expression>(query.ast(), read)
+                : nullptr;
+
+        read = oneInfo.get("nonConstContainer");
+        std::optional<aql::NonConstExpressionContainer> nonConstPart{
+            std::nullopt};
+        if (read.isObject()) {
+          nonConstPart.emplace(aql::NonConstExpressionContainer::fromVelocyPack(
+              query.ast(), read));
+        }
+        if (coll->getCollection()->isLocalSmartEdgeCollection()) {
+          indexesWithPriority.emplace_back(
+              coll->indexByIdentifier(idxId), condition, memberToUpdate,
+              std::move(exp), std::move(nonConstPart), i, dir);
+        } else {
+          vectorToInsert.emplace_back(coll->indexByIdentifier(idxId), condition,
+                                      memberToUpdate, std::move(exp),
+                                      std::move(nonConstPart), i, dir);
+        }
+      }
+    }
+  }
+
+  if (lastInFirstOut) {
+    // Push priority indexes to the end of the list.
+    // So they are injected last => We work on them first
+    std::move(indexesWithPriority.begin(), indexesWithPriority.end(),
+              std::back_inserter(vectorToInsert));
+  } else {
+    // Push priority indexes to the beginning of the list.
+    // So they are injected first => We work on them first
+
+    // As vectors can only append, we append the "non-priorities" into
+    // priority, and then swap the vectors back
+    std::move(vectorToInsert.begin(), vectorToInsert.end(),
+              std::back_inserter(indexesWithPriority));
+    vectorToInsert.swap(indexesWithPriority);
+  }
+}
+
+aql::TraversalStats outputVertex(
+    graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>&
+        provider,
+    VPackBuilder& builder, VPackSlice vertex, size_t depth) {
+  TRI_ASSERT(vertex.isString());
+  auto start = provider.startVertex(
+      arangodb::velocypack::HashedStringRef{vertex}, depth);
+  provider.expand(start, 0, [&](SingleServerProviderStep neighbor) {
+    provider.insertEdgeIntoResult(neighbor.getEdgeIdentifier(), builder);
+  });
+  auto stats = provider.stealStats();
+  provider.clear();
+  return stats;
+}
+
+}  // namespace
+
 #ifndef USE_ENTERPRISE
 /*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
     TRI_vocbase_t& vocbase, aql::QueryContext& query, VPackSlice info) {
@@ -250,18 +385,10 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
   builder.close();
 }
 
-BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
-                                         aql::QueryContext& query,
-                                         VPackSlice info)
-    : BaseEngine(vocbase, query, info), _variables(query.ast()->variables()) {}
-
-BaseTraverserEngine::~BaseTraverserEngine() = default;
-
-
 std::pair<std::vector<IndexAccessor>,
           std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-BaseTraverserEngine::parseIndexAccessors(VPackSlice info,
-                     bool lastInFirstOut) const {
+BaseEngine::parseIndexAccessors(VPackSlice info,
+                                bool lastInFirstOut) const {
   std::vector<IndexAccessor> result;
   std::unordered_map<uint64_t, std::vector<IndexAccessor>> depthLookupInfo;
 
@@ -272,125 +399,8 @@ BaseTraverserEngine::parseIndexAccessors(VPackSlice info,
   TRI_ASSERT(lookupInfos.length() == shards.length());
   result.reserve(lookupInfos.length());
 
-  auto parseLookupInfo = [&](VPackSlice conditionsArray,
-                             std::vector<IndexAccessor>& vectorToInsert) {
-    TRI_ASSERT(conditionsArray.isArray());
-    std::vector<IndexAccessor> indexesWithPriority;
-
-    for (size_t i = 0; i < conditionsArray.length(); ++i) {
-      auto oneInfo = conditionsArray.at(i);
-      transaction::Methods::IndexHandle idx;
-      {
-        // Parse Condition Member to Update
-        bool conditionNeedUpdate =
-            arangodb::basics::VelocyPackHelper::getBooleanValue(
-                oneInfo, "condNeedUpdate", false);
-        std::optional<size_t> memberToUpdate =
-            conditionNeedUpdate
-                ? std::optional(
-                      arangodb::basics::VelocyPackHelper::getNumericValue<
-                          size_t>(oneInfo, "condMemberToUpdate", 0))
-                : std::nullopt;
-
-        // Parse the Condition
-        auto cond = oneInfo.get("condition");
-        if (!cond.isObject()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "Each lookup requires condition to be an object");
-        }
-        aql::AstNode* condition = _query.ast()->createNode(cond);
-
-        VPackSlice read = oneInfo.get("handle");
-        if (!read.isObject()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "Each lookup requires handle to be an object");
-        }
-
-        // Parse the IndexHandle
-        read = read.get("id");
-        if (!read.isString()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "Each handle requires id to be a string");
-        }
-        std::string idxId = read.copyString();
-        aql::Collections const& collections = _query.collections();
-
-        TRI_edge_direction_e dir = TRI_EDGE_ANY;
-        VPackSlice dirSlice = oneInfo.get(StaticStrings::GraphDirection);
-        if (dirSlice.isEqualString(StaticStrings::GraphDirectionInbound)) {
-          dir = TRI_EDGE_IN;
-        } else if (dirSlice.isEqualString(
-                       StaticStrings::GraphDirectionOutbound)) {
-          dir = TRI_EDGE_OUT;
-        }
-        if (dir == TRI_EDGE_ANY) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "Missing or invalid direction attribute in graph definition");
-        }
-
-        auto allShards = shards.at(i);
-        TRI_ASSERT(allShards.isArray());
-        for (auto const it : VPackArrayIterator(allShards)) {
-          if (!it.isString()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_BAD_PARAMETER, "Shards have to be a list of strings");
-          }
-          auto* coll = collections.get(it.copyString());
-          if (!coll) {
-            TRI_ASSERT(false);
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-          }
-
-          read = oneInfo.get("expression");
-          std::unique_ptr<aql::Expression> exp =
-              read.isObject()
-                  ? std::make_unique<aql::Expression>(_query.ast(), read)
-                  : nullptr;
-
-          read = oneInfo.get("nonConstContainer");
-          std::optional<aql::NonConstExpressionContainer> nonConstPart{
-              std::nullopt};
-          if (read.isObject()) {
-            nonConstPart.emplace(
-                aql::NonConstExpressionContainer::fromVelocyPack(_query.ast(),
-                                                                 read));
-          }
-          if (coll->getCollection()->isLocalSmartEdgeCollection()) {
-            indexesWithPriority.emplace_back(
-                coll->indexByIdentifier(idxId), condition, memberToUpdate,
-                std::move(exp), std::move(nonConstPart), i, dir);
-          } else {
-            vectorToInsert.emplace_back(
-                coll->indexByIdentifier(idxId), condition, memberToUpdate,
-                std::move(exp), std::move(nonConstPart), i, dir);
-          }
-        }
-      }
-    }
-
-    if (lastInFirstOut) {
-      // Push priority indexes to the end of the list.
-      // So they are injected last => We work on them first
-      std::move(indexesWithPriority.begin(), indexesWithPriority.end(),
-                std::back_inserter(vectorToInsert));
-    } else {
-      // Push priority indexes to the beginning of the list.
-      // So they are injected first => We work on them first
-
-      // As vectors can only append, we append the "non-priorities" into
-      // priority, and then swap the vectors back
-      std::move(vectorToInsert.begin(), vectorToInsert.end(),
-                std::back_inserter(indexesWithPriority));
-      vectorToInsert.swap(indexesWithPriority);
-    }
-  };
-
   // first, parse the baseLookupInfos (which are globally valid)
-  parseLookupInfo(lookupInfos, result);
+  ::parseLookupInfo(_query, lookupInfos, shards, lastInFirstOut, result);
 
   // now, parse the depthLookupInfo (which are depth based)
   if (!depthLookupInfos.isNone()) {
@@ -407,7 +417,7 @@ BaseTraverserEngine::parseIndexAccessors(VPackSlice info,
       auto [it, emplaced] =
           depthLookupInfo.try_emplace(depth, std::vector<IndexAccessor>());
       TRI_ASSERT(emplaced);
-      parseLookupInfo(obj.value, depthLookupInfo.at(depth));
+      ::parseLookupInfo(_query, obj.value, shards, lastInFirstOut, depthLookupInfo.at(depth));
     }
   }
 
@@ -415,39 +425,24 @@ BaseTraverserEngine::parseIndexAccessors(VPackSlice info,
 }
 
 arangodb::graph::SingleServerBaseProviderOptions
-BaseTraverserEngine::produceProviderOptions(VPackSlice info,
-                                            bool lastInFirstOut) {
+BaseEngine::produceProviderOptions(VPackSlice info,
+                                   bool lastInFirstOut) {
   return {options().tmpVar(),
           parseIndexAccessors(info, lastInFirstOut),
-          _opts->getExpressionCtx(),
+          options().getExpressionCtx(),
           {},
           _vertexShards,
           options().getVertexProjections(),
           options().getEdgeProjections()};
 }
 
-graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
-                                                  uint64_t currentDepth) {
-  graph::EdgeCursor* cursor = nullptr;
-  if (_opts->hasSpecificCursorForDepth(currentDepth)) {
-    if (_depthSpecificCursors.find(currentDepth) ==
-        _depthSpecificCursors.end()) {
-      _depthSpecificCursors.emplace(currentDepth,
-                                    _opts->buildCursor(currentDepth));
-    }
-    cursor = _depthSpecificCursors.find(currentDepth)->second.get();
-  } else {
-    if (_generalCursor == nullptr) {
-      _generalCursor = _opts->buildCursor(currentDepth);
-      TRI_ASSERT(_generalCursor != nullptr);
-    }
-    cursor = _generalCursor.get();
-  }
-  TRI_ASSERT(cursor != nullptr);
 
-  cursor->rearm(nextVertex, currentDepth);
-  return cursor;
-}
+BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
+                                         aql::QueryContext& query,
+                                         VPackSlice info)
+    : BaseEngine(vocbase, query, info), _variables(query.ast()->variables()) {}
+
+BaseTraverserEngine::~BaseTraverserEngine() = default;
 
 bool BaseTraverserEngine::produceVertices() const {
   return _opts->produceVertices();
@@ -457,7 +452,7 @@ aql::VariableGenerator const* BaseTraverserEngine::variables() const {
   return _variables;
 }
 
-graph::BaseOptions const& BaseTraverserEngine::options() const {
+graph::BaseOptions& BaseTraverserEngine::options() {
   TRI_ASSERT(_opts != nullptr);
   return *_opts;
 }
@@ -489,7 +484,11 @@ void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
 ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
                                        aql::QueryContext& query,
                                        arangodb::velocypack::Slice info)
-    : BaseEngine(vocbase, query, info) {
+    : BaseEngine(vocbase, query, info),
+      _forwardProvider(query, produceProviderOptions(info, false),
+                query.resourceMonitor()),
+      _backwardProvider(query, produceReverseProviderOptions(info, false),
+                query.resourceMonitor()) {
   VPackSlice optsSlice = info.get(OPTIONS);
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -508,17 +507,73 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
-
-  _forwardCursor = _opts->buildCursor(false);
-  _backwardCursor = _opts->buildCursor(true);
 }
 
 ShortestPathEngine::~ShortestPathEngine() = default;
 
+std::pair<std::vector<IndexAccessor>,
+          std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+ShortestPathEngine::parseReverseIndexAccessors(VPackSlice info,
+                                               bool lastInFirstOut) const {
+  std::vector<IndexAccessor> result;
+  std::unordered_map<uint64_t, std::vector<IndexAccessor>> depthLookupInfo;
+
+  auto lookupInfos = info.get("options").get("reverseLookupInfos");
+
+  if (!lookupInfos.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The options require a reverseLookupInfos");
+  }
+  auto depthLookupInfos = info.get("options").get("reversDepthLookupInfos");
+  auto shards = info.get("shards").get("edges");
+
+  TRI_ASSERT(lookupInfos.length() == shards.length());
+  result.reserve(lookupInfos.length());
+
+  // first, parse the baseLookupInfos (which are globally valid)
+  ::parseLookupInfo(_query, lookupInfos, shards, lastInFirstOut, result);
+
+  // now, parse the depthLookupInfo (which are depth based)
+  if (!depthLookupInfos.isNone()) {
+    if (!depthLookupInfos.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The options require depthLookupInfo to be an object");
+    }
+
+    for (auto const& obj : VPackObjectIterator(depthLookupInfos)) {
+      TRI_ASSERT(obj.value.isArray());
+      TRI_ASSERT(obj.key.isString());
+      uint64_t depth = basics::StringUtils::uint64(obj.key.stringView());
+      auto [it, emplaced] =
+          depthLookupInfo.try_emplace(depth, std::vector<IndexAccessor>());
+      TRI_ASSERT(emplaced);
+      ::parseLookupInfo(_query, obj.value, shards, lastInFirstOut,
+                        depthLookupInfo.at(depth));
+    }
+  }
+
+  return std::make_pair(std::move(result), std::move(depthLookupInfo));
+}
+
+arangodb::graph::SingleServerBaseProviderOptions
+ShortestPathEngine::produceReverseProviderOptions(VPackSlice info,
+                                                  bool lastInFirstOut) {
+  return {options().tmpVar(),
+          parseReverseIndexAccessors(info, lastInFirstOut),
+          _opts->getExpressionCtx(),
+          {},
+          _vertexShards,
+          options().getVertexProjections(),
+          options().getEdgeProjections()};
+}
+
 void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
                                   VPackBuilder& builder) {
   TRI_ASSERT(vertex.isString() || vertex.isArray());
+  auto& provider = backward ? _backwardProvider : _forwardProvider;
 
+  aql::TraversalStats stats{};
   builder.openObject();
   builder.add("edges", VPackValue(VPackValueType::Array));
   if (vertex.isArray()) {
@@ -526,64 +581,31 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
       if (!v.isString()) {
         continue;
       }
-      addEdgeData(builder, backward, v.stringView());
-      // Result now contains all valid edges, probably multiples.
+      stats += ::outputVertex(provider, builder, v, 0);
     }
   } else if (vertex.isString()) {
-    addEdgeData(builder, backward, vertex.stringView());
-    // Result now contains all valid edges, probably multiples.
+    stats += ::outputVertex(provider, builder, vertex, 0);
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
   builder.close();
 
   // statistics
-  builder.add("readIndex",
-              VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
-  builder.add("filtered", VPackValue(0));
-  builder.add("cacheHits", VPackValue(_opts->cache()->getAndResetCacheHits()));
-  builder.add("cacheMisses",
-              VPackValue(_opts->cache()->getAndResetCacheMisses()));
-  builder.add("cursorsCreated",
-              VPackValue(_opts->cache()->getAndResetCursorsCreated()));
-  builder.add("cursorsRearmed",
-              VPackValue(_opts->cache()->getAndResetCursorsRearmed()));
+  arangodb::velocypack::serialize(builder, stats);
   builder.close();
 }
 
-graph::BaseOptions const& ShortestPathEngine::options() const {
+graph::BaseOptions& ShortestPathEngine::options() {
   TRI_ASSERT(_opts != nullptr);
   return *_opts;
-}
-
-void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward,
-                                     std::string_view v) {
-  graph::EdgeCursor* cursor =
-      backward ? _backwardCursor.get() : _forwardCursor.get();
-  cursor->rearm(v, 0);
-
-  cursor->readAll(
-      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
-        if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid);
-        }
-        if (edge.isNull()) {
-          return;
-        }
-        if (!options().getEdgeProjections().empty()) {
-          VPackObjectBuilder guard(&builder);
-          options().getEdgeProjections().toVelocyPackFromDocument(builder, edge,
-                                                                  _trx.get());
-        } else {
-          builder.add(edge);
-        }
-      });
 }
 
 TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
                                  aql::QueryContext& query,
                                  arangodb::velocypack::Slice info)
-    : BaseTraverserEngine(vocbase, query, info) {
+    : BaseTraverserEngine(vocbase, query, info),
+      _provider(query, produceProviderOptions(info, false),
+                query.resourceMonitor()) {
   VPackSlice optsSlice = info.get(OPTIONS);
   if (!optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -609,27 +631,16 @@ TraverserEngine::~TraverserEngine() = default;
 void TraverserEngine::getEdges(VPackSlice vertex, size_t depth,
                                    VPackBuilder& builder) {
   aql::TraversalStats stats{};
-  auto outputVertex = [&](VPackBuilder& builder, VPackSlice vertex,
-                             size_t depth) {
-    TRI_ASSERT(vertex.isString());
-    auto start = _provider.startVertex(arangodb::velocypack::HashedStringRef{vertex}, depth);
-    _provider.expand(start, 0, [&](SingleServerProviderStep neighbor) {
-      _provider.insertEdgeIntoResult(neighbor.getEdgeIdentifier(), builder);
-    });
-    stats += _provider.stealStats();
-    _provider.clear();
-  };
-
   TRI_ASSERT(vertex.isString() || vertex.isArray());
   builder.openObject();
   builder.add(VPackValue("edges"));
   builder.openArray(true);
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
-      outputVertex(builder, v, depth);
+      stats += ::outputVertex(_provider, builder, v, depth);
     }
   } else if (vertex.isString()) {
-    outputVertex(builder, vertex, depth);
+    stats += ::outputVertex(_provider, builder, vertex, depth);
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);

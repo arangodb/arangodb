@@ -90,7 +90,16 @@ class BaseEngine {
 
   arangodb::aql::EngineId engineId() const noexcept { return _engineId; }
 
-  virtual graph::BaseOptions const& options() const = 0;
+  virtual graph::BaseOptions& options() = 0;
+
+ protected:
+  std::pair<std::vector<graph::IndexAccessor>,
+            std::unordered_map<uint64_t, std::vector<graph::IndexAccessor>>>
+  parseIndexAccessors(arangodb::velocypack::Slice info, bool lastInFirstOut) const;
+
+
+  graph::SingleServerBaseProviderOptions produceProviderOptions(
+      arangodb::velocypack::Slice info, bool lastInFirstOut);
 
  protected:
   arangodb::aql::EngineId const _engineId;
@@ -125,26 +134,13 @@ class BaseTraverserEngine : public BaseEngine {
   // Inject all variables from VPack information
   void injectVariables(arangodb::velocypack::Slice variables);
 
-  graph::BaseOptions const& options() const override;
+  graph::BaseOptions& options() override;
 
  protected:
-  std::pair<std::vector<graph::IndexAccessor>,
-            std::unordered_map<uint64_t, std::vector<graph::IndexAccessor>>>
-  parseIndexAccessors(arangodb::velocypack::Slice info, bool lastInFirstOut) const;
-
-  graph::SingleServerBaseProviderOptions produceProviderOptions(
-      arangodb::velocypack::Slice info, bool lastInFirstOut);
-
-  graph::EdgeCursor* getCursor(std::string_view nextVertex,
-                               uint64_t currentDepth);
-
   aql::VariableGenerator const* variables() const;
 
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
-  std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
-      _depthSpecificCursors;
-  std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
 };
 
@@ -166,17 +162,23 @@ class ShortestPathEngine : public BaseEngine {
 
   EngineType getType() const override { return SHORTESTPATH; }
 
-  graph::BaseOptions const& options() const override;
+  graph::BaseOptions& options() override;
 
  private:
-  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward,
-                   std::string_view v);
+  std::pair<std::vector<graph::IndexAccessor>,
+            std::unordered_map<uint64_t, std::vector<graph::IndexAccessor>>>
+  parseReverseIndexAccessors(arangodb::velocypack::Slice info,
+                             bool lastInFirstOut) const;
+
+  arangodb::graph::SingleServerBaseProviderOptions
+  produceReverseProviderOptions(arangodb::velocypack::Slice info,
+                                bool lastInFirstOut);
 
  protected:
   std::unique_ptr<graph::ShortestPathOptions> _opts;
 
-  std::unique_ptr<graph::EdgeCursor> _forwardCursor;
-  std::unique_ptr<graph::EdgeCursor> _backwardCursor;
+  graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep> _forwardProvider;
+  graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep> _backwardProvider;
 };
 
 class TraverserEngine : public BaseTraverserEngine {
