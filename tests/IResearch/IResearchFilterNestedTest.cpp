@@ -457,7 +457,6 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNone) {
   ExpressionContextMock ctx;
   {
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{0});
-    arangodb::aql::AqlValueGuard guard(value, true);
     ctx.vars.emplace("x", value);
   }
 
@@ -797,7 +796,6 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchRange) {
 
   ExpressionContextMock ctx;
   arangodb::aql::AqlValue value(2, 5);
-  arangodb::aql::AqlValueGuard guard(value, true);
   ctx.vars.emplace("x", value);
 
   assertFilterSuccess(
@@ -859,7 +857,6 @@ TEST_F(IResearchFilterNestedTest, NestedFilterMatchAnyNested) {
 
   ExpressionContextMock ctx;
   arangodb::aql::AqlValue value{arangodb::aql::AqlValueHintInt{40}};
-  arangodb::aql::AqlValueGuard guard{value, true};
   ctx.vars.emplace("x", value);
 
   assertFilterSuccess(
