@@ -39,31 +39,6 @@ using namespace arangodb::basics;
 using namespace std::literals;
 
 namespace {
-void analyzerFeaturesChecker(std::vector<std::string> expected,
-                             Features const& features) {
-  VPackBuilder b;
-  features.toVelocyPack(b);
-  auto featuresSlice = b.slice();
-
-  ASSERT_TRUE(featuresSlice.isArray());
-  std::vector<std::string> actual;
-  for (auto itr : VPackArrayIterator(featuresSlice)) {
-    actual.push_back(itr.copyString());
-  }
-
-  ASSERT_EQ(expected.size(), actual.size());
-  std::sort(expected.begin(), expected.end());
-  std::sort(actual.begin(), actual.end());
-
-  auto it1 = expected.begin();
-  auto it2 = actual.begin();
-  while (it1 != expected.end() && it2 != actual.end()) {
-    ASSERT_EQ(*it1, *it2);
-    it1++;
-    it2++;
-  }
-}
-
 void serializationChecker(ArangodServer& server,
                           std::string_view jsonAsString) {
   auto json = VPackParser::fromJson({jsonAsString.data(), jsonAsString.size()});
