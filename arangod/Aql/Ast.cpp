@@ -1751,19 +1751,19 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
 }
 
 /// @brief create an AST k-shortest paths or k-paths node
-AstNode* Ast::createNodeKShortestPaths(
-    arangodb::graph::ShortestPathType::Type type, AstNode const* outVars,
-    AstNode const* graphInfo) {
+AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
+                                       AstNode const* outVars,
+                                       AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
-  AstNode* node = createNode(NODE_TYPE_K_SHORTEST_PATHS);
+  AstNode* node = createNode(NODE_TYPE_ENUMERATE_PATHS);
   node->reserve(1 + outVars->numMembers() + graphInfo->numMembers());
 
   TRI_ASSERT(graphInfo->numMembers() == 5);
   TRI_ASSERT(outVars->numMembers() == 1);
 
-  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
-             type == arangodb::graph::ShortestPathType::Type::KPaths);
+  TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
+             type == arangodb::graph::PathType::Type::KPaths);
 
   // type: K_SHORTEST_PATH vs. K_PATHS
   TRI_ASSERT(node->numMembers() == 0);
@@ -2143,7 +2143,7 @@ void Ast::injectBindParameters(
         extractCollectionsFromGraph(node->getMember(2));
       } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
         extractCollectionsFromGraph(node->getMember(3));
-      } else if (node->type == NODE_TYPE_K_SHORTEST_PATHS) {
+      } else if (node->type == NODE_TYPE_ENUMERATE_PATHS) {
         extractCollectionsFromGraph(node->getMember(4));
       }
 

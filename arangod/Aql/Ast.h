@@ -43,7 +43,7 @@
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Containers/HashSet.h"
-#include "Graph/ShortestPathType.h"
+#include "Graph/PathType.h"
 #include "VocBase/AccessMode.h"
 
 namespace arangodb {
@@ -402,9 +402,8 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeKShortestPaths(
-      arangodb::graph::ShortestPathType::Type type, AstNode const*,
-      AstNode const*);
+  AstNode* createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
+                                    AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(std::string_view functionName,

@@ -21,43 +21,23 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Graph/ShortestPathType.h"
-#include "Basics/Exceptions.h"
-#include "Basics/voc-errors.h"
-
-#include <cstring>
+#pragma once
 
 namespace arangodb {
 namespace graph {
 
-constexpr char const* KShortestPathsName = "K_SHORTEST_PATHS";
-constexpr char const* KPathsName = "K_PATHS";
+struct PathType {
+  enum class Type { KShortestPaths = 0, KPaths = 1 };
 
-/// @brief get the type from a string
-/*static*/ ShortestPathType::Type ShortestPathType::fromString(
-    char const* value) {
-  if (strcmp(value, KShortestPathsName) == 0) {
-    return Type::KShortestPaths;
-  }
-  if (strcmp(value, KPathsName) == 0) {
-    return Type::KPaths;
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid shortest path type");
-}
+  // no need to create an object of it
+  PathType() = delete;
 
-/// @brief return the type as a string
-/*static*/ char const* ShortestPathType::toString(
-    ShortestPathType::Type value) {
-  switch (value) {
-    case Type::KShortestPaths:
-      return KShortestPathsName;
-    case Type::KPaths:
-      return KPathsName;
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid shortest path type");
-}
+  /// @brief get the type from a string
+  static Type fromString(char const* value);
+
+  /// @brief return the type as a string
+  static char const* toString(Type value);
+};
 
 }  // namespace graph
 }  // namespace arangodb
