@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anyomre.
+
 * Updated arangosync to v2.11.0.
 
 * Add log.time-format utc-datestring-micros to make debugging of concurrency
