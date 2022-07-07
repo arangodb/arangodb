@@ -964,6 +964,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
       } else {
         current = &(emplaceRes.first->second);
         current->_isArray = a.shouldExpand;
+        current->_hasNested = false;
       }
       if (i == f._attribute.size() - 1) {
         current->_analyzers = &f._analyzers;

@@ -246,6 +246,7 @@ struct IResearchInvertedIndexMetaIndexingContext {
       : _analyzers(&field._analyzers),
         _primitiveOffset(field._primitiveOffset),
         _meta(&field),
+        _hasNested(field._hasNested),
         _includeAllFields(field._includeAllFields),
         _trackListPositions(field._trackListPositions),
         _sort(field._sort),
@@ -264,7 +265,7 @@ struct IResearchInvertedIndexMetaIndexingContext {
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
   bool _isArray{false};
-  bool _hasNested{false};
+  bool _hasNested;
   bool _includeAllFields;
   bool _trackListPositions;
   ValueStorage const _storeValues{ValueStorage::ID};
