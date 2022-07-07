@@ -1101,6 +1101,12 @@ AttributeAccessParts::AttributeAccessParts(
 void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
                                  arangodb::Index const* idx,
                                  size_t itemsInIndex, size_t invocations) {
+  // number of fields to consider for this index. this is normally
+  // equivalent to the number of fields of the index, but also adds the
+  // number of stored values if there exist any.
+  size_t numFieldsToConsider = idx->numFieldsToConsiderInIndexSelection();
+  TRI_ASSERT(numFieldsToConsider > 0);
+
   // costs.estimatedItems is always set here, make it at least 1
   costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
 
@@ -1110,11 +1116,11 @@ void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
   // add per-document processing cost
   costs.estimatedCosts += costs.estimatedItems * 0.05;
   // slightly prefer indexes that cover more attributes
-  costs.estimatedCosts -= (idx->fields().size() - 1) * 0.02;
+  costs.estimatedCosts -= (numFieldsToConsider - 1) * 0.02;
 
   // cost is already low... now slightly prioritize unique indexes
   if (idx->unique() || idx->implicitlyUnique()) {
-    costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
+    costs.estimatedCosts *= 0.995 - 0.05 * (numFieldsToConsider - 1);
   }
 
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||

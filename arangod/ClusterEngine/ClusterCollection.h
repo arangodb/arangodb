@@ -91,10 +91,10 @@ class ClusterCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
+  void prepareIndexes(velocypack::Slice indexesSlice) override;
 
-  std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
-                                     bool restore, bool& created) override;
+  std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
+                                     bool& created) override;
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
@@ -132,24 +132,31 @@ class ClusterCollection final : public PhysicalCollection {
                     ManagedDocumentResult& result,
                     ReadOwnWrites) const override;
 
-  Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options) override;
+  Result lookupDocument(transaction::Methods& trx, LocalDocumentId token,
+                        velocypack::Builder& builder, bool readCache,
+                        bool fillCache,
+                        ReadOwnWrites readOwnWrites) const override;
 
-  Result update(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions& options,
-                ManagedDocumentResult& previous) override;
+  Result insert(transaction::Methods& trx, RevisionId newRevisionId,
+                velocypack::Slice newDocument,
+                OperationOptions const& options) override;
 
-  Result replace(transaction::Methods* trx,
-                 arangodb::velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions& options,
-                 ManagedDocumentResult& previous) override;
+  Result update(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+                RevisionId previousRevisionId,
+                velocypack::Slice previousDocument, RevisionId newRevisionId,
+                velocypack::Slice newDocument,
+                OperationOptions const& options) override;
 
-  Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous,
-                OperationOptions& options) override;
+  Result replace(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+                 RevisionId previousRevisionId,
+                 velocypack::Slice previousDocument, RevisionId newRevisionId,
+                 velocypack::Slice newDocument,
+                 OperationOptions const& options) override;
+
+  Result remove(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+                RevisionId previousRevisionId,
+                velocypack::Slice previousDocument,
+                OperationOptions const& options) override;
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine

@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Graph/ShortestPathType.h"
+#include "Graph/PathType.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
@@ -35,8 +35,7 @@ constexpr char const* KPathsName = "K_PATHS";
 constexpr char const* AllShortestPathsName = "ALL_SHORTEST_PATHS";
 
 /// @brief get the type from a string
-/*static*/ ShortestPathType::Type ShortestPathType::fromString(
-    char const* value) {
+/*static*/ PathType::Type PathType::fromString(char const* value) {
   if (strcmp(value, KShortestPathsName) == 0) {
     return Type::KShortestPaths;
   }
@@ -51,8 +50,7 @@ constexpr char const* AllShortestPathsName = "ALL_SHORTEST_PATHS";
 }
 
 /// @brief return the type as a string
-/*static*/ char const* ShortestPathType::toString(
-    ShortestPathType::Type value) {
+/*static*/ char const* PathType::toString(PathType::Type value) {
   switch (value) {
     case Type::KShortestPaths:
       return KShortestPathsName;
@@ -61,8 +59,7 @@ constexpr char const* AllShortestPathsName = "ALL_SHORTEST_PATHS";
     case Type::AllShortestPaths:
       return AllShortestPathsName;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid shortest path type");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid path type");
 }
 
 }  // namespace graph

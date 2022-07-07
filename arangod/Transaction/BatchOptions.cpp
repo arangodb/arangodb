@@ -21,23 +21,22 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "BatchOptions.h"
 
-namespace arangodb {
-namespace graph {
+#include "Aql/ExpressionContext.h"
+#include "VocBase/ComputedValues.h"
 
-struct ShortestPathType {
-  enum class Type { KShortestPaths = 0, KPaths = 1, AllShortestPaths = 2 };
+namespace arangodb::transaction {
 
-  // no need to create an object of it
-  ShortestPathType() = delete;
+BatchOptions::BatchOptions() = default;
+BatchOptions::~BatchOptions() = default;
 
-  /// @brief get the type from a string
-  static Type fromString(char const* value);
+void BatchOptions::ensureComputedValuesContext(Methods& trx,
+                                               LogicalCollection& collection) {
+  if (computedValuesContext == nullptr) {
+    computedValuesContext =
+        std::make_unique<ComputedValuesExpressionContext>(trx, collection);
+  }
+}
 
-  /// @brief return the type as a string
-  static char const* toString(Type value);
-};
-
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::transaction

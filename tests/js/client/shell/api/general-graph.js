@@ -1301,9 +1301,6 @@ function check_error_codeSuite () {
       check404_graph_not_found(delete_edge(sync, unknown_name, unknown_name, unknown_name));
     },
 
-
-
-    
     test_change_edge_definition_unknown: function() {
       let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
       check404Edge(change_edge_definition(sync, graph_name, unknown_name, definition));
@@ -1357,17 +1354,18 @@ function check_error_codeSuite () {
       check400CRUD(replace_edge(sync, graph_name, unknown_name, unknown_name, {}));
     },
 
-    // TODO: BTS-827 - re-enable me!
-    // test_replace_edge_valid_key__but_not_existing_unknown: function() {
-    //   check404(replace_edge(sync, graph_name, user_collection + "/" + unknown_name, unknown_name, {}));
-    // },
+    test_replace_edge_valid_key_but_not_existing_unknown: function() {
+      check404(replace_edge(sync, graph_name, user_collection, unknown_name,
+        {
+          _from: user_collection + "/" + unknown_name,
+          _to: user_collection + "/" + unknown_name
+        }
+      ));
+    },
 
     test_delete_edge_unknown: function() {
       check404CRUD(delete_edge(sync, graph_name, unknown_name, unknown_name));
     },
-
-
-
 
     test_get_vertex_throw: function() {
       check404(get_vertex(graph_name, user_collection, unknown_name));
@@ -1410,7 +1408,6 @@ function check_error_codeSuite () {
   };
 }
 
-
 jsunity.run(check_creation_of_graphSuite);
 jsunity.run(check_vertex_operationSuite);
 jsunity.run(check_edge_operationSuite);
@@ -1433,6 +1430,7 @@ jsunity.run(function() {
     suite, '_WaitForSync');
   return suite;
 });
+
 jsunity.run(function() {
   let suite = {};
   deriveTestSuite(
@@ -1440,6 +1438,7 @@ jsunity.run(function() {
     suite, '_WaitForSync');
   return suite;
 });
+
 jsunity.run(function() {
   let suite = {};
   deriveTestSuite(
