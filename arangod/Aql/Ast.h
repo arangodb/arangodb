@@ -87,6 +87,13 @@ class Ast {
   /// @brief destroy the AST
   ~Ast();
 
+  struct ValidateAndOptimizeOptions {
+    // try to optimize non-cacheable expressions as well. this is true for
+    // most use cases, but we cannot activate this for computed values, as
+    // we need a freshly calculated value every time.
+    bool optimizeNonCacheable = true;
+  };
+
   // frees all data
   void clear() noexcept;
 
@@ -451,7 +458,8 @@ class Ast {
   static size_t extractParallelism(AstNode const* optionsNode);
 
   /// @brief optimizes the AST
-  void validateAndOptimize(transaction::Methods&);
+  void validateAndOptimize(transaction::Methods&,
+                           ValidateAndOptimizeOptions const& options);
 
   /// @brief determines the variables referenced in an expression
   static void getReferencedVariables(AstNode const*, VarSet&);
@@ -551,7 +559,8 @@ class Ast {
 
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(transaction::Methods&,
-                                AqlFunctionsInternalCache&, AstNode*);
+                                AqlFunctionsInternalCache&, AstNode*,
+                                ValidateAndOptimizeOptions const& options);
 
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
   AstNode* optimizeIndexedAccess(AstNode*);

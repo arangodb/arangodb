@@ -18,31 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "BatchOptions.h"
 
-#include "Basics/Result.h"
+#include "Aql/ExpressionContext.h"
+#include "VocBase/ComputedValues.h"
 
-#include <memory>
-#include <string_view>
+namespace arangodb::transaction {
 
-struct TRI_vocbase_t;
+BatchOptions::BatchOptions() = default;
+BatchOptions::~BatchOptions() = default;
 
-namespace arangodb::aql {
-class QueryContext;
+void BatchOptions::ensureComputedValuesContext(Methods& trx,
+                                               LogicalCollection& collection) {
+  if (computedValuesContext == nullptr) {
+    computedValuesContext =
+        std::make_unique<ComputedValuesExpressionContext>(trx, collection);
+  }
+}
 
-class StandaloneCalculation {
- public:
-  static std::unique_ptr<QueryContext> buildQueryContext(
-      TRI_vocbase_t& vocbase);
-
-  static arangodb::Result validateQuery(TRI_vocbase_t& vocbase,
-                                        std::string_view queryString,
-                                        std::string_view parameterName,
-                                        std::string_view errorContext,
-                                        bool isComputedValue);
-};
-
-}  // namespace arangodb::aql
+}  // namespace arangodb::transaction

@@ -18,31 +18,41 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Result.h"
-
 #include <memory>
-#include <string_view>
 
-struct TRI_vocbase_t;
+namespace arangodb {
 
-namespace arangodb::aql {
-class QueryContext;
+class ComputedValues;
+class LogicalCollection;
+struct ValidatorBase;
 
-class StandaloneCalculation {
- public:
-  static std::unique_ptr<QueryContext> buildQueryContext(
-      TRI_vocbase_t& vocbase);
+namespace aql {
+class ExpressionContext;
+}  // namespace aql
 
-  static arangodb::Result validateQuery(TRI_vocbase_t& vocbase,
-                                        std::string_view queryString,
-                                        std::string_view parameterName,
-                                        std::string_view errorContext,
-                                        bool isComputedValue);
+namespace transaction {
+class Methods;
+
+struct BatchOptions {
+  BatchOptions();
+  BatchOptions(BatchOptions const&) = delete;
+  BatchOptions& operator=(BatchOptions const&) = delete;
+  BatchOptions(BatchOptions&&) = default;
+  BatchOptions& operator=(BatchOptions&&) = default;
+  ~BatchOptions();
+  void ensureComputedValuesContext(Methods& trx, LogicalCollection& collection);
+
+  bool validateShardKeysOnUpdateReplace = false;
+  bool validateSmartJoinAttribute = false;
+  std::shared_ptr<ValidatorBase> schema;
+  std::shared_ptr<ComputedValues> computedValues;
+  std::unique_ptr<aql::ExpressionContext> computedValuesContext;
 };
 
-}  // namespace arangodb::aql
+}  // namespace transaction
+}  // namespace arangodb

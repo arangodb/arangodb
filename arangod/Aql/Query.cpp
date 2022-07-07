@@ -396,7 +396,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // we have an AST, optimize the ast
   enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
-  _ast->validateAndOptimize(*_trx);
+  _ast->validateAndOptimize(*_trx, {.optimizeNonCacheable = true});
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
@@ -964,7 +964,7 @@ QueryResult Query::explain() {
     }
 
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-    _ast->validateAndOptimize(*_trx);
+    _ast->validateAndOptimize(*_trx, {.optimizeNonCacheable = true});
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     std::unique_ptr<ExecutionPlan> plan =
