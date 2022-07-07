@@ -60,16 +60,24 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
 
   rocksdb::SequenceNumber beginSeq() const override;
 
+  /// @brief returns a lock_guard for the internal commit lock.
+  /// This lock is necessary to serialize the individual collection commits
+  /// because each commit places a blocker for the current transaction id and
+  /// we cannot have multiple blockers with the same id at the same time.
+  std::lock_guard<std::mutex> lockCommit();
+
  protected:
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
 
-  Result doCommit() override;
+  futures::Future<Result> doCommit() override;
   Result doAbort() override;
 
  private:
   void maybeDisableIndexing();
+  bool mustBeReplicated() const;
   bool _hasActiveTrx = false;
+  std::mutex _commitLock;
 };
 
 }  // namespace arangodb
