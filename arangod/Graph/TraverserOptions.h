@@ -87,8 +87,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   uint64_t maxDepth;
 
-  bool useNeighbors;
-
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
@@ -146,13 +144,6 @@ struct TraverserOptions : public graph::BaseOptions {
                           bool onlyEdgeIndexes, TRI_edge_direction_e direction);
 
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
-
-  bool hasSpecificCursorForDepth(uint64_t depth) const;
-
-  bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                              std::string_view vertexId, uint64_t, size_t);
-
-  std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
 

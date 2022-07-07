@@ -47,7 +47,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
       _baseVertexExpression(nullptr),
       minDepth(1),
       maxDepth(1),
-      useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
       mode(Order::DFS),
@@ -85,10 +84,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       mode = Order::BFS;
     }
   }
-
-  useNeighbors = VPackHelper::getBooleanValue(obj, "neighbors", false);
-
-  TRI_ASSERT(!useNeighbors || isUseBreadthFirst());
 
   tmp = VPackHelper::getStringValue(obj, "uniqueVertices", "");
   if (tmp == "path") {
@@ -176,7 +171,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       _baseVertexExpression(nullptr),
       minDepth(1),
       maxDepth(1),
-      useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
       mode(Order::DFS) {
@@ -232,12 +226,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       }
     }
   }
-
-  read = info.get("neighbors");
-  if (read.isBoolean()) {
-    useNeighbors = read.getBool();
-  }
-  TRI_ASSERT(!useNeighbors || isUseBreadthFirst());
 
   read = info.get("uniqueVertices");
   if (!read.isInteger()) {
@@ -401,7 +389,6 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
       _producePathsWeights(other._producePathsWeights),
       minDepth(other.minDepth),
       maxDepth(other.maxDepth),
-      useNeighbors(other.useNeighbors),
       uniqueVertices(other.uniqueVertices),
       uniqueEdges(other.uniqueEdges),
       mode(other.mode),
@@ -449,8 +436,6 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
 
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
-
-  builder.add("neighbors", VPackValue(useNeighbors));
 
   switch (uniqueVertices) {
     case TraverserOptions::UniquenessLevel::NONE:
@@ -552,7 +537,6 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("parallelism", VPackValue(_parallelism));
   result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
-  result.add("neighbors", VPackValue(useNeighbors));
 
   result.add(VPackValue("uniqueVertices"));
   switch (uniqueVertices) {
@@ -666,52 +650,6 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                          onlyEdgeIndexes, direction);
 }
 
-bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {
-  return _depthLookupInfo.contains(depth);
-}
-
-bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
-                                              std::string_view vertexId,
-                                              uint64_t depth, size_t cursorId) {
-  arangodb::aql::Expression* expression = nullptr;
-
-  auto specific = _depthLookupInfo.find(depth);
-  auto needToInjectVertex = false;
-
-  if (specific != _depthLookupInfo.end()) {
-    TRI_ASSERT(!specific->second.empty());
-    TRI_ASSERT(specific->second.size() > cursorId);
-    expression = specific->second[cursorId].expression.get();
-    needToInjectVertex = !specific->second[cursorId].conditionNeedUpdate;
-  } else {
-    expression = getEdgeExpression(cursorId, needToInjectVertex);
-  }
-  if (expression == nullptr) {
-    return true;
-  }
-
-  if (needToInjectVertex) {
-    // If we have to inject the vertex value it has to be within
-    // the last member of the condition.
-    // We only get into this case iff the index used does
-    // not cover _from resp. _to.
-    // inject _from/_to value
-    auto node = expression->nodeForModification();
-
-    TRI_ASSERT(node->numMembers() > 0);
-    auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
-    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-    TRI_ASSERT(dirCmp->numMembers() == 2);
-
-    auto idNode = dirCmp->getMemberUnchecked(1);
-    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-    idNode->setStringValue(vertexId.data(), vertexId.length());
-  }
-  edge = edge.resolveExternal();
-  return evaluateExpression(expression, edge);
-}
-
 auto TraverserOptions::explicitDepthLookupAt() const
     -> std::unordered_set<std::size_t> {
   std::unordered_set<std::size_t> result;
@@ -754,26 +692,6 @@ void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
       info.calculateIndexExpressions(ast, _expressionCtx);
     }
   }
-}
-
-std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
-    uint64_t depth) {
-  ensureCache();
-
-  if (_isCoordinator) {
-    return std::make_unique<ClusterTraverserEdgeCursor>(this);
-  }
-
-  auto specific = _depthLookupInfo.find(depth);
-  if (specific != _depthLookupInfo.end()) {
-    // use specific cursor
-    return std::make_unique<graph::SingleServerEdgeCursor>(
-        this, _tmpVar, nullptr, specific->second);
-  }
-
-  // otherwise, retain / reuse the general (global) cursor
-  return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
-                                                         _baseLookupInfos);
 }
 
 double TraverserOptions::estimateCost(size_t& nrItems) const {
