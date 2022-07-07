@@ -15,6 +15,13 @@ devel
 
 * Changed default macOS CI compiler to LLVM clang-14.
 
+* Added an automatic cluster rebalance api. Use `GET _admin/cluster/rebalance`
+  to receive an analysis of how imbalanced the cluster is. Calling it with
+  `POST _admin/cluster/rebalance` computes a plan of move shard operations to
+  rebalance the cluster. Options are passed via the request body. After
+  reviewing the plan, one can use `POST _admin/cluster/rebalance/execute` to
+  put that plan into action.
+
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
   read-only APIs. This header has already been used for active failover
