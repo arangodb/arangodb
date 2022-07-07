@@ -103,9 +103,8 @@ static AstNodeType BuildSingleComparatorType(AstNode const* condition) {
   }
   auto quantifier = condition->getMemberUnchecked(2);
   TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
-  int64_t val = quantifier->getIntValue(true);
-  TRI_ASSERT(val != Quantifier::ANY);
-  if (val == Quantifier::NONE) {
+  TRI_ASSERT(!Quantifier::isAny(quantifier));
+  if (Quantifier::isNone(quantifier)) {
     auto it = Ast::NegatedOperators.find(type);
     if (it == Ast::NegatedOperators.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -393,8 +392,7 @@ static bool checkPathVariableAccessFeasible(
         if (node->type == NODE_TYPE_QUANTIFIER) {
           // We are in array case. We need to wait for a quantifier
           // This means we have path.edges[*] on the right hand side
-          int64_t val = node->getIntValue(true);
-          if (val == Quantifier::ANY) {
+          if (Quantifier::isAny(node)) {
             // Nono optimize for ANY
             notSupported = true;
             return node;
@@ -559,7 +557,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::ENUMERATE_COLLECTION:
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
-    case EN::K_SHORTEST_PATHS:
+    case EN::ENUMERATE_PATHS:
     case EN::ENUMERATE_IRESEARCH_VIEW:
     case EN::WINDOW: {
       // in these cases we simply ignore the intermediate nodes, note

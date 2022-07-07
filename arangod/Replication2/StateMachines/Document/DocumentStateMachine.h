@@ -46,6 +46,10 @@ struct DocumentCoreParameters;
 struct IDocumentStateAgencyHandler;
 struct IDocumentStateShardHandler;
 
+struct ReplicationOptions {
+  bool waitForCommit{false};
+};
+
 struct DocumentState {
   static constexpr std::string_view NAME = "document";
 

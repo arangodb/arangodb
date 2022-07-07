@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
@@ -290,7 +291,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 1,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -360,7 +361,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -399,24 +400,19 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   checkReplicatedLog(ctx, log, health);
 
-  EXPECT_FALSE(ctx.hasAction());
-  auto const r = ctx.getReport();
+  EXPECT_TRUE(ctx.hasAction());
+  auto const& a = ctx.getAction();
 
-  // TODO: we get two "Waiting for config committed", and the source
-  //       of this report should be made obvious.
-  //       The Third is config change not implemented and this is
-  //       temporary while config changes are implemented.
-  EXPECT_EQ(r.size(), 3);
+  EXPECT_TRUE(std::holds_alternative<NoActionPossibleAction>(a))
+      << fmt::format("{}", a);
+
+  auto const& r = ctx.getReport();
+
+  EXPECT_EQ(r.size(), 1);
 
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
           r[0]));
-  EXPECT_TRUE(
-      std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
-          r[1]));
-  EXPECT_TRUE(
-      std::holds_alternative<LogCurrentSupervision::ConfigChangeNotImplemented>(
-          r[2]));
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
@@ -441,7 +437,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -505,7 +501,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -564,4 +560,86 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   auto writeEmptyTermAction = std::get<WriteEmptyTermAction>(r);
 
   ASSERT_EQ(writeEmptyTermAction.minTerm, LogTerm{3});
+}
+
+TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
+  auto const config = LogTargetConfig(3, 3, false);
+  auto const participants = ParticipantsFlagsMap{{"A", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 3);
+}
+
+TEST_F(LogSupervisionTest,
+       test_compute_effective_write_concern_accepts_higher_soft_write_concern) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{
+      {"A", {}}, {"B", {}}, {"C", {}}, {"D", {}}, {"E", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 3);
+}
+
+TEST_F(LogSupervisionTest,
+       test_compute_effective_write_concern_with_all_participants_failed) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{
+      {"A", {}}, {"B", {}}, {"C", {}}, {"D", {}}, {"E", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = false}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 2);
+}
+
+TEST_F(
+    LogSupervisionTest,
+    test_compute_effective_write_concern_with_no_intersection_between_participants_and_health) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{{"A", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 2);
 }

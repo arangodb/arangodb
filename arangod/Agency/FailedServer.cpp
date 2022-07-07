@@ -30,6 +30,7 @@
 #include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/TimeString.h"
 
 using namespace arangodb::consensus;
 
