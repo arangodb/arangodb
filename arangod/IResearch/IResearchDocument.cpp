@@ -676,7 +676,7 @@ bool FieldIterator<IndexMetaStruct>::pushLevel(
     }
   }
   _stack.emplace_back(value, _nameBuffer.size(), meta, filter,
-                      LevelType::NORMAL, std::move(missing));
+                      LevelType::kNormal, std::move(missing));
   return true;
 }
 
