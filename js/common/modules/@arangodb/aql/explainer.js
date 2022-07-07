@@ -1625,7 +1625,7 @@ function processQuery(query, explain, planIndex) {
 
         return rc;
       }
-      case 'KShortestPathsNode': {
+      case 'EnumeratePathsNode': {
         if (node.hasOwnProperty('pathOutVariable')) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }

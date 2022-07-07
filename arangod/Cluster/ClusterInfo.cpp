@@ -4007,6 +4007,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
            VPackValue(info->usesRevisionsAsDocumentIds()));
   temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
+  temp.add(VPackValue(StaticStrings::ComputedValues));
+  info->computedValuesToVelocyPack(temp);
   temp.add(VPackValue(StaticStrings::Schema));
   info->schemaToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);

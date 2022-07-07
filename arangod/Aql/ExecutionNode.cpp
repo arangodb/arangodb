@@ -43,7 +43,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
-#include "Aql/KShortestPathsNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
@@ -109,7 +109,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
-    {static_cast<int>(ExecutionNode::K_SHORTEST_PATHS), "KShortestPathsNode"},
+    {static_cast<int>(ExecutionNode::ENUMERATE_PATHS), "EnumeratePathsNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
@@ -339,8 +339,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
-    case K_SHORTEST_PATHS:
-      return new KShortestPathsNode(plan, slice);
+    case ENUMERATE_PATHS:
+      return new EnumeratePathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
@@ -807,7 +807,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
         type == ENUMERATE_LIST || type == SHORTEST_PATH ||
-        type == K_SHORTEST_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
+        type == ENUMERATE_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
       return node;
     }
   }
@@ -1399,7 +1399,7 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
 
     case TRAVERSAL:
     case SHORTEST_PATH:
-    case K_SHORTEST_PATHS:
+    case ENUMERATE_PATHS:
 
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
@@ -1435,7 +1435,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case TRAVERSAL:
     case INDEX:
     case SHORTEST_PATH:
-    case K_SHORTEST_PATHS:
+    case ENUMERATE_PATHS:
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case DISTRIBUTE_CONSUMER:
@@ -2199,7 +2199,7 @@ bool SubqueryNode::mayAccessCollections() {
       ExecutionNode::UPSERT,
       ExecutionNode::TRAVERSAL,
       ExecutionNode::SHORTEST_PATH,
-      ExecutionNode::K_SHORTEST_PATHS};
+      ExecutionNode::ENUMERATE_PATHS};
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
 
