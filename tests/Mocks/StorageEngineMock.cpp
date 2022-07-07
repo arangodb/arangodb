@@ -1099,6 +1099,7 @@ PhysicalCollectionMock::createIndex(arangodb::velocypack::Slice const &info,
     TRI_ASSERT(false);
   }
 
+  //  std::cout << "MEMORY : " << index->memory() << std::endl;
   _indexes.emplace(index);
   created = true;
 
@@ -1235,6 +1236,15 @@ PhysicalCollectionMock::insert(arangodb::transaction::Methods *trx,
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
+      }
+      continue;
+    } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+      auto *l = static_cast<arangodb::iresearch::IResearchInvertedIndexMock *>(
+          index.get());
+      if (!l->insert(*trx, ref->second.docId(),
+                     arangodb::velocypack::Slice(result.vpack()))
+               .ok()) {
+        return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
       continue;
     }
@@ -1569,7 +1579,35 @@ StorageEngineMock::buildInvertedIndexMock(
       new arangodb::iresearch::IResearchInvertedIndexMock(id, collection, name,
                                                           attrs, false, true));
 
-  bool pathExists;
+  bool pathExists = false;
+  auto cleanup = arangodb::scopeGuard([&]() noexcept {
+    if (pathExists) {
+      try {
+        index->unload(); // TODO(MBkkt) unload should be implicit noexcept?
+      } catch (...) {
+      }
+    } else {
+      index->drop();
+    }
+  });
+
+  auto res =
+      static_cast<arangodb::iresearch::IResearchInvertedIndexMock *>(
+          index.get())
+          ->init(info, pathExists, []() -> irs::directory_attributes {
+            if (arangodb::iresearch::IResearchInvertedIndexMock::InitCallback !=
+                nullptr) {
+              return arangodb::iresearch::IResearchInvertedIndexMock::
+                  InitCallback();
+            }
+            return irs::directory_attributes{};
+          });
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  cleanup.cancel();
+
   auto result = index->init(info, pathExists);
   std::cout << "RESULT = " << result << std::endl;
   std::cout << "pathExists = " << pathExists << std::endl;

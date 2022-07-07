@@ -44,149 +44,79 @@ public:
 
   virtual ~IResearchInvertedIndexMock(){};
 
-  IndexType type() const override { return Index::TRI_IDX_TYPE_INVERTED_INDEX; }
-
-  bool needsReversal() const override { return false; }
-
   void toVelocyPack(
       VPackBuilder &builder,
-      std::underlying_type<Index::Serialize>::type flags) const override {
+      std::underlying_type<Index::Serialize>::type flags) const override;
 
-    auto const forPersistence =
-        Index::hasFlag(flags, Index::Serialize::Internals);
+  IndexType type() const override;
 
-    VPackObjectBuilder objectBuilder(&builder);
-    IResearchInvertedIndex::toVelocyPack(
-        IResearchDataStore::collection().vocbase().server(),
-        &IResearchDataStore::collection().vocbase(), builder, forPersistence);
+  // CHECK IT
+  bool needsReversal() const override;
 
-    auto objectId = 42;
-    if (forPersistence) {
-      //      TRI_ASSERT(objectId() != 0); // If we store it, it cannot be 0
-      builder.add(arangodb::StaticStrings::ObjectId,
-                  VPackValue(std::to_string(objectId)));
-    }
+  size_t memory() const override;
 
-    // can't use Index::toVelocyPack as it will try to output 'fields'
-    // but we have custom storage format
-    builder.add(arangodb::StaticStrings::IndexId,
-                arangodb::velocypack::Value(std::to_string(_iid.id())));
-    builder.add(arangodb::StaticStrings::IndexType,
-                arangodb::velocypack::Value(oldtypeName(type())));
-    builder.add(arangodb::StaticStrings::IndexName,
-                arangodb::velocypack::Value(name()));
-    builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
-    builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
-  }
+  bool isHidden() const override;
 
-  size_t memory() const override {
-    // FIXME return in memory size
-    return stats().indexSize;
-  }
+  char const *typeName() const override;
 
-  bool isHidden() const override { return false; }
+  bool canBeDropped() const override;
 
-  char const *typeName() const override { return "inverted"; }
+  bool isSorted() const override;
 
-  bool canBeDropped() const override { return false; }
+  bool hasSelectivityEstimate() const override;
 
-  bool isSorted() const override { return IResearchInvertedIndex::isSorted(); }
+  bool inProgress() const override;
 
-  bool hasSelectivityEstimate() const override {
-    return IResearchDataStore::hasSelectivityEstimate();
-  }
+  bool covers(arangodb::aql::Projections &projections) const override;
 
-  bool inProgress() const override {
-    return IResearchInvertedIndex::inProgress();
-  }
+  Result drop() override;
 
-  bool covers(arangodb::aql::Projections &projections) const override {
-    return IResearchInvertedIndex::covers(projections);
-  }
+  void load() override;
 
-  Result drop() override { return {}; }
-
-  void load() override {}
-
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods *trx) override {
-    return IResearchDataStore::afterTruncate(tick, trx);
-  }
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods *trx) override;
 
   bool
-  matchesDefinition(arangodb::velocypack::Slice const &other) const override {
-    return IResearchInvertedIndex::matchesFieldsDefinition(other);
-  }
+  matchesDefinition(arangodb::velocypack::Slice const &other) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods *trx, aql::AstNode const *node,
       aql::Variable const *reference, IndexIteratorOptions const &opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx) override {
-    TRI_ASSERT(readOwnWrites ==
-               ReadOwnWrites::no); // FIXME: check - should we ever care?
-    return IResearchInvertedIndex::iteratorForCondition(
-        &IResearchDataStore::collection(), trx, node, reference, opts,
-        mutableConditionIdx);
-  }
+      ReadOwnWrites readOwnWrites, int mutableConditionIdx) override;
 
   Index::SortCosts
   supportsSortCondition(aql::SortCondition const *sortCondition,
                         aql::Variable const *reference,
-                        size_t itemsInIndex) const override {
-    return IResearchInvertedIndex::supportsSortCondition(
-        sortCondition, reference, itemsInIndex);
-  }
+                        size_t itemsInIndex) const override;
 
   Index::FilterCosts
   supportsFilterCondition(std::vector<std::shared_ptr<Index>> const &allIndexes,
                           aql::AstNode const *node,
                           aql::Variable const *reference,
-                          size_t itemsInIndex) const override {
-
-    return IResearchInvertedIndex::supportsFilterCondition(
-        IResearchDataStore::id(), _fields, allIndexes, node, reference,
-        itemsInIndex);
-  }
+                          size_t itemsInIndex) const override;
 
   aql::AstNode *
   specializeCondition(aql::AstNode *node,
-                      aql::Variable const *reference) const override {
-    return IResearchInvertedIndex::specializeCondition(node, reference);
-  }
+                      aql::Variable const *reference) const override;
 
   Result insert(transaction::Methods &trx, LocalDocumentId const &documentId,
-                velocypack::Slice const doc) {
-    IResearchInvertedIndexMeta meta;
-    using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
-        arangodb::iresearch::IResearchInvertedIndexMeta,
-        arangodb::iresearch::InvertedIndexField>;
+                velocypack::Slice const doc);
 
-    return IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                      IResearchInvertedIndexMeta>(
-        trx, documentId, doc, meta);
-  }
-
-  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const &analyzer) const override {
-    return nullptr;
-  }
+  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const &analyzer) const override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
 
-  void toVelocyPackFigures(velocypack::Builder &builder) const override {
-    IResearchInvertedIndex::toVelocyPackStats(builder);
-  }
+  //  void toVelocyPackFigures(velocypack::Builder &builder) const override;
 
-  void unload() override { shutdownDataStore(); }
+  void unload() override;
 
-  void invalidateQueryCache(TRI_vocbase_t *vocbase) override {
-    return IResearchInvertedIndex::invalidateQueryCache(vocbase);
-  }
+  void invalidateQueryCache(TRI_vocbase_t *vocbase) override;
 
-  irs::comparer const *getComparator() const noexcept override {
-    return IResearchInvertedIndex::getComparator();
-  }
+  irs::comparer const *getComparator() const noexcept override;
+
+  static std::function<irs::directory_attributes()> InitCallback;
 };
 
 } // namespace iresearch

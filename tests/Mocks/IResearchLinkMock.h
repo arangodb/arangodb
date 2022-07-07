@@ -32,32 +32,33 @@
 
 namespace arangodb {
 
-struct IndexTypeFactory; // forward declaration
+struct IndexTypeFactory;  // forward declaration
 }
 
 namespace arangodb {
 namespace iresearch {
 
-class IResearchLinkMock final : public Index, public IResearchLink {
-public:
-  IResearchLinkMock(IndexId iid, LogicalCollection &collection);
+class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
+ public:
+  IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection);
 
-  [[nodiscard]] static auto
-  setCallbakForScope(std::function<irs::directory_attributes()> callback) {
+  [[nodiscard]] static auto setCallbakForScope(
+      std::function<irs::directory_attributes()> callback) {
     InitCallback = callback;
     return irs::make_finally([]() noexcept { InitCallback = nullptr; });
   }
 
   bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
 
-  Result drop() override { return IResearchLink::drop(); }
+  arangodb::Result drop() override { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  Result insert(transaction::Methods &trx, LocalDocumentId const &documentId,
-                velocypack::Slice const doc) {
+  arangodb::Result insert(arangodb::transaction::Methods& trx,
+                          arangodb::LocalDocumentId const& documentId,
+                          arangodb::velocypack::Slice const doc) {
     return IResearchLink::insert(trx, documentId, doc);
   }
 
@@ -69,7 +70,8 @@ public:
 
   void load() override { IResearchLink::load(); }
 
-  bool matchesDefinition(velocypack::Slice const &slice) const override {
+  bool matchesDefinition(
+      arangodb::velocypack::Slice const& slice) const override {
     return IResearchLink::matchesDefinition(slice);
   }
 
@@ -82,19 +84,19 @@ public:
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for std::shared_ptr<Builder>
-                             // Index::toVelocyPack(bool, Index::Serialize)
-  void
-  toVelocyPack(velocypack::Builder &builder,
-               std::underlying_type<Index::Serialize>::type) const override;
+  using Index::toVelocyPack;  // for std::shared_ptr<Builder>
+                              // Index::toVelocyPack(bool, Index::Serialize)
+  void toVelocyPack(
+      arangodb::velocypack::Builder& builder,
+      std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
-  void toVelocyPackFigures(velocypack::Builder &builder) const override {
+  void toVelocyPackFigures(velocypack::Builder& builder) const override {
     IResearchLink::toVelocyPackStats(builder);
   }
 
   IndexType type() const override { return IResearchLink::type(); }
 
-  char const *typeName() const override { return IResearchLink::typeName(); }
+  char const* typeName() const override { return IResearchLink::typeName(); }
 
   void unload() override {
     auto res = IResearchLink::unload();
@@ -107,5 +109,5 @@ public:
   static std::function<irs::directory_attributes()> InitCallback;
 };
 
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb
