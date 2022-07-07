@@ -391,11 +391,9 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   waitForSatelliteIfRequired(&engine);
 #endif
 
-  const bool isKPaths =
-      pathType() == arangodb::graph::PathType::Type::KPaths;
+  const bool isKPaths = pathType() == arangodb::graph::PathType::Type::KPaths;
   const bool isAllShortestPaths =
-      pathType() ==
-      arangodb::graph::PathType::Type::AllShortestPaths;
+      pathType() == arangodb::graph::PathType::Type::AllShortestPaths;
 
   if (isKPaths or isAllShortestPaths) {
     // TODO Anthony: Opt for a better approach instead of this hack
