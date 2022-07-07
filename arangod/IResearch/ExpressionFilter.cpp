@@ -91,7 +91,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator {
     return !irs::doc_limits::eof(seek(doc.value + 1));
   }
 
-  virtual irs::attribute* get_mutable(
+  irs::attribute* get_mutable (
       irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
@@ -184,7 +184,7 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
       irs::bstring&& stats, irs::score_t boost) noexcept
       : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
 
-  virtual irs::doc_iterator::ptr execute(
+  irs::doc_iterator::ptr execute(
        irs::sub_reader const& segment,  irs::Order const& order,
       irs::ExecutionMode,  irs::attribute_provider const* ctx) const override {
     if (ADB_UNLIKELY(!ctx)) {

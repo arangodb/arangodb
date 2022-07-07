@@ -63,7 +63,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
 
   {
     // optional float
-    constexpr std::string_view kFieldName{"threshold"};
+    constexpr std::string_view kFieldName = "threshold";
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -102,7 +102,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"segmentsBytesFloor"};
+    constexpr std::string_view kFieldName = "segmentsBytesFloor";
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -119,7 +119,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"segmentsBytesMax"};
+    constexpr std::string_view kFieldName = "segmentsBytesMax";
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -136,7 +136,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"segmentsMax"};
+    constexpr std::string_view kFieldName = "segmentsMax";
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -153,7 +153,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"segmentsMin"};
+    constexpr std::string_view kFieldName = "segmentsMin";
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -170,7 +170,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional double
-    constexpr std::string_view kFieldName{"minScore"};
+    constexpr std::string_view kFieldName = "minScore";
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -286,11 +286,11 @@ bool IResearchDataStoreMeta::json(
 
   if ((!ignoreEqual ||
        _commitIntervalMsec !=
-           ignoreEqual->_commitIntervalMsec)  // if requested or different
+           ignoreEqual->_commitIntervalMsec)
       && (!mask || mask->_commitIntervalMsec)) {
-    builder.add(  // add value
+    builder.add(
         StaticStrings::CommitIntervalMsec,
-        velocypack::Value(_commitIntervalMsec)  // args
+        velocypack::Value(_commitIntervalMsec)
     );
   }
 

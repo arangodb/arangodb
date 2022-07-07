@@ -45,14 +45,14 @@ constexpr auto consistencyTypeMap =
         {{"eventual", Consistency::kEventual},
          {"immediate", Consistency::kImmediate}});
 
-constexpr std::string_view kNameFieldName("name");
-constexpr std::string_view kAnalyzerFieldName("analyzer");
-constexpr std::string_view kNestedFieldsFieldName("nested");
-constexpr std::string_view kFeaturesFieldName("features");
-constexpr std::string_view kExpressionFieldName("expression");
-constexpr std::string_view kIsArrayFieldName("isArray");
-constexpr std::string_view kIncludeAllFieldsFieldName("includeAllFields");
-constexpr std::string_view kTrackListPositionsFieldName("trackListPositions");
+constexpr std::string_view kNameFieldName = "name";
+constexpr std::string_view kAnalyzerFieldName = "analyzer";
+constexpr std::string_view kNestedFieldsFieldName = "nested";
+constexpr std::string_view kFeaturesFieldName = "features";
+constexpr std::string_view kExpressionFieldName = "expression";
+constexpr std::string_view kIsArrayFieldName = "isArray";
+constexpr std::string_view kIncludeAllFieldsFieldName = "includeAllFields";
+constexpr std::string_view kTrackListPositionsFieldName = "trackListPositions";
 constexpr std::string_view kDirectionFieldName = "direction";
 constexpr std::string_view kAscFieldName = "asc";
 constexpr std::string_view kFieldName = "field";
@@ -79,6 +79,7 @@ IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
   _primitiveOffset = 1;
 }
 
+// FIXME(Dronplane): make all constexpr defines consistent
 bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                       VPackSlice const& slice,
                                       bool readAnalyzerDefinition,

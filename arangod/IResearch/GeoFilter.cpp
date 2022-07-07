@@ -234,7 +234,7 @@ class GeoQuery final : public irs::filter::prepared {
         _acceptor(std::move(acceptor)) {}
 
   virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& segment, const irs::Order& ord, irs::ExecutionMode,
+      const irs::sub_reader& segment, irs::Order const& ord, irs::ExecutionMode,
       const irs::attribute_provider* /*ctx*/) const override {
     // get term state for the specified reader
     auto state = _states.find(segment);
@@ -591,8 +591,8 @@ namespace arangodb {
 namespace iresearch {
 
 irs::filter::prepared::ptr GeoFilter::prepare(
-    const irs::index_reader& index, const irs::Order& order, irs::score_t boost,
-    const irs::attribute_provider* /*ctx*/) const {
+    irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
+    irs::attribute_provider const* /*ctx*/) const {
   auto& shape = const_cast<geo::ShapeContainer&>(options().shape);
 
   if (shape.empty()) {

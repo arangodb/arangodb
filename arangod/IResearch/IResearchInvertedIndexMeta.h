@@ -116,6 +116,8 @@ class IResearchInvertedIndexSort {
 };
 
 struct InvertedIndexField {
+  // ordered so analyzerDefinitions slice is consitent
+  // important for checking for changes/syncing etc
   using AnalyzerDefinitions =
       std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer>;
 
