@@ -483,7 +483,7 @@
           }
 
           self.events['change tr[id*="newEdgeDefinitions"]'] = self.setFromAndTo.bind(self);
-          self.events['click .graphViewer-icon-button'] = self.addRemoveDefinition.bind(self);
+          self.events['click .graphViewer-icon-add-remove-button'] = self.addRemoveDefinition.bind(self);
           self.events['click #graphTab a'] = self.toggleTab.bind(self);
           self.events['click .createExampleGraphs'] = self.createExampleGraphs.bind(self);
           self.events['focusout .select2-search-field input'] = function (e) {
@@ -901,16 +901,62 @@
       const rowDescription = {
         graphName: {
           title: 'Name',
-          info: 'The name to identify the graph. Has to be unique and must follow the <b>Document Keys</b> naming conventions.',
+          info: 'String value. The name to identify the graph. Has to be unique and must follow the' +
+            ' <b>Document Keys</b> naming conventions.',
+          placeholder: 'Insert the name of the graph',
         },
         numberOfShards: {
           title: 'Shards',
-          info: 'Number of shards the graph is using.'
+          info: 'Numeric value. Must be at least 1. Number of shards the graph is using.',
+          placeholder: 'Insert numeric value'
         },
         orphanCollection: {
           title: 'Orphan collections',
           info: 'Collections that are part of a graph but not used in an edge definition.',
-          placeholder: 'Insert list of Non-Existing Orphan Collections'
+          placeholder: 'Insert list of Orphan Collections'
+        },
+        replicationFactor: {
+          title: 'Replication factor',
+          description: 'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.' +
+            'If not given, the system default for new collections will be used.',
+          placeholder: 'Insert numeric value'
+        },
+        writeConcern: {
+          title: 'Write concern',
+          description: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication ' +
+            'factor. Total number of copies of the data in the cluster that are required for each write operation. ' +
+            'If we get below this value, the collection will be read-only until enough copies are created. ' +
+            'If not given, the system default for new collections will be used.',
+          placeholder: 'Insert numeric value'
+        },
+        smartGraphAttribute: {
+          title: 'SmartGraph Attribute',
+          description: 'String value. The attribute name that is used to smartly shard the vertices of a graph.' +
+            ' Every vertex in this Graph has to have this attribute.',
+          placeholder: 'Insert the smartGraphAttribute'
+        },
+        satelliteCollections: {
+          title: 'Satellite collections',
+          descriptionNew: 'Insert vertex collections here which are being used in new edge definitions (fromCollections, toCollections).' +
+            ' Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
+          descriptionEdit: 'Insert vertex collections here which are being used in your edge definitions (fromCollections, toCollections).' +
+            ' Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
+          placeholder: 'Insert list of <from>/<to> Vertex Collections'
+        },
+        edgeDefinitions: {
+          title: 'Edge definition',
+          description: 'An edge definition defines a relation of the graph.',
+          placeholder: 'Insert a single Edge Collection'
+        },
+        toVertexCollection: {
+          title: 'toCollections',
+          description: 'The collections that contain the end vertices of the relation.',
+          placeholder: 'Insert list of <to> Vertex Collections'
+        },
+        fromVertexCollections: {
+          title: 'fromCollections',
+          description: 'The collections that contain the start vertices of the relation.',
+          placeholder: 'Insert list of <from> Vertex Collections'
         }
       }
 
@@ -991,10 +1037,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'smartGraphAttribute',
-              'SmartGraph Attribute',
+              rowDescription.smartGraphAttribute.title,
               graph.get('smartGraphAttribute'),
-              'The attribute name that is used to smartly shard the vertices of a graph. \n' +
-              'Every vertex in this Graph has to have this attribute. \n'
+              rowDescription.smartGraphAttribute.description
             )
           );
         }
@@ -1014,9 +1059,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'replicationFactor',
-              'Replication factor',
+              rowDescription.replicationFactor.title,
               graph.get('replicationFactor'),
-              'Total number of desired copies of the data in the cluster.'
+              rowDescription.replicationFactor.description
             )
           );
         }
@@ -1025,9 +1070,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'writeConcern',
-              'Write concern',
+              rowDescription.writeConcern.title,
               graph.get('minReplicationFactor'),
-              'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
+              rowDescription.writeConcern.description
             )
           );
         }
@@ -1051,8 +1096,7 @@
               'new-hybridSatelliteCollections',
               'New Satellite collections',
               hybridSatelliteCollections,
-              'Insert vertex collections here which are being used in new edge definitions (fromCollections, toCollections).' +
-              'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
+              rowDescription.satelliteCollections.descriptionNew,
               'New Satellite Collections',
               false,
               false,
@@ -1082,7 +1126,7 @@
             rowDescription.graphName.title,
             '',
             rowDescription.graphName.info,
-            'graphName',
+            rowDescription.graphName.placeholder,
             true
           )
         );
@@ -1100,7 +1144,7 @@
             rowDescription.numberOfShards.title + '*',
             '',
             rowDescription.numberOfShards.info,
-            '',
+            rowDescription.numberOfShards.placeholder,
             false,
             [
               {
@@ -1114,10 +1158,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-replicationFactor',
-            'Replication factor',
+            rowDescription.replicationFactor.title,
             '',
-            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
-            '',
+            rowDescription.replicationFactor.description,
+            rowDescription.replicationFactor.placeholder,
             false,
             [
               {
@@ -1131,15 +1175,15 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-writeConcern',
-            'Write concern',
+            rowDescription.writeConcern.title,
             '',
-            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
-            '',
+            rowDescription.writeConcern.description,
+            rowDescription.writeConcern.placeholder,
             false,
             [
               {
                 rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
-                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
+                msg: rowDescription.writeConcern.description
               }
             ]
           )
@@ -1157,12 +1201,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-smartGraphAttribute',
-            'SmartGraph Attribute*',
+            rowDescription.smartGraphAttribute.title + '*',
             '',
-            'The attribute name that is used to smartly shard the vertices of a graph. \n' +
-            'Every vertex in this Graph has to have this attribute. \n' +
-            'Cannot be modified later.',
-            '',
+            rowDescription.smartGraphAttribute.description + ' Cannot be modified later.',
+            rowDescription.smartGraphAttribute.placeholder,
             false,
             [
               {
@@ -1195,10 +1237,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-replicationFactor',
-            'Replication factor',
+            rowDescription.replicationFactor.title,
             '',
-            'Numeric value. Must be at least 1. Total number of desired copies of the data in the cluster.',
-            '',
+            rowDescription.replicationFactor.description,
+            rowDescription.replicationFactor.placeholder,
             false,
             [
               {
@@ -1211,10 +1253,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-writeConcern',
-            'Write concern',
+            rowDescription.writeConcern.title,
             '',
-            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
-            '',
+            rowDescription.writeConcern.description,
+            rowDescription.writeConcern.placeholder,
             false,
             [
               {
@@ -1227,11 +1269,10 @@
         tableContent.push(
           window.modalView.createSelect2Entry(
             'hybridSatelliteCollections',
-            'Satellite collections',
+            rowDescription.satelliteCollections.title,
             hybridSatelliteCollections,
-            'Insert vertex collections here which are being used in your edge definitions (fromCollections, toCollections).' +
-            'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
-            'Satellite Collections',
+            rowDescription.satelliteCollections.descriptionEdit,
+            rowDescription.satelliteCollections.placeholder,
             false,
             false,
             false,
@@ -1249,61 +1290,74 @@
               self.eCollList.splice(self.eCollList.indexOf(edgeDefinition.collection), 1);
             }
             tableContent.push(
+              window.modalView.createSpacerEntry(
+                null, 'Relation'
+              )
+            );
+            tableContent.push(
               window.modalView.createSelect2Entry(
                 'newEdgeDefinitions' + self.counter,
-                'Edge definitions',
+                rowDescription.edgeDefinitions.title,
                 edgeDefinition.collection,
-                'An edge definition defines a relation of the graph',
-                'Edge definitions',
+                rowDescription.edgeDefinitions.description,
+                rowDescription.edgeDefinitions.placeholder,
                 true,
                 false,
                 true,
                 1,
-                self.eCollList.sort(sorter)
+                self.eCollList.sort(sorter),
+                undefined, /*style*/
+                'first' /*cssClass*/
               )
             );
           } else {
             tableContent.push(
               window.modalView.createSelect2Entry(
                 'newEdgeDefinitions' + self.counter,
-                'Edge definitions',
+                rowDescription.edgeDefinitions.title,
                 edgeDefinition.collection,
-                'An edge definition defines a relation of the graph',
-                'Edge definitions',
+                rowDescription.edgeDefinitions.description,
+                rowDescription.edgeDefinitions.placeholder,
                 false,
                 true,
                 false,
                 1,
-                self.eCollList.sort(sorter)
+                self.eCollList.sort(sorter),
+                undefined, /*style*/
+                'first' /*cssClass*/
               )
             );
           }
           tableContent.push(
             window.modalView.createSelect2Entry(
-              'fromCollections' + self.counter,
-              'fromCollections',
+              rowDescription.fromVertexCollections.title + self.counter,
+              rowDescription.fromVertexCollections.title,
               edgeDefinition.from,
-              'The collections that contain the start vertices of the relation.',
-              'fromCollections',
+              rowDescription.fromVertexCollections.description,
+              rowDescription.fromVertexCollections.placeholder,
               true,
               false,
               false,
               null,
-              collList.sort(sorter)
+              collList.sort(sorter),
+              undefined, /*style*/
+              'middle' /*cssClass*/
             )
           );
           tableContent.push(
             window.modalView.createSelect2Entry(
-              'toCollections' + self.counter,
-              'toCollections',
+              rowDescription.toVertexCollection.title + self.counter,
+              rowDescription.toVertexCollection.title,
               edgeDefinition.to,
-              'The collections that contain the end vertices of the relation.',
-              'toCollections',
+              rowDescription.toVertexCollection.description,
+              rowDescription.toVertexCollection.placeholder,
               true,
               false,
               false,
               null,
-              collList.sort(sorter)
+              collList.sort(sorter),
+              undefined, /*style*/
+              'last' /*cssClass*/
             )
           );
           self.counter++;
@@ -1316,7 +1370,7 @@
           rowDescription.orphanCollection.title,
           orphanCollections,
           rowDescription.orphanCollection.info,
-          'Orphan Collections',
+          rowDescription.orphanCollection.placeholder,
           false,
           false,
           false,
@@ -1441,6 +1495,7 @@
       }
       if (id.indexOf('remove_newEdgeDefinitions') !== -1) {
         number = id.split('remove_newEdgeDefinitions')[1];
+        $('#row_newEdgeDefinitionsSpacer' + number).remove();
         $('#row_newEdgeDefinitions' + number).remove();
         $('#row_fromCollections' + number).remove();
         $('#row_toCollections' + number).remove();

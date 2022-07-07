@@ -20,7 +20,7 @@
   };
 
   var createTextStub = function (type, label, value, info, placeholder, mandatory, joiObj,
-    addDelete, addAdd, maxEntrySize, tags, style) {
+    addDelete, addAdd, maxEntrySize, tags, style, cssClass, removeColon) {
     var obj = {
       type: type,
       label: label
@@ -51,6 +51,12 @@
     }
     if (tags !== undefined) {
       obj.tags = tags;
+    }
+    if (cssClass !== undefined) {
+      obj.cssClass = cssClass;
+    }
+    if (removeColon) {
+      obj.removeColon = true;
     }
     if (joiObj) {
       // returns true if the string contains the match
@@ -95,7 +101,8 @@
       SELECT2: 'select2',
       JSONEDITOR: 'jsoneditor',
       CHECKBOX: 'checkbox',
-      TABLE: 'table'
+      TABLE: 'table',
+      SPACER: 'spacer'
     },
 
     initialize: function () {
@@ -208,10 +215,19 @@
       return obj;
     },
 
+    createSpacerEntry: function (id, label) {
+      var obj = createTextStub(this.tables.SPACER, label, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, undefined, undefined,
+        'labeledSpacer', true);
+      obj.id = id;
+      console.log(obj);
+      return obj;
+    },
+
     createSelect2Entry: function (
-      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
+      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags, style, cssClass) {
       var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
-        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
+        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags, style, cssClass);
       obj.id = id;
       return obj;
     },
