@@ -49,17 +49,20 @@ TEST(PregelStatus, adding_two_status_adds_measurements) {
       Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
              .verticesLoaded = 2,
              .edgesLoaded = 119,
-             .memoryBytesUsed = 92228};
+             .memoryBytesUsed = 92228,
+             .verticesStored = 1};
   auto laterStatus = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
                             .verticesLoaded = 987,
                             .edgesLoaded = 1,
-                            .memoryBytesUsed = 322};
+                            .memoryBytesUsed = 322,
+                            .verticesStored = 0};
 
   ASSERT_EQ(earlierStatus + laterStatus,
             (Status{.timeStamp = laterStatus.timeStamp,
                     .verticesLoaded = 989,
                     .edgesLoaded = 120,
-                    .memoryBytesUsed = 92550}));
+                    .memoryBytesUsed = 92550,
+                    .verticesStored = 1}));
 }
 
 TEST(PregelStatus,
@@ -68,17 +71,20 @@ TEST(PregelStatus,
       Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
              .verticesLoaded = std::nullopt,
              .edgesLoaded = std::nullopt,
-             .memoryBytesUsed = 92228};
+             .memoryBytesUsed = 92228,
+             .verticesStored = 1};
   auto laterStatus = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
                             .verticesLoaded = std::nullopt,
                             .edgesLoaded = 1,
-                            .memoryBytesUsed = std::nullopt};
+                            .memoryBytesUsed = std::nullopt,
+                            .verticesStored = 4};
 
   ASSERT_EQ(earlierStatus + laterStatus,
             (Status{.timeStamp = laterStatus.timeStamp,
                     .verticesLoaded = std::nullopt,
                     .edgesLoaded = 1,
-                    .memoryBytesUsed = 92228}));
+                    .memoryBytesUsed = 92228,
+                    .verticesStored = 5}));
 }
 
 TEST(PregelConductorStatus, accumulates_worker_status) {
@@ -87,12 +93,14 @@ TEST(PregelConductorStatus, accumulates_worker_status) {
        Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
               .verticesLoaded = 2,
               .edgesLoaded = 119,
-              .memoryBytesUsed = 92228}},
+              .memoryBytesUsed = 92228,
+              .verticesStored = 1}},
       {"worker_with_earlier_status",
        Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
               .verticesLoaded = 987,
               .edgesLoaded = 1,
-              .memoryBytesUsed = 322}}};
+              .memoryBytesUsed = 322,
+              .verticesStored = 0}}};
   auto conductorStatus = ConductorStatus{.workers = workers};
 
   ASSERT_EQ(
@@ -101,6 +109,7 @@ TEST(PregelConductorStatus, accumulates_worker_status) {
           .status = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
                            .verticesLoaded = 989,
                            .edgesLoaded = 120,
-                           .memoryBytesUsed = 92550},
+                           .memoryBytesUsed = 92550,
+                           .verticesStored = 1},
           .workers = workers}));
 }

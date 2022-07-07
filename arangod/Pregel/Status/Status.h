@@ -55,13 +55,15 @@ struct Status {
   std::optional<std::size_t> verticesLoaded = std::nullopt;
   std::optional<std::size_t> edgesLoaded = std::nullopt;
   std::optional<std::size_t> memoryBytesUsed = std::nullopt;
+  std::optional<std::size_t> verticesStored = std::nullopt;
   bool operator==(Status const&) const = default;
   auto operator+(Status const& other) const -> Status {
     return Status{
         .timeStamp = std::max(timeStamp, other.timeStamp),
         .verticesLoaded = add(verticesLoaded, other.verticesLoaded),
         .edgesLoaded = add(edgesLoaded, other.edgesLoaded),
-        .memoryBytesUsed = add(memoryBytesUsed, other.memoryBytesUsed)};
+        .memoryBytesUsed = add(memoryBytesUsed, other.memoryBytesUsed),
+        .verticesStored = add(verticesStored, other.verticesStored)};
   };
 };
 
@@ -72,13 +74,15 @@ auto inspect(Inspector& f, Status& x) {
           .transformWith(inspection::TimeStampTransformer{}),
       f.field("verticesLoaded", x.verticesLoaded),
       f.field("edgesLoaded", x.edgesLoaded),
-      f.field("memoryUsed", x.memoryBytesUsed));
+      f.field("memoryUsed", x.memoryBytesUsed),
+      f.field("verticesStored", x.verticesStored));
 }
 
 struct Observables {
   std::optional<std::atomic<std::size_t>> verticesLoaded;
   std::optional<std::atomic<std::size_t>> edgesLoaded;
   std::optional<std::atomic<std::size_t>> memoryBytesUsed;
+  std::optional<std::atomic<std::size_t>> verticesStored;
   auto observe() const -> Status {
     return Status{
         .verticesLoaded = verticesLoaded.has_value()
@@ -89,7 +93,10 @@ struct Observables {
                            : std::nullopt,
         .memoryBytesUsed = memoryBytesUsed.has_value()
                                ? std::optional{memoryBytesUsed.value().load()}
-                               : std::nullopt};
+                               : std::nullopt,
+        .verticesStored = verticesStored.has_value()
+                              ? std::optional{verticesStored.value().load()}
+                              : std::nullopt};
   }
 };
 
