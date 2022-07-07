@@ -1,6 +1,11 @@
 devel
 -----
 
+* Updated arangosync to v2.11.0.
+
+* Add log.time-format utc-datestring-micros to make debugging of concurrency
+  bugs easier.
+
 * Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
   explain outputs for AQL queries.
 
