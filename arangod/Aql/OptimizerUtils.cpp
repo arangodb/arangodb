@@ -585,20 +585,19 @@ void captureFCallArgumentExpressions(
 void captureArrayFilterArgumentExpressions(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
     AstNode const* filter, std::vector<size_t> selectedMembersFromRoot,
-    bool evaluateFCalls, Variable const* indexVariable,
-    NonConstExpressionContainer& result) {
-  for (size_t i = 0, size = filter->numMembers(); i != size; ++i) {
-    auto member = filter->getMemberUnchecked(i);
+    bool evaluateFCalls,
+    Variable const* indexVariable, NonConstExpressionContainer& result) {
+  for (size_t f = 0; f < filter->numMembers(); ++f) {
+    auto member = filter->getMemberUnchecked(f);
     if (!member->isConstant()) {
       auto path = selectedMembersFromRoot;
-      path.emplace_back(i);
+      path.emplace_back(f);
       if (member->type == NODE_TYPE_RANGE) {
         // intentionally copy path here as we will have many members
         auto path1 = path;
         path1.emplace_back(0);
         // We will capture only Min and Max members as we do not want
-        // entire array to be evaluated (like if someone writes
-        // query 1..1234567890)
+        // entire array to be evaluated (like if someone writes query 1..35486732486348)
         captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(0),
                                   path1, result);
         auto path2 = path;
@@ -609,7 +608,7 @@ void captureArrayFilterArgumentExpressions(
         auto localPath = path;
         auto preVisitor = [&localPath, ast, &varInfo, &result, indexVariable,
                            evaluateFCalls](AstNode const* node) -> bool {
-          auto sg = ScopeGuard([&localPath]() noexcept { ++localPath.back(); });
+          auto sg = ScopeGuard([&localPath] () noexcept { ++localPath.back(); });
           if (node->isConstant()) {
             return false;
           }
@@ -624,17 +623,14 @@ void captureArrayFilterArgumentExpressions(
             // never dive into attribute access
             return false;
           } else if (node->type == NODE_TYPE_FCALL) {
-            if (!evaluateFCalls) {  
-              // FIXME(Dronplane): we should never execute
-              // index-backed functions. But how to track
-              // it? -> execute only functions that does
-              // not touch index variable and local temp
-              // variables!
-              captureFCallArgumentExpressions(ast, varInfo, node, localPath,
+            if (!evaluateFCalls) { // FIXME(Dronplane): we should never execute index-backed functions. But how to track it?
+              captureFCallArgumentExpressions(ast, varInfo, node,
+                                              localPath,
                                               indexVariable, result);
             } else {
-              captureNonConstExpression(
-                  ast, varInfo, const_cast<AstNode*>(node), localPath, result);
+              captureNonConstExpression(ast, varInfo,
+                                        const_cast<AstNode*>(node),
+                                        localPath, result);
             }
             return false;
           } else if (node->type == NODE_TYPE_REFERENCE) {
@@ -705,7 +701,7 @@ void extractNonConstPartsOfAndPart(
       captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path),
                                       indexVariable, result);
       continue;
-    } else if (leaf->type == NODE_TYPE_EXPANSION && leaf->numMembers() > 2 &&
+    } else if (leaf->type == NODE_TYPE_EXPANSION && leaf->numMembers() > 2 && 
                leaf->isAttributeAccessForVariable(indexVariable, false)) {
       // we need to gather all expressions from nested filter
       auto filter = leaf->getMemberUnchecked(2);
@@ -767,7 +763,6 @@ namespace arangodb::aql::utils {
 // some data in it.
 bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
-                     bool excludeStartNodeFilterCondition,
                      std::unordered_set<AttributeNamePath>& attributes) {
   using EN = arangodb::aql::ExecutionNode;
 
@@ -880,18 +875,6 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           attributes.emplace(AttributeNamePath(it.attributePath));
         }
       }
-    } else if (current->getType() == EN::ENUMERATE_COLLECTION) {
-      EnumerateCollectionNode const* en =
-          ExecutionNode::castTo<EnumerateCollectionNode const*>(current);
-
-      if ((!excludeStartNodeFilterCondition || current != n) &&
-          en->hasFilter()) {
-        if (!Ast::getReferencedAttributesRecursive(
-                en->filter()->node(), v,
-                /*expectedAttribute*/ expectedAttribute, attributes)) {
-          return false;
-        }
-      }
     } else if (current->getType() == EN::INDEX) {
       IndexNode const* indexNode =
           ExecutionNode::castTo<IndexNode const*>(current);
@@ -901,15 +884,6 @@ bool findProjections(ExecutionNode* n, Variable const* v,
           !tryAndExtractProjectionsFromExpression(indexNode,
                                                   condition->root())) {
         return false;
-      }
-
-      if ((!excludeStartNodeFilterCondition || current != n) &&
-          indexNode->hasFilter()) {
-        if (!Ast::getReferencedAttributesRecursive(
-                indexNode->filter()->node(), v,
-                /*expectedAttribute*/ expectedAttribute, attributes)) {
-          return false;
-        }
       }
     } else {
       // all other node types mandate a check
