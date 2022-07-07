@@ -82,5 +82,13 @@ class RestBaseHandler : public rest::RestHandler {
 
   template<typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
+
+  /// @brief configure if outgoing responses will have the potential
+  /// dirty reads header set:
+  void setOutgoingDirtyReadsHeader(bool flag) { _potentialDirtyReads = flag; }
+
+  /// @brief Flag, if the outgoing response should have an HTTP header
+  /// indicating potential dirty reads:
+  bool _potentialDirtyReads;
 };
 }  // namespace arangodb

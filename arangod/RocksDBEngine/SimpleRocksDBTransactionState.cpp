@@ -117,7 +117,7 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
 }
 
 /// @brief commit a transaction
-Result SimpleRocksDBTransactionState::doCommit() {
+futures::Future<Result> SimpleRocksDBTransactionState::doCommit() {
   return _rocksMethods->commitTransaction();
 }
 
