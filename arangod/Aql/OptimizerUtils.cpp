@@ -657,8 +657,7 @@ void captureArrayFilterArgumentExpressions(
           ++localPath.back();
         };
 
-        auto visitor = [&localPath, ast, &varInfo,
-                        &result](AstNode* node) -> AstNode* {
+        auto visitor = [&localPath](AstNode* node) -> AstNode* {
           localPath.pop_back();
           return node;
         };
