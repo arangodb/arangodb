@@ -41,6 +41,7 @@
 #include "Mocks/Servers.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -59,11 +60,13 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/AqlFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/BatchOptions.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/OperationOptions.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -3099,9 +3102,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
     builder.openObject();
     builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
     builder.close();
-    ASSERT_TRUE(analyzersCollection->getPhysical()
-                    ->newObjectForInsert(&trx, builder.slice(), false, document,
-                                         false, rev)
+
+    arangodb::transaction::BatchOptions batchOptions;
+    arangodb::OperationOptions options;
+    ASSERT_TRUE(arangodb::transaction::helpers::newObjectForInsert(
+                    trx, *analyzersCollection, builder.slice(), rev, document,
+                    options, batchOptions)
                     .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }
@@ -3173,9 +3179,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
     builder.openObject();
     builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
     builder.close();
-    ASSERT_TRUE(analyzersCollection->getPhysical()
-                    ->newObjectForInsert(&trx, builder.slice(), false, document,
-                                         false, rev)
+
+    arangodb::transaction::BatchOptions batchOptions;
+    arangodb::OperationOptions options;
+    ASSERT_TRUE(arangodb::transaction::helpers::newObjectForInsert(
+                    trx, *analyzersCollection, builder.slice(), rev, document,
+                    options, batchOptions)
                     .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }

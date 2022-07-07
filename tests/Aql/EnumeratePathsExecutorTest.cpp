@@ -35,7 +35,7 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/KShortestPathsExecutor.h"
+#include "Aql/EnumeratePathsExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
@@ -226,7 +226,7 @@ struct KShortestPathsTestParameters {
   size_t _blockSize{1000};
 };
 
-class KShortestPathsExecutorTest : public ::testing::Test {
+class EnumeratePathsExecutorTest : public ::testing::Test {
  protected:
   // parameters are copied because they are const otherwise
   // and that doesn't mix with std::move
@@ -243,7 +243,7 @@ class KShortestPathsExecutorTest : public ::testing::Test {
   ShortestPathOptions options;
 
   RegisterInfos registerInfos;
-  KShortestPathsExecutorInfos<KShortestPathsFinder> executorInfos;
+  EnumeratePathsExecutorInfos<KShortestPathsFinder> executorInfos;
 
   FakeKShortestPathsFinder& finder;
 
@@ -253,10 +253,10 @@ class KShortestPathsExecutorTest : public ::testing::Test {
   std::shared_ptr<Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-  KShortestPathsExecutor<KShortestPathsFinder> testee;
+  EnumeratePathsExecutor<KShortestPathsFinder> testee;
   OutputAqlItemRow output;
 
-  KShortestPathsExecutorTest(KShortestPathsTestParameters parameters__)
+  EnumeratePathsExecutorTest(KShortestPathsTestParameters parameters__)
       : parameters(std::move(parameters__)),
         server{},
         itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
@@ -382,7 +382,7 @@ class KShortestPathsExecutorTest : public ::testing::Test {
 
   void TestExecutor(
       RegisterInfos& registerInfos,
-      KShortestPathsExecutorInfos<KShortestPathsFinder>& executorInfos,
+      EnumeratePathsExecutorInfos<KShortestPathsFinder>& executorInfos,
       AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
@@ -426,26 +426,26 @@ class KShortestPathsExecutorTest : public ::testing::Test {
   }
 };  // namespace aql
 
-class KShortestPathsExecutorInputsTest
-    : public KShortestPathsExecutorTest,
+class EnumeratePathsExecutorInputsTest
+    : public EnumeratePathsExecutorTest,
       public ::testing::WithParamInterface<std::tuple<Vertex, Vertex>> {
  protected:
-  KShortestPathsExecutorInputsTest() : KShortestPathsExecutorTest(GetParam()) {}
+  EnumeratePathsExecutorInputsTest() : EnumeratePathsExecutorTest(GetParam()) {}
 };
 
-TEST_P(KShortestPathsExecutorInputsTest, the_test) {
+TEST_P(EnumeratePathsExecutorInputsTest, the_test) {
   TestExecutor(registerInfos, executorInfos, input);
 }
 
-class KShortestPathsExecutorPathsTest
-    : public KShortestPathsExecutorTest,
+class EnumeratePathsExecutorPathsTest
+    : public EnumeratePathsExecutorTest,
       public ::testing::WithParamInterface<
           std::tuple<MatrixBuilder<2>, PathSequence, AqlCall, size_t>> {
  protected:
-  KShortestPathsExecutorPathsTest() : KShortestPathsExecutorTest(GetParam()) {}
+  EnumeratePathsExecutorPathsTest() : EnumeratePathsExecutorTest(GetParam()) {}
 };
 
-TEST_P(KShortestPathsExecutorPathsTest, the_test) {
+TEST_P(EnumeratePathsExecutorPathsTest, the_test) {
   TestExecutor(registerInfos, executorInfos, input);
 }
 
@@ -479,11 +479,11 @@ auto calls = testing::Values(
 auto blockSizes = testing::Values(5, 1000);
 
 INSTANTIATE_TEST_CASE_P(KShortestPathExecutorInputTestInstance,
-                        KShortestPathsExecutorInputsTest,
+                        EnumeratePathsExecutorInputsTest,
                         testing::Combine(sources, targets));
 
 INSTANTIATE_TEST_CASE_P(KShortestPathExecutorPathsTestInstance,
-                        KShortestPathsExecutorPathsTest,
+                        EnumeratePathsExecutorPathsTest,
                         testing::Combine(inputs, paths, calls, blockSizes));
 }  // namespace
 

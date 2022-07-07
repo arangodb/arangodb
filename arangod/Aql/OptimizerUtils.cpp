@@ -420,9 +420,10 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     totalCost *= projectionsFactor;
 
     LOG_TOPIC("7278d", TRACE, Logger::FIXME)
-        << "looked at candidate index: " << idx.get()
+        << "looked at candidate index: " << idx->name()
         << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse()
-        << ", fields: " << idx->fields().size()
+        << ", fields: " << idx->fields()
+        << ", num fields: " << idx->fields().size()
         << ", hasSelectivityEstimate: " << idx->hasSelectivityEstimate()
         << ", selectivityEstimate: "
         << (idx->hasSelectivityEstimate()
