@@ -193,6 +193,52 @@ aql::TraversalStats outputVertex(
   return stats;
 }
 
+std::unique_ptr<graph::ShortestPathOptions> parseShortestPathOptions(
+    arangodb::velocypack::Slice info, aql::QueryContext& query) {
+  VPackSlice optsSlice = info.get(OPTIONS);
+  if (optsSlice.isNone() || !optsSlice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires an " + OPTIONS + " attribute.");
+  }
+  VPackSlice shardsSlice = info.get(SHARDS);
+  VPackSlice edgesSlice = shardsSlice.get(EDGES);
+  VPackSlice type = optsSlice.get(TYPE);
+  if (!type.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The " + OPTIONS + " require a " + TYPE + " attribute.");
+  }
+  TRI_ASSERT(type.isEqualString("shortestPath"));
+  auto opts =
+      std::make_unique<ShortestPathOptions>(query, optsSlice, edgesSlice);
+  // We create the cache, but we do not need any engines.
+  opts->activateCache(false, nullptr);
+  return opts;
+}
+
+std::unique_ptr<traverser::TraverserOptions> parseTraverserPathOptions(
+    arangodb::velocypack::Slice info, aql::QueryContext& query) {
+  VPackSlice optsSlice = info.get(OPTIONS);
+  if (!optsSlice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires an " + OPTIONS + " attribute.");
+  }
+  VPackSlice shardsSlice = info.get(SHARDS);
+  VPackSlice edgesSlice = shardsSlice.get(EDGES);
+  VPackSlice type = optsSlice.get(TYPE);
+  if (!type.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The " + OPTIONS + " require a " + TYPE + " attribute.");
+  }
+  TRI_ASSERT(type.isEqualString("traversal"));
+  auto opts = std::make_unique<TraverserOptions>(query, optsSlice, edgesSlice);
+  // We create the cache, but we do not need any engines.
+  opts->activateCache(false, nullptr);
+  return opts;
+}
 }  // namespace
 
 #ifndef USE_ENTERPRISE
@@ -436,11 +482,12 @@ BaseEngine::produceProviderOptions(VPackSlice info,
           options().getEdgeProjections()};
 }
 
-
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
                                          aql::QueryContext& query,
                                          VPackSlice info)
-    : BaseEngine(vocbase, query, info), _variables(query.ast()->variables()) {}
+    : BaseEngine(vocbase, query, info),
+      _opts{::parseTraverserPathOptions(info, query)},
+      _variables(query.ast()->variables()) {}
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
@@ -485,29 +532,11 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
                                        aql::QueryContext& query,
                                        arangodb::velocypack::Slice info)
     : BaseEngine(vocbase, query, info),
+      _opts(::parseShortestPathOptions(info, query)),
       _forwardProvider(query, produceProviderOptions(info, false),
                 query.resourceMonitor()),
       _backwardProvider(query, produceReverseProviderOptions(info, false),
-                query.resourceMonitor()) {
-  VPackSlice optsSlice = info.get(OPTIONS);
-  if (optsSlice.isNone() || !optsSlice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "The body requires an " + OPTIONS + " attribute.");
-  }
-  VPackSlice shardsSlice = info.get(SHARDS);
-  VPackSlice edgesSlice = shardsSlice.get(EDGES);
-  VPackSlice type = optsSlice.get(TYPE);
-  if (!type.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "The " + OPTIONS + " require a " + TYPE + " attribute.");
-  }
-  TRI_ASSERT(type.isEqualString("shortestPath"));
-  _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
-  // We create the cache, but we do not need any engines.
-  _opts->activateCache(false, nullptr);
-}
+                query.resourceMonitor()) {}
 
 ShortestPathEngine::~ShortestPathEngine() = default;
 
@@ -605,26 +634,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
                                  arangodb::velocypack::Slice info)
     : BaseTraverserEngine(vocbase, query, info),
       _provider(query, produceProviderOptions(info, false),
-                query.resourceMonitor()) {
-  VPackSlice optsSlice = info.get(OPTIONS);
-  if (!optsSlice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "The body requires an " + OPTIONS + " attribute.");
-  }
-  VPackSlice shardsSlice = info.get(SHARDS);
-  VPackSlice edgesSlice = shardsSlice.get(EDGES);
-  VPackSlice type = optsSlice.get(TYPE);
-  if (!type.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "The " + OPTIONS + " require a " + TYPE + " attribute.");
-  }
-  TRI_ASSERT(type.isEqualString("traversal"));
-  _opts = std::make_unique<TraverserOptions>(_query, optsSlice, edgesSlice);
-  // We create the cache, but we do not need any engines.
-  _opts->activateCache(false, nullptr);
-}
+                query.resourceMonitor()) {}
 
 TraverserEngine::~TraverserEngine() = default;
 
