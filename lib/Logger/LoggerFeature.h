@@ -91,7 +91,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _lineNumber = false;
   bool _shortenFilenames = true;
   bool _processId = true;
-  bool _threadId = false;
+  bool _threadId = true;
   bool _threadName = false;
   bool _performance = false;
   bool _keepLogRotate = false;
