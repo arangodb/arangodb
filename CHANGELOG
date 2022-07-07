@@ -1,5 +1,6 @@
 devel
 -----
+
 * Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
   explain outputs for AQL queries.
 
@@ -1901,7 +1902,7 @@ devel
   `--console` argument for upgrading a server.
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented
-  cases and numerically unstable behaviour. In particular, the case of
+  cases and numerically unstable behavior. In particular, the case of
   the intersection of two polygons in which one is an S2LngLatRect
   is fixed (BTS-475).
 
