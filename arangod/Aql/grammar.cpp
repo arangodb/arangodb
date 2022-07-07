@@ -3019,7 +3019,7 @@ yyreduce:
   case 44: /* all_shortest_paths_graph_info: graph_direction "ALL_SHORTEST_PATHS keyword" expression "identifier" expression graph_subject options  */
 #line 736 "Aql/grammar.y"
                                                                                               {
-      (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, parser->ast()->createNodeDirection((yyvsp[-6].intval), 1), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
+      (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, parser->ast()->createNodeDirection((yyvsp[-6].intval), parser->ast()->createNodeRange(parser->ast()->createNodeValueInt(1), parser->ast()->createNodeValueInt(INT64_MAX-1))), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
     }
 #line 3024 "Aql/grammar.cpp"
     break;
