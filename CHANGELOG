@@ -1,6 +1,9 @@
 devel
 -----
 
+* Add log.time-format utc-datestring-micros to make debugging of concurrency
+  bugs easier.
+
 * Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
   explain outputs for AQL queries.
 
