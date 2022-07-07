@@ -877,8 +877,6 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice const& props,
                                      OperationOptions const& options) {
-  const bool partialUpdate = false;  // always a full update for collections
-
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
@@ -924,7 +922,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
       return res;
     }
 
-    auto rv = info->properties(props, partialUpdate);
+    auto rv = info->properties(props);
     if (rv.ok()) {
       velocypack::Builder builder(props);
       OperationResult result(rv, builder.steal(), options);
@@ -942,7 +940,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     if (res.ok()) {
       // try to write new parameter to file
-      res = collection.properties(props, partialUpdate);
+      res = collection.properties(props);
       if (res.ok()) {
         velocypack::Builder builder(props);
         OperationResult result(res, builder.steal(), options);
@@ -1310,7 +1308,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
       StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,          \
       StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,     \
       StaticStrings::MinReplicationFactor, /* deprecated */                    \
-      StaticStrings::WriteConcern, "servers"
+      StaticStrings::WriteConcern, "servers", StaticStrings::ComputedValues
 
 arangodb::velocypack::Builder Collections::filterInput(
     arangodb::velocypack::Slice properties, bool allowDC2DCAttributes) {
