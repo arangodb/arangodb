@@ -1926,12 +1926,34 @@
             $('#outputEditor' + counter).hide();
             success = true;
           } else if (result.defaultType === 'graph') {
-            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
+            console.log("DISPLAY THE GRAPH WITH G6");
+            console.log("result: ", result);
+            console.log("counter: ", counter);
+
+            /*
+            ReactDOM.render(
+              React.createElement(window.G6GraphReactView),
+              document.getElementById('content'));
+            */
+
+            //$('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="viking"></div>');
+            
+            ReactDOM.render(
+              React.createElement(window.G6GraphReactView),
+              document.getElementById('viking'));
+
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(React.createElement(window.G6GraphReactView));
             $('#outputGraph' + counter).show();
             success = self.renderOutputGraph(result, counter);
 
             if (success) {
               $('#outputEditor' + counter).hide();
+
+              $('#outputEditorWrapper' + counter + ' #copy2g6GV').show();
+              $('#outputEditorWrapper' + counter + ' #copy2g6GV').bind('click', function () {
+                self.showResultInG6GraphViewer(result, counter);
+              });
 
               $('#outputEditorWrapper' + counter + ' #copy2gV').show();
               $('#outputEditorWrapper' + counter + ' #copy2gV').bind('click', function () {
@@ -2777,6 +2799,21 @@
     },
 
     renderOutputGraph: function (data, counter) {
+      console.log("renderOutputGraph");
+      console.log("window: ", window);
+      console.log("window.GraphViewer (before): ", window.GraphViewer);
+      console.log("data 1: ", data);
+      console.log("this.graphViewers (before): ", this.graphViewers);
+
+      this.graphViewers[counter] = new window.GraphViewerG6({
+        name: undefined,
+        documentStore: window.App.arangoDocumentStore,
+        collection: new window.GraphCollection(),
+        userConfig: window.App.userConfig,
+        id: '#outputGraph' + counter,
+        data: data
+      });
+      /*
       this.graphViewers[counter] = new window.GraphViewer({
         name: undefined,
         documentStore: window.App.arangoDocumentStore,
@@ -2785,13 +2822,67 @@
         id: '#outputGraph' + counter,
         data: data
       });
+      */
+      console.log("data 2: ", data);
+      console.log("window.GraphViewer (after): ", window.GraphViewer);
+      console.log("window.G6GraphViewer (after): ", window.G6GraphViewer);
+      console.log("this.graphViewers (after): ", this.graphViewers);
       var success = this.graphViewers[counter].renderAQLPreview();
 
       return success;
     },
 
     showResultInGraphViewer: function (data, counter) {
+      console.log("In showResultInGraphViewer");
       window.location.hash = '#aql_graph';
+
+      // TODO better manage mechanism for both gv's
+      // Original
+      if (window.App.graphViewer) {
+        if (window.App.graphViewer.graphSettingsView) {
+          window.App.graphViewer.graphSettingsView.remove();
+        }
+        window.App.graphViewer.remove();
+      }
+
+      // G6 version
+      if (window.App.graphViewerG6) {
+        if (window.App.graphViewerG6.graphSettingsView) {
+          window.App.graphViewerG6.graphSettingsView.remove();
+        }
+        window.App.graphViewerG6.remove();
+      }
+
+      // Original
+      window.App.graphViewer = new window.GraphViewer({
+        name: undefined,
+        documentStore: window.App.arangoDocumentStore,
+        collection: new window.GraphCollection(),
+        userConfig: window.App.userConfig,
+        noDefinedGraph: true,
+        data: data
+      });
+
+      // G6 version
+      window.App.graphViewerG6 = new window.GraphViewerG6({
+        name: undefined,
+        documentStore: window.App.arangoDocumentStore,
+        collection: new window.GraphCollection(),
+        userConfig: window.App.userConfig,
+        noDefinedGraph: true,
+        data: data
+      });
+
+      // Original
+      window.App.graphViewer.renderAQL();
+
+      // G6 version
+      window.App.graphViewer.renderAQL();
+    },
+
+    showResultInG6GraphViewer: function (data, counter) {
+      console.log("In showResultInG6GraphViewer");
+      window.location.hash = '#aql_g6graph';
 
       // TODO better manage mechanism for both gv's
       if (window.App.graphViewer) {

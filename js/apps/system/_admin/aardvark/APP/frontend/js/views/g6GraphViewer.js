@@ -4,11 +4,10 @@
 (function () {
   'use strict';
 
-  window.GraphViewer = Backbone.View.extend({
+  window.G6GraphViewer = Backbone.View.extend({
     el: '#content',
 
     remove: function () {
-      console.log("In remove() in graphViewer.js ----");
       this.$el.empty().off(); /* off to unbind the events */
       this.stopListening();
       this.unbind();
@@ -16,7 +15,7 @@
       return this;
     },
 
-    template: templateEngine.createTemplate('graphViewer2.ejs'),
+    template: templateEngine.createTemplate('g6GraphViewer2.ejs'),
 
     initialize: function (options) {
       var self = this;
@@ -1712,7 +1711,7 @@
     },
 
     drawLine: function (e) {
-      var context = window.App.graphViewer.contextState;
+      var context = window.App.g6GraphViewer.contextState;
 
       if (context.createEdge) {
         var fromX = context.fromX;

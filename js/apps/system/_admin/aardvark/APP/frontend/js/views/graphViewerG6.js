@@ -1,14 +1,14 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window, JSONEditor */
+/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, G6, Backbone, templateEngine, $, window, JSONEditor */
 (function () {
   'use strict';
 
-  window.GraphViewer = Backbone.View.extend({
+  window.GraphViewerG6 = Backbone.View.extend({
     el: '#content',
 
     remove: function () {
-      console.log("In remove() in graphViewer.js ----");
+      console.log("In remove() in graphViewerG6.js!!!");
       this.$el.empty().off(); /* off to unbind the events */
       this.stopListening();
       this.unbind();
@@ -16,7 +16,7 @@
       return this;
     },
 
-    template: templateEngine.createTemplate('graphViewer2.ejs'),
+    template: templateEngine.createTemplate('graphViewerG6.ejs'),
 
     initialize: function (options) {
       var self = this;
@@ -227,6 +227,8 @@
     },
 
     renderAQLPreview: function (data) {
+      console.log("ALRIGHTTTTTT");
+      console.log("renderAQLPreview in graphViewerg6!!!");
       this.$el.html(this.template.render({}));
 
       // remove not needed elements
@@ -238,6 +240,7 @@
 
       // render
       this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
+      console.log("this.graphData.modified: ", this.graphData.modified);
 
       var success = false;
       try {
@@ -1712,7 +1715,7 @@
     },
 
     drawLine: function (e) {
-      var context = window.App.graphViewer.contextState;
+      var context = window.App.graphViewerG6.contextState;
 
       if (context.createEdge) {
         var fromX = context.fromX;
@@ -1897,6 +1900,8 @@
     renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
       var self = this;
       this.graphSettings = graph.settings;
+
+      console.log("renderGraph in graphViewerG6.js");
 
       var color = '#2ecc71';
 
