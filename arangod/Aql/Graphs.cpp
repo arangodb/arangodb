@@ -143,6 +143,42 @@ EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast,
       _modCondition->addMember(other._modCondition->getMember(i));
     }
   }
+  if (other._fromCondition != nullptr) {
+    _fromCondition = other._fromCondition->clone(ast);
+  }
+  if (other._toCondition != nullptr) {
+    _toCondition = other._toCondition->clone(ast);
+  }
+}
+
+EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast, Variable const* variable,
+                                           AstNode const* exchangeableIdNode,
+                                           VPackSlice slice)
+    : EdgeConditionBuilder(ast, variable, exchangeableIdNode) {
+  // Now fill in the information from slice
+  auto list = slice.get("globalEdgeConditions");
+  if (list.isArray()) {
+    // Inject all globalEdgeConditions
+    for (auto const& cond : VPackArrayIterator(list)) {
+      _modCondition->addMember(ast->createNode(cond));
+    }
+  }
+
+  list = slice.get("edgeConditions");
+  if (list.isObject()) {
+    for (auto const& cond : VPackObjectIterator(list)) {
+      auto depth = StringUtils::uint64(cond.key.stringView());
+      auto& conds = _depthConditions[depth];
+      // NOTE: We "leak" the n_ary_and node here, it will be part
+      // of the AST and will be cleaned up at the end of the query, but
+      // will never be used again.
+      // All it's members are reused.
+      auto conditionsAndNode = ast->createNode(cond.value);
+      for (size_t i = 0; i < conditionsAndNode->numMembers(); ++i) {
+        conds.emplace_back(conditionsAndNode->getMemberUnchecked(i));
+      }
+    }
+  }
 }
 
 EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition)
@@ -358,6 +394,41 @@ EdgeConditionBuilder::buildIndexAccessors(
                          std::vector<IndexAccessor>>>(
       std::move(indexAccessors), std::move(depthIndexAccessors));
 }
+
+void EdgeConditionBuilder::toVelocyPackCompat_39(arangodb::velocypack::Builder& builder, unsigned flags) const {
+  TRI_ASSERT(builder.isOpenObject());
+  auto globalMembers = _modCondition->numMembers();
+  if (_containsCondition) {
+    TRI_ASSERT(globalMembers > 0);
+    // Last member is _from/_to and shall not be produced!
+    globalMembers -= 1;
+  }
+  if (globalMembers > 0) {
+    builder.add(VPackValue("globalEdgeConditions"));
+    VPackArrayBuilder guard(&builder);
+    for (size_t i = 0; i < globalMembers; ++i) {
+      _modCondition->getMemberUnchecked(i)->toVelocyPack(builder, flags);
+    }
+  }
+  if (!_depthConditions.empty()) {
+    builder.add(VPackValue("edgeConditions"));
+    VPackObjectBuilder guard(&builder);
+    for (auto& it : _depthConditions) {
+      builder.add(VPackValue(basics::StringUtils::itoa(it.first)));
+      // Temporary link everything to one AND node:
+      // This node shall go out of scope and free it's memory
+      AstNode andCond(AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+      for (auto const& cond : it.second) {
+        // On purpose do not clone anything here.
+        // We are not going to modify anything and the andCond will go out of scope
+        andCond.addMember(cond);
+      }
+      andCond.toVelocyPack(builder, flags);
+    }
+  }
+
+}
+
 
 EdgeConditionBuilderContainer::EdgeConditionBuilderContainer()
     : EdgeConditionBuilder(nullptr) {

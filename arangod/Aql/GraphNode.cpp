@@ -362,11 +362,10 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
       _graphObj(nullptr),
-      _tmpObjVariable(nullptr),
-      _tmpObjVarNode(nullptr),
-      _tmpIdNode(nullptr),
-      // TODO: This does not work, need to be initialized after _tmpObj and _tmpId!!
-      _edgeConditionBuilder{plan->getAst(), _tmpObjVariable, _tmpIdNode},
+      _tmpObjVariable(Variable::varFromVPack(plan->getAst(), base, "tmpObjVariable")),
+      _tmpObjVarNode(plan->getAst()->createNode(base.get("tmpObjVarNode"))),
+      _tmpIdNode(plan->getAst()->createNode(base.get("tmpIdNode"))),
+      _edgeConditionBuilder(_plan->getAst(), _tmpObjVariable, _tmpIdNode, base),
       _defaultDirection(
           uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
               base.get("defaultDirection")))),
@@ -483,21 +482,6 @@ GraphNode::GraphNode(ExecutionPlan* plan,
     _edgeOutVariable =
         Variable::varFromVPack(plan->getAst(), base, "edgeOutVariable");
   }
-
-  // Temporary Filter Objects
-  TRI_ASSERT(base.hasKey("tmpObjVariable"));
-  _tmpObjVariable =
-      Variable::varFromVPack(plan->getAst(), base, "tmpObjVariable");
-
-  TRI_ASSERT(base.hasKey("tmpObjVarNode"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is
-  // safe cppcheck-suppress *
-  _tmpObjVarNode = plan->getAst()->createNode(base.get("tmpObjVarNode"));
-
-  TRI_ASSERT(base.hasKey("tmpIdNode"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is
-  // safe cppcheck-suppress *
-  _tmpIdNode = plan->getAst()->createNode(base.get("tmpIdNode"));
 
   VPackSlice opts = base.get("options");
   if (!opts.isObject()) {
@@ -708,6 +692,8 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
+
+  _edgeConditionBuilder.toVelocyPackCompat_39(nodes, flags);
 }
 
 void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {

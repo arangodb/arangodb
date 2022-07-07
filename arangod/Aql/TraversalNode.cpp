@@ -231,13 +231,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   TRI_ASSERT(base.hasKey("toCondition"));
   _toCondition = plan->getAst()->createNode(base.get("toCondition"));
 
-  list = base.get("globalEdgeConditions");
-  if (list.isArray()) {
-    for (auto const& cond : VPackArrayIterator(list)) {
-      _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
-    }
-  }
-
   list = base.get("globalVertexConditions");
   if (list.isArray()) {
     for (auto const& cond : VPackArrayIterator(list)) {
@@ -251,17 +244,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       std::string key = cond.key.copyString();
       _vertexConditions.try_emplace(StringUtils::uint64(key),
                                     plan->getAst()->createNode(cond.value));
-    }
-  }
-
-  list = base.get("edgeConditions");
-  if (list.isObject()) {
-    for (auto const& cond : VPackObjectIterator(list)) {
-      std::string key = cond.key.copyString();
-      auto ecbuilder =
-          std::make_unique<TraversalEdgeConditionBuilder>(this, cond.value);
-      _edgeConditions.try_emplace(StringUtils::uint64(key),
-                                  std::move(ecbuilder));
     }
   }
 
@@ -445,15 +427,6 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("toCondition"));
   _toCondition->toVelocyPack(nodes, flags);
 
-  if (!_globalEdgeConditions.empty()) {
-    nodes.add(VPackValue("globalEdgeConditions"));
-    nodes.openArray();
-    for (auto const& it : _globalEdgeConditions) {
-      it->toVelocyPack(nodes, flags);
-    }
-    nodes.close();
-  }
-
   if (!_globalVertexConditions.empty()) {
     nodes.add(VPackValue("globalVertexConditions"));
     nodes.openArray();
@@ -467,16 +440,6 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
     nodes.add(VPackValue("vertexConditions"));
     nodes.openObject();
     for (auto const& it : _vertexConditions) {
-      nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
-      it.second->toVelocyPack(nodes, flags);
-    }
-    nodes.close();
-  }
-
-  if (!_edgeConditions.empty()) {
-    nodes.add(VPackValue("edgeConditions"));
-    nodes.openObject();
-    for (auto& it : _edgeConditions) {
       nodes.add(VPackValue(basics::StringUtils::itoa(it.first)));
       it.second->toVelocyPack(nodes, flags);
     }

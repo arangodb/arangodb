@@ -80,6 +80,10 @@ class EdgeConditionBuilderTest : public ::testing::Test {
       return EdgeConditionBuilder{_ast, _variable, _idNode};
   }
 
+  EdgeConditionBuilder deserializeTestee(VPackSlice slice) {
+    return EdgeConditionBuilder{_ast, _variable, _idNode, slice};
+  }
+
   // NOTE: Make sure to RETAIN the equalTo content, the Ast will only reference it.
   AstNode* createEqualityCondition(std::string const& attribute, std::string const& equalTo) {
     auto access = _ast->createNodeAttributeAccess(_varRefNode, std::vector<std::string>{attribute});
@@ -267,42 +271,71 @@ TEST_F(EdgeConditionBuilderTest, default_base_edge_conditions) {
   };
 
   validateCorrectness(testee);
+  VPackBuilder serial;
+  {
+    VPackObjectBuilder guard(&serial);
+    testee.toVelocyPackCompat_39(serial, 1);
+  }
+  auto serialSlice = serial.slice();
+  // There are no global conditions
+  EXPECT_FALSE(serialSlice.hasKey("globalEdgeConditions"));
+  // There are no depth specfic conditions
+  EXPECT_FALSE(serialSlice.hasKey("edgeConditions"));
+
+  auto clone = deserializeTestee(serialSlice);
+  validateCorrectness(clone);
 }
 
 TEST_F(EdgeConditionBuilderTest, modify_both_conditions) {
-  auto condBuilder = makeTestee();
+  auto testee = makeTestee();
   std::string attr = "foo";
   std::string value = "bar";
   auto readValue = createEqualityCondition(attr, value);
-  condBuilder.addConditionPart(readValue);
-  auto out = condBuilder.getOutboundCondition()->clone(_ast);
-  auto in = condBuilder.getInboundCondition()->clone(_ast);
+  testee.addConditionPart(readValue);
+  auto validateCorrectness = [&](EdgeConditionBuilder const& condBuilder) {
+    auto out = condBuilder.getOutboundCondition(_ast);
+    auto in = condBuilder.getInboundCondition(_ast);
 
-  assertIsFromAccess(out, {{"foo", "bar"}});
-  assertIsToAccess(in, {{"foo", "bar"}});
+    assertIsFromAccess(out, {{"foo", "bar"}});
+    assertIsToAccess(in, {{"foo", "bar"}});
 
+    {
+      // Can prepare out Edges
+      auto cols = prepareCollection(TRI_EDGE_OUT);
+      auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+      // No Depth-Specific Conditions
+      EXPECT_TRUE(specific.empty());
+      EXPECT_EQ(base.size(), 1);
+      assertIsFromEdgeIndexAccess(base.at(0), {{"foo", "bar"}});
+    }
+    {
+      // Can prepare in Edges
+      auto cols = prepareCollection(TRI_EDGE_IN);
+      auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+      // No Depth-Specific Conditions
+      EXPECT_TRUE(specific.empty());
+      EXPECT_EQ(base.size(), 1);
+      assertIsToEdgeIndexAccess(base.at(0), {{"foo", "bar"}});
+    }
+  };
+  validateCorrectness(testee);
+  VPackBuilder serial;
   {
-    // Can prepare out Edges
-    auto cols = prepareCollection(TRI_EDGE_OUT);
-    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
-    // No Depth-Specific Conditions
-    EXPECT_TRUE(specific.empty());
-    EXPECT_EQ(base.size(), 1);
-    assertIsFromEdgeIndexAccess(base.at(0), {{"foo", "bar"}});
+    VPackObjectBuilder guard(&serial);
+    testee.toVelocyPackCompat_39(serial, 1);
   }
-  {
-    // Can prepare in Edges
-    auto cols = prepareCollection(TRI_EDGE_IN);
-    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
-    // No Depth-Specific Conditions
-    EXPECT_TRUE(specific.empty());
-    EXPECT_EQ(base.size(), 1);
-    assertIsToEdgeIndexAccess(base.at(0), {{"foo", "bar"}});
-  }
+  auto serialSlice = serial.slice();
+  // There are global conditions
+  EXPECT_TRUE(serialSlice.hasKey("globalEdgeConditions"));
+  // There are no depth specfic conditions
+  EXPECT_FALSE(serialSlice.hasKey("edgeConditions"));
+
+  auto clone = deserializeTestee(serialSlice);
+  validateCorrectness(clone);
 }
 
 TEST_F(EdgeConditionBuilderTest, depth_specific_conditions) {
-  auto condBuilder = makeTestee();
+  auto testee = makeTestee();
   std::string attr1 = "depth1";
   std::string value1 = "value1";
 
@@ -311,81 +344,101 @@ TEST_F(EdgeConditionBuilderTest, depth_specific_conditions) {
   auto d1Condition = createEqualityCondition(attr1, value1);
   auto d2Condition = createEqualityCondition(attr2, value2);
 
-  condBuilder.addConditionForDepth(d1Condition, 1);
-  condBuilder.addConditionForDepth(d2Condition, 2);
+  testee.addConditionForDepth(d1Condition, 1);
+  testee.addConditionForDepth(d2Condition, 2);
 
-  {
-    // Should not alter default
-    auto out = condBuilder.getOutboundCondition()->clone(_ast);
-    auto in = condBuilder.getInboundCondition()->clone(_ast);
-    assertIsFromAccess(out, {});
-    assertIsToAccess(in, {});
-  }
-  {
-    // Should not alter Depth 0
-    auto out = condBuilder.getOutboundConditionForDepth(0, _ast);
-    auto in = condBuilder.getInboundConditionForDepth(0, _ast);
-    assertIsFromAccess(out, {});
-    assertIsToAccess(in, {});
-  }
-  {
-    // Should modify Depth 1
-    auto out = condBuilder.getOutboundConditionForDepth(1, _ast);
-    auto in = condBuilder.getInboundConditionForDepth(1, _ast);
-    assertIsFromAccess(out, {{attr1, value1}});
-    assertIsToAccess(in, {{attr1, value1}});
-  }
-  {
-    // Should modify Depth 2
-    auto out = condBuilder.getOutboundConditionForDepth(2, _ast);
-    auto in = condBuilder.getInboundConditionForDepth(2, _ast);
-    assertIsFromAccess(out, {{attr2, value2}});
-    assertIsToAccess(in, {{attr2, value2}});
-  }
-  {
-    // Should not alter Depth 3
-    auto out = condBuilder.getOutboundConditionForDepth(3, _ast);
-    auto in = condBuilder.getInboundConditionForDepth(3, _ast);
-    assertIsFromAccess(out, {});
-    assertIsToAccess(in, {});
-  }
+  auto validateCorrectness = [&](EdgeConditionBuilder const& condBuilder) {
+    {
+      // Should not alter default
+      auto out = condBuilder.getOutboundCondition(_ast);
+      auto in = condBuilder.getInboundCondition(_ast);
+      assertIsFromAccess(out, {});
+      assertIsToAccess(in, {});
+    }
+    {
+      // Should not alter Depth 0
+      auto out = condBuilder.getOutboundConditionForDepth(0, _ast);
+      auto in = condBuilder.getInboundConditionForDepth(0, _ast);
+      assertIsFromAccess(out, {});
+      assertIsToAccess(in, {});
+    }
+    {
+      // Should modify Depth 1
+      auto out = condBuilder.getOutboundConditionForDepth(1, _ast);
+      auto in = condBuilder.getInboundConditionForDepth(1, _ast);
+      assertIsFromAccess(out, {{attr1, value1}});
+      assertIsToAccess(in, {{attr1, value1}});
+    }
+    {
+      // Should modify Depth 2
+      auto out = condBuilder.getOutboundConditionForDepth(2, _ast);
+      auto in = condBuilder.getInboundConditionForDepth(2, _ast);
+      assertIsFromAccess(out, {{attr2, value2}});
+      assertIsToAccess(in, {{attr2, value2}});
+    }
+    {
+      // Should not alter Depth 3
+      auto out = condBuilder.getOutboundConditionForDepth(3, _ast);
+      auto in = condBuilder.getInboundConditionForDepth(3, _ast);
+      assertIsFromAccess(out, {});
+      assertIsToAccess(in, {});
+    }
 
+    {
+      // Can prepare out Edges
+      auto cols = prepareCollection(TRI_EDGE_OUT);
+      auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+
+      EXPECT_EQ(base.size(), 1);
+      assertIsFromEdgeIndexAccess(base.at(0), {});
+      ASSERT_EQ(specific.size(), 2);
+      ASSERT_TRUE(specific.contains(1));
+      EXPECT_EQ(specific.at(1).size(), 1);
+      assertIsFromEdgeIndexAccess(specific.at(1).at(0), {{attr1, value1}});
+
+      ASSERT_TRUE(specific.contains(2));
+      EXPECT_EQ(specific.at(2).size(), 1);
+      assertIsFromEdgeIndexAccess(specific.at(2).at(0), {{attr2, value2}});
+    }
+    {
+      // Can prepare in Edges
+      auto cols = prepareCollection(TRI_EDGE_IN);
+      auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+
+      EXPECT_EQ(base.size(), 1);
+      assertIsToEdgeIndexAccess(base.at(0), {});
+      ASSERT_EQ(specific.size(), 2);
+      ASSERT_TRUE(specific.contains(1));
+      EXPECT_EQ(specific.at(1).size(), 1);
+      assertIsToEdgeIndexAccess(specific.at(1).at(0), {{attr1, value1}});
+
+      ASSERT_TRUE(specific.contains(2));
+      EXPECT_EQ(specific.at(2).size(), 1);
+      assertIsToEdgeIndexAccess(specific.at(2).at(0), {{attr2, value2}});
+    }
+  };
+  validateCorrectness(testee);
+  VPackBuilder serial;
   {
-    // Can prepare out Edges
-    auto cols = prepareCollection(TRI_EDGE_OUT);
-    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
-
-    EXPECT_EQ(base.size(), 1);
-    assertIsFromEdgeIndexAccess(base.at(0), {});
-    ASSERT_EQ(specific.size(), 2);
-    ASSERT_TRUE(specific.contains(1));
-    EXPECT_EQ(specific.at(1).size(), 1);
-    assertIsFromEdgeIndexAccess(specific.at(1).at(0), {{attr1, value1}});
-
-    ASSERT_TRUE(specific.contains(2));
-    EXPECT_EQ(specific.at(2).size(), 1);
-    assertIsFromEdgeIndexAccess(specific.at(2).at(0), {{attr2, value2}});
+    VPackObjectBuilder guard(&serial);
+    testee.toVelocyPackCompat_39(serial, 1);
   }
-  {
-    // Can prepare in Edges
-    auto cols = prepareCollection(TRI_EDGE_IN);
-    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+  auto serialSlice = serial.slice();
+  // There are no global conditions
+  EXPECT_FALSE(serialSlice.hasKey("globalEdgeConditions"));
+  // There are depth specfic conditions
+  EXPECT_TRUE(serialSlice.hasKey("edgeConditions"));
+  auto specifics = serialSlice.get("edgeConditions");
+  EXPECT_TRUE(specifics.isObject());
+  EXPECT_TRUE(specifics.hasKey("1"));
+  EXPECT_TRUE(specifics.hasKey("2"));
 
-    EXPECT_EQ(base.size(), 1);
-    assertIsToEdgeIndexAccess(base.at(0), {});
-    ASSERT_EQ(specific.size(), 2);
-    ASSERT_TRUE(specific.contains(1));
-    EXPECT_EQ(specific.at(1).size(), 1);
-    assertIsToEdgeIndexAccess(specific.at(1).at(0), {{attr1, value1}});
-
-    ASSERT_TRUE(specific.contains(2));
-    EXPECT_EQ(specific.at(2).size(), 1);
-    assertIsToEdgeIndexAccess(specific.at(2).at(0), {{attr2, value2}});
-  }
+  auto clone = deserializeTestee(serialSlice);
+  validateCorrectness(clone);
 }
 
 TEST_F(EdgeConditionBuilderTest, merge_depth_with_base) {
-  auto condBuilder = makeTestee();
+  auto testee = makeTestee();
   std::string attr1 = "depth1";
   std::string value1 = "value1";
 
@@ -398,78 +451,102 @@ TEST_F(EdgeConditionBuilderTest, merge_depth_with_base) {
   auto d1Condition = createEqualityCondition(attr1, value1);
   auto d2Condition = createEqualityCondition(attr2, value2);
 
-  condBuilder.addConditionPart(baseCondition);
-  condBuilder.addConditionForDepth(d1Condition, 1);
-  condBuilder.addConditionForDepth(d2Condition, 2);
+  testee.addConditionPart(baseCondition);
+  testee.addConditionForDepth(d1Condition, 1);
+  testee.addConditionForDepth(d2Condition, 2);
 
-  {
-    // Should not alter default
-    auto out = condBuilder.getOutboundCondition()->clone(_ast);
-    auto in = condBuilder.getInboundCondition()->clone(_ast);
-    assertIsFromAccess(out, {{attr, value}});
-    assertIsToAccess(in, {{attr, value}});
-  }
-  {
-    // Should not alter Depth 0
-    auto out = condBuilder.getOutboundConditionForDepth(0, _ast);
-    auto in = condBuilder.getInboundConditionForDepth(0, _ast);
-    assertIsFromAccess(out, {{attr, value}});
-    assertIsToAccess(in, {{attr, value}});
-  }
-  {
-    // Should modify Depth 1
-    auto out = condBuilder.getOutboundConditionForDepth(1, _ast);
-    auto in = condBuilder.getInboundConditionForDepth(1, _ast);
-    assertIsFromAccess(out, {{attr, value}, {attr1, value1}});
-    assertIsToAccess(in, {{attr, value}, {attr1, value1}});
-  }
-  {
-    // Should modify Depth 2
-    auto out = condBuilder.getOutboundConditionForDepth(2, _ast);
-    auto in = condBuilder.getInboundConditionForDepth(2, _ast);
-    assertIsFromAccess(out, {{attr, value}, {attr2, value2}});
-    assertIsToAccess(in, {{attr, value}, {attr2, value2}});
-  }
-  {
-    // Should not alter Depth 4
-    auto out = condBuilder.getOutboundConditionForDepth(4, _ast);
-    auto in = condBuilder.getInboundConditionForDepth(4, _ast);
-    assertIsFromAccess(out, {{attr, value}});
-    assertIsToAccess(in, {{attr, value}});
-  }
+  auto validateCorrectness = [&](EdgeConditionBuilder const& condBuilder) {
+    {
+      // Should not alter default
+      auto out = condBuilder.getOutboundCondition(_ast);
+      auto in = condBuilder.getInboundCondition(_ast);
+      assertIsFromAccess(out, {{attr, value}});
+      assertIsToAccess(in, {{attr, value}});
+    }
+    {
+      // Should not alter Depth 0
+      auto out = condBuilder.getOutboundConditionForDepth(0, _ast);
+      auto in = condBuilder.getInboundConditionForDepth(0, _ast);
+      assertIsFromAccess(out, {{attr, value}});
+      assertIsToAccess(in, {{attr, value}});
+    }
+    {
+      // Should modify Depth 1
+      auto out = condBuilder.getOutboundConditionForDepth(1, _ast);
+      auto in = condBuilder.getInboundConditionForDepth(1, _ast);
+      assertIsFromAccess(out, {{attr, value}, {attr1, value1}});
+      assertIsToAccess(in, {{attr, value}, {attr1, value1}});
+    }
+    {
+      // Should modify Depth 2
+      auto out = condBuilder.getOutboundConditionForDepth(2, _ast);
+      auto in = condBuilder.getInboundConditionForDepth(2, _ast);
+      assertIsFromAccess(out, {{attr, value}, {attr2, value2}});
+      assertIsToAccess(in, {{attr, value}, {attr2, value2}});
+    }
+    {
+      // Should not alter Depth 4
+      auto out = condBuilder.getOutboundConditionForDepth(4, _ast);
+      auto in = condBuilder.getInboundConditionForDepth(4, _ast);
+      assertIsFromAccess(out, {{attr, value}});
+      assertIsToAccess(in, {{attr, value}});
+    }
 
+    {
+      // Can prepare out Edges
+      auto cols = prepareCollection(TRI_EDGE_OUT);
+      auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+
+      EXPECT_EQ(base.size(), 1);
+      assertIsFromEdgeIndexAccess(base.at(0), {{attr, value}});
+      ASSERT_EQ(specific.size(), 2);
+      ASSERT_TRUE(specific.contains(1));
+      EXPECT_EQ(specific.at(1).size(), 1);
+      assertIsFromEdgeIndexAccess(specific.at(1).at(0),
+                                  {{attr, value}, {attr1, value1}});
+
+      ASSERT_TRUE(specific.contains(2));
+      EXPECT_EQ(specific.at(2).size(), 1);
+      assertIsFromEdgeIndexAccess(specific.at(2).at(0),
+                                  {{attr, value}, {attr2, value2}});
+    }
+    {
+      // Can prepare in Edges
+      auto cols = prepareCollection(TRI_EDGE_IN);
+      auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+
+      EXPECT_EQ(base.size(), 1);
+      assertIsToEdgeIndexAccess(base.at(0), {{attr, value}});
+      ASSERT_EQ(specific.size(), 2);
+      ASSERT_TRUE(specific.contains(1));
+      EXPECT_EQ(specific.at(1).size(), 1);
+      assertIsToEdgeIndexAccess(specific.at(1).at(0),
+                                {{attr, value}, {attr1, value1}});
+
+      ASSERT_TRUE(specific.contains(2));
+      EXPECT_EQ(specific.at(2).size(), 1);
+      assertIsToEdgeIndexAccess(specific.at(2).at(0),
+                                {{attr, value}, {attr2, value2}});
+    }
+  };
+  validateCorrectness(testee);
+  VPackBuilder serial;
   {
-    // Can prepare out Edges
-    auto cols = prepareCollection(TRI_EDGE_OUT);
-    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
-
-    EXPECT_EQ(base.size(), 1);
-    assertIsFromEdgeIndexAccess(base.at(0), {{attr, value}});
-    ASSERT_EQ(specific.size(), 2);
-    ASSERT_TRUE(specific.contains(1));
-    EXPECT_EQ(specific.at(1).size(), 1);
-    assertIsFromEdgeIndexAccess(specific.at(1).at(0), {{attr, value}, {attr1, value1}});
-
-    ASSERT_TRUE(specific.contains(2));
-    EXPECT_EQ(specific.at(2).size(), 1);
-    assertIsFromEdgeIndexAccess(specific.at(2).at(0), {{attr, value}, {attr2, value2}});
+    VPackObjectBuilder guard(&serial);
+    testee.toVelocyPackCompat_39(serial, 1);
   }
-  {
-    // Can prepare in Edges
-    auto cols = prepareCollection(TRI_EDGE_IN);
-    auto [base, specific] = buildIndexAccessors(condBuilder, cols);
+  auto serialSlice = serial.slice();
+  // There are global conditions
+  EXPECT_TRUE(serialSlice.hasKey("globalEdgeConditions"));
+  // There are depth specfic conditions
+  EXPECT_TRUE(serialSlice.hasKey("edgeConditions"));
+  auto specifics = serialSlice.get("edgeConditions");
+  EXPECT_TRUE(specifics.isObject());
+  EXPECT_TRUE(specifics.hasKey("1"));
+  EXPECT_TRUE(specifics.hasKey("2"));
 
-    EXPECT_EQ(base.size(), 1);
-    assertIsToEdgeIndexAccess(base.at(0), {{attr, value}});
-    ASSERT_EQ(specific.size(), 2);
-    ASSERT_TRUE(specific.contains(1));
-    EXPECT_EQ(specific.at(1).size(), 1);
-    assertIsToEdgeIndexAccess(specific.at(1).at(0), {{attr, value}, {attr1, value1}});
-
-    ASSERT_TRUE(specific.contains(2));
-    EXPECT_EQ(specific.at(2).size(), 1);
-    assertIsToEdgeIndexAccess(specific.at(2).at(0), {{attr, value}, {attr2, value2}});
-  }
+  auto clone = deserializeTestee(serialSlice);
+  validateCorrectness(clone);
 }
 }
 }

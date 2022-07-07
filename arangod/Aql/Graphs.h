@@ -89,6 +89,9 @@ class EdgeConditionBuilder {
   explicit EdgeConditionBuilder(Ast* ast, Variable const* variable,
                                 AstNode const* exchangeableIdNode);
 
+  EdgeConditionBuilder(Ast* ast, Variable const* variable,
+                       AstNode const* exchangeableIdNode, VPackSlice slice);
+
   virtual ~EdgeConditionBuilder() = default;
 
   EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
@@ -131,6 +134,8 @@ class EdgeConditionBuilder {
       std::unordered_map<VariableId, VarInfo> const& varInfo,
       std::vector<std::pair<aql::Collection*, TRI_edge_direction_e>> const&
           collections) const;
+
+  void toVelocyPackCompat_39(arangodb::velocypack::Builder& builder, unsigned flags) const;
 
  private:
   // Internal helper to swap _from and _to parts
