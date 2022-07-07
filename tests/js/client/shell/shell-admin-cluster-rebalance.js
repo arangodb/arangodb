@@ -47,14 +47,14 @@ function clusterRebalanceSuite() {
 
     testGetImbalance: function () {
       let result = arango.GET('/_admin/cluster/rebalance');
-      assertEqual(result.code, 200); // should be refused
-      assertEqual(result.error, false); // should be refused
+      assertEqual(result.code, 200);
+      assertEqual(result.error, false);
     },
     testCalcRebalanceVersion: function () {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 3
       });
-      assertEqual(result.code, 400); // should be refused
+      assertEqual(result.code, 400);
     },
     testCalcRebalance: function () {
       let result = arango.POST('/_admin/cluster/rebalance', {
@@ -86,6 +86,24 @@ function clusterRebalanceSuite() {
       result = arango.POST('/_admin/cluster/rebalance/execute', []);
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
+
+      // wait until no more move shards are suggested
+      let converged = false;
+      for (let k = 0; k < 100 && !converged; k++) {
+        result = arango.POST('/_admin/cluster/rebalance', {
+          version: 1,
+          moveLeaders: true,
+          moveFollowers: true,
+          leaderChanges: true
+        });
+
+        if (result.result.length === 0) {
+          converged = true;
+        }
+        require('internal').sleep(1);
+      }
+
+      assertTrue(converged);
     },
   };
 }
