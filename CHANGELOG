@@ -1,6 +1,8 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to v2.11.0.
+
 * Changed default macOS CI compiler to LLVM clang-13.
 
 * Fixed issue 16337: arangoimport with `--headers-file` and `--merge-attributes`
