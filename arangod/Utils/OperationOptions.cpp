@@ -27,23 +27,6 @@
 
 using namespace arangodb;
 
-OperationOptions::OperationOptions()
-    : indexOperationMode(IndexOperationMode::normal),
-      overwriteMode(OverwriteMode::Unknown),
-      waitForSync(false),
-      validate(true),
-      keepNull(true),
-      mergeObjects(true),
-      silent(false),
-      ignoreRevs(true),
-      returnOld(false),
-      returnNew(false),
-      isRestore(false),
-      checkUniqueConstraintsInPreflight(false),
-      truncateCompact(true),
-      documentCallFromAql(false),
-      _context(nullptr) {}
-
 OperationOptions::OperationOptions(ExecContext const& context)
     : OperationOptions() {
   _context = &context;

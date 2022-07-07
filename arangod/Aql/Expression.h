@@ -155,6 +155,9 @@ class Expression {
   /// changed
   void invalidateAfterReplacements();
 
+  // prepare the expression for execution
+  void prepareForExecution();
+
  private:
   // free the internal data structures
   void freeInternals() noexcept;
@@ -167,10 +170,7 @@ class Expression {
   void determineType();
 
   // init the accessor specialization
-  void initAccessor(ExpressionContext& ctx);
-
-  // prepare the expression for execution
-  void prepareForExecution(ExpressionContext& ctx);
+  void initAccessor();
 
   // execute an expression of type SIMPLE
   static AqlValue executeSimpleExpression(ExpressionContext& ctx,

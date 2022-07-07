@@ -1,5 +1,7 @@
 devel
 -----
+* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
+  explain outputs for AQL queries.
 
 * APM-84: Whenever the amount of entries for SORT or COLLECT AGGREGATE in 
   queries reach a specific threshold in memory usage, the entries are stored
