@@ -76,6 +76,7 @@ const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
 }
 
 IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
+  _analyzers[0] = IResearchAnalyzerFeature::identity();
   _primitiveOffset = 1;
 }
 
@@ -749,12 +750,26 @@ bool InvertedIndexField::init(
       errorField = fieldsAttributeName;
       return false;
     }
+    if (!rootMode && _trackListPositions) {
+      if (slice.hasKey(kTrackListPositionsFieldName)) {
+        // explicit track list positions is forbidden
+        // if nested fields are present
+        errorField = kTrackListPositionsFieldName;
+        return false;
+      }
+      // implicit is just disabled
+      _trackListPositions = false;
+    }
+    if (_hasExpansion) {
+      errorField = kNameFieldName;
+      return false;
+    }
     std::string localError;
     containers::FlatHashSet<std::string> fieldsDeduplicator;
     for (auto it = VPackArrayIterator(nestedSlice); it.valid(); ++it) {
       InvertedIndexField nested;
       if (nested.init(it.value(), analyzerDefinitions, version, extendedNames,
-                      analyzers, *this, defaultVocbase, false, errorField)) {
+                      analyzers, *this, defaultVocbase, false, localError)) {
         if (!fieldsDeduplicator.emplace(nested.path()).second) {
           errorField = fieldsAttributeName;
           errorField.append("[")

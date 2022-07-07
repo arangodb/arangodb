@@ -129,7 +129,7 @@ class IResearchInvertedIndexMetaTest
     OperationOptions options(ExecContext::current());
     methods::Collections::createSystem(
         *sysvocbase, options, tests::AnalyzerCollectionName, false, unused);
-    unused = nullptr;
+    unused.reset();
 
     TRI_vocbase_t* vocbase;
     dbFeature.createDatabase(
@@ -137,7 +137,7 @@ class IResearchInvertedIndexMetaTest
         vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     methods::Collections::createSystem(
         *vocbase, options, tests::AnalyzerCollectionName, false, unused);
-
+    unused.reset();
     auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
     IResearchAnalyzerFeature::EmplaceResult result;
 

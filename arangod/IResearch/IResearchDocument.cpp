@@ -725,8 +725,8 @@ void FieldIterator<IndexMetaStruct>::next() {
   _value._value = irs::bytes_ref::NIL;
 #ifdef USE_ENTERPRISE
   _value._root = false;
-#endif
   _needDoc = false;
+#endif
   while (true) {
   setAnalyzers:
     while (_begin != _end) {
