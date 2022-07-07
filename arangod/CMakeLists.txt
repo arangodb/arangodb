@@ -870,6 +870,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
+  RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
