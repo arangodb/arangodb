@@ -30,6 +30,7 @@
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
 #include "Basics/StringUtils.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -191,7 +192,12 @@ bool RestEdgesHandler::readEdges() {
 
   auto queryResult = ::queryEdges(_vocbase, collectionName, direction,
                                   startVertex, allowDirtyReads);
-
+  if (queryResult.allowDirtyReads) {
+    // Note that this is not necessarily the same as `allowDirtyReads` above!
+    // This is, because this particular query could be in the context of a
+    // transcation doing dirty reads!
+    setOutgoingDirtyReadsHeader(true);
+  }
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {

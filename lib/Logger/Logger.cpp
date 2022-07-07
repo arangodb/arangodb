@@ -75,8 +75,6 @@ static std::string const DEBUG = "DEBUG";
 static std::string const TRACE = "TRACE";
 static std::string const UNKNOWN = "UNKNOWN";
 
-std::string const LogThreadName("Logging");
-
 class DefaultLogGroup final : public LogGroup {
   std::size_t id() const override { return 0; }
 };
@@ -545,13 +543,10 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     // thread name
     if (_showThreadName) {
-      char const* threadName = Thread::currentThreadName();
-      if (threadName == nullptr) {
-        threadName = "main";
-      }
-
+      ThreadNameFetcher nameFetcher;
+      std::string_view threadName = nameFetcher.get();
       out.append(",\"thread\":");
-      dumper.appendString(threadName, strlen(threadName));
+      dumper.appendString(threadName.data(), threadName.size());
     }
 
     // role
@@ -704,13 +699,11 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     // log thread name
     if (_showThreadName) {
-      char const* threadName = Thread::currentThreadName();
-      if (threadName == nullptr) {
-        threadName = "main";
-      }
+      ThreadNameFetcher nameFetcher;
+      std::string_view threadName = nameFetcher.get();
 
       out.push_back(haveProcessOutput ? '-' : '[');
-      out.append(threadName);
+      out.append(threadName.data(), threadName.size());
       haveProcessOutput = true;
     }
 
@@ -863,7 +856,8 @@ void Logger::initialize(application_features::ApplicationServer& server,
 
   // logging is now active
   if (threaded) {
-    auto loggingThread = std::make_unique<LogThread>(server, ::LogThreadName);
+    auto loggingThread =
+        std::make_unique<LogThread>(server, std::string(logThreadName));
     if (!loggingThread->start()) {
       LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
@@ -904,8 +898,9 @@ void Logger::shutdown() {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
-    char const* currentThreadName = Thread::currentThreadName();
-    if (currentThreadName != nullptr && ::LogThreadName == currentThreadName) {
+    ThreadNameFetcher nameFetcher;
+    std::string_view currentThreadName = nameFetcher.get();
+    if (logThreadName == currentThreadName) {
       // oops, the LogThread itself crashed...
       // so we need to flush the log messages here ourselves - if we waited for
       // the LogThread to flush them, we would wait forever.
