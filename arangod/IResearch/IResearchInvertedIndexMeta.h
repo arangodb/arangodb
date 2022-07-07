@@ -157,6 +157,14 @@ struct InvertedIndexField {
   std::array<FieldMeta::Analyzer, 1> _analyzers{FieldMeta::Analyzer(nullptr)};
   /// @brief override for field features
   Features _features;
+  /// @brief attribute path
+  std::vector<basics::AttributeName> _attribute;
+  /// @brief AQL expression to be computed as field value
+  std::string _expression;
+  /// @brief Full mangled path to the value
+  std::string _path;
+  /// @brief path to attribute before expansion - calculated value
+  std::string _attributeName;
   /// @brief start point for non primitive analyzers
   size_t _primitiveOffset{0};
   /// @brief fields ids storage
@@ -173,14 +181,6 @@ struct InvertedIndexField {
   bool _overrideValue{false};
   /// @brief if the field is with expansion - calculated value
   bool _hasExpansion{false};
-  /// @brief attribute path
-  std::vector<basics::AttributeName> _attribute;
-  /// @brief AQL expression to be computed as field value
-  std::string _expression;
-  /// @brief Full mangled path to the value
-  std::string _path;
-  /// @brief path to attribute before expansion - calculated value
-  std::string _attributeName;
 };
 
 struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
