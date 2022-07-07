@@ -371,6 +371,7 @@ function printIndexes(indexes) {
     var maxTypeLen = String('Type').length;
     var maxSelectivityLen = String('Selectivity').length;
     var maxFieldsLen = String('Fields').length;
+    var maxStoredValuesLen = String('Stored values').length;
     indexes.forEach(function (index) {
       var l = String(index.node).length;
       if (l > maxIdLen) {
@@ -388,6 +389,10 @@ function printIndexes(indexes) {
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
+      l = (index.storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      if (l > maxStoredValuesLen) {
+        maxStoredValuesLen = l;
+      }
       l = index.collection.length;
       if (l > maxCollectionLen) {
         maxCollectionLen = l;
@@ -402,6 +407,7 @@ function printIndexes(indexes) {
       header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
       header('Selectivity') + '   ' +
       header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
+      header('Stored values') + pad(1 + maxStoredValuesLen - 'Stored values'.length) + '   ' +
       header('Ranges');
 
     stringBuilder.appendLine(line);
@@ -412,6 +418,8 @@ function printIndexes(indexes) {
       var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
       var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
       var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var storedValues = '[ ' + (indexes[i].storedValues || []).map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var storedValuesLen = (indexes[i].storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
@@ -439,6 +447,7 @@ function printIndexes(indexes) {
         value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
         pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
+        storedValues + pad(1 + maxStoredValuesLen - storedValuesLen) + '   ' +
         ranges;
 
       stringBuilder.appendLine(line);
