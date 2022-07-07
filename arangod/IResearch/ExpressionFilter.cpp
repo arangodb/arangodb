@@ -86,7 +86,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator {
 
   virtual ~NondeterministicExpressionIterator() noexcept { destroy(); }
 
-  virtual bool next() override {
+   bool next() override {
     auto& doc = std::get<irs::document>(attrs_);
     return !irs::doc_limits::eof(seek(doc.value + 1));
   }
@@ -96,7 +96,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator {
     return irs::get_mutable(attrs_, id);
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+   irs::doc_id_t seek(irs::doc_id_t target) override {
     auto& doc = std::get<irs::document>(attrs_);
 
     while (target <= max_doc_) {
@@ -115,7 +115,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator {
     return doc.value;
   }
 
-  virtual irs::doc_id_t value() const noexcept override {
+   irs::doc_id_t value() const noexcept override {
     return std::get<irs::document>(attrs_).value;
   }
 
@@ -185,8 +185,8 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
       : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
 
   virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& segment, const irs::Order& order,
-      irs::ExecutionMode, const irs::attribute_provider* ctx) const override {
+       irs::sub_reader const& segment,  irs::Order const& order,
+      irs::ExecutionMode,  irs::attribute_provider const* ctx) const override {
     if (ADB_UNLIKELY(!ctx)) {
       // no context provided
       return irs::doc_iterator::empty();

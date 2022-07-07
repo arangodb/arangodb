@@ -115,7 +115,7 @@ class GeoIterator : public irs::doc_iterator {
     return irs::get_mutable(_attrs, type);
   }
 
-  virtual irs::doc_id_t value() const override final {
+  irs::doc_id_t value() const final {
     return std::get<irs::attribute_ptr<irs::document>>(_attrs).ptr->value;
   }
 
