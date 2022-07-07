@@ -898,6 +898,22 @@
     },
 
     createEditGraphModal: function (graph, isSmart, isSatellite) {
+      const rowDescription = {
+        graphName: {
+          title: 'Name',
+          info: 'The name to identify the graph. Has to be unique and must follow the <b>Document Keys</b> naming conventions.',
+        },
+        numberOfShards: {
+          title: 'Shards',
+          info: 'Number of shards the graph is using.'
+        },
+        orphanCollection: {
+          title: 'Orphan collections',
+          info: 'Collections that are part of a graph but not used in an edge definition.',
+          placeholder: 'Insert list of Non-Existing Orphan Collections'
+        }
+      }
+
       var buttons = [];
       var collList = [];
       var tableContent = [];
@@ -965,9 +981,9 @@
         tableContent.push(
           window.modalView.createReadOnlyEntry(
             'editGraphName',
-            'Name',
+            rowDescription.graphName.title,
             name,
-            'The name to identify the graph. Has to be unique'
+            rowDescription.graphName.info
           )
         );
 
@@ -987,9 +1003,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'numberOfShards',
-              'Shards',
+              rowDescription.numberOfShards.title,
               graph.get('numberOfShards'),
-              'Number of shards the graph is using.'
+              rowDescription.numberOfShards.info
             )
           );
         }
@@ -1063,9 +1079,9 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'createNewGraphName',
-            'Name',
+            rowDescription.graphName.title,
             '',
-            'The name to identify the graph. Has to be unique.',
+            rowDescription.graphName.info,
             'graphName',
             true
           )
@@ -1081,9 +1097,9 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-numberOfShards',
-            'Shards*',
+            rowDescription.numberOfShards.title + '*',
             '',
-            'Number of shards the SmartGraph is using.',
+            rowDescription.numberOfShards.info,
             '',
             false,
             [
@@ -1163,9 +1179,9 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-numberOfShards',
-            'Shards',
+            rowDescription.numberOfShards.title,
             '',
-            'Number of shards the graph is using.',
+            rowDescription.numberOfShards.info,
             '',
             false,
             [
@@ -1297,10 +1313,10 @@
       tableContent.push(
         window.modalView.createSelect2Entry(
           'newVertexCollections',
-          'Vertex collections',
+          rowDescription.orphanCollection.title,
           orphanCollections,
-          'Collections that are part of a graph but not used in an edge definition',
-          'Vertex Collections',
+          rowDescription.orphanCollection.info,
+          'Orphan Collections',
           false,
           false,
           false,
