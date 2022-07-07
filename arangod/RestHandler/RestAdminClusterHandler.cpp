@@ -2160,9 +2160,9 @@ auto inspect(Inspector& f, RebalanceOptions& x) {
       f.field("version", x.version),
       f.field("maximumNumberOfMoves", x.maximumNumberOfMoves)
           .fallback(std::size_t{1000}),
-      f.field("leaderChanges", x.leaderChanges).fallback(false),
+      f.field("leaderChanges", x.leaderChanges).fallback(true),
       f.field("moveLeaders", x.moveLeaders).fallback(false),
-      f.field("moveFollowers", x.moveFollowers).fallback(true),
+      f.field("moveFollowers", x.moveFollowers).fallback(false),
       f.field("piFactor", x.piFactor).fallback(256e6),
       f.field("databasesExcluded", x.databasesExcluded)
           .fallback(std::vector<DatabaseID>{}));
@@ -2270,46 +2270,57 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
     return opts;
   };
 
-  auto const getOptimizationMoves =
-      [&]() -> std::optional<
-                std::pair<AutoRebalanceProblem, std::vector<MoveShardJob>>> {
-    std::vector<MoveShardJob> moves;
+  std::vector<MoveShardJob> moves;
 
-    auto options = readRebalanceOptions();
-    if (!options) {
-      return std::nullopt;
-    }
-
-    auto p = collectRebalanceInformation(options->databasesExcluded);
-    moves.reserve(options->maximumNumberOfMoves);
-    p.setPiFactor(options->piFactor);
-    p.optimize(options->leaderChanges, options->moveFollowers,
-               options->moveLeaders, options->maximumNumberOfMoves, moves);
-
-    return std::make_pair(std::move(p), std::move(moves));
-  };
-
-  auto result = getOptimizationMoves();
-  if (!result.has_value()) {
+  auto options = readRebalanceOptions();
+  if (!options) {
     return RestStatus::DONE;
   }
-  auto& [p, moves] = *result;
+
+  auto p = collectRebalanceInformation(options->databasesExcluded);
+  auto const imbalanceLeaderBefore = p.computeLeaderImbalance();
+  auto const imbalanceShardsBefore = p.computeShardImbalance();
+
+  moves.reserve(options->maximumNumberOfMoves);
+  p.setPiFactor(options->piFactor);
+  p.optimize(options->leaderChanges, options->moveFollowers,
+             options->moveLeaders, options->maximumNumberOfMoves, moves);
+
+  auto const imbalanceLeaderAfter = p.computeLeaderImbalance();
+  auto const imbalanceShardsAfter = p.computeShardImbalance();
 
   switch (request()->requestType()) {
     case rest::RequestType::POST: {
       {
         VPackBuilder builder;
         {
-          VPackArrayBuilder ab(&builder);
-          for (auto const& move : moves) {
-            auto const& shard = p.shards[move.shardId];
-            VPackObjectBuilder ob(&builder);
-            builder.add("from", VPackValue(p.dbServers[move.from].id));
-            builder.add("to", VPackValue(p.dbServers[move.to].id));
-            builder.add("shard", VPackValue(shard.name));
-            builder.add("collection",
-                        VPackValue(p.collections[shard.collectionId].name));
-            builder.add("isLeader", VPackValue(move.isLeader));
+          VPackObjectBuilder ob1(&builder);
+          {
+            VPackObjectBuilder ob(&builder, "imbalanceBefore");
+            builder.add(VPackValue("leader"));
+            velocypack::serialize(builder, imbalanceLeaderBefore);
+            builder.add(VPackValue("shards"));
+            velocypack::serialize(builder, imbalanceShardsBefore);
+          }
+          {
+            VPackObjectBuilder ob(&builder, "imbalanceAfter");
+            builder.add(VPackValue("leader"));
+            velocypack::serialize(builder, imbalanceLeaderAfter);
+            builder.add(VPackValue("shards"));
+            velocypack::serialize(builder, imbalanceShardsAfter);
+          }
+          {
+            VPackArrayBuilder ab(&builder, "moves");
+            for (auto const& move : moves) {
+              auto const& shard = p.shards[move.shardId];
+              VPackObjectBuilder ob(&builder);
+              builder.add("from", VPackValue(p.dbServers[move.from].id));
+              builder.add("to", VPackValue(p.dbServers[move.to].id));
+              builder.add("shard", VPackValue(shard.name));
+              builder.add("collection",
+                          VPackValue(p.collections[shard.collectionId].name));
+              builder.add("isLeader", VPackValue(move.isLeader));
+            }
           }
         }
         generateOk(rest::ResponseCode::OK, builder.slice());
@@ -2470,16 +2481,16 @@ RestAdminClusterHandler::collectRebalanceInformation(
         distributeShardsLikeCounter[like].distributeShardsLikeCounter += 1;
       } else {
         std::size_t index = p.collections.size();
-        auto& ref = p.collections.emplace_back();
-        ref.id = index;
-        ref.name = std::to_string(collection->id().id());
-        ref.dbId = dbIndex;
-        ref.weight = 1.0;
-        distributeShardsLikeCounter[ref.name].index = index;
+        auto& collectionRef = p.collections.emplace_back();
+        collectionRef.id = index;
+        collectionRef.name = std::to_string(collection->id().id());
+        collectionRef.dbId = dbIndex;
+        collectionRef.weight = 1.0;
+        distributeShardsLikeCounter[collectionRef.name].index = index;
 
         for (auto const& shard : *collection->shardIds()) {
           std::size_t shardIndex = p.shards.size();
-          ref.shards.push_back(shardIndex);
+          collectionRef.shards.push_back(shardIndex);
           auto& shardRef = p.shards.emplace_back();
           shardRef.name = shard.first;
           shardRef.leader = getDBServerIndex(shard.second[0]);
@@ -2487,6 +2498,7 @@ RestAdminClusterHandler::collectRebalanceInformation(
           shardRef.collectionId = index;
           shardRef.replicationFactor = shard.second.size();
           shardRef.weight = 1.;
+          shardRef.size = 1;  // size of data in that shard
           bool first = true;
           for (auto const& server : shard.second) {
             if (first) {

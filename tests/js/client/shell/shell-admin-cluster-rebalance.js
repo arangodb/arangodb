@@ -63,9 +63,10 @@ function clusterRebalanceSuite() {
         moveFollowers: true,
         leaderChanges: true
       });
+      print(JSON.stringify(result));
       assertEqual(result.code, 200); // should be refused
       assertEqual(result.error, false); // should be refused
-      const moves = result.result;
+      const moves = result.result.moves;
       assertTrue(moves.length > 0);
     },
 
@@ -78,7 +79,7 @@ function clusterRebalanceSuite() {
       });
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
-      let moves = result.result;
+      let moves = result.result.moves;
       assertTrue(moves.length > 0);
       result = arango.POST('/_admin/cluster/rebalance/execute', moves);
 
@@ -87,23 +88,6 @@ function clusterRebalanceSuite() {
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
 
-      // wait until no more move shards are suggested
-      let converged = false;
-      for (let k = 0; k < 100 && !converged; k++) {
-        result = arango.POST('/_admin/cluster/rebalance', {
-          version: 1,
-          moveLeaders: true,
-          moveFollowers: true,
-          leaderChanges: true
-        });
-
-        if (result.result.length === 0) {
-          converged = true;
-        }
-        require('internal').sleep(1);
-      }
-
-      assertTrue(converged);
     },
   };
 }
