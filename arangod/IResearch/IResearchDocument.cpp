@@ -790,7 +790,7 @@ void FieldIterator<IndexMetaStruct>::next() {
         continue;
       }
 #ifdef USE_ENTERPRISE
-      if (level.type == LevelType::NESTED_OBJECTS) {
+      if (level.type == LevelType::kNestedObjects) {
         // Requesting nested document
         _needDoc = true;
       }
@@ -809,7 +809,7 @@ void FieldIterator<IndexMetaStruct>::next() {
 
         case VPackValueType::Array:
 #ifdef USE_ENTERPRISE
-          if (level.type == LevelType::NESTED_ROOT) {
+          if (level.type == LevelType::kNestedRoot) {
             setRoot();
             return;
           }

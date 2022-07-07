@@ -587,18 +587,18 @@ void captureArrayFilterArgumentExpressions(
     AstNode const* filter, std::vector<size_t> selectedMembersFromRoot,
     bool evaluateFCalls, Variable const* indexVariable,
     NonConstExpressionContainer& result) {
-  for (size_t f = 0; f < filter->numMembers(); ++f) {
-    auto member = filter->getMemberUnchecked(f);
+  for (size_t i = 0, size = filter->numMembers(); i != size; ++i) {
+    auto member = filter->getMemberUnchecked(i);
     if (!member->isConstant()) {
       auto path = selectedMembersFromRoot;
-      path.emplace_back(f);
+      path.emplace_back(i);
       if (member->type == NODE_TYPE_RANGE) {
         // intentionally copy path here as we will have many members
         auto path1 = path;
         path1.emplace_back(0);
         // We will capture only Min and Max members as we do not want
         // entire array to be evaluated (like if someone writes
-        // query 1..35486732486348)
+        // query 1..1234567890)
         captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(0),
                                   path1, result);
         auto path2 = path;
@@ -624,11 +624,12 @@ void captureArrayFilterArgumentExpressions(
             // never dive into attribute access
             return false;
           } else if (node->type == NODE_TYPE_FCALL) {
-            if (!evaluateFCalls) {  // FIXME(Dronplane): we should never execute
-                                    // index-backed functions. But how to track
-                                    // it? -> execute only functions that does
-                                    // not touch index variable and local temp
-                                    // variables!
+            if (!evaluateFCalls) {  
+              // FIXME(Dronplane): we should never execute
+              // index-backed functions. But how to track
+              // it? -> execute only functions that does
+              // not touch index variable and local temp
+              // variables!
               captureFCallArgumentExpressions(ast, varInfo, node, localPath,
                                               indexVariable, result);
             } else {
