@@ -268,6 +268,9 @@ devel
   lack local timestamp (legacy). In that situation, we will record epoch begin
   as local time.
 
+* Very verbose warning from failing to parse GEO JSON in search. Has lead to
+  billions of log lines on deployed services.
+
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
 
@@ -1902,7 +1905,7 @@ devel
   `--console` argument for upgrading a server.
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented
-  cases and numerically unstable behaviour. In particular, the case of
+  cases and numerically unstable behavior. In particular, the case of
   the intersection of two polygons in which one is an S2LngLatRect
   is fixed (BTS-475).
 
