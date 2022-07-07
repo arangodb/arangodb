@@ -1750,7 +1750,7 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
   return node;
 }
 
-/// @brief create an AST k-shortest paths or k-paths node
+/// @brief create an AST k-shortest paths, k-paths or all-shortest paths node
 AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
                                        AstNode const* outVars,
                                        AstNode const* graphInfo) {
