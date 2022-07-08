@@ -31,6 +31,7 @@
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/Predicates.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
@@ -40,6 +41,7 @@
 #include "Replication2/Helper/ModelChecker/HashValues.h"
 #include "Replication2/Helper/ModelChecker/Predicates.h"
 
+#include <optional>
 #include <utility>
 
 using namespace arangodb;
@@ -52,6 +54,14 @@ struct ReplicatedLogSupervisionSimulationTest
   LogTargetConfig const defaultConfig = {2, 2, false};
   LogId const logId{23};
   ParticipantFlags const defaultFlags{};
+
+  auto makeAgencyState(Log const& log,
+                       replicated_log::ParticipantsHealth health)
+      -> AgencyState {
+    return AgencyState{.replicatedLog = log,
+                       .health = std::move(health),
+                       .logLeaderWriteConcern = std::nullopt};
+  }
 };
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
@@ -73,8 +83,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
       "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+  auto initState = makeAgencyState(log.get(), std::move(health));
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{},
@@ -113,8 +122,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
       "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+  auto initState = makeAgencyState(log.get(), std::move(health));
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, KillLeaderActor{},  DBServerActor{"A"},
@@ -155,9 +163,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
       "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
-
+  auto initState = makeAgencyState(log.get(), std::move(health));
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, KillAnyServerActor{}, DBServerActor{"A"},
       DBServerActor{"B"}, DBServerActor{"C"},
@@ -199,8 +205,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
       "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+  auto initState = makeAgencyState(log.get(), std::move(health));
 
   // TODO once actor that adds a participant
   auto driver = model_checker::ActorDriver{
@@ -253,8 +258,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
       "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+  auto initState = makeAgencyState(log.get(), std::move(health));
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, KillLeaderActor{}, DBServerActor{"A"},
@@ -300,8 +304,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
       "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+  auto initState = makeAgencyState(log.get(), std::move(health));
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, SetLeaderActor{"C"}, DBServerActor{"A"},
@@ -361,8 +364,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
       "G", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+  auto initState = makeAgencyState(log.get(), std::move(health));
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{},          KillLeaderActor{},
@@ -423,8 +425,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_replace_leader) {
       "D", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+  auto initState = makeAgencyState(log.get(), std::move(health));
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, ReplaceSpecificLogServerActor{"A", "D"},
@@ -472,8 +473,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
       "D", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
                                              .notIsFailed = true});
 
-  auto initState =
-      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+  auto initState = makeAgencyState(log.get(), std::move(health));
 
   auto driver =
       model_checker::ActorDriver{SupervisionActor{},
