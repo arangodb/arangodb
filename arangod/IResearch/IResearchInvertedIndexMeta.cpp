@@ -398,7 +398,8 @@ bool IResearchInvertedIndexMeta::operator==(
 }
 
 bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
-    IResearchInvertedIndexMeta const& meta, VPackSlice other) {
+    IResearchInvertedIndexMeta const& meta, VPackSlice other,
+    LogicalCollection const& collection) {
   auto value = other.get(arangodb::StaticStrings::IndexFields);
 
   if (!value.isArray()) {
@@ -411,39 +412,12 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
     return false;
   }
 
-  // Order of fields does not matter
-  std::vector<arangodb::basics::AttributeName> translate;
-  size_t matched{0};
-  for (auto fieldSlice : VPackArrayIterator(value)) {
-    TRI_ASSERT(fieldSlice.isObject());  // We expect only normalized definitions
-                                        // here. Otherwise we will need vocbase
-                                        // to properly match analyzers.
-    if (ADB_UNLIKELY(!fieldSlice.isObject())) {
-      return false;
-    }
-
-    auto name = fieldSlice.get("name");
-    auto analyzer = fieldSlice.get("analyzer");
-    TRI_ASSERT(
-        name.isString() &&     // We expect only normalized definitions here.
-        analyzer.isString());  // Otherwise we will need vocbase to properly
-                               // match analyzers.
-    if (ADB_UNLIKELY(!name.isString() || !analyzer.isString())) {
-      return false;
-    }
-
-    auto in = name.stringView();
-    irs::string_ref analyzerName = analyzer.stringView();
-    TRI_ParseAttributeString(in, translate, true);
-    for (auto const& f : meta._fields) {
-      if (f.isIdentical(translate, analyzerName)) {
-        matched++;
-        break;
-      }
-    }
-    translate.clear();
-  }
-  return matched == count;
+  IResearchInvertedIndexMeta otherMeta;
+  auto& vocbase = collection.vocbase();
+  std::string errorField;
+  return otherMeta.init(vocbase.server(), other, true, errorField,
+                        vocbase.name()) &&
+         meta == otherMeta;
 }
 
 bool InvertedIndexField::json(

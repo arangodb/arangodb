@@ -265,7 +265,8 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(
     std::string_view idRef = value.stringView();
     return idRef == std::to_string(IResearchDataStore::id().id());
   }
-  return IResearchInvertedIndex::matchesFieldsDefinition(other);
+  return IResearchInvertedIndex::matchesFieldsDefinition(
+      other, IResearchDataStore::_collection);
 }
 }  // namespace iresearch
 }  // namespace arangodb
