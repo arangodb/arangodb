@@ -719,8 +719,8 @@ shortest_path_graph_info:
   ;
 
 k_shortest_paths_graph_info:
-    graph_direction_steps T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
-      $$ = ::buildShortestPathInfo(parser, $4.value, $1, $3, $5, $6, $7, yyloc);
+    graph_direction T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, 1), $3, $5, $6, $7, yyloc);
     }
   ;
 
