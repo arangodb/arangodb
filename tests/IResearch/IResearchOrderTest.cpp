@@ -56,6 +56,32 @@
 
 namespace {
 
+bool operator==(std::span<irs::sort::ptr const> lhs,
+                std::vector<irs::sort::ptr> const& rhs) noexcept {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+
+  for (size_t i = 0, count = lhs.size(); i < count; ++i) {
+    if (!lhs[i] != !rhs[i]) {
+      return false;
+    }
+    if (!lhs[i]) {
+      continue;
+    }
+    auto& sort = *lhs[i];
+    auto& other_sort = *rhs[i];
+
+    // FIXME TODO operator==(...) should be specialized for every sort child
+    // class based on init config
+    if (sort.type() != other_sort.type()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 struct dummy_scorer : public irs::sort {
   static std::function<bool(irs::string_ref)> validateArgs;
   static constexpr irs::string_ref type_name() noexcept {
@@ -77,7 +103,7 @@ REGISTER_SCORER_JSON(dummy_scorer, dummy_scorer::make);
 
 void assertOrder(
     arangodb::ArangodServer& server, bool parseOk, bool execOk,
-    std::string const& queryString, std::span<const irs::sort::ptr> expected,
+    std::string const& queryString, std::span<irs::sort::ptr const> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -158,6 +184,7 @@ void assertOrder(
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
       auto const* expr = sort->getMember(0);
+      // FIXME: asc/desc should also be validated
       [[maybe_unused]] auto const asc = sort->getMember(1)->getBoolValue();
 
       EXPECT_TRUE(execOk == arangodb::iresearch::OrderFactory::scorer(
@@ -168,8 +195,7 @@ void assertOrder(
       }
     }
 
-    EXPECT_TRUE(!execOk || std::equal(std::begin(expected), std::end(expected),
-                                      std::begin(actual), std::end(actual)));
+    EXPECT_TRUE(!execOk || expected == actual);
   }
 }
 
