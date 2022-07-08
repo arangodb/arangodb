@@ -184,9 +184,6 @@ void assertOrder(
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
       auto const* expr = sort->getMember(0);
-      // FIXME: asc/desc should also be validated
-      [[maybe_unused]] auto const asc = sort->getMember(1)->getBoolValue();
-
       EXPECT_TRUE(execOk == arangodb::iresearch::OrderFactory::scorer(
                                 &actualScorer, *expr, ctx));
 
