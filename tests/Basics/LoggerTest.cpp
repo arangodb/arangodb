@@ -221,6 +221,11 @@ TEST_F(LoggerTest, testTimeFormats) {
     EXPECT_EQ("2016-12-11T14:02:43.000Z", out);
 
     out.clear();
+    LogTimeFormats::writeTime(
+        out, LogTimeFormats::TimeFormat::UTCDateStringMicros, tp, startTp);
+    EXPECT_EQ("2016-12-11T14:02:43.000000Z", out);
+
+    out.clear();
     LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::LocalDateString,
                               tp, startTp);
     ASSERT_TRUE(std::regex_match(
@@ -287,6 +292,11 @@ TEST_F(LoggerTest, testTimeFormats) {
     LogTimeFormats::writeTime(
         out, LogTimeFormats::TimeFormat::UTCDateStringMillis, tp, startTp);
     EXPECT_EQ("2020-12-02T11:57:26.004Z", out);
+
+    out.clear();
+    LogTimeFormats::writeTime(
+        out, LogTimeFormats::TimeFormat::UTCDateStringMicros, tp, startTp);
+    EXPECT_EQ("2020-12-02T11:57:26.004000Z", out);
 
     out.clear();
     LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::LocalDateString,

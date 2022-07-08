@@ -39,6 +39,7 @@ enum class TimeFormat {
   UnixTimestampMicros,
   UTCDateString,
   UTCDateStringMillis,
+  UTCDateStringMicros,
   LocalDateString,
 };
 
