@@ -259,6 +259,7 @@ struct LogCurrentSupervision {
   // first effectiveWriteConcern that is calculated on creation
   // of the log.
   size_t assumedWriteConcern{1};
+  bool assumedWaitForSync{true};
   std::optional<uint64_t> targetVersion;
   std::optional<StatusReport> statusReport;
   std::optional<clock::time_point> lastTimeModified;
