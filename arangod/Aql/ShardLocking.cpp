@@ -35,6 +35,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utilities/NameValidator.h"
 
