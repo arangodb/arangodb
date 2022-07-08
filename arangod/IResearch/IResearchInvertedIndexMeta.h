@@ -26,7 +26,7 @@
 #include "IResearchDataStoreMeta.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchViewStoredValues.h"
-#include "VocBase\LogicalCollection.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <unicode/locid.h>
 
