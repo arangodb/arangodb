@@ -1,4 +1,4 @@
-name: arangodb_potential_dirty_document_reads_total
+name: arangodb_potentially_dirty_document_reads_total
 introducedIn: "3.10.0"
 help: |
   Number of document reads which have been executed with dirty reads.
