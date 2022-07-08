@@ -91,6 +91,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (isReadOnlyTransaction()) {
     ++stats._readTransactions;
     if (_options.allowDirtyReads) {
+      TRI_ASSERT(ServerState::instance()->isCoordinator());
       ++stats._dirtyReadTransactions;
     }
   } else {
