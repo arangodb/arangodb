@@ -194,8 +194,8 @@
       return this.buildAutoCompletionLists('edges');
     },
 
-    setGeneralGraphRows: function (cache) {
-      this.setCacheModeState(cache);
+    setGeneralGraphRows: function (forget) {
+      this.setCacheModeState(forget);
       this.hideSmartGraphRows();
       _.each(this.generalGraphRows, function (rowId) {
         $('#' + rowId).show();
@@ -471,9 +471,10 @@
     },
 
     forgetCachedCollectionsState: function () {
-      // Note: re-enable cached collections for general graph
+      // Note: re-enable cached collections for GeneralGraph
       // General graph collections are allowed to use existing collections
-      // SatelliteGraphs and SmartGraphs are not allowed to use them, so we need to "forget" them here
+      // SatelliteGraphs, SmartGraphs and Enterprise are not allowed to use them,
+      // so we need to "forget" them here.
       let self = this;
 
       let i;
@@ -498,6 +499,12 @@
     rememberCachedCollectionsState: function () {
       var self = this;
       var i;
+
+      // TODO: Future: This whole section is not working anymore as it has been intended.
+      // It worked once where we only had GeneralGraphs and SmartGraphs. Now also EnterpriseGraphs,
+      // SatelliteGraphs and HybridGraphs are introduced. Therefore we have to manage more state of
+      // all new graph types. The below code still needs to be available, as it re-initializes the
+      // select2 components as well. But this area needs a whole cleanup. This can be done later.
 
       for (i = 0; i <= self.counter; i++) {
         $('#newEdgeDefinitions' + i).select2(self.buildSelect2Options('edge'));
@@ -599,24 +606,50 @@
       e.stopPropagation();
       var id;
 
-      console.log(e);
-      // TODO: Needs to either be fixed, or removed at all. Backend will fail and reply with an error in that case.
-      // This area checks whether new user defined EdgeDefinitions are being used
-      // twice - which is not valid.
+      const getAllCurrentEdgeDefinitionNames = () => {
+        let edgeDefNames = [];
+        for (let i = 0; i <= this.counter; i++) {
+          let name = _.pluck($('#s2id_newEdgeDefinitions' + i).select2('data'), 'text')[0];
+          if (name) {
+            // might be undefined as we do not have the state of all real "counter" values
+            edgeDefNames.push(name);
+          }
+        }
+        return edgeDefNames;
+      };
+
+      const toFindDuplicates = (arr) => {
+        return arr.filter((item, index) => arr.indexOf(item) !== index);
+      };
+
+      // This area checks whether new user defined EdgeDefinitions are being used twice - which is not valid.
       if (e.added) {
-        console.warn("IMPORTANT - fixme, id: " + e.added.id);
-        /*if (this.eCollList.indexOf(e.added.id) === -1 && this.removedECollList.indexOf(e.added.id) !== -1) {
+        let currentEdgeDefinitionName = e.added.id;
+        const allAvailableEdgeDefinitionNames = getAllCurrentEdgeDefinitionNames();
+        const duplicateEdgeDefinitions = toFindDuplicates(allAvailableEdgeDefinitionNames);
+
+        if (duplicateEdgeDefinitions.indexOf(currentEdgeDefinitionName) !== -1) {
           console.warn("Already added: " + JSON.stringify(e.added));
           id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
           $('input[id*="newEdgeDefinitions' + id + '"]').select2('val', null);
-          $('input[id*="newEdgeDefinitions' + id + '"]').attr(
-            'placeholder', 'The collection ' + e.added.id + ' is already used.'
+          arangoHelper.arangoError(
+            "Graph Creation",
+            `The EdgeDefinition name "${e.added.id}" is already used being used. Please choose another name.`
           );
+
+          // Please keep this line - we might need it later (during refactor)
+          // Currently (the old way how this has been implemented) it is not usable
+          // as the input keeps focus, we replace the placeholder - but as we still
+          // do have the focus -> the user cannot see that is has changed meanwhile.
+          // So for now, we remove that entry (as duplicate edge names are invalid)
+          // and notify the user via "arangoHelper.arangoWarning".
+          /*$('input[id*="newEdgeDefinitions' + id + '"]').attr(
+            'placeholder', 'The collection ' + e.added.id + ' is already used.'
+          );*/
           return;
-        }*/
-        //this.removedECollList.push(e.added.id);
-        //this.eCollList.splice(this.eCollList.indexOf(e.added.id), 1);
+        }
       }
+
 
       // This area checks whether a stored EdgeDefinition has been found and re-used here.
       // In case it is, we fill out from and to automatically and disable the inputs. As we
@@ -779,6 +812,13 @@
         }
       );
       this.updateGraphManagementView();
+
+      // TODO: Currently whenever a user modifies the current graph model, and any of the above calls:
+      // "addEdgeDefinition", "modifyEdgeDefinition", "deleteEdgeDefinition" errors out -> we are notifying
+      // the user (which is good), but we're also closing the modalView directly. So the user has no chance
+      // to directly adjust his configuration to fix the misconfiguration. This needs to be improved.
+      // We need to gather all API modification results from above, and are only allowed to close this modal
+      // if all of them succeeded.
       window.modalView.hide();
     },
 
@@ -967,7 +1007,13 @@
       this.collection.create(newCollectionObject, {
         success: function () {
           self.updateGraphManagementView();
+          // Hide potential error notifications, which might be obsolete now.
+          arangoHelper.hideArangoNotifications();
           window.modalView.hide();
+          arangoHelper.arangoNotification(
+            'Graph',
+            `Successfully created the graph: ${newCollectionObject.name}`
+          );
         },
         error: function (obj, err) {
           var response = JSON.parse(err.responseText);
