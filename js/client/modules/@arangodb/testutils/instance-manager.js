@@ -435,7 +435,7 @@ class instanceManager {
             myDeltaStats[key] = newStats[key] - arangod.stats[key];
           }
         }
-        deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
+        deltaStats[arangod.pid + '_' + arangod.instanceRole] = myDeltaStats;
         arangod.stats = newStats;
         for (let key in myDeltaStats) {
           if (deltaSum.hasOwnProperty(key)) {
@@ -491,8 +491,8 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
     this.arangods.forEach((arangod) => {
-      if (arangod.role === "agent") {
-        if (arangod.hasOwnProperty('exitStatus')) {
+      if (arangod.isAgent()) {
+        if (!arangod.checkArangoAlive()) {
           print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
         } else {
           print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
@@ -643,13 +643,13 @@ class instanceManager {
     let failurePoints = [];
     instanceInfo.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
-      if ((arangod.role !== "agent") &&
+      if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
           !arangod.args.hasOwnProperty('server.jwt-secret')) {
         let fp = debugGetFailurePoints(arangod.endpoint);
         if (fp.length > 0) {
           failurePoints.push({
-            "role": arangod.role,
+            "role": arangod.instanceRole,
             "pid":  arangod.pid,
             "database.directory": arangod['database.directory'],
             "failurePoints": fp
@@ -791,6 +791,7 @@ class instanceManager {
     if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
       this.dumpAgency();
     }
+
     var shutdownTime = internal.time();
     while (toShutdown.length > 0) {
       toShutdown = toShutdown.filter(arangod => {
