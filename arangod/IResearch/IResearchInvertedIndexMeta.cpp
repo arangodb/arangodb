@@ -45,14 +45,14 @@ constexpr auto consistencyTypeMap =
         {{"eventual", Consistency::kEventual},
          {"immediate", Consistency::kImmediate}});
 
-constexpr std::string_view kNameFieldName("name");
-constexpr std::string_view kAnalyzerFieldName("analyzer");
-constexpr std::string_view kNestedFieldsFieldName("nested");
-constexpr std::string_view kFeaturesFieldName("features");
-constexpr std::string_view kExpressionFieldName("expression");
-constexpr std::string_view kIsArrayFieldName("isArray");
-constexpr std::string_view kIncludeAllFieldsFieldName("includeAllFields");
-constexpr std::string_view kTrackListPositionsFieldName("trackListPositions");
+constexpr std::string_view kNameFieldName = "name";
+constexpr std::string_view kAnalyzerFieldName = "analyzer";
+constexpr std::string_view kNestedFieldsFieldName = "nested";
+constexpr std::string_view kFeaturesFieldName = "features";
+constexpr std::string_view kExpressionFieldName = "expression";
+constexpr std::string_view kIsArrayFieldName = "isArray";
+constexpr std::string_view kIncludeAllFieldsFieldName = "includeAllFields";
+constexpr std::string_view kTrackListPositionsFieldName = "trackListPositions";
 constexpr std::string_view kDirectionFieldName = "direction";
 constexpr std::string_view kAscFieldName = "asc";
 constexpr std::string_view kFieldName = "field";
@@ -76,9 +76,11 @@ const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
 }
 
 IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
+  _analyzers[0] = IResearchAnalyzerFeature::identity();
   _primitiveOffset = 1;
 }
 
+// FIXME(Dronplane): make all constexpr defines consistent
 bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                       VPackSlice const& slice,
                                       bool readAnalyzerDefinition,
@@ -748,12 +750,26 @@ bool InvertedIndexField::init(
       errorField = fieldsAttributeName;
       return false;
     }
+    if (!rootMode && _trackListPositions) {
+      if (slice.hasKey(kTrackListPositionsFieldName)) {
+        // explicit track list positions is forbidden
+        // if nested fields are present
+        errorField = kTrackListPositionsFieldName;
+        return false;
+      }
+      // implicit is just disabled
+      _trackListPositions = false;
+    }
+    if (_hasExpansion) {
+      errorField = kNameFieldName;
+      return false;
+    }
     std::string localError;
     containers::FlatHashSet<std::string> fieldsDeduplicator;
     for (auto it = VPackArrayIterator(nestedSlice); it.valid(); ++it) {
       InvertedIndexField nested;
       if (nested.init(it.value(), analyzerDefinitions, version, extendedNames,
-                      analyzers, *this, defaultVocbase, false, errorField)) {
+                      analyzers, *this, defaultVocbase, false, localError)) {
         if (!fieldsDeduplicator.emplace(nested.path()).second) {
           errorField = fieldsAttributeName;
           errorField.append("[")
@@ -963,6 +979,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
       } else {
         current = &(emplaceRes.first->second);
         current->_isArray = a.shouldExpand;
+        current->_hasNested = false;
       }
       if (i == f._attribute.size() - 1) {
         current->_analyzers = &f._analyzers;

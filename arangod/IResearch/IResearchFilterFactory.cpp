@@ -4202,9 +4202,10 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
         appendExpression(*filter, node, ctx, filterCtx);
         return {};
       }
+    } else {
+      return {TRI_ERROR_NOT_IMPLEMENTED,
+              "ByExpression filter is supported for SEARCH only"};
     }
-    return {TRI_ERROR_NOT_IMPLEMENTED,
-            "ByExpression filter is supported for SEARCH only"};
   }
 
   if (!filter) {

@@ -31,7 +31,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 
@@ -44,8 +43,6 @@ static const char* viewName = "view";
 
 class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
  protected:
-  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
-
   void addLinkToCollection(
       std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
     auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
@@ -143,7 +140,8 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+          arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -164,9 +162,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
         ASSERT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          insertedDocs.emplace_back();
-          auto const res =
-              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
+          auto res = trx.insert(logicalCollection1->name(), doc, opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -189,9 +185,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
         ASSERT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          insertedDocs.emplace_back();
-          auto const res =
-              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
+          auto res = trx.insert(logicalCollection2->name(), doc, opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -471,15 +465,13 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   auto tmpSlice = slice.get("links");
   EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
 
-  arangodb::ManagedDocumentResult insertedDoc;
   {
     arangodb::OperationOptions opt;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    auto const res =
-        logicalCollection->insert(&trx, doc->slice(), insertedDoc, opt);
+    auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());
@@ -635,15 +627,13 @@ TEST_P(IResearchQueryNoMaterializationTest,
   auto tmpSlice = slice.get("links");
   EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
 
-  arangodb::ManagedDocumentResult insertedDoc;
   {
     arangodb::OperationOptions opt;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    auto const res =
-        logicalCollection->insert(&trx, doc->slice(), insertedDoc, opt);
+    auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());

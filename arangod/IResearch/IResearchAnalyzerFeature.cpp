@@ -1264,10 +1264,10 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     return pool ? irs::hashed_string_ref(key.hash(), pool->name())
                 : key;  // reuse hash but point ref at value in pool
   };
-  auto itr = irs::map_utils::try_emplace_update_key(
+  auto emplaceRes = irs::map_utils::try_emplace_update_key(
       analyzers, generator,
       irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
-  auto analyzer = itr.first->second;
+  auto analyzer = emplaceRes.first->second;
 
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -1277,15 +1277,16 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   }
 
   // new analyzer creation, validate
-  if (itr.second) {
+  if (emplaceRes.second) {
     bool erase = true;  // potentially invalid insertion took place
-    auto cleanup = irs::make_finally([&erase, &analyzers, &itr]() noexcept {
-      // cppcheck-suppress knownConditionTrueFalse
-      if (erase) {
-        // ensure no broken analyzers are left behind
-        analyzers.erase(itr.first);
-      }
-    });
+    auto cleanup =
+        irs::make_finally([&erase, &analyzers, &emplaceRes]() noexcept {
+          // cppcheck-suppress knownConditionTrueFalse
+          if (erase) {
+            // ensure no broken analyzers are left behind
+            analyzers.erase(emplaceRes.first);
+          }
+        });
 
     // emplaceAnalyzer is used by Analyzers API where we don't actually use
     // features
@@ -1335,7 +1336,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     return {TRI_ERROR_BAD_PARAMETER, errorText.str()};
   }
 
-  result = itr;
+  result = emplaceRes;
 
   return {};
 }
@@ -1377,9 +1378,9 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
     WRITE_LOCKER(lock, _mutex);
 
     // validate and emplace an analyzer
-    EmplaceAnalyzerResult itr;
+    EmplaceAnalyzerResult emplaceRes;
     auto res = emplaceAnalyzer(
-        itr, _analyzers, name, type, properties, features,
+        emplaceRes, _analyzers, name, type, properties, features,
         transaction ? transaction->buildingRevision() : AnalyzersRevision::MIN);
 
     if (!res.ok()) {
@@ -1387,17 +1388,17 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
     }
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    bool erase = itr.second;  // an insertion took place
-    auto cleanup = irs::make_finally([&erase, this, &itr]() noexcept {
+    bool erase = emplaceRes.second;  // an insertion took place
+    auto cleanup = irs::make_finally([&erase, this, &emplaceRes]() noexcept {
       if (erase) {
         // ensure no broken analyzers are left behind
-        _analyzers.erase(itr.first);
+        _analyzers.erase(emplaceRes.first);
       }
     });
-    auto pool = itr.first->second;
+    auto pool = emplaceRes.first->second;
 
     // new pool creation
-    if (itr.second) {
+    if (emplaceRes.second) {
       if (!pool) {
         return {
             TRI_ERROR_INTERNAL,
@@ -1434,7 +1435,7 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
       }
       erase = false;
     }
-    result = std::make_pair(pool, itr.second);
+    result = std::make_pair(pool, emplaceRes.second);
   } catch (basics::Exception const& e) {
     return {e.code(),
             StringUtils::concatT("caught exception while registering an "
@@ -1673,6 +1674,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     }
     // cppcheck-suppress unreadVariable
     if (transaction) {
+      // TODO: add fail point and test in case of failed commit
       res = transaction->commit();
       if (res.fail()) {
         return res;

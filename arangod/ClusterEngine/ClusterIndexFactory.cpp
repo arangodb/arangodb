@@ -168,7 +168,7 @@ struct IResearchInvertedIndexClusterFactory : public DefaultIndexFactory {
         definition, arangodb::StaticStrings::ObjectId);
     auto index = std::make_shared<IResearchInvertedClusterIndex>(
         id, objectId, collection, indexName);
-    bool pathExists{false};
+    bool pathExists = false;
     if (index->init(definition, pathExists).fail()) {
       return nullptr;
     }

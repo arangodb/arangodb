@@ -32,6 +32,7 @@
 #include "Enterprise/IResearch/IResearchDocumentEE.h"
 #endif
 
+#include "Containers/FlatHashMap.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchInvertedIndexMeta.h"
@@ -117,11 +118,11 @@ struct Field {
 #endif
 };  // Field
 
-using MissingFieldsContainer = absl::flat_hash_set<std::string_view>;
+using MissingFieldsContainer = containers::FlatHashSet<std::string_view>;
 // "attribute" names are tmp strings so need to store them here.
 // but "path" is string_view to meta internals so just string_views.
 using MissingFieldsMap =
-    absl::flat_hash_map<std::string, MissingFieldsContainer>;
+    containers::FlatHashMap<std::string, MissingFieldsContainer>;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack accoring the specified

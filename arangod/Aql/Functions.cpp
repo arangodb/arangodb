@@ -119,8 +119,8 @@
 #endif
 
 using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::aql;
+using namespace basics;
+using namespace aql;
 using namespace std::chrono;
 
 /*
@@ -246,8 +246,8 @@ void registerICUWarning(ExpressionContext* expressionContext,
   msg.append("in function '");
   msg.append(functionName);
   msg.append("()': ");
-  msg.append(arangodb::basics::Exception::FillExceptionString(
-      TRI_ERROR_ARANGO_ICU_ERROR, u_errorName(status)));
+  msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
+                                                    u_errorName(status)));
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg.c_str());
 }
 
@@ -280,8 +280,8 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   // quick basic check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
     if (registerWarning) {
-      arangodb::aql::registerWarning(expressionContext, AFN,
-                                     TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      aql::registerWarning(expressionContext, AFN,
+                           TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     }
     return AqlValue(AqlValueHintNull());
   }
@@ -489,8 +489,8 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
   date::year_month_day ymd{floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
 
-  arangodb::basics::ParsedDuration parsedDuration;
-  if (!arangodb::basics::parseIsoDuration(duration, parsedDuration)) {
+  basics::ParsedDuration parsedDuration;
+  if (!basics::parseIsoDuration(duration, parsedDuration)) {
     aql::registerWarning(expressionContext, AFN,
                          TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
@@ -716,8 +716,7 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
 
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
-void appendAsString(VPackOptions const& vopts,
-                    arangodb::velocypack::StringSink& buffer,
+void appendAsString(VPackOptions const& vopts, velocypack::StringSink& buffer,
                     AqlValue const& value) {
   AqlValueMaterializer materializer(&vopts);
   VPackSlice slice = materializer.slice(value, false);
@@ -737,8 +736,8 @@ bool listContainsElement(VPackOptions const* vopts, AqlValue const& list,
 
   VPackArrayIterator it(slice);
   while (it.valid()) {
-    if (arangodb::basics::VelocyPackHelper::equal(testeeSlice, it.value(),
-                                                  false, vopts)) {
+    if (basics::VelocyPackHelper::equal(testeeSlice, it.value(), false,
+                                        vopts)) {
       index = static_cast<size_t>(it.index());
       return true;
     }
@@ -753,8 +752,7 @@ bool listContainsElement(VPackOptions const* options, VPackSlice const& list,
                          VPackSlice const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
   for (size_t i = 0; i < static_cast<size_t>(list.length()); ++i) {
-    if (arangodb::basics::VelocyPackHelper::equal(testee, list.at(i), false,
-                                                  options)) {
+    if (basics::VelocyPackHelper::equal(testee, list.at(i), false, options)) {
       index = i;
       return true;
     }
@@ -887,7 +885,7 @@ void getDocumentByIdentifier(transaction::Methods* trx,
   try {
     res = trx->documentFastPath(collectionName, searchBuilder->slice(), options,
                                 result);
-  } catch (arangodb::basics::Exception const& ex) {
+  } catch (basics::Exception const& ex) {
     res.reset(ex.code());
   }
 
@@ -943,9 +941,9 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         registerInvalidArgumentWarning(expressionContext, funcName);
         return AqlValue(AqlValueHintNull());
       }
-      builder = arangodb::velocypack::Collection::merge(
-          builder.slice(), it, /*mergeObjects*/ recursive,
-          /*nullMeansRemove*/ false);
+      builder = velocypack::Collection::merge(builder.slice(), it,
+                                              /*mergeObjects*/ recursive,
+                                              /*nullMeansRemove*/ false);
     }
     return AqlValue(builder.slice(), builder.size());
   }
@@ -967,9 +965,9 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     AqlValueMaterializer materializer(&vopts);
     VPackSlice slice = materializer.slice(param, false);
 
-    builder = arangodb::velocypack::Collection::merge(
-        initialSlice, slice, /*mergeObjects*/ recursive,
-        /*nullMeansRemove*/ false);
+    builder = velocypack::Collection::merge(initialSlice, slice,
+                                            /*mergeObjects*/ recursive,
+                                            /*nullMeansRemove*/ false);
     initialSlice = builder.slice();
   }
   if (n == 1) {
@@ -1099,7 +1097,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
 
   std::string ucInvokeFN;
   transaction::StringLeaser buffer(&trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(trx.vpackOptions(), adapter, invokeFN);
 
@@ -1108,7 +1106,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
   unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(ucInvokeFN);
 
-  arangodb::aql::Function const* func = nullptr;
+  aql::Function const* func = nullptr;
   if (ucInvokeFN.find("::") == std::string::npos) {
     // built-in C++ function
     auto& server = trx.vocbase().server();
@@ -1136,8 +1134,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = expressionContext;
-    auto sg =
-        arangodb::scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
+    auto sg = scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
     VPackOptions const& options = trx.vpackOptions();
     std::string jsName;
@@ -1229,7 +1226,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   try {
     result = contains ? outer.contains(&inner) : outer.intersects(&inner);
     return AqlValue(AqlValueHintBool(result));
-  } catch (arangodb::basics::Exception const& ex) {
+  } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());
     registerWarning(expressionContext, func, res);
     return AqlValue(AqlValueHintBool(false));
@@ -1361,7 +1358,7 @@ AqlValue const& extractFunctionParameterValue(
 
 std::string_view getFunctionName(const AstNode& node) noexcept {
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
-  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  auto const* impl = static_cast<aql::Function*>(node.getData());
   TRI_ASSERT(impl != nullptr);
   return impl->name;
 }
@@ -1385,8 +1382,7 @@ void registerWarning(ExpressionContext* expressionContext,
     return;
   }
 
-  std::string msg =
-      arangodb::basics::Exception::FillExceptionString(code, functionName);
+  std::string msg = basics::Exception::FillExceptionString(code, functionName);
   expressionContext->registerWarning(code, msg.c_str());
 }
 
@@ -1395,8 +1391,7 @@ void registerError(ExpressionContext* expressionContext,
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg =
-        arangodb::aql::QueryWarnings::buildFormattedString(code, functionName);
+    msg = aql::QueryWarnings::buildFormattedString(code, functionName);
   } else {
     msg.append("in function '");
     msg.append(functionName);
@@ -1419,7 +1414,7 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
 
 /// @brief append the VelocyPack value to a string buffer
 void functions::Stringify(VPackOptions const* vopts,
-                          arangodb::velocypack::StringSink& buffer,
+                          velocypack::StringSink& buffer,
                           VPackSlice const& slice) {
   if (slice.isNull()) {
     // null is the empty string
@@ -1513,7 +1508,7 @@ AqlValue functions::ToString(ExpressionContext* expr, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   transaction::StringLeaser buffer(&trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(trx.vpackOptions(), adapter, value);
   return AqlValue(buffer->data(), buffer->length());
@@ -1526,7 +1521,7 @@ AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   transaction::StringLeaser buffer(&trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(trx.vpackOptions(), adapter, value);
 
@@ -1543,7 +1538,7 @@ AqlValue functions::ToHex(ExpressionContext* expr, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   transaction::StringLeaser buffer(&trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(trx.vpackOptions(), adapter, value);
 
@@ -1560,7 +1555,7 @@ AqlValue functions::EncodeURIComponent(ExpressionContext* expr, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   transaction::StringLeaser buffer(&trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(trx.vpackOptions(), adapter, value);
 
@@ -1590,7 +1585,7 @@ AqlValue functions::Soundex(ExpressionContext* expr, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   transaction::StringLeaser buffer(&trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(trx.vpackOptions(), adapter, value);
 
@@ -1611,7 +1606,7 @@ AqlValue functions::LevenshteinDistance(
 
   // we use one buffer to stringify both arguments
   transaction::StringLeaser buffer(&trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   // stringify argument 1
   ::appendAsString(trx.vpackOptions(), adapter, value1);
@@ -1634,41 +1629,39 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
                                VPackFunctionParametersView args) {
   TRI_ASSERT(ctx);
   if (args.size() < 3) {
-    registerWarning(
-        ctx, AFN,
-        arangodb::Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                         "Minimum 3 arguments are expected."});
+    registerWarning(ctx, AFN,
+                    Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                           "Minimum 3 arguments are expected."});
     return AqlValue(AqlValueHintNull());
   }
 
   auto const& attribute = aql::extractFunctionParameterValue(args, 0);
   if (ADB_UNLIKELY(!attribute.isString())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
   auto const attributeValue =
       arangodb::iresearch::getStringRef(attribute.slice());
 
   auto const& target = aql::extractFunctionParameterValue(args, 1);
   if (ADB_UNLIKELY(!target.isString())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
   auto const targetValue = arangodb::iresearch::getStringRef(target.slice());
 
   auto const& ngramSize = aql::extractFunctionParameterValue(args, 2);
   if (ADB_UNLIKELY(!ngramSize.isNumber())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
   auto const ngramSizeValue = ngramSize.toInt64();
 
   if (ADB_UNLIKELY(ngramSizeValue < 1)) {
-    arangodb::aql::registerWarning(
-        ctx, AFN,
-        arangodb::Result{TRI_ERROR_BAD_PARAMETER,
-                         "Invalid ngram size. Should be 1 or greater"});
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerWarning(ctx, AFN,
+                         Result{TRI_ERROR_BAD_PARAMETER,
+                                "Invalid ngram size. Should be 1 or greater"});
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
 
   auto utf32Attribute = basics::StringUtils::characterCodes(
@@ -1709,59 +1702,55 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
       3) {  // for const evaluation we need analyzer to be set explicitly (we
             // can`t access filter context) but we can`t set analyzer as
             // mandatory in function AQL signature - this will break SEARCH
-    registerWarning(
-        ctx, AFN,
-        arangodb::Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                         "Minimum 3 arguments are expected."});
+    registerWarning(ctx, AFN,
+                    Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                           "Minimum 3 arguments are expected."});
     return AqlValue(AqlValueHintNull());
   }
 
   auto const& attribute = aql::extractFunctionParameterValue(args, 0);
   if (ADB_UNLIKELY(!attribute.isString())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
   auto const attributeValue = iresearch::getStringRef(attribute.slice());
 
   auto const& target = aql::extractFunctionParameterValue(args, 1);
   if (ADB_UNLIKELY(!target.isString())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
   auto const targetValue = iresearch::getStringRef(target.slice());
 
-  auto threshold =
-      arangodb::iresearch::FilterConstants::DefaultNgramMatchThreshold;
+  auto threshold = iresearch::FilterConstants::DefaultNgramMatchThreshold;
   size_t analyzerPosition = 2;
   if (argc > 3) {  // 4 args given. 3rd is threshold
     auto const& thresholdArg = aql::extractFunctionParameterValue(args, 2);
     analyzerPosition = 3;
     if (ADB_UNLIKELY(!thresholdArg.isNumber())) {
-      arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-      return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+      aql::registerInvalidArgumentWarning(ctx, AFN);
+      return aql::AqlValue{aql::AqlValueHintNull{}};
     }
     threshold = thresholdArg.toDouble();
     if (threshold <= 0 || threshold > 1) {
-      arangodb::aql::registerWarning(
+      aql::registerWarning(
           ctx, AFN,
-          arangodb::Result{TRI_ERROR_BAD_PARAMETER,
-                           "Threshold must be between 0 and 1"});
+          Result{TRI_ERROR_BAD_PARAMETER, "Threshold must be between 0 and 1"});
     }
   }
 
   auto const& analyzerArg =
       aql::extractFunctionParameterValue(args, analyzerPosition);
   if (ADB_UNLIKELY(!analyzerArg.isString())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
   TRI_ASSERT(ctx != nullptr);
-  auto const analyzerId =
-      arangodb::iresearch::getStringRef(analyzerArg.slice());
+  auto const analyzerId = iresearch::getStringRef(analyzerArg.slice());
   auto& server = ctx->vocbase().server();
   if (!server.hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-    arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
   auto& analyzerFeature =
       server.getFeature<iresearch::IResearchAnalyzerFeature>();
@@ -1769,11 +1758,10 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   auto analyzer = analyzerFeature.get(analyzerId, ctx->vocbase(),
                                       trx.state()->analyzersRevision());
   if (!analyzer) {
-    arangodb::aql::registerWarning(
+    aql::registerWarning(
         ctx, AFN,
-        arangodb::Result{TRI_ERROR_BAD_PARAMETER,
-                         "Unable to load requested analyzer"});
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+        Result{TRI_ERROR_BAD_PARAMETER, "Unable to load requested analyzer"});
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
 
   auto analyzerImpl = analyzer->get();
@@ -1807,7 +1795,7 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
         size_t curMatches =
             d + (size_t)(attrNgrams[s_ngram_idx - 1] == targetNgram);
         if (curMatches >= thresholdMatches) {
-          return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintBool{true}};
+          return aql::AqlValue{aql::AqlValueHintBool{true}};
         }
         auto tmp = cache[s_ngram_idx];
         cache[s_ngram_idx] = std::max(
@@ -1816,7 +1804,7 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
       }
     }
   }
-  return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintBool{false}};
+  return aql::AqlValue{aql::AqlValueHintBool{false}};
 }
 
 /// Executes LEVENSHTEIN_MATCH
@@ -1828,8 +1816,8 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
   auto const& maxDistance = aql::extractFunctionParameterValue(args, 2);
 
   if (ADB_UNLIKELY(!maxDistance.isNumber())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
 
   bool withTranspositionsValue = true;
@@ -1849,13 +1837,13 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
 
   if (maxDistanceValue < 0 ||
       (!withTranspositionsValue &&
-       maxDistanceValue > arangodb::iresearch::kMaxLevenshteinDistance)) {
+       maxDistanceValue > iresearch::kMaxLevenshteinDistance)) {
     registerInvalidArgumentWarning(ctx, AFN);
     return AqlValue{AqlValueHintNull{}};
   }
 
   if (withTranspositionsValue &&
-      maxDistanceValue > arangodb::iresearch::kMaxDamerauLevenshteinDistance) {
+      maxDistanceValue > iresearch::kMaxDamerauLevenshteinDistance) {
     // fallback to LEVENSHTEIN_DISTANCE
     auto const dist = functions::LevenshteinDistance(ctx, node, args);
     TRI_ASSERT(dist.isNumber());
@@ -1865,7 +1853,7 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
 
   size_t const unsignedMaxDistanceValue = static_cast<size_t>(maxDistanceValue);
 
-  auto& description = arangodb::iresearch::getParametricDescription(
+  auto& description = iresearch::getParametricDescription(
       static_cast<irs::byte_type>(unsignedMaxDistanceValue),
       withTranspositionsValue);
 
@@ -1894,10 +1882,9 @@ AqlValue functions::InRange(ExpressionContext* ctx, AstNode const&,
   auto const argc = args.size();
 
   if (argc != 5) {
-    registerWarning(
-        ctx, AFN,
-        arangodb::Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                         "5 arguments are expected."});
+    registerWarning(ctx, AFN,
+                    Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                           "5 arguments are expected."});
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1909,13 +1896,13 @@ AqlValue functions::InRange(ExpressionContext* ctx, AstNode const&,
   auto const& includeUpperVal = aql::extractFunctionParameterValue(args, 4);
 
   if (ADB_UNLIKELY(!includeLowerVal.isBoolean())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
 
   if (ADB_UNLIKELY(!includeUpperVal.isBoolean())) {
-    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
-    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
   }
 
   auto const includeLower = includeLowerVal.toBoolean();
@@ -2032,12 +2019,12 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
       aql::extractFunctionParameterValue(parameters, 1);
 
   transaction::StringLeaser buf1(trx);
-  arangodb::velocypack::StringSink adapter(buf1.get());
+  velocypack::StringSink adapter(buf1.get());
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
 
   transaction::StringLeaser buf2(trx);
-  arangodb::velocypack::StringSink adapter2(buf2.get());
+  velocypack::StringSink adapter2(buf2.get());
   ::appendAsString(vopts, adapter2, searchValue);
   icu::UnicodeString uSearchBuf(buf2->data(),
                                 static_cast<int32_t>(buf2->length()));
@@ -2106,12 +2093,12 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
       aql::extractFunctionParameterValue(parameters, 1);
 
   transaction::StringLeaser buf1(trx);
-  arangodb::velocypack::StringSink adapter(buf1.get());
+  velocypack::StringSink adapter(buf1.get());
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
 
   transaction::StringLeaser buf2(trx);
-  arangodb::velocypack::StringSink adapter2(buf2.get());
+  velocypack::StringSink adapter2(buf2.get());
   ::appendAsString(vopts, adapter2, searchValue);
   icu::UnicodeString uSearchBuf(buf2->data(),
                                 static_cast<int32_t>(buf2->length()));
@@ -2199,7 +2186,7 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
   } else if (value.isString()) {
     std::string utf8;
     transaction::StringLeaser buf1(trx);
-    arangodb::velocypack::StringSink adapter(buf1.get());
+    velocypack::StringSink adapter(buf1.get());
     ::appendAsString(vopts, adapter, value);
     icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
     // reserve the result buffer, but need to set empty afterwards:
@@ -2313,7 +2300,7 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
   int result = -1;  // default is "not found"
   {
     transaction::StringLeaser buffer(trx);
-    arangodb::velocypack::StringSink adapter(buffer.get());
+    velocypack::StringSink adapter(buffer.get());
 
     ::appendAsString(vopts, adapter, value);
     size_t const valueLength = buffer->length();
@@ -2370,7 +2357,7 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   size_t const n = parameters.size();
 
@@ -2411,7 +2398,7 @@ AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   bool found = false;
   size_t const n = parameters.size();
@@ -2480,7 +2467,7 @@ AqlValue functions::CharLength(ExpressionContext* ctx, AstNode const&,
     VPackSlice slice = materializer.slice(value, false);
 
     transaction::StringLeaser buffer(trx);
-    arangodb::velocypack::StringSink adapter(buffer.get());
+    velocypack::StringSink adapter(buffer.get());
 
     VPackDumper dumper(&adapter, vopts);
     dumper.dump(slice);
@@ -2524,7 +2511,7 @@ AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -2545,7 +2532,7 @@ AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -2567,7 +2554,7 @@ AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
   int32_t length = INT32_MAX;
 
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString unicodeStr(buffer->data(),
@@ -2625,7 +2612,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     matchPatterns.reserve(slice.length());
     replacePatterns.reserve(slice.length());
     for (auto it : VPackObjectIterator(slice)) {
-      arangodb::velocypack::ValueLength length;
+      velocypack::ValueLength length;
       char const* str = it.key.getString(length);
       matchPatterns.push_back(
           icu::UnicodeString(str, static_cast<int32_t>(length)));
@@ -2657,7 +2644,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     if (search.isArray()) {
       for (VPackSlice it : VPackArrayIterator(slice)) {
         if (it.isString()) {
-          arangodb::velocypack::ValueLength length;
+          velocypack::ValueLength length;
           char const* str = it.getStringUnchecked(length);
           matchPatterns.push_back(
               icu::UnicodeString(str, static_cast<int32_t>(length)));
@@ -2671,7 +2658,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
         registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
       }
-      arangodb::velocypack::ValueLength length;
+      velocypack::ValueLength length;
 
       char const* str = slice.getStringUnchecked(length);
       matchPatterns.push_back(
@@ -2687,7 +2674,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
             // null replacement value => replace with an empty string
             replacePatterns.push_back(icu::UnicodeString("", int32_t(0)));
           } else if (it.isString()) {
-            arangodb::velocypack::ValueLength length;
+            velocypack::ValueLength length;
             char const* str = it.getStringUnchecked(length);
             replacePatterns.push_back(
                 icu::UnicodeString(str, static_cast<int32_t>(length)));
@@ -2700,7 +2687,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
         // If we have a string as replacement,
         // it counts in for all found values.
         replaceWasPlainString = true;
-        arangodb::velocypack::ValueLength length;
+        velocypack::ValueLength length;
         char const* str = rslice.getString(length);
         replacePatterns.push_back(
             icu::UnicodeString(str, static_cast<int32_t>(length)));
@@ -2719,7 +2706,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
   }
 
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString unicodeStr(buffer->data(),
@@ -2872,7 +2859,7 @@ AqlValue functions::Left(ExpressionContext* ctx, AstNode const&,
 
   std::string utf8;
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -2896,7 +2883,7 @@ AqlValue functions::Right(ExpressionContext* ctx, AstNode const&,
 
   std::string utf8;
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -2965,7 +2952,7 @@ AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
@@ -3029,7 +3016,7 @@ AqlValue functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
@@ -3075,7 +3062,7 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
   ::appendAsString(vopts, adapter, value);
   icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
@@ -3120,7 +3107,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   bool const caseInsensitive = ::getBooleanParameter(parameters, 2, false);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
@@ -3142,7 +3129,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
   ::appendAsString(vopts, adapter, value);
 
   bool error = false;
-  bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
+  bool const result = basics::Utf8Helper::DefaultUtf8Helper.matches(
       matcher, buffer->data(), buffer->length(), false, error);
 
   if (error) {
@@ -3205,7 +3192,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
 
   // Get ready for ICU
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
   Stringify(vopts, adapter, aqlValueToSplit.slice());
   icu::UnicodeString valueToSplit(buffer->data(),
                                   static_cast<int32_t>(buffer->length()));
@@ -3315,7 +3302,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
 
   // build pattern from parameter #1
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
   ::appendAsString(vopts, adapter, regex);
@@ -3413,7 +3400,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
 
   // build pattern from parameter #1
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
   ::appendAsString(vopts, adapter, regex);
@@ -3514,7 +3501,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
   auto const& vopts = trx->vpackOptions();
   bool const caseInsensitive = ::getBooleanParameter(parameters, 2, false);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
@@ -3536,7 +3523,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
   ::appendAsString(vopts, adapter, value);
 
   bool error = false;
-  bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
+  bool const result = basics::Utf8Helper::DefaultUtf8Helper.matches(
       matcher, buffer->data(), buffer->length(), true, error);
 
   if (error) {
@@ -3558,7 +3545,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   auto const& vopts = trx->vpackOptions();
   bool const caseInsensitive = ::getBooleanParameter(parameters, 3, false);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
@@ -3584,7 +3571,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   ::appendAsString(vopts, adapter, replace);
 
   bool error = false;
-  std::string result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.replace(
+  std::string result = basics::Utf8Helper::DefaultUtf8Helper.replace(
       matcher, buffer->data(), split, buffer->data() + split,
       buffer->length() - split, false, error);
 
@@ -4585,7 +4572,7 @@ AqlValue functions::Translate(ExpressionContext* expressionContext,
     result = slice.get(key.slice().copyString());
   } else {
     transaction::StringLeaser buffer(trx);
-    arangodb::velocypack::StringSink adapter(buffer.get());
+    velocypack::StringSink adapter(buffer.get());
     functions::Stringify(vopts, adapter, key.slice());
     result = slice.get(*buffer);
   }
@@ -4638,7 +4625,7 @@ AqlValue functions::Has(ExpressionContext* expressionContext, AstNode const&,
   if (!name.isString()) {
     auto const& vopts = trx->vpackOptions();
     transaction::StringLeaser buffer(trx);
-    arangodb::velocypack::StringSink adapter(buffer.get());
+    velocypack::StringSink adapter(buffer.get());
     ::appendAsString(vopts, adapter, name);
     return AqlValue(AqlValueHintBool(value.hasKey(*buffer)));
   }
@@ -4680,7 +4667,7 @@ AqlValue functions::Attributes(ExpressionContext* expressionContext,
 
   if (doSort) {
     std::set<std::string_view,
-             arangodb::basics::VelocyPackHelper::AttributeSorterUTF8StringView>
+             basics::VelocyPackHelper::AttributeSorterUTF8StringView>
         keys;
 
     VPackCollection::keys(slice, keys);
@@ -4792,8 +4779,8 @@ AqlValue functions::Min(ExpressionContext* expressionContext, AstNode const&,
     if (it.isNull()) {
       continue;
     }
-    if (minValue.isNone() || arangodb::basics::VelocyPackHelper::compare(
-                                 it, minValue, true, options) < 0) {
+    if (minValue.isNone() ||
+        basics::VelocyPackHelper::compare(it, minValue, true, options) < 0) {
       minValue = it;
     }
   }
@@ -4822,8 +4809,8 @@ AqlValue functions::Max(ExpressionContext* expressionContext, AstNode const&,
   VPackSlice maxValue;
   auto options = trx->transactionContextPtr()->getVPackOptions();
   for (VPackSlice it : VPackArrayIterator(slice)) {
-    if (maxValue.isNone() || arangodb::basics::VelocyPackHelper::compare(
-                                 it, maxValue, true, options) > 0) {
+    if (maxValue.isNone() ||
+        basics::VelocyPackHelper::compare(it, maxValue, true, options) > 0) {
       maxValue = it;
     }
   }
@@ -5192,7 +5179,7 @@ AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -5201,14 +5188,13 @@ AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslMD5(buffer->data(), buffer->length(), p,
-                                       length);
+  rest::SslInterface::sslMD5(buffer->data(), buffer->length(), p, length);
 
   // as hex
   char hex[33];
   p = &hex[0];
 
-  arangodb::rest::SslInterface::sslHEX(hash, 16, p, length);
+  rest::SslInterface::sslHEX(hash, 16, p, length);
 
   return AqlValue(&hex[0], 32);
 }
@@ -5220,7 +5206,7 @@ AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -5229,14 +5215,13 @@ AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), p,
-                                        length);
+  rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), p, length);
 
   // as hex
   char hex[41];
   p = &hex[0];
 
-  arangodb::rest::SslInterface::sslHEX(hash, 20, p, length);
+  rest::SslInterface::sslHEX(hash, 20, p, length);
 
   return AqlValue(&hex[0], 40);
 }
@@ -5248,7 +5233,7 @@ AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -5257,14 +5242,13 @@ AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), p,
-                                          length);
+  rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), p, length);
 
   // as hex
   char hex[129];
   p = &hex[0];
 
-  arangodb::rest::SslInterface::sslHEX(hash, 64, p, length);
+  rest::SslInterface::sslHEX(hash, 64, p, length);
 
   return AqlValue(&hex[0], 128);
 }
@@ -5276,7 +5260,7 @@ AqlValue functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -5293,7 +5277,7 @@ AqlValue functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -5350,11 +5334,10 @@ AqlValue functions::CountDistinct(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  containers::FlatHashSet<VPackSlice,
-                          arangodb::basics::VelocyPackHelper::VPackHash,
-                          arangodb::basics::VelocyPackHelper::VPackEqual>
-      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(options));
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
+                          basics::VelocyPackHelper::VPackEqual>
+      values(512, basics::VelocyPackHelper::VPackHash(),
+             basics::VelocyPackHelper::VPackEqual(options));
 
   for (VPackSlice s : VPackArrayIterator(slice)) {
     if (!s.isNone()) {
@@ -5385,11 +5368,10 @@ AqlValue functions::Unique(ExpressionContext* expressionContext, AstNode const&,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  containers::FlatHashSet<VPackSlice,
-                          arangodb::basics::VelocyPackHelper::VPackHash,
-                          arangodb::basics::VelocyPackHelper::VPackEqual>
-      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(options));
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
+                          basics::VelocyPackHelper::VPackEqual>
+      values(512, basics::VelocyPackHelper::VPackHash(),
+             basics::VelocyPackHelper::VPackEqual(options));
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -5430,10 +5412,9 @@ AqlValue functions::SortedUnique(ExpressionContext* expressionContext,
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value, false);
 
-  arangodb::basics::VelocyPackHelper::VPackLess<true> less(
+  basics::VelocyPackHelper::VPackLess<true> less(
       trx->transactionContext()->getVPackOptions(), &slice, &slice);
-  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackLess<true>>
-      values(less);
+  std::set<VPackSlice, basics::VelocyPackHelper::VPackLess<true>> values(less);
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
       values.insert(it);
@@ -5468,10 +5449,9 @@ AqlValue functions::Sorted(ExpressionContext* expressionContext, AstNode const&,
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value, false);
 
-  arangodb::basics::VelocyPackHelper::VPackLess<true> less(
+  basics::VelocyPackHelper::VPackLess<true> less(
       trx->transactionContext()->getVPackOptions(), &slice, &slice);
-  std::map<VPackSlice, size_t,
-           arangodb::basics::VelocyPackHelper::VPackLess<true>>
+  std::map<VPackSlice, size_t, basics::VelocyPackHelper::VPackLess<true>>
       values(less);
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
@@ -5545,11 +5525,10 @@ AqlValue functions::UnionDistinct(ExpressionContext* expressionContext,
   auto* vopts = &trx->vpackOptions();
 
   size_t const n = parameters.size();
-  containers::FlatHashSet<VPackSlice,
-                          arangodb::basics::VelocyPackHelper::VPackHash,
-                          arangodb::basics::VelocyPackHelper::VPackEqual>
-      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(vopts));
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
+                          basics::VelocyPackHelper::VPackEqual>
+      values(512, basics::VelocyPackHelper::VPackHash(),
+             basics::VelocyPackHelper::VPackEqual(vopts));
 
   std::vector<AqlValueMaterializer> materializers;
   materializers.reserve(n);
@@ -5603,11 +5582,10 @@ AqlValue functions::Intersection(ExpressionContext* expressionContext,
 
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(vopts));
+  std::unordered_map<VPackSlice, size_t, basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      values(512, basics::VelocyPackHelper::VPackHash(),
+             basics::VelocyPackHelper::VPackEqual(vopts));
 
   size_t const n = parameters.size();
   std::vector<AqlValueMaterializer> materializers;
@@ -5730,11 +5708,10 @@ AqlValue functions::Outersection(ExpressionContext* expressionContext,
 
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-             arangodb::basics::VelocyPackHelper::VPackEqual(vopts));
+  std::unordered_map<VPackSlice, size_t, basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      values(512, basics::VelocyPackHelper::VPackHash(),
+             basics::VelocyPackHelper::VPackEqual(vopts));
 
   size_t const n = parameters.size();
   std::vector<AqlValueMaterializer> materializers;
@@ -5874,7 +5851,7 @@ AqlValue functions::GeoInRange(ExpressionContext* ctx, AstNode const& node,
   TRI_ASSERT(ctx);
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
 
-  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  auto const* impl = static_cast<aql::Function*>(node.getData());
   TRI_ASSERT(impl);
 
   auto const argc = args.size();
@@ -6574,7 +6551,7 @@ AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
   // Buffer will temporarily hold the keys
   containers::FlatHashSet<std::string> keysSeen;
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   VPackArrayIterator keysIt(keysSlice);
   VPackArrayIterator valuesIt(valuesSlice);
@@ -6612,7 +6589,7 @@ AqlValue functions::JsonStringify(ExpressionContext* exprCtx, AstNode const&,
   VPackSlice slice = materializer.slice(value, false);
 
   transaction::StringLeaser buffer(trx);
-  arangodb::velocypack::StringSink adapter(buffer.get());
+  velocypack::StringSink adapter(buffer.get());
 
   VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
   dumper.dump(slice);
@@ -6784,11 +6761,10 @@ AqlValue functions::Minus(ExpressionContext* expressionContext, AstNode const&,
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_map<VPackSlice, size_t,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      contains(512, arangodb::basics::VelocyPackHelper::VPackHash(),
-               arangodb::basics::VelocyPackHelper::VPackEqual(options));
+  std::unordered_map<VPackSlice, size_t, basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      contains(512, basics::VelocyPackHelper::VPackHash(),
+               basics::VelocyPackHelper::VPackEqual(options));
 
   // Fill the original map
   AqlValueMaterializer materializer(vopts);
@@ -7224,7 +7200,7 @@ AqlValue handleBitOperation(
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
 
   // extract AQL function name
-  auto const* impl = static_cast<arangodb::aql::Function*>(node.getData());
+  auto const* impl = static_cast<aql::Function*>(node.getData());
   TRI_ASSERT(impl != nullptr);
 
   AqlValue const& value = aql::extractFunctionParameterValue(parameters, 0);
@@ -7898,7 +7874,7 @@ AqlValue functions::RemoveValue(ExpressionContext* expressionContext,
       builder->add(it);
       continue;
     }
-    if (arangodb::basics::VelocyPackHelper::equal(r, it, false, options)) {
+    if (basics::VelocyPackHelper::equal(r, it, false, options)) {
       --limit;
       continue;
     }
@@ -8736,8 +8712,7 @@ AqlValue functions::DateFormat(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  return AqlValue(
-      arangodb::basics::formatDate(aqlFormatString.slice().copyString(), tp));
+  return AqlValue(basics::formatDate(aqlFormatString.slice().copyString(), tp));
 }
 
 AqlValue functions::ShardId(ExpressionContext* expressionContext,
@@ -8810,7 +8785,7 @@ AqlValue functions::DecodeRev(ExpressionContext* expressionContext,
 
   VPackValueLength l;
   char const* p = rev.slice().getString(l);
-  uint64_t revInt = arangodb::basics::HybridLogicalClock::decodeTimeStamp(p, l);
+  uint64_t revInt = basics::HybridLogicalClock::decodeTimeStamp(p, l);
 
   if (revInt == 0 || revInt == UINT64_MAX) {
     registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
@@ -8819,9 +8794,8 @@ AqlValue functions::DecodeRev(ExpressionContext* expressionContext,
 
   transaction::Methods* trx = &expressionContext->trx();
 
-  uint64_t timeMilli =
-      arangodb::basics::HybridLogicalClock::extractTime(revInt);
-  uint64_t count = arangodb::basics::HybridLogicalClock::extractCount(revInt);
+  uint64_t timeMilli = basics::HybridLogicalClock::extractTime(revInt);
+  uint64_t count = basics::HybridLogicalClock::extractCount(revInt);
   time_t timeSeconds = timeMilli / 1000;
   uint64_t millis = timeMilli % 1000;
   struct tm date;
@@ -8859,7 +8833,7 @@ AqlValue functions::SchemaGet(ExpressionContext* expressionContext,
         "could not extract collection name from parameters");
   }
 
-  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
+  std::shared_ptr<LogicalCollection> logicalCollection;
   methods::Collections::lookup(trx->vocbase(), collectionName,
                                logicalCollection);
   if (!logicalCollection) {
@@ -8932,7 +8906,7 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
 
   Result res;
   {
-    arangodb::ScopeGuard guard([storedLevel, &validator]() noexcept {
+    ScopeGuard guard([storedLevel, &validator]() noexcept {
       validator->setLevel(storedLevel);
     });
 
@@ -8952,9 +8926,9 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
   return AqlValue(resultBuilder->slice(), resultBuilder->size());
 }
 
-AqlValue functions::Interleave(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
-    VPackFunctionParametersView parameters) {
+AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
+                               AstNode const&,
+                               VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "INTERLEAVE";
 
@@ -9007,9 +8981,9 @@ AqlValue functions::Interleave(
   return AqlValue(builder->slice(), builder->size());
 }
 
-AqlValue functions::CallGreenspun(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
-    VPackFunctionParametersView parameters) {
+AqlValue functions::CallGreenspun(aql::ExpressionContext* expressionContext,
+                                  AstNode const&,
+                                  VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
   greenspun::Machine m;
   greenspun::InitMachine(m);
@@ -9072,7 +9046,7 @@ static AqlValue ConvertToObject(transaction::Methods& trx, VPackSlice input,
 }
 
 AqlValue functions::MakeDistributeInput(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
+    aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   VPackSlice const input = value.slice();  // will throw when wrong type
@@ -9093,7 +9067,7 @@ AqlValue functions::MakeDistributeInput(
 }
 
 AqlValue functions::MakeDistributeInputWithKeyCreation(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
+    aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   transaction::Methods& trx = expressionContext->trx();
   AqlValue value = extractFunctionParameterValue(parameters, 0);
@@ -9122,7 +9096,7 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
         "could not extract collection name from parameters");
   }
 
-  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
+  std::shared_ptr<LogicalCollection> logicalCollection;
   methods::Collections::lookup(trx.vocbase(), collectionName,
                                logicalCollection);
   if (logicalCollection == nullptr) {
@@ -9179,7 +9153,7 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
 }
 
 AqlValue functions::MakeDistributeGraphInput(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
+    aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   transaction::Methods& trx = expressionContext->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
@@ -9240,7 +9214,7 @@ AqlValue functions::MakeDistributeGraphInput(
 
 #ifdef USE_ENTERPRISE
 AqlValue functions::SelectSmartDistributeGraphInput(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
+    aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
   AqlValue const& from = extractFunctionParameterValue(parameters, 0);
   VPackSlice input = from.slice();  // will throw when wrong type
@@ -9274,7 +9248,7 @@ AqlValue functions::SelectSmartDistributeGraphInput(
 #endif
 
 template<typename F>
-AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
+AqlValue decayFuncImpl(aql::ExpressionContext* expressionContext,
                        AstNode const& node,
                        VPackFunctionParametersView parameters,
                        F&& decayFuncFactory) {
@@ -9356,9 +9330,9 @@ AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue functions::DecayGauss(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue functions::DecayGauss(aql::ExpressionContext* expressionContext,
+                               AstNode const& node,
+                               VPackFunctionParametersView parameters) {
   auto gaussDecayFactory = [](const double origin, const double scale,
                               const double offset, const double decay) {
     const double sigmaSqr = -(scale * scale) / (2 * std::log(decay));
@@ -9373,9 +9347,9 @@ AqlValue functions::DecayGauss(
   return decayFuncImpl(expressionContext, node, parameters, gaussDecayFactory);
 }
 
-AqlValue functions::DecayExp(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue functions::DecayExp(aql::ExpressionContext* expressionContext,
+                             AstNode const& node,
+                             VPackFunctionParametersView parameters) {
   auto expDecayFactory = [](const double origin, const double scale,
                             const double offset, const double decay) {
     const double lambda = std::log(decay) / scale;
@@ -9390,9 +9364,9 @@ AqlValue functions::DecayExp(
   return decayFuncImpl(expressionContext, node, parameters, expDecayFactory);
 }
 
-AqlValue functions::DecayLinear(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue functions::DecayLinear(aql::ExpressionContext* expressionContext,
+                                AstNode const& node,
+                                VPackFunctionParametersView parameters) {
   auto linearDecayFactory = [](const double origin, const double scale,
                                const double offset, const double decay) {
     const double s = scale / (1.0 - decay);
@@ -9407,7 +9381,7 @@ AqlValue functions::DecayLinear(
 }
 
 template<typename F>
-AqlValue DistanceImpl(arangodb::aql::ExpressionContext* expressionContext,
+AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
                       AstNode const& node,
                       VPackFunctionParametersView parameters,
                       F&& distanceFunc) {
@@ -9483,9 +9457,9 @@ AqlValue DistanceImpl(arangodb::aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue functions::CosineSimilarity(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
+                                     AstNode const& node,
+                                     VPackFunctionParametersView parameters) {
   auto cosineSimilarityFunc = [expressionContext, &node](
                                   const VPackSlice lhs, const VPackSlice rhs,
                                   const VPackValueLength& length) {
@@ -9524,9 +9498,9 @@ AqlValue functions::CosineSimilarity(
                       cosineSimilarityFunc);
 }
 
-AqlValue functions::L1Distance(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
+                               AstNode const& node,
+                               VPackFunctionParametersView parameters) {
   auto L1DistFunc = [expressionContext, &node](const VPackSlice lhs,
                                                const VPackSlice rhs,
                                                const VPackValueLength& length) {
@@ -9551,9 +9525,9 @@ AqlValue functions::L1Distance(
   return DistanceImpl(expressionContext, node, parameters, L1DistFunc);
 }
 
-AqlValue functions::L2Distance(
-    arangodb::aql::ExpressionContext* expressionContext, AstNode const& node,
-    VPackFunctionParametersView parameters) {
+AqlValue functions::L2Distance(aql::ExpressionContext* expressionContext,
+                               AstNode const& node,
+                               VPackFunctionParametersView parameters) {
   auto L2DistFunc = [expressionContext, &node](const VPackSlice lhs,
                                                const VPackSlice rhs,
                                                const VPackValueLength& length) {

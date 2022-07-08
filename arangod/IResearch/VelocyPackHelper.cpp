@@ -31,62 +31,56 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
+namespace arangodb {
+namespace iresearch {
+
 namespace {
 template<typename T>
-arangodb::velocypack::Builder& addRef(arangodb::velocypack::Builder& builder,
-                                      irs::basic_string_ref<T> value) {
+velocypack::Builder& addRef(velocypack::Builder& builder,
+                            irs::basic_string_ref<T> value) {
   // store nulls verbatim
   if (value.null()) {
-    builder.add(  // add value
-        arangodb::velocypack::Value(
-            arangodb::velocypack::ValueType::Null)  // value
+    builder.add(                                        // add value
+        velocypack::Value(velocypack::ValueType::Null)  // value
     );
   } else {
-    builder.add(arangodb::iresearch::toValuePair(value));
+    builder.add(toValuePair(value));
   }
 
   return builder;
 }
 
 template<typename T>
-arangodb::velocypack::Builder& addRef(arangodb::velocypack::Builder& builder,
-                                      irs::string_ref key,
-                                      irs::basic_string_ref<T> value) {
+velocypack::Builder& addRef(velocypack::Builder& builder, irs::string_ref key,
+                            irs::basic_string_ref<T> value) {
   // Builder uses memcpy(...) which cannot handle nullptr
   TRI_ASSERT(!key.null());
 
   // store nulls verbatim
   if (value.null()) {
-    builder.add(
-        key.c_str(), key.size(),
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null));
-  } else {
     builder.add(key.c_str(), key.size(),
-                arangodb::iresearch::toValuePair(value));
+                velocypack::Value(velocypack::ValueType::Null));
+  } else {
+    builder.add(key.c_str(), key.size(), toValuePair(value));
   }
 
   return builder;
 }
 
 enum AttributeType : uint8_t {
-  AT_REG =
-      arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
-  AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,    // _key
-  AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,    // _rev
-  AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,      // _id
-  AT_FROM = arangodb::basics::VelocyPackHelper::FromAttribute,  // _from
-  AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute       // _to
-};                                                              // AttributeType
+  AT_REG = basics::VelocyPackHelper::AttributeBase,   // regular attribute
+  AT_KEY = basics::VelocyPackHelper::KeyAttribute,    // _key
+  AT_REV = basics::VelocyPackHelper::RevAttribute,    // _rev
+  AT_ID = basics::VelocyPackHelper::IdAttribute,      // _id
+  AT_FROM = basics::VelocyPackHelper::FromAttribute,  // _from
+  AT_TO = basics::VelocyPackHelper::ToAttribute       // _to
+};                                                    // AttributeType
 
-static_assert(
-    arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacency<
-        AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
-    "Values are not adjacent");
+static_assert(adjacencyChecker<AttributeType>::checkAdjacency<
+                  AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
+              "Values are not adjacent");
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
 
 bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
   // according to Helpers.cpp, see

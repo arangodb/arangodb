@@ -67,7 +67,7 @@ rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 // that much data in each shard (rationale: a data block read from
 // disk must fit into the block cache if the block cache's strict
 // capacity limit is set. otherwise the block cache will fail reads
-// with Status::Incomplete()).
+// with Status::Incomplete() or Status::MemoryLimit()).
 constexpr uint64_t minShardSize = 128 * 1024 * 1024;
 
 uint64_t defaultBlockCacheSize() {
@@ -958,8 +958,8 @@ void RocksDBOptionFeature::validateOptions(
     // we would like that each block cache shard can hold data blocks of
     // at least a common size. Rationale: data blocks can be quite large. if
     // they don't fit into the block cache upon reading, the block cache will
-    // return Status::Incomplete() when the block cache's strict capacity limit
-    // is set. then we cannot read any data anymore.
+    // return Status::Incomplete() or Status::MemoryLimit() when the block
+    // cache's strict capacity limit is set. then we cannot read data anymore.
     // we are limiting the maximum number of shard bits to 10 here, which is
     // 1024 shards. that should be enough shards even for very big caches.
     // note that RocksDB also has an internal upper bound for the number of
@@ -977,8 +977,9 @@ void RocksDBOptionFeature::prepare() {
         _blockCacheSize / (uint64_t(1) << _blockCacheShardBits);
     // if we can't store a data block of the mininmum size in the block cache,
     // we may run into problems when trying to put a large data block into the
-    // cache. in this case the block cache may return a Status::Incomplete
-    // error and fail the entire read. warn the user about it!
+    // cache. in this case the block cache may return a Status::Incomplete()
+    // or Status::MemoryLimit() error and fail the entire read.
+    // warn the user about it!
     if (shardSize < ::minShardSize) {
       LOG_TOPIC("31d7c", WARN, Logger::ROCKSDB)
           << "size of RocksDB block cache shards seems to be too low. "

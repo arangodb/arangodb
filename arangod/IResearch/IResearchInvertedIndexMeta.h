@@ -116,6 +116,8 @@ class IResearchInvertedIndexSort {
 };
 
 struct InvertedIndexField {
+  // ordered so analyzerDefinitions slice is consitent
+  // important for checking for changes/syncing etc
   using AnalyzerDefinitions =
       std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer>;
 
@@ -155,6 +157,14 @@ struct InvertedIndexField {
   std::array<FieldMeta::Analyzer, 1> _analyzers{FieldMeta::Analyzer(nullptr)};
   /// @brief override for field features
   Features _features;
+  /// @brief attribute path
+  std::vector<basics::AttributeName> _attribute;
+  /// @brief AQL expression to be computed as field value
+  std::string _expression;
+  /// @brief Full mangled path to the value
+  std::string _path;
+  /// @brief path to attribute before expansion - calculated value
+  std::string _attributeName;
   /// @brief start point for non primitive analyzers
   size_t _primitiveOffset{0};
   /// @brief fields ids storage
@@ -171,14 +181,6 @@ struct InvertedIndexField {
   bool _overrideValue{false};
   /// @brief if the field is with expansion - calculated value
   bool _hasExpansion{false};
-  /// @brief attribute path
-  std::vector<basics::AttributeName> _attribute;
-  /// @brief AQL expression to be computed as field value
-  std::string _expression;
-  /// @brief Full mangled path to the value
-  std::string _path;
-  /// @brief path to attribute before expansion - calculated value
-  std::string _attributeName;
 };
 
 struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
@@ -244,6 +246,7 @@ struct IResearchInvertedIndexMetaIndexingContext {
       : _analyzers(&field._analyzers),
         _primitiveOffset(field._primitiveOffset),
         _meta(&field),
+        _hasNested(field._hasNested),
         _includeAllFields(field._includeAllFields),
         _trackListPositions(field._trackListPositions),
         _sort(field._sort),
@@ -262,7 +265,7 @@ struct IResearchInvertedIndexMetaIndexingContext {
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
   bool _isArray{false};
-  bool _hasNested{false};
+  bool _hasNested;
   bool _includeAllFields;
   bool _trackListPositions;
   ValueStorage const _storeValues{ValueStorage::ID};

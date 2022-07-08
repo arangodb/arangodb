@@ -500,7 +500,5 @@ struct TRI_vocbase_t {
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
-void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
+void TRI_SanitizeObject(arangodb::velocypack::Slice slice,
                         arangodb::velocypack::Builder& builder);
-void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
-                                 arangodb::velocypack::Builder& builder);
