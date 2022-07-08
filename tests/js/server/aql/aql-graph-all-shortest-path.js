@@ -43,7 +43,7 @@ const target = `${vName}/target`;
 const badTarget = `${vName}/badTarget`;
 const looper = `${vName}/looper`;
 
-const isPathValid = (path, length, expectedWeight, allowInbound = false) => {
+const isPathValid = (path, length, allowInbound = false) => {
   assertTrue(_.isObject(path));
   // Assert all attributes are present
   assertTrue(path.hasOwnProperty("vertices"));
@@ -138,7 +138,7 @@ const createGraph = () => {
   // Pathnum 9 - 11 are noise on the isolated vertex
 
   for (let pathNum = 0; pathNum < 12; ++pathNum) {
-    const weight = (pathNum + 1) * (pathNum + 1);
+    const weight = (pathNum + 1) * (pathNum + 1); // TODO: Introduce weighted ALL_SHORTEST_PATHS
     for (let step = 0; step < 3; ++step) {
       const key = `vertex_${pathNum}_${step}`;
       vertices.push({_key: key});
@@ -257,7 +257,7 @@ function allConstantWeightShortestPathTestSuite() {
       allPathsDiffer(result);
       assertEqual(result.length, 3);
       for (let i = 0; i < 3; ++i) {
-        isPathValid(result[i], 4, 4); // TODO Anthony: Remove "expectedWeight" (redundant in ASP)
+        isPathValid(result[i], 4);
       }
     },
 
@@ -281,7 +281,7 @@ function allConstantWeightShortestPathTestSuite() {
       allPathsDiffer(result);
       assertEqual(result.length, 5);
       for (let i = 0; i < 5; ++i) {
-        isPathValid(result[i], 4, 4);
+        isPathValid(result[i], 4);
       }
     },
 
@@ -298,7 +298,7 @@ function allConstantWeightShortestPathTestSuite() {
       allPathsDiffer(result);
       assertEqual(result.length, 5);
       for (let i = 0; i < 5; ++i) {
-        isPathValid(result[i], 4, 4);
+        isPathValid(result[i], 4);
       }
     },
 
@@ -326,7 +326,7 @@ function allConstantWeightShortestPathTestSuite() {
       assertEqual(result.length, 2);
 
       for (let i = 0; i < 2; ++i) {
-        isPathValid(result[i], 4, 4);
+        isPathValid(result[i], 4);
       }
     },
 
@@ -350,7 +350,7 @@ function allConstantWeightShortestPathTestSuite() {
       allPathsDiffer(result);
       assertEqual(result.length, 3);
       for (let i = 0; i < 3; ++i) {
-        isPathValid(result[i], 3, 3, true);
+        isPathValid(result[i], 3, true);
       }
     }
 
