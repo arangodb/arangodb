@@ -62,7 +62,6 @@ struct Duration {
 struct ExecutionTimings {
   Duration loading;
   Duration computation;
-  Duration finalization;
   Duration storing;
   // FIXME: just sum the times above?
   Duration total;

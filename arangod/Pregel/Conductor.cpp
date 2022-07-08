@@ -807,7 +807,6 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 
 ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
-  _timing.finalization.start();
 
   bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
@@ -850,9 +849,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                               : ExecutionState::DONE);
     didStore = true;
+    _timing.storing.finish();
   }
-  _timing.finalization.finish();
-  _timing.storing.finish();
   _timing.total.finish();
 
   VPackBuilder debugOut;
