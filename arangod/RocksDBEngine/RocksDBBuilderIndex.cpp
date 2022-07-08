@@ -670,7 +670,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
                               .getFeature<EngineSelectorFeature>()
                               .engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
-#if defined USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
   // acquire ownership because it's only used until this function gets out of
   // scope
   std::unique_ptr<RocksDBFilePurgePreventer> nonPurger =
