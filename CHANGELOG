@@ -1,5 +1,22 @@
 devel
 -----
+* Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
+
+* Updated arangosync to v2.11.0.
+
+* Add log.time-format utc-datestring-micros to make debugging of concurrency
+  bugs easier.
+
+* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
+  explain outputs for AQL queries.
+
+* Pregel SSSP now supports `resultField` as well as `_resultField` as 
+  parameter name to specify the field into which results are stored.
+  The name `_resultField` will be deprecated in future.
+
+* Web UI: Fixes a GraphViewer issue related to display issues with node
+  and edge labels. Boolean node or edge values could not be used as label
+  values (ES-1084).
 
 * Add the redevelopment of the graph viewer implemented in ReactJS.
   Switch from sigma to antv/G6 to draw the graph. Fix bugs with
@@ -257,6 +274,9 @@ devel
 * No good reason to fatal error in agency state, when local database entries
   lack local timestamp (legacy). In that situation, we will record epoch begin
   as local time.
+
+* Very verbose warning from failing to parse GEO JSON in search. Has lead to
+  billions of log lines on deployed services.
 
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
@@ -1892,7 +1912,7 @@ devel
   `--console` argument for upgrading a server.
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented
-  cases and numerically unstable behaviour. In particular, the case of
+  cases and numerically unstable behavior. In particular, the case of
   the intersection of two polygons in which one is an S2LngLatRect
   is fixed (BTS-475).
 
