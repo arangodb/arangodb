@@ -22,7 +22,7 @@ devel
 * Web UI: Fixes a GraphViewer issue related to display issues with node
   and edge labels. Boolean node or edge values could not be used as label
   values (ES-1084).
-  
+
 * Made the SortExecutor receive its input incrementally, instead of receiving
   a whole matrix containing all input at once.
 
