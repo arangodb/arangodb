@@ -71,17 +71,20 @@ class KShortestPathsNode : public virtual GraphNode {
   ~KShortestPathsNode();
 
   /// @brief Internal constructor to clone the node.
-  KShortestPathsNode(
-      ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-      arangodb::graph::ShortestPathType::Type shortestPathType,
-      std::vector<Collection*> const& edgeColls,
-      std::vector<Collection*> const& vertexColls,
-      TRI_edge_direction_e defaultDirection,
-      std::vector<TRI_edge_direction_e> const& directions,
-      Variable const* inStartVariable, std::string const& startVertexId,
-      Variable const* inTargetVariable, std::string const& targetVertexId,
-      std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
-      Variable const* distributeVariable);
+  KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id,
+                     TRI_vocbase_t* vocbase,
+                     arangodb::graph::ShortestPathType::Type shortestPathType,
+                     std::vector<Collection*> const& edgeColls,
+                     std::vector<Collection*> const& vertexColls,
+                     TRI_edge_direction_e defaultDirection,
+                     std::vector<TRI_edge_direction_e> const& directions,
+                     Variable const* inStartVariable,
+                     std::string const& startVertexId,
+                     Variable const* inTargetVariable,
+                     std::string const& targetVertexId,
+                     std::unique_ptr<graph::BaseOptions> options,
+                     Variable const* internalTmpVar, graph::Graph const* graph,
+                     Variable const* distributeVariable);
 
  public:
   /// @brief return the type of the node

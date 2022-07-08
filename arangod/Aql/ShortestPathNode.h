@@ -63,16 +63,19 @@ class ShortestPathNode : public virtual GraphNode {
   ~ShortestPathNode();
 
   /// @brief Internal constructor to clone the node.
-  ShortestPathNode(
-      ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-      std::vector<Collection*> const& edgeColls,
-      std::vector<Collection*> const& vertexColls,
-      TRI_edge_direction_e defaultDirection,
-      std::vector<TRI_edge_direction_e> const& directions,
-      Variable const* inStartVariable, std::string const& startVertexId,
-      Variable const* inTargetVariable, std::string const& targetVertexId,
-      std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
-      Variable const* distributeVariable);
+  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id,
+                   TRI_vocbase_t* vocbase,
+                   std::vector<Collection*> const& edgeColls,
+                   std::vector<Collection*> const& vertexColls,
+                   TRI_edge_direction_e defaultDirection,
+                   std::vector<TRI_edge_direction_e> const& directions,
+                   Variable const* inStartVariable,
+                   std::string const& startVertexId,
+                   Variable const* inTargetVariable,
+                   std::string const& targetVertexId,
+                   std::unique_ptr<graph::BaseOptions> options,
+                   Variable const* internalTmpVar, graph::Graph const* graph,
+                   Variable const* distributeVariable);
 
  public:
   /// @brief return the type of the node

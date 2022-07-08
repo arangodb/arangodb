@@ -165,10 +165,10 @@ KShortestPathsNode::KShortestPathsNode(
     std::vector<TRI_edge_direction_e> const& directions,
     Variable const* inStartVariable, std::string const& startVertexId,
     Variable const* inTargetVariable, std::string const& targetVertexId,
-    std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
-    Variable const* distributeVariable)
+    std::unique_ptr<graph::BaseOptions> options, Variable const* internalTmpVar,
+    graph::Graph const* graph, Variable const* distributeVariable)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
-                directions, std::move(options), graph),
+                directions, std::move(options), internalTmpVar, graph),
       _shortestPathType(shortestPathType),
       _pathOutVariable(nullptr),
       _inStartVariable(inStartVariable),
@@ -471,8 +471,8 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<KShortestPathsNode>(
       plan, _id, _vocbase, _shortestPathType, _edgeColls, _vertexColls,
       _defaultDirection, _directions, _inStartVariable, _startVertexId,
-      _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj,
-      _distributeVariable);
+      _inTargetVariable, _targetVertexId, std::move(tmp), _tmpObjVariable,
+      _graphObj, _distributeVariable);
 
   kShortestPathsCloneHelper(*plan, *c, withProperties);
 

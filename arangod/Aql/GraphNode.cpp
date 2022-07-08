@@ -167,6 +167,37 @@ TRI_edge_direction_e parseDirection(AstNode const* node) {
   return uint64ToDirection(dirNode->getIntValue());
 }
 
+void toVelocyPackIndexes(std::pair<
+                         std::vector<arangodb::graph::IndexAccessor>,
+                         std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>> const& accessors, VPackBuilder& builder) {
+  VPackObjectBuilder guard(&builder);
+
+  // base indexes
+  builder.add("base", VPackValue(VPackValueType::Array));
+  for (auto const& it : accessors.first) {
+    it.indexHandle()->toVelocyPack(
+        builder, Index::makeFlags(Index::Serialize::Basics,
+                                  Index::Serialize::Estimates));
+  }
+  builder.close();
+
+  if (!accessors.second.empty()) {
+    // depth lookup indexes
+    builder.add("levels", VPackValue(VPackValueType::Object));
+    for (auto const& [depth, listOfAccessors] : accessors.second) {
+      builder.add(VPackValue(std::to_string(depth)));
+      builder.add(VPackValue(VPackValueType::Array));
+      for (auto const& it : listOfAccessors) {
+        it.indexHandle()->toVelocyPack(
+            builder, Index::makeFlags(Index::Serialize::Basics,
+                                      Index::Serialize::Estimates));
+      }
+      builder.close();
+    }
+    builder.close();
+  }
+}
+
 }  // namespace
 
 GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -507,13 +538,14 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
                      TRI_edge_direction_e defaultDirection,
                      std::vector<TRI_edge_direction_e> directions,
                      std::unique_ptr<graph::BaseOptions> options,
+                     Variable const* internalTmpVar,
                      Graph const* graph)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
       _graphObj(graph),
-      _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
+      _tmpObjVariable(internalTmpVar), /* We keep the variable as it could be used */
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
       _edgeConditionBuilder{_plan->getAst(), _tmpObjVariable, _tmpIdNode},
@@ -690,8 +722,9 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("options"));
   _options->toVelocyPack(nodes);
 
+
   nodes.add(VPackValue("indexes"));
-  _options->toVelocyPackIndexes(nodes);
+  toVelocyPackIndexes(buildIndexAccessors(), nodes);
 
   _edgeConditionBuilder.toVelocyPackCompat_39(nodes, flags);
 }
@@ -699,6 +732,21 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
   clone._isSmart = _isSmart;
   clone._isDisjoint = _isDisjoint;
+
+  // Temporary Filter Objects
+  clone._tmpObjVariable = _tmpObjVariable;
+  clone._tmpObjVarNode = _tmpObjVarNode;
+  clone._tmpIdNode = _tmpIdNode;
+  clone._edgeConditionBuilder.cloneConditions(_plan->getAst(), _edgeConditionBuilder);
+
+  clone._globalVertexConditions.insert(clone._globalVertexConditions.end(),
+                                       _globalVertexConditions.begin(),
+                                       _globalVertexConditions.end());
+
+  for (auto const& it : _vertexConditions) {
+    clone._vertexConditions.try_emplace(it.first,
+                                        it.second->clone(_plan->getAst()));
+  }
 }
 
 CostEstimate GraphNode::estimateCost() const {
@@ -1025,8 +1073,13 @@ GraphNode::buildIndexAccessors() const {
   for (size_t i = 0; i < _edgeColls.size(); ++i) {
     collections.emplace_back(_edgeColls[i], _directions[i]);
   }
+
+  // As long as variables are not planned we cannot evaluate variable references.
+  // This is only used during explain phase where it does not matter really
+  // so just hand in a dummy.
+  auto const& varInfo = _registerPlan != nullptr ? _registerPlan->varInfo : std::unordered_map<VariableId, VarInfo>{};
   return _edgeConditionBuilder.buildIndexAccessors(
-      _plan, _tmpObjVariable, getRegisterPlan()->varInfo, collections);
+      _plan, _tmpObjVariable, varInfo, collections);
 }
 
 std::vector<aql::Collection*> const& GraphNode::edgeColls() const {

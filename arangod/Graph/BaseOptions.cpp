@@ -500,14 +500,6 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   toVelocyPackBase(result);
 }
 
-arangodb::aql::Expression* BaseOptions::getEdgeExpression(
-    size_t cursorId, bool& needToInjectVertex) const {
-  TRI_ASSERT(!_baseLookupInfos.empty());
-  TRI_ASSERT(_baseLookupInfos.size() > cursorId);
-  needToInjectVertex = !_baseLookupInfos[cursorId].conditionNeedUpdate;
-  return _baseLookupInfos[cursorId].expression.get();
-}
-
 bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
                                      VPackSlice value) {
   if (expression == nullptr) {

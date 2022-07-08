@@ -89,6 +89,7 @@ class GraphNode : public ExecutionNode {
             TRI_edge_direction_e defaultDirection,
             std::vector<TRI_edge_direction_e> directions,
             std::unique_ptr<graph::BaseOptions> options,
+            Variable const* internalTmpVar,
             graph::Graph const* graph);
 
   /// @brief Clone constructor, used for constructors of derived classes.

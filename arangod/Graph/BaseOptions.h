@@ -246,9 +246,6 @@ struct BaseOptions {
   // Does not close the builder.
   void injectEngineInfo(arangodb::velocypack::Builder&) const;
 
-  aql::Expression* getEdgeExpression(size_t cursorId,
-                                     bool& needToInjectVertex) const;
-
   bool evaluateExpression(aql::Expression*,
                           arangodb::velocypack::Slice varValue);
 

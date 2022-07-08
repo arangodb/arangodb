@@ -181,6 +181,20 @@ EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast, Variable const* variable,
   }
 }
 
+void EdgeConditionBuilder::cloneConditions(Ast* ast, EdgeConditionBuilder const& other) {
+  _modCondition = other._modCondition->clone(ast);
+  _containsCondition = other._containsCondition;
+  // Erase everything we have, we will be a clone of other!
+  _depthConditions.clear();
+  for (auto const& [depth, otherConditions] : other._depthConditions) {
+    auto& myConditions = _depthConditions[depth];
+    myConditions.reserve(otherConditions.size());
+    for (auto const& cond : otherConditions) {
+      myConditions.emplace_back(cond->clone(ast));
+    }
+  }
+}
+
 EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition)
     : _fromCondition(nullptr),
       _toCondition(nullptr),
@@ -281,9 +295,17 @@ AstNode* EdgeConditionBuilder::getInboundCondition(Ast* ast) const {
 AstNode* EdgeConditionBuilder::getOutboundConditionForDepth(uint64_t depth, Ast* ast) const {
   auto cond = getOutboundCondition(ast);
   if (_depthConditions.contains(depth)) {
+    // We have at least from/to condition
+    TRI_ASSERT(cond->numMembers() > 0);
+    // NOTE: The implementation of the EdgeCursor has a hard-coded access to the last
+    // element as being the _from/_to condition
+    // As long as we have this we need to move it the last position
+    auto fromCond = cond->getMemberUnchecked(cond->numMembers() - 1);
+    cond->removeMemberUnchecked(cond->numMembers() - 1);
     for (auto const* subCondition : _depthConditions.at(depth)) {
       cond->addMember(subCondition->clone(ast));
     }
+    cond->addMember(fromCond);
   }
   return cond;
 }
@@ -292,9 +314,17 @@ AstNode* EdgeConditionBuilder::getOutboundConditionForDepth(uint64_t depth, Ast*
 AstNode* EdgeConditionBuilder::getInboundConditionForDepth(uint64_t depth, Ast* ast) const {
   auto cond = getInboundCondition(ast);
   if (_depthConditions.contains(depth)) {
+    // We have at least from/to condition
+    TRI_ASSERT(cond->numMembers() > 0);
+    // NOTE: The implementation of the EdgeCursor has a hard-coded access to the last
+    // element as being the _from/_to condition
+    // As long as we have this we need to move it the last position
+    auto toCond = cond->getMemberUnchecked(cond->numMembers() - 1);
+    cond->removeMemberUnchecked(cond->numMembers() - 1);
     for (auto const* subCondition : _depthConditions.at(depth)) {
       cond->addMember(subCondition->clone(ast));
     }
+    cond->addMember(toCond);
   }
   return cond;
 }

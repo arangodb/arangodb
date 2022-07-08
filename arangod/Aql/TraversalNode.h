@@ -98,6 +98,7 @@ class TraversalNode : public virtual GraphNode {
                 TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
                 std::unique_ptr<graph::BaseOptions> options,
+                Variable const* internalTmpVar,
                 graph::Graph const* graph);
 
  protected:

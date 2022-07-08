@@ -169,9 +169,10 @@ TraversalNode::TraversalNode(
     std::vector<Collection*> const& vertexColls, Variable const* inVariable,
     std::string vertexId, TRI_edge_direction_e defaultDirection,
     std::vector<TRI_edge_direction_e> const& directions,
-    std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph)
+    std::unique_ptr<graph::BaseOptions> options, Variable const* internalTmpVar,
+    graph::Graph const* graph)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
-                directions, std::move(options), graph),
+                directions, std::move(options), internalTmpVar, graph),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(std::move(vertexId)),
@@ -802,7 +803,8 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
       *oldOpts, /*allowAlreadyBuiltCopy*/ true);
   auto c = std::make_unique<TraversalNode>(
       plan, _id, _vocbase, _edgeColls, _vertexColls, _inVariable, _vertexId,
-      _defaultDirection, _directions, std::move(tmp), _graphObj);
+      _defaultDirection, _directions, std::move(tmp), _tmpObjVariable,
+      _graphObj);
 
   traversalCloneHelper(*plan, *c, withProperties);
 
@@ -875,32 +877,10 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
   checkConditionsDefined();
 #endif
 
-  // Temporary Filter Objects
-  c._tmpObjVariable = _tmpObjVariable;
-  c._tmpObjVarNode = _tmpObjVarNode;
-  c._tmpIdNode = _tmpIdNode;
-
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
-  c._globalEdgeConditions.insert(c._globalEdgeConditions.end(),
-                                 _globalEdgeConditions.begin(),
-                                 _globalEdgeConditions.end());
-  c._globalVertexConditions.insert(c._globalVertexConditions.end(),
-                                   _globalVertexConditions.begin(),
-                                   _globalVertexConditions.end());
 
-  for (auto const& it : _edgeConditions) {
-    // Copy the builder
-    auto ecBuilder =
-        std::make_unique<TraversalEdgeConditionBuilder>(this, it.second.get());
-    c._edgeConditions.try_emplace(it.first, std::move(ecBuilder));
-  }
-
-  for (auto const& it : _vertexConditions) {
-    c._vertexConditions.try_emplace(it.first,
-                                    it.second->clone(_plan->getAst()));
-  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c.checkConditionsDefined();
@@ -912,79 +892,17 @@ void TraversalNode::prepareOptions() {
     return;
   }
   TRI_ASSERT(!_optionsBuilt);
-  _options->setVariable(_tmpObjVariable);
-
-  size_t numEdgeColls = _edgeColls.size();
-  TraversalEdgeConditionBuilder globalEdgeConditionBuilder(this);
-
-  for (auto& it : _globalEdgeConditions) {
-    globalEdgeConditionBuilder.addConditionPart(it);
+  {
+    VPackBuilder b;
+    _tmpObjVariable->toVelocyPack(b);
+    LOG_DEVEL << "Setting variable on options" << b.toJson();
   }
+  _options->setVariable(_tmpObjVariable);
 
   Ast* ast = _plan->getAst();
 
-  // Compute Edge Indexes. First default indexes:
-  for (size_t i = 0; i < numEdgeColls; ++i) {
-    auto dir = _directions[i];
-    switch (dir) {
-      case TRI_EDGE_IN:
-        _options->addLookupInfo(
-            _plan, _edgeColls[i]->name(), StaticStrings::ToString,
-            globalEdgeConditionBuilder.getInboundCondition()->clone(ast),
-            /*onlyEdgeIndexes*/ false, dir);
-        break;
-      case TRI_EDGE_OUT:
-        _options->addLookupInfo(
-            _plan, _edgeColls[i]->name(), StaticStrings::FromString,
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast),
-            /*onlyEdgeIndexes*/ false, dir);
-        break;
-      case TRI_EDGE_ANY:
-        TRI_ASSERT(false);
-        break;
-    }
-  }
-
   TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
-  /*
-   * HACK: DO NOT use other indexes for smart BFS. Otherwise, this will produce
-   * wrong results.
-   */
-  bool onlyEdgeIndexes = this->isSmart() && opts->isUseBreadthFirst();
-  for (auto& it : _edgeConditions) {
-    uint64_t depth = it.first;
-    // We probably have to adopt minDepth. We cannot fulfill a condition of
-    // larger depth anyway
-    auto& builder = it.second;
-
-    for (auto& it2 : _globalEdgeConditions) {
-      builder->addConditionPart(it2);
-    }
-
-    for (size_t i = 0; i < numEdgeColls; ++i) {
-      auto dir = _directions[i];
-      // TODO we can optimize here. indexCondition and Expression could be
-      // made non-overlapping.
-      switch (dir) {
-        case TRI_EDGE_IN:
-          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::ToString,
-                                   builder->getInboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes, dir);
-          break;
-        case TRI_EDGE_OUT:
-          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::FromString,
-                                   builder->getOutboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes, dir);
-          break;
-        case TRI_EDGE_ANY:
-          TRI_ASSERT(false);
-          break;
-      }
-    }
-  }
 
   for (auto& it : _vertexConditions) {
     // We inject the base conditions as well here.

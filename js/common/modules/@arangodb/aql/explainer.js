@@ -578,7 +578,6 @@ function printTraversalDetails(traversals) {
   var optify = function (options, colorize) {
     var opts = {
       bfs: options.bfs || undefined, /* only print if set to true to save room */
-      neighbors: options.neighbors || undefined, /* only print if set to true to save room */
       uniqueVertices: options.uniqueVertices,
       uniqueEdges: options.uniqueEdges
     };

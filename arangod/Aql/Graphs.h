@@ -97,6 +97,8 @@ class EdgeConditionBuilder {
   EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
   EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;
 
+  void cloneConditions(Ast* ast, EdgeConditionBuilder const& other);
+
   // Add a condition on the edges that is not related to
   // the direction e.g. `label == foo`
   void addConditionPart(AstNode const*);
