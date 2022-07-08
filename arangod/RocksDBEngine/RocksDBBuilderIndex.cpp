@@ -23,10 +23,6 @@
 
 #include "RocksDBBuilderIndex.h"
 
-#ifdef USE_ENTERPRISE
-#undef USE_SST_INGESTION
-#endif
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -119,8 +115,8 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
       }
     }
   }
-#if !defined USE_ENTERPRISE || \
-    defined USE_ENTERPRISE && !defined USE_SST_INGESTION
+
+#ifndef USE_ENTERPRISE
   docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
 #endif
   return {};
@@ -262,87 +258,63 @@ static arangodb::Result fillIndex(
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 #ifdef USE_ENTERPRISE
-#ifdef USE_SST_INGESTION
-  if (isUnique || !foreground || numThreads == 1) {
+  IndexFiller indexFiller(isUnique, foreground, numThreads, batched,
+                          threadBatchSize, dbOptions, batch, docsProcessed, trx,
+                          ridx, snap, rootDB, std::move(it), idxPath);
+  res = indexFiller.fillIndex();
 #else
-  if (isUnique || numThreads == 1) {
-#endif
-#elif !defined USE_ENTERPRISE
-  {
-#endif
-    uint64_t numDocsWritten = 0;
-    RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
+  uint64_t numDocsWritten = 0;
+  RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
 
-    OperationOptions options;
-    for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
-      TRI_ASSERT(it->key().compare(upper) < 0);
+  OperationOptions options;
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    TRI_ASSERT(it->key().compare(upper) < 0);
 
-      res = ridx.insert(
-          trx, &batched, RocksDBKey::documentId(it->key()),
-          VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())),
-          options, /*performChecks*/ true);
+    res = ridx.insert(
+        trx, &batched, RocksDBKey::documentId(it->key()),
+        VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())),
+        options, /*performChecks*/ true);
+    if (res.fail()) {
+      break;
+    }
+    numDocsWritten++;
+
+    if (numDocsWritten % 1024 == 0) {  // commit buffered writes
+      ::partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
+                                  foreground);
+      // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
       }
-      numDocsWritten++;
 
-      if (numDocsWritten % 1024 == 0) {  // commit buffered writes
-        ::partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
-                                    foreground);
-        // cppcheck-suppress identicalConditionAfterEarlyExit
-        if (res.fail()) {
-          break;
-        }
-
-        if (ridx.collection().vocbase().server().isStopping()) {
-          res.reset(TRI_ERROR_SHUTTING_DOWN);
-          break;
-        }
+      if (ridx.collection().vocbase().server().isStopping()) {
+        res.reset(TRI_ERROR_SHUTTING_DOWN);
+        break;
       }
-    }
-
-    if (!it->status().ok() && res.ok()) {
-      res = rocksutils::convertStatus(it->status(),
-                                      rocksutils::StatusHint::index);
-    }
-
-    if (res.ok()) {
-      ::partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
-                                  foreground);
-    }
-
-    if (res.ok()) {  // required so iresearch commits
-      res = trx.commit();
-
-      if (ridx.estimator() != nullptr) {
-        ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
-      }
-    }
-
-    // if an error occured drop() will be called
-    LOG_TOPIC("dfa3b", DEBUG, Logger::ENGINES)
-        << "snapshot captured " << numDocsWritten << " " << res.errorMessage();
-  }
-#ifdef USE_ENTERPRISE
-  else {
-    std::deque<std::pair<uint64_t, uint64_t>> partitions;
-    it->Seek(bounds.start());
-    if (it->Valid()) {
-      uint64_t firstId = RocksDBKey::documentId(it->key()).id();
-      it->SeekForPrev(upper);
-      TRI_ASSERT(it->Valid());
-      uint64_t lastId = RocksDBKey::documentId(it->key()).id();
-      partitions.push_back({firstId, lastId});
-      res = processPartitions(foreground, std::move(partitions), snap, rcoll,
-                              rootDB, ridx, docsProcessed, numThreads,
-                              threadBatchSize, dbOptions, idxPath);
-#ifdef USE_SST_INGESTION
-      if (res.ok()) {
-        cleanUpTempRocksDBDir(idxPath);
-      }
-#endif
     }
   }
+
+  if (!it->status().ok() && res.ok()) {
+    res =
+        rocksutils::convertStatus(it->status(), rocksutils::StatusHint::index);
+  }
+
+  if (res.ok()) {
+    ::partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
+                                foreground);
+  }
+
+  if (res.ok()) {  // required so iresearch commits
+    res = trx.commit();
+
+    if (ridx.estimator() != nullptr) {
+      ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
+    }
+  }
+
+  // if an error occured drop() will be called
+  LOG_TOPIC("dfa3b", DEBUG, Logger::ENGINES)
+      << "snapshot captured " << numDocsWritten << " " << res.errorMessage();
 #endif
   return res;
 }
@@ -698,8 +670,10 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
                               .getFeature<EngineSelectorFeature>()
                               .engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
-#if defined USE_ENTERPRISE && defined USE_SST_INGESTION
-  RocksDBFilePurgePreventer nonPurger(&engine);
+#if defined USE_ENTERPRISE
+  // acquire ownership because it's only used until this function gets out of
+  // scope
+  std::unique_ptr<RocksDBFilePurgePreventer> nonPurger = std::move(getRocksDBFilePurgePreventer(engine));
 #endif
 
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
