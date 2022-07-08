@@ -338,7 +338,7 @@ static arangodb::Result fillIndex(
                               threadBatchSize, dbOptions, idxPath);
 #ifdef USE_SST_INGESTION
       if (res.ok()) {
-        cleanUpTempRocksDBDir(idxPath.data());
+        cleanUpTempRocksDBDir(idxPath);
       }
 #endif
     }
