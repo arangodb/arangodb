@@ -26,6 +26,8 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 
+#include <memory>
+
 namespace arangodb::replication2::replicated_state {
 /**
  * The Document State Machine is used as a middle-man between a shard and a
@@ -39,74 +41,62 @@ struct DocumentLogEntry;
 struct DocumentLeaderState;
 struct DocumentFollowerState;
 struct DocumentCore;
+struct DocumentCoreParameters;
+
+struct IDocumentStateAgencyHandler;
+struct IDocumentStateShardHandler;
+
+struct ReplicationOptions {
+  bool waitForCommit{false};
+};
 
 struct DocumentState {
+  static constexpr std::string_view NAME = "document";
+
   using LeaderType = DocumentLeaderState;
   using FollowerType = DocumentFollowerState;
   using EntryType = DocumentLogEntry;
   using FactoryType = DocumentFactory;
   using CoreType = DocumentCore;
+  using CoreParameterType = DocumentCoreParameters;
 };
 
-/* Empty for now */
-struct DocumentLogEntry {};
-struct DocumentCore {};
+struct DocumentCoreParameters {
+  std::string collectionId;
 
-struct DocumentLeaderState
-    : replicated_state::IReplicatedLeaderState<DocumentState> {
-  explicit DocumentLeaderState(std::unique_ptr<DocumentCore> core);
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
+    return f.object(p).fields(f.field("collectionId", p.collectionId));
+  }
 
-  [[nodiscard]] auto resign() && noexcept
-      -> std::unique_ptr<DocumentCore> override;
-
-  auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
-      -> futures::Future<Result> override;
-
-  std::unique_ptr<DocumentCore> _core;
-};
-
-struct DocumentFollowerState
-    : replicated_state::IReplicatedFollowerState<DocumentState> {
-  explicit DocumentFollowerState(std::unique_ptr<DocumentCore> core);
-
- protected:
-  [[nodiscard]] auto resign() && noexcept
-      -> std::unique_ptr<DocumentCore> override;
-  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
-      -> futures::Future<Result> override;
-  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
-      -> futures::Future<Result> override;
-
-  std::unique_ptr<DocumentCore> _core;
+  auto toSharedSlice() -> velocypack::SharedSlice;
 };
 
 struct DocumentFactory {
+  explicit DocumentFactory(
+      std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler);
+
   auto constructFollower(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentFollowerState>;
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
-  auto constructCore(GlobalLogIdentifier const&)
+  auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
+
+  auto getAgencyReader() -> std::shared_ptr<IDocumentStateAgencyHandler>;
+  auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
+
+ private:
+  std::shared_ptr<IDocumentStateAgencyHandler> const _agencyReader;
+  std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
 };
 }  // namespace document
-
-template<>
-struct EntryDeserializer<document::DocumentLogEntry> {
-  auto operator()(
-      streams::serializer_tag_t<replicated_state::document::DocumentLogEntry>,
-      velocypack::Slice s) const
-      -> replicated_state::document::DocumentLogEntry;
-};
-
-template<>
-struct EntrySerializer<document::DocumentLogEntry> {
-  void operator()(
-      streams::serializer_tag_t<replicated_state::document::DocumentLogEntry>,
-      replicated_state::document::DocumentLogEntry const& e,
-      velocypack::Builder& b) const;
-};
 
 extern template struct replicated_state::ReplicatedState<
     document::DocumentState>;
 
 }  // namespace arangodb::replication2::replicated_state
+
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"

@@ -746,8 +746,6 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
   auto& impl = basics::downCast<IResearchFlushSubscription>(*subscription);
 
   try {
-    auto const lastTickBeforeCommit = _engine->currentTick();
-
     std::unique_lock commitLock{_commitMutex, std::try_to_lock};
     if (!commitLock.owns_lock()) {
       if (!wait) {
@@ -765,7 +763,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
 
       commitLock.lock();
     }
-
+    auto const lastTickBeforeCommit = _engine->currentTick();
     auto const lastCommittedTick = _lastCommittedTick;
 
     try {
@@ -1671,16 +1669,16 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   return dataPath;
 }
 
-template Result IResearchDataStore::insert<FieldIterator<FieldMeta, FieldMeta>,
-                                           IResearchLinkMeta>(
+template Result
+IResearchDataStore::insert<FieldIterator<FieldMeta>, IResearchLinkMeta>(
     transaction::Methods& trx, LocalDocumentId documentId,
     velocypack::Slice doc, IResearchLinkMeta const& meta);
 
 template Result IResearchDataStore::insert<
-    FieldIterator<IResearchInvertedIndexMeta, InvertedIndexField>,
-    IResearchInvertedIndexMeta>(transaction::Methods& trx,
-                                LocalDocumentId documentId,
-                                velocypack::Slice doc,
-                                IResearchInvertedIndexMeta const& meta);
+    FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+    IResearchInvertedIndexMetaIndexingContext>(
+    transaction::Methods& trx, LocalDocumentId documentId,
+    velocypack::Slice doc,
+    IResearchInvertedIndexMetaIndexingContext const& meta);
 
 }  // namespace arangodb::iresearch

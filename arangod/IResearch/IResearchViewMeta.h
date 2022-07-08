@@ -57,7 +57,6 @@ namespace iresearch {
 /// @brief metadata describing the IResearch view
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewMeta : public IResearchDataStoreMeta {
-
   struct Mask : public IResearchDataStoreMeta::Mask {
     bool _primarySort;
     bool _storedValues;

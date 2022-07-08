@@ -51,7 +51,8 @@ class PrimaryKeyFilter final : public irs::filter,
                    arangodb::LocalDocumentId const& value, bool nested) noexcept
       : irs::filter(PrimaryKeyFilter::type(engine)),
         _pk(DocumentPrimaryKey::encode(value)),
-        _pkSeen(false), _nested(nested) {}
+        _pkSeen(false),
+        _nested(nested) {}
 
   virtual irs::doc_iterator::ptr execute(
       irs::sub_reader const& segment, irs::Order const& /*order*/,

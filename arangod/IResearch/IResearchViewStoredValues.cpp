@@ -73,8 +73,8 @@ bool IResearchViewStoredValues::toVelocyPack(
 
 bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     velocypack::Slice const& columnSlice,
-    std::unordered_set<std::string>& uniqueColumns,
-    std::vector<irs::string_ref>& fieldNames,
+    containers::FlatHashSet<std::string>& uniqueColumns,
+    std::vector<std::string_view>& fieldNames,
     irs::type_info::type_id compression) {
   if (columnSlice.isArray()) {
     // skip empty column
@@ -90,7 +90,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
         clear();
         return false;
       }
-      auto fieldName = getStringRef(fieldSlice);
+      auto fieldName = fieldSlice.stringRef();
       // skip empty field
       if (fieldName.empty()) {
         continue;
@@ -168,12 +168,12 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
 bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
                                                std::string& errorField) {
   clear();
-  if ( !slice.isArray()) {
+  if (!slice.isArray()) {
     return false;
   }
   _storedColumns.reserve(slice.length());
-  std::unordered_set<std::string> uniqueColumns;
-  std::vector<irs::string_ref> fieldNames;
+  containers::FlatHashSet<std::string> uniqueColumns;
+  std::vector<std::string_view> fieldNames;
   int idx = -1;
   for (auto columnSlice : VPackArrayIterator(slice)) {
     ++idx;

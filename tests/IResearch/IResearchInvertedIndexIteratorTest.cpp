@@ -53,8 +53,7 @@ using StoredFields = std::vector<std::vector<std::string>>;
 using Fields = std::vector<std::string>;
 using SortFields = std::vector<std::pair<std::string, bool>>;
 using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
-    arangodb::iresearch::IResearchInvertedIndexMeta,
-    arangodb::iresearch::InvertedIndexField>;
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext>;
 
 class SimpleDataSetProvider {
  public:
@@ -151,12 +150,15 @@ class IResearchInvertedIndexIteratorTestBase
       trx.begin();
       for (size_t i = 0; i < _docs.size() / 2; ++i) {
         // MSVC fails to compile if EXPECT_TRUE  is called directly
-        auto res =
-            _index
-                ->insert<InvertedIndexFieldIterator,
-                         arangodb::iresearch::IResearchInvertedIndexMeta>(
-                    trx, doc->first, doc->second->slice(), _index->meta())
-                .ok();
+        auto res = _index
+                       ->insert<InvertedIndexFieldIterator,
+                                arangodb::iresearch::
+                                    IResearchInvertedIndexMetaIndexingContext>(
+                           trx, doc->first, doc->second->slice(),
+                           arangodb::iresearch::
+                               IResearchInvertedIndexMetaIndexingContext(
+                                   _index->meta()))
+                       .ok();
         EXPECT_TRUE(res);
         ++doc;
       }
@@ -170,11 +172,15 @@ class IResearchInvertedIndexIteratorTestBase
     trx.begin();
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
-      auto res = _index
-                     ->insert<InvertedIndexFieldIterator,
-                              arangodb::iresearch::IResearchInvertedIndexMeta>(
-                         trx, doc->first, doc->second->slice(), _index->meta())
-                     .ok();
+      auto res =
+          _index
+              ->insert<InvertedIndexFieldIterator,
+                       arangodb::iresearch::
+                           IResearchInvertedIndexMetaIndexingContext>(
+                  trx, doc->first, doc->second->slice(),
+                  arangodb::iresearch::
+                      IResearchInvertedIndexMetaIndexingContext(_index->meta()))
+              .ok();
       EXPECT_TRUE(res);
       ++doc;
     }

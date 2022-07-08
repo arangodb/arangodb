@@ -21,8 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 
@@ -56,6 +56,11 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto setPlanConfig(RLA::LogPlanConfig config) -> AgencyLogBuilder& {
+    makePlan().participantsConfig.config = config;
+    return *this;
+  }
+
   auto setTargetLeader(std::optional<ParticipantId> leader)
       -> AgencyLogBuilder& {
     _log.target.leader = std::move(leader);
@@ -74,8 +79,7 @@ struct AgencyLogBuilder {
       plan.currentTerm.emplace();
       plan.currentTerm->term = LogTerm{1};
       plan.participantsConfig.config = RLA::LogPlanConfig(
-          _log.target.config.writeConcern, _log.target.config.softWriteConcern,
-          _log.target.config.waitForSync);
+          _log.target.config.writeConcern, _log.target.config.waitForSync);
     }
     return plan.currentTerm.value();
   }
@@ -119,6 +123,15 @@ struct AgencyLogBuilder {
   auto makeCurrent() -> RLA::LogCurrent& {
     if (!_log.current.has_value()) {
       _log.current.emplace();
+
+      if (!_log.current->supervision.has_value()) {
+        _log.current->supervision.emplace();
+      }
+      // makeCurrent should really only be called if a plan already exists.
+      if (_log.plan.has_value()) {
+        _log.current->supervision->assumedWriteConcern =
+            _log.plan->participantsConfig.config.effectiveWriteConcern;
+      }
     }
     return _log.current.value();
   }

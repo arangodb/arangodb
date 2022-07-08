@@ -36,6 +36,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
+const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
 const toArgv = require('internal').toArgv;
 
@@ -62,37 +63,24 @@ function runArangodRecovery (params, agencyConfig) {
   };
 
   let argv = [];
-
   let binary = pu.ARANGOD_BIN;
-  let crashLogDir = fs.join(fs.getTempPath(), 'crash');
-  fs.makeDirectoryRecursive(crashLogDir);
-  pu.cleanupDBDirectoriesAppend(crashLogDir);
-
-  let crashLog = fs.join(crashLogDir, 'crash.log');
 
   if (params.setup) {
     additionalParams['javascript.script-parameter'] = 'setup';
-    try {
-      // clean up crash log before next test
-      fs.remove(crashLog);
-    } catch (err) {}
 
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
 
     // enable development debugging if extremeVerbosity is set
-    let args = {};
+    let args = Object.assign({
+      'server.rest-server': 'false',
+      'javascript.script': params.script,
+      'log.output': 'file://' + params.crashLog
+    }, params.options.extraArgs);
+
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
     }
-    args = Object.assign(args, params.options.extraArgs);
-    args = Object.assign(args, {
-      'server.rest-server': 'false',
-      'javascript.script': params.script
-    });
-
-    args['log.output'] = 'file://' + crashLog;
-    pu.cleanupDBDirectoriesAppend(params.testDir);
     params['instance'] = new inst.instance(params.options,
                                            inst.instanceRole.agent,
                                            args, {}, 'tcp', params.rootDir, '',
@@ -109,7 +97,7 @@ function runArangodRecovery (params, agencyConfig) {
     }
   }
 
-  process.env["crash-log"] = crashLog;
+  process.env["crash-log"] = params.crashLog;
   params.instance.pid = pu.executeAndWait(
     binary,
     argv,
@@ -137,11 +125,7 @@ function agencyRestart (options) {
 
   let agencyRestartTests = tu.splitBuckets(options, tu.scanTestPaths(testPaths['agency-restart'], options));
   let count = 0;
-  let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.join(fs.getTempPath(), 'agency-restart');
-  fs.makeDirectoryRecursive(tempDir);
-  process.env.TMPDIR = tempDir;
-  pu.cleanupDBDirectoriesAppend(tempDir);
+  let tmpMgr = new tmpDirMmgr('agency-restart', options);
 
   for (let i = 0; i < agencyRestartTests.length; ++i) {
     let test = agencyRestartTests[i];
@@ -152,14 +136,18 @@ function agencyRestart (options) {
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
-        tempDir: tempDir,
+        tempDir: tmpMgr.tempDir,
         rootDir: fs.join(fs.getTempPath(), 'agency-restart', count.toString()),
         options: _.cloneDeep(options),
         script: test,
         setup: true,
         count: count,
-        testDir: ""
+        testDir: "",
+        crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
+        crashLog: ""
       };
+      fs.makeDirectoryRecursive(params.crashLogDir);
+      params.crashLog = fs.join(params.crashLogDir, 'crash.log');
       let agencyConfig = new inst.agencyConfig(options, null);
       runArangodRecovery(params, agencyConfig);
 
@@ -184,12 +172,12 @@ function agencyRestart (options) {
         },
         test
       );
-      if (!results[test].status) {
+      if (results[test].status && options.cleanup) {
+        fs.removeDirectoryRecursive(params.testDir, true);
+        fs.removeDirectoryRecursive(params.crashLogDir, true);
+      } else {
         print("Not cleaning up " + params.testDir);
-        results.status = false;
-      }
-      else {
-        pu.cleanupLastDirectory(params.options);
+        results.status &= results[test].status;
       }
     } else {
       if (options.extremeVerbosity) {
@@ -197,7 +185,7 @@ function agencyRestart (options) {
       }
     }
   }
-  process.env.TMPDIR = orgTmp;
+  tmpMgr.destructor(results.status);
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {

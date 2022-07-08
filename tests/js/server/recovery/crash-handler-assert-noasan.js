@@ -38,6 +38,9 @@ function runSetup () {
     // crash handler only available on Linux
     return;
   }
+  // make log level more verbose, as by default we hide most messages from
+  // the test output
+  require("internal").logLevel("crash=info");
   // produces an assertion failure in the server
   internal.debugTerminate('CRASH-HANDLER-TEST-ASSERT');
 }

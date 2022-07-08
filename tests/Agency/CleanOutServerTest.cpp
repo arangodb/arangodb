@@ -32,6 +32,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/Node.h"
+#include "Basics/TimeString.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -613,6 +614,8 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
         EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-0")
                         .get("toServer")
                         .copyString() == "free");
+        // second collection is not touched because of replicationVersion == 2
+        EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-1").isNone());
 
         auto preconditions = q->slice()[0][1];
         EXPECT_TRUE(preconditions.get("/arango/Supervision/DBServers/leader")

@@ -1,11 +1,12 @@
 param(
 [int] $AgentCount = 1,
 [int] $CoordinatorCount = 1,
-[int] $DBServerCount = 2,
+[int] $DBServerCount = 3,
 [int] $AgentStartPort = 4001,
 [int] $CoordinatorStartPort = 8530,
 [int] $DBServerStartPort = 8629,
-[string] $JwtSecret = ""
+[string] $JwtSecret = "",
+[string] $ArangodPath = ".\build\bin\arangod.exe"
 )
 
 $commonArguments = @(
@@ -51,7 +52,7 @@ for ($i=0;$i -lt $AgentCount;$i++) {
     $processes += Start-Process `
         -RedirectStandardError "cluster\$port.err" `
         -RedirectStandardOutput "cluster\$port.out" `
-        -FilePath .\build\bin\arangod.exe `
+        -FilePath "$ArangodPath" `
         -ArgumentList $arguments `
         -NoNewWindow `
         -PassThru
@@ -89,7 +90,7 @@ foreach ($it in $map.GetEnumerator()) {
         $processes += Start-Process `
             -RedirectStandardError "cluster\$port.err" `
             -RedirectStandardOutput "cluster\$port.out" `
-            -FilePath .\build\bin\arangod.exe `
+            -FilePath "$ArangodPath" `
             -ArgumentList $roleArguments `
             -NoNewWindow `
             -PassThru

@@ -28,6 +28,9 @@
 #include <limits>
 #include <numeric>
 
+#include "Futures/Utilities.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
@@ -65,31 +68,89 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
 }
 
 /// @brief commit a transaction
-Result ReplicatedRocksDBTransactionState::doCommit() {
-  Result res;
-  for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-              .commitTransaction();
-    if (!res.ok()) {
-      break;
-    }
-  }
+futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   _hasActiveTrx = false;
-  return res;
+
+  if (!mustBeReplicated()) {
+    Result res;
+    for (auto& col : _collections) {
+      res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                .commitTransaction();
+      if (!res.ok()) {
+        break;
+      }
+    }
+    return res;
+  }
+
+  auto operation =
+      replication2::replicated_state::document::OperationType::kCommit;
+  auto options = replication2::replicated_state::document::ReplicationOptions{
+      .waitForCommit = true};
+  std::vector<futures::Future<Result>> commits;
+  allCollections([&](TransactionCollection& c) {
+    auto leader = c.collection()->waitForDocumentStateLeader();
+    commits.emplace_back(
+        leader
+            ->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                                 options)
+            .thenValue([&c](auto&& res) -> Result {
+              return static_cast<ReplicatedRocksDBTransactionCollection&>(c)
+                  .commitTransaction();
+            }));
+    return true;
+  });
+
+  return futures::collectAll(commits).thenValue(
+      [](std::vector<futures::Try<Result>>&& results) -> Result {
+        for (auto& res : results) {
+          auto result = res.get();
+          if (result.fail()) {
+            return result;
+          }
+        }
+        return {};
+      });
+}
+
+std::lock_guard<std::mutex> ReplicatedRocksDBTransactionState::lockCommit() {
+  return std::lock_guard(_commitLock);
 }
 
 /// @brief abort and rollback a transaction
 Result ReplicatedRocksDBTransactionState::doAbort() {
-  Result res;
-  for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-              .abortTransaction();
-    if (!res.ok()) {
-      break;
-    }
-  }
   _hasActiveTrx = false;
-  return res;
+
+  if (!mustBeReplicated()) {
+    Result res;
+    for (auto& col : _collections) {
+      res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                .abortTransaction();
+      if (!res.ok()) {
+        break;
+      }
+    }
+    return res;
+  }
+
+  auto operation =
+      replication2::replicated_state::document::OperationType::kAbort;
+  auto options = replication2::replicated_state::document::ReplicationOptions{};
+
+  // The following code has been simplified based on this assertion.
+  TRI_ASSERT(options.waitForCommit == false);
+  for (auto& col : _collections) {
+    auto leader = col->collection()->waitForDocumentStateLeader();
+    leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                               options);
+    auto r = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                 .abortTransaction();
+    if (r.fail()) {
+      return r;
+    }
+  };
+
+  return {};
 }
 
 RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
@@ -192,4 +253,9 @@ rocksdb::SequenceNumber ReplicatedRocksDBTransactionState::beginSeq() const {
       });
   TRI_ASSERT(seq != std::numeric_limits<rocksdb::SequenceNumber>::max());
   return seq;
+}
+
+bool ReplicatedRocksDBTransactionState::mustBeReplicated() const {
+  auto isIndexCreation = _hints.has(transaction::Hints::Hint::INDEX_CREATION);
+  return !isReadOnlyTransaction() && !isIndexCreation;
 }

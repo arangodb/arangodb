@@ -65,6 +65,7 @@ jsunity.run(function dump_single_testsuite() {
       "testAnalyzers",
       "testIndexAnalyzerCollection",
       "testJobsAndQueues",
+      "testComputedValues",
 
       // cluster tests:
       "testDatabaseProperties",

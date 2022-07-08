@@ -66,7 +66,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
 
-  Result doCommit() override;
+  futures::Future<Result> doCommit() override;
   Result doAbort() override;
 
  private:

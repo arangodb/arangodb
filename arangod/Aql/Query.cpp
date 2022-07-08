@@ -121,7 +121,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
                      transaction::V8Context::isEmbedded()),
       _registeredInV8Context(false),
       _queryKilled(false),
-      _queryHashCalculated(false) {
+      _queryHashCalculated(false),
+      _allowDirtyReads(false) {
   if (!_transactionContext) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "failed to create query transaction context");
@@ -384,13 +385,18 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
 
+  // We need to preserve the information about dirty reads, since the
+  // transaction who knows might be gone before we have produced the
+  // result:
+  _allowDirtyReads = _trx->state()->options().allowDirtyReads;
+
   // As soon as we start to instantiate the plan we have to clean it
   // up before killing the unique_ptr
 
   // we have an AST, optimize the ast
   enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
-  _ast->validateAndOptimize(*_trx);
+  _ast->validateAndOptimize(*_trx, {.optimizeNonCacheable = true});
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
@@ -454,6 +460,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
               queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
               queryResult.cached = true;
+              // Note: cached queries were never done with dirty reads,
+              // so we can always hand out the result here without extra
+              // HTTP header.
               return ExecutionState::DONE;
             }
             // if no permissions, fall through to regular querying
@@ -545,8 +554,12 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // must close result array here because it must be passed as a closed
         // array to the query cache
         queryResult.data->close();
+        queryResult.allowDirtyReads = _allowDirtyReads;
 
-        if (useQueryCache && _warnings.empty()) {
+        if (useQueryCache && !_allowDirtyReads && _warnings.empty()) {
+          // Cannot cache dirty reads! Yes, the query cache is not used in
+          // the cluster anyway, but we leave this condition in here for
+          // a future in which the query cache could be used in the cluster!
           std::unordered_map<std::string, std::string> dataSources =
               _queryDataSources;
 
@@ -788,6 +801,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     queryResult.v8Data = resArray;
     queryResult.context = _trx->transactionContext();
     queryResult.extra = std::make_shared<VPackBuilder>();
+    queryResult.allowDirtyReads = _allowDirtyReads;
 
     if (useQueryCache && _warnings.empty()) {
       auto dataSources = _queryDataSources;
@@ -950,7 +964,7 @@ QueryResult Query::explain() {
     }
 
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-    _ast->validateAndOptimize(*_trx);
+    _ast->validateAndOptimize(*_trx, {.optimizeNonCacheable = true});
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     std::unique_ptr<ExecutionPlan> plan =
@@ -1597,7 +1611,7 @@ void Query::injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan) {
 
   plan.findNodesOfType(graphNodes,
                        {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
-                        ExecutionNode::K_SHORTEST_PATHS},
+                        ExecutionNode::ENUMERATE_PATHS},
                        true);
   for (auto& node : graphNodes) {
     auto graphNode = ExecutionNode::castTo<GraphNode*>(node);

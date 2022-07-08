@@ -109,7 +109,8 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     }
   }
 
-  void remove(StorageEngine& engine, LocalDocumentId const& value, bool nested) {
+  void remove(StorageEngine& engine, LocalDocumentId const& value,
+              bool nested) {
     _ctx.remove(_removals.emplace(engine, value, nested));
   }
 
@@ -218,7 +219,8 @@ class IResearchDataStore {
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId, bool nested);
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                bool nested);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta'
@@ -285,7 +287,8 @@ class IResearchDataStore {
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
-    IResearchDataStoreMeta _meta;  // runtime meta for a data store (not persisted)
+    IResearchDataStoreMeta
+        _meta;  // runtime meta for a data store (not persisted)
     irs::directory::ptr _directory;
     basics::ReadWriteLock _mutex;  // for use with member '_meta'
     irs::utf8_path _path;

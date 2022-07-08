@@ -27,19 +27,22 @@
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Slice.h>
-
 namespace arangodb {
 class CollectionNameResolver;
+class LogicalCollection;
+struct OperationOptions;
 
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 
 namespace transaction {
+struct BatchOptions;
 class Context;
 class Methods;
 
@@ -52,8 +55,8 @@ std::string_view extractKeyPart(VPackSlice);
  */
 std::string_view extractKeyPart(std::string_view);
 
-std::string extractIdString(CollectionNameResolver const*, VPackSlice,
-                            VPackSlice const&);
+std::string extractIdString(CollectionNameResolver const* resolver,
+                            VPackSlice slice, VPackSlice base);
 
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
@@ -98,11 +101,38 @@ OperationResult buildCountResult(
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
-                             VPackSlice const& idPart,
-                             VPackSlice const& keyPart);
+                             VPackSlice idPart, VPackSlice keyPart);
 
 std::string makeIdFromParts(CollectionNameResolver const* resolver,
-                            DataSourceId const& cid, VPackSlice const& keyPart);
+                            DataSourceId const& cid, VPackSlice keyPart);
+
+/// @brief new object for insert, value must have _key set correctly.
+Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
+                          velocypack::Slice value, RevisionId& revisionId,
+                          velocypack::Builder& builder,
+                          OperationOptions const& options,
+                          transaction::BatchOptions& batchOptions);
+
+/// @brief merge two objects for update
+Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
+                             velocypack::Slice oldValue,
+                             velocypack::Slice newValue, bool isNoOpUpdate,
+                             RevisionId previousRevisionId,
+                             RevisionId& revisionId,
+                             velocypack::Builder& builder,
+                             OperationOptions const& options,
+                             transaction::BatchOptions& batchOptions);
+
+/// @brief new object for replace
+Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
+                           velocypack::Slice oldValue,
+                           velocypack::Slice newValue, RevisionId& revisionId,
+                           velocypack::Builder& builder,
+                           OperationOptions const& options,
+                           transaction::BatchOptions& batchOptions);
+
+bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
+
 }  // namespace helpers
 
 /// @brief std::string leaser

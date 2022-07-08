@@ -1,3 +1,4 @@
+
 /* jshint strict: false, sub: true */
 /* global print db arango */
 'use strict';
@@ -470,6 +471,7 @@ class testRunner {
 
     let testrunStart = time();
     this.results = {
+      failed: 0,
       shutdown: true,
       startupTime: testrunStart - beforeStart
     };
@@ -519,6 +521,7 @@ class testRunner {
             }
 
             if (this.results[te].status === false) {
+              this.results.failed ++;
               this.options.cleanup = false;
             }
 
@@ -537,6 +540,10 @@ class testRunner {
           }
 
           if (this.healthCheck()) {
+            if (!this.results[te].hasOwnProperty('processStats')) {
+              this.results[te]['processStats'] = {};
+            }
+            this.results[te]['processStats']['netstat'] = this.instanceManager.getNetstat();
             this.continueTesting = true;
             for (let j = 0; j < this.cleanupChecks.length; j++) {
               if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
@@ -546,6 +553,7 @@ class testRunner {
                 continue;
               }
             }
+            
           } else {
             this.results[te].message = "Instance not healthy! " + JSON.stringify(reply);
             continue;
@@ -623,7 +631,7 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print('done.');
     }
-    this.instanceManager.destructor();
+    this.instanceManager.destructor(this.continueTesting && this.results.failed === 0);
     return this.results;
   }
 }

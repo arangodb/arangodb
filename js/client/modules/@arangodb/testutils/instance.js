@@ -218,6 +218,7 @@ class instance {
     this.exitStatus = null;
     this.serverCrashedLocal = false;
     this.JWT = null;
+    this.netstat = {'in':{}, 'out': {}};
   }
 
   getStructure() {
@@ -286,6 +287,24 @@ class instance {
              (this.instanceRole === instanceRole.coordinator) ||
              (this.instanceRole === instanceRole.failover)      );
   }
+
+  checkNetstat(data) {
+    let which = null;
+    if (data.local.port === this.port) {
+      which = this.netstat['in'];
+    } else if (data.remote.port === this.port) {
+      which = this.netstat['out'];
+    }
+    if (which !== null) {
+      if (!which.hasOwnProperty(data.state)) {
+        which[data.state] = 1;
+      } else {
+        which[data.state] += 1;
+      }
+    }
+  }
+  
+  
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////
@@ -472,6 +491,17 @@ class instance {
       return sockStat;
     }
     return "";
+  }
+
+  cleanup() {
+    if ((this.pid !== null) && (this.exitStatus === null)) {
+      print(RED + "killing instance (again?) to make sure we can delete its files!" + RESET);
+      this.terminateInstance();
+    }
+    if (this.options.extremeVerbosity) {
+      print(CYAN + "cleaning up " + this.name + " 's Directory: " + this.rootDir + RESET);
+    }
+    fs.removeDirectoryRecursive(this.rootDir, true);
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -808,8 +838,8 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat("Force killing - sockstat before: ");
         this.killWithCoreDump();
-        this.pid = null;
         this.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
