@@ -90,6 +90,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   updateStatus(transaction::Status::RUNNING);
   if (isReadOnlyTransaction()) {
     ++stats._readTransactions;
+    if (_options.allowDirtyReads) {
+      ++stats._dirtyReadTransactions;
+    }
   } else {
     ++stats._transactionsStarted;
   }
