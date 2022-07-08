@@ -9,11 +9,10 @@
     el: '#content',
     template: templateEngine.createTemplate('graphManagementView.ejs'),
     edgeDefintionTemplate: templateEngine.createTemplate('edgeDefinitionTable.ejs'),
-    eCollList: [],
-    removedECollList: [],
     readOnly: false,
     smartGraphName: "SmartGraph",
     enterpriseGraphName: "EnterpriseGraph",
+    currentGraphCreationType: (frontendConfig.isEnterprise ? 'enterprise' : 'community'),
 
     dropdownVisible: false,
 
@@ -46,10 +45,17 @@
       }
 
       if (id === 'smartGraph' || id === 'enterpriseGraph') {
+        if (id === 'smartGraph') {
+          this.currentGraphCreationType = 'smart';
+        } else {
+          this.currentGraphCreationType = 'enterprise';
+        }
         this.setSmartGraphRows(true, id);
       } else if (id === 'satelliteGraph') {
+        this.currentGraphCreationType = 'satellite';
         this.setSatelliteGraphRows(true);
       } else if (id === 'createGraph') {
+        this.currentGraphCreationType = 'community';
         this.setGeneralGraphRows(false);
       }
     },
@@ -89,6 +95,105 @@
       'row_general-writeConcern'
     ],
 
+    getCurrentCreationGraphType: function () {
+      if (this.currentGraphCreationType) {
+        return this.currentGraphCreationType;
+      }
+
+      // fallback - should not be required...
+      if ($('#tab-smartGraph').parent().hasClass('active')) {
+        return 'smart';
+      } else if ($('#tab-enterpriseGraph').parent().hasClass('active')) {
+        return 'enterprise';
+      } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
+        return 'satellite';
+      } else if ($('#tab-createGraph').parent().hasClass('active')) {
+        return 'community';
+      } else {
+        return 'none';
+      }
+    },
+
+    isEnterpriseOnlyGraphOrIsDefaultIsEnterprise: function () {
+      const graphCreationType = this.getCurrentCreationGraphType();
+      if (graphCreationType === 'smart' || graphCreationType === 'enterprise' || graphCreationType === 'satellite') {
+        return true;
+      }
+
+      if (graphCreationType === 'none') {
+        // In this special case we'll deliver the default
+        if (frontendConfig.isEnterprise) {
+          return true;
+        }
+      }
+
+      return false;
+    },
+
+    isEnterpriseOnlyGraph: function (graphCreationType) {
+      if (graphCreationType === 'smart' || graphCreationType === 'enterprise' || graphCreationType === 'satellite') {
+        return true;
+      }
+      return false;
+    },
+
+    buildAutoCompletionLists: function (type) {
+      // Supported type is either: "edges" or "vertices"
+
+      let collections = [];
+
+      const graphCreationType = this.getCurrentCreationGraphType();
+      if (this.isEnterpriseOnlyGraph(graphCreationType)) {
+        // In that case, all collections need to be newly created. Therefore, we cannot provide any
+        // auto-completion feature.
+        return collections;
+      } else if (graphCreationType === 'none') {
+        // Means we're in the init phase, and the modal view has not been rendered right now.
+        // In this case, we need to decide whether we want to have autocomplete on or off
+        // related to the environment we're running at. If we do have an Enterprise instance,
+        // by default it will be off (as EnterpriseGraphs are the default and need new collections).
+        // In Community edition, it will be enabled by default.
+        if (frontendConfig.isEnterprise) {
+          return collections;
+        }
+      }
+
+      // Will re-build the local state every time, as we might have newly created collections meanwhile
+      const storedCollections = this.options.collectionCollection.models;
+      storedCollections.forEach(function (c) {
+        if (c.get('isSystem')) {
+          // do not return system collections
+          return;
+        }
+        if (c.get('type') === 'edge' && type === 'edges') {
+          collections.push(c.id);
+        } else if (c.get('type') === 'document' && type === 'vertices') {
+          collections.push(c.id);
+        }
+      });
+
+      const sorter = function (l, r) {
+        l = l.toLowerCase();
+        r = r.toLowerCase();
+        if (l < r) {
+          return -1;
+        }
+        if (l > r) {
+          return 1;
+        }
+        return 0;
+      };
+      return collections.sort(sorter);
+    },
+
+    getVerticesAutoCompletionList: function () {
+      return this.buildAutoCompletionLists('vertices');
+    },
+
+    getEdgesAutoCompletionList: function () {
+      return this.buildAutoCompletionLists('edges');
+    },
+
     setGeneralGraphRows: function (cache) {
       this.setCacheModeState(cache);
       this.hideSmartGraphRows();
@@ -106,6 +211,7 @@
       _.each(this.notNeededSatelliteGraphRows, function (rowId) {
         $('#' + rowId).hide();
       });
+      $('#smartGraphInfo').show();
     },
 
     checkSmartGraphOneShardInfoHint: function () {
@@ -368,41 +474,23 @@
       // Note: re-enable cached collections for general graph
       // General graph collections are allowed to use existing collections
       // SatelliteGraphs and SmartGraphs are not allowed to use them, so we need to "forget" them here
-      var collList = [];
-      var self = this;
-      var collections = this.options.collectionCollection.models;
+      let self = this;
 
-      collections.forEach(function (c) {
-        if (c.get('isSystem')) {
-          return;
-        }
-        collList.push(c.id);
-      });
-
-      var i;
+      let i;
       for (i = 0; i < this.counter; i++) {
-        $('#newEdgeDefinitions' + i).select2({
-          tags: self.eCollList,
-          maximumSelectionSize: 1
-        });
+        $('#newEdgeDefinitions' + i).select2(self.buildSelect2Options('edge'));
         $('#newEdgeDefinitions' + i).select2('data', self.cachedNewEdgeDefinitions);
         $('#newEdgeDefinitions' + i).attr('disabled', self.cachedNewEdgeDefinitionsState);
 
-        $('#fromCollections' + i).select2({
-          tags: collList
-        });
+        $('#fromCollections' + i).select2(self.buildSelect2Options('vertex'));
         $('#fromCollections' + i).select2('data', self.cachedFromCollections);
         $('#fromCollections' + i).attr('disabled', self.cachedFromCollectionsState);
 
-        $('#toCollections' + i).select2({
-          tags: collList
-        });
+        $('#toCollections' + i).select2(self.buildSelect2Options('vertex'));
         $('#toCollections' + i).select2('data', self.cachedToCollections);
         $('#toCollections' + i).attr('disabled', self.cachedToCollectionsState);
       }
-      $('#newVertexCollections').select2({
-        tags: collList
-      });
+      $('#newVertexCollections').select2(self.buildSelect2Options('vertex'));
       $('#newVertexCollections').select2('data', self.cachedNewVertexCollections);
       $('#newVertexCollections').attr('disabled', self.cachedNewVertexCollectionsState);
     },
@@ -412,37 +500,31 @@
       var i;
 
       for (i = 0; i < self.counter; i++) {
-        $('#newEdgeDefinitions' + i).select2({
-          tags: [],
-          maximumSelectionSize: 1
-        });
+        $('#newEdgeDefinitions' + i).select2(self.buildSelect2Options('edge'));
+
         self.cachedNewEdgeDefinitions = $('#newEdgeDefinitions' + i).select2('data');
         self.cachedNewEdgeDefinitionsState = $('#newEdgeDefinitions' + i).attr('disabled');
         $('#newEdgeDefinitions' + i).select2('data', '');
         $('#newEdgeDefinitions' + i).attr('disabled', false);
         $('#newEdgeDefinitions' + i).change();
 
-        $('#fromCollections' + i).select2({
-          tags: []
-        });
+        $('#fromCollections' + i).select2(self.buildSelect2Options('vertex'));
+
         self.cachedFromCollections = $('#fromCollections' + i).select2('data');
         self.cachedFromCollectionsState = $('#fromCollections' + i).attr('disabled');
         $('#fromCollections' + i).select2('data', '');
         $('#fromCollections' + i).attr('disabled', false);
         $('#fromCollections' + i).change();
 
-        $('#toCollections' + i).select2({
-          tags: []
-        });
+        $('#toCollections' + i).select2(self.buildSelect2Options('vertex'));
         self.cachedToCollections = $('#toCollections' + i).select2('data');
         self.cachedToCollectionsState = $('#toCollections' + i).attr('disabled');
         $('#toCollections' + i).select2('data', '');
         $('#toCollections' + i).attr('disabled', false);
         $('#toCollections' + i).change();
       }
-      $('#newVertexCollections').select2({
-        tags: []
-      });
+      $('#newVertexCollections').select2(self.buildSelect2Options('vertex'));
+
       self.cachedNewVertexCollections = $('#newVertexCollections').select2('data');
       self.cachedNewVertexCollectionsState = $('#newVertexCollections').attr('disabled');
       $('#newVertexCollections').select2('data', '');
@@ -513,45 +595,46 @@
     },
 
     setFromAndTo: function (e) {
+      // This method triggers as soon as an edgeDefinition name is either being added or removed.
       e.stopPropagation();
-      var map = this.calculateEdgeDefinitionMap();
       var id;
 
-      const smartGraphActive = $('#tab-smartGraph').parent().hasClass('active');
-      const enterpriseGraphActive = $('#tab-enterpriseGraph').parent().hasClass('active');
+      console.log(e);
+      // TODO: Needs to either be fixed, or removed at all. Backend will fail and reply with an error in that case.
+      // This area checks whether new user defined EdgeDefinitions are being used
+      // twice - which is not valid.
+      if (e.added) {
+        console.warn("IMPORTANT - fixme, id: " + e.added.id);
+        /*if (this.eCollList.indexOf(e.added.id) === -1 && this.removedECollList.indexOf(e.added.id) !== -1) {
+          console.warn("Already added: " + JSON.stringify(e.added));
+          id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
+          $('input[id*="newEdgeDefinitions' + id + '"]').select2('val', null);
+          $('input[id*="newEdgeDefinitions' + id + '"]').attr(
+            'placeholder', 'The collection ' + e.added.id + ' is already used.'
+          );
+          return;
+        }*/
+        //this.removedECollList.push(e.added.id);
+        //this.eCollList.splice(this.eCollList.indexOf(e.added.id), 1);
+      }
 
-      if (smartGraphActive || enterpriseGraphActive) {
-        if (e.added) {
-          if (this.eCollList.indexOf(e.added.id) === -1 && this.removedECollList.indexOf(e.added.id) !== -1) {
-            id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
-            $('input[id*="newEdgeDefinitions' + id + '"]').select2('val', null);
-            $('input[id*="newEdgeDefinitions' + id + '"]').attr(
-              'placeholder', 'The collection ' + e.added.id + ' is already used.'
-            );
-            return;
-          }
-          this.removedECollList.push(e.added.id);
-          this.eCollList.splice(this.eCollList.indexOf(e.added.id), 1);
-        } else {
-          if (e.removed) {
-            // TODO edges not properly removed within selection
-            this.eCollList.push(e.removed.id);
-            this.removedECollList.splice(this.removedECollList.indexOf(e.removed.id), 1);
-          }
-        }
-        if (map[e.val]) {
-          id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
-          $('#s2id_fromCollections' + id).select2('val', map[e.val].from);
-          $('#fromCollections' + id).attr('disabled', true);
-          $('#s2id_toCollections' + id).select2('val', map[e.val].to);
-          $('#toCollections' + id).attr('disabled', true);
-        } else {
-          id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
-          $('#s2id_fromCollections' + id).select2('val', null);
-          $('#fromCollections' + id).attr('disabled', false);
-          $('#s2id_toCollections' + id).select2('val', null);
-          $('#toCollections' + id).attr('disabled', false);
-        }
+      // This area checks whether a stored EdgeDefinition has been found and re-used here.
+      // In case it is, we fill out from and to automatically and disable the inputs. As we
+      // do not allow multiple EdgeDefinitions based on the same name.
+      let map = this.calculateEdgeDefinitionMap();
+
+      if (map[e.val]) {
+        id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
+        $('#s2id_fromCollections' + id).select2('val', map[e.val].from);
+        $('#fromCollections' + id).attr('disabled', true);
+        $('#s2id_toCollections' + id).select2('val', map[e.val].to);
+        $('#toCollections' + id).attr('disabled', true);
+      } else {
+        id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
+        $('#s2id_fromCollections' + id).select2('val', null);
+        $('#fromCollections' + id).attr('disabled', false);
+        $('#s2id_toCollections' + id).select2('val', null);
+        $('#toCollections' + id).attr('disabled', false);
       }
     },
 
@@ -567,7 +650,7 @@
       } else if (graph.get('replicationFactor') === 'satellite') {
         this.createEditGraphModal(graph, false, true);
       } else {
-        this.createEditGraphModal(graph);
+        this.createEditGraphModal(graph, false, false, true);
       }
     },
 
@@ -897,22 +980,29 @@
       });
     },
 
-    createEditGraphModal: function (graph, isSmart, isSatellite) {
+    createEditGraphModal: function (graph, isSmart, isSatellite, isCommunity) {
+      let isEnterpriseGraph = false;
+      if (graph) {
+        if (graph.get('isSmart') && !graph.get('smartGraphAttribute')) {
+          // Found an EnterpriseGraph
+          isEnterpriseGraph = true;
+        }
+      }
       const rowDescription = {
         graphName: {
           title: 'Name',
-          info: 'String value. The name to identify the graph. Has to be unique and must follow the' +
+          description: 'String value. The name to identify the graph. Has to be unique and must follow the' +
             ' <b>Document Keys</b> naming conventions.',
           placeholder: 'Insert the name of the graph',
         },
         numberOfShards: {
           title: 'Shards',
-          info: 'Numeric value. Must be at least 1. Number of shards the graph is using.',
+          description: 'Numeric value. Must be at least 1. Number of shards the graph is using.',
           placeholder: 'Insert numeric value'
         },
         orphanCollection: {
           title: 'Orphan collections',
-          info: 'Collections that are part of a graph but not used in an edge definition.',
+          description: 'Collections that are part of a graph but not used in an edge definition.',
           placeholder: 'Insert list of Orphan Collections'
         },
         replicationFactor: {
@@ -961,40 +1051,14 @@
       }
 
       var buttons = [];
-      var collList = [];
       var tableContent = [];
-      var collections = this.options.collectionCollection.models;
       var self = this;
       var name = '';
       var edgeDefinitions = [{collection: '', from: '', to: ''}];
       var hybridSatelliteCollections = '';
       var orphanCollections = '';
       var title;
-      var sorter = function (l, r) {
-        l = l.toLowerCase();
-        r = r.toLowerCase();
-        if (l < r) {
-          return -1;
-        }
-        if (l > r) {
-          return 1;
-        }
-        return 0;
-      };
 
-      this.eCollList = [];
-      this.removedECollList = [];
-
-      collections.forEach(function (c) {
-        if (c.get('isSystem')) {
-          return;
-        }
-        if (c.get('type') === 'edge') {
-          self.eCollList.push(c.id);
-        } else {
-          collList.push(c.id);
-        }
-      });
       this.counter = 0;
 
       // edit graph section
@@ -1029,7 +1093,7 @@
             'editGraphName',
             rowDescription.graphName.title,
             name,
-            rowDescription.graphName.info
+            rowDescription.graphName.description
           )
         );
 
@@ -1050,7 +1114,7 @@
               'numberOfShards',
               rowDescription.numberOfShards.title,
               graph.get('numberOfShards'),
-              rowDescription.numberOfShards.info
+              rowDescription.numberOfShards.description
             )
           );
         }
@@ -1102,7 +1166,10 @@
               false,
               false,
               null,
-              collList.sort(sorter)
+              self.getEdgesAutoCompletionList(),
+              null, // style
+              null, // cssClass
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
             )
           );
         }
@@ -1125,7 +1192,7 @@
             'createNewGraphName',
             rowDescription.graphName.title,
             '',
-            rowDescription.graphName.info,
+            rowDescription.graphName.description,
             rowDescription.graphName.placeholder,
             true
           )
@@ -1143,7 +1210,7 @@
             'new-numberOfShards',
             rowDescription.numberOfShards.title + '*',
             '',
-            rowDescription.numberOfShards.info,
+            rowDescription.numberOfShards.description,
             rowDescription.numberOfShards.placeholder,
             false,
             [
@@ -1223,8 +1290,8 @@
             'general-numberOfShards',
             rowDescription.numberOfShards.title,
             '',
-            rowDescription.numberOfShards.info,
-            '',
+            rowDescription.numberOfShards.description,
+            rowDescription.numberOfShards.placeholder,
             false,
             [
               {
@@ -1277,62 +1344,57 @@
             false,
             false,
             null,
-            collList.sort(sorter)
+            self.getEdgesAutoCompletionList(),
+            null, // style
+            null, // cssClass
+            self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
           )
         );
       }
 
+      const createEdgeDefinitionEntry = (counter, edgeDefinition) => {
+        let id = null;
+        let isMandatory = true;
+        let addDelete = false;
+        let addAdd = true;
+
+        if (counter != 0) {
+          // means we're not creating the initial entry
+          id =  'newEdgeDefinitions' + self.counter;
+          isMandatory = false;
+          addDelete = true;
+          addAdd = false;
+        }
+
+        tableContent.push(
+          window.modalView.createSpacerEntry(
+            null, 'Relation'
+          )
+        );
+        tableContent.push(
+          window.modalView.createSelect2Entry(
+            'newEdgeDefinitions' + self.counter,
+            rowDescription.edgeDefinitions.title,
+            edgeDefinition.collection,
+            rowDescription.edgeDefinitions.description,
+            rowDescription.edgeDefinitions.placeholder,
+            isMandatory,
+            addDelete,
+            addAdd,
+            1,
+            self.getEdgesAutoCompletionList(),
+            undefined, /*style*/
+            'first', /*cssClass*/
+            self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
+          )
+        );
+      };
+
       edgeDefinitions.forEach(
         function (edgeDefinition) {
-          if (self.counter === 0) {
-            if (edgeDefinition.collection) {
-              self.removedECollList.push(edgeDefinition.collection);
-              self.eCollList.splice(self.eCollList.indexOf(edgeDefinition.collection), 1);
-            }
-            tableContent.push(
-              window.modalView.createSpacerEntry(
-                null, 'Relation'
-              )
-            );
-            tableContent.push(
-              window.modalView.createSelect2Entry(
-                'newEdgeDefinitions' + self.counter,
-                rowDescription.edgeDefinitions.title,
-                edgeDefinition.collection,
-                rowDescription.edgeDefinitions.description,
-                rowDescription.edgeDefinitions.placeholder,
-                true,
-                false,
-                true,
-                1,
-                self.eCollList.sort(sorter),
-                undefined, /*style*/
-                'first' /*cssClass*/
-              )
-            );
-          } else {
-            tableContent.push(
-              window.modalView.createSpacerEntry(
-                'newEdgeDefinitionsSpacer' + self.counter, 'Relation'
-              )
-            );
-            tableContent.push(
-              window.modalView.createSelect2Entry(
-                'newEdgeDefinitions' + self.counter,
-                rowDescription.edgeDefinitions.title,
-                edgeDefinition.collection,
-                rowDescription.edgeDefinitions.description,
-                rowDescription.edgeDefinitions.placeholder,
-                false,
-                true,
-                false,
-                1,
-                self.eCollList.sort(sorter),
-                undefined, /*style*/
-                'first' /*cssClass*/
-              )
-            );
-          }
+          // EdgeDefinition MAIN entry
+          createEdgeDefinitionEntry(self.counter, edgeDefinition);
+          // EdgeDefinition FROM entry
           tableContent.push(
             window.modalView.createSelect2Entry(
               rowDescription.fromVertexCollections.title + self.counter,
@@ -1344,11 +1406,13 @@
               false,
               false,
               null,
-              collList.sort(sorter),
+              self.getEdgesAutoCompletionList(),
               undefined, /*style*/
-              'middle' /*cssClass*/
+              'middle', /*cssClass*/
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
             )
           );
+          // EdgeDefinition TO entry
           tableContent.push(
             window.modalView.createSelect2Entry(
               rowDescription.toVertexCollection.title + self.counter,
@@ -1360,9 +1424,10 @@
               false,
               false,
               null,
-              collList.sort(sorter),
+              self.getVerticesAutoCompletionList(),
               undefined, /*style*/
-              'last' /*cssClass*/
+              'last', /*cssClass*/
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
             )
           );
           self.counter++;
@@ -1374,13 +1439,16 @@
           'newVertexCollections',
           rowDescription.orphanCollection.title,
           orphanCollections,
-          rowDescription.orphanCollection.info,
+          rowDescription.orphanCollection.description,
           rowDescription.orphanCollection.placeholder,
           false,
           false,
           false,
           null,
-          collList.sort(sorter)
+          self.getVerticesAutoCompletionList(),
+          undefined,
+          undefined,
+          self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
         )
       );
 
@@ -1403,6 +1471,17 @@
       }
 
       if (graph) {
+        // Means we're in the editGraph state.
+        if (isCommunity) {
+          this.setGeneralGraphRows(false);
+        } else if (isSatellite) {
+          this.setSatelliteGraphRows(false);
+        } else if (isEnterpriseGraph) {
+          this.setSmartGraphRows(false, 'enterpriseGraph');
+        } else if (isSmart) {
+          this.setSmartGraphRows(false, 'smartGraph');
+        }
+
         $('.modal-body table').css('border-collapse', 'separate');
         var i;
 
@@ -1439,20 +1518,45 @@
       arangoHelper.arangoNotification('Graph', 'Reset successful.');
     },
 
-    addRemoveDefinition: function (e) {
-      var collList = [];
-      var collections = this.options.collectionCollection.models;
+    buildSelect2Options: function (type) {
+      let collections = [];
+      if (type === 'edge') {
+        collections = this.getEdgesAutoCompletionList();
+      } else if (type === 'vertex') {
+        collections = this.getVerticesAutoCompletionList();
+      }
 
-      collections.forEach(function (c) {
-        if (!c.get('isSystem')) {
-          if (c.get('type') !== 'edge') {
-            collList.push(c.id);
-          }
-        }
-      });
+      let options = {
+        tags: collections,
+        showSearchBox: false,
+        minimumResultsForSearch: -1,
+        width: '336px',
+      };
+
+      if (type === 'edge') {
+        options.maximumSelectionSize =  1;
+      }
+
+      if (this.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()) {
+        options.language = {};
+        options.language.noMatches = function () {
+          return "Please enter a new and valid collection name.";
+        };
+      } else {
+        options.language = {};
+        options.language.noMatches = function () {
+          return "No collections found.";
+        };
+      }
+
+      return options;
+    },
+
+    addRemoveDefinition: function (e) {
       e.stopPropagation();
-      var id = $(e.currentTarget).attr('id');
-      var number;
+      let id = $(e.currentTarget).attr('id');
+      let number;
+
       if (id.indexOf('addAfter_newEdgeDefinitions') !== -1) {
         this.counter++;
         $('#row_newVertexCollections').before(
@@ -1460,33 +1564,15 @@
             number: this.counter
           })
         );
-        $('#newEdgeDefinitions' + this.counter).select2({
-          tags: this.eCollList,
-          showSearchBox: false,
-          minimumResultsForSearch: -1,
-          width: '336px',
-          maximumSelectionSize: 1
-        });
-        $('#fromCollections' + this.counter).select2({
-          tags: collList,
-          showSearchBox: false,
-          minimumResultsForSearch: -1,
-          width: '336px'
-          // maximumSelectionSize: 10
-        });
-        $('#toCollections' + this.counter).select2({
-          tags: collList,
-          showSearchBox: false,
-          minimumResultsForSearch: -1,
-          width: '336px'
-          // maximumSelectionSize: 10
-        });
+        $('#newEdgeDefinitions' + this.counter).select2(this.buildSelect2Options('edge'));
+        $('#fromCollections' + this.counter).select2(this.buildSelect2Options('vertex'));
+        $('#toCollections' + this.counter).select2(this.buildSelect2Options('vertex'));
         window.modalView.undelegateEvents();
         window.modalView.delegateEvents(this.events);
 
         arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
 
-        var i;
+        let i;
         $('.modal-body .spacer').remove();
         for (i = 0; i <= this.counter; i++) {
           $('#row_fromCollections' + i).show();
@@ -1509,6 +1595,7 @@
     },
 
     calculateEdgeDefinitionMap: function () {
+      // This method calculates and returns all the edge definitions of all graphs.
       var edgeDefinitionMap = {};
       this.collection.models.forEach(function (m) {
         m.get('edgeDefinitions').forEach(function (ed) {
