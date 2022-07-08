@@ -103,7 +103,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     attributes.clear();
     bool foundProjections = arangodb::aql::utils::findProjections(
-        n, e->outVariable(), /*expectedAttribute*/ "", attributes);
+        n, e->outVariable(), /*expectedAttribute*/ "",
+        /*excludeStartNodeFilterCondition*/ false, attributes);
 
     if (foundProjections && !attributes.empty() &&
         attributes.size() <= e->maxProjections()) {
@@ -203,6 +204,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             en->DocumentProducingNode::cloneInto(plan.get(), *inode);
             plan->registerNode(inode);
             plan->replaceNode(n, inode);
+
             if (en->isRestricted()) {
               inode->restrictToShard(en->restrictedShard());
             }

@@ -1669,16 +1669,16 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   return dataPath;
 }
 
-template Result IResearchDataStore::insert<FieldIterator<FieldMeta, FieldMeta>,
-                                           IResearchLinkMeta>(
+template Result
+IResearchDataStore::insert<FieldIterator<FieldMeta>, IResearchLinkMeta>(
     transaction::Methods& trx, LocalDocumentId documentId,
     velocypack::Slice doc, IResearchLinkMeta const& meta);
 
 template Result IResearchDataStore::insert<
-    FieldIterator<IResearchInvertedIndexMeta, InvertedIndexField>,
-    IResearchInvertedIndexMeta>(transaction::Methods& trx,
-                                LocalDocumentId documentId,
-                                velocypack::Slice doc,
-                                IResearchInvertedIndexMeta const& meta);
+    FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+    IResearchInvertedIndexMetaIndexingContext>(
+    transaction::Methods& trx, LocalDocumentId documentId,
+    velocypack::Slice doc,
+    IResearchInvertedIndexMetaIndexingContext const& meta);
 
 }  // namespace arangodb::iresearch

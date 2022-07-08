@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchInvertedIndexMock.h"
+#include "IResearch/IResearchDataStore.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -156,18 +157,18 @@ aql::AstNode *IResearchInvertedIndexMock::specializeCondition(
 
 // Like in IResearchRocksDBInvertedIndex
 Result IResearchInvertedIndexMock::insert(transaction::Methods &trx,
-                                          LocalDocumentId const &documentId,
-                                          velocypack::Slice const doc) {
-  IResearchInvertedIndexMeta meta;
-  using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
-      arangodb::iresearch::IResearchInvertedIndexMeta,
-      arangodb::iresearch::InvertedIndexField>;
+                                          LocalDocumentId documentId,
+                                          velocypack::Slice doc) {
+////  IResearchInvertedIndexMeta meta;
+//  using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
+//      arangodb::iresearch::IResearchInvertedIndexMeta>;
 
+  IResearchInvertedIndexMetaIndexingContext ctx(this->meta());
   auto s = this->stats();
   std::cout << "Docs num = " << s.numDocs << std::endl;
-  return IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                    IResearchInvertedIndexMeta>(trx, documentId,
-                                                                doc, meta);
+  return IResearchDataStore::insert< FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+                                    IResearchInvertedIndexMetaIndexingContext>(trx, documentId,
+                                                                doc, ctx);
 }
 
 AnalyzerPool::ptr

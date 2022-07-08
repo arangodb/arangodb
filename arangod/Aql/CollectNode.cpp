@@ -476,7 +476,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
@@ -520,7 +520,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
@@ -544,7 +544,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::COLLECT:
       return true;

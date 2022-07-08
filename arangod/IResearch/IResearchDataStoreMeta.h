@@ -30,7 +30,6 @@
 
 #pragma once
 
-
 #include <velocypack/Builder.h>
 #include "index/index_writer.hpp"
 
@@ -59,8 +58,10 @@ struct IResearchDataStoreMeta {
   IResearchDataStoreMeta();
 
   IResearchDataStoreMeta(IResearchDataStoreMeta&& other) noexcept = delete;
-  IResearchDataStoreMeta& operator=(IResearchDataStoreMeta&& other) noexcept = delete;
-  IResearchDataStoreMeta& operator=(IResearchDataStoreMeta const& other) = delete;
+  IResearchDataStoreMeta& operator=(IResearchDataStoreMeta&& other) noexcept =
+      delete;
+  IResearchDataStoreMeta& operator=(IResearchDataStoreMeta const& other) =
+      delete;
 
   void storeFull(IResearchDataStoreMeta const& other);
   void storeFull(IResearchDataStoreMeta&& other) noexcept;
@@ -82,8 +83,7 @@ struct IResearchDataStoreMeta {
   bool operator!=(IResearchDataStoreMeta const& other) const noexcept;
 
   bool init(velocypack::Slice slice, std::string& errorField,
-            IResearchDataStoreMeta const& defaults,
-            Mask* mask) noexcept;
+            IResearchDataStoreMeta const& defaults, Mask* mask) noexcept;
 
   bool json(velocypack::Builder& builder,
             IResearchDataStoreMeta const* ignoreEqual = nullptr,
@@ -106,4 +106,4 @@ struct IResearchDataStoreMeta {
   // before a segment flush is triggered (0 == unlimited)
 };
 
-} // namespace arangodb::iresearch
+}  // namespace arangodb::iresearch

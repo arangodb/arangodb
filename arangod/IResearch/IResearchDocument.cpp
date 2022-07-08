@@ -96,16 +96,15 @@ std::initializer_list<irs::type_info::type_id> NumericStreamFeatures{
     irs::type<irs::granularity_prefix>::id()};
 
 // appends the specified 'value' to 'out'
-inline void append(std::string& out, size_t value) {
+void append(std::string& out, size_t value) {
   auto const size = out.size();  // intial size
   out.resize(size + 21);         // enough to hold all numbers up to 64-bits
   auto const written = sprintf(&out[size], IR_SIZE_T_SPECIFIER, value);
   out.resize(size + written);
 }
 
-inline bool canHandleValue(
-    std::string const& key, VPackSlice const& value,
-    arangodb::iresearch::FieldMeta const& context) noexcept {
+bool canHandleValue(std::string const& key, VPackSlice const& value,
+                    arangodb::iresearch::FieldMeta const& context) noexcept {
   switch (value.type()) {
     case VPackValueType::None:
     case VPackValueType::Illegal:
@@ -135,8 +134,41 @@ inline bool canHandleValue(
   }
 }
 
+bool canHandleValue(
+    std::string const& key, VPackSlice const& value,
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
+        context) noexcept {
+  switch (value.type()) {
+    case VPackValueType::None:
+    case VPackValueType::Illegal:
+      return false;
+    case VPackValueType::Null:
+    case VPackValueType::Bool:
+    case VPackValueType::Array:
+    case VPackValueType::Object:
+    case VPackValueType::Double:
+      return true;
+    case VPackValueType::UTCDate:
+    case VPackValueType::External:
+    case VPackValueType::MinKey:
+    case VPackValueType::MaxKey:
+      return false;
+    case VPackValueType::Int:
+    case VPackValueType::UInt:
+    case VPackValueType::SmallInt:
+      return true;
+    case VPackValueType::Custom:
+      TRI_ASSERT(key == arangodb::StaticStrings::IdString);
+      [[fallthrough]];
+    case VPackValueType::String:
+      return true;
+    default:
+      return false;
+  }
+}
+
 // returns 'context' in case if can't find the specified 'field'
-inline arangodb::iresearch::FieldMeta const* findMeta(
+arangodb::iresearch::FieldMeta const* findMeta(
     irs::string_ref key, arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
@@ -144,9 +176,9 @@ inline arangodb::iresearch::FieldMeta const* findMeta(
   return meta ? meta->get() : context;
 }
 
-inline bool inObjectFiltered(std::string& buffer,
-                             arangodb::iresearch::FieldMeta const*& context,
-                             arangodb::iresearch::IteratorValue const& value) {
+bool inObjectFiltered(std::string& buffer,
+                      arangodb::iresearch::FieldMeta const*& context,
+                      arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
@@ -165,9 +197,9 @@ inline bool inObjectFiltered(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
-inline bool inObject(std::string& buffer,
-                     arangodb::iresearch::FieldMeta const*& context,
-                     arangodb::iresearch::IteratorValue const& value) {
+bool inObject(std::string& buffer,
+              arangodb::iresearch::FieldMeta const*& context,
+              arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
@@ -180,9 +212,9 @@ inline bool inObject(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
-inline bool inArrayOrdered(std::string& buffer,
-                           arangodb::iresearch::FieldMeta const*& context,
-                           arangodb::iresearch::IteratorValue const& value) {
+bool inArrayOrdered(std::string& buffer,
+                    arangodb::iresearch::FieldMeta const*& context,
+                    arangodb::iresearch::IteratorValue const& value) {
   buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
   append(buffer, value.pos);
   buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
@@ -190,15 +222,15 @@ inline bool inArrayOrdered(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
-inline bool inArray(std::string& buffer,
-                    arangodb::iresearch::FieldMeta const*& context,
-                    arangodb::iresearch::IteratorValue const& value) noexcept {
+bool inArray(std::string& buffer,
+             arangodb::iresearch::FieldMeta const*& context,
+             arangodb::iresearch::IteratorValue const& value) noexcept {
   return canHandleValue(buffer, value.value, *context);
 }
 
-typedef bool (*Filter)(std::string& buffer,
-                       arangodb::iresearch::FieldMeta const*& context,
-                       arangodb::iresearch::IteratorValue const& value);
+using Filter = bool (*)(std::string& buffer,
+                        arangodb::iresearch::FieldMeta const*& context,
+                        arangodb::iresearch::IteratorValue const& value);
 
 Filter const valueAcceptors[] = {
     // type == Object, nestListValues == false, includeAllValues == false
@@ -218,23 +250,26 @@ Filter const valueAcceptors[] = {
     // type == Array , nestListValues == true, includeAllValues == true
     &inArrayOrdered};
 
-inline Filter getFilter(VPackSlice value,
-                        arangodb::iresearch::FieldMeta const& meta) noexcept {
+Filter getFilter(VPackSlice value,
+                 arangodb::iresearch::FieldMeta const& meta) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions +
                         meta._includeAllFields];
 }
 
-typedef bool (*InvertedIndexFilter)(
+using InvertedIndexFilter = bool (*)(
     std::string& buffer,
-    arangodb::iresearch::InvertedIndexField const*& context,
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const*&
+        context,
     arangodb::iresearch::IteratorValue const& value);
 
 template<bool defaultAccept>
-inline bool acceptAll(std::string& buffer,
-                      arangodb::iresearch::InvertedIndexField const*& context,
-                      arangodb::iresearch::IteratorValue const& value) {
+bool acceptAll(
+    std::string& buffer,
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const*&
+        context,
+    arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
@@ -242,57 +277,55 @@ inline bool acceptAll(std::string& buffer,
   }
 
   buffer.append(key.c_str(), key.size());
-  for (auto& nested : context->_fields) {
-    if (nested.toString() == key && !nested._fields.empty()) {
+  auto subContext = context->_subFields.find(key);
+  if (subContext != context->_subFields.end()) {
+    if (subContext->second._hasNested) {
       return false;
     }
-    auto fullName = nested.path();
-    if (fullName.starts_with(buffer)) {
-      if (buffer == nested.attributeString()) {
-        if (value.value.isObject() &&
-            !nested.analyzer()->accepts(
-                arangodb::iresearch::AnalyzerValueType::Object)) {
-          THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_NOT_IMPLEMENTED,
-              "Inverted index does not support indexing objects and configured "
-              "analyzer does "
-              "not accept objects. Please use another analyzer to process an "
-              "object or exclude field '%s' "
-              "from index definition",
-              buffer.c_str());
-        } else if (nested.isArray() && !value.value.isArray()) {
-          // we were expecting an array but something else were given
-          // this case is just skipped. Just like regular indicies do
-          return false;
-        } else if (value.value.isArray() && !nested.isArray() &&
-                   nested._fields.empty()) {
-          if (!nested.analyzer()->accepts(
-                  arangodb::iresearch::AnalyzerValueType::Array)) {
-            THROW_ARANGO_EXCEPTION_FORMAT(
-                TRI_ERROR_NOT_IMPLEMENTED,
-                "Configured analyzer does not accepts arrays and field has no "
-                "expansion set. "
-                "Please use another analyzer to process an array or exclude "
-                "field '%s' "
-                "from index definition or enable expansion",
-                buffer.c_str());
-          }
-        }
-      }
-      if (fullName == buffer) {
-        context = &nested;
-      }
-      return true;
+    context = &subContext->second;
+    if (context->_isArray && !value.value.isArray()) {
+      // we were expecting an array but something else were given
+      // this case is just skipped. Just like regular indicies do.
+      return false;
+    } else if (value.value.isObject() && !context->_includeAllFields &&
+               context->_subFields.empty() &&
+               !context->_analyzers->front()._pool->accepts(
+                   arangodb::iresearch::AnalyzerValueType::Object)) {
+      THROW_ARANGO_EXCEPTION_FORMAT(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "Inverted index does not support indexing objects and "
+          "configured analyzer does not accept objects. Please use "
+          "another analyzer to process an object or exclude field '%s' "
+          " from index definition",
+          buffer.c_str());
+    } else if (value.value.isArray() && !context->_isArray &&
+               !context->_analyzers->front()._pool->accepts(
+                   arangodb::iresearch::AnalyzerValueType::Array)) {
+      THROW_ARANGO_EXCEPTION_FORMAT(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "Configured analyzer does not accepts arrays and field has no "
+          "expansion set. "
+          "Please use another analyzer to "
+          " process an array or exclude "
+          "field '%s' "
+          "from index definition or enable expansion",
+          buffer.c_str());
     }
   }
-  return defaultAccept;
+
+  if (subContext == context->_subFields.end() && !defaultAccept) {
+    return false;
+  }
+
+  return canHandleValue(buffer, value.value, *context);
 }
 
-inline bool inArrayInverted(
+bool inArrayInverted(
     std::string& buffer,
-    arangodb::iresearch::InvertedIndexField const*& context,
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const*&
+        context,
     arangodb::iresearch::IteratorValue const& value) {
-  if (context->trackListPositions()) {
+  if (context->_trackListPositions) {
     buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
     append(buffer, value.pos);
     buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
@@ -305,9 +338,10 @@ inline bool inArrayInverted(
 InvertedIndexFilter const valueAcceptorsInverted[] = {
     &acceptAll<false>, &acceptAll<true>, &inArrayInverted, &inArrayInverted};
 
-inline InvertedIndexFilter getFilter(
+InvertedIndexFilter getFilter(
     VPackSlice value,
-    arangodb::iresearch::InvertedIndexField const& meta) noexcept {
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
+        meta) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
   return valueAcceptorsInverted[value.isArray() * 2 + meta._includeAllFields];
@@ -334,32 +368,35 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
 }
 
 #ifdef USE_ENTERPRISE
-void handleNested(std::string_view parent,
-                  arangodb::iresearch::MissingFieldsMap& map,
-                  arangodb::iresearch::InvertedIndexField const& field);
+void gatherNestedNulls(std::string_view parent,
+                       arangodb::iresearch::MissingFieldsMap& map,
+                       arangodb::iresearch::InvertedIndexField const& field);
 #endif
 
 arangodb::iresearch::MissingFieldsMap gatherMissingFields(
-    arangodb::iresearch::InvertedIndexField const& field) {
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
+        field) {
   arangodb::iresearch::MissingFieldsMap map;
-  for (auto const& f : field._fields) {
-    // always monitor on root level plain fields to track completely missing hierarchies
-    // trackListPositions enabled arrays are excluded as we could never predict if array[12345] will exist
-    // so we do not emit such "nulls". It is not supported in general indexes anyway
-    if ((!field._trackListPositions || field.expansion().empty()) && f._fields.empty()) {
-      std::cout << "ROOT LEVEL:" << f.path() << std::endl;
-      map[""].emplace(f.path());
+  for (auto const& f : field._meta->_fields) {
+    // always monitor on root level plain fields to track completely missing
+    // hierarchies. trackListPositions enabled arrays are excluded as we could
+    // never predict if array[12345] will exist so we do not emit such "nulls".
+    // It is not supported in general indexes anyway
+    if ((!field._trackListPositions || !field._meta->_hasExpansion) &&
+        f._fields.empty()) {
+      map[""].emplace(f._attribute.back().shouldExpand ? f.attributeString()
+                                                       : f.path());
     }
-    // but fo individual objects in array we always could track expected fields and emit "nulls"
-    if (!f.expansion().empty()) {
+    // but for individual objects in array we always could track expected fields
+    // and emit "nulls"
+    if (f._hasExpansion && !f._attribute.back().shouldExpand) {
       TRI_ASSERT(f._fields.empty());
       // monitor array subobjects
-      std::cout << "ARRAY:" << f.attributeString() << " Expect:" << f.path() << std::endl;
       map[f.attributeString()].emplace(f.path());
     }
 #ifdef USE_ENTERPRISE
     if (!f._fields.empty()) {
-      handleNested("", map, f);
+      gatherNestedNulls("", map, f);
     }
 #endif
   }
@@ -390,8 +427,8 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
-template<typename IndexMetaStruct, typename LevelMeta>
-FieldIterator<IndexMetaStruct, LevelMeta>::FieldIterator(
+template<typename IndexMetaStruct>
+FieldIterator<IndexMetaStruct>::FieldIterator(
     arangodb::transaction::Methods& trx, irs::string_ref collection,
     IndexId linkId)
     : _trx(&trx),
@@ -402,9 +439,9 @@ FieldIterator<IndexMetaStruct, LevelMeta>::FieldIterator(
   // initialize iterator's value
 }
 
-template<typename IndexMetaStruct, typename LevelMeta>
-void FieldIterator<IndexMetaStruct, LevelMeta>::reset(
-    VPackSlice doc, IndexMetaStruct const& linkMeta) {
+template<typename IndexMetaStruct>
+void FieldIterator<IndexMetaStruct>::reset(VPackSlice doc,
+                                           IndexMetaStruct const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
@@ -415,19 +452,18 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::reset(
   _nameBuffer.clear();
   _disableFlush = false;
   // push the provided 'doc' on stack and initialize current value
-  auto const filter = getFilter(doc, static_cast<LevelMeta const&>(linkMeta));
-  _missingFieldsMap = gatherMissingFields(static_cast<LevelMeta const&>(linkMeta));
+  auto const filter = getFilter(doc, linkMeta);
+  _missingFieldsMap = gatherMissingFields(linkMeta);
 #ifdef USE_ENTERPRISE
   // this is set for root level as general mark.
   _hasNested = MetaTraits::hasNested(linkMeta);
 #endif
-  pushLevel(doc, static_cast<LevelMeta const&>(linkMeta), filter);
+  pushLevel(doc, linkMeta, filter);
   next();
 }
 
-template<typename IndexMetaStruct, typename LevelMeta>
-void FieldIterator<IndexMetaStruct, LevelMeta>::setBoolValue(
-    VPackSlice const value) {
+template<typename IndexMetaStruct>
+void FieldIterator<IndexMetaStruct>::setBoolValue(VPackSlice const value) {
   TRI_ASSERT(value.isBool());
 
   arangodb::iresearch::kludge::mangleBool(_nameBuffer);
@@ -443,9 +479,8 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::setBoolValue(
   _value._fieldFeatures = {};
 }
 
-template<typename IndexMetaStruct, typename LevelMeta>
-void FieldIterator<IndexMetaStruct, LevelMeta>::setNumericValue(
-    VPackSlice const value) {
+template<typename IndexMetaStruct>
+void FieldIterator<IndexMetaStruct>::setNumericValue(VPackSlice const value) {
   TRI_ASSERT(value.isNumber());
 
   arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
@@ -463,9 +498,8 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::setNumericValue(
                            NumericStreamFeatures.size()};
 }
 
-template<typename IndexMetaStruct, typename LevelMeta>
-void FieldIterator<IndexMetaStruct, LevelMeta>::setNullValue(
-    VPackSlice const value) {
+template<typename IndexMetaStruct>
+void FieldIterator<IndexMetaStruct>::setNullValue(VPackSlice const value) {
   TRI_ASSERT(value.isNull());
 
   arangodb::iresearch::kludge::mangleNull(_nameBuffer);
@@ -481,8 +515,8 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::setNullValue(
   _value._fieldFeatures = {};
 }
 
-template<typename IndexMetaStruct, typename LevelMeta>
-bool FieldIterator<IndexMetaStruct, LevelMeta>::setValue(
+template<typename IndexMetaStruct>
+bool FieldIterator<IndexMetaStruct>::setValue(
     VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer) {
   TRI_ASSERT(  // assert
       (value.isCustom() &&
@@ -595,7 +629,7 @@ bool FieldIterator<IndexMetaStruct, LevelMeta>::setValue(
     } break;
     default: {
       if constexpr (std::is_same_v<IndexMetaStruct,
-                                   IResearchInvertedIndexMeta>) {
+                                   IResearchInvertedIndexMetaIndexingContext>) {
         iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
       } else {
         iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
@@ -623,15 +657,16 @@ bool FieldIterator<IndexMetaStruct, LevelMeta>::setValue(
 }
 
 #ifndef USE_ENTERPRISE
-template<typename IndexMetaStruct, typename LevelMeta>
-bool FieldIterator<IndexMetaStruct, LevelMeta>::pushLevel(
-    VPackSlice value, LevelMeta const& meta,
-    FieldIterator<IndexMetaStruct, LevelMeta>::Filter filter) {
+template<typename IndexMetaStruct>
+bool FieldIterator<IndexMetaStruct>::pushLevel(
+    VPackSlice value, IndexMetaStruct const& meta,
+    FieldIterator<IndexMetaStruct>::Filter filter) {
   std::optional<MissingFieldsContainer> missing;
   // missing fields are gathered for "root" e.g. empty stack
   // and for array->object in stack
-  if (_stack.empty() || (value.isObject() && _stack.size() > 1
-     && _stack[_stack.size() - 2].it.value().value.isArray())) {
+  if (_stack.empty() ||
+      (value.isObject() && _stack.size() > 1 &&
+       _stack[_stack.size() - 2].it.value().value.isArray())) {
     auto key = _stack.empty() ? std::string_view("")
                               : std::string_view(_nameBuffer.data(),
                                                  _stack.back().nameLength);
@@ -645,18 +680,18 @@ bool FieldIterator<IndexMetaStruct, LevelMeta>::pushLevel(
   return true;
 }
 
-template<typename IndexMetaStruct, typename LevelMeta>
-void FieldIterator<IndexMetaStruct, LevelMeta>::popLevel() {
+template<typename IndexMetaStruct>
+void FieldIterator<IndexMetaStruct>::popLevel() {
   _stack.pop_back();
 }
 #endif
 
-template<typename IndexMetaStruct, typename LevelMeta>
-void FieldIterator<IndexMetaStruct, LevelMeta>::fieldSeen(std::string& name) {
-  if constexpr (!std::is_same_v<InvertedIndexField, LevelMeta>) {
+template<typename IndexMetaStruct>
+void FieldIterator<IndexMetaStruct>::fieldSeen(std::string& name) {
+  if constexpr (!std::is_same_v<IResearchInvertedIndexMetaIndexingContext,
+                                IndexMetaStruct>) {
     return;
   }
-  std::cout << "SEEN:" << name << std::endl;
   auto it = _stack.rbegin();
   while (it != _stack.rend()) {
     if (it->missingFields) {
@@ -666,8 +701,8 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::fieldSeen(std::string& name) {
   }
 }
 
-template<typename IndexMetaStruct, typename LevelMeta>
-void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
+template<typename IndexMetaStruct>
+void FieldIterator<IndexMetaStruct>::next() {
   TRI_ASSERT(valid());
 
   if (_currentTypedAnalyzer) {
@@ -690,8 +725,8 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
   _value._value = irs::bytes_ref::NIL;
 #ifdef USE_ENTERPRISE
   _value._root = false;
-#endif
   _needDoc = false;
+#endif
   while (true) {
   setAnalyzers:
     while (_begin != _end) {
@@ -707,12 +742,12 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
         // need to emit "missing" fields as NULLs if index requires so
         if (top().missingFields && !top().missingFields->empty()) {
 #ifdef USE_ENTERPRISE
-          switch (processNestedNulls()) { 
-            case NestedNullsResult::CONTINUE:
+          switch (processNestedNulls()) {
+            case NestedNullsResult::kContinue:
               continue;
-            case NestedNullsResult::RETURN:
+            case NestedNullsResult::kReturn:
               return;
-            case NestedNullsResult::NONE:
+            case NestedNullsResult::kNone:
               // NO-OP
               break;
           }
@@ -746,7 +781,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
       auto const filterRes = level.filter(_nameBuffer, context, value);
       // Filter will add a new part. But even if filter decided
       // to skip field - we must track it as seen and not emit null
-      // for explicitly discarded values. Like skipping non-array fields 
+      // for explicitly discarded values. Like skipping non-array fields
       // for expansion fields in the index as the field is definately not
       // missing.
       fieldSeen(_nameBuffer);
@@ -754,7 +789,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
         continue;
       }
 #ifdef USE_ENTERPRISE
-      if (level.type == LevelType::NESTED_OBJECTS) {
+      if (level.type == LevelType::kNestedObjects) {
         // Requesting nested document
         _needDoc = true;
       }
@@ -770,22 +805,31 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
         case VPackValueType::Bool:
           setBoolValue(valueSlice);
           return;
-        
-        case VPackValueType::Array: 
+
+        case VPackValueType::Array:
 #ifdef USE_ENTERPRISE
-          if (level.type == LevelType::NESTED_ROOT) {
+          if (level.type == LevelType::kNestedRoot) {
             setRoot();
             return;
           }
 #endif
-        [[fallthrough]];
+          [[fallthrough]];
         case VPackValueType::Object: {
           auto filter = getFilter(valueSlice, *context);
           bool setAnalyzers = pushLevel(valueSlice, *context, filter);
           if (setAnalyzers) {
-            auto const& analyzers = context->_analyzers;
-            _begin = analyzers.data() + context->_primitiveOffset;
-            _end = analyzers.data() + analyzers.size();
+            // FIXME(Dronplane): use traits
+            if constexpr (std::is_same_v<
+                              IndexMetaStruct,
+                              IResearchInvertedIndexMetaIndexingContext>) {
+              auto const& analyzers = *context->_analyzers;
+              _begin = analyzers.data() + context->_primitiveOffset;
+              _end = analyzers.data() + analyzers.size();
+            } else {
+              auto const& analyzers = context->_analyzers;
+              _begin = analyzers.data() + context->_primitiveOffset;
+              _end = analyzers.data() + analyzers.size();
+            }
           }
           _prefixLength = _nameBuffer.size();  // save current prefix length
           _valueSlice = valueSlice;
@@ -804,8 +848,14 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
           TRI_ASSERT(_nameBuffer == arangodb::StaticStrings::IdString);
           [[fallthrough]];
         case VPackValueType::String: {
-          auto const& analyzers = context->_analyzers;
-          _begin = analyzers.data();
+          // FIXME(Dronplane): use traits
+          if constexpr (std::is_same_v<
+                            IndexMetaStruct,
+                            IResearchInvertedIndexMetaIndexingContext>) {
+            _begin = context->_analyzers->data();
+          } else {
+            _begin = context->_analyzers.data();
+          }
           _end = _begin + context->_primitiveOffset;
 
           _prefixLength = _nameBuffer.size();  // save current prefix length
@@ -904,8 +954,7 @@ bool StoredValue::write(irs::data_output& out) const {
 #endif
 
 template class arangodb::iresearch::FieldIterator<
-    arangodb::iresearch::FieldMeta, arangodb::iresearch::FieldMeta>;
+    arangodb::iresearch::FieldMeta>;
 
 template class arangodb::iresearch::FieldIterator<
-    arangodb::iresearch::IResearchInvertedIndexMeta,
-    arangodb::iresearch::InvertedIndexField>;
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext>;

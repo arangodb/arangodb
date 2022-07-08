@@ -139,6 +139,7 @@ struct RequestOptions {
 
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
+    TRI_ASSERT(!std::string_view{val}.empty());  // cannot parse it on receiver
     this->parameters.insert_or_assign(std::forward<K>(key),
                                       std::forward<V>(val));
     return *this;

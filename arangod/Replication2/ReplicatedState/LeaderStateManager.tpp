@@ -183,13 +183,17 @@ LeaderStateManager<S>::LeaderStateManager(
     std::shared_ptr<ReplicatedState<S>> const& parent,
     std::shared_ptr<replicated_log::ILogLeader> leader,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
-    std::shared_ptr<Factory> factory) noexcept
+    std::shared_ptr<Factory> factory,
+    std::shared_ptr<ReplicatedStateMetrics> ms) noexcept
     : guardedData(*this, LeaderInternalState::kWaitingForLeadershipEstablished,
                   std::move(core), std::move(token)),
       parent(parent),
       logLeader(std::move(leader)),
       loggerContext(std::move(loggerContext)),
-      factory(std::move(factory)) {}
+      factory(std::move(factory)),
+      metrics(std::move(ms)) {
+  metrics->replicatedStateNumberLeaders->fetch_add(1);
+}
 
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
@@ -257,5 +261,10 @@ template<typename S>
 auto LeaderStateManager<S>::getImplementationState()
     -> std::shared_ptr<IReplicatedLeaderState<S>> {
   return guardedData.getLockedGuard()->state;
+}
+
+template<typename S>
+LeaderStateManager<S>::~LeaderStateManager() {
+  metrics->replicatedStateNumberLeaders->fetch_sub(1);
 }
 }  // namespace arangodb::replication2::replicated_state

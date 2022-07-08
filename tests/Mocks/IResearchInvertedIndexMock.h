@@ -98,8 +98,8 @@ public:
   specializeCondition(aql::AstNode *node,
                       aql::Variable const *reference) const override;
 
-  Result insert(transaction::Methods &trx, LocalDocumentId const &documentId,
-                velocypack::Slice const doc);
+  Result insert(transaction::Methods &trx, LocalDocumentId documentId,
+                velocypack::Slice doc);
 
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const &analyzer) const override;
 

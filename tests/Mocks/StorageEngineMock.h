@@ -25,6 +25,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Futures/Future.h"
 #include "IResearchLinkMock.h"
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchInvertedIndexMock.h"
@@ -79,8 +80,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::LogicalCollection& collection) const override;
   virtual ErrorCode close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(
-      arangodb::velocypack::Slice const& info, bool restore,
-      bool& created) override;
+      arangodb::velocypack::Slice info, bool restore, bool& created) override;
   virtual void deferDropCollection(
       std::function<bool(arangodb::LogicalCollection&)> const& callback)
       override;
@@ -96,10 +96,10 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::ReplicationIterator::Ordering, uint64_t) override;
   virtual void getPropertiesVPack(
       arangodb::velocypack::Builder&) const override;
-  virtual arangodb::Result insert(arangodb::transaction::Methods* trx,
-                                  arangodb::velocypack::Slice newSlice,
-                                  arangodb::ManagedDocumentResult& result,
-                                  arangodb::OperationOptions& options) override;
+  virtual arangodb::Result insert(
+      arangodb::transaction::Methods& trx, arangodb::RevisionId newRevisionId,
+      arangodb::velocypack::Slice newDocument,
+      arangodb::OperationOptions const& options) override;
 
   virtual arangodb::Result lookupKey(
       arangodb::transaction::Methods*, std::string_view,
@@ -127,15 +127,24 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                             arangodb::LocalDocumentId const& token,
                             arangodb::ManagedDocumentResult& result,
                             arangodb::ReadOwnWrites) const override;
-  virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
-                                  arangodb::velocypack::Slice slice,
-                                  arangodb::ManagedDocumentResult& previous,
-                                  arangodb::OperationOptions& options) override;
+  virtual arangodb::Result lookupDocument(
+      arangodb::transaction::Methods& trx, arangodb::LocalDocumentId token,
+      arangodb::velocypack::Builder& builder, bool readCache, bool fillCache,
+      arangodb::ReadOwnWrites readOwnWrites) const override;
+  virtual arangodb::Result remove(
+      arangodb::transaction::Methods& trx,
+      arangodb::LocalDocumentId previousDocumentId,
+      arangodb::RevisionId previousRevisionId,
+      arangodb::velocypack::Slice previousDocument,
+      arangodb::OperationOptions const& options) override;
   virtual arangodb::Result replace(
-      arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-      arangodb::ManagedDocumentResult& result,
-      arangodb::OperationOptions& options,
-      arangodb::ManagedDocumentResult& previous) override;
+      arangodb::transaction::Methods& trx,
+      arangodb::LocalDocumentId newDocumentId,
+      arangodb::RevisionId previousRevisionId,
+      arangodb::velocypack::Slice previousDocument,
+      arangodb::RevisionId newRevisionId,
+      arangodb::velocypack::Slice newDocument,
+      arangodb::OperationOptions const& options) override;
   virtual arangodb::RevisionId revision(
       arangodb::transaction::Methods* trx) const override;
   virtual arangodb::Result truncate(
@@ -143,27 +152,29 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::OperationOptions& options) override;
   virtual void compact() override {}
   virtual arangodb::Result update(
-      arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-      arangodb::ManagedDocumentResult& result,
-      arangodb::OperationOptions& options,
-      arangodb::ManagedDocumentResult& previous) override;
+      arangodb::transaction::Methods& trx,
+      arangodb::LocalDocumentId newDocumentId,
+      arangodb::RevisionId previousRevisionId,
+      arangodb::velocypack::Slice previousDocument,
+      arangodb::RevisionId newRevisionId,
+      arangodb::velocypack::Slice newDocument,
+      arangodb::OperationOptions const& options) override;
   virtual arangodb::Result updateProperties(
       arangodb::velocypack::Slice const& slice, bool doSync) override;
 
  private:
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
 
-  arangodb::Result updateInternal(arangodb::transaction::Methods* trx,
-                                  arangodb::velocypack::Slice newSlice,
-                                  arangodb::ManagedDocumentResult& result,
-                                  arangodb::OperationOptions& options,
-                                  arangodb::ManagedDocumentResult& previous,
+  arangodb::Result updateInternal(arangodb::transaction::Methods& trx,
+                                  arangodb::LocalDocumentId newDocumentId,
+                                  arangodb::RevisionId previousRevisionId,
+                                  arangodb::velocypack::Slice previousDocument,
+                                  arangodb::RevisionId newRevisionId,
+                                  arangodb::velocypack::Slice newDocument,
+                                  arangodb::OperationOptions const& options,
                                   bool isUpdate);
 
   uint64_t _lastDocumentId;
-  // keep old documents memory, unclear if needed.
-  std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      _graveyard;
   // map _key => data. Keyslice references memory in the value
   std::unordered_map<std::string_view, DocElement> _documents;
 };
@@ -195,7 +206,7 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(
       arangodb::transaction::Hints hints) override;
-  virtual arangodb::Result commitTransaction(
+  virtual arangodb::futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result performIntermediateCommitIfRequired(
       arangodb::DataSourceId cid) override;
