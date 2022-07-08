@@ -101,7 +101,7 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node,
   switch (node->getType()) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::ENUMERATE_PATHS: {
+    case ExecutionNode::K_SHORTEST_PATHS: {
       auto* const graphNode = ExecutionNode::castTo<GraphNode*>(node);
       graphNode->prepareOptions();
       break;

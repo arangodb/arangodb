@@ -155,7 +155,7 @@ function queryCacheAuthorization (options) {
 
   run(requests);
   results['shutdown'] = instanceManager.shutdownInstance();
-  instanceManager.destructor(results.failed === 0);
+  instanceManager.destructor();
   return results;
 }
 

@@ -50,20 +50,15 @@ auto const String_Generation = velocypack::StringRef{"generation"};
 
 struct ImplementationSpec {
   std::string type;
-  std::optional<velocypack::SharedSlice> parameters;
 
   friend auto operator==(ImplementationSpec const& s,
-                         ImplementationSpec const& s2) noexcept -> bool;
+                         ImplementationSpec const& s2) noexcept
+      -> bool = default;
 };
-
-auto operator==(ImplementationSpec const& s,
-                ImplementationSpec const& s2) noexcept -> bool;
 
 template<class Inspector>
 auto inspect(Inspector& f, ImplementationSpec& x) {
-  return f.object(x).fields(
-      f.field(StaticStrings::IndexType, x.type),
-      f.field(StaticStrings::DataSourceParameters, x.parameters));
+  return f.object(x).fields(f.field(StaticStrings::IndexType, x.type));
 }
 
 struct Properties {
@@ -82,7 +77,7 @@ struct Plan {
   LogId id;
   StateGeneration generation;
   Properties properties;
-  std::optional<std::string> owner{};
+  std::optional<std::string> owner;
 
   struct Participant {
     StateGeneration generation;

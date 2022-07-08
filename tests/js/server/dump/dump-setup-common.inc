@@ -180,27 +180,6 @@ function createMultiShard() {
   c.save(l);
 }
 
-function createComputedValues() {
-  db._useDatabase("UnitTestsDumpSrc");
-   let c = db._create("UnitTestsComputedValues", {
-    computedValues: [{
-      name: "value3",
-      expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-      override: false
-    },
-    {
-      name: "value4",
-      expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)",
-      override: true
-    }]
-   });
-   let docs = [];
-    for (let i = 0; i < 1000; ++i) {
-      docs.push({value1: "test" + i, value2: "abc", value4: false});
-    }
-    c.insert(docs);
-}
-
 function createAutoIncKeyGen() {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpKeygen", {
@@ -1162,7 +1141,6 @@ exports.createMany = createMany;
 exports.createOrder = createOrder;
 exports.createModifyCollection = createModifyCollection;
 exports.createMultiShard = createMultiShard;
-exports.createComputedValues = createComputedValues;
 exports.createAutoIncKeyGen = createAutoIncKeyGen;
 exports.createPaddedKeyGen = createPaddedKeyGen;
 exports.createUUIDKeyGen = createUUIDKeyGen;

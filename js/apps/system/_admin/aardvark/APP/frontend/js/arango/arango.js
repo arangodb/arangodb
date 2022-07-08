@@ -598,22 +598,19 @@
       var defaultRoute = '#collection/' + encodeURIComponent(collectionName);
 
       var menus = {
-        "Content": {
+        Content: {
           route: defaultRoute + '/documents/1'
         },
-        "Indexes": {
+        Indexes: {
           route: '#cIndices/' + encodeURIComponent(collectionName)
         },
-        "Info": {
+        Info: {
           route: '#cInfo/' + encodeURIComponent(collectionName)
         },
-        "Settings": {
+        Settings: {
           route: '#cSettings/' + encodeURIComponent(collectionName)
         },
-        "Computed Values": {
-          route: '#cComputedValues/' + encodeURIComponent(collectionName)
-        },
-        "Schema": {
+        Schema: {
           route: '#cSchema/' + encodeURIComponent(collectionName)
         }
       };

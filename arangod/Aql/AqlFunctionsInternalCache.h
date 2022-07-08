@@ -64,7 +64,8 @@ class AqlFunctionsInternalCache final {
   /// validation.
   //                              But it is able to handle other validation
   //                              types without change.
-  arangodb::ValidatorBase* buildValidator(VPackSlice validatorDescription);
+  arangodb::ValidatorBase* buildValidator(
+      VPackSlice const& validatorDescription);
 
   /// @brief inspect a LIKE pattern from a string, and remove all
   /// of its escape characters. will stop at the first wildcards found.
@@ -100,6 +101,8 @@ class AqlFunctionsInternalCache final {
       _likeCache;
   /// @brief cache for validators -- This is currently only used for JSONSchema
   /// validation.
+  //                                 But it is able to handle other validation
+  //                                 types without change.
   std::unordered_map<std::size_t, std::unique_ptr<arangodb::ValidatorBase>>
       _validatorCache;
   /// @brief a reusable string object for pattern generation

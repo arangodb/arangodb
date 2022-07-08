@@ -334,38 +334,22 @@
         }
       });
     },
-    
-    changeComputedValues: function (computedValues, callback) {
-      if (!computedValues) {
-        computedValues = null;
-      }
-
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/properties'),
-        data: JSON.stringify({ computedValues: computedValues }),
-        contentType: 'application/json',
-        processData: false,
-        success: function () {
-          callback(false);
-        },
-        error: function (data) {
-          callback(true, data);
-        }
-      });
-    },
 
     changeValidation: function (validation, callback) {
+      var result = false;
       if (!validation) {
         validation = null;
       }
+
+      var data = {
+        schema: validation
+      };
 
       $.ajax({
         cache: false,
         type: 'PUT',
         url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
-        data: JSON.stringify({ schema: validation }),
+        data: JSON.stringify(data),
         contentType: 'application/json',
         processData: false,
         success: function () {
@@ -375,6 +359,7 @@
           callback(true, data);
         }
       });
+      return result;
     }
 
   });

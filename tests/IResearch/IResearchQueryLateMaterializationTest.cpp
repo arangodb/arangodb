@@ -29,6 +29,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 
@@ -42,8 +43,7 @@ static const char* viewName2 = "view_2";
 
 class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
  protected:
-  std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      insertedDocs;
+  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
   void addLinkToCollection(
       std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
@@ -135,8 +135,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-          arangodb::transaction::Options());
+          EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -157,12 +156,10 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
         ASSERT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          auto res = trx.insert(logicalCollection1->name(), doc, opt);
+          insertedDocs.emplace_back();
+          auto const res =
+              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
-
-          res = trx.document(logicalCollection1->name(), res.slice(), opt);
-          EXPECT_TRUE(res.ok());
-          insertedDocs.emplace_back(std::move(res.buffer));
         }
       }
 
@@ -184,12 +181,10 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
         ASSERT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          auto res = trx.insert(logicalCollection2->name(), doc, opt);
+          insertedDocs.emplace_back();
+          auto const res =
+              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
-
-          res = trx.document(logicalCollection2->name(), res.slice(), opt);
-          EXPECT_TRUE(res.ok());
-          insertedDocs.emplace_back(std::move(res.buffer));
         }
       }
 
@@ -272,10 +267,10 @@ TEST_P(IResearchQueryLateMaterializationTest, test_1) {
                      "e) LIMIT 10 RETURN d";
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
-      arangodb::velocypack::Slice(insertedDocs[5]->data()),
-      arangodb::velocypack::Slice(insertedDocs[6]->data()),
-      arangodb::velocypack::Slice(insertedDocs[1]->data()),
-      arangodb::velocypack::Slice(insertedDocs[2]->data())};
+      arangodb::velocypack::Slice(insertedDocs[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[6].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[1].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[2].vpack())};
 
   executeAndCheck(query, expectedDocs, false);
 }
@@ -286,8 +281,8 @@ TEST_P(IResearchQueryLateMaterializationTest, test_2) {
       " FILTER d.value IN [1, 2] SORT d.foo DESC LIMIT 10 RETURN d";
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
-      arangodb::velocypack::Slice(insertedDocs[2]->data()),
-      arangodb::velocypack::Slice(insertedDocs[1]->data())};
+      arangodb::velocypack::Slice(insertedDocs[2].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[1].vpack())};
 
   executeAndCheck(query, expectedDocs, false);
 }
@@ -299,10 +294,10 @@ TEST_P(IResearchQueryLateMaterializationTest, test_3) {
       "SORT CONCAT(BM25(d), c, d.value) LIMIT 10 RETURN d";
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
-      arangodb::velocypack::Slice(insertedDocs[1]->data()),
-      arangodb::velocypack::Slice(insertedDocs[5]->data()),
-      arangodb::velocypack::Slice(insertedDocs[6]->data()),
-      arangodb::velocypack::Slice(insertedDocs[2]->data())};
+      arangodb::velocypack::Slice(insertedDocs[1].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[6].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[2].vpack())};
 
   executeAndCheck(query, expectedDocs, false);
 }
@@ -321,10 +316,10 @@ TEST_P(IResearchQueryLateMaterializationTest, test_5) {
                      "d.foo LIMIT 10 RETURN d";
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
-      arangodb::velocypack::Slice(insertedDocs[6]->data()),
-      arangodb::velocypack::Slice(insertedDocs[5]->data()),
-      arangodb::velocypack::Slice(insertedDocs[2]->data()),
-      arangodb::velocypack::Slice(insertedDocs[1]->data())};
+      arangodb::velocypack::Slice(insertedDocs[6].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[2].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[1].vpack())};
 
   executeAndCheck(query, expectedDocs, false);
 }
@@ -335,10 +330,10 @@ TEST_P(IResearchQueryLateMaterializationTest, test_6) {
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 10 RETURN d";
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
-      arangodb::velocypack::Slice(insertedDocs[6]->data()),
-      arangodb::velocypack::Slice(insertedDocs[5]->data()),
-      arangodb::velocypack::Slice(insertedDocs[2]->data()),
-      arangodb::velocypack::Slice(insertedDocs[1]->data())};
+      arangodb::velocypack::Slice(insertedDocs[6].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[2].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[1].vpack())};
 
   executeAndCheck(query, expectedDocs, false);
 }
@@ -349,10 +344,10 @@ TEST_P(IResearchQueryLateMaterializationTest, test_7) {
                      "LIMIT 10 SORT NOOPT(d.value) ASC RETURN d";
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
-      arangodb::velocypack::Slice(insertedDocs[1]->data()),
-      arangodb::velocypack::Slice(insertedDocs[2]->data()),
-      arangodb::velocypack::Slice(insertedDocs[5]->data()),
-      arangodb::velocypack::Slice(insertedDocs[6]->data())};
+      arangodb::velocypack::Slice(insertedDocs[1].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[2].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[6].vpack())};
 
   executeAndCheck(query, expectedDocs, false);
 }
@@ -379,7 +374,7 @@ TEST_P(IResearchQueryLateMaterializationTest, test_10) {
       " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 3, 1 RETURN d";
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
-      arangodb::velocypack::Slice(insertedDocs[1]->data())};
+      arangodb::velocypack::Slice(insertedDocs[1].vpack())};
 
   executeAndCheck(query, expectedDocs, false);
 }
@@ -399,8 +394,8 @@ TEST_P(IResearchQueryLateMaterializationTest, test_12) {
                      "DESC LIMIT 10 RETURN d";
 
   std::vector<arangodb::velocypack::Slice> expectedDocs{
-      arangodb::velocypack::Slice(insertedDocs[2]->data()),
-      arangodb::velocypack::Slice(insertedDocs[1]->data())};
+      arangodb::velocypack::Slice(insertedDocs[2].vpack()),
+      arangodb::velocypack::Slice(insertedDocs[1].vpack())};
 
   executeAndCheck(query, expectedDocs, false);
 }

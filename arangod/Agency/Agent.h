@@ -32,6 +32,7 @@
 #include "Agency/Inception.h"
 #include "Agency/State.h"
 #include "Agency/Store.h"
+#include "Agency/Supervision.h"
 #include "Futures/Promise.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
@@ -42,8 +43,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace consensus {
-
-class Supervision;
 
 class Agent final : public arangodb::ServerThread<ArangodServer>,
                     public AgentInterface {
@@ -239,8 +238,8 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Convencience size of agency
   size_t size() const;
 
-  Supervision& supervision() { return *_supervision; }
-  Supervision const& supervision() const { return *_supervision; }
+  Supervision& supervision() { return _supervision; }
+  Supervision const& supervision() const { return _supervision; }
 
   /// @brief Rebuild DBs by applying state log to empty DB
   void rebuildDBs();
@@ -386,7 +385,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   Constituent _constituent;
 
   /// @brief Cluster supervision module
-  std::unique_ptr<Supervision> _supervision;
+  Supervision _supervision;
 
   /// @brief State machine
   State _state;

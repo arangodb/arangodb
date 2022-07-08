@@ -283,7 +283,6 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, std::string_view data)
 RocksDBValue::RocksDBValue(RocksDBEntryType type,
                            replication2::PersistingLogEntry const& entry) {
   TRI_ASSERT(type == RocksDBEntryType::LogEntry);
-  _type = type;
   VPackBuilder builder;
   entry.toVelocyPack(builder, replication2::PersistingLogEntry::omitLogIndex);
   _buffer.reserve(builder.size());

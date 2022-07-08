@@ -358,7 +358,7 @@ class ExecutionPlan {
   ExecutionNode* fromNodeShortestPath(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST K-SHORTEST PATHS node
-  ExecutionNode* fromNodeEnumeratePaths(ExecutionNode*, AstNode const*);
+  ExecutionNode* fromNodeKShortestPaths(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST FILTER node
   ExecutionNode* fromNodeFilter(ExecutionNode*, AstNode const*);

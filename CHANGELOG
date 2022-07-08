@@ -1,93 +1,5 @@
 devel
 -----
-* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
-  explain outputs for AQL queries.
-
-* Pregel SSSP now supports `resultField` as well as `_resultField` as 
-  parameter name to specify the field into which results are stored.
-  The name `_resultField` will be deprecated in future.
-
-* Web UI: Fixes a GraphViewer issue related to display issues with node
-  and edge labels. Boolean node or edge values could not be used as label
-  values (ES-1084).
-
-* Made the SortExecutor receive its input incrementally, instead of receiving
-  a whole matrix containing all input at once.
-
-* Optimization for index post-filtering (early pruning): in case an index
-  is used for lookups, and the index covers the IndexNode's post-filter
-  condition, then loading the full document from the storage engine is
-  now deferred until the filter condition is evaluated and it is established
-  that the document matches the filter condition.
-
-* Added a fully functional UI for Views that lets users view, modify mutable
-  properties and delete views from the web UI.
-
-* Fix thread ids and thread names in log output for threads that are not
-  started directly by ArangoDB code, but indirectly via library code.
-  Previously, the ids of these threads were always reported as "1", and
-  the thread name was "main". Now return proper thread ids and names.
-
-* Changed default Linux CI compiler to gcc-11.
-
-* Updated arangosync to v2.11.0-preview-2.
-
-* Add "AT LEAST" quantifier for array filters in AQL:
-
-      `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
-      `RETURN [1,2,3] AT LEAST (2) IN [1,2,3,4,5]`
-
-* Changed default macOS CI compiler to LLVM clang-14.
-
-* Introduce reading from followers in clusters. This works by offering
-  an additional HTTP header "x-arango-allow-dirty-read" for certain
-  read-only APIs. This header has already been used for active failover
-  deployments to allow reading from followers. Using this header leads
-  to the fact that coordinators are allowed to read from follower shards
-  instead only from leader shards. This can help to spread the read load
-  better across the cluster. Obviously, using this header can result in
-  "dirty reads", which are read results returning stale data or even
-  not-yet-officially committed data. Use at your own risk if performance
-  is more important than correctness or if you know that data does not
-  change.
-  The responses which can contain dirty reads will have set the HTTP header
-  "x-arango-potential-dirty-read" set to "true".
-
-* Changed HTTP response code for error number 1521 from 500 to 400.
-
-  Error 1521 (query collection lock failed) is nowadays only emitted by
-  traversals, when a collection is accessed during the traversal that has
-  not been specified in the WITH statement of the query. 
-  Thus returning HTTP 500 is not a good idea, as it is clearly a user error
-  that triggered the problem.
-
-* Renamed the `--frontend.*` startup options to `--web-interface.*`:
-
-  - `--frontend.proxy-request.check` -> `--web-interface.proxy-request.check`
-  - `--frontend.trusted-proxy` -> `--web-interface.trusted-proxy`
-  - `--frontend.version-check` -> `--web-interface.version-check`
-
-  The former startup options are still supported.
-
-* Added Enterprise Graph feature to enterprise version of ArangoDB.
-  The enterprise graph is another graph sharding model that we introduced,
-  it is less strict, and therefore easier to start with, then SmartGraphs,
-  as it does not require a smartGraphAttribute, and allows free choice of
-  vertex _key values. But still maintains performance gains as compared to
-  general-graphs. For more details please check documentation.
-
-* APM-135: Added multithreading to assigning non-unique indexes to documents,
-  in foreground or background mode. The number of index creation threads 
-  is hardcoded to 2 for now. Improvements for higher parallelism are expected
-  for future versions.
-
-* Issue 15592: Permit `MERGE_RECURSIVE()` to be called with a single argument.
-
-* Fixed issue 16337: arangoimport with `--headers-file` and `--merge-attributes`
-  merges column names instead of row values on the first line of a CSV file.
-
-  Additionally, floating-point numbers are now merged using their standard
-  string representation instead of with a fixed precision of 6 decimal places.
 
 * Now supporting projections on traversals. In AQL Traversal statements like
   FOR v,e,p IN 1..3 OUTBOUND @start GRAPH @graph RETURN v.name
@@ -127,7 +39,7 @@ devel
   defaults and bounds for Pregel jobs. Each individual Pregel job can set
   its own parallelism value using the job's `parallelism` option, but the
   job's parallelism value will be clamped to the bounds defined by
-  `--pregel.min-parallelism` and `--pregel.max-parallelism`. If a job does
+  `--pregel,min-parallelism` and `--pregel.max-parallelism`. If a job does
   not set its `parallelism` value, it will default to the parallelism value
   configured via `--pregel.parallelism`.
 
@@ -138,7 +50,7 @@ devel
     default store their temporary data in disk-backed memory-mapped files. 
     If set to `false`, the temporary data of Pregel jobs will be buffered in 
     RAM. The default value is `true`, meaning that memory-mapped files will
-    be used. The option can be overridden for each Pregel job by setting the 
+    be used. The option can be overriden for each Pregel job by setting the 
     `useMemoryMaps` option of the job.
 
   - `--pregel.memory-mapped-files-location-type`: location for memory-mapped
@@ -178,7 +90,7 @@ devel
 
 * Updated arangosync to v2.10.0-preview-1.
 
-* Enterprise only: Restricted behavior of Hybrid Disjoint Smart Graphs. Within 
+* Enterprise only: Restricted behaviour of Hybrid Disjoint Smart Graphs. Within 
   a single traversal or path query we now restrict that you can only switch 
   between Smart and Satellite sharding once, all queries where more than one 
   switch is (in theory) possible will be rejected. e.g:
@@ -255,7 +167,7 @@ devel
   - `array[?]`: returns `false` if array is empty, `true` otherwise
   - `array[? FILTER CURRENT ...]`: returns `false` if no array member
      satisfies the filter condition, returns `true` if at least one member
-     satisfies it.
+     satistifies it.
 
 * Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
   permuting adjacent FOR loops that depended on each other.
@@ -301,7 +213,7 @@ devel
 
 * Fix: Highly unlikely race in cluster maintenance. For every shard only
   one operation (change attribute, change leadership) should be performed
-  at the same time. However if two changes are detected in the same heartbeat
+  at the same time. However if two changes are detected in the same hearbeat
   it could lead to both operations to be executed in parallel. In most cases
   this is also fine, but could lead to races on the same attribute, however
   the race will be sorted out in the next heartbeat interval.
@@ -358,7 +270,7 @@ devel
   * key generator type
   * whether or not the document and primary index cache is enabled
   * if cache is enabled, show cache usage and allocation size in figures
-  The `cacheEnabled` property of collections is now also changeable via the
+  The `cacheEnabled` property of collections is now also changable via the
   UI for existing collections.
 
 * FE-45: Added tooltips with helpful information to the options on the View UI
@@ -470,8 +382,8 @@ devel
   run.
 
 * Remove error handling fetching license information to improve user
-  experience. To display the license information in the UI is only
-  informational. It disturbs the user experience to know something went wrong
+  experience. To display the license informationn in the UI is only
+  informational. It disturbs the user experience to know somthing went wrong
   and doesn't provide any important information for the user.
 
 * Updated bundled version of zlib library to 1.2.12.
@@ -640,7 +552,7 @@ devel
   - Rules for polygons and multigons have been clarified and are now properly
     enforced for the `GEO_POLYGON` and `GEO_MULTIPOLYGON` AQL functions.
   - Introduced `legacyPolygon` flag for geo indexes to continue to support
-    the old behavior in existing geo indexes.
+    the old behaviour in existing geo indexes.
   - Added lots of additional tests, thereby fixing several bugs in geo index
     lookup.
   - Use a faster algorithm for pure `GEO_CONTAINS` and `GEO_INTERSECTS`
@@ -695,19 +607,19 @@ devel
 * The multi-dimensional index type `zkd` now supports an optional index hint for
   tweaking performance by prefetching documents:
 
-  ```
-  FOR app IN appointments OPTIONS { lookahead: 32 }
+	```
+	FOR app IN appointments OPTIONS { lookahead: 32 }
     FILTER @to <= app.to
     FILTER app.from <= @from
     RETURN app
-  ```
+	```
 
-  Specifying a lookahead value greater than zero makes the index fetch more documents
-  that are no longer in the search box, before seeking to the next lookup position.
-  Because the seek operation is computationally expensive, probing more documents
-  before seeking may reduce the number of seeks, if matching documents are found.
-  Please keep in mind that it might also affect performance negatively if documents
-  are fetched unnecessarily.
+	Specifiying a lookahead value greater than zero makes the index fetch more documents
+	that are no longer in the search box, before seeking to the next lookup position.
+	Because the seek operation is computationally expensive, probing more documents
+	before seeking may reduce the number of seeks, if matching documents are found.
+	Please keep in mind that it might also affect performance negatively if documents
+	are fetched unnecessarily.
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
@@ -907,7 +819,7 @@ devel
 
   The default value of `disableIndex` is `false`.
   In case a different index hint is provided, `disableIndex: true` takes
-  precedence and produces a warning about the ambiguous settings.
+  precendence and produces a warning about the ambiguous settings.
 
 * Added `maxProjections` hint for AQL FOR loops. This hint can be used to set
   the maximum number of document attributes that are taken into account for
@@ -2029,7 +1941,7 @@ devel
   startup, reporting corruption. However, empty WAL files are possible in case
   of server crashes etc. Now, if a WAL file is completely empty, there will be
   no attempt to read the encryption meta data from it, so the startup succeeds
-  (BTS-392).
+	(BTS-392).
 
 * Remove _msg/please-upgrade handler.
 
@@ -2325,18 +2237,18 @@ devel
 
 * Implemented an optimization for Traversals. If you apply a POST filter on
   the vertex and/or edge result this filter will now be applied during the
-  traversal to avoid generating the full output for AQL. This will have
-  positive effect if you filter on the vertex/edge but return the path,
-  this way the system does only need to produce a path that is allowed to
-  be passed through.
-  e.g.
+	traversal to avoid generating the full output for AQL. This will have
+	positive effect if you filter on the vertex/edge but return the path,
+	this way the system does only need to produce a path that is allowed to
+	be passed through.
+	e.g.
 
     FOR v,e,p IN 10 OUTBOUND @start GRAPH "myGraph"
-      FILTER v.isRelevant == true
-      RETURN p
+		  FILTER v.isRelevant == true
+			RETURN p
 
-  can now be optimized, and the traversal statement will only produce
-  paths where the last vertex has `isRelevant == true`.
+	can now be optimized, and the traversal statement will only produce
+	paths where the last vertex has `isRelevant == true`.
 
 * Fix BTS-450: RandomGenerator caught assertion during a value generation within
   `dump_maskings` testsuite. Ensure correct conversion between 64 and 32bit.
@@ -2362,10 +2274,10 @@ devel
 
 * Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
   documentation about the long deprecated features Simple Queries and
-  JavaScript-based graph traversal. Also removed the descriptions of the
-  JS API methods `collection.range()`, `collection.closedRange()`,
-  `cursor.setBatchSize()` and `cursor.getBatchSize()`. All the functionality
-  is superseded by AQL.
+	JavaScript-based graph traversal. Also removed the descriptions of the
+	JS API methods `collection.range()`, `collection.closedRange()`,
+	`cursor.setBatchSize()` and `cursor.getBatchSize()`. All the functionality
+	is superseded by AQL.
 
 * Implemented APM-86: add query option `fillBlockCache` to control population
   of RocksDB block cache with data read by the query. The default value for
@@ -2869,11 +2781,11 @@ devel
 
 * Bug-fix in the case of very rare network issues there was a chance that
   an AQL query could get stuck during a cleanup and after a commit.
-  This would cause the client to receive a timeout, and the Coordinator
-  blocking a Scheduler thread. This situation is sorted out and the thread
-  will not be blocked anymore. We also added logs in case the query
-  could not successfully be cleaned up, which would leave locks on shards
-  behind.
+	This would cause the client to receive a timeout, and the Coordinator
+	blocking a Scheduler thread. This situation is sorted out and the thread
+	will not be blocked anymore. We also added logs in case the query
+	could not successfully be cleaned up, which would leave locks on shards
+	behind.
 
 * Switched to GCC 10 as the default compiler and use Sandy Bridge as the
   default required architecture (Linux, macOS binaries).
@@ -4970,8 +4882,8 @@ devel
 
 * Fixed issue ES-664: the optimizer rule `inline-subqueries` must not pull out
   subqueries that contains a COLLECT statement if the subquery is itself called
-  from within a loop. Otherwise the COLLECT will be applied to the values in the
-  outer FOR loop, which can produce a different result.
+	from within a loop. Otherwise the COLLECT will be applied to the values in the
+	outer FOR loop, which can produce a different result.
 
 * Fixed a blockage on hotbackup when writes are happening concurrently, since
   followers could no longer replicate leader transactions.
@@ -5857,20 +5769,20 @@ devel
 * Added feature: SatelliteGraphs
 
   SatelliteGraphs are a new type of graph, added in addition to the existing
-  ones, General Graphs and SmartGraphs.
+	ones, General Graphs and SmartGraphs.
 
-  When doing joins involving graph traversals, shortest path or k-shortest paths
-  computation in an ArangoDB cluster, data has to be exchanged between different
-  servers. In particular graph traversals are usually executed on a Coordinator,
-  because they need global information. This results in a lot of network traffic
-  and potentially slow query execution.
+	When doing joins involving graph traversals, shortest path or k-shortest paths
+	computation in an ArangoDB cluster, data has to be exchanged between different
+	servers. In particular graph traversals are usually executed on a Coordinator,
+	because they need global information. This results in a lot of network traffic
+	and potentially slow query execution.
 
   SatelliteGraphs are the natural extension of the concept of
-  SatelliteCollections to graphs. All of the usual benefits and caveats apply.
-  SatelliteGraphs are synchronously replicated to all DB-Servers that are part of
-  a cluster, which enables DB-Servers to execute graph traversals locally. This
-  includes (k-)shortest path(s) computation and possibly joins with traversals
-  and greatly improves performance for such queries.
+	SatelliteCollections to graphs. All of the usual benefits and caveats apply.
+	SatelliteGraphs are synchronously replicated to all DB-Servers that are part of
+	a cluster, which enables DB-Servers to execute graph traversals locally. This
+	includes (k-)shortest path(s) computation and possibly joins with traversals
+	and greatly improves performance for such queries.
 
 * Removed deprecated MMFiles storage engine and also the `arango-dfdb`
   (datafile debugger) executable that could be used to validate MMFiles
@@ -8784,7 +8696,7 @@ v3.4.0-rc.1 (2018-09-06)
   The `padded` key generator generates keys of a fixed length (16 bytes) in
   ascending lexicographical sort order.
 
-* The REST API of `/_admin/status` added: "operationMode" field with same meaning as
+* The REST API of `/_admin/status` added: "operationMode" filed with same meaning as
   the "mode" field and field "readOnly" that has the inverted meaning of the field
   "writeOpsEnabled". The old field names will be deprecated in upcoming versions.
 

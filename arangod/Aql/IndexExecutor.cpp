@@ -177,7 +177,6 @@ IndexExecutorInfos::IndexExecutorInfos(
     Collection const* collection, Variable const* outVariable,
     bool produceResult, Expression* filter,
     arangodb::aql::Projections projections,
-    arangodb::aql::Projections filterProjections,
     std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
     NonConstExpressionContainer&& nonConstExpressions, bool count,
     ReadOwnWrites readOwnWrites, AstNode const* condition,
@@ -195,7 +194,6 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outVariable(outVariable),
       _filter(filter),
       _projections(std::move(projections)),
-      _filterProjections(std::move(filterProjections)),
       _filterVarsToRegs(std::move(filterVarsToRegs)),
       _nonConstExpressions(std::move(nonConstExpressions)),
       _outputRegisterId(outputRegister),
@@ -252,11 +250,6 @@ Variable const* IndexExecutorInfos::getOutVariable() const {
 arangodb::aql::Projections const& IndexExecutorInfos::getProjections()
     const noexcept {
   return _projections;
-}
-
-arangodb::aql::Projections const& IndexExecutorInfos::getFilterProjections()
-    const noexcept {
-  return _filterProjections;
 }
 
 QueryContext& IndexExecutorInfos::query() noexcept { return _query; }
@@ -370,14 +363,8 @@ IndexExecutor::CursorReader::CursorReader(
             : infos.isLateMaterialized() ? Type::LateMaterialized
             : !infos.getProduceResult()  ? Type::NoResult
             : infos.getProjections().usesCoveringIndex(index) ? Type::Covering
-            : infos.getFilterProjections().usesCoveringIndex(index)
-                ? Type::CoveringFilterOnly
-                : Type::Document),
+                                                              : Type::Document),
       _checkUniqueness(checkUniqueness) {
-  TRI_ASSERT(
-      _type != Type::CoveringFilterOnly ||
-      (infos.getFilter() != nullptr && !infos.getFilterProjections().empty()));
-
   // for the initial cursor created in the initializer list
   _cursorStats.incrCursorsCreated();
 
@@ -395,17 +382,6 @@ IndexExecutor::CursorReader::CursorReader(
                                            context)
               : ::getCallback<false, false>(DocumentProducingCallbackVariant::
                                                 WithProjectionsCoveredByIndex{},
-                                            context);
-      break;
-    }
-    case Type::CoveringFilterOnly: {
-      _coveringProducer =
-          checkUniqueness
-              ? ::getCallback<true, false>(DocumentProducingCallbackVariant::
-                                               WithFilterCoveredByIndex{},
-                                           context)
-              : ::getCallback<false, false>(DocumentProducingCallbackVariant::
-                                                WithFilterCoveredByIndex{},
                                             context);
       break;
     }
@@ -428,25 +404,14 @@ IndexExecutor::CursorReader::CursorReader(
       break;
   }
   if (_coveringProducer) {
-    if (_type == Type::Covering) {
-      _coveringSkipper =
-          checkUniqueness
-              ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
-                                              WithProjectionsCoveredByIndex{},
-                                          context)
-              : ::getCallback<false, true>(DocumentProducingCallbackVariant::
-                                               WithProjectionsCoveredByIndex{},
-                                           context);
-    } else if (_type == Type::CoveringFilterOnly) {
-      _coveringSkipper =
-          checkUniqueness
-              ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
-                                              WithFilterCoveredByIndex{},
-                                          context)
-              : ::getCallback<false, true>(DocumentProducingCallbackVariant::
-                                               WithFilterCoveredByIndex{},
-                                           context);
-    }
+    _coveringSkipper =
+        checkUniqueness
+            ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
+                                            WithProjectionsCoveredByIndex{},
+                                        context)
+            : ::getCallback<false, true>(DocumentProducingCallbackVariant::
+                                             WithProjectionsCoveredByIndex{},
+                                         context);
   } else {
     _documentSkipper = checkUniqueness
                            ? buildDocumentCallback<true, true>(context)
@@ -481,7 +446,6 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
       TRI_ASSERT(_documentNonProducer != nullptr);
       return _cursor->next(_documentNonProducer, output.numRowsLeft());
     case Type::Covering:
-    case Type::CoveringFilterOnly:
     case Type::LateMaterialized:
       TRI_ASSERT(_coveringProducer != nullptr);
       return _cursor->nextCovering(_coveringProducer, output.numRowsLeft());
@@ -529,7 +493,6 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   if (_infos.getFilter() != nullptr || _checkUniqueness) {
     switch (_type) {
       case Type::Covering:
-      case Type::CoveringFilterOnly:
       case Type::LateMaterialized:
         TRI_ASSERT(_coveringSkipper != nullptr);
         _cursor->nextCovering(_coveringSkipper, toSkip);
@@ -554,7 +517,7 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
 }
 
 bool IndexExecutor::CursorReader::isCovering() const {
-  return _type == Type::Covering || _type == Type::CoveringFilterOnly;
+  return _type == Type::Covering;
 }
 
 void IndexExecutor::CursorReader::reset() {

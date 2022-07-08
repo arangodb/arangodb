@@ -336,7 +336,6 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
   }
   friend class LogContext;
   template<class VV>
-  // cppcheck-suppress uninitMemberVarPrivate
   ValueBuilder(Base& base, VV&& v) : _base(base), _value(std::forward<VV>(v)) {}
   Base& _base;
   V&& _value;

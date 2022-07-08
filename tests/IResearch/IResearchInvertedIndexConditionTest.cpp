@@ -89,12 +89,8 @@ class IResearchInvertedIndexConditionTest
     std::vector<std::string> fields = {"a"};
     arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
     bool tmp;
-    ASSERT_TRUE(
-        Index
-            .init(getInvertedIndexPropertiesSlice(id, fields, &storedFields)
-                      .slice(),
-                  tmp)
-            .ok());
+    ASSERT_TRUE(Index.init(getInvertedIndexPropertiesSlice(id, fields, &storedFields).slice(),
+                           tmp).ok());
 
     ASSERT_TRUE(Index.covers(projections));
     ASSERT_EQ(expected.size(), projections.size());
@@ -119,10 +115,9 @@ class IResearchInvertedIndexConditionTest
     arangodb::IndexId id(1);
     arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
     bool tmp;
-    ASSERT_TRUE(
-        Index.init(getInvertedIndexPropertiesSlice(id, fields).slice(), tmp)
-            .ok());
-    auto indexFields =
+    ASSERT_TRUE(Index.init(getInvertedIndexPropertiesSlice(id, fields).slice(),
+                           tmp).ok());
+   auto indexFields =
         arangodb::iresearch::IResearchInvertedIndex::fields(Index.meta());
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
@@ -189,10 +184,8 @@ class IResearchInvertedIndexConditionTest
     }
     arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
     bool tmp;
-    Index.init(
-        getInvertedIndexPropertiesSlice(id, indexFields, nullptr, &fields)
-            .slice(),
-        tmp);
+    Index.init( getInvertedIndexPropertiesSlice(id, indexFields, nullptr, &fields)
+            .slice(), tmp);
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
     auto query = Query::create(ctx, QueryString(queryString), bindVars);

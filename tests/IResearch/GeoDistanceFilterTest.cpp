@@ -1060,8 +1060,8 @@ TEST(GeoDistanceFilterTest, checkScorer) {
   };
 
   auto encodeDocId = [](irs::doc_id_t id) {
-    irs::bstring str(sizeof(irs::score_t), 0);
-    *reinterpret_cast<irs::score_t*>(&str[0]) = static_cast<irs::score_t>(id);
+    irs::bstring str(sizeof(id), 0);
+    *reinterpret_cast<irs::doc_id_t*>(&str[0]) = id;
     return str;
   };
 

@@ -302,8 +302,7 @@ the HTTP status code
 the server error number
 
 @RESTREPLYBODY{errorMessage,string,required,string}
-A descriptive error message.
-
+a descriptive error message<br>
 If the query specification is complete, the server will process the query. If an
 error occurs during query processing, the server will respond with *HTTP 400*.
 Again, the body of the response will contain details about the error.

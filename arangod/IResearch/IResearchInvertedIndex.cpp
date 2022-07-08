@@ -54,7 +54,7 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
       FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
   return [&meta, &defaultAnalyzer = std::as_const(defaultAnalyzer)](
              std::string_view ex) -> FieldMeta::Analyzer const& {
-    for (auto const& field : meta._fields) {
+    for (auto const& field : meta._fields._fields) {
       if (field.toString() == ex) {
         return field.analyzer();
       }
@@ -99,14 +99,13 @@ struct CheckFieldsAccess {
   mutable std::vector<basics::AttributeName> _parsed;
   QueryContext const& _ctx;
   aql::Variable const& _ref;
-  std::span<std::vector<basics::AttributeName> const> _fields;
+  std::span<const std::vector<basics::AttributeName>> _fields;
 };
 
 bool supportsFilterNode(
     IndexId id, std::vector<std::vector<basics::AttributeName>> const& fields,
     aql::AstNode const* node, aql::Variable const* reference,
-    std::vector<InvertedIndexField> const& metaFields,
-    AnalyzerProvider const* provider) {
+    InvertedIndexField const& field, AnalyzerProvider const* provider) {
   // We don`t want byExpression filters
   // and can`t apply index if we are not sure what attribute is
   // accessed so we provide QueryContext which is unable to
@@ -127,8 +126,9 @@ bool supportsFilterNode(
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-  FilterContext const filterCtx{
-      .analyzerProvider = provider, .analyzer = analyzer, .fields = metaFields};
+  FilterContext const filterCtx{.analyzerProvider = provider,
+                                .analyzer = analyzer,
+                                .fields = field._fields};
 
   auto rv = FilterFactory::filter(nullptr, queryCtx, filterCtx, *node);
 
@@ -358,7 +358,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
         FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
         FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
                                       .analyzer = analyzer,
-                                      .fields = _index->meta()._fields};
+                                      .fields = _index->meta()._fields._fields};
         auto rv = FilterFactory::filter(&root, queryCtx, filterCtx, *condition);
 
         if (rv.fail()) {
@@ -398,7 +398,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
         FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
         FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
                                       .analyzer = analyzer,
-                                      .fields = _index->meta()._fields};
+                                      .fields = _index->meta()._fields._fields};
 
         auto& mutable_root = conditionJoiner->add<irs::Or>();
         auto rv =
@@ -793,9 +793,9 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
 std::vector<std::vector<basics::AttributeName>> IResearchInvertedIndex::fields(
     IResearchInvertedIndexMeta const& meta) {
   std::vector<std::vector<basics::AttributeName>> res;
-  res.reserve(meta._fields.size());
-  for (auto const& f : meta._fields) {
-    res.push_back(f._attribute);
+  res.reserve(meta._fields._fields.size());
+  for (auto const& f : meta._fields._fields) {
+    res.push_back(f.combinedName());
   }
   return res;
 }
@@ -828,9 +828,9 @@ Result IResearchInvertedIndex::init(
   }
 
   TRI_ASSERT(_meta._sort.sortCompression());
-  auto r = initDataStore(
-      pathExists, initCallback, static_cast<uint32_t>(_meta._version),
-      isSorted(), _meta._storedValues.columns(), _meta._sort.sortCompression());
+  auto r = initDataStore(pathExists, initCallback, _meta._version, isSorted(),
+                         _meta._storedValues.columns(),
+                         _meta._sort.sortCompression());
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }

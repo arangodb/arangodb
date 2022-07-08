@@ -61,7 +61,6 @@ namespace utils {
 // some data in it.
 bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
-                     bool excludeStartNodeFilterCondition,
                      std::unordered_set<AttributeNamePath>& attributes);
 
 /// @brief Gets the best fitting index for an AQL condition.

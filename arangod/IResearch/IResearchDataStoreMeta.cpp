@@ -63,7 +63,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
 
   {
     // optional float
-    constexpr std::string_view kFieldName = "threshold";
+    constexpr std::string_view kFieldName{"threshold"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -102,7 +102,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName = "segmentsBytesFloor";
+    constexpr std::string_view kFieldName{"segmentsBytesFloor"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -119,7 +119,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName = "segmentsBytesMax";
+    constexpr std::string_view kFieldName{"segmentsBytesMax"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -136,7 +136,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName = "segmentsMax";
+    constexpr std::string_view kFieldName{"segmentsMax"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -153,7 +153,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName = "segmentsMin";
+    constexpr std::string_view kFieldName{"segmentsMin"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -170,7 +170,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional double
-    constexpr std::string_view kFieldName = "minScore";
+    constexpr std::string_view kFieldName{"minScore"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -201,7 +201,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 }  // namespace
 
 namespace arangodb::iresearch {
-IResearchDataStoreMeta::Mask::Mask(bool mask /*=false*/) noexcept
+  IResearchDataStoreMeta::Mask::Mask(bool mask /*=false*/) noexcept
     : _cleanupIntervalStep(mask),
       _commitIntervalMsec(mask),
       _consolidationIntervalMsec(mask),
@@ -211,23 +211,23 @@ IResearchDataStoreMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _writebufferIdle(mask),
       _writebufferSizeMax(mask) {}
 
-IResearchDataStoreMeta::IResearchDataStoreMeta()
-    : _cleanupIntervalStep(2),
+  IResearchDataStoreMeta::IResearchDataStoreMeta()
+    :  _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
       _consolidationIntervalMsec(1000),
       _version(static_cast<uint32_t>(ViewVersion::MAX)),
       _writebufferActive(0),
       _writebufferIdle(64),
       _writebufferSizeMax(32 * (size_t(1) << 20)) {  // 32MB
-  std::string errorField;
+     std::string errorField;
 
   // cppcheck-suppress useInitializationList
-  _consolidationPolicy =
-      createConsolidationPolicy<irs::index_utils::consolidate_tier>(
-          velocypack::Parser::fromJson("{ \"type\": \"tier\" }")->slice(),
-          errorField);
-  assert(_consolidationPolicy.policy());  // ensure above syntax is correct
-}
+     _consolidationPolicy =
+         createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+             velocypack::Parser::fromJson("{ \"type\": \"tier\" }")->slice(),
+             errorField);
+     assert(_consolidationPolicy.policy());  // ensure above syntax is correct
+  }
 
 void IResearchDataStoreMeta::storeFull(IResearchDataStoreMeta const& other) {
   if (this == &other) {
@@ -243,8 +243,7 @@ void IResearchDataStoreMeta::storeFull(IResearchDataStoreMeta const& other) {
   _writebufferSizeMax = other._writebufferSizeMax;
 }
 
-void IResearchDataStoreMeta::storeFull(
-    IResearchDataStoreMeta&& other) noexcept {
+void IResearchDataStoreMeta::storeFull(IResearchDataStoreMeta&& other) noexcept {
   if (this == &other) {
     return;
   }
@@ -258,8 +257,8 @@ void IResearchDataStoreMeta::storeFull(
   _writebufferSizeMax = other._writebufferSizeMax;
 }
 
-void IResearchDataStoreMeta::storePartial(
-    IResearchDataStoreMeta&& other) noexcept {
+
+void IResearchDataStoreMeta::storePartial(IResearchDataStoreMeta&& other) noexcept {
   if (this == &other) {
     return;
   }
@@ -269,10 +268,10 @@ void IResearchDataStoreMeta::storePartial(
   _consolidationPolicy = std::move(other._consolidationPolicy);
 }
 
-bool IResearchDataStoreMeta::json(
-    velocypack::Builder& builder,
-    IResearchDataStoreMeta const* ignoreEqual /*= nullptr*/,
-    IResearchDataStoreMeta::Mask const* mask /*= nullptr*/) const {
+bool IResearchDataStoreMeta::json(velocypack::Builder& builder,
+                             IResearchDataStoreMeta const* ignoreEqual /*= nullptr*/,
+                             IResearchDataStoreMeta::Mask const* mask /*= nullptr*/) const {
+
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -285,10 +284,13 @@ bool IResearchDataStoreMeta::json(
   }
 
   if ((!ignoreEqual ||
-       _commitIntervalMsec != ignoreEqual->_commitIntervalMsec) &&
-      (!mask || mask->_commitIntervalMsec)) {
-    builder.add(StaticStrings::CommitIntervalMsec,
-                velocypack::Value(_commitIntervalMsec));
+       _commitIntervalMsec !=
+           ignoreEqual->_commitIntervalMsec)  // if requested or different
+      && (!mask || mask->_commitIntervalMsec)) {
+    builder.add(  // add value
+        StaticStrings::CommitIntervalMsec,
+        velocypack::Value(_commitIntervalMsec)  // args
+    );
   }
 
   if ((!ignoreEqual ||
@@ -334,10 +336,9 @@ bool IResearchDataStoreMeta::json(
   return true;
 }
 
-bool IResearchDataStoreMeta::init(velocypack::Slice slice,
-                                  std::string& errorField,
-                                  IResearchDataStoreMeta const& defaults,
-                                  Mask* mask) noexcept {
+bool IResearchDataStoreMeta::init(velocypack::Slice slice, std::string& errorField,
+                             IResearchDataStoreMeta const& defaults,
+                             Mask* mask) noexcept {
   if (!slice.isObject()) {
     errorField = "Object is expected";
     return false;
@@ -550,6 +551,7 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
   return true;
 }
 
+
 bool IResearchDataStoreMeta::operator==(
     IResearchDataStoreMeta const& other) const noexcept {
   if (_consolidationIntervalMsec != other._consolidationIntervalMsec ||
@@ -579,4 +581,4 @@ bool IResearchDataStoreMeta::operator!=(
   return !(*this == other);
 }
 
-}  // namespace arangodb::iresearch
+} // namespace arangodb::iresearch

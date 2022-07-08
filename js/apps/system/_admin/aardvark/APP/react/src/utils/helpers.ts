@@ -66,7 +66,7 @@ export const getPath = (basePath: string | undefined, path: string | undefined) 
   compact([basePath, path]).join('.');
 
 export const getReducer = <FormState extends object> (initialState: State<FormState>,
-                                                      postProcessor?: (state: State<FormState>, action: DispatchArgs<FormState>, ...rest: any[]) => void, ...rest: any[]) =>
+                                                      postProcessor?: (state: State<FormState>, action: DispatchArgs<FormState>) => void) =>
   (state: State<FormState>, action: DispatchArgs<FormState>): State<FormState> => {
     let newState = state;
 
@@ -133,7 +133,6 @@ export const getReducer = <FormState extends object> (initialState: State<FormSt
         break;
 
       case 'setFormState':
-      case 'initFormState':
         if (action.formState) {
           newState = cloneDeep(state);
           newState.formState = action.formState;
@@ -147,7 +146,7 @@ export const getReducer = <FormState extends object> (initialState: State<FormSt
     }
 
     if (postProcessor) {
-      postProcessor(newState, action, ...rest);
+      postProcessor(newState, action);
     }
 
     return newState;

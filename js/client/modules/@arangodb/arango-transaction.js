@@ -121,11 +121,7 @@ function ArangoTransaction (database, data) {
   });
 
   let url = this._url() + '/begin';
-  let headers = {};
-  if (data.allowDirtyReads) {
-    headers["x-arango-allow-dirty-read"] = "true";
-  }
-  let requestResult = this._database._connection.POST(url, body, headers);
+  let requestResult = this._database._connection.POST(url, body);
 
   arangosh.checkRequestResult(requestResult);
   this._id = requestResult.result.id;
@@ -245,14 +241,6 @@ ArangoTransactionCollection.prototype.document = function(id) {
   }
   let opts = { transactionId : this._transaction.id() };
   return this._collection.document(id, opts);
-};
-
-ArangoTransactionCollection.prototype.exists = function(id) {
-  if (!this._transaction.running()) {
-    throwNotRunning();
-  }
-  let opts = { transactionId : this._transaction.id() };
-  return this._collection.exists(id, opts);
 };
 
 ArangoTransactionCollection.prototype.save = 

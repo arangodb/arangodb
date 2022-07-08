@@ -18,7 +18,6 @@ type AutoCompleteMultiSelectProps = {
   regex?: string;
   requestOnlyIfNoOptions?: boolean;
   minChars?: number;
-  errorMsg?: string;
   [key: string]: any;
 };
 
@@ -30,7 +29,6 @@ const AutoCompleteMultiSelect = ({
                                    values,
                                    onRemove,
                                    options,
-                                   errorMsg = 'Invalid option.',
                                    ...rest
                                  }: AutoCompleteMultiSelectProps) => {
   const [thisId, setThisId] = useState(id || uniqueId('textbox-'));
@@ -84,11 +82,6 @@ const AutoCompleteMultiSelect = ({
           <AutoCompleteTextInput key={1} minChars={1} spacer={''} onSelect={handleSelect} matchAny={true}
                                  value={value} onChange={setValue} options={options}
                                  disabled={disabled} {...rest}/>
-          {
-            value && !((options || []) as string[]).includes(value as string)
-              ? <div style={{ color: 'red' }}>{errorMsg}</div>
-              : null
-          }
         </li>
       </ul>
     </div>

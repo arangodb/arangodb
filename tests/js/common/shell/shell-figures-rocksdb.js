@@ -424,18 +424,12 @@ function FiguresSuite () {
         return;
       }
 
-      const vertexCollectionName = cn + "v";
-      const edgeCollectionName = cn + "e";
-      db._create(vertexCollectionName, { numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], smartGraphAttribute: "value1" });
+      db._create(cn + "v", { numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], smartGraphAttribute: "value1" });
       try {
-        let c = db._createEdgeCollection(
-          edgeCollectionName,
-          {
-            numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], distributeShardsLike: vertexCollectionName
-          });
+        let c = db._createEdgeCollection(cn + "e", { numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], distributeShardsLike: cn + "v" });
         try {
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _from: `${vertexCollectionName}/1:1`, _to: `${vertexCollectionName}/2:2`, value1: i });
+            c.insert({ _from: "test/1:1", _to: "test/2:2", value1: i });
           }
           let figures = c.figures(true).engine;
           assertEqual(100, figures.documents);
@@ -452,10 +446,10 @@ function FiguresSuite () {
           assertEqual(2, indexes[2].id);
           assertEqual(100, indexes[2].count);
         } finally {
-          db._drop(edgeCollectionName);
+          db._drop(cn + "e");
         }
       } finally {
-        db._drop(vertexCollectionName);
+        db._drop(cn + "v");
       }
     },
     
@@ -464,18 +458,12 @@ function FiguresSuite () {
         return;
       }
 
-      const vertexCollectionName = cn + "v";
-      const edgeCollectionName = cn + "e";
-      db._create(vertexCollectionName, {
-        numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], smartGraphAttribute: "value1"
-      });
+      db._create(cn + "v", { numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], smartGraphAttribute: "value1" });
       try {
-        let c = db._createEdgeCollection(edgeCollectionName,{
-          numberOfShards: 4, isDisjoint: true, isSmart: true, shardKeys: ["_key:"], distributeShardsLike: vertexCollectionName
-        });
+        let c = db._createEdgeCollection(cn + "e", { numberOfShards: 4, isDisjoint: true, isSmart: true, shardKeys: ["_key:"], distributeShardsLike: cn + "v" });
         try {
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _from: `${vertexCollectionName}/1:1`, _to: `${vertexCollectionName}/2:2`, value1: i });
+            c.insert({ _from: "test/1:1", _to: "test/2:2", value1: i });
           }
           let figures = c.figures(true).engine;
           assertEqual(100, figures.documents);
@@ -492,12 +480,13 @@ function FiguresSuite () {
           assertEqual(2, indexes[2].id);
           assertEqual(100, indexes[2].count);
         } finally {
-          db._drop(edgeCollectionName);
+          db._drop(cn + "e");
         }
       } finally {
-        db._drop(vertexCollectionName);
+        db._drop(cn + "v");
       }
     },
+    
   };
 }
 

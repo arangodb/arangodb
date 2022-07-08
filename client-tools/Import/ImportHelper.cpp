@@ -889,13 +889,10 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         }
 
         int64_t num = StringUtils::int64(field, fieldLength);
-        size_t bufPos = _lineBuffer.length();
-        _lineBuffer.appendInteger(num);
         if (!_mergeAttributesInstructions.empty()) {
-          lookUpTableValue =
-              std::string(_lineBuffer.stringBuffer()->_buffer + bufPos,
-                          _lineBuffer.length() - bufPos);
+          lookUpTableValue = std::to_string(num);
         }
+        _lineBuffer.appendInteger(num);
       } catch (...) {
         // conversion failed
         _lineBuffer.appendJsonEncoded(field, fieldLength);
@@ -910,13 +907,10 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         if (pos == fieldLength) {
           bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
           if (!failed) {
-            size_t bufPos = _lineBuffer.length();
-            _lineBuffer.appendDecimal(num);
             if (!_mergeAttributesInstructions.empty()) {
-              lookUpTableValue =
-                  std::string(_lineBuffer.stringBuffer()->_buffer + bufPos,
-                              _lineBuffer.length() - bufPos);
+              lookUpTableValue = std::to_string(num);
             }
+            _lineBuffer.appendDecimal(num);
             return;
           }
         }
@@ -976,21 +970,19 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 
   // add --merge-attributes arguments
   if (!_mergeAttributesInstructions.empty()) {
-    for (auto const& it : _mergeAttributesInstructions) {
-      auto const& key = it.first;
-      auto const& value = it.second;
-      if (row == _rowsToSkip && !_headersSeen) {
+    for (auto& [key, value] : _mergeAttributesInstructions) {
+      if (row == _rowsToSkip) {
         std::for_each(
             value.begin(), value.end(),
-            [this, &key](Step const& attrProperties) {
+            [this, key = &key](Step const& attrProperties) {
               if (!attrProperties.isLiteral) {
                 if (std::find(_columnNames.begin(), _columnNames.end(),
                               attrProperties.value) == _columnNames.end()) {
                   LOG_TOPIC("ab353", WARN, arangodb::Logger::FIXME)
                       << "In --merge-attributes: No matching value for "
-                         "attribute name '"
-                      << attrProperties.value << "' to populate attribute '"
-                      << key << "'";
+                         "attribute name "
+                      << attrProperties.value << " to populate attribute "
+                      << key;
                 }
               }
             });

@@ -46,9 +46,7 @@ const TestVariants = Object.freeze({
   GeneralGraph: 2,
   SmartGraph: 3,
   SatelliteGraph: 4,
-  DisjointSmartGraph: 5,
-  EnterpriseGraph: 6,
-  DisjointEnterpriseGraph: 7
+  DisjointSmartGraph: 5
 });
 
 const defaultSmartGraphValue = "1";
@@ -181,25 +179,6 @@ class TestGraph {
         verifySmartGraph(this.name(), true);
         break;
       }
-      case TestVariants.EnterpriseGraph: {
-        const options = {
-          numberOfShards: this.numberOfShards,
-          isSmart: true
-        };
-        sgm._create(this.name(), [this.eRel], [this.on], options);
-        verifySmartGraph(this.name(), false);
-        break;
-      }
-      case TestVariants.DisjointEnterpriseGraph: {
-        const options = {
-          numberOfShards: this.numberOfShards,
-          isSmart: true,
-          isDisjoint: true
-        };
-        sgm._create(this.name(), [this.eRel], [this.on], options);
-        verifySmartGraph(this.name(), true);
-        break;
-      }
       case TestVariants.SatelliteGraph: {
         const options = {
           replicationFactor: 'satellite'
@@ -211,11 +190,9 @@ class TestGraph {
     }
 
     let vertexSharding = [];
-    if (isCluster && (this.testVariant !== TestVariants.EnterpriseGraph) && (this.testVariant !== TestVariants.DisjointEnterpriseGraph)) {
+    if (isCluster) {
       // Only create proper smart/vertex sharding settings in cluster mode
       // In SingleServer mode it is intended to be empty.
-      // Also, we will not create any Sharding properties in case we are
-      // in an EnterpriseGraph or DisjointEnterpriseGraph environment.
       const shardAttrsByShardIndex = this._shardAttrPerShard(db[this.vn]);
       vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
     }
@@ -470,48 +447,6 @@ class ProtoGraph {
   prepareDisjointSmartGraphs() {
     return this.smartShardings.map((sharding, idx) => {
       const variant = TestVariants.DisjointSmartGraph;
-      const {numberOfShards, vertexSharding} = sharding;
-      const suffix = ProtoGraph._buildSmartSuffix(sharding, idx, variant);
-
-      // All tests are based on fully connected graphs.
-      // So just place all vertices on the same shard, no matter what.
-      for (const pair of vertexSharding) {
-        pair[1] = numberOfShards - 1;
-      }
-
-      const vn = this.protoGraphName + '_Vertex' + suffix;
-      const en = this.protoGraphName + '_Edge' + suffix;
-      const on = this.protoGraphName + '_Orphan' + suffix;
-      const gn = this.protoGraphName + '_Graph' + suffix;
-
-      const eRel = sgm._relation(en, vn, vn);
-
-      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices, this.addProjectionPayload);
-    });
-  }
-
-  prepareEnterpriseGraphs() {
-    return this.smartShardings.map((sharding, idx) => {
-      const variant = TestVariants.EnterpriseGraph;
-      const {numberOfShards, vertexSharding} = sharding;
-      const suffix = ProtoGraph._buildSmartSuffix(sharding, idx, variant);
-
-      const vn = this.protoGraphName + '_Vertex' + suffix;
-      const en = this.protoGraphName + '_Edge' + suffix;
-      const on = this.protoGraphName + '_Orphan' + suffix;
-      const gn = this.protoGraphName + '_Graph' + suffix;
-
-      const eRel = sgm._relation(en, vn, vn);
-
-      return new TestGraph(
-        gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices, this.addProjectionPayload
-      );
-    });
-  }
-
-  prepareDisjointEnterpriseGraphs() {
-    return this.smartShardings.map((sharding, idx) => {
-      const variant = TestVariants.DisjointEnterpriseGraph;
       const {numberOfShards, vertexSharding} = sharding;
       const suffix = ProtoGraph._buildSmartSuffix(sharding, idx, variant);
 

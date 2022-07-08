@@ -36,7 +36,7 @@ namespace aql {
 class QueryContext;
 class AqlFunctionsInternalCache;
 
-class QueryExpressionContext : public aql::ExpressionContext {
+class QueryExpressionContext : public ExpressionContext {
  public:
   QueryExpressionContext(QueryExpressionContext const&) = delete;
   QueryExpressionContext& operator=(QueryExpressionContext const&) = delete;

@@ -1590,7 +1590,7 @@ Result RestReplicationHandler::parseBatch(
             checkRev = false;
 
             char ridBuffer[arangodb::basics::maxUInt64StringSize];
-            RevisionId newRid = collection->newRevisionId();
+            RevisionId newRid = physical->newRevisionId();
 
             documentsToInsert.add(it.key);
             documentsToInsert.add(newRid.toValuePair(ridBuffer));

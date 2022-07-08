@@ -27,7 +27,6 @@
 #include <type_traits>
 
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
 #include "Inspection/Status.h"
@@ -59,8 +58,7 @@ template<class T>
 constexpr inline bool IsSafeBuiltinType() {
   return std::is_same_v<T, bool> || std::is_integral_v<T> ||
          std::is_floating_point_v<T> ||
-         std::is_same_v<T, std::string> ||  // TODO - use is-string-like?
-         std::is_same_v<T, arangodb::velocypack::SharedSlice>;
+         std::is_same_v<T, std::string>;  // TODO - use is-string-like?
 }
 
 template<class T>

@@ -29,7 +29,6 @@
       'cIndices/:colname': 'cIndices',
       'cSettings/:colname': 'cSettings',
       'cSchema/:colname': 'cSchema',
-      'cComputedValues/:colname': 'cComputedValues',
       'cInfo/:colname': 'cInfo',
       'collection/:colid/:docid': 'document',
       'queries': 'query',
@@ -65,16 +64,13 @@
       'view/:name/info': 'viewInfo',
       'view/:name/consolidation': 'viewConsolidation',
       'view/:name/links': 'viewLinks',
-      'view/:name/links/*link': 'viewLinks',
       'view/:name/json': 'viewJSON',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
     },
 
-    execute: function (callback, args, handler, skipDirtyViewCheck = false) {
-      const self = this;
-
+    execute: function (callback, args) {
       if (this.lastRoute === '#queries') {
         // cleanup input editors
         this.queryView.removeInputEditors();
@@ -84,113 +80,75 @@
         this.queryView.removeResults();
       }
 
-      let skipExecute = false, goBack = true;
       if (this.lastRoute) {
         // service replace logic
         const replaceUrlFirst = this.lastRoute.split('/')[0];
         const replaceUrlSecond = this.lastRoute.split('/')[1];
         const replaceUrlThird = this.lastRoute.split('/')[2];
-
-        if (!skipDirtyViewCheck && replaceUrlFirst === '#view' && args[0] !== replaceUrlSecond &&
-          window.sessionStorage.getItem(`${replaceUrlSecond}-changed`)) {
-          skipExecute = true;
-          const tableContent = [
-            window.modalView.createReadOnlyEntry('unsavedConfirmationDialog', null,
-              `
-                You have unsaved changes made to view: ${replaceUrlSecond}. If you navigate away
-                from this page, your changes will be lost. If you are sure, click on 'Discard' to
-                discard your changes and move away. Else, click 'Cancel' to go back to the view.
-              `)
-          ];
-
-          const buttons = [
-            window.modalView.createDeleteButton('Discard', function () {
-              window.sessionStorage.removeItem(replaceUrlSecond);
-              window.sessionStorage.removeItem(`${replaceUrlSecond}-changed`);
-              goBack = false;
-              window.modalView.hide();
-
-              self.execute(callback, args, handler, true);
-            })
-          ];
-
-          window.modalView.show('modalTable.ejs', 'You have unsaved changes!', buttons, tableContent, undefined, undefined, undefined, true);
-        }
-
-        $('#modal-dialog').on('hide', function () {
-          if (goBack) {
-            window.history.back();
-          }
-        });
-
-        if (!skipExecute) {
-          if (replaceUrlFirst !== '#service') {
-            if (window.App.replaceApp) {
-              if (replaceUrlSecond !== 'install' && replaceUrlThird) {
-                window.App.replaceApp = false;
-                // console.log('set replace to false!');
-              }
-            } else {
-              // console.log('set replace to false!');
+        if (replaceUrlFirst !== '#service') {
+          if (window.App.replaceApp) {
+            if (replaceUrlSecond !== 'install' && replaceUrlThird) {
               window.App.replaceApp = false;
+              // console.log('set replace to false!');
             }
+          } else {
+            // console.log('set replace to false!');
+            window.App.replaceApp = false;
           }
-
-          if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split(
-            '/').length === 3) {
-            this.documentView.cleanupEditor();
-          }
-
-          if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
-            // dom graph cleanup
-            d3.selectAll('svg > *').remove();
-          }
-
-          if (this.lastRoute === '#logger') {
-            if (this.loggerView.logLevelView) {
-              this.loggerView.logLevelView.remove();
-            }
-            if (this.loggerView.logTopicView) {
-              this.loggerView.logTopicView.remove();
-            }
-          }
-
-          if (this.lastRoute === '#shards') {
-            if (this.shardsView) {
-              this.shardsView.remove();
-            }
-          }
-
-          // react unmounting
-          ReactDOM.unmountComponentAtNode(document.getElementById('content'));
         }
+
+        if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split(
+          '/').length === 3) {
+          this.documentView.cleanupEditor();
+        }
+
+        if (this.lastRoute === '#dasboard' || window.location.hash.substr(0, 5) === '#node') {
+          // dom graph cleanup
+          d3.selectAll('svg > *').remove();
+        }
+
+        if (this.lastRoute === '#logger') {
+          if (this.loggerView.logLevelView) {
+            this.loggerView.logLevelView.remove();
+          }
+          if (this.loggerView.logTopicView) {
+            this.loggerView.logTopicView.remove();
+          }
+        }
+
+        if (this.lastRoute === '#shards') {
+          if (this.shardsView) {
+            this.shardsView.remove();
+          }
+        }
+
+        // react unmounting
+        ReactDOM.unmountComponentAtNode(document.getElementById('content'));
       }
 
-      if (!skipExecute) {
-        this.lastRoute = window.location.hash;
-        // this function executes before every route call
-        $('#subNavigationBar .breadcrumb').html('');
-        $('#subNavigationBar .bottom').html('');
-        $('#loadingScreen').hide();
-        $('#content').show();
-        if (callback) {
-          callback.apply(this, args);
-        }
+      this.lastRoute = window.location.hash;
+      // this function executes before every route call
+      $('#subNavigationBar .breadcrumb').html('');
+      $('#subNavigationBar .bottom').html('');
+      $('#loadingScreen').hide();
+      $('#content').show();
+      if (callback) {
+        callback.apply(this, args);
+      }
 
-        if (this.lastRoute === '#services') {
-          window.App.replaceApp = false;
-        }
+      if (this.lastRoute === '#services') {
+        window.App.replaceApp = false;
+      }
 
-        if (this.graphViewer) {
-          if (this.graphViewer.graphSettingsView) {
-            this.graphViewer.graphSettingsView.hide();
-          }
+      if (this.graphViewer) {
+        if (this.graphViewer.graphSettingsView) {
+          this.graphViewer.graphSettingsView.hide();
         }
-        if (this.queryView) {
-          if (this.queryView.graphViewer) {
-            if (this.queryView.graphViewer.graphSettingsView) {
-              this.queryView.graphViewer.graphSettingsView.hide();
-            }
+      }
+      if (this.queryView) {
+        if (this.queryView.graphViewer) {
+          if (this.queryView.graphViewer.graphSettingsView) {
+            this.queryView.graphViewer.graphSettingsView.hide();
           }
         }
       }
@@ -390,7 +348,7 @@
 
       this.init.then(() => {
         if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
-          // no privileges to use cluster/nodes from the web interface
+          // no privileges to use cluster/nodes from the web UI
           this.routes[''] = 'collections';
           this.navigate('#collections', { trigger: true });
           return;
@@ -427,7 +385,7 @@
 
       this.init.then(() => {
         if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
-          // no privileges to use cluster/nodes from the web interface
+          // no privileges to use cluster/nodes from the web UI
           this.routes[''] = 'collections';
           this.navigate('#collections', { trigger: true });
           return;
@@ -805,27 +763,6 @@
         });
       });
     },
-    
-    cComputedValues: function (colname) {
-      const self = this;
-
-      this.checkUser();
-
-      this.init.then(() => {
-        this.arangoCollectionsStore.fetch({
-          cache: false,
-          success: function () {
-            self.computedValuesView = new window.ComputedValuesView({
-              collectionName: colname,
-              collection: self.arangoCollectionsStore.findWhere({
-                name: colname
-              })
-            });
-            self.computedValuesView.render();
-          }
-        });
-      });
-    },
 
     cSchema: function (colname) {
       const self = this;
@@ -836,13 +773,13 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            self.validationView = new window.ValidationView({
+            self.settingsView = new window.ValidationView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
                 name: colname
               })
             });
-            self.validationView.render();
+            self.settingsView.render();
           }
         });
       });
@@ -1263,9 +1200,6 @@
       }
       if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
-      }
-      if (this.computedValuesView && Backbone.history.getFragment().indexOf('cComputedValues') > -1) {
-        this.computedValuesView.resize();
       }
       if (this.validationView && Backbone.history.getFragment().indexOf('cSchema') > -1) {
         this.validationView.resize();

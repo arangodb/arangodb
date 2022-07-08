@@ -75,6 +75,8 @@ static std::string const DEBUG = "DEBUG";
 static std::string const TRACE = "TRACE";
 static std::string const UNKNOWN = "UNKNOWN";
 
+std::string const LogThreadName("Logging");
+
 class DefaultLogGroup final : public LogGroup {
   std::size_t id() const override { return 0; }
 };
@@ -543,10 +545,13 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     // thread name
     if (_showThreadName) {
-      ThreadNameFetcher nameFetcher;
-      std::string_view threadName = nameFetcher.get();
+      char const* threadName = Thread::currentThreadName();
+      if (threadName == nullptr) {
+        threadName = "main";
+      }
+
       out.append(",\"thread\":");
-      dumper.appendString(threadName.data(), threadName.size());
+      dumper.appendString(threadName, strlen(threadName));
     }
 
     // role
@@ -699,11 +704,13 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     // log thread name
     if (_showThreadName) {
-      ThreadNameFetcher nameFetcher;
-      std::string_view threadName = nameFetcher.get();
+      char const* threadName = Thread::currentThreadName();
+      if (threadName == nullptr) {
+        threadName = "main";
+      }
 
       out.push_back(haveProcessOutput ? '-' : '[');
-      out.append(threadName.data(), threadName.size());
+      out.append(threadName);
       haveProcessOutput = true;
     }
 
@@ -742,7 +749,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     // the offset is used by the in-memory logger, and it cuts off everything
     // from the start of the concatenated log string until the offset. only
-    // what's after the offset gets displayed in the web interface
+    // what's after the offset gets displayed in the web UI
     TRI_ASSERT(out.size() < static_cast<size_t>(UINT32_MAX));
     offset = static_cast<uint32_t>(out.size());
 
@@ -856,8 +863,7 @@ void Logger::initialize(application_features::ApplicationServer& server,
 
   // logging is now active
   if (threaded) {
-    auto loggingThread =
-        std::make_unique<LogThread>(server, std::string(logThreadName));
+    auto loggingThread = std::make_unique<LogThread>(server, ::LogThreadName);
     if (!loggingThread->start()) {
       LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
@@ -898,9 +904,8 @@ void Logger::shutdown() {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
-    ThreadNameFetcher nameFetcher;
-    std::string_view currentThreadName = nameFetcher.get();
-    if (logThreadName == currentThreadName) {
+    char const* currentThreadName = Thread::currentThreadName();
+    if (currentThreadName != nullptr && ::LogThreadName == currentThreadName) {
       // oops, the LogThread itself crashed...
       // so we need to flush the log messages here ourselves - if we waited for
       // the LogThread to flush them, we would wait forever.

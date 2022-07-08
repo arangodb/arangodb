@@ -95,6 +95,12 @@ function gtestRunner(options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'fuertetest');
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'fuerte_dummy');
+  if (!fs.exists(dummyDir)) {
+    fs.makeDirectory(dummyDir);
+  }
+  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   const run = locateGTest('fuertetest');
   if (options.skipFuerte) {
@@ -153,7 +159,7 @@ function gtestRunner(options) {
   print('Shutting down...');
 
   results['shutdown'] = instanceManager.shutdownInstance(false);
-  instanceManager.destructor(!results.status);
+  instanceManager.destructor();
 
   return results;
 }

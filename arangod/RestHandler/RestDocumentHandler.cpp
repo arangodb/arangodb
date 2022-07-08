@@ -337,20 +337,6 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   OperationOptions options(_context);
   options.ignoreRevs = true;
 
-  // Check if dirty reads are allowed:
-  // This will be used in `createTransaction` below, if that creates
-  // a new transaction. Otherwise, we use the default given by the
-  // existing transaction.
-  bool found = false;
-  std::string const& val =
-      _request->header(StaticStrings::AllowDirtyReads, found);
-  if (found && StringUtils::boolean(val)) {
-    // This will be used in `createTransaction` below, if that creates
-    // a new transaction. Otherwise, we use the default given by the
-    // existing transaction.
-    options.allowDirtyReads = true;
-  }
-
   RevisionId ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
     ifRid = RevisionId::max();  // an impossible rev, so precondition failed
@@ -384,10 +370,6 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   if (!res.ok()) {
     generateTransactionError(collection, OperationResult(res, options), "");
     return RestStatus::DONE;
-  }
-
-  if (_activeTrx->state()->options().allowDirtyReads) {
-    setOutgoingDirtyReadsHeader(true);
   }
 
   return waitForFuture(
@@ -827,18 +809,6 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   opOptions.ignoreRevs =
       _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
-  // Check if dirty reads are allowed:
-  bool found = false;
-  std::string const& val =
-      _request->header(StaticStrings::AllowDirtyReads, found);
-  if (found && StringUtils::boolean(val)) {
-    opOptions.allowDirtyReads = true;
-    // This will tell `createTransaction` below, that in the case it
-    // actually creates a new transaction (rather than using an existing
-    // one), we want to read from followers. If the transaction is already
-    // there, the flag is ignored.
-  }
-
   _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
 
   // ...........................................................................
@@ -856,10 +826,6 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   VPackSlice const search = this->parseVPackBody(success);
   if (!success) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
-  }
-
-  if (_activeTrx->state()->options().allowDirtyReads) {
-    setOutgoingDirtyReadsHeader(true);
   }
 
   return waitForFuture(

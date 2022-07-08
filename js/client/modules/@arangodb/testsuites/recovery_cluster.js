@@ -37,7 +37,6 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
-const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -66,7 +65,15 @@ function ensureServers(options, numServers) {
 // / @brief TEST: recovery_cluster
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, useEncryption) {
+function runArangodRecovery (params) {
+  let useEncryption = false;
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      useEncryption = true;
+    }
+  }
+
   let additionalParams= {
     'foxx.queues': 'false',
     'server.statistics': 'false',
@@ -75,6 +82,9 @@ function runArangodRecovery (params, useEncryption) {
     'temp.path': params.temp_path
   };
   
+  // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
+  let additionalTestParams  = {};
+
   if (useEncryption) {
     // randomly turn on or off hardware-acceleration for encryption for both
     // setup and the actual test. given enough tests, this will ensure that we run
@@ -85,13 +95,10 @@ function runArangodRecovery (params, useEncryption) {
   }
   let argv = [];
   let binary = pu.ARANGOD_BIN;
-  // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
-  let additionalTestParams  = {
-    // arangosh has different name for parameter :(
-    'javascript.execute':  params.script,
-    'javascript.run-main': true,
-    'temp.path': params.temp_path
-  };
+  // arangosh has different name for parameter :(
+  additionalTestParams['javascript.execute'] =  params.script;
+  additionalTestParams['javascript.run-main'] = true;
+  additionalTestParams['temp.path'] = params.temp_path;
 
   if (params.setup) {
     additionalTestParams['server.request-timeout'] = '60';
@@ -119,20 +126,21 @@ function runArangodRecovery (params, useEncryption) {
     });
 
     if (useEncryption) {
-      params.keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
-      if (!fs.exists(params.keyDir)) {  // needed on win32
-        fs.makeDirectory(params.keyDir);
+      let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+      if (!fs.exists(keyDir)) {  // needed on win32
+        fs.makeDirectory(keyDir);
       }
+      pu.cleanupDBDirectoriesAppend(keyDir);
         
       const key = '01234567890123456789012345678901';
       
-      let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
+      let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
       fs.write(keyfile, key);
 
       // special handling for encryption-keyfolder tests
       if (params.script.match(/encryption-keyfolder/)) {
-        args['rocksdb.encryption-keyfolder'] = params.keyDir;
-        process.env["rocksdb-encryption-keyfolder"] = params.keyDir;
+        args['rocksdb.encryption-keyfolder'] = keyDir;
+        process.env["rocksdb-encryption-keyfolder"] = keyDir;
       } else {
         args['rocksdb.encryption-keyfile'] = keyfile;
         process.env["rocksdb-encryption-keyfile"] = keyfile;
@@ -155,7 +163,6 @@ function runArangodRecovery (params, useEncryption) {
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
     if (!params.instanceManager.launchInstance()) {
-      params.instanceManager.destructor(false);
       return {
         export: {
           status: false,
@@ -187,7 +194,7 @@ function runArangodRecovery (params, useEncryption) {
   } catch(err) {
     print('Error while launching test:' + err);
     params.instanceManager.shutdownInstance(false);
-    params.instanceManager.destructor(false);
+    params.instanceManager.destructor();
     return; // without test server test will for sure fail
   }
   if (params.setup) {
@@ -205,6 +212,7 @@ function runArangodRecovery (params, useEncryption) {
     });
   } else {
     params.instanceManager.shutdownInstance(false);
+    params.instanceManager.destructor();
   }
 }
 
@@ -231,23 +239,21 @@ function recovery (options) {
       status: false
     };
   }
+
   let results = {
     status: true
   };
-  let useEncryption = false;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      useEncryption = true;
-    }
-  }
 
   let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
   let count = 0;
-  let tmpMgr = new tmpDirMmgr('recovery_cluster', options);
+  let orgTmp = process.env.TMPDIR;
+  let tempDir = fs.join(fs.getTempPath(), 'recovery_cluster');
+  fs.makeDirectoryRecursive(tempDir);
+  process.env.TMPDIR = tempDir;
+  pu.cleanupDBDirectoriesAppend(tempDir);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -258,18 +264,18 @@ function recovery (options) {
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
-        tempDir: tmpMgr.tempDir,
-        rootDir: fs.join(fs.getTempPath(), 'recovery_cluster', count.toString()),
+        tempDir: tempDir,
+        instanceInfo: {
+          rootDir: fs.join(fs.getTempPath(), 'recovery_cluster', count.toString())
+        },
         options: _.cloneDeep(options),
         script: test,
         setup: true,
         count: count,
-        keyDir: "",
-        temp_path: fs.join(tmpMgr.tempDir, count.toString())
+        testDir: "",
+        temp_path: fs.join(tempDir, count.toString())
       };
-      fs.makeDirectoryRecursive(params.rootDir);
-      fs.makeDirectoryRecursive(params.temp_path);
-      runArangodRecovery(params, useEncryption);
+      runArangodRecovery(params);
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
@@ -284,7 +290,7 @@ function recovery (options) {
         });
     } catch (er) { print(er);}
       try {
-        runArangodRecovery(params, useEncryption);
+        runArangodRecovery(params);
       } catch (err) {
         results[test] = {
           failed: 1,
@@ -305,16 +311,12 @@ function recovery (options) {
         },
         test
       );
-      params.instanceManager.destructor(results[test].status);
-      if (results[test].status) {
-//        the instance manager destructor cleans this out:
-//        fs.removeDirectoryRecursive(params.rootDir, true);
-        if (params.keyDir !== "") {
-          fs.removeDirectoryRecursive(params.keyDir);
-        }
-      } else {
-        print("Not cleaning up " + params.rootDir);
+      if (!results[test].status) {
+        print("Not cleaning up " + params.testDir);
         results.status = false;
+      }
+      else {
+        pu.cleanupLastDirectory(params.options);
       }
     } else {
       if (options.extremeVerbosity) {
@@ -322,7 +324,7 @@ function recovery (options) {
       }
     }
   }
-  tmpMgr.destructor(options.cleanup && results.status);
+  process.env.TMPDIR = orgTmp;
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {

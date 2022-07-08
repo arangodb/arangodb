@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
-#include "Basics/system-functions.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::consensus;

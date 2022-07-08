@@ -202,8 +202,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
   if (parse_options_slice(slice, options)) {
     auto validationRes = arangodb::aql::StandaloneCalculation::validateQuery(
         arangodb::DatabaseFeature::getCalculationVocbase(), options.queryString,
-        CALCULATION_PARAMETER_NAME, " in aql analyzer",
-        /*isComputedValue*/ false);
+        CALCULATION_PARAMETER_NAME, " in aql analyzer");
     if (validationRes.ok()) {
       return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
     } else {
@@ -340,7 +339,7 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
   TRI_ASSERT(arangodb::aql::StandaloneCalculation::validateQuery(
                  arangodb::DatabaseFeature::getCalculationVocbase(),
                  _options.queryString, CALCULATION_PARAMETER_NAME,
-                 " in aql analyzer", /*isComputedValue*/ false)
+                 " in aql analyzer")
                  .ok());
 }
 
@@ -478,13 +477,7 @@ bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
               return node;
             }
           });
-      // we have to set "optimizeNonCacheable" to false here, so that the
-      // queryString expression gets re-evaluated every time, and does not
-      // store the computed results once (e.g. when using a queryString such
-      // as "RETURN DATE_NOW()" you always want the current date to be
-      // returned, and not a date once stored)
-      ast->validateAndOptimize(_query->trxForOptimization(),
-                               {.optimizeNonCacheable = false});
+      ast->validateAndOptimize(_query->trxForOptimization());
 
       std::unique_ptr<ExecutionPlan> plan =
           ExecutionPlan::instantiateFromAst(ast, true);

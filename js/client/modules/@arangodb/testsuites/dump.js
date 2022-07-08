@@ -99,29 +99,14 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
     this.which = which;
-    this.results = {failed: 0};
+    this.results = {failed: 1};
     this.dumpConfig = false;
     this.restoreConfig = false;
     this.restoreOldConfig = false;
     this.afterServerStart = afterServerStart;
     this.instanceManager = null;
-    this.keyDir = null;
-    this.otherKeyDir = null;
   }
 
-  destructor(cleanup) {
-    let doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
-    if (doCleanup) {
-      [this.keyDir,
-       this.otherKeyDir,
-       this.dumpConfig.getOutputDirectory()].forEach(dir => {
-         if ((dir !== null) && fs.exists(dir)) {
-           print(CYAN + "Cleaning up " + dir + RESET);
-           fs.removeDirectoryRecursive(dir);
-         }
-       });
-    }
-  }
   bindInstanceInfo(options) {
     if (!this.dumpConfig) {
       // the dump config will only be configured for the first instance.
@@ -142,11 +127,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
     }
     if (this.dumpOptions.jwtSecret) {
-      this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
-      if (!fs.exists(this.keyDir)) {  // needed on win32
-        fs.makeDirectory(this.keyDir);
+      let keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
+      if (!fs.exists(keyDir)) {  // needed on win32
+        fs.makeDirectory(keyDir);
       }
-      let keyFile = fs.join(this.keyDir, 'secret-for-dump');
+      pu.cleanupDBDirectoriesAppend(keyDir);
+      let keyFile = fs.join(keyDir, 'secret-for-dump');
       fs.write(keyFile, this.dumpOptions.jwtSecret);
       this.dumpConfig.setJwtFile(keyFile);
     }
@@ -171,11 +157,12 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.restoreConfig.setThreads(this.restoreOptions.threads);
     }
     if (this.restoreOptions.jwtSecret) {
-      this.otherKeyDir = fs.join(fs.getTempPath(), 'other_jwtSecrets');
-      if (!fs.exists(this.otherKeyDir)) {  // needed on win32
-        fs.makeDirectory(this.otherKeyDir);
+      let keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
+      if (!fs.exists(keyDir)) {  // needed on win32
+        fs.makeDirectory(keyDir);
       }
-      let keyFile = fs.join(this.otherKeyDir, 'secret-for-restore');
+      pu.cleanupDBDirectoriesAppend(keyDir);
+      let keyFile = fs.join(fs.getTempPath(), 'secret-for-restore');
       fs.write(keyFile, this.restoreOptions.jwtSecret);
       this.restoreConfig.setJwtFile(keyFile);
       this.restoreOldConfig.setJwtFile(keyFile);
@@ -245,7 +232,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
       this.results['shutdown'] = this.instanceManager.shutdownInstance();
-      this.instanceManager.destructor(false); // must not cleanup!
+      this.instanceManager.destructor();
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
       this.instanceManager = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which);
@@ -306,7 +293,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     print(CYAN + 'Shutting down...' + RESET);
     this.results['shutdown'] = this.instanceManager.shutdownInstance();
-    this.instanceManager.destructor(this.results.failed === 0);
+    this.instanceManager.destructor();
     print(CYAN + 'done.' + RESET);
 
     print();
@@ -567,7 +554,6 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
 
   const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
   if (!helper.startFirstInstance()) {
-    helper.destructor(false);
     return helper.extractResults();
   }
 
@@ -588,7 +574,6 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
         !helper.restoreTo('_system', { separate: true }) ||
         !helper.runTests(testFile,'UnitTestsDumpDst') ||
         !helper.tearDown(tearDownFile)) {
-      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -601,7 +586,6 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
         !helper.restoreTo('UnitTestsDumpDst') ||
         !helper.runTests(testFile,'UnitTestsDumpDst') ||
         !helper.tearDown(tearDownFile)) {
-      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -612,7 +596,6 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
     const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
     if (!helper.restoreOld(restoreDir) ||
         !helper.testRestoreOld(oldTestFile)) {
-      helper.destructor(true);
       return helper.extractResults();
     }
   }
@@ -629,12 +612,10 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
         !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
         !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
         !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
-      helper.destructor(true);
       return helper.extractResults();
     }
   }
 
-  helper.destructor(true);
   return helper.extractResults();
 }
 
@@ -931,12 +912,12 @@ function hotBackup (options) {
 
   let addArgs = {};
   const useEncryption = true;
-  let keyDir;
   if (useEncryption) {
-    keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+    let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
     if (!fs.exists(keyDir)) {  // needed on win32
       fs.makeDirectory(keyDir);
     }
+    pu.cleanupDBDirectoriesAppend(keyDir);
 
     let keyfile = fs.join(keyDir, 'secret');
     fs.write(keyfile, encryptionKey);
@@ -996,9 +977,6 @@ function hotBackup (options) {
     }
   }
 
-  if (options.cleanup) {
-    fs.removeDirectoryRecursive(keyDir, true);
-  }
   return helper.extractResults();
 }
 

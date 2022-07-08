@@ -28,14 +28,14 @@
 // / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const internal = require('internal');
-const arangosh = require('@arangodb/arangosh');
-let engine = null;
+var internal = require('internal');
+var arangosh = require('@arangodb/arangosh');
+var engine = null;
 
 function getEngine(db) {
   if (engine === null) {
     try {
-      let requestResult = db._connection.GET('/_api/engine');
+      var requestResult = db._connection.GET('/_api/engine');
       if (requestResult && requestResult.name) {
         engine = requestResult.name;
       }
@@ -359,7 +359,6 @@ ArangoCollection.prototype.properties = function (properties) {
     'distributeShardsLike': false,
     'shardingStrategy': false,
     'cacheEnabled': true,
-    'computedValues': true,
     'syncByRevision': true,
     'schema' : true,
     'isDisjoint': true,
@@ -720,13 +719,8 @@ ArangoCollection.prototype.document = function (id, options) {
   }
 
   let headers = {};
-  if (options) {
-    if (options.transactionId) {
-      headers['x-arango-trx-id'] = options.transactionId;
-    }
-    if (options.allowDirtyReads) {
-      headers['x-arango-allow-dirty-read'] = "true";
-    }
+  if (options && options.transactionId) {
+    headers['x-arango-trx-id'] = options.transactionId;
   }
 
   if (Array.isArray(id)) {
@@ -764,7 +758,7 @@ ArangoCollection.prototype.document = function (id, options) {
 // / @brief checks whether a specific document exists
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.exists = function (id, options) {
+ArangoCollection.prototype.exists = function (id) {
   var rev = null;
   var requestResult;
 
@@ -786,22 +780,11 @@ ArangoCollection.prototype.exists = function (id, options) {
     }
   }
 
-  let headers = {};
-  if (options) {
-    if (options.transactionId) {
-      headers['x-arango-trx-id'] = options.transactionId;
-    }
-    if (options.allowDirtyReads) {
-      headers['x-arango-allow-dirty-read'] = "true";
-    }
-  }
-
   if (rev === null) {
-    requestResult = this._database._connection.GET(this._documenturl(id), headers);
+    requestResult = this._database._connection.GET(this._documenturl(id));
   }else {
-    headers['if-match'] = JSON.stringify(rev);
     requestResult = this._database._connection.GET(this._documenturl(id),
-      headers);
+      {'if-match': JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {

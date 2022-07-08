@@ -35,7 +35,6 @@
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
-#include "StorageEngine/TransactionState.h"
 #include "Utilities/NameValidator.h"
 
 using namespace arangodb;
@@ -102,7 +101,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
   TRI_ASSERT(_serverToLockTypeToShard.empty());
   TRI_ASSERT(_serverToCollectionToShard.empty());
   switch (baseNode->getType()) {
-    case ExecutionNode::ENUMERATE_PATHS:
+    case ExecutionNode::K_SHORTEST_PATHS:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::TRAVERSAL: {
       // Add GraphNode
@@ -379,24 +378,16 @@ ShardLocking::getShardMapping() {
         }
       }
     }
-    TRI_ASSERT(!shardIds.empty());
     auto& server = _query.vocbase().server();
     if (!server.hasFeature<ClusterFeature>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-#ifdef USE_ENTERPRISE
-    auto& trx = _query.trxForOptimization();
-    if (trx.state()->options().allowDirtyReads) {
-      _shardMapping = trx.state()->whichReplicas(shardIds);
-    } else
-#endif
-    {
-      // We have at least one shard, otherwise we would not have snippets!
-      _shardMapping = ci.getResponsibleServers(shardIds);
-    }
-    TRI_ASSERT(_shardMapping.size() == shardIds.size());
+    // We have at least one shard, otherwise we would not have snippets!
+    TRI_ASSERT(!shardIds.empty());
+    _shardMapping = ci.getResponsibleServers(shardIds);
 
+    TRI_ASSERT(_shardMapping.size() == shardIds.size());
     for (auto const& lockInfo : _collectionLocking) {
       for (auto const& sid : lockInfo.second.allShards) {
         auto mapped = _shardMapping.find(sid);

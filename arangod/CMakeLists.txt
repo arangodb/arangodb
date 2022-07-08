@@ -212,7 +212,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
-  Graph/PathType.cpp
+  Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
   Graph/TraverserCache.cpp # maybe remove
   Graph/TraverserCacheFactory.cpp
@@ -298,6 +298,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
+  Aql/AllRowsFetcher.cpp
   Aql/AqlCall.cpp
   Aql/AqlCallList.cpp
   Aql/AqlCallSet.cpp
@@ -306,6 +307,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlFunctionsInternalCache.cpp
   Aql/AqlItemBlock.cpp
+  Aql/AqlItemBlockInputMatrix.cpp
   Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
@@ -347,13 +349,11 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DocumentExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
-  Aql/EnumeratePathsNode.cpp
   Aql/ClusterQuery.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
   Aql/EnumerateListExecutor.cpp
-  Aql/EnumeratePathsExecutor.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionBlockImpl.cpp
   Aql/ExecutionEngine.cpp
@@ -382,6 +382,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/IndexNodeOptimizerRules.cpp
   Aql/InputAqlItemRow.cpp
   Aql/InsertModifier.cpp
+  Aql/KShortestPathsExecutor.cpp
+  Aql/KShortestPathsNode.cpp
   Aql/LateMaterializedExpressionContext.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
@@ -481,7 +483,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
-  VocBase/ComputedValues.cpp
   VocBase/Identifiers/DataSourceId.cpp
   VocBase/Identifiers/IndexId.cpp
   VocBase/Identifiers/LocalDocumentId.cpp
@@ -618,7 +619,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/UnconfiguredStateManager.tpp Replication2/ReplicatedState/UnconfiguredStateManager.h
   Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
-  Replication2/ReplicatedState/ReplicatedStateMetrics.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
   Replication2/ReplicatedState/Supervision.cpp
@@ -627,13 +627,8 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/UpdateReplicatedState.h
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
-  Replication2/StateMachines/Document/DocumentCore.cpp
-  Replication2/StateMachines/Document/DocumentFollowerState.cpp
-  Replication2/StateMachines/Document/DocumentLeaderState.cpp
-  Replication2/StateMachines/Document/DocumentLogEntry.cpp
   Replication2/StateMachines/Document/DocumentStateMachine.cpp
   Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
-  Replication2/StateMachines/Document/DocumentStateStrategy.cpp
   Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
   Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
   Replication2/StateMachines/Prototype/PrototypeCore.cpp
@@ -672,7 +667,6 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
-  Agency/Helpers.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
   Agency/JobContext.cpp
@@ -891,7 +885,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
-  Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
   Transaction/CountCache.cpp

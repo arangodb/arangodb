@@ -37,13 +37,12 @@
 #include "Aql/AstNode.h"
 #include "Aql/AstResources.h"
 #include "Aql/AttributeNamePath.h"
-#include "Aql/Quantifier.h"
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Containers/HashSet.h"
-#include "Graph/PathType.h"
+#include "Graph/ShortestPathType.h"
 #include "VocBase/AccessMode.h"
 
 namespace arangodb {
@@ -86,13 +85,6 @@ class Ast {
 
   /// @brief destroy the AST
   ~Ast();
-
-  struct ValidateAndOptimizeOptions {
-    // try to optimize non-cacheable expressions as well. this is true for
-    // most use cases, but we cannot activate this for computed values, as
-    // we need a freshly calculated value every time.
-    bool optimizeNonCacheable = true;
-  };
 
   // frees all data
   void clear() noexcept;
@@ -282,10 +274,7 @@ class Ast {
   AstNode* createNodeParameterDatasource(std::string_view name);
 
   /// @brief create an AST quantifier node
-  AstNode* createNodeQuantifier(Quantifier::Type type);
-
-  /// @brief create an AST quantifier node
-  AstNode* createNodeQuantifier(Quantifier::Type type, AstNode const* value);
+  AstNode* createNodeQuantifier(int64_t);
 
   /// @brief create an AST unary operator
   AstNode* createNodeUnaryOperator(AstNodeType, AstNode const*);
@@ -409,8 +398,9 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
-                                    AstNode const*, AstNode const*);
+  AstNode* createNodeKShortestPaths(
+      arangodb::graph::ShortestPathType::Type type, AstNode const*,
+      AstNode const*);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(std::string_view functionName,
@@ -458,8 +448,7 @@ class Ast {
   static size_t extractParallelism(AstNode const* optionsNode);
 
   /// @brief optimizes the AST
-  void validateAndOptimize(transaction::Methods&,
-                           ValidateAndOptimizeOptions const& options);
+  void validateAndOptimize(transaction::Methods&);
 
   /// @brief determines the variables referenced in an expression
   static void getReferencedVariables(AstNode const*, VarSet&);
@@ -559,8 +548,7 @@ class Ast {
 
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(transaction::Methods&,
-                                AqlFunctionsInternalCache&, AstNode*,
-                                ValidateAndOptimizeOptions const& options);
+                                AqlFunctionsInternalCache&, AstNode*);
 
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
   AstNode* optimizeIndexedAccess(AstNode*);

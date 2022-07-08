@@ -69,6 +69,7 @@ function version(options) {
   args.push('1');
   
   fs.makeDirectoryRecursive(dataDir);
+  pu.cleanupDBDirectoriesAppend(dataDir);
 
   let results = { failed: 0 };
 
@@ -79,9 +80,7 @@ function version(options) {
   if (!results.version.status) {
     results.failed += 1;
   }
-  if (options.cleanup && results.failed === 0) {
-    fs.removeDirectoryRecursive(dataDir, true);
-  }
+
   return results;
 }
 

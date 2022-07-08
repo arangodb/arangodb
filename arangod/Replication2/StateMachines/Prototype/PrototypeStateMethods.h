@@ -58,7 +58,6 @@ struct PrototypeStateMethods {
     bool waitForReady{false};
     std::optional<LogId> id;
     std::optional<agency::LogTargetConfig> config;
-    std::optional<std::size_t> numberOfServers;
     std::vector<ParticipantId> servers;
   };
 
@@ -139,7 +138,6 @@ auto inspect(Inspector& f, PrototypeStateMethods::CreateOptions& x) {
   return f.object(x).fields(
       f.field("waitForReady", x.waitForReady).fallback(true),
       f.field("id", x.id), f.field("config", x.config),
-      f.field("numberOfServers", x.numberOfServers),
       f.field("servers", x.servers).fallback(std::vector<ParticipantId>{}));
 }
 template<class Inspector>

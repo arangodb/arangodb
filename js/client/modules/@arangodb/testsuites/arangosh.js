@@ -38,7 +38,6 @@ const executeScript = internal.executeScript;
 const statusExternal = internal.statusExternal;
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
-const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
 const platform = internal.platform;
 
@@ -100,7 +99,13 @@ function arangosh (options) {
     print('--------------------------------------------------------------------------------');
 
     let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
-    let tmpMgr = new tmpDirMmgr(fs.join('arangosh_tests', ...weirdNames), options);
+    let tmpPath = fs.getTempPath();
+    let tmp = fs.join(tmpPath, weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]);
+    process.env.TMPDIR = tmp;
+    process.env.TEMP = tmp;
+    process.env.TMP = tmp;
+    fs.makeDirectoryRecursive(process.env.TMPDIR);
+    pu.cleanupDBDirectoriesAppend(tmp);
 
     ////////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
@@ -182,7 +187,12 @@ function arangosh (options) {
       print(rc2);
       print('expect rc: ' + expectedReturnCode);
     }
-    tmpMgr.destructor(ret[section]['status'] && options.cleanup);
+
+
+    // re-set the environment
+    process.env.TMPDIR = tmpPath;
+    process.env.TEMP = tmpPath;
+    process.env.TMP = tmpPath;
   }
 
   runTest('testArangoshExitCodeConnectAny',

@@ -29,7 +29,7 @@
 #include "Aql/types.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Graph/PathType.h"
+#include "Graph/ShortestPathType.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 
@@ -365,7 +365,6 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_AND "and operator"
 %token T_OR "or operator"
 
-%token T_NOT_IN "not in operator"
 %token T_REGEX_MATCH "~= operator"
 %token T_REGEX_NON_MATCH "~! operator"
 
@@ -405,7 +404,6 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_ANY "any modifier"
 %token T_ALL "all modifier"
 %token T_NONE "none modifier"
-%token T_AT_LEAST "at least modifier"
 
 /* define operator precedence */
 %left T_COMMA
@@ -416,10 +414,9 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %nonassoc T_INTO
 %left T_OR
 %left T_AND
-%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE 
-%left T_AT_LEAST
+%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
-%left T_IN T_NOT T_NOT_IN 
+%left T_IN T_NOT 
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
 %left T_PLUS T_MINUS
@@ -837,7 +834,7 @@ for_statement:
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::KShortestPaths, variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
   | T_FOR for_output_variables T_IN k_paths_graph_info {
@@ -849,7 +846,7 @@ for_statement:
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::KPaths, variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
   ;
@@ -1421,13 +1418,13 @@ upsert_statement:
 
 quantifier:
     T_ALL {
-      $$ = parser->ast()->createNodeQuantifier(Quantifier::Type::kAll);
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::ALL);
     }
   | T_ANY {
-      $$ = parser->ast()->createNodeQuantifier(Quantifier::Type::kAny);
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::ANY);
     }
   | T_NONE {
-      $$ = parser->ast()->createNodeQuantifier(Quantifier::Type::kNone);
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::NONE);
     }
   ;
 
@@ -1558,8 +1555,8 @@ operator_binary:
   | expression T_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, $1, $3);
     }
-  | expression T_NOT_IN expression {
-      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $3);
+  | expression T_NOT T_IN expression {
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $4);
     }
   | expression T_NOT T_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
@@ -1621,40 +1618,17 @@ operator_binary:
   | expression quantifier T_IN expression {
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, $1, $4, $2);
     }
-  | expression quantifier T_NOT_IN expression {
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $4, $2);
+  | expression T_ALL T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ALL);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
     }
-  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_EQ expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, $1, $7, quantifier);
+  | expression T_ANY T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ANY);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
     }
-  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NE expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, $1, $7, quantifier);
-    }
-  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_LT expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, $1, $7, quantifier);
-    }
-  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_GT expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, $1, $7, quantifier);
-    }
-  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_LE expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, $1, $7, quantifier);
-    }
-  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_GE expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, $1, $7, quantifier);
-    }
-  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_IN expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, $1, $7, quantifier);
-    }
-  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NOT_IN expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $7, quantifier);
+  | expression T_NONE T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::NONE);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
     }
   ;
 
@@ -1897,12 +1871,8 @@ optional_array_filter:
       $$ = parser->ast()->createNodeArrayFilter(nullptr, $2);
     }
   | quantifier T_FILTER expression {
-      // ALL|ANY|NONE|AT LEAST FILTER filter-condition
+      // ALL|ANY|NONE FILTER filter-condition
       $$ = parser->ast()->createNodeArrayFilter($1, $3);
-    }
-  | T_AT_LEAST T_OPEN expression T_CLOSE T_FILTER expression {
-      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $3);
-      $$ = parser->ast()->createNodeArrayFilter(quantifier, $6);
     }
   | expression T_FILTER expression {
       // 1    FILTER filter-condition
@@ -2024,8 +1994,9 @@ reference:
       if (variable == nullptr) {
         // variable does not exist
         // now try special variables
-        if (ast->scopes()->canUseCurrentVariable() && 
-            (variableName == Variable::NAME_CURRENT || variableName == Variable::NAME_CURRENT.substr(1))) {
+        if (ast->scopes()->canUseCurrentVariable() && variableName == "CURRENT") {
+          variable = ast->scopes()->getCurrentVariable();
+        } else if (variableName == Variable::NAME_CURRENT) {
           variable = ast->scopes()->getCurrentVariable();
         }
       }

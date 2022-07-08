@@ -67,7 +67,6 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -116,10 +115,6 @@ struct ShardStatistics {
 };
 
 namespace {
-
-std::string const kMetricsServerId = "Plan/Metrics/ServerId";
-std::string const kMetricsRebootId = "Plan/Metrics/RebootId";
-
 void addToShardStatistics(arangodb::ShardStatistics& stats,
                           containers::FlatHashSet<std::string>& servers,
                           arangodb::velocypack::Slice databaseSlice,
@@ -520,20 +515,14 @@ void ClusterInfo::triggerBackgroundGetIds() {
   }
 }
 
-auto ClusterInfo::createDocumentStateSpec(
+auto ClusterInfo::createReplicatedStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
-    ClusterCollectionCreationInfo const& info)
+    std::size_t writeConcern, std::size_t softWriteConcern)
     -> replication2::replicated_state::agency::Target {
-  using namespace replication2::replicated_state;
-
   replication2::replicated_state::agency::Target spec;
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
-
-  spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters = document::DocumentCoreParameters{info.collectionID};
-  spec.properties.implementation.parameters = parameters.toSharedSlice();
-
+  spec.properties.implementation.type = "document";
   TRI_ASSERT(!serverIds.empty());
   spec.leader = serverIds.front();
 
@@ -543,8 +532,8 @@ auto ClusterInfo::createDocumentStateSpec(
         replication2::replicated_state::agency::Target::Participant{});
   }
 
-  spec.config.writeConcern = info.writeConcern;
-  spec.config.softWriteConcern = info.replicationFactor;
+  spec.config.writeConcern = writeConcern;
+  spec.config.softWriteConcern = softWriteConcern;
   spec.config.waitForSync = false;
   spec.version = 1;
 
@@ -921,7 +910,13 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 }
 
 struct ClusterInfo::NewStuffByDatabase {
+  using ReplicatedLogsMap = containers::FlatHashMap<
+      replication2::LogId,
+      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
   ReplicatedLogsMap replicatedLogs;
+  using CollectionGroupMap = containers::FlatHashMap<
+      replication2::agency::CollectionGroupId,
+      std::shared_ptr<replication2::agency::CollectionGroup const>>;
   CollectionGroupMap collectionGroups;
 };
 
@@ -1029,8 +1024,6 @@ void ClusterInfo::loadPlan() {
   decltype(_plannedCollections) newCollections;
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
-  decltype(_shardToShardGroupLeader) newShardToShardGroupLeader;
-  decltype(_shardGroups) newShardGroups;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
   decltype(_newStuffByDatabase) newStuffByDatabase;
@@ -1047,8 +1040,6 @@ void ClusterInfo::loadPlan() {
     newCollections = _plannedCollections;
     newShards = _shards;
     newShardServers = _shardServers;
-    newShardToShardGroupLeader = _shardToShardGroupLeader;
-    newShardGroups = _shardGroups;
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     newStuffByDatabase = _newStuffByDatabase;
@@ -1105,8 +1096,6 @@ void ClusterInfo::loadPlan() {
                 newShards.erase(shardName);
                 newShardServers.erase(shardName);
                 newShardToName.erase(shardName);
-                newShardToShardGroupLeader.erase(shardName);
-                newShardGroups.erase(shardName);
               }
             }
           }
@@ -1459,10 +1448,6 @@ void ClusterInfo::loadPlan() {
               newShards.erase(shardId);
               newShardServers.erase(shardId);
               newShardToName.erase(shardId);
-              // We try to erase the shard ID anyway, no problem if it is
-              // not in there, should it be a shard group leader!
-              newShardToShardGroupLeader.erase(shardId);
-              newShardGroups.erase(shardId);
             }
             collectionsPath.pop_back();
           }
@@ -1563,59 +1548,6 @@ void ClusterInfo::loadPlan() {
         continue;
       }
     }
-    // Now that the loop is completed, we have to run through it one more
-    // time to get the shard groups done:
-    for (auto const& colPair : *databaseCollections) {
-      if (colPair.first == colPair.second.collection->name()) {
-        // Every collection shows up once with its ID and once with its name.
-        // We only want it once, so we only take it when we see the ID, not
-        // the name as key:
-        continue;
-      }
-      auto const& groupLeader =
-          colPair.second.collection->distributeShardsLike();
-      if (!groupLeader.empty()) {
-        auto groupLeaderCol = newShards.find(groupLeader);
-        if (groupLeaderCol != newShards.end()) {
-          auto col = newShards.find(
-              std::to_string(colPair.second.collection->id().id()));
-          if (col != newShards.end()) {
-            if (col->second->size() == 0) {
-              // Can happen for smart edge collections. But in this case we
-              // can ignore the collection.
-              continue;
-            }
-            TRI_ASSERT(groupLeaderCol->second->size() == col->second->size());
-            for (size_t i = 0; i < col->second->size(); ++i) {
-              newShardToShardGroupLeader.try_emplace(
-                  col->second->at(i), groupLeaderCol->second->at(i));
-              auto it = newShardGroups.find(groupLeaderCol->second->at(i));
-              if (it == newShardGroups.end()) {
-                // Need to create a new list:
-                auto list = std::make_shared<std::vector<ShardID>>();
-                list->reserve(2);
-                // group leader as well as member:
-                list->emplace_back(groupLeaderCol->second->at(i));
-                list->emplace_back(col->second->at(i));
-                newShardGroups.try_emplace(groupLeaderCol->second->at(i),
-                                           std::move(list));
-              } else {
-                // Need to add us to the list:
-                it->second->push_back(col->second->at(i));
-              }
-            }
-          } else {
-            LOG_TOPIC("12f32", WARN, Logger::CLUSTER)
-                << "loadPlan: Strange, could not find collection: "
-                << colPair.second.collection->name();
-          }
-        } else {
-          LOG_TOPIC("22312", WARN, Logger::CLUSTER)
-              << "loadPlan: Strange, could not find proto collection: "
-              << groupLeader;
-        }
-      }
-    }
     newCollections.insert_or_assign(databaseName,
                                     std::move(databaseCollections));
   }
@@ -1635,14 +1567,14 @@ void ClusterInfo::loadPlan() {
 
       auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
       if (!logsSlice.isNone()) {
-        ReplicatedLogsMap newLogs;
+        NewStuffByDatabase::ReplicatedLogsMap newLogs;
         for (auto const& [idString, logSlice] :
              VPackObjectIterator(logsSlice)) {
           auto spec =
               std::make_shared<replication2::agency::LogPlanSpecification>(
                   velocypack::deserialize<
                       replication2::agency::LogPlanSpecification>(logSlice));
-          newLogs.emplace(spec->id, std::move(spec));
+          newLogs.emplace(spec->id, spec);
         }
         stuff->replicatedLogs = std::move(newLogs);
       }
@@ -1653,25 +1585,18 @@ void ClusterInfo::loadPlan() {
           AgencyCommHelper::path(), "Plan", "CollectionGroups", databaseName};
       auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
       if (!groupsSlice.isNone()) {
-        CollectionGroupMap groups;
+        NewStuffByDatabase::CollectionGroupMap groups;
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
           auto spec = std::make_shared<replication2::agency::CollectionGroup>(
               groupSlice);
-          groups.emplace(spec->id, std::move(spec));
+          groups.emplace(spec->id, spec);
         }
         stuff->collectionGroups = std::move(groups);
       }
     }
 
     newStuffByDatabase[databaseName] = std::move(stuff);
-  }
-
-  decltype(_replicatedLogs) newReplicatedLogs;
-  for (auto& dbs : newStuffByDatabase) {
-    for (auto& it : dbs.second->replicatedLogs) {
-      newReplicatedLogs.emplace(it.first, it.second);
-    }
   }
 
   if (isCoordinator) {
@@ -1716,8 +1641,6 @@ void ClusterInfo::loadPlan() {
     _plannedCollections.swap(newCollections);
     _shards.swap(newShards);
     _shardServers.swap(newShardServers);
-    _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
-    _shardGroups.swap(newShardGroups);
     _shardToName.swap(newShardToName);
   }
 
@@ -1729,7 +1652,6 @@ void ClusterInfo::loadPlan() {
   }
 
   _newStuffByDatabase.swap(newStuffByDatabase);
-  _replicatedLogs.swap(newReplicatedLogs);
 
   if (planValid) {
     _planProt.isValid = true;
@@ -3278,7 +3200,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        auto spec = createDocumentStateSpec(shardId, serverIds, info);
+        auto spec = createReplicatedStateSpec(
+            shardId, serverIds, info.writeConcern, info.replicationFactor);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
@@ -4007,8 +3930,6 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
            VPackValue(info->usesRevisionsAsDocumentIds()));
   temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
-  temp.add(VPackValue(StaticStrings::ComputedValues));
-  info->computedValuesToVelocyPack(temp);
   temp.add(VPackValue(StaticStrings::Schema));
   info->schemaToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
@@ -4511,101 +4432,6 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
   } while (true);
 
   return Result(TRI_ERROR_NO_ERROR);
-}
-
-void ClusterInfo::initMetricsState() {
-  auto rebootId = ServerState::instance()->getRebootId().value();
-  auto serverId = ServerState::instance()->getId();
-
-  VPackBuilder builderRebootId;
-  builderRebootId.add(VPackValue{rebootId});
-  VPackBuilder builderServerId;
-  builderServerId.add(VPackValue{serverId});
-
-  AgencyWriteTransaction const write{
-      {{kMetricsRebootId, AgencyValueOperationType::SET,
-        builderRebootId.slice()},
-       {kMetricsServerId, AgencyValueOperationType::SET,
-        builderServerId.slice()}},
-      {{kMetricsRebootId, AgencyPrecondition::Type::EMPTY, true},
-       {kMetricsServerId, AgencyPrecondition::Type::EMPTY, true}}};
-  AgencyComm ac{_server};
-  while (!server().isStopping()) {
-    auto const r = ac.sendTransactionWithFailover(write);
-    if (r.successful() ||
-        r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-      return;
-    }
-    LOG_TOPIC("bfdc3", WARN, Logger::CLUSTER)
-        << "Failed to self-propose leader with httpCode: " << r.httpCode();
-  }
-}
-
-ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
-  auto& ac = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [result, index] = ac.read({AgencyCommHelper::path(kMetricsServerId),
-                                  AgencyCommHelper::path(kMetricsRebootId)});
-  auto data = result->slice().at(0).get(std::initializer_list<std::string_view>{
-      AgencyCommHelper::path(), "Plan", "Metrics"});
-  auto leaderRebootId = data.get("RebootId").getNumber<uint64_t>();
-  auto leaderServerId = data.get("ServerId").stringView();
-  auto ourRebootId = ServerState::instance()->getRebootId().value();
-  auto ourServerId = ServerState::instance()->getId();
-  if (wantLeader) {
-    // remove old callback (with _metricsGuard call)
-    // then store new callback or understand we are leader
-    _metricsGuard = {};
-  }
-  if (ourRebootId == leaderRebootId && ourServerId == leaderServerId) {
-    return {std::nullopt};
-  }
-  if (wantLeader) {
-    _metricsGuard = _rebootTracker.callMeOnChange(
-        {std::string{leaderServerId}, RebootId{leaderRebootId}},
-        [this, leaderRebootId, serverId = std::string{leaderServerId}] {
-          proposeMetricsLeader(leaderRebootId, serverId);
-        },
-        "Try to propose current server as a new leader for cluster metrics");
-  }
-  return {std::string{leaderServerId}};
-}
-
-void ClusterInfo::proposeMetricsLeader(uint64_t oldRebootId,
-                                       std::string_view oldServerId) {
-  AgencyComm ac{_server};
-  auto rebootId = ServerState::instance()->getRebootId().value();
-  auto serverId = ServerState::instance()->getId();
-
-  VPackBuilder builderOldRebootId;
-  builderOldRebootId.add(VPackValue{oldRebootId});
-  VPackBuilder builderOldServerId;
-  builderOldServerId.add(VPackValue{oldServerId});
-  VPackBuilder builderRebootId;
-  builderRebootId.add(VPackValue{rebootId});
-  VPackBuilder builderServerId;
-  builderServerId.add(VPackValue{serverId});
-
-  AgencyWriteTransaction const write{
-      {{kMetricsRebootId, AgencyValueOperationType::SET,
-        builderRebootId.slice()},
-       {kMetricsServerId, AgencyValueOperationType::SET,
-        builderServerId.slice()}},
-      {{kMetricsRebootId, AgencyPrecondition::Type::VALUE,
-        builderOldRebootId.slice()},
-       {kMetricsServerId, AgencyPrecondition::Type::VALUE,
-        builderOldServerId.slice()}}};
-  auto const r = ac.sendTransactionWithFailover(write);
-  if (r.successful()) {
-    return;
-  }
-  if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-    LOG_TOPIC("bfdc5", TRACE, Logger::CLUSTER)
-        << "Failed to self-propose leader";
-  } else {
-    // We don't need retry here, because we have retry in ClusterMetricsFeature
-    LOG_TOPIC("bfdc6", WARN, Logger::CLUSTER)
-        << "Failed to self-propose leader with httpCode: " << r.httpCode();
-  }
 }
 
 AnalyzerModificationTransaction::Ptr
@@ -5921,32 +5747,9 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
     tries++;
   }
 
-  auto logId = LogicalCollection::shardIdToStateId(shardID);
-
   while (true) {
     {
       READ_LOCKER(readLocker, _currentProt.lock);
-      {
-        // if we find a replicated log for this shard, then this is a
-        // replication 2.0 db, in which case we want to use the participant
-        // information from the log instead
-        auto it = _replicatedLogs.find(logId);
-        if (it != _replicatedLogs.end()) {
-          auto& participants = it->second->participantsConfig.participants;
-          auto result = std::make_shared<std::vector<ServerID>>();
-          result->reserve(participants.size());
-          // participants is an unordered map, but the resulting list requires
-          // that the leader is the first entry!
-          auto& leader = it->second->currentTerm->leader->serverId;
-          result->emplace_back(leader);
-          for (auto& [k, v] : participants) {
-            if (k != leader) {
-              result->emplace_back(k);
-            }
-          }
-        }
-      }
-
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
@@ -5996,39 +5799,6 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     Result r = waitForCurrent(1).get();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
-    }
-  }
-
-  {
-    READ_LOCKER(readLocker, _currentProt.lock);
-    bool isReplicationTwo = false;
-    for (auto const& shardId : shardIds) {
-      auto logId = LogicalCollection::tryShardIdToStateId(shardId);
-      if (!logId.has_value()) {
-        // could not convert shardId to logId, but this implies that
-        // the shardId is not valid.
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                       "invalid shard " + shardId);
-      }
-      // if we find a replicated log for this shard, then this is a
-      // replication 2.0 db, in which case we want to use the leader
-      // information from the log instead
-      auto it = _replicatedLogs.find(*logId);
-      if (it != _replicatedLogs.end()) {
-        isReplicationTwo = true;
-        result.emplace(shardId, it->second->currentTerm->leader->serverId);
-      } else if (isReplicationTwo) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            "no replicated log found for shard " + shardId);
-      } else {
-        // this seems to be no replication 2.0 db -> skip the remaining shards
-        // and continue as usual
-        break;
-      }
-    }
-    if (isReplicationTwo) {
-      return result;
     }
   }
 
@@ -6230,40 +6000,20 @@ void ClusterInfo::setFailedServers(
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void ClusterInfo::setServers(
     containers::FlatHashMap<ServerID, std::string> servers) {
-  WRITE_LOCKER(writeLocker, _serversProt.lock);
+  WRITE_LOCKER(readLocker, _serversProt.lock);
   _servers = std::move(servers);
 }
 
 void ClusterInfo::setServerAliases(
     containers::FlatHashMap<ServerID, std::string> aliases) {
-  WRITE_LOCKER(writeLocker, _serversProt.lock);
+  WRITE_LOCKER(readLocker, _serversProt.lock);
   _serverAliases = std::move(aliases);
 }
 
 void ClusterInfo::setServerAdvertisedEndpoints(
     containers::FlatHashMap<ServerID, std::string> advertisedEndpoints) {
-  WRITE_LOCKER(writeLocker, _serversProt.lock);
+  WRITE_LOCKER(readLocker, _serversProt.lock);
   _serverAdvertisedEndpoints = std::move(advertisedEndpoints);
-}
-
-void ClusterInfo::setShardToShardGroupLeader(
-    containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader) {
-  WRITE_LOCKER(writeLocker, _planProt.lock);
-  _shardToShardGroupLeader = std::move(shardToShardGroupLeader);
-}
-
-void ClusterInfo::setShardGroups(
-    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>
-        shardGroups) {
-  WRITE_LOCKER(writeLocker, _planProt.lock);
-  _shardGroups = std::move(shardGroups);
-}
-
-void ClusterInfo::setShardIds(
-    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
-        shardIds) {
-  WRITE_LOCKER(writeLocker, _currentProt.lock);
-  _shardIds = std::move(shardIds);
 }
 #endif
 
@@ -6360,16 +6110,22 @@ auto ClusterInfo::getReplicatedLogsParticipants(std::string_view database) const
   return replicatedLogs;
 }
 
-auto ClusterInfo::getReplicatedLogLeader(replication2::LogId id) const
+auto ClusterInfo::getReplicatedLogLeader(std::string_view database,
+                                         replication2::LogId id) const
     -> ResultT<ServerID> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _replicatedLogs.find(id);
-  if (it == std::end(_replicatedLogs)) {
+  auto it = _newStuffByDatabase.find(database);
+  if (it == std::end(_newStuffByDatabase)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto it2 = it->second->replicatedLogs.find(id);
+  if (it2 == std::end(it->second->replicatedLogs)) {
     return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
-  if (auto const& term = it->second->currentTerm) {
+  if (auto const& term = it2->second->currentTerm) {
     if (auto const& leader = term->leader) {
       return leader->serverId;
     }
@@ -6923,12 +6679,10 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 }
 
 bool ClusterInfo::SyncerThread::start() {
-  ThreadNameFetcher nameFetcher;
-  std::string_view name = nameFetcher.get();
-
   LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
       << "Starting "
-      << (name.empty() ? std::string_view("by unknown thread") : name);
+      << (currentThreadName() != nullptr ? currentThreadName()
+                                         : "by unknown thread");
   return Thread::start();
 }
 
@@ -7133,26 +6887,6 @@ VPackBuilder ClusterInfo::toVelocyPack() {
             }
           }
         }
-        dump.add(VPackValue("shardToShardGroupLeader"));
-        {
-          VPackObjectBuilder d(&dump);
-          for (auto const& s : _shardToShardGroupLeader) {
-            dump.add(s.first, VPackValue(s.second));
-          }
-        }
-        dump.add(VPackValue("shardGroups"));
-        {
-          VPackObjectBuilder d(&dump);
-          for (auto const& s : _shardGroups) {
-            dump.add(VPackValue(s.first));
-            {
-              VPackArrayBuilder d2(&dump);
-              for (auto const& ss : *s.second) {
-                dump.add(VPackValue(ss));
-              }
-            }
-          }
-        }
         dump.add(VPackValue("shards"));
         {
           VPackObjectBuilder d(&dump);
@@ -7233,18 +6967,23 @@ void ClusterInfo::triggerWaiting(
 }
 
 auto arangodb::ClusterInfo::getReplicatedLogPlanSpecification(
-    replication2::LogId id) const
+    std::string_view database, replication2::LogId id) const
     -> ResultT<
         std::shared_ptr<replication2::agency::LogPlanSpecification const>> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _replicatedLogs.find(id);
-  if (it == std::end(_replicatedLogs)) {
+  auto it = _newStuffByDatabase.find(database);
+  if (it == std::end(_newStuffByDatabase)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto it2 = it->second->replicatedLogs.find(id);
+  if (it2 == std::end(it->second->replicatedLogs)) {
     return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
-  TRI_ASSERT(it->second != nullptr);
-  return it->second;
+  TRI_ASSERT(it2->second != nullptr);
+  return it2->second;
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(

@@ -24,7 +24,6 @@
 #include "IndexNode.h"
 
 #include "Aql/Ast.h"
-#include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -67,9 +66,9 @@ IndexNode::IndexNode(
       _indexes(indexes),
       _condition(std::move(condition)),
       _needsGatherNodeSort(false),
-      _allCoveredByOneIndex(allCoveredByOneIndex),
       _options(opts),
-      _outNonMaterializedDocId(nullptr) {
+      _outNonMaterializedDocId(nullptr),
+      _allCoveredByOneIndex(allCoveredByOneIndex) {
   TRI_ASSERT(_condition != nullptr);
 
   prepareProjections();
@@ -100,7 +99,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
     // legacy
     _options.sorted = true;
-    _options.ascending = !base.get("reverse").getBool();
+    _options.ascending = !(base.get("reverse").getBool());
   }
 
   VPackSlice indexes = base.get("indexes");
@@ -192,13 +191,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
 }
 
 void IndexNode::setProjections(arangodb::aql::Projections projections) {
-  DocumentProducingNode::setProjections(std::move(projections));
-  prepareProjections();
-}
-
-/// @brief remember the condition to execute for early filtering
-void IndexNode::setFilter(std::unique_ptr<Expression> filter) {
-  DocumentProducingNode::setFilter(std::move(filter));
+  _projections = std::move(projections);
   prepareProjections();
 }
 
@@ -294,7 +287,7 @@ arangodb::aql::AstNode* IndexNode::makeUnique(
   return node;
 }
 
-NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
+NonConstExpressionContainer IndexNode::initializeOnce() const {
   if (_condition->root() != nullptr) {
     auto idx = _indexes.at(0);
     if (!idx) {
@@ -326,7 +319,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
-  auto nonConstExpressions = buildNonConstExpressions();
+  auto nonConstExpressions = initializeOnce();
 
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
@@ -351,15 +344,15 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.second.size());
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
 
-  // We could be asked to produce only document id for later materialization
-  // or full document body at once
+  // We could be asked to produce only document id for later materialization or
+  // full document body at once
   aql::RegisterCount numDocumentRegs = 1;
 
   // if late materialized
   // We have one additional output register for each index variable which is
-  // used later, before the output register for document id These must of
-  // course fit in the available registers. There may be unused registers
-  // reserved for later blocks.
+  // used later, before the output register for document id These must of course
+  // fit in the available registers. There may be unused registers reserved for
+  // later blocks.
   RegIdSet writableOutputRegisters;
   writableOutputRegisters.reserve(numDocumentRegs + numIndVarsRegisters);
   writableOutputRegisters.emplace(outRegister);
@@ -391,11 +384,10 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto executorInfos = IndexExecutorInfos(
       outRegister, engine.getQuery(), this->collection(), _outVariable,
       isProduceResult(), this->_filter.get(), this->projections(),
-      this->filterProjections(), std::move(filterVarsToRegs),
-      std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
-      _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
-      _plan->getAst(), this->options(), _outNonMaterializedIndVars,
-      std::move(outNonMaterializedIndRegs));
+      std::move(filterVarsToRegs), std::move(nonConstExpressions), doCount(),
+      canReadOwnWrites(), _condition->root(), _allCoveredByOneIndex,
+      this->getIndexes(), _plan->getAst(), this->options(),
+      _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -430,7 +422,6 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
       std::unique_ptr<Condition>(_condition->clone()), _options);
 
   c->_projections = _projections;
-  c->_filterProjections = _filterProjections;
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->_outNonMaterializedDocId = outNonMaterializedDocId;
   c->_outNonMaterializedIndVars = std::move(outNonMaterializedIndVars);
@@ -456,8 +447,7 @@ CostEstimate IndexNode::estimateCost() const {
   size_t incoming = estimate.estimatedNrItems;
 
   transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
-  // estimate for the number of documents in the collection. may be
-  // outdated...
+  // estimate for the number of documents in the collection. may be outdated...
   size_t const itemsInCollection =
       collection()->count(&trx, transaction::CountType::TryCache);
   size_t totalItems = 0;
@@ -549,60 +539,20 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
   }
 }
 
-transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
+void IndexNode::prepareProjections() {
   if (_indexes.empty()) {
-    return nullptr;
+    return;
   }
   // cannot apply the optimization if we use more than one different index
   auto const& idx = _indexes[0];
   for (size_t i = 1; i < _indexes.size(); ++i) {
     if (_indexes[i] != idx) {
       // different indexes used => cannot use projections
-      return nullptr;
+      return;
     }
-  }
-
-  return idx;
-}
-
-void IndexNode::prepareProjections() {
-  // by default, we do not use projections for the filter condition
-  _filterProjections.clear();
-
-  auto idx = getSingleIndex();
-  if (idx == nullptr) {
-    return;
   }
 
   if (idx->covers(_projections)) {
     _projections.setCoveringContext(collection()->id(), idx);
-  } else if (this->hasFilter()) {
-    // if we have a covering index and a post-filter condition,
-    // extract which projections we will need just to execute
-    // the filter condition
-    std::unordered_set<AttributeNamePath> attributes;
-
-    if (Ast::getReferencedAttributesRecursive(
-            this->filter()->node(), this->outVariable(),
-            /*expectedAttribute*/ "", attributes)) {
-      if (!attributes.empty()) {
-        Projections filterProjections(std::move(attributes));
-        if (idx->covers(filterProjections)) {
-          _filterProjections = std::move(filterProjections);
-          _filterProjections.setCoveringContext(collection()->id(), idx);
-
-          attributes.clear();
-          // try to exclude all projection attributes which are only
-          // used for the filter condition
-          if (utils::findProjections(
-                  this, outVariable(), /*expectedAttribute*/ "",
-                  /*excludeStartNodeFilterCondition*/ true, attributes)) {
-            _projections = Projections(std::move(attributes));
-            // note: idx->covers(...) modifies the projections object!
-            idx->covers(_projections);
-          }
-        }
-      }
-    }
   }
 }

@@ -57,7 +57,6 @@ Function::Function(std::string const& name, char const* arguments,
       << hasFlag(Flags::CanRunOnDBServerOneShard)
       << ", canReadDocuments: " << hasFlag(Flags::CanReadDocuments)
       << ", canUseInAnalyzer: " << hasFlag(Flags::CanUseInAnalyzer)
-      << ", internal: " << hasFlag(Flags::Internal)
       << ", hasCxxImplementation: " << hasCxxImplementation()
       << ", hasConversions: " << !conversions.empty();
 
@@ -229,8 +228,6 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
   builder.add("canRunOnDBServerOneShard",
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerOneShard)));
-  builder.add("canReadDocuments",
-              velocypack::Value(hasFlag(Flags::CanReadDocuments)));
   builder.add("canUseInAnalyzer",
               velocypack::Value(hasFlag(Flags::CanUseInAnalyzer)));
 

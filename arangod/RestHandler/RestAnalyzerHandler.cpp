@@ -150,11 +150,10 @@ void RestAnalyzerHandler::createAnalyzer(  // create
     if (featuresRes.fail()) {
       generateError(arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
-          std::string("invalid value in 'features' ")
-                  .append(featuresRes.errorMessage()) +
-              " expecting body to be of the form{"
-              "name: <string>, type: <string>[, properties: <object>[, "
-              "features: <string-array>]] }"));
+          std::string("invalid value in 'features' ").append(featuresRes.errorMessage()) +
+          " expecting body to be of the form{"
+          "name: <string>, type: <string>[, properties: <object>[, "
+          "features: <string-array>]] }"));
       return;
     }
   }

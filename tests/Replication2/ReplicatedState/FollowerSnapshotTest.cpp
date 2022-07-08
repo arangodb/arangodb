@@ -34,7 +34,6 @@
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Streams/LogMultiplexer.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -49,15 +48,12 @@ struct FollowerSnapshotTest
     using EntryType = test::DefaultEntryType;
     using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
     using CoreType = test::TestCoreType;
-    using CoreParameterType = void;
   };
 
   std::shared_ptr<State::FactoryType> factory =
       std::make_shared<State::FactoryType>();
   std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
-  std::shared_ptr<ReplicatedStateMetrics> _metrics =
-      std::make_shared<ReplicatedStateMetricsMock>("foo");
 };
 
 TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
@@ -74,8 +70,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
       loggerCtx, nullptr, follower, std::move(core),
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-      _metrics);
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
   manager->run();
   {
     auto status = *manager->getStatus().asFollowerStatus();
@@ -168,8 +163,7 @@ TEST_F(FollowerSnapshotTest, follower_resign_before_leadership_acked) {
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
       loggerCtx, nullptr, follower, std::move(core),
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-      _metrics);
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
   manager->run();
   {
     auto status = *manager->getStatus().asFollowerStatus();

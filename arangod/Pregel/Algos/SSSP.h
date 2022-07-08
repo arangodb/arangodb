@@ -45,15 +45,9 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
           "You need to specify the source document id");
     }
     _sourceDocumentId = userParams.get("source").copyString();
-
-    VPackSlice slice = userParams.get("resultField");
+    VPackSlice slice = userParams.get("_resultField");
     if (slice.isString()) {
       _resultField = slice.copyString();
-    } else {
-      VPackSlice slice = userParams.get("_resultField");
-      if (slice.isString()) {
-        _resultField = slice.copyString();
-      }
     }
   }
 

@@ -31,6 +31,5 @@ namespace arangodb::metrics {
 
 using Raw = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 using RawDBServers = std::vector<Raw>;
-using LeaderResponse = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
 }  // namespace arangodb::metrics

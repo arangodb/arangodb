@@ -30,6 +30,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 
@@ -115,16 +116,15 @@ TEST_P(IResearchQuerySelectAllTest, test) {
   }
 
   // need more than 100 docs for constrained heap optimization to be applied
-  std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      insertedDocs(101);
+  std::vector<arangodb::ManagedDocumentResult> insertedDocs(101);
 
   // populate view with the data
   {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name()}, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     size_t i = 0;
@@ -133,24 +133,18 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     for (; i < insertedDocs.size() / 2; ++i) {
       auto const doc = arangodb::velocypack::Parser::fromJson(
           "{ \"key\": " + std::to_string(i) + "}");
-      auto res = trx.insert(logicalCollection1->name(), doc->slice(), opt);
+      auto const res =
+          logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt);
       EXPECT_TRUE(res.ok());
-
-      res = trx.document(logicalCollection1->name(), res.slice(), opt);
-      EXPECT_TRUE(res.ok());
-      insertedDocs[i] = std::move(res.buffer);
     }
 
-    // insert into collection_2 (actually, this is also collection 1...)
+    // insert into collection_2
     for (; i < insertedDocs.size(); ++i) {
       auto const doc = arangodb::velocypack::Parser::fromJson(
           "{ \"key\": " + std::to_string(i) + "}");
-      auto res = trx.insert(logicalCollection1->name(), doc->slice(), opt);
+      auto const res =
+          logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt);
       EXPECT_TRUE(res.ok());
-
-      res = trx.document(logicalCollection1->name(), res.slice(), opt);
-      EXPECT_TRUE(res.ok());
-      insertedDocs[i] = std::move(res.buffer);
     }
 
     EXPECT_TRUE(trx.commit().ok());
@@ -163,12 +157,11 @@ TEST_P(IResearchQuerySelectAllTest, test) {
 
   // unordered
   {
-    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-        expectedDocs;
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc->data());
+      arangodb::velocypack::Slice docSlice(doc.vpack());
       auto keySlice = docSlice.get("key");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
     std::string const queryString = "FOR d IN testView RETURN d";
@@ -212,7 +205,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->data()),
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -234,7 +227,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->data()),
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -256,7 +249,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->data()),
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -265,12 +258,11 @@ TEST_P(IResearchQuerySelectAllTest, test) {
 
   // TFIDF() ASC
   {
-    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-        expectedDocs;
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc->data());
+      arangodb::velocypack::Slice docSlice(doc.vpack());
       auto keySlice = docSlice.get("key");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -289,7 +281,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->data()),
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -298,12 +290,11 @@ TEST_P(IResearchQuerySelectAllTest, test) {
 
   // TFIDF() DESC
   {
-    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-        expectedDocs;
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc->data());
+      arangodb::velocypack::Slice docSlice(doc.vpack());
       auto keySlice = docSlice.get("key");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -322,7 +313,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->data()),
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -331,12 +322,11 @@ TEST_P(IResearchQuerySelectAllTest, test) {
 
   // BM25() ASC
   {
-    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-        expectedDocs;
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc->data());
+      arangodb::velocypack::Slice docSlice(doc.vpack());
       auto keySlice = docSlice.get("key");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -355,7 +345,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->data()),
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -364,12 +354,11 @@ TEST_P(IResearchQuerySelectAllTest, test) {
 
   // BM25() DESC
   {
-    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-        expectedDocs;
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc->data());
+      arangodb::velocypack::Slice docSlice(doc.vpack());
       auto keySlice = docSlice.get("key");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -388,7 +377,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->data()),
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -410,7 +399,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->data()),
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -432,7 +421,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->data()),
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -471,7 +460,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->data()),
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -505,7 +494,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->data()),
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
                            resolved, true));
       ++expectedDoc;
     }

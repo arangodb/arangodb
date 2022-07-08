@@ -93,7 +93,7 @@ icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
 }
 
 arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(
-    VPackSlice validatorParams) {
+    VPackSlice const& validatorParams) {
   auto matcherIter =
       _validatorCache
           .try_emplace(

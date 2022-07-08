@@ -30,7 +30,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "Metrics/Gauge.h"
 #include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/LeaderStateManager.h"
@@ -40,13 +39,12 @@
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
 
-#include "Replication2/Exceptions/ParticipantResignedException.h"
-#include "Replication2/ReplicatedState/FollowerStateManager.tpp"
-#include "Replication2/ReplicatedState/LeaderStateManager.tpp"
-#include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
-#include "Replication2/ReplicatedState/StateInterfaces.h"
-#include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
 #include "Replication2/Streams/LogMultiplexer.tpp"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/ReplicatedState/LeaderStateManager.tpp"
+#include "Replication2/ReplicatedState/FollowerStateManager.tpp"
+#include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
+#include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Logger/LogContextKeys.h"
 
 namespace arangodb::replication2::replicated_state {
@@ -95,16 +93,11 @@ auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
 template<typename S>
 ReplicatedState<S>::ReplicatedState(
     std::shared_ptr<replicated_log::ReplicatedLog> log,
-    std::shared_ptr<Factory> factory, LoggerContext loggerContext,
-    std::shared_ptr<ReplicatedStateMetrics> metrics)
+    std::shared_ptr<Factory> factory, LoggerContext loggerContext)
     : factory(std::move(factory)),
       log(std::move(log)),
       guardedData(*this),
-      loggerContext(std::move(loggerContext)),
-      metrics(std::move(metrics)) {
-  TRI_ASSERT(this->metrics != nullptr);
-  this->metrics->replicatedStateNumber->fetch_add(1);
-}
+      loggerContext(std::move(loggerContext)) {}
 
 template<typename S>
 void ReplicatedState<S>::flush(StateGeneration planGeneration) {
@@ -160,36 +153,12 @@ void ReplicatedState<S>::forceRebuild() {
 }
 
 template<typename S>
-void ReplicatedState<S>::start(
-    std::unique_ptr<ReplicatedStateToken> token,
-    std::optional<velocypack::SharedSlice> const& coreParameter) {
-  auto core = std::invoke([&]() {
-    if constexpr (std::is_void_v<typename S::CoreParameterType>) {
-      return factory->constructCore(log->getGlobalLogId());
-    } else {
-      if (!coreParameter.has_value()) {
-        auto const& gid = log->getGlobalLogId();
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            fmt::format("Cannot find core parameter for replicated state with "
-                        "ID {}, created in database {}, for {} state",
-                        gid.id, gid.database, S::NAME));
-      }
-      auto params = velocypack::deserialize<typename S::CoreParameterType>(
-          coreParameter->slice());
-      return factory->constructCore(log->getGlobalLogId(), std::move(params));
-    }
-  });
-
+void ReplicatedState<S>::start(std::unique_ptr<ReplicatedStateToken> token) {
+  auto core = factory->constructCore(log->getGlobalLogId());
   auto deferred =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
   // execute *after* the lock has been released
   deferred.fire();
-}
-
-template<typename S>
-ReplicatedState<S>::~ReplicatedState() {
-  metrics->replicatedStateNumber->fetch_sub(1);
 }
 
 template<typename S>
@@ -247,7 +216,7 @@ auto ReplicatedState<S>::GuardedData::runFollower(
           "follower-manager");
   auto manager = std::make_shared<FollowerStateManager<S>>(
       std::move(loggerCtx), _self.shared_from_this(), std::move(logFollower),
-      std::move(core), std::move(token), _self.factory, _self.metrics);
+      std::move(core), std::move(token), _self.factory);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
@@ -270,7 +239,7 @@ auto ReplicatedState<S>::GuardedData::runLeader(
           "leader-manager");
   auto manager = std::make_shared<LeaderStateManager<S>>(
       std::move(loggerCtx), _self.shared_from_this(), std::move(logLeader),
-      std::move(core), std::move(token), _self.factory, _self.metrics);
+      std::move(core), std::move(token), _self.factory);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));

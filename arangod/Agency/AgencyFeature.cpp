@@ -72,8 +72,6 @@ AgencyFeature::AgencyFeature(Server& server)
   startsAfter<application_features::FoxxFeaturePhase>();
 }
 
-AgencyFeature::~AgencyFeature() = default;
-
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "agency");
 

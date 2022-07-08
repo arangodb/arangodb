@@ -39,10 +39,8 @@ function BabiesStandardShardingSuite () {
   let c;
 
   let keys = [];
-  let prefabDocs = [];
   for (let i = 0; i < n; ++i) {
     keys.push("test" + i);
-    prefabDocs.push({ _key: "test" + i, value:  i });
   }
 
   return {
@@ -50,7 +48,9 @@ function BabiesStandardShardingSuite () {
     setUp : function () {
       db._drop(cn);
       c = db._create(cn, { numberOfShards: 7 });
-      c.insert(prefabDocs);
+      for (let i = 0; i < n; ++i) {
+        c.insert({ _key: "test" + i, value:  i });
+      }
     },
 
     tearDown : function () {

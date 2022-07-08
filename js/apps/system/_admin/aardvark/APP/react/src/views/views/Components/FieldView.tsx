@@ -1,61 +1,81 @@
-import React, { useContext } from "react";
-import ViewLinkLayout from "./ViewLinkLayout";
+import React, { Dispatch, useContext } from "react";
+import ViewLayout from "./ViewLayout";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
-import { FormState, ViewContext } from "../constants";
+import { IconButton } from "../../../components/arango/buttons";
+import { DispatchArgs } from "../../../utils/constants";
+import { LinkProperties } from "../constants";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
-import { useRouteMatch } from "react-router-dom";
-import { get, last } from "lodash";
-import { SaveButton } from "../Actions";
+import { ViewContext } from "../ViewLinksReactView";
+import { get } from "lodash";
 
 type FieldViewProps = {
   disabled: boolean | undefined;
-  name: string;
+  basePath: string;
+  viewField: any;
+  link?: string;
+  fieldName?: string;
+  view?: string;
 };
 
-const FieldView = ({ disabled, name }: FieldViewProps) => {
-  const { formState, dispatch, isAdminUser, changed, setChanged } = useContext(ViewContext);
-  const match = useRouteMatch();
+const FieldView = ({
+  disabled,
+  basePath,
+  fieldName,
+  view,
+  link
+}: FieldViewProps) => {
+  const { formState, dispatch } = useContext(ViewContext);
 
-  const fragments = match.url.slice(1).split('/');
-  const fieldName = last(fragments);
+  const removeField = (field: string | undefined) => {
+    dispatch({
+      type: "unsetField",
+      field: {
+        path: `fields[${field}]`
+      },
+      basePath
+    });
+  };
 
-  let basePath = `links[${fragments[0]}]`;
-  for (let i = 1; i < fragments.length - 1; ++i) {
-    basePath += `.fields[${fragments[i]}]`;
-  }
+  const getFieldRemover = (field: string | undefined) => () => {
+    removeField(field);
+  };
 
   const field = get(formState, `${basePath}.fields[${fieldName}]`);
 
-  return <ViewLinkLayout fragments={fragments}>
-    <ArangoTable style={{
-      marginLeft: 0,
-      border: 'none'
-    }}>
-      <tbody>
-      <tr key={fieldName}>
-        <ArangoTD seq={0}>
-          {
-            field
-              ? <LinkPropertiesInput
+  return (
+    <ViewLayout field={fieldName} view={view} link={link}>
+      <ArangoTable style={{ marginLeft: 0 }}>
+        <tbody>
+          <tr key={fieldName} style={{ borderBottom: "1px  solid #794242" }}>
+            <ArangoTD seq={disabled ? 0 : 1}>{fieldName}</ArangoTD>
+            <ArangoTD seq={disabled ? 1 : 2}>
+              {/* {newField &&
+                 map(newField.analyzers, a => <Badge key={a} name={a} />)} */}
+              <LinkPropertiesInput
                 formState={field}
                 disabled={disabled}
                 basePath={`${basePath}.fields[${fieldName}]`}
-                dispatch={dispatch}
+                dispatch={
+                  (dispatch as unknown) as Dispatch<
+                    DispatchArgs<LinkProperties>
+                  >
+                }
               />
-              : null
-          }
-        </ArangoTD>
-      </tr>
-      </tbody>
-    </ArangoTable>
-    {
-      isAdminUser && changed
-        ? <div className="tab-pane tab-pane-modal active" id="Save">
-          <SaveButton view={formState as FormState} setChanged={setChanged} oldName={name}/>
-        </div>
-        : null
-    }
-  </ViewLinkLayout>;
+            </ArangoTD>
+            {disabled ? null : (
+              <ArangoTD seq={0} valign={"middle"}>
+                <IconButton
+                  icon={"trash-o"}
+                  type={"danger"}
+                  onClick={getFieldRemover(fieldName)}
+                />
+              </ArangoTD>
+            )}
+          </tr>
+        </tbody>
+      </ArangoTable>
+    </ViewLayout>
+  );
 };
 
 export default FieldView;

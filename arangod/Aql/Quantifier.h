@@ -23,39 +23,31 @@
 
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
-#include <string_view>
+#include <string>
 
-namespace arangodb::aql {
+#include "Basics/Common.h"
+
+namespace arangodb {
+namespace aql {
 struct AstNode;
 
 struct Quantifier {
-  enum class Type {
-    kNone = 1,
-    kAll = 2,
-    kAny = 3,
-    kAtLeast = 4,
-  };
+  static int64_t constexpr NONE = 1;
+  static int64_t constexpr ALL = 2;
+  static int64_t constexpr ANY = 3;
 
   /// @brief converts a quantifier string into an int equivalent
-  static Type fromString(std::string_view value);
+  static int64_t fromString(std::string const& value);
 
   /// @brief converts a quantifier int value into its string equivalent
-  static std::string_view stringify(Type value);
+  static std::string stringify(int64_t value);
 
-  static bool isAll(AstNode const* quantifier);
-  static bool isAny(AstNode const* quantifier);
-  static bool isNone(AstNode const* quantifier);
-  static bool isAtLeast(AstNode const* quantifier);
+  static bool isAllOrNone(AstNode const* quantifier);
 
   /// @brief determine the min/max number of matches for an array comparison
   static std::pair<size_t, size_t> requiredMatches(size_t inputSize,
-                                                   AstNode const* quantifier,
-                                                   size_t atLeastValue);
-
- private:
-  static bool isType(AstNode const* quantifier, Type type);
+                                                   AstNode const* quantifier);
 };
-
-}  // namespace arangodb::aql
+}  // namespace aql
+}  // namespace arangodb

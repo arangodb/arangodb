@@ -89,11 +89,6 @@ EnumerateCollectionExecutorInfos::getProjections() const noexcept {
   return _projections;
 }
 
-arangodb::aql::Projections const&
-EnumerateCollectionExecutorInfos::getFilterProjections() const noexcept {
-  return _filterProjections;
-}
-
 bool EnumerateCollectionExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
 }

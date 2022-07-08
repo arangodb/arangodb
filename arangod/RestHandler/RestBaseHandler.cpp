@@ -39,7 +39,7 @@ using namespace arangodb::rest;
 
 RestBaseHandler::RestBaseHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
-    : RestHandler(server, request, response), _potentialDirtyReads(false) {}
+    : RestHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the body as VelocyPack
@@ -94,9 +94,6 @@ void RestBaseHandler::generateResult(
     rest::ResponseCode code, Payload&& payload,
     std::shared_ptr<transaction::Context> context) {
   resetResponse(code);
-  if (_potentialDirtyReads) {
-    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
-  }
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptions()));
 }
 

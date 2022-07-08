@@ -1,23 +1,19 @@
-import React, { CSSProperties } from "react";
+import React from "react";
 import { ChildProp } from "../../utils/constants";
 
 type ArangoTableProps = ChildProp & {
   [key: string]: any;
 };
 
-export const ArangoTable = ({ children, ...rest }: ArangoTableProps) => {
-  const style: CSSProperties = Object.assign({ border: "1px solid #e5e5e5" }, rest.style || {});
-
-  return (
-    <table
-      className={"arango-table"}
-      {...rest}
-      style={style}
-    >
-      {children}
-    </table>
-  );
-};
+export const ArangoTable = ({ children, ...rest }: ArangoTableProps) => (
+  <table
+    className={"arango-table"}
+    {...rest}
+    style={{ border: "1px solid #e5e5e5" }}
+  >
+    {children}
+  </table>
+);
 
 type ArangoTHProps = ChildProp & {
   seq: number;

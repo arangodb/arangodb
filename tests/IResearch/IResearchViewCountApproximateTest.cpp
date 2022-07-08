@@ -36,6 +36,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include "IResearch/MakeViewSnapshot.h"
 
@@ -57,6 +58,7 @@ static constexpr frozen::map<irs::string_ref,
 
 class IResearchViewCountApproximateTest : public IResearchQueryTest {
  protected:
+  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
   std::shared_ptr<arangodb::iresearch::IResearchView> _view;
 
   IResearchViewCountApproximateTest() {
@@ -102,8 +104,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-          arangodb::transaction::Options());
+          EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -120,7 +121,9 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
         EXPECT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          auto res = trx.insert(logicalCollection1->name(), doc, opt);
+          insertedDocs.emplace_back();
+          auto const res =
+              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -139,7 +142,9 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
         EXPECT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          auto res = trx.insert(logicalCollection2->name(), doc, opt);
+          insertedDocs.emplace_back();
+          auto const res =
+              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -164,8 +169,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-          arangodb::transaction::Options());
+          EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -183,7 +187,9 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
         EXPECT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          auto res = trx.insert(logicalCollection1->name(), doc, opt);
+          insertedDocs.emplace_back();
+          auto const res =
+              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -202,7 +208,9 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
         EXPECT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          auto res = trx.insert(logicalCollection2->name(), doc, opt);
+          insertedDocs.emplace_back();
+          auto const res =
+              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
       }

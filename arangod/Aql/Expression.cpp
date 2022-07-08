@@ -48,7 +48,6 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
-#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
@@ -92,7 +91,7 @@ void Expression::variables(VarSet& result) const {
 /// @brief execute the expression
 AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(ctx != nullptr);
-  prepareForExecution();
+  prepareForExecution(*ctx);
 
   TRI_ASSERT(_type != UNPROCESSED);
 
@@ -165,7 +164,7 @@ void Expression::replaceAttributeAccess(
 void Expression::freeInternals() noexcept {
   switch (_type) {
     case JSON:
-      velocypack_free(_data);
+      delete[] _data;
       _data = nullptr;
       break;
 
@@ -337,7 +336,7 @@ void Expression::determineType() {
   }
 }
 
-void Expression::initAccessor() {
+void Expression::initAccessor(ExpressionContext& ctx) {
   TRI_ASSERT(_type == ATTRIBUTE_ACCESS);
   TRI_ASSERT(_accessor == nullptr);
 
@@ -358,35 +357,30 @@ void Expression::initAccessor() {
   TRI_ASSERT(_accessor != nullptr);
 }
 
-/// @brief prepare the expression for execution, without an
-/// ExpressionContext.
-void Expression::prepareForExecution() {
+/// @brief prepare the expression for execution
+void Expression::prepareForExecution(ExpressionContext& ctx) {
   TRI_ASSERT(_type != UNPROCESSED);
 
-  if (_type == JSON && _data == nullptr) {
-    // generate a constant value, using an on-stack Builder
-    velocypack::Buffer<uint8_t> buffer;
-    velocypack::Builder builder(buffer);
-    _node->toVelocyPackValue(builder);
-
-    if (buffer.usesLocalMemory()) {
-      // Buffer has data in its local memory. because we
-      // don't want to keep the whole Buffer object, we allocate
-      // the required space ourselves and copy things over.
-      _data = static_cast<uint8_t*>(
-          velocypack_malloc(static_cast<size_t>(buffer.size())));
+  switch (_type) {
+    case JSON: {
       if (_data == nullptr) {
-        // malloc returned a nullptr
-        throw std::bad_alloc();
+        // generate a constant value
+        transaction::BuilderLeaser builder(&ctx.trx());
+        _node->toVelocyPackValue(*builder.get());
+
+        _data = new uint8_t[static_cast<size_t>(builder->size())];
+        memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
       }
-      memcpy(_data, buffer.data(), static_cast<size_t>(buffer.size()));
-    } else {
-      // we can simply steal the data from the Buffer. we
-      // own the data now.
-      _data = buffer.steal();
+      break;
     }
-  } else if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
-    initAccessor();
+    case ATTRIBUTE_ACCESS: {
+      if (_accessor == nullptr) {
+        initAccessor(ctx);
+      }
+      break;
+    }
+    default: {
+    }
   }
 }
 
@@ -1300,36 +1294,19 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
 
   size_t const n = left.length();
 
-  AstNode const* q = node->getMember(2);
   if (n == 0) {
-    if (Quantifier::isAll(q) || Quantifier::isNone(q)) {
+    if (Quantifier::isAllOrNone(node->getMember(2))) {
       // [] ALL ...
       // [] NONE ...
       return AqlValue(AqlValueHintBool(true));
-    } else if (Quantifier::isAny(q)) {
+    } else {
       // [] ANY ...
       return AqlValue(AqlValueHintBool(false));
     }
   }
 
-  int64_t atLeast = 0;
-  if (Quantifier::isAtLeast(q)) {
-    // evaluate expression for AT LEAST
-    TRI_ASSERT(q->numMembers() == 1);
-
-    bool mustDestroy = false;
-    AqlValue atLeastValue =
-        executeSimpleExpression(ctx, q->getMember(0), mustDestroy, false);
-    AqlValueGuard guard(atLeastValue, mustDestroy);
-    atLeast = atLeastValue.toInt64();
-    if (atLeast < 0) {
-      atLeast = 0;
-    }
-    TRI_ASSERT(atLeast >= 0);
-  }
-
   std::pair<size_t, size_t> requiredMatches =
-      Quantifier::requiredMatches(n, q, static_cast<size_t>(atLeast));
+      Quantifier::requiredMatches(n, node->getMember(2));
 
   TRI_ASSERT(requiredMatches.first <= requiredMatches.second);
 
@@ -1657,25 +1634,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     };
 
     if (quantifierNode->type == NODE_TYPE_QUANTIFIER) {
-      // ALL|ANY|NONE|AT LEAST
-      int64_t atLeast = 0;
-      if (Quantifier::isAtLeast(quantifierNode)) {
-        // evaluate expression for AT LEAST
-        TRI_ASSERT(quantifierNode->numMembers() == 1);
-
-        bool mustDestroy = false;
-        AqlValue atLeastValue = executeSimpleExpression(
-            ctx, quantifierNode->getMember(0), mustDestroy, false);
-        AqlValueGuard guard(atLeastValue, mustDestroy);
-        atLeast = atLeastValue.toInt64();
-        if (atLeast < 0) {
-          atLeast = 0;
-        }
-        TRI_ASSERT(atLeast >= 0);
-      }
+      // ALL|ANY|NONE
       std::tie(minRequiredItems, maxRequiredItems) =
-          Quantifier::requiredMatches(n, quantifierNode,
-                                      static_cast<size_t>(atLeast));
+          Quantifier::requiredMatches(n, quantifierNode);
     } else if (quantifierNode->type == NODE_TYPE_RANGE) {
       // range
       TRI_ASSERT(quantifierNode->numMembers() == 2);
@@ -1724,7 +1685,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         if (!isBoolean) {
           AqlValue sub = executeSimpleExpression(ctx, projectionNode,
                                                  localMustDestroy, false);
-          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ true,
+          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
                            /*allowUnindexed*/ false);
           if (localMustDestroy) {
             sub.destroy();

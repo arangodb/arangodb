@@ -564,7 +564,7 @@
     delete global.FORCE_ONE_SHARD;
   }
 
-  // server session timeout (for web interface)
+  // server session timeout (for web UI)
   if (global.SESSION_TIMEOUT) {
     exports.sessionTimeout = global.SESSION_TIMEOUT;
     delete global.SESSION_TIMEOUT;

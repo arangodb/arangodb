@@ -97,10 +97,11 @@ struct ReplicatedLogTest : ::testing::Test {
   auto createLeaderWithDefaultFlags(
       ParticipantId id, LogTerm term, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-      std::size_t effectiveWriteConcern, bool waitForSync = false,
+      std::size_t writeConcern, bool waitForSync = false,
       std::shared_ptr<cluster::IFailureOracle> failureOracle = nullptr)
       -> std::shared_ptr<LogLeader> {
-    auto config = agency::LogPlanConfig{effectiveWriteConcern, waitForSync};
+    auto config =
+        agency::LogPlanConfig{writeConcern, writeConcern, waitForSync};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
     for (auto const& participant : follower) {
@@ -115,9 +116,10 @@ struct ReplicatedLogTest : ::testing::Test {
       failureOracle = std::make_shared<FakeFailureOracle>();
     }
 
-    return LogLeader::construct(
-        std::move(logCore), {follower}, std::move(participantsConfig), id, term,
-        defaultLogger(), _logMetricsMock, _optionsMock, failureOracle);
+    return LogLeader::construct(config, std::move(logCore), {follower},
+                                std::move(participantsConfig), id, term,
+                                defaultLogger(), _logMetricsMock, _optionsMock,
+                                failureOracle);
   }
 
   auto stopAsyncMockLogs() -> void {

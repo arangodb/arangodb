@@ -303,7 +303,6 @@ class MockGraphProvider {
   [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
   [[nodiscard]] transaction::Methods* trx();
-  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
   aql::TraversalStats stealStats();
 

@@ -286,9 +286,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto dbservers = clusterInfo.getCurrentDBServers();
 
     auto expectedNumberOfServers = std::min(dbservers.size(), std::size_t{3});
-    if (options.numberOfServers.has_value()) {
-      expectedNumberOfServers = *options.numberOfServers;
-    } else if (!options.servers.empty()) {
+    if (!options.servers.empty()) {
       expectedNumberOfServers = options.servers.size();
     }
 
@@ -685,7 +683,7 @@ struct ReplicatedLogMethodsCoordinator final
 
  private:
   auto getLogLeader(LogId id) const -> ServerID {
-    auto leader = clusterInfo.getReplicatedLogLeader(id);
+    auto leader = clusterInfo.getReplicatedLogLeader(vocbase.name(), id);
     if (leader.fail()) {
       if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
         throw ParticipantResignedException(leader.result(), ADB_HERE);
@@ -702,7 +700,7 @@ struct ReplicatedLogMethodsCoordinator final
       -> futures::Future<ResultT<std::shared_ptr<
           arangodb::replication2::agency::LogPlanSpecification const>>> {
     if (source == GlobalStatus::SpecificationSource::kLocalCache) {
-      return clusterInfo.getReplicatedLogPlanSpecification(id);
+      return clusterInfo.getReplicatedLogPlanSpecification(database, id);
     } else {
       AsyncAgencyComm ac;
       auto f = ac.getValues(arangodb::cluster::paths::aliases::plan()
@@ -969,8 +967,7 @@ struct ReplicatedStateCoordinatorMethods
 
           auto supervision = velocypack::deserialize<
               replicated_state::agency::Current::Supervision>(slice);
-          if (supervision.version.has_value() &&
-              supervision.version >= ctx->version) {
+          if (supervision.version >= ctx->version) {
             ctx->promise.setValue(ResultT<consensus::index_t>{index});
             return true;
           }

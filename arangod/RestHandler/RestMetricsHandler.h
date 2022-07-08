@@ -25,8 +25,6 @@
 
 #include "RestHandler/RestBaseHandler.h"
 
-#include <string>
-
 namespace arangodb {
 
 class RestMetricsHandler : public arangodb::RestBaseHandler {
@@ -38,9 +36,6 @@ class RestMetricsHandler : public arangodb::RestBaseHandler {
   /// even from otherwise totally busy servers
   RequestLane lane() const final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() final;
-
- private:
-  RestStatus makeRedirection(std::string const& serverId, bool last);
 };
 
 }  // namespace arangodb

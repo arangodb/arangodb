@@ -93,7 +93,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      std::unique_ptr<LogCore> logCore,
+      agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
@@ -173,8 +173,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LogLeader(LoggerContext logContext,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-            ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
-            InMemoryLog inMemoryLog,
+            agency::LogPlanConfig config, ParticipantId id, LogTerm term,
+            LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
             std::shared_ptr<cluster::IFailureOracle const> failureOracle);
 
  private:
@@ -193,8 +193,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::chrono::steady_clock::time_point _lastRequestStartTP{};
     std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
-    TermIndexPair lastAckedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
-    TermIndexPair nextPrevLogIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    TermIndexPair lastAckedEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
     MessageId lastSentMessageId{0};
@@ -339,6 +338,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   std::shared_ptr<cluster::IFailureOracle const> const _failureOracle;
+  agency::LogPlanConfig const _config;
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;

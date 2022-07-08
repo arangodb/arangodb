@@ -25,7 +25,6 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
-#include "Containers/FlatHashSet.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include "VelocyPackHelper.h"
@@ -85,8 +84,8 @@ class IResearchViewStoredValues {
  private:
   bool buildStoredColumnFromSlice(
       velocypack::Slice const& columnSlice,
-      containers::FlatHashSet<std::string>& uniqueColumns,
-      std::vector<std::string_view>& fieldNames,
+      std::unordered_set<std::string>& uniqueColumns,
+      std::vector<irs::string_ref>& fieldNames,
       irs::type_info::type_id compression);
 
   void clear() noexcept { _storedColumns.clear(); }

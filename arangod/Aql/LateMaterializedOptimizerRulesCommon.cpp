@@ -327,9 +327,8 @@ template void latematerialized::setAttributesMaxMatchedColumns<true>(
     size_t columnsCount);
 
 template bool latematerialized::attributesMatch<
-    true,
-    std::vector<
-        latematerialized::AttributeAndField<latematerialized::IndexFieldData>>,
+    true, std::vector<latematerialized::AttributeAndField<
+              latematerialized::IndexFieldData>>,
     arangodb::iresearch::IResearchViewSort>(
     arangodb::iresearch::IResearchViewSort const& primarySort,
     arangodb::iresearch::IResearchViewStoredValues const& storedValues,
@@ -340,9 +339,8 @@ template bool latematerialized::attributesMatch<
     size_t columnsCount);
 
 template bool latematerialized::attributesMatch<
-    false,
-    std::vector<latematerialized::AttributeAndField<
-        latematerialized::AstAndColumnFieldData>>,
+    false, std::vector<latematerialized::AttributeAndField<
+               latematerialized::AstAndColumnFieldData>>,
     arangodb::iresearch::IResearchViewSort>(
     arangodb::iresearch::IResearchViewSort const& primarySort,
     arangodb::iresearch::IResearchViewStoredValues const& storedValues,
@@ -352,9 +350,8 @@ template bool latematerialized::attributesMatch<
     size_t columnsCount);
 
 template bool latematerialized::attributesMatch<
-    true,
-    std::vector<
-        latematerialized::AttributeAndField<latematerialized::IndexFieldData>>,
+    true, std::vector<latematerialized::AttributeAndField<
+              latematerialized::IndexFieldData>>,
     arangodb::iresearch::IResearchInvertedIndexSort>(
     arangodb::iresearch::IResearchInvertedIndexSort const& primarySort,
     arangodb::iresearch::IResearchViewStoredValues const& storedValues,
@@ -365,9 +362,8 @@ template bool latematerialized::attributesMatch<
     size_t columnsCount);
 
 template bool latematerialized::attributesMatch<
-    false,
-    std::vector<latematerialized::AttributeAndField<
-        latematerialized::AstAndColumnFieldData>>,
+    false, std::vector<latematerialized::AttributeAndField<
+               latematerialized::AstAndColumnFieldData>>,
     arangodb::iresearch::IResearchInvertedIndexSort>(
     arangodb::iresearch::IResearchInvertedIndexSort const& primarySort,
     arangodb::iresearch::IResearchViewStoredValues const& storedValues,

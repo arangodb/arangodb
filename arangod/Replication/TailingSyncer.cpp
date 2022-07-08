@@ -833,7 +833,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
 
   arangodb::CollectionGuard guard(vocbase, col->id());
 
-  return guard.collection()->properties(data);
+  return guard.collection()->properties(data, false);  // always a full-update
 }
 
 /// @brief truncate a collections. Assumes no trx are running

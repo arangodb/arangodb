@@ -733,11 +733,10 @@ bool IResearchLinkMeta::init(
             auto subField = value.get(kSubFieldName);
             auto featuresRes = features.fromVelocyPack(subField);
             if (featuresRes.fail()) {
-              errorField = std::string{kFieldName}
-                               .append(" (")
-                               .append(featuresRes.errorMessage())
-                               .append(")");
+              errorField = std::string{kFieldName}.append(" (")
+               .append(featuresRes.errorMessage()).append(")");
               return false;
+
             }
           }
         }

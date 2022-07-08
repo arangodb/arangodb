@@ -24,7 +24,6 @@
 
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb::replication2::replicated_log {
 
@@ -59,17 +58,6 @@ struct ParticipantsHealth {
   }
   auto contains(ParticipantId const& participant) const -> bool {
     return _health.contains(participant);
-  }
-  auto numberNotIsFailedOf(
-      agency::ParticipantsFlagsMap const& participants) const -> size_t {
-    auto n = size_t{0};
-
-    for (auto const& [participant, _] : participants) {
-      if (notIsFailed(participant)) {
-        ++n;
-      }
-    }
-    return n;
   }
 
   friend auto operator==(ParticipantsHealth const& s,

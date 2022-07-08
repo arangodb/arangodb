@@ -3,18 +3,16 @@ import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
 import { SaveButton } from './Actions';
 import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
-import { postProcessor, useNavbar, useView } from './helpers';
+import { buildSubNav, postProcessor, useView } from './helpers';
 
 const ViewConsolidationReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
     formCache: { name }
   });
-  const view = useView(name);
-  const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
-  const [state, dispatch] = useReducer(
-    getReducer(initialState.current, postProcessor, setChanged, name),
+  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor),
     initialState.current);
+  const view = useView(name);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
 
@@ -22,12 +20,16 @@ const ViewConsolidationReactView = ({ name }) => {
     initialState.current.formCache = cloneDeep(view);
 
     dispatch({
-      type: 'initFormState',
+      type: 'setFormState',
       formState: view
     });
   }, [view, name]);
 
-  useNavbar(name, isAdminUser, changed, 'Consolidation Policy');
+  useEffect(() => {
+    const observer = buildSubNav(isAdminUser, name, 'Consolidation Policy');
+
+    return () => observer.disconnect();
+  }, [isAdminUser, name]);
 
   const tempIsAdminUser = userIsAdmin(permissions);
   if (tempIsAdminUser !== isAdminUser) { // Prevents an infinite render loop.
@@ -45,14 +47,10 @@ const ViewConsolidationReactView = ({ name }) => {
             <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
                                      disabled={!isAdminUser}/>
           </div>
-          {
-            isAdminUser && changed
-              ? <div className="tab-pane tab-pane-modal active" id="Save">
-                <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
-              </div>
-              : null
-          }
         </div>
+      </div>
+      <div className="modal-footer">
+        <SaveButton view={formState} oldName={name}/>
       </div>
     </div>
   </div>;

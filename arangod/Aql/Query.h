@@ -216,8 +216,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // so user actually has a chance to kill it here.
   void debugKillQuery() override;
 
-  bool allowDirtyReads() const noexcept { return _allowDirtyReads; }
-
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
@@ -256,7 +254,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
-  // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not contain
+  // ExecutionNode::K_SHORTEST_PATHS - in case the GraphNode does not contain
   // a vertex collection yet. This can happen e.g. during anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
 
@@ -358,11 +356,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // retrigger a kill.
   bool _wasDebugKilled{false};
 #endif
-
-  bool _allowDirtyReads;  // this is set from the information in the
-                          // transaction, it is valid and remains valid
-                          // once `preparePlan` has run and can be queried
-                          // until the query object is gone!
 };
 
 }  // namespace aql

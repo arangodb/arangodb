@@ -2,25 +2,23 @@
 
 import { cloneDeep } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
-import ToolTip from '../../components/arango/tootip';
 import Textbox from '../../components/pure-css/form/Textbox';
+import ToolTip from "../../components/arango/tootip";
 import {
   getNumericFieldSetter, getNumericFieldValue, getReducer, isAdminUser as userIsAdmin,
   usePermissions
 } from '../../utils/helpers';
 import { DeleteButton, SaveButton } from './Actions';
-import { postProcessor, useNavbar, useView } from './helpers';
+import { buildSubNav, postProcessor, useView } from './helpers';
 
 const ViewSettingsReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
     formCache: { name }
   });
-  const view = useView(name);
-  const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
-  const [state, dispatch] = useReducer(
-    getReducer(initialState.current, postProcessor, setChanged, name),
+  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor),
     initialState.current);
+  const view = useView(name);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
 
@@ -28,12 +26,16 @@ const ViewSettingsReactView = ({ name }) => {
     initialState.current.formCache = cloneDeep(view);
 
     dispatch({
-      type: 'initFormState',
+      type: 'setFormState',
       formState: view
     });
   }, [view, name]);
 
-  useNavbar(name, isAdminUser, changed, 'Settings');
+  useEffect(() => {
+    const observer = buildSubNav(isAdminUser, name, 'Settings');
+
+    return () => observer.disconnect();
+  }, [isAdminUser, name]);
 
   const updateName = (event) => {
     dispatch({
@@ -51,7 +53,6 @@ const ViewSettingsReactView = ({ name }) => {
   }
 
   const formState = state.formState;
-  const nameEditDisabled = frontendConfig.isCluster || !isAdminUser;
 
   return <div className={'centralContent'} id={'content'}>
     <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
@@ -59,7 +60,7 @@ const ViewSettingsReactView = ({ name }) => {
       <div className="modal-body">
         <div className={'tab-content'}>
           <div className="tab-pane tab-pane-modal active" id="General">
-            <table>
+            <table style={{ margin: 30, marginLeft: 20 }}>
               <tbody>
               <tr className="tableRow" id="row_change-view-name">
                 <th className="collectionTh">
@@ -67,11 +68,11 @@ const ViewSettingsReactView = ({ name }) => {
                 </th>
                 <th className="collectionTh">
                   <Textbox type={'text'} value={formState.name} onChange={updateName}
-                           required={true} disabled={nameEditDisabled}/>
+                           required={true} disabled={frontendConfig.isCluster || !isAdminUser}/>
                 </th>
                 <th className="collectionTh">
                   <ToolTip
-                    title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
+                    title="The View name (string, immutable)."
                     setArrow={true}
                   >
                     <span className="arangoicon icon_arangodb_info"></span>
@@ -84,13 +85,13 @@ const ViewSettingsReactView = ({ name }) => {
                   Cleanup Interval Step:
                 </th>
                 <th className="collectionTh">
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                  <Textbox type={'number'} disabled={!isAdminUser}
                            value={getNumericFieldValue(formState.cleanupIntervalStep)}
                            onChange={getNumericFieldSetter('cleanupIntervalStep', dispatch)}/>
                 </th>
                 <th className="collectionTh">
                   <ToolTip
-                    title={`ArangoSearch waits at least this many commits between removing unused files in its data directory.`}
+                    title="The steps to wait before removing unused segments after release of internal resource."
                     setArrow={true}
                   >
                     <span className="arangoicon icon_arangodb_info"></span>
@@ -102,14 +103,14 @@ const ViewSettingsReactView = ({ name }) => {
                 <th className="collectionTh">
                   Commit Interval (msec):
                 </th>
-                <th className="collectionTh" style={{ width: '100%' }}>
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                <th className="collectionTh" style={{ width: "100%" }}>
+                  <Textbox type={'number'} disabled={!isAdminUser}
                            value={getNumericFieldValue(formState.commitIntervalMsec)}
                            onChange={getNumericFieldSetter('commitIntervalMsec', dispatch)}/>
                 </th>
                 <th className="collectionTh">
                   <ToolTip
-                    title="Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
+                    title="The wait time in milliseconds before performing View data store changes."
                     setArrow={true}
                   >
                     <span className="arangoicon icon_arangodb_info"></span>
@@ -122,36 +123,61 @@ const ViewSettingsReactView = ({ name }) => {
                   Consolidation Interval (msec):
                 </th>
                 <th className="collectionTh">
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                  <Textbox type={'number'} disabled={!isAdminUser}
                            value={getNumericFieldValue(formState.consolidationIntervalMsec)}
                            onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
                 </th>
                 <th className="collectionTh">
                   <ToolTip
-                    title="Wait at least this many milliseconds between index segments consolidations."
+                    title="The wait time in milliseconds before performing View data store changes."
                     setArrow={true}
                   >
                     <span className="arangoicon icon_arangodb_info"></span>
                   </ToolTip>
                 </th>
               </tr>
+
+              <tr className="tableRow" id="row_change-view-id">
+                <th className="collectionTh">
+                  ID:
+                </th>
+                <th className="collectionTh">
+                  <div className="modal-text" id="change-view-id">
+                    {formState.id}
+                  </div>
+                </th>
+              </tr>
+
+              <tr className="tableRow" id="row_change-view-globallyUniqueId">
+                <th className="collectionTh">
+                  Globally Unique ID:
+                </th>
+                <th className="collectionTh">
+                  <div className="modal-text" id="change-view-globallyUniqueId">
+                    {formState.globallyUniqueId}
+                  </div>
+                </th>
+              </tr>
+
+              <tr className="tableRow" id="row_change-view-type">
+                <th className="collectionTh">
+                  Type:
+                </th>
+                <th className="collectionTh">
+                  <div className="modal-text" id="change-view-type">
+                    {formState.type}
+                  </div>
+                </th>
+              </tr>
               </tbody>
             </table>
           </div>
-          {
-            isAdminUser
-              ? <div className="tab-pane tab-pane-modal active" id="Actions">
-                {
-                  changed
-                    ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
-                    : null
-                }
-                <DeleteButton view={formState}
-                              modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
-              </div>
-              : null
-          }
         </div>
+      </div>
+      <div className="modal-footer">
+        <DeleteButton view={formState}
+                      modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
+        <SaveButton view={formState} oldName={name}/>
       </div>
     </div>
   </div>;

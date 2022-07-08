@@ -30,6 +30,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 
@@ -123,17 +124,15 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
-  std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      insertedDocs;
+  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
   // populate view with the data
   {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -153,12 +152,10 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
           logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto res = trx.insert(collections[i % 2]->name(), doc, opt);
+        insertedDocs.emplace_back();
+        auto const res =
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
-
-        res = trx.document(collections[i % 2]->name(), res.slice(), opt);
-        EXPECT_TRUE(res.ok());
-        insertedDocs.emplace_back(std::move(res.buffer));
         ++i;
       }
     }
@@ -187,9 +184,8 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref,
-             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-        expectedDocs{{"A", insertedDocs[0]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -209,7 +205,7 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->data()),
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }

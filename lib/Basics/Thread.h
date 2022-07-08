@@ -25,8 +25,6 @@
 #pragma once
 
 #include <atomic>
-#include <string>
-#include <string_view>
 
 #include "Basics/threads.h"
 
@@ -37,21 +35,6 @@ class ApplicationServer;
 namespace basics {
 class ConditionVariable;
 }
-
-class ThreadNameFetcher {
- public:
-  ThreadNameFetcher() noexcept;
-  ThreadNameFetcher(ThreadNameFetcher const&) = delete;
-  ThreadNameFetcher& operator=(ThreadNameFetcher const&) = delete;
-
-  // retrieve the current thread's name. the string view will
-  // remain valid as long as the ThreadNameFetcher remains valid.
-  std::string_view get() const noexcept;
-
- private:
-  // stored retrieved thread name, used by the ctor
-  char _buffer[32];
-};
 
 /// @brief thread
 ///
@@ -89,7 +72,11 @@ class Thread {
   ///
   /// Note that there is a companion function "threadNumber", which returns
   /// the thread number of a running thread.
-  static uint64_t currentThreadNumber() noexcept;
+  static uint64_t currentThreadNumber();
+
+  /// @brief returns the name of the current thread, if set
+  /// note that this function may return a nullptr
+  static char const* currentThreadName();
 
   /// @brief returns the thread id
   static TRI_tid_t currentThreadId();

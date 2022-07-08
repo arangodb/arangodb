@@ -21,30 +21,44 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentCore.h"
-#include "DocumentFollowerState.h"
-#include "DocumentLeaderState.h"
-#include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
-
-#include "Logger/LogContextKeys.h"
-
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
+#include "DocumentStateMachine.h"
+
 using namespace arangodb::replication2::replicated_state::document;
 
-auto DocumentCoreParameters::toSharedSlice() -> velocypack::SharedSlice {
-  VPackBuilder builder;
-  velocypack::serialize(builder, *this);
-  return builder.sharedSlice();
+DocumentLeaderState::DocumentLeaderState(std::unique_ptr<DocumentCore> core)
+    : _core(std::move(core)){};
+
+auto DocumentLeaderState::resign() && noexcept
+    -> std::unique_ptr<DocumentCore> {
+  return std::move(_core);
 }
 
-DocumentFactory::DocumentFactory(
-    std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
-    : _agencyReader(std::move(agencyReader)),
-      _shardHandler(std::move(shardHandler)){};
+auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
+    -> futures::Future<Result> {
+  return {TRI_ERROR_NO_ERROR};
+}
+
+DocumentFollowerState::DocumentFollowerState(std::unique_ptr<DocumentCore> core)
+    : _core(std::move(core)){};
+
+auto DocumentFollowerState::resign() && noexcept
+    -> std::unique_ptr<DocumentCore> {
+  return std::move(_core);
+}
+
+auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
+                                            LogIndex) noexcept
+    -> futures::Future<Result> {
+  return {TRI_ERROR_NO_ERROR};
+}
+
+auto DocumentFollowerState::applyEntries(
+    std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
+  return {TRI_ERROR_NO_ERROR};
+};
 
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentFollowerState> {
@@ -56,29 +70,22 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
   return std::make_shared<DocumentLeaderState>(std::move(core));
 }
 
-auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
-                                    DocumentCoreParameters coreParameters)
+auto DocumentFactory::constructCore(GlobalLogIdentifier const& gid)
     -> std::unique_ptr<DocumentCore> {
-  LoggerContext logContext =
-      LoggerContext(Logger::REPLICATED_STATE)
-          .with<logContextKeyStateImpl>(DocumentState::NAME)
-          .with<logContextKeyDatabaseName>(gid.database)
-          .with<logContextKeyCollectionId>(coreParameters.collectionId)
-          .with<logContextKeyLogId>(gid.id);
-  return std::make_unique<DocumentCore>(
-      std::move(gid), std::move(coreParameters), getAgencyReader(),
-      getShardHandler(), std::move(logContext));
+  return std::make_unique<DocumentCore>();
 }
 
-auto DocumentFactory::getAgencyReader()
-    -> std::shared_ptr<IDocumentStateAgencyHandler> {
-  return _agencyReader;
-};
+auto arangodb::replication2::replicated_state::EntryDeserializer<
+    DocumentLogEntry>::operator()(streams::serializer_tag_t<DocumentLogEntry>,
+                                  velocypack::Slice s) const
+    -> DocumentLogEntry {
+  return DocumentLogEntry{};
+}
 
-auto DocumentFactory::getShardHandler()
-    -> std::shared_ptr<IDocumentStateShardHandler> {
-  return _shardHandler;
-};
+void arangodb::replication2::replicated_state::EntrySerializer<
+    DocumentLogEntry>::operator()(streams::serializer_tag_t<DocumentLogEntry>,
+                                  DocumentLogEntry const& e,
+                                  velocypack::Builder& b) const {}
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 

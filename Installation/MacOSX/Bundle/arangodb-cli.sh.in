@@ -141,6 +141,6 @@ tell application "Terminal"
 end tell
 EOF
 
-# open web interface
+# open web ui
 sleep 10;
 open "http://127.0.0.1:8529/"

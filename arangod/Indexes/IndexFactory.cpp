@@ -530,21 +530,9 @@ void IndexFactory::processIndexCacheEnabled(VPackSlice definition,
 
 void IndexFactory::processIndexInBackground(VPackSlice definition,
                                             VPackBuilder& builder) {
-  bool const bck = basics::VelocyPackHelper::getBooleanValue(
+  bool bck = basics::VelocyPackHelper::getBooleanValue(
       definition, StaticStrings::IndexInBackground, false);
   builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
-}
-
-void IndexFactory::processIndexParallelism(VPackSlice definition,
-                                           VPackBuilder& builder) {
-  if (definition.hasKey(StaticStrings::IndexParallelism)) {
-    size_t const parallelism = std::clamp(
-        basics::VelocyPackHelper::getNumericValue(
-            definition, StaticStrings::IndexParallelism, kDefaultParallelism),
-        size_t{1}, kMaxParallelism);
-
-    builder.add(StaticStrings::IndexParallelism, VPackValue(parallelism));
-  }
 }
 
 /// @brief process the unique flag and add it to the json
@@ -627,10 +615,6 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
     processIndexDeduplicateFlag(definition, builder);
     // "inBackground"
     processIndexInBackground(definition, builder);
-    // "parallelism"
-#ifdef USE_SST_INGESTION
-    processIndexParallelism(definition, builder);
-#endif
     // "cacheEnabled"
     processIndexCacheEnabled(definition, builder);
   }

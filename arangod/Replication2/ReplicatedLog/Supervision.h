@@ -42,10 +42,6 @@ namespace arangodb::replication2::replicated_log {
 using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
-auto computeEffectiveWriteConcern(LogTargetConfig const& config,
-                                  ParticipantsFlagsMap const& participants,
-                                  ParticipantsHealth const& health) -> size_t;
-
 auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool;
 

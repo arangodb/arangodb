@@ -43,6 +43,10 @@ const testPaths = {
 };
 
 function fail (options) {
+  const tmpDataDir = fs.getTempFile();
+  fs.makeDirectoryRecursive(tmpDataDir);
+  pu.cleanupDBDirectoriesAppend(tmpDataDir);
+  require('internal').print('created temporary data directory ' + tmpDataDir);
   return {
     failSuite: {
       status: false,
@@ -78,6 +82,10 @@ function fail (options) {
 }
 
 function fail2 (options) {
+  const tmpDataDir = fs.getTempFile();
+  fs.makeDirectoryRecursive(tmpDataDir);
+  pu.cleanupDBDirectoriesAppend(tmpDataDir);
+  require('internal').print('created temporary data directory ' + tmpDataDir);
   return {
     failSuite: {
       status: false,
@@ -113,6 +121,11 @@ function fail2 (options) {
 }
 
 function success (options) {
+  const tmpDataDir = fs.getTempFile();
+  fs.makeDirectoryRecursive(tmpDataDir);
+  pu.cleanupDBDirectoriesAppend(tmpDataDir);
+  require('internal').print('created temporary data directory ' + tmpDataDir);
+
   return {
     successSuite2: {
       status: true,

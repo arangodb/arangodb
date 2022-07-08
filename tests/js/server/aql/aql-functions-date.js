@@ -2554,13 +2554,6 @@ function ahuacatlDateFunctionsTestSuite () {
       }
         
       if (systemtz) {
-        // normalize UTC timezone names
-        if (systemtz.match(/UTC/)) {
-          systemtz = "UTC";
-        } 
-        if (res.match(/UTC/)) {
-          res = "UTC";
-        }
         assertEqual(systemtz, res);
       } else {
         assertNotNull(res);

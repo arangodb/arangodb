@@ -15,9 +15,7 @@
 %top{
 /* clang-format off */
 
-#include <algorithm>
-#include <cstdint>
-
+#include <stdint.h>
 #if (_MSC_VER >= 1)
 // fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
 #pragma warning( disable : 4267)
@@ -49,6 +47,8 @@ class Parser;
 #include "Aql/Functions.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
+
+#include <algorithm>
 
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
@@ -124,10 +124,6 @@ class Parser;
 
 (?i:DESC) {
   return T_DESC;
-}
-
-(?i:NOT[ \t\r\n]+IN) {
-  return T_NOT_IN;
 }
 
 (?i:NOT) {
@@ -210,10 +206,6 @@ class Parser;
   return T_NONE;
 }
 
-(?i:AT[ \t\r\n]+LEAST) {
-  return T_AT_LEAST;
-}
-
 (?i:LIKE) {
   return T_LIKE;
 }
@@ -272,10 +264,6 @@ class Parser;
 
 "=" {
   return T_ASSIGN;
-}
-
-(?i:![ \t\r\n]*IN) {
-  return T_NOT_IN;
 }
 
 "!" {

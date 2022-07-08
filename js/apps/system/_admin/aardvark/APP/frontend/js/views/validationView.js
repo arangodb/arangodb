@@ -22,11 +22,7 @@
     render: function () {
       this.breadcrumb();
       arangoHelper.buildCollectionSubNav(this.collectionName, 'Schema');
-      $(this.el).html(this.template.render({
-        parsedVersion: window.versionHelper.toDocuVersion(
-          window.frontendConfig.version.version
-        )
-      }));
+      $(this.el).html(this.template.render({}));
       this.renderValidationEditor();
       this.getValidationProperties();
       this.editor.focus();

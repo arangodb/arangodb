@@ -167,11 +167,6 @@ static char const* skeleton =
         }
       }
     },
-    "Databases": {
-      "database": {
-        "replicationVersion": "two"
-      }
-    },
     "DBServers": {
       "follower1": "none",
       "follower2": "none",

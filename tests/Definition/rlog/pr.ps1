@@ -10,6 +10,5 @@ Function global:registerTests()
     registerTest -testname "replication2_server" -cluster $true
     registerTest -testname "auto" -cluster $true -filter "tests\\js\\common\\shell\\shell-replicated-logs-cluster.js"
     registerTest -testname "auto" -cluster $true -filter "tests\\js\\common\\shell\\shell-prototype-state-cluster.js"
-    registerTest -testname "auto" -cluster $true -filter "tests\\js\\client\\shell\\transaction\\shell-transaction.js"
     comm
 }

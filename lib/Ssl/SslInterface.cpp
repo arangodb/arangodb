@@ -58,18 +58,20 @@ static UniformCharacter SaltGenerator(
     "[]:;<>,.?/|");
 }
 
-namespace arangodb::rest::SslInterface {
+namespace arangodb {
+namespace rest {
+namespace SslInterface {
 
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
 
-std::string sslMD5(std::string_view input) {
+std::string sslMD5(std::string const& inputStr) {
   char hash[17];
   char* p = &hash[0];
   size_t length;
 
-  sslMD5(input.data(), input.size(), p, length);
+  sslMD5(inputStr.c_str(), inputStr.size(), p, length);
 
   char hex[33];
   p = &hex[0];
@@ -387,4 +389,6 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
   return rsaPrivSign(ctx, pKey, msg, sign, error);
 }
 
-}  // namespace arangodb::rest::SslInterface
+}  // namespace SslInterface
+}  // namespace rest
+}  // namespace arangodb

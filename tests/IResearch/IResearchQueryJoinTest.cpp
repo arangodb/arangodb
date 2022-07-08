@@ -32,6 +32,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <regex>
 #include <velocypack/Iterator.h>
@@ -172,8 +173,9 @@ TEST_P(IResearchQueryJoinTest, Subquery) {
       auto root = builder->slice();
       ASSERT_TRUE(root.isArray());
 
+      arangodb::ManagedDocumentResult mmdr;
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto const res = trx.insert(entities->name(), doc, opt);
+        auto const res = entities->insert(&trx, doc, mmdr, opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -197,8 +199,9 @@ TEST_P(IResearchQueryJoinTest, Subquery) {
       auto root = builder->slice();
       ASSERT_TRUE(root.isArray());
 
+      arangodb::ManagedDocumentResult mmdr;
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto const res = trx.insert(links->name(), doc, opt);
+        auto const res = links->insert(&trx, doc, mmdr, opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -355,14 +358,14 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
+  std::deque<arangodb::ManagedDocumentResult> insertedDocsView;
+
   // populate view with the data
   {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name(),
-         logicalCollection3->name()},
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
@@ -383,13 +386,17 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
           logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto res = trx.insert(collections[i % 2]->name(), doc, opt);
+        insertedDocsView.emplace_back();
+        auto const res =
+            collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
     }
 
     // insert into collection_3
+    std::deque<arangodb::ManagedDocumentResult> insertedDocsCollection;
+
     {
       irs::utf8_path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
@@ -401,7 +408,9 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
       ASSERT_TRUE(root.isArray());
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto res = trx.insert(logicalCollection3->name(), doc, opt);
+        insertedDocsCollection.emplace_back();
+        auto const res = logicalCollection3->insert(
+            &trx, doc, insertedDocsCollection.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -523,19 +532,15 @@ TEST_P(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
-  std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      insertedDocsView;
-  std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
-      insertedDocsCollection;
+  std::deque<arangodb::ManagedDocumentResult> insertedDocsView;
+  std::deque<arangodb::ManagedDocumentResult> insertedDocsCollection;
 
   // populate view with the data
   {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name(),
-         logicalCollection3->name()},
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
@@ -556,12 +561,10 @@ TEST_P(IResearchQueryJoinTest, test) {
           logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto res = trx.insert(collections[i % 2]->name(), doc, opt);
+        insertedDocsView.emplace_back();
+        auto const res =
+            collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt);
         EXPECT_TRUE(res.ok());
-
-        res = trx.document(collections[i % 2]->name(), res.slice(), opt);
-        EXPECT_TRUE(res.ok());
-        insertedDocsView.emplace_back(std::move(res.buffer));
         ++i;
       }
     }
@@ -578,12 +581,10 @@ TEST_P(IResearchQueryJoinTest, test) {
       ASSERT_TRUE(root.isArray());
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        auto res = trx.insert(logicalCollection3->name(), doc, opt);
+        insertedDocsCollection.emplace_back();
+        auto const res = logicalCollection3->insert(
+            &trx, doc, insertedDocsCollection.back(), opt);
         EXPECT_TRUE(res.ok());
-
-        res = trx.document(logicalCollection3->name(), res.slice(), opt);
-        EXPECT_TRUE(res.ok());
-        insertedDocsCollection.emplace_back(std::move(res.buffer));
       }
     }
 
@@ -614,13 +615,13 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -669,7 +670,7 @@ TEST_P(IResearchQueryJoinTest, test) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
-                       arangodb::velocypack::Slice(insertedDocsView[1]->data()),
+                       arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
                        resolved, true));
     }
   }
@@ -692,13 +693,13 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -740,13 +741,13 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -793,13 +794,13 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -842,14 +843,14 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[0]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[1]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[3]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[7]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -887,14 +888,14 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[0]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[1]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[3]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[7]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -935,14 +936,14 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[7]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[3]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[1]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[0]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[0].vpack())};
 
     // check node estimation
     {
@@ -1009,9 +1010,9 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[7]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -1049,10 +1050,10 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[3]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[0]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[0].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -1081,14 +1082,14 @@ TEST_P(IResearchQueryJoinTest, test) {
   // RETURN d;
   {
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[7]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[3]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[1]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[0]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[0].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -1126,14 +1127,14 @@ TEST_P(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query, {}));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[0]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[1]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[3]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[7]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -1168,7 +1169,7 @@ TEST_P(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query, {}));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[1]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[1].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -1207,10 +1208,10 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[7]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -1251,10 +1252,10 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[7]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -1296,8 +1297,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[7]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1337,9 +1338,9 @@ TEST_P(IResearchQueryJoinTest, test) {
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[7]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[6]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[5]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -1394,12 +1395,12 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[5]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[3]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[1]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[0]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1450,8 +1451,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data())};
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack())};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -1490,8 +1491,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1530,8 +1531,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1571,8 +1572,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1655,8 +1656,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1692,7 +1693,7 @@ TEST_P(IResearchQueryJoinTest, test) {
          arangodb::aql::OptimizerRule::inlineSubqueriesRule}));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[0]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1733,8 +1734,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1772,8 +1773,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1811,8 +1812,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
-        arangodb::velocypack::Slice(insertedDocsView[4]->data()),
-        arangodb::velocypack::Slice(insertedDocsView[2]->data()),
+        arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+        arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);

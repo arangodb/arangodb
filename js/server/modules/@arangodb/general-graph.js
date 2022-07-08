@@ -31,48 +31,69 @@
 
 const internal = require('internal'); // OK: reloadAuth
 const ggc = require('@arangodb/general-graph-common');
-const GeneralGraphModule = internal.ArangoGeneralGraphModule;
+const GeneralGraph = internal.ArangoGeneralGraphModule;
 
-const {GeneralGraph, SmartGraph, EnterpriseGraph, SatelliteGraph} = internal.isEnterprise() ?
-  require('@arangodb/ee-graph-classes') : require('@arangodb/graph-classes');
+// This is supposed to be a class
+const ArangoGraph = internal.ArangoGraph;
 
-const graphToClass = graph => {
-  if (internal.isEnterprise()) {
-    if (graph.isSmart) {
-      if (Object.hasOwnProperty(graph, "smartGraphAttribute")) {
-        return new SmartGraph(graph);
-      } else {
-        return new EnterpriseGraph(graph);
-      }
-    } else if (graph.isSatellite) {
-      return new SatelliteGraph(graph);
-    }
-  }
-  return new GeneralGraph(graph);
+// inherited graph class
+let CommonGraph = ggc.__GraphClass;
+
+// new c++ based
+CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
+  this.__edgeDefinitions = edgeDefs;
+  this.__orphanCollections = orphans;
 };
+
+CommonGraph.prototype._deleteEdgeDefinition = function (edgeDefinition, dropCollection = false) {
+  let result = ArangoGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
+CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinitions, options = {}) {
+  let result = ArangoGraph._extendEdgeDefinitions(this.__name, edgeDefinitions, options);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
+CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinitions, options = {}) {
+  let result = ArangoGraph._editEdgeDefinitions(this.__name, edgeDefinitions, options);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
+CommonGraph.prototype._addVertexCollection = function (vertexName, createCollection = true, options = {}) {
+  let result = ArangoGraph._addVertexCollection(this.__name, vertexName, createCollection, options);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
+CommonGraph.prototype._removeVertexCollection = function (vertexName, dropCollection = false) {
+  let result = ArangoGraph._removeVertexCollection(this.__name, vertexName, dropCollection);
+  this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
+};
+
 
 exports._create = function (name, edgeDefinition, orphans, options) {
-  let g = GeneralGraphModule._create(name, edgeDefinition, orphans, options);
-  return graphToClass(g.graph);
+  let g = GeneralGraph._create(name, edgeDefinition, orphans, options);
+  return new CommonGraph(g.graph);
 };
 
-exports._drop = GeneralGraphModule._drop;
+exports._drop = GeneralGraph._drop;
 
-exports._exists = GeneralGraphModule._exists;
+exports._exists = GeneralGraph._exists;
 
 exports._graph = function (graphName) {
-  return graphToClass(GeneralGraphModule._graph(graphName));
+  let g = GeneralGraph._graph(graphName);
+  return new CommonGraph(g);
 };
 
-exports._list = GeneralGraphModule._list;
+exports._list = GeneralGraph._list;
 
-exports._listObjects = GeneralGraphModule._listObjects;
+exports._listObjects = GeneralGraph._listObjects;
 
-exports._renameCollection = GeneralGraphModule._renameCollection;
+exports._renameCollection = GeneralGraph._renameCollection;
 
 // js based helper functions
+exports.__GraphClass = CommonGraph;
 exports._edgeDefinitions = ggc._edgeDefinitions;
 exports._extendEdgeDefinitions = ggc._extendEdgeDefinitions;
 exports._relation = ggc._relation;
 exports._registerCompatibilityFunctions = ggc._registerCompatibilityFunctions;
-exports.__graphToClass = graphToClass;

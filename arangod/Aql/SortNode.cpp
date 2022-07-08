@@ -23,6 +23,7 @@
 
 #include "SortNode.h"
 
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
