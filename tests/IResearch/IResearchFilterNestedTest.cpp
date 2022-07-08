@@ -147,7 +147,7 @@ class IResearchFilterNestedTest
   TRI_vocbase_t& vocbase() { return *_vocbase; }
 };
 
-//TODO Add community only tests (byExpression)
+// TODO Add community only tests (byExpression)
 
 #if USE_ENTERPRISE
 #include "tests/IResearch/IResearchFilterNestedTestEE.h"
