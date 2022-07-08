@@ -433,3 +433,11 @@ ModifySoftWCMultipleStepsActor::ModifySoftWCMultipleStepsActor(
     size_t setInvalidWc, size_t resetValidWc)
     : setInvalidWC(setInvalidWc), resetValidWC(resetValidWc) {}
 }  // namespace arangodb::test
+
+SetWaitForSyncActor::SetWaitForSyncActor(bool newWaitForSync)
+    : newWaitForSync(newWaitForSync) {}
+
+auto SetWaitForSyncActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetWaitForSyncAction(newWaitForSync)};
+}

@@ -257,4 +257,11 @@ struct ModifySoftWCMultipleStepsActor
       -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>;
 };
 
+struct SetWaitForSyncActor : OnceActorBase<SetWaitForSyncActor> {
+  explicit SetWaitForSyncActor(bool waitForSync);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  bool newWaitForSync;
+};
+
 }  // namespace arangodb::test
