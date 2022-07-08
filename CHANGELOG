@@ -1,5 +1,10 @@
 devel
 -----
+
+* Add the redevelopment of the graph viewer implemented in ReactJS.
+  Switch from sigma to antv/G6 to draw the graph. Fix bugs with
+  inconsistent behavior after deleting and adding nodes and edges.
+
 * Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
 
 * Updated arangosync to v2.11.0.
@@ -17,10 +22,6 @@ devel
 * Web UI: Fixes a GraphViewer issue related to display issues with node
   and edge labels. Boolean node or edge values could not be used as label
   values (ES-1084).
-
-* Add the redevelopment of the graph viewer implemented in ReactJS.
-  Switch from sigma to antv/G6 to draw the graph. Fix bugs with
-  inconsistent behavior after deleting and adding nodes and edges.
   
 * Made the SortExecutor receive its input incrementally, instead of receiving
   a whole matrix containing all input at once.
