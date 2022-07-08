@@ -665,20 +665,34 @@ auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
     return;
   }
 
+  // Wait for sync
+  if (target.config.waitForSync != plan.participantsConfig.config.waitForSync) {
+    // FIXME: assumedWaitForSync does not change here.
+    ctx.createAction<UpdateWaitForSyncAction>(
+        target.config.waitForSync, current.supervision->assumedWaitForSync);
+    return;
+  }
+
   if (!current.leader.has_value() ||
       !current.leader->committedParticipantsConfig.has_value()) {
     return;
   }
-  if (plan.participantsConfig.generation ==
-          current.leader->committedParticipantsConfig->generation and
-      plan.participantsConfig.config.effectiveWriteConcern !=
-          current.supervision->assumedWriteConcern) {
-    // update assumedWriteConcern
-    ctx.createAction<SetAssumedWriteConcernAction>(
-        plan.participantsConfig.config.effectiveWriteConcern);
-  }
 
-  // TODO: waitForSync
+  if (plan.participantsConfig.generation ==
+      current.leader->committedParticipantsConfig->generation)
+
+    if (plan.participantsConfig.config.effectiveWriteConcern !=
+        current.supervision->assumedWriteConcern) {
+      // update assumedWriteConcern
+      ctx.createAction<SetAssumedWriteConcernAction>(
+          plan.participantsConfig.config.effectiveWriteConcern);
+    }
+
+  if (plan.participantsConfig.config.waitForSync !=
+      current.supervision->assumedWaitForSync) {
+    ctx.createAction<SetAssumedWaitForSyncAction>(
+        plan.participantsConfig.config.waitForSync);
+  }
 }
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {
