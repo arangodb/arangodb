@@ -1,8 +1,12 @@
 null:arangodb::ExecContext
 
 # fix issues with RocksDB library
-# (actually no issues in RocksDB, but issues with UBSan
+# (potentially no issues in RocksDB, but issues with UBSan
 # failing to understand thread-local variables properly)
+# there is also a pending issue in upstream RocksDB:
+# https://github.com/facebook/rocksdb/issues/10205
+# we may get rid of our own suppressions once the upstream
+# issue is fixed.
 null:3rdParty/rocksdb/db/memtable.cc
 null:3rdParty/rocksdb/db/db_iter.cc
 null:3rdParty/rocksdb/db/db_impl/db_impl.cc
