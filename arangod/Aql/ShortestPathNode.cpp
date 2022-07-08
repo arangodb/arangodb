@@ -352,7 +352,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<ShortestPathNode>(
       plan, _id, _vocbase, _edgeColls, _vertexColls, _defaultDirection,
       _directions, _inStartVariable, _startVertexId, _inTargetVariable,
-      _targetVertexId, std::move(tmp), _graphObj, _distributeVariable);
+      _targetVertexId, std::move(tmp), _tmpObjVariable, _graphObj, _distributeVariable);
   shortestPathCloneHelper(*plan, *c, withProperties);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);

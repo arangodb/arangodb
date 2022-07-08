@@ -499,36 +499,6 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("type", VPackValue("traversal"));
 }
 
-void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
-  VPackObjectBuilder guard(&builder);
-
-  // base indexes
-  builder.add("base", VPackValue(VPackValueType::Array));
-  for (auto const& it : _baseLookupInfos) {
-    for (auto const& it2 : it.idxHandles) {
-      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics,
-                                                  Index::Serialize::Estimates));
-    }
-  }
-  builder.close();
-
-  // depth lookup indexes
-  builder.add("levels", VPackValue(VPackValueType::Object));
-  for (auto const& it : _depthLookupInfo) {
-    builder.add(VPackValue(std::to_string(it.first)));
-    builder.add(VPackValue(VPackValueType::Array));
-    for (auto const& it2 : it.second) {
-      for (auto const& it3 : it2.idxHandles) {
-        it3->toVelocyPack(builder,
-                          Index::makeFlags(Index::Serialize::Basics,
-                                           Index::Serialize::Estimates));
-      }
-    }
-    builder.close();
-  }
-  builder.close();
-}
-
 void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
   injectEngineInfo(result);

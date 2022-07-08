@@ -166,11 +166,7 @@ struct BaseOptions {
 
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
-
-  /// @brief Creates a complete Object containing all index information
-  /// in the given builder.
-  virtual void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
-
+  
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 

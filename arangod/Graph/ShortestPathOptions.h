@@ -81,10 +81,6 @@ struct ShortestPathOptions : public BaseOptions {
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const override;
 
-  // Creates a complete Object containing all index information
-  // in the given builder.
-  void toVelocyPackIndexes(arangodb::velocypack::Builder&) const override;
-
   /// @brief Estimate the total cost for this operation
   double estimateCost(size_t& nrItems) const override;
 

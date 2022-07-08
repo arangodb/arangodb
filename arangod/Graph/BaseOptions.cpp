@@ -338,21 +338,6 @@ arangodb::ResourceMonitor& BaseOptions::resourceMonitor() const {
   return _query.resourceMonitor();
 }
 
-void BaseOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
-  builder.openObject();
-  // base indexes
-  builder.add("base", VPackValue(VPackValueType::Array));
-  for (auto const& it : _baseLookupInfos) {
-    for (auto const& it2 : it.idxHandles) {
-      builder.openObject();
-      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
-      builder.close();
-    }
-  }
-  builder.close();  // base
-  builder.close();
-}
-
 void BaseOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
   injectEngineInfo(result);
