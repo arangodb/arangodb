@@ -499,7 +499,7 @@
       var self = this;
       var i;
 
-      for (i = 0; i < self.counter; i++) {
+      for (i = 0; i <= self.counter; i++) {
         $('#newEdgeDefinitions' + i).select2(self.buildSelect2Options('edge'));
 
         self.cachedNewEdgeDefinitions = $('#newEdgeDefinitions' + i).select2('data');
