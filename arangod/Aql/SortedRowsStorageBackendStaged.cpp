@@ -48,9 +48,6 @@ SortedRowsStorageBackendStaged::~SortedRowsStorageBackendStaged() = default;
 
 ExecutorState SortedRowsStorageBackendStaged::consumeInputRange(
     AqlItemBlockInputRange& inputRange) {
-  ExecutorState state =
-      _backends[_currentBackend]->consumeInputRange(inputRange);
-
   if (_backends[_currentBackend]->hasReachedCapacityLimit()) {
     if (_currentBackend >= _backends.size() + 1) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -61,6 +58,9 @@ ExecutorState SortedRowsStorageBackendStaged::consumeInputRange(
     _backends[_currentBackend]->spillOver(*_backends[_currentBackend + 1]);
     ++_currentBackend;
   }
+
+  ExecutorState state =
+      _backends[_currentBackend]->consumeInputRange(inputRange);
 
   return state;
 }

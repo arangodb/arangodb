@@ -100,7 +100,6 @@ SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos) : _infos(infos) {
   // TODO: make storage backend dynamic
   TemporaryStorageFeature& tempFeature = _infos.getTemporaryStorageFeature();
   if (tempFeature.canBeUsed()) {
-    // LOG_DEVEL << "USING ROCKSDB BACKEND";
     _storageBackend = std::make_unique<SortedRowsStorageBackendStaged>(
         std::move(_storageBackend), tempFeature.getSortedRowsStorage(_infos));
   }

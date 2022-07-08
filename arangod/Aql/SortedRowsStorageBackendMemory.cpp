@@ -179,6 +179,8 @@ void SortedRowsStorageBackendMemory::spillOver(
   }
 
   // reset our own state, so we can give back memory
+  _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
+  _memoryUsageForRowIndexes = 0;
   _inputBlocks = {};
   _rowIndexes = {};
 }
