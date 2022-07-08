@@ -59,6 +59,10 @@ devel
   change.
   The responses which can contain dirty reads will have set the HTTP header
   "x-arango-potential-dirty-read" set to "true".
+  There are the following new metrics showing the use of this feature:
+    - `arangodb_dirty_read_transactions_total`
+    - `arangodb_potentially_dirty_document_reads_total`
+    - `arangodb_dirty_read_queries_total`
 
 * Changed HTTP response code for error number 1521 from 500 to 400.
 
