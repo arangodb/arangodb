@@ -41,7 +41,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ArangodServer& server)
   startsAfter<LockfileFeature, ArangodServer>();
   startsAfter<ReplicationFeature, ArangodServer>();
   startsAfter<RocksDBEngine, ArangodServer>();
-  startsAfter<RocksDBTempStorageFeature, ArangodServer>();
   startsAfter<RocksDBRecoveryManager, ArangodServer>();
   startsAfter<ServerIdFeature, ArangodServer>();
   startsAfter<StorageEngineFeature, ArangodServer>();

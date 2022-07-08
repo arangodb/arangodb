@@ -447,6 +447,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
   Aql/SortedCollectExecutor.cpp
+  Aql/SortedRowsStorageBackendMemory.cpp
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryEndExecutor.cpp
@@ -864,7 +865,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/NonceFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/PrivilegeFeature.cpp
-  RestServer/RocksDBTempStorageFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp

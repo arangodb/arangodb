@@ -18,40 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Jan Christoph Uhde
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBTempStorageFeature.h"
+#include "RocksDBTempStorage.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
+#include "RocksDBEngine/RocksDBSortedRowsStorageContext.h"
 
+#include <absl/strings/str_cat.h>
+
+#include <rocksdb/comparator.h>
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 
 using namespace arangodb;
-using namespace arangodb::application_features;
-using namespace arangodb::basics;
-using namespace arangodb::options;
 
 namespace {
-void cleanUpTempStorageFiles(std::string const& path) {
-  for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
-    TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
-  }
-}
-}  // namespace
 
-namespace arangodb {
+// TODO: rename it
 class TwoPartComparator : public rocksdb::Comparator {
  public:
   TwoPartComparator() = default;
@@ -103,92 +94,84 @@ class TwoPartComparator : public rocksdb::Comparator {
   // Ignore the following methods for now:
   const char* Name() const override { return "TwoPartComparator"; }
   void FindShortestSeparator(std::string*,
-                             const rocksdb::Slice&) const override {}
+                             rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}
 };
-}  // namespace arangodb
 
-RocksDBTempStorageFeature::RocksDBTempStorageFeature(Server& server)
-    : ArangodFeature{server, *this},
+}  // namespace
+
+RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath)
+    : _basePath(basePath),
+      _nextId(0),
       _db(nullptr),
-      _comp(std::make_unique<arangodb::TwoPartComparator>()) {
-  startsAfter<BasicFeaturePhaseServer>();
+      _comparator(std::make_unique<::TwoPartComparator>()) {}
 
-  startsAfter<AuthenticationFeature>();
-  startsAfter<CacheManagerFeature>();
-  startsAfter<EngineSelectorFeature>();
-  startsAfter<RocksDBOptionFeature>();
-  startsAfter<LanguageFeature>();
-  startsAfter<LanguageCheckFeature>();
-  startsAfter<InitDatabaseFeature>();
-  startsAfter<StorageEngineFeature>();
-  startsAfter<RocksDBEngine>();
-}
+RocksDBTempStorage::~RocksDBTempStorage() = default;
 
-RocksDBTempStorageFeature::~RocksDBTempStorageFeature() {}
+Result RocksDBTempStorage::init() {
+  _tempFilesPath = basics::FileUtils::buildFilename(_basePath, "temp");
 
-void RocksDBTempStorageFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addSection("temp-rocksdb-storage", "temp rocksdb storage options");
-}
+  {
+    std::string systemErrorStr;
+    long errorNo;
 
-void RocksDBTempStorageFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {}
+    auto res = TRI_CreateRecursiveDirectory(_tempFilesPath.c_str(), errorNo,
+                                            systemErrorStr);
 
-void RocksDBTempStorageFeature::start() {
-  TRI_ASSERT(server().getFeature<EngineSelectorFeature>().isRocksDB());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  std::string path(dataPath());
-  cleanUpTempStorageFiles(path);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return {
+          TRI_ERROR_FAILED,
+          absl::StrCat("cannot create directory for intermediate results ('",
+                       _tempFilesPath, "'): ", systemErrorStr)};
+    }
+  }
 
-  RocksDBEngine& rocksDBEngine = static_cast<RocksDBEngine&>(engine);
-  _dbOptions = rocksDBEngine.rocksDBOptions();
-  _options.create_missing_column_families = true;
-  _options.create_if_missing = true;
-  _options.env = rocksdb::Env::Default();
+  rocksdb::DBOptions options;
+  options.create_missing_column_families = true;
+  options.create_if_missing = true;
+  options.env = rocksdb::Env::Default();
 
 #ifdef USE_ENTERPRISE
-  rocksDBEngine.configureEnterpriseRocksDBOptions(_options, true);
+// TODO: fix Env override for encryption!
+// rocksDBEngine.configureEnterpriseRocksDBOptions(_options, true);
 #endif
-  _options.prefix_extractor.reset(
-      rocksdb::NewFixedPrefixTransform(sizeof(uint64_t)));
 
   std::vector<rocksdb::ColumnFamilyDescriptor> columnFamilies;
 
   rocksdb::ColumnFamilyOptions cfOptions;
-  cfOptions.comparator = _comp.get();
+  cfOptions.comparator = _comparator.get();
+  cfOptions.prefix_extractor.reset(
+      rocksdb::NewFixedPrefixTransform(sizeof(uint64_t)));
+
   columnFamilies.emplace_back(
       rocksdb::ColumnFamilyDescriptor("SortCF", cfOptions));
   columnFamilies.emplace_back(rocksdb::ColumnFamilyDescriptor(
       rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions()));
 
-  rocksdb::Status status =
-      rocksdb::DB::Open(_options, path, columnFamilies, &_cfHandles, &_db);
+  std::string rocksDBPath =
+      basics::FileUtils::buildFilename(_basePath, "rocksdb");
 
-  if (!status.ok()) {
-    std::string error;
-    if (status.IsIOError()) {
-      error =
-          "; Maybe your filesystem doesn't provide required features? (Cifs? "
-          "NFS?)";
-    }
+  rocksdb::Status s = rocksdb::DB::Open(options, rocksDBPath, columnFamilies,
+                                        &_cfHandles, &_db);
 
-    LOG_TOPIC("58b44", FATAL, arangodb::Logger::STARTUP)
-        << "unable to initialize RocksDB engine: " << status.ToString()
-        << error;
-    FATAL_ERROR_EXIT();
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
   }
+
+  return {};
 }
 
-void RocksDBTempStorageFeature::beginShutdown() {}
+void RocksDBTempStorage::close() {
+  TRI_ASSERT(_db != nullptr);
+  _db->Close();
+}
 
-void RocksDBTempStorageFeature::stop() {}
+std::unique_ptr<RocksDBSortedRowsStorageContext>
+RocksDBTempStorage::getSortedRowsStorageContext() {
+  return std::make_unique<RocksDBSortedRowsStorageContext>(
+      _db, _cfHandles[0], _tempFilesPath, nextId());
+}
 
-void RocksDBTempStorageFeature::unprepare() {}
-
-void RocksDBTempStorageFeature::prepare() {
-  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
-  _basePath = databasePathFeature.directory();
-
-  TRI_ASSERT(!_basePath.empty());
+uint64_t RocksDBTempStorage::nextId() noexcept {
+  return _nextId.fetch_add(1, std::memory_order_relaxed) + 1;
 }

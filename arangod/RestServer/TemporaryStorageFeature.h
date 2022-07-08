@@ -24,14 +24,18 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RocksDBEngine/SortedRowsStorageBackendRocksDB.h"
 #include "RestServer/arangod.h"
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 
 namespace arangodb {
+class RocksDBTempStorage;
+
 namespace application_features {
 class ApplicationServer;
 }
@@ -53,6 +57,15 @@ class TemporaryStorageFeature : public ArangodFeature {
   void stop() override final;
   void unprepare() override final;
 
+  bool canBeUsed() const noexcept;
+
+  template<typename... Args>
+  std::unique_ptr<aql::SortedRowsStorageBackend> getSortedRowsStorage(
+      Args&&... args) {
+    return std::make_unique<SortedRowsStorageBackendRocksDB>(
+        *_backend, std::forward<Args>(args)...);
+  }
+
   // returns configured maximum disk capacity for intermediate results storage
   // (0 = unlimited)
   std::uint64_t maxCapacity() const noexcept;
@@ -71,10 +84,14 @@ class TemporaryStorageFeature : public ArangodFeature {
  private:
   void cleanupDirectory();
 
-  std::string _path;
+  std::string _basePath;
+  std::string const _tempFilesPath;
   std::uint64_t _maxCapacity;
 
   std::atomic<std::uint64_t> _currentUsage;
+
+  // populated only if !_path.empty()
+  std::unique_ptr<RocksDBTempStorage> _backend;
 };
 
 }  // namespace arangodb

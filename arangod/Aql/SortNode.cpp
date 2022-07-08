@@ -36,10 +36,10 @@
 #include "Aql/SortRegister.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
-#include "RestServer/arangod.h"
-#include "RestServer/RocksDBTempStorageFeature.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
@@ -199,12 +199,12 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
       registerInfos.numberOfInputRegisters(),
       registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
       std::move(sortRegs), _limit, engine.itemBlockManager(),
-      &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
-      _stable,
       engine.getQuery()
           .vocbase()
           .server()
-          .getFeature<RocksDBTempStorageFeature>());
+          .getFeature<TemporaryStorageFeature>(),
+      &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
+      _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));

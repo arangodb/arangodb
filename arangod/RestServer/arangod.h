@@ -98,7 +98,6 @@ class ReplicationFeature;
 class ReplicatedLogFeature;
 class ReplicationMetricsFeature;
 class ReplicationTimeoutFeature;
-class RocksDBTempStorageFeature;
 class SchedulerFeature;
 class ScriptFeature;
 class ServerFeature;
@@ -239,7 +238,6 @@ using ArangodFeatures = TypeList<
     ReplicatedLogFeature,
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
-    RocksDBTempStorageFeature,
     SchedulerFeature,
     ScriptFeature,
     ServerFeature,

@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RocksDBEngine/RocksDBTempStorage.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
@@ -72,7 +73,7 @@ void TemporaryStorageFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption("--temp.intermediate-results-path",
                      "path for ephemeral, intermediate results",
-                     new StringParameter(&_path));
+                     new StringParameter(&_basePath));
 
   options->addOption("--temp.intermediate-results-capacity",
                      "maximum capacity (in bytes) to use for ephemeral, "
@@ -82,7 +83,7 @@ void TemporaryStorageFeature::collectOptions(
 
 void TemporaryStorageFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_path.empty()) {
+  if (_basePath.empty()) {
     // feature not used. this is fine (TM)
     return;
   }
@@ -92,7 +93,7 @@ void TemporaryStorageFeature::validateOptions(
   // get regular database path
   std::string dbPath = normalizePath(
       currentDir, server().getFeature<DatabasePathFeature>().directory());
-  std::string ourPath = normalizePath(currentDir, _path);
+  std::string ourPath = normalizePath(currentDir, _basePath);
 
   if (dbPath == ourPath || ourPath.starts_with(dbPath)) {
     // if our path is the same as the database directory or inside it,
@@ -104,27 +105,26 @@ void TemporaryStorageFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  _path = ourPath;
+  _basePath = ourPath;
 }
 
 void TemporaryStorageFeature::prepare() {
-  if (_path.empty()) {
-    // feature not used
+  if (!canBeUsed()) {
     return;
   }
 
-  if (basics::FileUtils::isDirectory(_path)) {
+  if (basics::FileUtils::isDirectory(_basePath)) {
     cleanupDirectory();
   } else {
     std::string systemErrorStr;
     long errorNo;
 
-    auto res =
-        TRI_CreateRecursiveDirectory(_path.c_str(), errorNo, systemErrorStr);
+    auto res = TRI_CreateRecursiveDirectory(_basePath.c_str(), errorNo,
+                                            systemErrorStr);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("ed3ef", FATAL, Logger::FIXME)
-          << "cannot create directory for intermediate results ('" << _path
+          << "cannot create directory for intermediate results ('" << _basePath
           << "'): " << systemErrorStr;
       FATAL_ERROR_EXIT();
     }
@@ -132,15 +132,38 @@ void TemporaryStorageFeature::prepare() {
 }
 
 void TemporaryStorageFeature::start() {
-  if (_path.empty()) {
-    // feature not used
+  if (!canBeUsed()) {
     return;
   }
+
+  auto backend = std::make_unique<RocksDBTempStorage>(_basePath);
+
+  Result res = backend->init();
+  if (res.fail()) {
+    LOG_TOPIC("1c6f4", FATAL, Logger::FIXME)
+        << "cannot initialize storage backend for intermediate results ('"
+        << _basePath << "'): " << res.errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+
+  _backend = std::move(backend);
 }
 
-void TemporaryStorageFeature::stop() {}
+void TemporaryStorageFeature::stop() {
+  if (!canBeUsed()) {
+    return;
+  }
+
+  TRI_ASSERT(_backend != nullptr);
+  _backend->close();
+  _backend.reset();
+}
 
 void TemporaryStorageFeature::unprepare() { cleanupDirectory(); }
+
+bool TemporaryStorageFeature::canBeUsed() const noexcept {
+  return !_basePath.empty();
+}
 
 std::uint64_t TemporaryStorageFeature::maxCapacity() const noexcept {
   return _maxCapacity;
@@ -153,6 +176,7 @@ std::uint64_t TemporaryStorageFeature::currentUsage() const noexcept {
 // increases capacity usage by value bytes. throws an exception if
 // that would move _currentUsage to a value > _maxCapacity
 void TemporaryStorageFeature::increaseUsage(std::uint64_t value) {
+  TRI_ASSERT(canBeUsed());
   std::uint64_t old = _currentUsage.fetch_add(value, std::memory_order_relaxed);
 
   if (_maxCapacity > 0 && old + value > _maxCapacity) {
@@ -165,23 +189,26 @@ void TemporaryStorageFeature::increaseUsage(std::uint64_t value) {
 
 // decreases capacity usage by value bytes. assumes that _currentUsage >= value
 void TemporaryStorageFeature::decreaseUsage(std::uint64_t value) noexcept {
+  TRI_ASSERT(canBeUsed());
+
   [[maybe_unused]] std::uint64_t old =
       _currentUsage.fetch_sub(value, std::memory_order_relaxed);
   TRI_ASSERT(old >= value);
 }
 
 void TemporaryStorageFeature::cleanupDirectory() {
-  if (_path.empty()) {
-    // feature not used
+  if (!canBeUsed()) {
     return;
   }
 
   // clean up our mess
   LOG_TOPIC("62215", INFO, Logger::FIXME)
-      << "cleaning up directory for intermediate results '" << _path << "'";
+      << "cleaning up directory for intermediate results '" << _basePath << "'";
 
   // clean up the entire temporary directory
-  for (auto const& fileName : TRI_FullTreeDirectory(_path.c_str())) {
-    TRI_UnlinkFile(basics::FileUtils::buildFilename(_path, fileName).data());
+  // TODO: also clean subdirectories inside
+  for (auto const& fileName : TRI_FullTreeDirectory(_basePath.c_str())) {
+    TRI_UnlinkFile(
+        basics::FileUtils::buildFilename(_basePath, fileName).data());
   }
 }

@@ -111,7 +111,6 @@
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestartAction.h"
-#include "RestServer/RocksDBTempStorageFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"

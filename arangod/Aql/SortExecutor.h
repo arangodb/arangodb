@@ -30,19 +30,13 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "RestServer/RocksDBTempStorageFeature.h"
-#include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
-#include <rocksdb/db.h>
-#include <rocksdb/iterator.h>
 
 #include <cstddef>
 #include <memory>
 
-#include <Logger/LogMacros.h>
-
 namespace arangodb {
 struct ResourceMonitor;
+class TemporaryStorageFeature;
 
 namespace transaction {
 class Methods;
@@ -59,6 +53,7 @@ class OutputAqlItemRow;
 template<BlockPassthrough>
 class SingleRowFetcher;
 struct SortRegister;
+class SortedRowsStorageBackend;
 
 class SortExecutorInfos {
  public:
@@ -67,9 +62,9 @@ class SortExecutorInfos {
                     RegIdFlatSet const& registersToClear,
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager,
+                    TemporaryStorageFeature& tempStorage,
                     velocypack::Options const* options,
-                    arangodb::ResourceMonitor& resourceMonitor, bool stable,
-                    RocksDBTempStorageFeature& rocksDBfeature);
+                    arangodb::ResourceMonitor& resourceMonitor, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -88,15 +83,13 @@ class SortExecutorInfos {
 
   [[nodiscard]] arangodb::ResourceMonitor& getResourceMonitor() const;
 
-  [[nodiscard]] RocksDBTempStorageFeature& getStorageFeature() const {
-    return _rocksDBfeature;
-  }
-
   [[nodiscard]] bool stable() const;
 
   [[nodiscard]] size_t limit() const noexcept;
 
   [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
+
+  [[nodiscard]] TemporaryStorageFeature& getTemporaryStorageFeature() noexcept;
 
  private:
   RegisterCount _numInRegs;
@@ -104,11 +97,11 @@ class SortExecutorInfos {
   RegIdFlatSet _registersToClear;
   std::size_t _limit;
   AqlItemBlockManager& _manager;
+  TemporaryStorageFeature& _tempStorage;
   velocypack::Options const* _vpackOptions;
   arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
   bool _stable;
-  RocksDBTempStorageFeature& _rocksDBfeature;
 };
 
 /**
@@ -144,56 +137,14 @@ class SortExecutor {
    * @return ExecutorState, the stats, and a new Call that needs to be sent to
    * upstream
    */
-
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  private:
-  void doSorting();
-  void consumeInput(AqlItemBlockInputRange& inputRange, ExecutorState& state);
-  void consumeInputForStorage();
-  Result deleteRangeInStorage();
-  Result ingestFilesForStorage();
-
- private:
-  static constexpr size_t kMemoryLowerBound = 1024 * 1024;
   bool _inputReady = false;
-  bool _mustStoreInput = false;
   Infos& _infos;
 
-  InputAqlItemRow _currentRow;
-
-  std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
-
-  size_t _returnNext;
-
-  size_t _memoryUsageForRowIndexes;
-  std::vector<SharedAqlItemBlockPtr> _inputBlocks;
-  std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
-  std::unique_ptr<rocksdb::Iterator> _curIt;
-  RocksDBTempStorageFeature& _rocksDBfeature;
-  SharedAqlItemBlockPtr _curBlock = nullptr;
-  rocksdb::DB* _tempDB;
-  rocksdb::ColumnFamilyHandle* _cfHandle = nullptr;
-  std::unique_ptr<RocksDBSstFileMethods> _methods;
-  std::uint64_t const _keyPrefix;
-  std::string _lowerBoundPrefix;
-  rocksdb::WriteBatch _batch;
-  std::uint64_t _inputCounterForStorage;
-  std::string _upperBoundPrefix;
-  std::uint64_t _curEntryId = 0;
-  rocksdb::Slice _lowerBoundSlice;
-  rocksdb::Slice _upperBoundSlice;
-  std::uint64_t _memoryUsage = 0;
+  std::unique_ptr<SortedRowsStorageBackend> _storageBackend;
 };
 }  // namespace aql
 }  // namespace arangodb
-
-/*
- * = 0 in comparator
- *  delete in range here also remove files in storage feature
- *  hardcode memory threshold to 100k
- *  more complex queries with arrays and strings >= 16 bytes
- *  test more
- *  see memory usage in top
- */
