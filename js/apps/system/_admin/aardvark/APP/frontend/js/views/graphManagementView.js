@@ -1094,7 +1094,7 @@
           description: 'The collections that contain the start vertices of the relation.',
           placeholder: 'Insert list of <from> Vertex Collections'
         }
-      }
+      };
 
       var buttons = [];
       var tableContent = [];
@@ -1404,7 +1404,7 @@
         let addDelete = false;
         let addAdd = true;
 
-        if (counter != 0) {
+        if (counter !== 0) {
           // means we're not creating the initial entry
           id =  'newEdgeDefinitions' + self.counter;
           isMandatory = false;
