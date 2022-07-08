@@ -1108,7 +1108,6 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     TRI_ASSERT(false);
   }
 
-  //  std::cout << "MEMORY : " << index->memory() << std::endl;
   _indexes.emplace(index);
   created = true;
 
@@ -1238,8 +1237,9 @@ arangodb::Result PhysicalCollectionMock::insert(
         return {TRI_ERROR_BAD_PARAMETER};
       }
       continue;
+    } else {
+      TRI_ASSERT(false);
     }
-    TRI_ASSERT(false);
   }
 
   return {};
