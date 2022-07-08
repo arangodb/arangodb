@@ -1502,7 +1502,7 @@ function ahuacatlQueryShortestPathTestSuite() {
       vertexCollection.remove(item);
 
       // Execute without fail and check
-      let query = `WITH ${vn} FOR path IN 1..3 OUTBOUND ALL_SHORTEST_PATHS "${vn}/A" TO "${vn}/F" ${en} RETURN path.vertices[* RETURN CURRENT._key]`;
+      let query = `WITH ${vn} FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${vn}/A" TO "${vn}/F" ${en} RETURN path.vertices[* RETURN CURRENT._key]`;
       let actual = getQueryResults(query);
       assertEqual(1, actual.length);
       assertEqual([['A', 'null', 'F']], actual);
@@ -1668,6 +1668,45 @@ function kPathsTestSuite() {
 
       assertEqual(outbound.toArray().length, 12);
       assertEqual(any.toArray().length, 16);
+    }
+  };
+}
+
+function allShortestPathsTestSuite() {
+  const gn = "UnitTestGraph";
+  const vn = "UnitTestV";
+  const en = "UnitTestE";
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUpAll: function () {
+      gm._create(gn, [gm._relation(en, vn, vn)]);
+
+      ["s", "t", "a", "b", "c", "d", "e", "f", "g"].map((elem) => {
+        db[vn].insert({_key: elem});
+      });
+
+      [
+        ["s", "a"], ["s", "b"], ["a", "b"], ["a", "c"], ["b", "c"],
+        ["c", "d"], ["d", "t"],
+        ["c", "e"], ["e", "t"],
+        ["c", "f"], ["f", "t"],
+        ["c", "g"], ["g", "t"]
+      ].map(([a, b]) => {
+        db[en].insert({_from: `${vn}/${a}`, _to: `${vn}/${b}`});
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDownAll: function () {
+      gm._drop(gn, true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1805,6 +1844,7 @@ if (internal.debugCanUseFailAt() && !cluster.isCluster()) {
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 jsunity.run(kPathsTestSuite);
+jsunity.run(allShortestPathsTestSuite);
 jsunity.run(ShortestPathErrorTestSuite);
 
 return jsunity.done();

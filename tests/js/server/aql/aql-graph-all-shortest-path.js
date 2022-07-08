@@ -48,11 +48,9 @@ const isPathValid = (path, length, expectedWeight, allowInbound = false) => {
   // Assert all attributes are present
   assertTrue(path.hasOwnProperty("vertices"));
   assertTrue(path.hasOwnProperty("edges"));
-  assertTrue(path.hasOwnProperty("weight"));
   // Assert weight and number of edges are correct
-  const {vertices, edges, weight} = path;
+  const {vertices, edges} = path;
   assertEqual(edges.length, length);
-  assertEqual(weight, expectedWeight);
   assertEqual(edges.length + 1, vertices.length);
 
   // Assert that source and target are correct
@@ -91,14 +89,6 @@ const allPathsDiffer = (paths) => {
     const stringP = JSON.stringify(p);
     assertFalse(seenPath.has(stringP), `Found path ${stringP} twice ${JSON.stringify(paths, null, 2)}`);
     seenPath.add(stringP);
-  }
-};
-
-const allPathsAreSorted = (paths) => {
-  let last = paths[0].weight;
-  for (const p of paths) {
-    assertTrue(last <= p.weight);
-    last = p.weight;
   }
 };
 
@@ -266,9 +256,8 @@ function allConstantWeightShortestPathTestSuite() {
       const result = db._query(query).toArray();
       allPathsDiffer(result);
       assertEqual(result.length, 3);
-      allPathsAreSorted(result);
       for (let i = 0; i < 3; ++i) {
-        isPathValid(result[i], 4, 4);
+        isPathValid(result[i], 4, 4); // TODO Anthony: Remove "expectedWeight" (redundant in ASP)
       }
     },
 
@@ -291,7 +280,6 @@ function allConstantWeightShortestPathTestSuite() {
       const result = db._query(query).toArray();
       allPathsDiffer(result);
       assertEqual(result.length, 5);
-      allPathsAreSorted(result);
       for (let i = 0; i < 5; ++i) {
         isPathValid(result[i], 4, 4);
       }
@@ -309,7 +297,6 @@ function allConstantWeightShortestPathTestSuite() {
       const result = db._query(query).toArray();
       allPathsDiffer(result);
       assertEqual(result.length, 5);
-      allPathsAreSorted(result);
       for (let i = 0; i < 5; ++i) {
         isPathValid(result[i], 4, 4);
       }
@@ -337,7 +324,6 @@ function allConstantWeightShortestPathTestSuite() {
       const result = db._query(query).toArray();
       allPathsDiffer(result);
       assertEqual(result.length, 2);
-      allPathsAreSorted(result);
 
       for (let i = 0; i < 2; ++i) {
         isPathValid(result[i], 4, 4);
@@ -363,125 +349,11 @@ function allConstantWeightShortestPathTestSuite() {
       const result = db._query(query).toArray();
       allPathsDiffer(result);
       assertEqual(result.length, 3);
-      allPathsAreSorted(result);
       for (let i = 0; i < 3; ++i) {
         isPathValid(result[i], 3, 3, true);
       }
     }
 
-  };
-
-}
-
-function allAttributeWeightShortestPathTestSuite() {
-  return {
-    setUpAll: function () {
-      tearDownAll();
-      createGraph();
-    },
-    tearDownAll,
-
-    testWeightPathsExistsLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 3
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 1);
-      allPathsAreSorted(result);
-      isPathValid(result[0], 4, 4);
-      // TODO Anthony: Add more cases of weight 4
-    },
-
-    testWeightNoPathExistsLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 3
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
-    },
-
-    testWeightFewerPathsThanLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 1000
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 1);
-      allPathsAreSorted(result);
-      isPathValid(result[0], 4, 4);
-      // TODO Anthony: Add more cases of weight 4
-    },
-
-    testWeightPathsExistsNoLimit: function () {
-      const query = `
-        FOR source IN ${vName}
-          FILTER source._id == "${source}"
-          FOR target IN ${vName}
-            FILTER target._id == "${target}"
-            FOR path IN OUTBOUND ALL_SHORTEST_PATHS source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-            RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 1);
-      allPathsAreSorted(result);
-      isPathValid(result[0], 4, 4);
-      // TODO Anthony: Add more cases of weight 4
-    },
-
-    testWeightNoPathsExistsNoLimit: function () {
-      const query = `
-        FOR source IN ${vName}
-          FILTER source._id == "${source}"
-          FOR target IN ${vName}
-            FILTER target._id == "${badTarget}"
-            FOR path IN OUTBOUND ALL_SHORTEST_PATHS source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-            RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
-    },
-
-    testWeightPathsSkip: function () {
-      const query = `
-        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 3, 3
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
-    },
-
-    testWeightPathsSkipMoreThanExists: function () {
-      const query = `
-        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 1000, 2
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
-    },
-
-    testWeightMultiDirections: function () {
-      const query = `
-        WITH ${vName}
-        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name} OPTIONS {weightAttribute: "weight"}
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 1);
-      allPathsAreSorted(result);
-      isPathValid(result[0], 3, 51, true);
-      // TODO Anthony: Add more cases of weight 51
-    }
   };
 
 }
@@ -566,37 +438,12 @@ function allShortestPathsErrorTestSuite() {
         console.warn(err);
         assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
       }
-    },
-
-    testAllShortestPathsNegativeEdgeWeight: function () {
-      const source = `${vName}/${keyA}`;
-      const target = `${vName}/${keyD}`;
-
-      const bindVars = {
-        weight: 1,
-        weightAttributeToUse: "weight"
-      };
-
-      const query = `
-        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
-          OPTIONS {defaultWeight: @weight, weightAttribute: @weightAttributeToUse}
-          LIMIT 2
-          RETURN path
-      `;
-
-      try {
-        db._query(query, bindVars);
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
-      }
     }
   };
 }
 
 jsunity.run(allShortestPathsSyntaxTestSuite);
 jsunity.run(allConstantWeightShortestPathTestSuite);
-jsunity.run(allAttributeWeightShortestPathTestSuite);
 jsunity.run(allShortestPathsErrorTestSuite);
 
 
