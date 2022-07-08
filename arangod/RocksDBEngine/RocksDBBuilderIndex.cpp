@@ -673,7 +673,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
 #if defined USE_ENTERPRISE
   // acquire ownership because it's only used until this function gets out of
   // scope
-  std::unique_ptr<RocksDBFilePurgePreventer> nonPurger = std::move(getRocksDBFilePurgePreventer(engine));
+  std::unique_ptr<RocksDBFilePurgePreventer> nonPurger =
+      getRocksDBFilePurgePreventer(engine);
 #endif
 
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
