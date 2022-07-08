@@ -919,7 +919,7 @@
         };
         if (smartGraphActive) {
           // Only needs to be set during SmartGraph creation
-          newCollectionObject.smartGraphAttribute = $('#new-smartGraphAttribute').val();
+          newCollectionObject.options.smartGraphAttribute = $('#new-smartGraphAttribute').val();
         }
 
         let satellites = $('#s2id_hybridSatelliteCollections').select2('data');
