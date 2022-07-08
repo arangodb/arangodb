@@ -576,6 +576,9 @@ aql::AqlValue MinHash(aql::ExpressionContext*, aql::AstNode const&,
 aql::AqlValue MinHashError(aql::ExpressionContext*, aql::AstNode const&,
                            std::span<aql::AqlValue const>);
 
+aql::AqlValue MinHashCount(aql::ExpressionContext*, aql::AstNode const&,
+                           std::span<aql::AqlValue const>);
+
 aql::AqlValue MinHashMatch(aql::ExpressionContext*, aql::AstNode const&,
                            std::span<aql::AqlValue const>);
 

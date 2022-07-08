@@ -9570,6 +9570,12 @@ aql::AqlValue functions::NotImplementedEE(aql::ExpressionContext*,
 }
 
 #ifndef USE_ENTERPRISE
+aql::AqlValue functions::MinHashCount(aql::ExpressionContext* ctx,
+                                      aql::AstNode const& node,
+                                      std::span<aql::AqlValue const> values) {
+  return NotImplementedEE(ctx, node, values);
+}
+
 aql::AqlValue functions::MinHash(aql::ExpressionContext* ctx,
                                  aql::AstNode const& node,
                                  std::span<aql::AqlValue const> values) {

@@ -221,7 +221,7 @@ void AqlFunctionFeature::addStringFunctions() {
   // attribute, target, threshold, analyzer
   add({"MINHASH_MATCH", ".,.,.,.", flagsNoAnalyzer, &functions::MinHashMatch});
 
-  // (attribute, lower, upper, include lower,  include upper)
+  // (attribute, lower, upper, include lower, include upper)
   add({"IN_RANGE", ".,.,.,.,.", flags, &functions::InRange});
 
   // special flags:
@@ -275,6 +275,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"BIT_TO_STRING", ".,.", flags, &functions::BitToString});
   add({"BIT_FROM_STRING", ".", flags, &functions::BitFromString});
   add({"MINHASH_ERROR", ".", flags, &functions::MinHashError});
+  add({"MINHASH_COUNT", ".", flags, &functions::MinHashCount});
 
   // special flags:
   // not deterministic and not cacheable
@@ -347,9 +348,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"DECAY_GAUSS", ".,.,.,.,.,", flags, &functions::DecayGauss});
   add({"DECAY_EXP", ".,.,.,.,.,", flags, &functions::DecayExp});
   add({"DECAY_LINEAR", ".,.,.,.,.,", flags, &functions::DecayLinear});
-
-  // array, numHashes, [hash functions("vpack"|"city")]
-  add({"MINHASH", ".,.|.", flags, &functions::MinHash});
+  // Array, NumHashes
+  add({"MINHASH", ".,.", flags, &functions::MinHash});
 
   add({"COSINE_SIMILARITY", ".,.", flags, &functions::CosineSimilarity});
   add({"L1_DISTANCE", ".,.", flags, &functions::L1Distance});
