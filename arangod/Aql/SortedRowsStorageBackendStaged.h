@@ -23,37 +23,35 @@
 
 #pragma once
 
+#include "Aql/AqlItemMatrix.h"
+#include "Aql/SortedRowsStorageBackend.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
+
+#include <cstddef>
+#include <memory>
+#include <vector>
+
 namespace arangodb::aql {
-class AqlItemBlockInputRange;
-enum class ExecutorState;
-class OutputAqlItemRow;
 
-class SortedRowsStorageBackend {
+class SortedRowsStorageBackendStaged final : public SortedRowsStorageBackend {
  public:
-  virtual ~SortedRowsStorageBackend() = default;
+  explicit SortedRowsStorageBackendStaged(
+      std::unique_ptr<SortedRowsStorageBackend> backend1,
+      std::unique_ptr<SortedRowsStorageBackend> backend2);
+  ~SortedRowsStorageBackendStaged();
 
-  // add more input to the storage backend
-  virtual ExecutorState consumeInputRange(
-      AqlItemBlockInputRange& inputRange) = 0;
+  ExecutorState consumeInputRange(AqlItemBlockInputRange& inputRange) final;
 
-  virtual bool hasReachedCapacityLimit() const noexcept = 0;
+  bool hasReachedCapacityLimit() const noexcept final;
+  bool hasMore() const final;
+  void produceOutputRow(OutputAqlItemRow& output) final;
+  void skipOutputRow() noexcept final;
+  void seal() final;
+  void spillOver(SortedRowsStorageBackend& other) final;
 
-  // whether or not there is more output that the storage
-  // backend can produce. requires seal() to have been
-  // called!
-  virtual bool hasMore() const = 0;
-
-  // produce an output row. requires hasMore()
-  virtual void produceOutputRow(OutputAqlItemRow& output) = 0;
-
-  // skip an output row. requires hasMore()
-  virtual void skipOutputRow() noexcept = 0;
-
-  // seal the storage backend. after that, no more input
-  // data must be added
-  virtual void seal() = 0;
-
-  virtual void spillOver(SortedRowsStorageBackend& other) = 0;
+ private:
+  std::vector<std::unique_ptr<SortedRowsStorageBackend>> _backends;
+  size_t _currentBackend;
 };
 
 }  // namespace arangodb::aql

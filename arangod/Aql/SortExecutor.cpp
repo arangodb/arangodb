@@ -29,6 +29,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortedRowsStorageBackendMemory.h"
+#include "Aql/SortedRowsStorageBackendStaged.h"
 #include "Aql/Stats.h"
 #include "RestServer/TemporaryStorageFeature.h"
 
@@ -94,14 +95,14 @@ SortExecutorInfos::getTemporaryStorageFeature() noexcept {
 size_t SortExecutorInfos::limit() const noexcept { return _limit; }
 
 SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos) : _infos(infos) {
+  _storageBackend = std::make_unique<SortedRowsStorageBackendMemory>(_infos);
+
   // TODO: make storage backend dynamic
   TemporaryStorageFeature& tempFeature = _infos.getTemporaryStorageFeature();
   if (tempFeature.canBeUsed()) {
-    LOG_DEVEL << "USING ROCKSDB BACKEND";
-    _storageBackend = tempFeature.getSortedRowsStorage(_infos);
-  } else {
-    LOG_DEVEL << "USING IN MEMORY BACKEND";
-    _storageBackend = std::make_unique<SortedRowsStorageBackendMemory>(_infos);
+    // LOG_DEVEL << "USING ROCKSDB BACKEND";
+    _storageBackend = std::make_unique<SortedRowsStorageBackendStaged>(
+        std::move(_storageBackend), tempFeature.getSortedRowsStorage(_infos));
   }
 }
 

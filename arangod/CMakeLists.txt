@@ -448,6 +448,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortRegister.cpp
   Aql/SortedCollectExecutor.cpp
   Aql/SortedRowsStorageBackendMemory.cpp
+  Aql/SortedRowsStorageBackendStaged.cpp
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryEndExecutor.cpp

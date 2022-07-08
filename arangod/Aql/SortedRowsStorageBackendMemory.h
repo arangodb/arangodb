@@ -41,10 +41,13 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
 
   ExecutorState consumeInputRange(AqlItemBlockInputRange& inputRange) final;
 
+  bool hasReachedCapacityLimit() const noexcept final;
+
   bool hasMore() const final;
   void produceOutputRow(OutputAqlItemRow& output) final;
   void skipOutputRow() noexcept final;
   void seal() final;
+  void spillOver(SortedRowsStorageBackend& other) final;
 
  private:
   void doSorting();

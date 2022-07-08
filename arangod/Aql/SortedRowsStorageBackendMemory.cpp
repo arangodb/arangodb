@@ -124,6 +124,12 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
   return state;
 }
 
+bool SortedRowsStorageBackendMemory::hasReachedCapacityLimit() const noexcept {
+  // TODO: track actual memory usage here. this hard-coded value is just here
+  // for testing
+  return _rowIndexes.size() > 5000;
+}
+
 bool SortedRowsStorageBackendMemory::hasMore() const {
   TRI_ASSERT(_sealed);
   return _returnNext < _rowIndexes.size();
@@ -148,6 +154,33 @@ void SortedRowsStorageBackendMemory::seal() {
   TRI_ASSERT(!_sealed);
   doSorting();
   _sealed = true;
+}
+
+void SortedRowsStorageBackendMemory::spillOver(
+    SortedRowsStorageBackend& other) {
+  if (_rowIndexes.empty()) {
+    return;
+  }
+
+  std::uint32_t lastBlockId = _rowIndexes[0].first;
+  std::uint32_t startRow = _rowIndexes[0].second;
+
+  for (size_t i = 0; i < _rowIndexes.size(); ++i) {
+    if (_rowIndexes[i].first != lastBlockId || i == _rowIndexes.size() - 1) {
+      // emit block from lastBlockId to startRow, endRow
+      aql::AqlItemBlockInputRange inputRange(
+          aql::MainQueryState::HASMORE, 0, _inputBlocks[lastBlockId], startRow);
+
+      other.consumeInputRange(inputRange);
+
+      lastBlockId = _rowIndexes[i].first;
+      startRow = _rowIndexes[i].second;
+    }
+  }
+
+  // reset our own state, so we can give back memory
+  _inputBlocks = {};
+  _rowIndexes = {};
 }
 
 void SortedRowsStorageBackendMemory::doSorting() {

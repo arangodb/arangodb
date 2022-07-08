@@ -113,6 +113,11 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
   return state;
 }
 
+bool SortedRowsStorageBackendRocksDB::hasReachedCapacityLimit() const noexcept {
+  // TODO: honor capacity setting from TemporaryStorageFeature
+  return false;
+}
+
 bool SortedRowsStorageBackendRocksDB::hasMore() const {
   TRI_ASSERT(_iterator != nullptr);
   return _iterator->Valid();
@@ -148,6 +153,14 @@ void SortedRowsStorageBackendRocksDB::seal() {
   _context->ingestAll();
 
   _iterator = _context->getIterator();
+}
+
+void SortedRowsStorageBackendRocksDB::spillOver(
+    SortedRowsStorageBackend& other) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "unexpected call to SortedRowsStorageBackendRocksDB::spillOver");
 }
 
 void SortedRowsStorageBackendRocksDB::cleanup() {
