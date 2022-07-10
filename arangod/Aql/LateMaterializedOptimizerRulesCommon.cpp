@@ -25,6 +25,7 @@
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/IResearchViewNode.h"
 #include "IResearch/IResearchViewSort.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 using namespace arangodb::aql;
 
@@ -163,9 +164,9 @@ bool getReferencedAttributes(AstNode* node, Variable const* variable,
   return state.optimize;
 }
 
-template<bool indexDataOnly, typename Attrs>
+template<bool indexDataOnly, typename Attrs, typename SortMeta>
 bool attributesMatch(
-    iresearch::IResearchViewSort const& primarySort,
+    SortMeta const& primarySort,
     iresearch::IResearchViewStoredValues const& storedValues, Attrs& attrs,
     std::vector<std::vector<ColumnVariant<indexDataOnly>>>& usedColumnsCounter,
     size_t columnsCount) {
@@ -326,10 +327,12 @@ template void latematerialized::setAttributesMaxMatchedColumns<true>(
     size_t columnsCount);
 
 template bool latematerialized::attributesMatch<
-    true, std::vector<latematerialized::AttributeAndField<
-              latematerialized::IndexFieldData>>>(
-    iresearch::IResearchViewSort const& primarySort,
-    iresearch::IResearchViewStoredValues const& storedValues,
+    true,
+    std::vector<
+        latematerialized::AttributeAndField<latematerialized::IndexFieldData>>,
+    arangodb::iresearch::IResearchViewSort>(
+    arangodb::iresearch::IResearchViewSort const& primarySort,
+    arangodb::iresearch::IResearchViewStoredValues const& storedValues,
     std::vector<
         latematerialized::AttributeAndField<latematerialized::IndexFieldData>>&
         attrs,
@@ -337,10 +340,37 @@ template bool latematerialized::attributesMatch<
     size_t columnsCount);
 
 template bool latematerialized::attributesMatch<
-    false, std::vector<latematerialized::AttributeAndField<
-               latematerialized::AstAndColumnFieldData>>>(
-    iresearch::IResearchViewSort const& primarySort,
-    iresearch::IResearchViewStoredValues const& storedValues,
+    false,
+    std::vector<latematerialized::AttributeAndField<
+        latematerialized::AstAndColumnFieldData>>,
+    arangodb::iresearch::IResearchViewSort>(
+    arangodb::iresearch::IResearchViewSort const& primarySort,
+    arangodb::iresearch::IResearchViewStoredValues const& storedValues,
+    std::vector<latematerialized::AttributeAndField<
+        latematerialized::AstAndColumnFieldData>>& attrs,
+    std::vector<std::vector<ColumnVariant<false>>>& usedColumnsCounter,
+    size_t columnsCount);
+
+template bool latematerialized::attributesMatch<
+    true,
+    std::vector<
+        latematerialized::AttributeAndField<latematerialized::IndexFieldData>>,
+    arangodb::iresearch::IResearchInvertedIndexSort>(
+    arangodb::iresearch::IResearchInvertedIndexSort const& primarySort,
+    arangodb::iresearch::IResearchViewStoredValues const& storedValues,
+    std::vector<
+        latematerialized::AttributeAndField<latematerialized::IndexFieldData>>&
+        attrs,
+    std::vector<std::vector<ColumnVariant<true>>>& usedColumnsCounter,
+    size_t columnsCount);
+
+template bool latematerialized::attributesMatch<
+    false,
+    std::vector<latematerialized::AttributeAndField<
+        latematerialized::AstAndColumnFieldData>>,
+    arangodb::iresearch::IResearchInvertedIndexSort>(
+    arangodb::iresearch::IResearchInvertedIndexSort const& primarySort,
+    arangodb::iresearch::IResearchViewStoredValues const& storedValues,
     std::vector<latematerialized::AttributeAndField<
         latematerialized::AstAndColumnFieldData>>& attrs,
     std::vector<std::vector<ColumnVariant<false>>>& usedColumnsCounter,
