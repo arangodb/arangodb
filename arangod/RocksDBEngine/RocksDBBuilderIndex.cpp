@@ -116,9 +116,7 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
     }
   }
 
-#ifndef USE_ENTERPRISE
   docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
-#endif
   return {};
 }
 
