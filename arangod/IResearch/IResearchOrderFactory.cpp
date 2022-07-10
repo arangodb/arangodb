@@ -237,8 +237,7 @@ arangodb::aql::Variable const* refFromScorer(
     return nullptr;
   }
 
-  arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                              nullptr, nullptr, ref};
+  arangodb::iresearch::QueryContext const ctx{.ref = ref};
 
   if (!arangodb::iresearch::OrderFactory::scorer(nullptr, node, ctx)) {
     // not a scorer function
