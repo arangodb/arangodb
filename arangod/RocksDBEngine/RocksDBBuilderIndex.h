@@ -33,12 +33,6 @@
 
 namespace arangodb {
 
-Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
-                                 rocksdb::DB* rootDB,
-                                 RocksDBTransactionCollection* trxColl,
-                                 std::atomic<uint64_t>& docsProcessed,
-                                 RocksDBIndex& ridx, bool isForeground);
-
 namespace trx {
 struct BuilderTrx : public arangodb::transaction::Methods {
   BuilderTrx(
@@ -62,6 +56,18 @@ struct BuilderTrx : public arangodb::transaction::Methods {
   arangodb::DataSourceId _cid;
 };
 }  // namespace trx
+
+Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
+                                 rocksdb::DB* rootDB,
+                                 RocksDBTransactionCollection* trxColl,
+                                 std::atomic<uint64_t>& docsProcessed,
+                                 RocksDBIndex& ridx, bool isForeground);
+
+Result fillIndexSingleThreaded(
+    bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
+    rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
+    trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
+    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it);
 
 class RocksDBCollection;
 
