@@ -213,7 +213,7 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
       auto const columnName = mangleString("geometry", "mygeojson");
       auto* columnReader = segment.column(columnName);
       ASSERT_NE(nullptr, columnReader);
-      auto it = columnReader->iterator(false);
+      auto it = columnReader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_NE(nullptr, payload);
@@ -230,7 +230,7 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
       auto const columnName = mangleString("geometry", "mygeocentroid");
       auto* columnReader = segment.column(columnName);
       ASSERT_NE(nullptr, columnReader);
-      auto it = columnReader->iterator(false);
+      auto it = columnReader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_NE(nullptr, payload);
@@ -258,7 +258,7 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
       auto const columnName = mangleString("geometry", "mygeopoint");
       auto* columnReader = segment.column(columnName);
       ASSERT_NE(nullptr, columnReader);
-      auto it = columnReader->iterator(false);
+      auto it = columnReader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, it);
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_NE(nullptr, payload);

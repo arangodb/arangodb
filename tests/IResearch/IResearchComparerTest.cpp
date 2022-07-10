@@ -71,7 +71,8 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   std::sort(expected_values.begin(), expected_values.end(), expectedComparer);
 
   // sort actual docs
-  arangodb::iresearch::VPackComparer comparer;
+  arangodb::iresearch::VPackComparer<arangodb::iresearch::IResearchViewSort>
+      comparer;
   EXPECT_TRUE(comparer.empty());
   comparer.reset(sort);
   EXPECT_FALSE(comparer.empty());
@@ -132,7 +133,8 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   std::sort(expected_values.begin(), expected_values.end(), expectedComparer);
 
   // sort actual docs
-  arangodb::iresearch::VPackComparer comparer;
+  arangodb::iresearch::VPackComparer<arangodb::iresearch::IResearchViewSort>
+      comparer;
   EXPECT_TRUE(comparer.empty());
   comparer.reset(sort);
   EXPECT_FALSE(comparer.empty());

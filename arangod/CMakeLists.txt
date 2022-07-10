@@ -57,6 +57,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchCommon.h
   IResearch/IResearchCompression.h
   IResearch/IResearchDataStore.h
+  IResearch/IResearchDataStoreMeta.h
   IResearch/IResearchDocument.h
   IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.h
@@ -100,6 +101,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchCommon.cpp
   IResearch/IResearchCompression.cpp
   IResearch/IResearchDataStore.cpp
+  IResearch/IResearchDataStoreMeta.cpp
   IResearch/IResearchDocument.cpp
   IResearch/IResearchExpressionContext.cpp
   IResearch/IResearchFeature.cpp

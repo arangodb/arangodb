@@ -195,7 +195,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
 
     auto before = PhysicalCollectionMock::before;
     auto restore = irs::make_finally(
-        [&before]() -> void { PhysicalCollectionMock::before = before; });
+        [&before]() noexcept { PhysicalCollectionMock::before = before; });
     PhysicalCollectionMock::before = []() -> void { throw std::exception(); };
 
     EXPECT_FALSE(impl->drop().ok());
@@ -258,7 +258,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   size_t beforeCount = 0;
   auto before = PhysicalCollectionMock::before;
   auto restore = irs::make_finally(
-      [&before]() -> void { PhysicalCollectionMock::before = before; });
+      [&before]() noexcept { PhysicalCollectionMock::before = before; });
   PhysicalCollectionMock::before = [&beforeCount]() -> void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
