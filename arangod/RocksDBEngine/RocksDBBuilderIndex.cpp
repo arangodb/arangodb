@@ -150,8 +150,8 @@ Result fillIndexSingleThreaded(
     numDocsWritten++;
 
     if (numDocsWritten % 1024 == 0) {  // commit buffered writes
-      ::partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
-                                  foreground);
+      res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
+                                      ridx, foreground);
       // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
@@ -170,8 +170,8 @@ Result fillIndexSingleThreaded(
   }
 
   if (res.ok()) {
-    ::partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
-                                foreground);
+    res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
+                                    foreground);
   }
 
   if (res.ok()) {  // required so iresearch commits
