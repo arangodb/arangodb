@@ -338,13 +338,14 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
-  const rocksdb::Snapshot* snap = nullptr;
+  rocksdb::Snapshot const* snap = nullptr;
 
-  Result res;
   auto& selector =
       _collection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
+
+  Result res;
   if (this->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need
