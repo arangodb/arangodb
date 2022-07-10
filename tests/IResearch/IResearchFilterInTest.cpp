@@ -1035,11 +1035,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -1048,17 +1051,23 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -1150,11 +1159,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -1163,17 +1175,23 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -1266,11 +1284,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -1279,17 +1300,23 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -1382,11 +1409,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -1395,17 +1425,23 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -1498,11 +1534,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -1511,17 +1550,23 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -1600,11 +1645,14 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -1613,17 +1661,23 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -4119,11 +4173,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -4132,17 +4189,23 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -4241,11 +4304,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -4254,17 +4320,23 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -4363,11 +4435,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -4376,17 +4451,23 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -4485,11 +4566,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -4498,17 +4582,23 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -4608,11 +4698,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -4621,17 +4714,23 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -4730,11 +4829,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -4743,17 +4845,23 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
@@ -4835,11 +4943,14 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                  nullptr, nullptr, ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)
-               .ok()));
+      arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                  .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       nullptr, ctx, filterCtx, *filterNode)
+                       .ok()));
     }
 
     // iteratorForCondition
@@ -4848,17 +4959,23 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
           arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
           arangodb::transaction::Options());
 
-      auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{
-          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
-      EXPECT_TRUE(
-          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)
-               .ok()));
+          .trx = &trx,
+          .ast = ast,
+          .ctx = &exprCtx,
+          .index = &irs::sub_reader::empty(),
+          .ref = ref,
+          .isSearchQuery = true};
+      arangodb::iresearch::FieldMeta::Analyzer analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()};
+      arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
+                       &actual, ctx, filterCtx, *filterNode)
+                       .ok()));
 
       {
         EXPECT_EQ(1, actual.size());
