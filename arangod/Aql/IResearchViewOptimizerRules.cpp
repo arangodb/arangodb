@@ -196,11 +196,18 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
       TRI_ASSERT(starts_with);
       pushFuncToBack(*searchCondition.root(), starts_with);
     }
+
+    arangodb::iresearch::QueryContext ctx{.trx = &query.trxForOptimization(),
+                                          .ref = &viewNode.outVariable(),
+                                          .isSearchQuery = true};
+
+    // The analyzer is referenced in the FilterContext and used during the
+    // following ::makeFilter() call, so may not be a temporary.
+    FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+    FilterContext const filterCtx{.analyzer = analyzer};
+
     auto filterCreated =
-        FilterFactory::filter(nullptr,
-                              {&query.trxForOptimization(), nullptr, nullptr,
-                               nullptr, nullptr, &viewNode.outVariable()},
-                              *searchCondition.root());
+        FilterFactory::filter(nullptr, ctx, filterCtx, *searchCondition.root());
 
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -334,7 +341,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         current->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
         current->getType() == ExecutionNode::TRAVERSAL ||
         current->getType() == ExecutionNode::SHORTEST_PATH ||
-        current->getType() == ExecutionNode::K_SHORTEST_PATHS ||
+        current->getType() == ExecutionNode::ENUMERATE_PATHS ||
         current->getType() == ExecutionNode::INDEX ||
         current->getType() == ExecutionNode::COLLECT) {
       // any of these node types will lead to more/less results in the output,
@@ -418,7 +425,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           current->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
           current->getType() == ExecutionNode::TRAVERSAL ||
           current->getType() == ExecutionNode::SHORTEST_PATH ||
-          current->getType() == ExecutionNode::K_SHORTEST_PATHS ||
+          current->getType() == ExecutionNode::ENUMERATE_PATHS ||
           current->getType() == ExecutionNode::INDEX ||
           current->getType() == ExecutionNode::COLLECT ||
           current->getType() == ExecutionNode::SORT) {
@@ -777,7 +784,7 @@ void handleConstrainedSortInView(Optimizer* opt,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
   });
 
@@ -818,7 +825,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
   });
 

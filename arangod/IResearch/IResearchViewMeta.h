@@ -27,6 +27,7 @@
 #include <locale>
 #include <unordered_set>
 
+#include "IResearchDataStoreMeta.h"
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
 
@@ -34,7 +35,6 @@
 
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
-#include "index/index_writer.hpp"
 
 namespace arangodb {
 namespace velocypack {
@@ -56,56 +56,14 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief metadata describing the IResearch view
 ////////////////////////////////////////////////////////////////////////////////
-struct IResearchViewMeta {
-  class ConsolidationPolicy {
-   public:
-    ConsolidationPolicy() = default;
-    ConsolidationPolicy(irs::index_writer::consolidation_policy_t&& policy,
-                        VPackBuilder&& properties) noexcept
-        : _policy(std::move(policy)), _properties(std::move(properties)) {}
-
-    irs::index_writer::consolidation_policy_t const& policy() const noexcept {
-      return _policy;
-    }
-
-    VPackSlice properties() const noexcept { return _properties.slice(); }
-
-   private:
-    irs::index_writer::consolidation_policy_t
-        _policy;               // policy instance (false == disable)
-    VPackBuilder _properties;  // normalized policy definition
-  };
-
-  struct Mask {
-    bool _cleanupIntervalStep;
-    bool _commitIntervalMsec;
-    bool _consolidationIntervalMsec;
-    bool _consolidationPolicy;
-    bool _version;
-    bool _writebufferActive;
-    bool _writebufferIdle;
-    bool _writebufferSizeMax;
+struct IResearchViewMeta : public IResearchDataStoreMeta {
+  struct Mask : public IResearchDataStoreMeta::Mask {
     bool _primarySort;
     bool _storedValues;
     bool _primarySortCompression;
     explicit Mask(bool mask = false) noexcept;
   };
 
-  size_t _cleanupIntervalStep{};
-  // issue cleanup after <count> commits (0 == disable)
-  size_t _commitIntervalMsec{};
-  // issue commit after <interval> milliseconds (0 == disable)
-  size_t _consolidationIntervalMsec{};
-  // issue consolidation after <interval> milliseconds (0 == disable)
-  ConsolidationPolicy _consolidationPolicy;  // the consolidation policy to use
-  uint32_t _version{};  // the version of the iresearch interface e.g. which
-                        // how data is stored in iresearch (default == latest)
-  size_t _writebufferActive{};  // maximum number of concurrent segments
-  // before segment acquisition blocks,
-  // e.g. max number of concurrent transactions (0 == unlimited)
-  size_t _writebufferIdle{};  // maximum number of segments cached in the pool
-  size_t _writebufferSizeMax{};  // maximum memory byte size per segment
-  // before a segment flush is triggered (0 == unlimited)
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _primarySortCompression{};
@@ -140,7 +98,6 @@ struct IResearchViewMeta {
   //////////////////////////////////////////////////////////////////////////////
   void storeFull(IResearchViewMeta const& other);
   void storeFull(IResearchViewMeta&& other) noexcept;
-  void storePartial(IResearchViewMeta&& other) noexcept;
 
   bool operator==(IResearchViewMeta const& other) const noexcept;
   bool operator!=(IResearchViewMeta const& other) const noexcept;
