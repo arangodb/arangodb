@@ -43,7 +43,11 @@ namespace arangodb {
 RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
     rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf, std::string const& path,
     uint64_t keyPrefix)
-    : _db(db), _cf(cf), _path(path), _keyPrefix(keyPrefix) {
+    : _db(db),
+      _cf(cf),
+      _path(path),
+      _keyPrefix(keyPrefix),
+      _needsCleanup(false) {
   rocksutils::uintToPersistentBigEndian<std::uint64_t>(_lowerBoundPrefix,
                                                        _keyPrefix);
   _lowerBoundSlice = _lowerBoundPrefix;
@@ -52,7 +56,6 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
                                                        _keyPrefix + 1);
   _upperBoundSlice = _upperBoundPrefix;
 
-  // TODO: figure out if we need to set these options
   rocksdb::Options options = _db->GetOptions();
   _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path);
 }
@@ -66,6 +69,7 @@ RocksDBSortedRowsStorageContext::~RocksDBSortedRowsStorageContext() {
 
 Result RocksDBSortedRowsStorageContext::storeRow(RocksDBKey const& key,
                                                  velocypack::Slice data) {
+  _needsCleanup = true;
   rocksdb::Status s = _methods->Put(
       _cf, key, {data.startAs<char const>(), data.byteSize()}, true);
   if (s.ok()) {
@@ -122,7 +126,11 @@ RocksDBSortedRowsStorageContext::getIterator() {
 }
 
 void RocksDBSortedRowsStorageContext::cleanup() {
-  // TODO: avoid duplicate cleanup
+  if (!_needsCleanup) {
+    // nothing to be done
+    return;
+  }
+
   // TODO: cleanup files temporary directory, unless SstFileMethods already does
   // that
   rocksdb::Status s = rocksdb::DeleteFilesInRange(_db, _cf, &_lowerBoundSlice,
@@ -136,6 +144,7 @@ void RocksDBSortedRowsStorageContext::cleanup() {
     LOG_DEVEL << "failure during range deletion of intermediate results: "
               << rocksutils::convertStatus(s).errorMessage();
   }
+  _needsCleanup = false;
 }
 
 }  // namespace arangodb
