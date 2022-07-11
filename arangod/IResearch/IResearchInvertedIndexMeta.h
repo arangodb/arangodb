@@ -26,6 +26,7 @@
 #include "IResearchDataStoreMeta.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchViewStoredValues.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <unicode/locid.h>
 
@@ -224,7 +225,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   bool operator==(IResearchInvertedIndexMeta const& other) const noexcept;
 
   static bool matchesFieldsDefinition(IResearchInvertedIndexMeta const& meta,
-                                      VPackSlice other);
+                                      VPackSlice other,
+                                      LogicalCollection const& collection);
 
   bool hasNested() const noexcept { return _hasNested; }
 
