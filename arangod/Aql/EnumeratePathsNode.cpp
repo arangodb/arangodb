@@ -398,7 +398,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   if (isKPaths or isAllShortestPaths) {
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
         opts->minDepth, opts->maxDepth};
-//    enumeratorOptions.setStopAtFirstDepth(isAllShortestPaths);
+    //    enumeratorOptions.setStopAtFirstDepth(isAllShortestPaths);
     PathValidatorOptions validatorOptions(opts->tmpVar(),
                                           opts->getExpressionCtx());
 
