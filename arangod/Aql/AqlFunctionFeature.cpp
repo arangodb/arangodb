@@ -218,8 +218,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags,
        &functions::NgramPositionalSimilarity});
 
-  // attribute, target, threshold, analyzer
-  add({"MINHASH_MATCH", ".,.,.,.", flagsNoAnalyzer, &functions::MinHashMatch});
+  // attribute, target, threshold[, analyzer]
+  add({"MINHASH_MATCH", ".,.,.|.", flagsNoAnalyzer, &functions::MinHashMatch});
 
   // (attribute, lower, upper, include lower, include upper)
   add({"IN_RANGE", ".,.,.,.,.", flags, &functions::InRange});
