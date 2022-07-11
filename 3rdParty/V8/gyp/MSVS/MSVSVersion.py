@@ -139,7 +139,7 @@ MSVS_VERSIONS = {
       solution_version='12.00',
       project_version='15.0',
       default_toolset='v143',
-      compatible_sdks='8.1,10.0'
+      compatible_sdks='10.0'
     ),
   '2019':
     VisualStudioVersion(
