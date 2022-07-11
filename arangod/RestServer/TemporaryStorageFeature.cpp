@@ -246,7 +246,7 @@ void TemporaryStorageFeature::cleanupDirectory() {
   }
 
   // clean up our mess
-  LOG_TOPIC("62215", INFO, Logger::FIXME)
+  LOG_TOPIC("62215", DEBUG, Logger::FIXME)
       << "cleaning up directory for intermediate results '" << _basePath << "'";
 
   auto res = TRI_RemoveDirectory(_basePath.c_str());

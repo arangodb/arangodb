@@ -138,7 +138,7 @@ Result RocksDBTempStorage::init() {
     }
   }
 
-  rocksdb::DBOptions options;
+  rocksdb::Options options;
   options.create_missing_column_families = true;
   options.create_if_missing = true;
   options.env = rocksdb::Env::Default();
@@ -164,13 +164,60 @@ Result RocksDBTempStorage::init() {
   }
 #endif
 
+  // set per-level compression
+  options.compression_per_level.resize(options.num_levels);
+  for (int level = 0; level < options.num_levels; ++level) {
+    options.compression_per_level[level] =
+        (level >= 2 ? rocksdb::kLZ4Compression : rocksdb::kNoCompression);
+  }
+
+  // try to avoid having a WAL as much as possible
+  options.manual_wal_flush = true;
+
+  // speed up write performance at the expense of snapshot consistency.
+  // this implies that we cannot use snapshots in this instance to get
+  // repeatable reads
+  options.unordered_write = true;
+
+  // not needed, as all data in this RocksDB instance is ephemeral
+  options.avoid_flush_during_shutdown = true;
+
+  // ephemeral data only
+  options.paranoid_checks = false;
+
+  options.max_background_jobs = 2;
+  options.max_subcompactions = 2;
+
+  // TODO: configure write buffer sizes!
+
+  // TODO: try SstFileManager
+
   std::vector<rocksdb::ColumnFamilyDescriptor> columnFamilies;
 
   rocksdb::ColumnFamilyOptions cfOptions;
+  cfOptions.force_consistency_checks = false;
   cfOptions.comparator = _comparator.get();
   cfOptions.prefix_extractor.reset(
       rocksdb::NewFixedPrefixTransform(sizeof(uint64_t)));
 
+  rocksdb::BlockBasedTableOptions tableOptions;
+  tableOptions.cache_index_and_filter_blocks = true;
+  tableOptions.cache_index_and_filter_blocks_with_high_priority = true;
+  tableOptions.pin_l0_filter_and_index_blocks_in_cache = true;
+  tableOptions.pin_top_level_index_and_filter = true;
+  tableOptions.reserve_table_builder_memory = true;
+  tableOptions.reserve_table_reader_memory = true;
+  // use 16KB block size as a starting point
+  tableOptions.block_size = 16 * 1024;
+  tableOptions.checksum = rocksdb::ChecksumType::kxxHash64;
+  tableOptions.max_auto_readahead_size = 8 * 1024 * 1024;
+
+  cfOptions.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+      rocksdb::NewBlockBasedTableFactory(tableOptions));
+
+  // TODO: configure block cache and its size!
+
+  // TODO: rename this column family?
   columnFamilies.emplace_back(
       rocksdb::ColumnFamilyDescriptor("SortCF", cfOptions));
   columnFamilies.emplace_back(rocksdb::ColumnFamilyDescriptor(
@@ -179,12 +226,15 @@ Result RocksDBTempStorage::init() {
   std::string rocksDBPath =
       basics::FileUtils::buildFilename(_basePath, "rocksdb");
 
+  TRI_ASSERT(_db == nullptr);
   rocksdb::Status s = rocksdb::DB::Open(options, rocksDBPath, columnFamilies,
                                         &_cfHandles, &_db);
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
+
+  TRI_ASSERT(_db != nullptr);
 
   return {};
 }

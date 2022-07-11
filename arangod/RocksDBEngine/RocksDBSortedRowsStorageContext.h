@@ -71,6 +71,8 @@ class RocksDBSortedRowsStorageContext {
   std::string _upperBoundPrefix;
   rocksdb::Slice _upperBoundSlice;
 
+  bool _needsCleanup;
+
   std::unique_ptr<RocksDBSstFileMethods> _methods;
 };
 

@@ -43,7 +43,11 @@ namespace arangodb {
 RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
     rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf, std::string const& path,
     uint64_t keyPrefix)
-    : _db(db), _cf(cf), _path(path), _keyPrefix(keyPrefix) {
+    : _db(db),
+      _cf(cf),
+      _path(path),
+      _keyPrefix(keyPrefix),
+      _needsCleanup(false) {
   rocksutils::uintToPersistentBigEndian<std::uint64_t>(_lowerBoundPrefix,
                                                        _keyPrefix);
   _lowerBoundSlice = _lowerBoundPrefix;
@@ -52,7 +56,6 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
                                                        _keyPrefix + 1);
   _upperBoundSlice = _upperBoundPrefix;
 
-  // TODO: figure out if we need to set these options
   rocksdb::Options options = _db->GetOptions();
   _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path);
 }
@@ -66,6 +69,7 @@ RocksDBSortedRowsStorageContext::~RocksDBSortedRowsStorageContext() {
 
 Result RocksDBSortedRowsStorageContext::storeRow(RocksDBKey const& key,
                                                  velocypack::Slice data) {
+  _needsCleanup = true;
   rocksdb::Status s = _methods->Put(
       _cf, key, {data.startAs<char const>(), data.byteSize()}, true);
   if (s.ok()) {
@@ -106,6 +110,16 @@ RocksDBSortedRowsStorageContext::getIterator() {
   rocksdb::ReadOptions readOptions;
   readOptions.iterate_upper_bound = &_upperBoundSlice;
   readOptions.prefix_same_as_start = true;
+  // this is ephemeral data, we write it once and then may iterate at most
+  // once over it
+  readOptions.verify_checksums = false;
+  // as we are reading the data only once and then will get rid of it, there
+  // is no need to populate the block cache with it
+  readOptions.fill_cache = false;
+  // all data that we have wiped we can safely ignore
+  readOptions.ignore_range_deletions = true;
+  // try to use readhead
+  readOptions.adaptive_readahead = true;
 
   std::unique_ptr<rocksdb::Iterator> iterator(
       _db->NewIterator(readOptions, _cf));
@@ -122,20 +136,30 @@ RocksDBSortedRowsStorageContext::getIterator() {
 }
 
 void RocksDBSortedRowsStorageContext::cleanup() {
-  // TODO: avoid duplicate cleanup
+  if (!_needsCleanup) {
+    // nothing to be done
+    return;
+  }
+
   // TODO: cleanup files temporary directory, unless SstFileMethods already does
   // that
   rocksdb::Status s = rocksdb::DeleteFilesInRange(_db, _cf, &_lowerBoundSlice,
                                                   &_upperBoundSlice, false);
 
   if (s.ok()) {
-    s = _db->DeleteRange(rocksdb::WriteOptions(), _cf, _lowerBoundSlice,
-                         _upperBoundSlice);
+    rocksdb::WriteOptions writeOptions;
+    // this is just temporary data, which will be removed at restart.
+    // no need to sync data to disk or to have a WAL.
+    writeOptions.sync = false;
+    writeOptions.disableWAL = true;
+
+    s = _db->DeleteRange(writeOptions, _cf, _lowerBoundSlice, _upperBoundSlice);
   }
   if (!s.ok()) {
     LOG_DEVEL << "failure during range deletion of intermediate results: "
               << rocksutils::convertStatus(s).errorMessage();
   }
+  _needsCleanup = false;
 }
 
 }  // namespace arangodb
