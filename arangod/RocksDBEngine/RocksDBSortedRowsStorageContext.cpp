@@ -48,14 +48,17 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
       _path(path),
       _keyPrefix(keyPrefix),
       _needsCleanup(false) {
+  // build lower bound for iterator
   rocksutils::uintToPersistentBigEndian<std::uint64_t>(_lowerBoundPrefix,
                                                        _keyPrefix);
   _lowerBoundSlice = _lowerBoundPrefix;
 
+  // build upper bound for iterator
   rocksutils::uintToPersistentBigEndian<std::uint64_t>(_upperBoundPrefix,
                                                        _keyPrefix + 1);
   _upperBoundSlice = _upperBoundPrefix;
 
+  // create SstFileMethods instance that we will use for file ingestion
   rocksdb::Options options = _db->GetOptions();
   _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path);
 }
@@ -141,8 +144,6 @@ void RocksDBSortedRowsStorageContext::cleanup() {
     return;
   }
 
-  // TODO: cleanup files temporary directory, unless SstFileMethods already does
-  // that
   rocksdb::Status s = rocksdb::DeleteFilesInRange(_db, _cf, &_lowerBoundSlice,
                                                   &_upperBoundSlice, false);
 
@@ -155,6 +156,7 @@ void RocksDBSortedRowsStorageContext::cleanup() {
 
     s = _db->DeleteRange(writeOptions, _cf, _lowerBoundSlice, _upperBoundSlice);
   }
+
   if (!s.ok()) {
     LOG_DEVEL << "failure during range deletion of intermediate results: "
               << rocksutils::convertStatus(s).errorMessage();
