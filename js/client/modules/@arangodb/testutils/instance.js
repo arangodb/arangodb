@@ -335,6 +335,7 @@ class instance {
       'temp.path': this.tmpDir,
       'server.endpoint': this.endpoint,
       'database.directory': this.dataDir,
+      'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
     if (this.options.auditLoggingEnabled) {
