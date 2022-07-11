@@ -139,6 +139,12 @@ struct IsExactValue : std::false_type {};
 template<size_t Value>
 struct IsExactValue<ExactValue<Value>> : std::true_type {};
 
+[[maybe_unused]] Result notImplementedEE(char const* funcName) {
+  return {TRI_ERROR_NOT_IMPLEMENTED,
+          absl::StrCat("Function '", funcName,
+                       "' is available in ArangoDB Enterprise Edition only.")};
+}
+
 template<typename RangeType>
 Result invalidArgsCount(char const* funcName) {
   if constexpr (IsRange<RangeType>::value) {
@@ -3658,6 +3664,14 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   return {};
 }
 
+#ifndef USE_ENTERPRISE
+Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter*,
+                            QueryContext const&, FilterContext const&,
+                            aql::AstNode const&) {
+  return notImplementedEE(funcName);
+}
+#endif
+
 // STARTS_WITH(<attribute>, [ '[' ] <prefix> [, <prefix>, ... ']' ], [
 // <scoring-limit>|<min-match-count> ] [, <scoring-limit> ])
 Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
@@ -4100,6 +4114,11 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
   return entry->second(entry->first.c_str(), filter, ctx, filterCtx, *args);
 }
 
+Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
+                            QueryContext const& ctx,
+                            FilterContext const& filterCtx,
+                            aql::AstNode const& args);
+
 frozen::map<irs::string_ref, ConvertionHandler,
             13> constexpr kFCallSystemConvertionHandlers{
     // filter functions
@@ -4111,6 +4130,7 @@ frozen::map<irs::string_ref, ConvertionHandler,
     {"LIKE", fromFuncLike},
     {"LEVENSHTEIN_MATCH", fromFuncLevenshteinMatch},
     {"NGRAM_MATCH", fromFuncNgramMatch},
+    {"MINHASH_MATCH", fromFuncMinHashMatch},
     // geo function
     {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
     {"GEO_IN_RANGE", fromFuncGeoInRange},
