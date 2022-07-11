@@ -152,6 +152,10 @@ static void JS_ServerStatistics(
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "readOnly"),
             v8::Number::New(isolate, (double)ts._readTransactions.load()))
       .FromMaybe(false);
+  v8TransactionInfoObj
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "dirtyReadOnly"),
+            v8::Number::New(isolate, (double)ts._dirtyReadTransactions.load()))
+      .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "transactions"),
             v8TransactionInfoObj)
