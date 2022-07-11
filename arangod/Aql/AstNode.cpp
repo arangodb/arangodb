@@ -2319,8 +2319,12 @@ bool AstNode::hasFlag(AstNodeFlagType flag) const noexcept {
 }
 
 void AstNode::clearFlags() noexcept {
-  // clear all flags but this one
-  flags &= AstNodeFlagType::FLAG_INTERNAL_CONST;
+  // clear all flags but these ones
+  flags &= (AstNodeFlagType::FLAG_INTERNAL_CONST |
+            AstNodeFlagType::FLAG_BOOLEAN_EXPANSION |
+            AstNodeFlagType::FLAG_BIND_PARAMETER |
+            AstNodeFlagType::FLAG_SUBQUERY_REFERENCE |
+            AstNodeFlagType::FLAG_KEEP_VARIABLENAME);
 }
 
 void AstNode::setFlag(AstNodeFlagType flag) const noexcept { flags |= flag; }

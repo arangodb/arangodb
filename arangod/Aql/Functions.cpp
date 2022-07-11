@@ -1342,6 +1342,13 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
   }
 }
 
+irs::string_ref getFunctionName(const AstNode& node) {
+  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
+  auto const* impl = static_cast<aql::Function*>(node.getData());
+  TRI_ASSERT(impl != nullptr);
+  return impl->name;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -8926,7 +8933,7 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
   return AqlValue(resultBuilder->slice(), resultBuilder->size());
 }
 
-AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
+AqlValue Functions::Interleave(aql::ExpressionContext* expressionContext,
                                AstNode const&,
                                VPackFunctionParametersView parameters) {
   // cppcheck-suppress variableScope
@@ -8981,7 +8988,7 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
   return AqlValue(builder->slice(), builder->size());
 }
 
-AqlValue functions::CallGreenspun(aql::ExpressionContext* expressionContext,
+AqlValue Functions::CallGreenspun(aql::ExpressionContext* expressionContext,
                                   AstNode const&,
                                   VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &expressionContext->trx();
@@ -9330,7 +9337,7 @@ AqlValue decayFuncImpl(aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue functions::DecayGauss(aql::ExpressionContext* expressionContext,
+AqlValue Functions::DecayGauss(aql::ExpressionContext* expressionContext,
                                AstNode const& node,
                                VPackFunctionParametersView parameters) {
   auto gaussDecayFactory = [](const double origin, const double scale,
@@ -9347,7 +9354,7 @@ AqlValue functions::DecayGauss(aql::ExpressionContext* expressionContext,
   return decayFuncImpl(expressionContext, node, parameters, gaussDecayFactory);
 }
 
-AqlValue functions::DecayExp(aql::ExpressionContext* expressionContext,
+AqlValue Functions::DecayExp(aql::ExpressionContext* expressionContext,
                              AstNode const& node,
                              VPackFunctionParametersView parameters) {
   auto expDecayFactory = [](const double origin, const double scale,
@@ -9364,7 +9371,7 @@ AqlValue functions::DecayExp(aql::ExpressionContext* expressionContext,
   return decayFuncImpl(expressionContext, node, parameters, expDecayFactory);
 }
 
-AqlValue functions::DecayLinear(aql::ExpressionContext* expressionContext,
+AqlValue Functions::DecayLinear(aql::ExpressionContext* expressionContext,
                                 AstNode const& node,
                                 VPackFunctionParametersView parameters) {
   auto linearDecayFactory = [](const double origin, const double scale,
@@ -9457,7 +9464,7 @@ AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
   }
 }
 
-AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
+AqlValue Functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
                                      AstNode const& node,
                                      VPackFunctionParametersView parameters) {
   auto cosineSimilarityFunc = [expressionContext, &node](
@@ -9498,7 +9505,7 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
                       cosineSimilarityFunc);
 }
 
-AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
+AqlValue Functions::L1Distance(aql::ExpressionContext* expressionContext,
                                AstNode const& node,
                                VPackFunctionParametersView parameters) {
   auto L1DistFunc = [expressionContext, &node](const VPackSlice lhs,
@@ -9525,7 +9532,7 @@ AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
   return DistanceImpl(expressionContext, node, parameters, L1DistFunc);
 }
 
-AqlValue functions::L2Distance(aql::ExpressionContext* expressionContext,
+AqlValue Functions::L2Distance(aql::ExpressionContext* expressionContext,
                                AstNode const& node,
                                VPackFunctionParametersView parameters) {
   auto L2DistFunc = [expressionContext, &node](const VPackSlice lhs,
