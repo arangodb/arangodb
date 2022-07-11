@@ -709,6 +709,10 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
     return;
   }
 
+  if (!current.leader->leadershipEstablished) {
+    return;
+  }
+
   if (target.version.has_value() &&
       (!current.supervision.has_value() ||
        target.version != current.supervision->targetVersion)) {
