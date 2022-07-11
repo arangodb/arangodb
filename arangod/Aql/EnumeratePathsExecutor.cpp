@@ -62,6 +62,29 @@ static bool isValidId(VPackSlice id) {
   TRI_ASSERT(id.isString());
   return id.stringView().find('/') != std::string_view::npos;
 }
+
+template<class FinderType>
+constexpr auto isNewStyleFinder() {
+  return
+      std::is_same_v<
+          FinderType,
+          KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+      std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
+                                     SingleServerProviderStep>>> ||
+      std::is_same_v<FinderType,
+                     KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
+      std::is_same_v<FinderType, TracedKPathEnumerator<
+                                     ClusterProvider<ClusterProviderStep>>> ||
+      std::is_same_v<FinderType,
+                     AllShortestPathsEnumerator<
+                         SingleServerProvider<SingleServerProviderStep>>> ||
+      std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<SingleServerProvider<
+                                         SingleServerProviderStep>>> ||
+      std::is_same_v<FinderType, AllShortestPathsEnumerator<
+                                     ClusterProvider<ClusterProviderStep>>> ||
+      std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<
+                                     ClusterProvider<ClusterProviderStep>>>;
+}
 }  // namespace
 
 template<class FinderType>
@@ -148,25 +171,7 @@ auto EnumeratePathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
 template<class FinderType>
 auto EnumeratePathsExecutorInfos<FinderType>::cache() const
     -> graph::TraverserCache* {
-  if constexpr (
-      std::is_same_v<FinderType,
-                     AllShortestPathsEnumerator<
-                         SingleServerProvider<SingleServerProviderStep>>> ||
-
-      std::is_same_v<
-          FinderType,
-          KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
-                                     SingleServerProviderStep>>> ||
-
-      std::is_same_v<FinderType, AllShortestPathsEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType,
-                     KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>>
-
-  ) {
+  if constexpr (isNewStyleFinder<FinderType>()) {
     TRI_ASSERT(false);
     return nullptr;
   } else {
@@ -289,16 +294,7 @@ auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
     -> void {
   transaction::BuilderLeaser tmp{&_trx};
   tmp->clear();
-  if constexpr (
-      std::is_same_v<
-          FinderType,
-          KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
-                                     SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType,
-                     KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>>) {
+  if constexpr (isNewStyleFinder<FinderType>()) {
     if (_finder.getNextPath(*tmp.builder())) {
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
@@ -335,17 +331,7 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
           std::string idString;
           // TODO:  calculate expression once e.g. header constexpr bool and
           // check then here
-          if constexpr (
-              std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<
-                                             SingleServerProviderStep>>> ||
-              std::is_same_v<FinderType,
-                             TracedKPathEnumerator<SingleServerProvider<
-                                 SingleServerProviderStep>>> ||
-              std::is_same_v<
-                  FinderType,
-                  KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-              std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider<
-                                             ClusterProviderStep>>>) {
+          if constexpr (isNewStyleFinder<FinderType>()) {
             idString = _trx.extractIdString(in.slice());
           } else {
             idString = _finder.options().trx()->extractIdString(in.slice());
