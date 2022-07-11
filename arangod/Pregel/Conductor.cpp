@@ -266,7 +266,6 @@ bool Conductor::_startGlobalStep() {
     } else {  // just stop the timer
       updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                                 : ExecutionState::DONE);
-      _timing.total.finish();
       LOG_PREGEL("9e82c", INFO)
           << "Done, execution took: " << _timing.total.elapsedSeconds().count()
           << " s";
@@ -282,7 +281,6 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_reports = &_reports;
     if (!_masterContext->preGlobalSuperstepWithResult()) {
       updateState(ExecutionState::FATAL_ERROR);
-      _timing.total.finish();
       return false;
     }
     _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
