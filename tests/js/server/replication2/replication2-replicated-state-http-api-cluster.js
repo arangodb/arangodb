@@ -118,7 +118,7 @@ const replicatedStateSuite = function (stateType) {
       for (const server of followers) {
         const status = sh.getLocalStatus(server, database, stateId);
         assertEqual(status.role, "follower");
-        assertEqual(status.manager.managerState, "NothingToApply");
+        assertEqual(status.manager.managerState, "WaitForNewEntries");
         assertEqual(status.snapshot.status, "Completed");
         assertTrue(status.snapshot.timestamp !== undefined);
         assertEqual(status.generation, 1);
