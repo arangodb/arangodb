@@ -23,6 +23,8 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+#include "Transaction/Options.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
 #include <memory>
@@ -33,6 +35,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class AgencyCache;
 class MaintenanceFeature;
+class TransactionState;
 
 template<typename T>
 class ResultT;
@@ -96,6 +99,37 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
 
  private:
   MaintenanceFeature& _maintenanceFeature;
+};
+
+class DocumentStateTransaction {
+ public:
+  DocumentStateTransaction(TRI_vocbase_t* vocbase, TransactionId tid);
+  auto getState() -> std::shared_ptr<TransactionState>;
+
+ private:
+  transaction::Options _options;
+  std::shared_ptr<TransactionState> _state;
+};
+
+struct IDocumentStateTransactionHandler {
+  virtual ~IDocumentStateTransactionHandler() = default;
+  virtual auto ensureTransaction(TransactionId tid)
+      -> std::shared_ptr<DocumentStateTransaction>;
+  virtual void execute(std::shared_ptr<DocumentStateTransaction>);
+};
+
+class DocumentStateTransactionHandler
+    : public IDocumentStateTransactionHandler {
+ public:
+  explicit DocumentStateTransactionHandler(TRI_vocbase_t* vocbase);
+  auto ensureTransaction(TransactionId tid)
+      -> std::shared_ptr<DocumentStateTransaction> override;
+  void execute(std::shared_ptr<DocumentStateTransaction>) override;
+
+ private:
+  TRI_vocbase_t* _vocbase;
+  std::unordered_map<TransactionId, std::shared_ptr<DocumentStateTransaction>>
+      _transactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

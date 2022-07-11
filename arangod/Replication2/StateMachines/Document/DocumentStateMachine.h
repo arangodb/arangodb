@@ -63,10 +63,12 @@ struct DocumentState {
 
 struct DocumentCoreParameters {
   std::string collectionId;
+  std::string databaseName;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
-    return f.object(p).fields(f.field("collectionId", p.collectionId));
+    return f.object(p).fields(f.field("collectionId", p.collectionId),
+                              f.field("databaseName", p.databaseName));
   }
 
   auto toSharedSlice() -> velocypack::SharedSlice;

@@ -23,7 +23,9 @@
 
 #pragma once
 
+#include "DocumentCore.h"
 #include "DocumentStateMachine.h"
+#include "Transaction/Context.h"
 
 namespace arangodb::replication2::replicated_state::document {
 struct DocumentFollowerState
@@ -38,6 +40,15 @@ struct DocumentFollowerState
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
 
-  std::unique_ptr<DocumentCore> _core;
+ private:
+  struct GuardedData {
+    explicit GuardedData(std::unique_ptr<DocumentCore> core)
+        : core(std::move(core)){};
+    [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
+
+    std::unique_ptr<DocumentCore> core;
+  };
+
+  Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 };
 }  // namespace arangodb::replication2::replicated_state::document

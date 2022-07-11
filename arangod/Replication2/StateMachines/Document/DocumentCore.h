@@ -42,6 +42,8 @@ struct DocumentCore {
   LoggerContext const loggerContext;
 
   auto getShardId() -> std::string_view;
+  auto ensureTransaction(TransactionId tid)
+      -> std::shared_ptr<DocumentStateTransaction>;
 
  private:
   GlobalLogIdentifier _gid;
@@ -49,5 +51,6 @@ struct DocumentCore {
   ShardID _shardId;
   std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  std::shared_ptr<IDocumentStateTransactionHandler> _transactionHandler;
 };
 }  // namespace arangodb::replication2::replicated_state::document

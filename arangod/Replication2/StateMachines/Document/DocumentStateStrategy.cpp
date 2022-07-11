@@ -36,6 +36,9 @@
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
+#include "Transaction/ManagerFeature.h"
+#include "Transaction/Options.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -134,3 +137,35 @@ auto DocumentStateShardHandler::createLocalShard(
 
   return ResultT<std::string>::success(std::move(shardId));
 }
+
+DocumentStateTransaction::DocumentStateTransaction(TRI_vocbase_t* vocbase,
+                                                   TransactionId tid)
+    : _options() {
+  _state =
+      std::make_shared<SimpleRocksDBTransactionState>(*vocbase, tid, _options);
+  transaction::Hints hints;
+  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
+  auto result = _state->beginTransaction(hints);
+  TRI_ASSERT(result.ok());
+}
+
+auto DocumentStateTransaction::getState() -> std::shared_ptr<TransactionState> {
+  return _state;
+}
+
+DocumentStateTransactionHandler::DocumentStateTransactionHandler(
+    TRI_vocbase_t* vocbase)
+    : _vocbase(vocbase) {}
+
+auto DocumentStateTransactionHandler::ensureTransaction(TransactionId tid)
+    -> std::shared_ptr<DocumentStateTransaction> {
+  if (auto it = _transactions.find(tid); it != _transactions.end()) {
+    return it->second;
+  }
+  auto state = std::make_shared<DocumentStateTransaction>(_vocbase, tid);
+  _transactions.emplace(tid, state);
+  return state;
+}
+
+void DocumentStateTransactionHandlder::execute(
+    std::shared_ptr<DocumentStateTransaction>) {}

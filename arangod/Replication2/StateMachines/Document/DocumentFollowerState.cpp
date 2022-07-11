@@ -24,17 +24,24 @@
 #include "DocumentCore.h"
 #include "DocumentFollowerState.h"
 #include "DocumentLeaderState.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 
 #include <Futures/Future.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
 DocumentFollowerState::DocumentFollowerState(std::unique_ptr<DocumentCore> core)
-    : _core(std::move(core)){};
+    : _guardedData(std::move(core)){};
 
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
-  return std::move(_core);
+  return _guardedData.doUnderLock([](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+    }
+    return std::move(data.core);
+  });
 }
 
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
@@ -45,7 +52,28 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
+  while (auto entry = ptr->next()) {
+    auto doc = entry->second;
+    auto methods = _guardedData.doUnderLock([tid = doc.trx](auto& data) {
+      if (data.didResign()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+      }
+      auto docTransaction = data.core->ensureTransaction(tid);
+      auto ctx = std::make_shared<transaction::ManagedContext>(
+          tid, docTransaction->getState(), false, false);
+      return std::make_unique<transaction::Methods>(std::move(ctx));
+    });
+
+    Result res = methods->begin();
+    TRI_ASSERT(res.ok());
+
+    if (doc.operation == OperationType::kInsert) {
+      // methods.
+      auto opOptions = arangodb::Options();
+      methods->insertAsync(doc.shardId, doc.data, opOptions).thenValue([=, this](OperationResult&& opres) {
+      }
+    }
   return {TRI_ERROR_NO_ERROR};
-};
+}
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

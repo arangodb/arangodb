@@ -44,6 +44,8 @@ void DocumentStateMachineFeature::start() {
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
   auto& clusterFeature = s.getFeature<ClusterFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
+  auto& databaseFeature = s.getFeature<DatabaseFeature>();
+
 
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
