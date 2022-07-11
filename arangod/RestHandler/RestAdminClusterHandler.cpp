@@ -2170,12 +2170,39 @@ auto inspect(Inspector& f, RebalanceOptions& x) {
 
 }  // namespace
 
+RestAdminClusterHandler::MoveShardCount
+RestAdminClusterHandler::countAllMoveShardJobs() {
+  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+
+  auto const countMoveShardsInSlice = [](VPackSlice slice) -> std::size_t {
+    std::size_t count = 0;
+    for (auto const& [key, job] : VPackObjectIterator(slice)) {
+      if (job.get("type").isEqualString("moveShard")) {
+        count += 1;
+      }
+    }
+
+    return count;
+  };
+
+  auto const countMoveShardsAt = [&](std::string const& path) -> std::size_t {
+    auto [query, index] = cache.get(path);
+    return countMoveShardsInSlice(query->slice());
+  };
+  return MoveShardCount{
+      .todo = countMoveShardsAt("Target/ToDo"),
+      .pending = countMoveShardsAt("Target/Pending"),
+  };
+}
+
 RestStatus RestAdminClusterHandler::handleRebalanceGet() {
   if (request()->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expect GET /_admin/cluster/rebalance");
     return RestStatus::DONE;
   }
+
+  auto [todo, pending] = countAllMoveShardJobs();
 
   VPackBuilder builder;
   auto p = collectRebalanceInformation({});
@@ -2187,6 +2214,8 @@ RestStatus RestAdminClusterHandler::handleRebalanceGet() {
     velocypack::serialize(builder, leader);
     builder.add(VPackValue("shards"));
     velocypack::serialize(builder, shard);
+    builder.add("pendingMoveShards", VPackValue(pending));
+    builder.add("todoMoveShards", VPackValue(todo));
   }
 
   generateOk(rest::ResponseCode::OK, builder.slice());

@@ -200,6 +200,13 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   cluster::rebalance::AutoRebalanceProblem collectRebalanceInformation(
       std::vector<std::string> const& excludedDatabases);
+
+  struct MoveShardCount {
+    std::size_t todo;
+    std::size_t pending;
+  };
+
+  MoveShardCount countAllMoveShardJobs();
 };
 
 template<class Inspector>
