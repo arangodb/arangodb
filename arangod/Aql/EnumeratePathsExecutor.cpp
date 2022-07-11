@@ -296,27 +296,19 @@ auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
     -> void {
   transaction::BuilderLeaser tmp{&_trx};
   tmp->clear();
-  if constexpr (isNewStyleFinder<FinderType>()) {
-    if (_finder.getNextPath(*tmp.builder())) {
-      AqlValue path{tmp->slice()};
-      AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-      output.advanceRow();
-    }
-  } else if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
-    if (_finder.getNextPathAql(*tmp.builder())) {
-      AqlValue path{tmp->slice()};
-      AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-      output.advanceRow();
-    }
+
+  bool nextPath;
+  if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
+    nextPath = _finder.getNextPathAql(*tmp.builder());
   } else {
-    if (_finder.getNextPath(*tmp.builder())) {
-      AqlValue path{tmp->slice()};
-      AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-      output.advanceRow();
-    }
+    nextPath = _finder.getNextPath(*tmp.builder());
+  }
+
+  if (nextPath) {
+    AqlValue path{tmp->slice()};
+    AqlValueGuard guard{path, true};
+    output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+    output.advanceRow();
   }
 }
 
