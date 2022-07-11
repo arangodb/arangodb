@@ -102,7 +102,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
   TRI_ASSERT(_serverToLockTypeToShard.empty());
   TRI_ASSERT(_serverToCollectionToShard.empty());
   switch (baseNode->getType()) {
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::TRAVERSAL: {
       // Add GraphNode

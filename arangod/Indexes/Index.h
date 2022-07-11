@@ -242,6 +242,10 @@ class Index {
   /// coveringIndexPosition value in it.
   virtual bool covers(arangodb::aql::Projections& projections) const;
 
+  virtual size_t numFieldsToConsiderInIndexSelection() const noexcept {
+    return _fields.size();
+  }
+
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
 

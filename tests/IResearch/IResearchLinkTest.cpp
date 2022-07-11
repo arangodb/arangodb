@@ -1051,7 +1051,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2)).ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2), false).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -1098,7 +1098,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1204,7 +1204,7 @@ TEST_F(IResearchLinkTest,
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1317,7 +1317,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1428,7 +1428,7 @@ TEST_F(IResearchLinkTest,
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -1552,7 +1552,7 @@ TEST_F(
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
@@ -2344,7 +2344,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin), false).ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());

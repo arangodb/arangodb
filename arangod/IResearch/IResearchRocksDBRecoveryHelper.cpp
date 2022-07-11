@@ -206,7 +206,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
   for (std::shared_ptr<arangodb::Index> const& link : links) {
     IResearchLink& impl = basics::downCast<IResearchRocksDBLink>(*link);
-    impl.remove(trx, docId);
+    impl.remove(trx, docId, false);
   }
 
   res = trx.commit();

@@ -53,7 +53,7 @@ function optimizerRuleInvertedIndexTestSuite() {
                        fields: [{name:'data_field'},
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}],
-                       primarySort:[{field: "count", direction:"desc"}]});
+                        primarySort:{fields:[{field: "count", direction:"desc"}]}});
       let data = [];
       for (let i = 0; i < docs; i++) {
         if (i % 10 === 0) {

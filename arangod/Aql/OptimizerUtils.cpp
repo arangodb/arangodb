@@ -420,9 +420,10 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     totalCost *= projectionsFactor;
 
     LOG_TOPIC("7278d", TRACE, Logger::FIXME)
-        << "looked at candidate index: " << idx.get()
+        << "looked at candidate index: " << idx->name()
         << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse()
-        << ", fields: " << idx->fields().size()
+        << ", fields: " << idx->fields()
+        << ", num fields: " << idx->fields().size()
         << ", hasSelectivityEstimate: " << idx->hasSelectivityEstimate()
         << ", selectivityEstimate: "
         << (idx->hasSelectivityEstimate()
@@ -582,6 +583,90 @@ void captureFCallArgumentExpressions(
   }
 }
 
+void captureArrayFilterArgumentExpressions(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    AstNode const* filter, std::vector<size_t> selectedMembersFromRoot,
+    bool evaluateFCalls, Variable const* indexVariable,
+    NonConstExpressionContainer& result) {
+  for (size_t i = 0, size = filter->numMembers(); i != size; ++i) {
+    auto member = filter->getMemberUnchecked(i);
+    if (!member->isConstant()) {
+      auto path = selectedMembersFromRoot;
+      path.emplace_back(i);
+      if (member->type == NODE_TYPE_RANGE) {
+        // intentionally copy path here as we will have many members
+        auto path1 = path;
+        path1.emplace_back(0);
+        // We will capture only Min and Max members as we do not want
+        // entire array to be evaluated (like if someone writes
+        // query 1..1234567890)
+        captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(0),
+                                  path1, result);
+        auto path2 = path;
+        path2.emplace_back(1);
+        captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(1),
+                                  path2, result);
+      } else {
+        auto localPath = path;
+        auto preVisitor = [&localPath, ast, &varInfo, &result, indexVariable,
+                           evaluateFCalls](AstNode const* node) -> bool {
+          auto sg = ScopeGuard([&localPath]() noexcept { ++localPath.back(); });
+          if (node->isConstant()) {
+            return false;
+          }
+          auto var = node->getAttributeAccessForVariable(true);
+          if (var) {
+            auto acessedVar = static_cast<Variable const*>(var->getData());
+            TRI_ASSERT(acessedVar);
+            if (acessedVar->needsRegister() && acessedVar != indexVariable) {
+              captureNonConstExpression(
+                  ast, varInfo, const_cast<AstNode*>(node), localPath, result);
+            }
+            // never dive into attribute access
+            return false;
+          } else if (node->type == NODE_TYPE_FCALL) {
+            if (!evaluateFCalls) {
+              // FIXME(Dronplane): we should never execute
+              // index-backed functions. But how to track
+              // it? -> execute only functions that does
+              // not touch index variable and local temp
+              // variables!
+              captureFCallArgumentExpressions(ast, varInfo, node, localPath,
+                                              indexVariable, result);
+            } else {
+              captureNonConstExpression(
+                  ast, varInfo, const_cast<AstNode*>(node), localPath, result);
+            }
+            return false;
+          } else if (node->type == NODE_TYPE_REFERENCE) {
+            auto acessedVar = static_cast<Variable const*>(node->getData());
+            TRI_ASSERT(acessedVar);
+            if (acessedVar->needsRegister() && acessedVar != indexVariable) {
+              captureNonConstExpression(
+                  ast, varInfo, const_cast<AstNode*>(node), localPath, result);
+            }
+            return false;
+          }
+          localPath.push_back(0);
+          // dive into hierarchy. postVisitor will do the cleanup
+          sg.cancel();
+          return true;
+        };
+
+        auto postVisitor = [&localPath](AstNode const*) -> void {
+          ++localPath.back();
+        };
+
+        auto visitor = [&localPath](AstNode* node) -> AstNode* {
+          localPath.pop_back();
+          return node;
+        };
+        Ast::traverseAndModify(member, preVisitor, visitor, postVisitor);
+      }
+    }
+  }
+}
+
 AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
@@ -619,6 +704,18 @@ void extractNonConstPartsOfAndPart(
     if (leaf->type == NODE_TYPE_FCALL) {
       captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path),
                                       indexVariable, result);
+      continue;
+    } else if (leaf->type == NODE_TYPE_EXPANSION && leaf->numMembers() > 2 &&
+               leaf->isAttributeAccessForVariable(indexVariable, false)) {
+      // we need to gather all expressions from nested filter
+      auto filter = leaf->getMemberUnchecked(2);
+      TRI_ASSERT(filter->type == NODE_TYPE_ARRAY_FILTER);
+      if (ADB_LIKELY(filter->type == NODE_TYPE_ARRAY_FILTER)) {
+        path.emplace_back(2);
+        captureArrayFilterArgumentExpressions(ast, varInfo, filter,
+                                              std::move(path), evaluateFCalls,
+                                              indexVariable, result);
+      }
       continue;
     } else if (leaf->numMembers() != 2) {
       // The Index cannot solve non-binary operators.
