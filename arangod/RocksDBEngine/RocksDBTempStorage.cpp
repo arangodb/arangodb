@@ -51,9 +51,9 @@ using namespace arangodb;
 namespace {
 
 // TODO: rename it
-class TwoPartComparator : public rocksdb::Comparator {
+class SortingEntriesComparatorr : public rocksdb::Comparator {
  public:
-  TwoPartComparator() = default;
+  SortingEntriesComparatorr() = default;
   int Compare(rocksdb::Slice const& lhs,
               rocksdb::Slice const& rhs) const override {
     int diff = memcmp(lhs.data(), rhs.data(), sizeof(uint64_t));
@@ -100,7 +100,7 @@ class TwoPartComparator : public rocksdb::Comparator {
   }
 
   // Ignore the following methods for now:
-  const char* Name() const override { return "TwoPartComparator"; }
+  const char* Name() const override { return "SortingEntriesComparatorr"; }
   void FindShortestSeparator(std::string*,
                              rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}
@@ -116,7 +116,7 @@ RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
       _allowHWAcceleration(allowHWAcceleration),
       _nextId(0),
       _db(nullptr),
-      _comparator(std::make_unique<::TwoPartComparator>()) {}
+      _comparator(std::make_unique<::SortingEntriesComparatorr>()) {}
 
 RocksDBTempStorage::~RocksDBTempStorage() = default;
 
