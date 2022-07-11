@@ -78,13 +78,10 @@ namespace arangodb::aql {
 
 SortedRowsStorageBackendMemory::SortedRowsStorageBackendMemory(
     SortExecutorInfos& infos)
-    : _infos(infos),
-      _memoryUsageForRowIndexes(0),
-      _returnNext(0),
-      _sealed(false) {}
+    : _infos(infos), _returnNext(0), _sealed(false) {}
 
 SortedRowsStorageBackendMemory::~SortedRowsStorageBackendMemory() {
-  _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
+  _infos.getResourceMonitor().decreaseMemoryUsage(currentMemoryUsage());
 }
 
 ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
@@ -98,11 +95,21 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
     _inputBlocks.emplace_back(inputBlock);
   }
   size_t numDataRows = inputRange.countDataRows();
-  size_t memoryUsageForRowIndexes =
-      numDataRows * sizeof(AqlItemMatrix::RowIndex);
 
-  ResourceUsageScope guard(_infos.getResourceMonitor(),
-                           memoryUsageForRowIndexes);
+  ResourceUsageScope guard(_infos.getResourceMonitor());
+
+  if (_rowIndexes.capacity() < _rowIndexes.size() + numDataRows) {
+    size_t newCapacity = std::max(_rowIndexes.capacity() * 2, numDataRows);
+    while (newCapacity < _rowIndexes.size() + numDataRows) {
+      newCapacity *= 2;
+    }
+
+    // may throw
+    guard.increase((newCapacity - _rowIndexes.capacity()) *
+                   sizeof(AqlItemMatrix::RowIndex));
+
+    _rowIndexes.reserve(newCapacity);
+  }
 
   _rowIndexes.reserve(_rowIndexes.size() + numDataRows);
 
@@ -119,7 +126,6 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
   }
 
   guard.steal();
-  _memoryUsageForRowIndexes += memoryUsageForRowIndexes;
 
   return state;
 }
@@ -179,10 +185,10 @@ void SortedRowsStorageBackendMemory::spillOver(
   }
 
   // reset our own state, so we can give back memory
-  _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
-  _memoryUsageForRowIndexes = 0;
+  _infos.getResourceMonitor().decreaseMemoryUsage(currentMemoryUsage());
   _inputBlocks = {};
   _rowIndexes = {};
+  TRI_ASSERT(currentMemoryUsage() == 0);
 }
 
 void SortedRowsStorageBackendMemory::doSorting() {
@@ -198,6 +204,10 @@ void SortedRowsStorageBackendMemory::doSorting() {
   } else {
     std::sort(_rowIndexes.begin(), _rowIndexes.end(), ourLessThan);
   }
+}
+
+size_t SortedRowsStorageBackendMemory::currentMemoryUsage() const noexcept {
+  return _rowIndexes.capacity() * sizeof(AqlItemMatrix::RowIndex);
 }
 
 }  // namespace arangodb::aql
