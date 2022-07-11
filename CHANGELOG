@@ -1,5 +1,6 @@
 devel
 -----
+
 * Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
 
 * Updated arangosync to v2.11.0.
@@ -10,10 +11,10 @@ devel
 * Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
   explain outputs for AQL queries.
 
-* APM-84: Whenever the amount of entries for SORT or COLLECT AGGREGATE in 
-  queries reach a specific threshold in memory usage, the entries are stored
-  in disck temporarily using rocksdb as a means to it, because then also the
-  entries can be stored when inserted on disk using a customized comparator.
+* APM-84: Whenever the amount of entries for an AQL query SORT statement
+  reaches a specific threshold in memory usage, the entries are stored
+  on disk temporarily using rocksdb to constrain the RAM usage of running
+  queries.
 
 * Pregel SSSP now supports `resultField` as well as `_resultField` as 
   parameter name to specify the field into which results are stored.
