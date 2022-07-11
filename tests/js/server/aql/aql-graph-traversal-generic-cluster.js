@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global: assertTrue, instanceManager */
+/*global assertTrue, instanceManager */
 
 "use strict";
 
@@ -109,7 +109,7 @@ function checkMetricsSuite() {
       assertTrue(afterQueries - beforeQueries < 10);
       assertTrue(afterTrxs - beforeTrxs < 10);
     }
-  }
+  };
 }
 
 // We want to verify that this testsuite runs without dirty reads, therefore
