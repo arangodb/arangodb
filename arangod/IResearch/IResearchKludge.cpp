@@ -40,6 +40,17 @@ inline void normalizeExpansion(std::string& name) {
   }
 }
 
+constexpr char kTypeDelimiter = '\0';
+constexpr char kAnalyzerDelimiter = '\1';
+#ifdef USE_ENTERPRISE
+constexpr char kNestedDelimiter = '\2';
+#endif
+
+std::string_view constexpr kNullSuffix{"\0_n", 3};
+std::string_view constexpr kBoolSuffix{"\0_b", 3};
+std::string_view constexpr kNumericSuffix{"\0_d", 3};
+std::string_view constexpr kStirngSuffix{"\0_s", 3};
+
 }  // namespace
 
 namespace arangodb {
@@ -64,46 +75,45 @@ void syncIndexOnCreate(Index& index) {
 
 namespace arangodb::iresearch::kludge {
 
-const char TYPE_DELIMITER = '\0';
-const char ANALYZER_DELIMITER = '\1';
-
-std::string_view constexpr NULL_SUFFIX("\0_n", 3);
-std::string_view constexpr BOOL_SUFFIX("\0_b", 3);
-std::string_view constexpr NUMERIC_SUFFIX("\0_d", 3);
-std::string_view constexpr STRING_SUFFIX("\0_s", 3);
-
-void mangleType(std::string& name) { name += TYPE_DELIMITER; }
+void mangleType(std::string& name) { name += kTypeDelimiter; }
 
 void mangleAnalyzer(std::string& name) {
   normalizeExpansion(name);
-  name += ANALYZER_DELIMITER;
+  name += kAnalyzerDelimiter;
 }
 
 void mangleNull(std::string& name) {
   normalizeExpansion(name);
-  name.append(NULL_SUFFIX);
+  name.append(kNullSuffix);
 }
 
 void mangleBool(std::string& name) {
   normalizeExpansion(name);
-  name.append(BOOL_SUFFIX);
+  name.append(kBoolSuffix);
 }
 
 void mangleNumeric(std::string& name) {
   normalizeExpansion(name);
-  name.append(NUMERIC_SUFFIX);
+  name.append(kNumericSuffix);
 }
 
 void mangleString(std::string& name) {
   normalizeExpansion(name);
-  name.append(STRING_SUFFIX);
+  name.append(kStirngSuffix);
 }
+
+#ifdef USE_ENTERPRISE
+void mangleNested(std::string& name) {
+  normalizeExpansion(name);
+  name += kNestedDelimiter;
+}
+#endif
 
 void mangleField(std::string& name, bool isSearchFilter,
                  iresearch::FieldMeta::Analyzer const& analyzer) {
   normalizeExpansion(name);
   if (isSearchFilter || analyzer._pool->requireMangled()) {
-    name += ANALYZER_DELIMITER;
+    name += kAnalyzerDelimiter;
     name += analyzer._shortName;
   } else {
     mangleString(name);
