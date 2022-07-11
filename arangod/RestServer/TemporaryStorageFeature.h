@@ -84,14 +84,18 @@ class TemporaryStorageFeature : public ArangodFeature {
  private:
   void cleanupDirectory();
 
+  // parameters that can be configured by the user
   std::string _basePath;
-  std::string const _tempFilesPath;
+  bool _useEncryption;
+  bool _allowHWAcceleration;
   std::uint64_t _maxCapacity;
 
+  // runtime parameters
   std::atomic<std::uint64_t> _currentUsage;
 
   // populated only if !_path.empty()
   std::unique_ptr<RocksDBTempStorage> _backend;
+  bool _cleanedUpDirectory;
 };
 
 }  // namespace arangodb

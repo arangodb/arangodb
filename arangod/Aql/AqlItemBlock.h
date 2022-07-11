@@ -72,8 +72,6 @@ class AqlItemBlock {
   AqlItemBlock(AqlItemBlock const&) = delete;
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
-  size_t getRefCount() const noexcept;
-
   /// @brief create the block
   AqlItemBlock(AqlItemBlockManager&, size_t numRows,
                RegisterCount numRegisters);
@@ -344,6 +342,7 @@ class AqlItemBlock {
 
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
+  size_t getRefCount() const noexcept;
   void incrRefCount() const noexcept;
   size_t decrRefCount() const noexcept;
 

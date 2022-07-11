@@ -25,16 +25,24 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBSortedRowsStorageContext.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/EncryptionProvider.h"
+#include "Enterprise/RocksDBEngine/RocksDBEncryptionUtilsEE.h"
+#endif
+
 #include <absl/strings/str_cat.h>
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/db.h>
+#include <rocksdb/env.h>
+#include <rocksdb/env_encryption.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 
@@ -100,8 +108,12 @@ class TwoPartComparator : public rocksdb::Comparator {
 
 }  // namespace
 
-RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath)
+RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
+                                       bool useEncryption,
+                                       bool allowHWAcceleration)
     : _basePath(basePath),
+      _useEncryption(useEncryption),
+      _allowHWAcceleration(allowHWAcceleration),
       _nextId(0),
       _db(nullptr),
       _comparator(std::make_unique<::TwoPartComparator>()) {}
@@ -132,8 +144,24 @@ Result RocksDBTempStorage::init() {
   options.env = rocksdb::Env::Default();
 
 #ifdef USE_ENTERPRISE
-// TODO: fix Env override for encryption!
-// rocksDBEngine.configureEnterpriseRocksDBOptions(_options, true);
+  if (_useEncryption) {
+    // set up Env for encryption
+    try {
+      // Setup block cipher
+      std::string encryptionKey =
+          enterprise::EncryptionUtils::generateRandomKey();
+
+      _encryptionProvider = std::make_shared<enterprise::EncryptionProvider>(
+          encryptionKey, _allowHWAcceleration);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("91e3c", FATAL, arangodb::Logger::STARTUP)
+          << "error while creating encryption cipher: " << ex.what();
+      FATAL_ERROR_EXIT();
+    }
+
+    _encryptedEnv.reset(NewEncryptedEnv(options.env, _encryptionProvider));
+    options.env = _encryptedEnv.get();
+  }
 #endif
 
   std::vector<rocksdb::ColumnFamilyDescriptor> columnFamilies;

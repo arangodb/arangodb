@@ -30,12 +30,12 @@
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBTempStorage.h"
-#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -58,16 +58,23 @@ std::string normalizePath(std::string const& currentDir,
 }  // namespace
 
 TemporaryStorageFeature::TemporaryStorageFeature(Server& server)
-    : ArangodFeature{server, *this}, _currentUsage(0) {
+    : ArangodFeature{server, *this},
+      _useEncryption(false),
+      _allowHWAcceleration(true),
+      _currentUsage(0),
+      _cleanedUpDirectory(false) {
   startsAfter<EngineSelectorFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<RocksDBEngine>();
 }
 
 TemporaryStorageFeature::~TemporaryStorageFeature() {
-  try {
-    cleanupDirectory();
-  } catch (...) {
+  if (canBeUsed() && !_cleanedUpDirectory) {
+    try {
+      cleanupDirectory();
+    } catch (...) {
+    }
+    _cleanedUpDirectory = true;
   }
 }
 
@@ -81,11 +88,33 @@ void TemporaryStorageFeature::collectOptions(
                      "maximum capacity (in bytes) to use for ephemeral, "
                      "intermediate results (0 = unlimited)",
                      new UInt64Parameter(&_maxCapacity));
+
+#ifdef USE_ENTERPRISE
+  options
+      ->addOption("--temp.intermediate-results-encryption",
+                  "encrypt ephemeral, intermediate results on disk",
+                  new BooleanParameter(&_useEncryption),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption(
+          "--temp.-intermediate-results-encryption-hardware-acceleration",
+          "use Intel intrinsics-based encryption, requiring a CPU with "
+          "the AES-NI instruction set. "
+          "If turned off, then OpenSSL is used, which may use "
+          "hardware-accelarated encryption too.",
+          new BooleanParameter(&_allowHWAcceleration),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(31000);
+#endif
 }
 
 void TemporaryStorageFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_basePath.empty()) {
+  if (!canBeUsed()) {
     // feature not used. this is fine (TM)
     return;
   }
@@ -120,6 +149,7 @@ void TemporaryStorageFeature::prepare() {
   }
 
   if (basics::FileUtils::isDirectory(_basePath)) {
+    // intentionally do not set _cleanedUpDirectory flag here
     cleanupDirectory();
   } else {
     std::string systemErrorStr;
@@ -142,7 +172,8 @@ void TemporaryStorageFeature::start() {
     return;
   }
 
-  auto backend = std::make_unique<RocksDBTempStorage>(_basePath);
+  auto backend = std::make_unique<RocksDBTempStorage>(_basePath, _useEncryption,
+                                                      _allowHWAcceleration);
 
   Result res = backend->init();
   if (res.fail()) {
@@ -165,7 +196,14 @@ void TemporaryStorageFeature::stop() {
   _backend.reset();
 }
 
-void TemporaryStorageFeature::unprepare() { cleanupDirectory(); }
+void TemporaryStorageFeature::unprepare() {
+  if (canBeUsed() && !_cleanedUpDirectory) {
+    // clean up the directory with temporary files
+    cleanupDirectory();
+    // but only once
+    _cleanedUpDirectory = true;
+  }
+}
 
 bool TemporaryStorageFeature::canBeUsed() const noexcept {
   return !_basePath.empty();
@@ -211,10 +249,10 @@ void TemporaryStorageFeature::cleanupDirectory() {
   LOG_TOPIC("62215", INFO, Logger::FIXME)
       << "cleaning up directory for intermediate results '" << _basePath << "'";
 
-  // clean up the entire temporary directory
-  // TODO: also clean subdirectories inside
-  for (auto const& fileName : TRI_FullTreeDirectory(_basePath.c_str())) {
-    TRI_UnlinkFile(
-        basics::FileUtils::buildFilename(_basePath, fileName).data());
+  auto res = TRI_RemoveDirectory(_basePath.c_str());
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("97e4c", WARN, Logger::FIXME)
+        << "error during removal of directory for intermediate results ('"
+        << _basePath << "'): " << TRI_errno_string(res);
   }
 }

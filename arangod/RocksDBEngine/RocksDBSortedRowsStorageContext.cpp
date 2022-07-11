@@ -53,7 +53,7 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
   _upperBoundSlice = _upperBoundPrefix;
 
   // TODO: figure out if we need to set these options
-  rocksdb::Options options;
+  rocksdb::Options options = _db->GetOptions();
   _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path);
 }
 

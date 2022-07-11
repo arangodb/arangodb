@@ -34,14 +34,22 @@ namespace rocksdb {
 class ColumnFamilyHandle;
 class Comparator;
 class DB;
+class Env;
 }  // namespace rocksdb
 
 namespace arangodb {
 class RocksDBSortedRowsStorageContext;
 
+#ifdef USE_ENTERPRISE
+namespace enterprise {
+class EncryptionProvider;
+}
+#endif
+
 class RocksDBTempStorage {
  public:
-  explicit RocksDBTempStorage(std::string const& basePath);
+  explicit RocksDBTempStorage(std::string const& basePath, bool useEncryption,
+                              bool allowHWAcceleration);
   ~RocksDBTempStorage();
 
   Result init();
@@ -55,6 +63,9 @@ class RocksDBTempStorage {
   uint64_t nextId() noexcept;
 
   std::string const _basePath;
+  bool const _useEncryption;
+  bool const _allowHWAcceleration;
+
   std::string _tempFilesPath;
 
   std::atomic<uint64_t> _nextId;
@@ -62,6 +73,13 @@ class RocksDBTempStorage {
   rocksdb::DB* _db;
   std::unique_ptr<rocksdb::Comparator> _comparator;
   std::vector<rocksdb::ColumnFamilyHandle*> _cfHandles;
+
+#ifdef USE_ENTERPRISE
+  // ptr that takes ownership for the encrypted env
+  // we use this to prevent ASAN from reporting memleaks at shutdown
+  std::unique_ptr<rocksdb::Env> _encryptedEnv;
+  std::shared_ptr<enterprise::EncryptionProvider> _encryptionProvider;
+#endif
 };
 
 }  // namespace arangodb

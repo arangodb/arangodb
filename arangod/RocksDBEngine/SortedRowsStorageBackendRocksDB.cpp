@@ -132,7 +132,6 @@ void SortedRowsStorageBackendRocksDB::produceOutputRow(
   velocypack::Slice slice1(reinterpret_cast<uint8_t const*>(p1));
 
   auto curBlock = _infos.itemBlockManager().requestAndInitBlock(slice1);
-  TRI_ASSERT(curBlock->getRefCount() == 1);
   {
     aql::InputAqlItemRow inRow(curBlock, 0);
     output.copyRow(inRow);
