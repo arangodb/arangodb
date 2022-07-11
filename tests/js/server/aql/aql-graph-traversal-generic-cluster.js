@@ -1,4 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
+/*global assertTrue, instanceManager */
 
 "use strict";
 
@@ -30,6 +31,9 @@ const {testsByGraph, metaTests} = require('@arangodb/testutils/aql-graph-travers
 const jsunity = require('jsunity');
 const console = require('console');
 const _ = require("lodash");
+const internal = require("internal");
+
+let getMetric = require('@arangodb/test-helper').getMetric;
 
 function graphTraversalGenericGeneralGraphClusterSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
@@ -89,6 +93,32 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
   return suite;
 }
 
+let beforeQueries;
+let beforeTrxs;
+
+function checkMetricsSuite() {
+  return {
+    testCheckMetrics : function() {
+      internal.wait(0.5);  // Wait until metrics updated
+      let afterQueries = getMetric(instanceManager.url, "arangodb_dirty_read_queries_total");
+      let afterTrxs = getMetric(instanceManager.url, "arangodb_dirty_read_transactions_total");
+      // The following checks that indeed dirty reads have been happening. The
+      // tests execute well over a thousand queries, so we should be on the safe
+      // side with the threshold 10, even if some tests might be removed in
+      // the future.
+      assertTrue(afterQueries - beforeQueries < 10);
+      assertTrue(afterTrxs - beforeTrxs < 10);
+    }
+  };
+}
+
+// We want to verify that this testsuite runs without dirty reads, therefore
+// we check some metrics before and after:
+beforeQueries = getMetric(instanceManager.url, "arangodb_dirty_read_queries_total");
+beforeTrxs = getMetric(instanceManager.url, "arangodb_dirty_read_transactions_total");
+
 jsunity.run(graphTraversalGenericGeneralGraphClusterSuite);
+
+jsunity.run(checkMetricsSuite);
 
 return jsunity.done();
