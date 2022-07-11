@@ -29,8 +29,7 @@
 
 using namespace arangodb::pregel;
 
-struct DurationTest : ::testing::Test {};
-TEST_F(DurationTest, test_duration) {
+TEST(DurationTest, test_duration) {
   auto d1 = Duration{};
 
   ASSERT_FALSE(d1.hasStarted());
