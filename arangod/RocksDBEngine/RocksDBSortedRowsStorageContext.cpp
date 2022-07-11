@@ -110,6 +110,16 @@ RocksDBSortedRowsStorageContext::getIterator() {
   rocksdb::ReadOptions readOptions;
   readOptions.iterate_upper_bound = &_upperBoundSlice;
   readOptions.prefix_same_as_start = true;
+  // this is ephemeral data, we write it once and then may iterate at most
+  // once over it
+  readOptions.verify_checksums = false;
+  // as we are reading the data only once and then will get rid of it, there
+  // is no need to populate the block cache with it
+  readOptions.fill_cache = false;
+  // all data that we have wiped we can safely ignore
+  readOptions.ignore_range_deletions = true;
+  // try to use readhead
+  readOptions.adaptive_readahead = true;
 
   std::unique_ptr<rocksdb::Iterator> iterator(
       _db->NewIterator(readOptions, _cf));
@@ -137,8 +147,13 @@ void RocksDBSortedRowsStorageContext::cleanup() {
                                                   &_upperBoundSlice, false);
 
   if (s.ok()) {
-    s = _db->DeleteRange(rocksdb::WriteOptions(), _cf, _lowerBoundSlice,
-                         _upperBoundSlice);
+    rocksdb::WriteOptions writeOptions;
+    // this is just temporary data, which will be removed at restart.
+    // no need to sync data to disk or to have a WAL.
+    writeOptions.sync = false;
+    writeOptions.disableWAL = true;
+
+    s = _db->DeleteRange(writeOptions, _cf, _lowerBoundSlice, _upperBoundSlice);
   }
   if (!s.ok()) {
     LOG_DEVEL << "failure during range deletion of intermediate results: "
