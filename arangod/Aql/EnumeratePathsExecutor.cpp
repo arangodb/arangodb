@@ -65,25 +65,27 @@ static bool isValidId(VPackSlice id) {
 
 template<class FinderType>
 constexpr auto isNewStyleFinder() {
-  return
-      std::is_same_v<
-          FinderType,
-          KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
-                                     SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType,
-                     KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType,
-                     AllShortestPathsEnumerator<
-                         SingleServerProvider<SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<SingleServerProvider<
-                                         SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, AllShortestPathsEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>>;
+  return std::is_same_v<
+             FinderType,
+             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
+                                        SingleServerProviderStep>>> ||
+         std::is_same_v<
+             FinderType,
+             KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
+         std::is_same_v<
+             FinderType,
+             TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
+         std::is_same_v<FinderType,
+                        AllShortestPathsEnumerator<
+                            SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType,
+                        TracedAllShortestPathsEnumerator<
+                            SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType, AllShortestPathsEnumerator<ClusterProvider<
+                                        ClusterProviderStep>>> ||
+         std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<
+                                        ClusterProvider<ClusterProviderStep>>>;
 }
 }  // namespace
 
@@ -401,12 +403,20 @@ template<class FinderType>
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     AllShortestPathsEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    TracedAllShortestPathsEnumerator<
+        SingleServerProvider<SingleServerProviderStep>>>;
+
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    TracedAllShortestPathsEnumerator<
+        SingleServerProvider<SingleServerProviderStep>>>;
+
 template class ::arangodb::aql::EnumeratePathsExecutor<
     KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
@@ -416,12 +426,18 @@ template class ::arangodb::aql::EnumeratePathsExecutor<
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+
 template class ::arangodb::aql::EnumeratePathsExecutor<
     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
