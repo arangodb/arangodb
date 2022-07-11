@@ -329,7 +329,8 @@ static arangodb::Result fillIndex(
   res = indexFiller.fillIndex();
 #else
   res = fillIndexSingleThreaded(foreground, batched, dbOptions, batch,
-                                docsProcessed, trx, ridx, snap, rootDB, it);
+                                docsProcessed, trx, ridx, snap, rootDB,
+                                std::move(it));
 #endif
   return res;
 }
