@@ -63,7 +63,6 @@ function clusterRebalanceSuite() {
         moveFollowers: true,
         leaderChanges: true
       });
-      print(JSON.stringify(result));
       assertEqual(result.code, 200); // should be refused
       assertEqual(result.error, false); // should be refused
       const moves = result.result.moves;
