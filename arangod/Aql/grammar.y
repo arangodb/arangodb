@@ -721,8 +721,8 @@ shortest_path_graph_info:
   ;
 
 k_shortest_paths_graph_info:
-    graph_direction_steps T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
-      $$ = ::buildShortestPathInfo(parser, $4.value, $1, $3, $5, $6, $7, yyloc);
+    graph_direction T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, 1), $3, $5, $6, $7, yyloc);
     }
   ;
 
@@ -2155,8 +2155,7 @@ reference:
       if ($1->type == NODE_TYPE_EXPANSION) {
         auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1->getMember(1));
         parser->pushStack(iterator);
-      }
-      else {
+      } else {
         auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1);
         parser->pushStack(iterator);
       }
@@ -2176,8 +2175,7 @@ reference:
         auto expand = parser->ast()->createNodeBooleanExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5);
         $1->changeMember(1, expand);
         $$ = $1;
-      }
-      else {
+      } else {
         $$ = parser->ast()->createNodeBooleanExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5);
       }
     }
