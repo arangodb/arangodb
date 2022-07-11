@@ -2132,8 +2132,7 @@ reference:
       if ($1->type == NODE_TYPE_EXPANSION) {
         auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1->getMember(1));
         parser->pushStack(iterator);
-      }
-      else {
+      } else {
         auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1);
         parser->pushStack(iterator);
       }
@@ -2153,8 +2152,7 @@ reference:
         auto expand = parser->ast()->createNodeBooleanExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5);
         $1->changeMember(1, expand);
         $$ = $1;
-      }
-      else {
+      } else {
         $$ = parser->ast()->createNodeBooleanExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5);
       }
     }
