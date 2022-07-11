@@ -26,6 +26,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/files.h"
@@ -87,6 +89,10 @@ void TemporaryStorageFeature::validateOptions(
     // feature not used. this is fine (TM)
     return;
   }
+
+  // replace $PID in basepath with current process id
+  _basePath = basics::StringUtils::replace(
+      _basePath, "$PID", std::to_string(Thread::currentProcessId()));
 
   std::string currentDir = FileUtils::currentDirectory().result();
 
