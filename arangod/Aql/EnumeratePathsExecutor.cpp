@@ -65,25 +65,27 @@ static bool isValidId(VPackSlice id) {
 
 template<class FinderType>
 constexpr auto isNewStyleFinder() {
-  return
-      std::is_same_v<
-          FinderType,
-          KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
-                                     SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType,
-                     KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType,
-                     AllShortestPathsEnumerator<
-                         SingleServerProvider<SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<SingleServerProvider<
-                                         SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, AllShortestPathsEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>>;
+  return std::is_same_v<
+             FinderType,
+             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
+                                        SingleServerProviderStep>>> ||
+         std::is_same_v<
+             FinderType,
+             KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
+         std::is_same_v<
+             FinderType,
+             TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
+         std::is_same_v<FinderType,
+                        AllShortestPathsEnumerator<
+                            SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType,
+                        TracedAllShortestPathsEnumerator<
+                            SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType, AllShortestPathsEnumerator<ClusterProvider<
+                                        ClusterProviderStep>>> ||
+         std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<
+                                        ClusterProvider<ClusterProviderStep>>>;
 }
 }  // namespace
 
