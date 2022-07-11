@@ -501,7 +501,8 @@ constexpr auto statesAreCoherent(FollowerInternalState const followerState,
   switch (followerState) {
     case FollowerInternalState::kUninitializedState:
     case FollowerInternalState::kWaitForLeaderConfirmation:
-      return snapshotState == SnapshotStatus::kUninitialized;
+      // The token could be in any state at this point
+      return true;
     case FollowerInternalState::kTransferSnapshot:
       return snapshotState == SnapshotStatus::kInProgress;
     case FollowerInternalState::kSnapshotTransferFailed:
@@ -520,14 +521,17 @@ void FollowerStateManager<S>::GuardedData::updateInternalState(
     FollowerInternalState newState) {
   if (token == nullptr) {
     using namespace fmt::literals;
+    // For some reason, gcc (11.2 at least) refuses to compile without
+    // `fmt::runtime`.
     throw replicated_log::ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
-        fmt::format(
-            "Replicated state already resigned, while switching from {old} to "
-            "{new}. Was in {old} for {dur:%S}s.",
-            "old"_a = to_string(internalState), "new"_a = to_string(newState),
-            "dur"_a =
-                (std::chrono::system_clock::now() - lastInternalStateChange)),
+        fmt::format(fmt::runtime("Replicated state already resigned, while "
+                                 "switching from {old} to "
+                                 "{new}. Was in {old} for {dur:%S}s."),
+                    "old"_a = to_string(internalState),
+                    "new"_a = to_string(newState),
+                    "dur"_a = std::chrono::system_clock::now() -
+                              lastInternalStateChange),
         ADB_HERE);
   }
   TRI_ASSERT(statesAreCoherent(internalState, token->snapshot.status));
