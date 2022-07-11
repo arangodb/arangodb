@@ -62,11 +62,16 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
   }
 
   TRI_ASSERT(_iterator == nullptr);
-  std::string keyWithPrefix;
 
   size_t const avgSliceSize = 50;
+  // string that will be recycled for every key we build
+  std::string keyWithPrefix;
   keyWithPrefix.reserve(sizeof(std::uint64_t) +
                         _infos.sortRegisters().size() * avgSliceSize);
+
+  // RocksDBKey instance that will be recycled for every key
+  // we build
+  RocksDBKey rocksDBKey;
 
   aql::ExecutorState state = aql::ExecutorState::HASMORE;
   aql::InputAqlItemRow input{aql::CreateInvalidInputRowHint{}};
@@ -74,9 +79,12 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
   auto inputBlock = inputRange.getBlock();
 
   while (inputRange.hasDataRow()) {
+    // build key for insertion
     keyWithPrefix.clear();
+    // append our own 8 byte prefix
     rocksutils::uintToPersistentBigEndian<std::uint64_t>(keyWithPrefix,
                                                          _context->keyPrefix());
+    // append per-row number (used only for stable sorts)
     rocksutils::uintToPersistentBigEndian<std::uint64_t>(keyWithPrefix,
                                                          ++_rowNumberForInsert);
 
@@ -90,14 +98,14 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
       keyWithPrefix.push_back(reg.asc ? '1' : '0');
     }
 
+    rocksDBKey.constructFromBuffer(keyWithPrefix);
+
+    // TODO: this is very inefficient. improve it
     aql::InputAqlItemRow newRow(inputBlock, inputRange.getRowIndex());
     velocypack::Builder builder;
     builder.openObject();
     newRow.toVelocyPack(_infos.vpackOptions(), builder);
     builder.close();
-
-    rocksdb::Slice keySlice = keyWithPrefix;
-    RocksDBKey rocksDBKey(keySlice);
 
     auto res = _context->storeRow(rocksDBKey, builder.slice());
 
@@ -127,11 +135,11 @@ void SortedRowsStorageBackendRocksDB::produceOutputRow(
     aql::OutputAqlItemRow& output) {
   TRI_ASSERT(hasMore());
 
-  std::string key = _iterator->key().ToString();
-  auto p1 = _iterator->value().data();
-  velocypack::Slice slice1(reinterpret_cast<uint8_t const*>(p1));
+  auto p = _iterator->value().data();
+  velocypack::Slice slice(reinterpret_cast<uint8_t const*>(p));
 
-  auto curBlock = _infos.itemBlockManager().requestAndInitBlock(slice1);
+  // TODO: improve the efficiency of this
+  auto curBlock = _infos.itemBlockManager().requestAndInitBlock(slice);
   {
     aql::InputAqlItemRow inRow(curBlock, 0);
     output.copyRow(inRow);

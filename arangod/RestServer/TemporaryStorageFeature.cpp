@@ -32,6 +32,7 @@
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -133,7 +134,7 @@ void TemporaryStorageFeature::validateOptions(
   if (dbPath == ourPath || ourPath.starts_with(dbPath)) {
     // if our path is the same as the database directory or inside it,
     // we refuse to start
-    LOG_TOPIC("58b44", FATAL, arangodb::Logger::STARTUP)
+    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
         << "path for intermediate results ('" << ourPath
         << "') must not be identical to or inside the database directory ('"
         << dbPath << "')";
@@ -144,6 +145,16 @@ void TemporaryStorageFeature::validateOptions(
 }
 
 void TemporaryStorageFeature::prepare() {
+  if (canBeUsed() && ServerState::instance()->isAgent()) {
+    // we don't want any storage for intermediate results on agents, because
+    // massive AQL queries will not be executed on them.
+    LOG_TOPIC("97ac6", WARN, Logger::STARTUP)
+        << "disabling storage for intermediate results on agent instance, "
+           "because it is not required there";
+    _basePath.clear();
+    TRI_ASSERT(!canBeUsed());
+  }
+
   if (!canBeUsed()) {
     return;
   }
