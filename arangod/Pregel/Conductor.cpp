@@ -859,13 +859,16 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   _aggregators->serializeValues(debugOut);
   debugOut.close();
 
-  ADB_PROD_ASSERT(_timing.computation.hasStarted());
-
   LOG_PREGEL("063b5", INFO)
-      << "Done. We did " << _globalSuperstep << " rounds"
-      << ". Startup time: " << _timing.loading.elapsedSeconds().count() << "s"
-      << ", computation time: " << _timing.computation.elapsedSeconds().count()
-      << "s"
+      << "Done. We did " << _globalSuperstep << " rounds."
+      << (_timing.loading.hasStarted()
+              ? fmt::format("Startup time: {}s",
+                            _timing.loading.elapsedSeconds().count())
+              : "")
+      << (_timing.computation.hasStarted()
+              ? fmt::format(", computation time: {}s",
+                            _timing.computation.elapsedSeconds().count())
+              : "")
       << (didStore ? fmt::format(", storage time: {}s",
                                  _timing.storing.elapsedSeconds().count())
                    : "")
