@@ -296,6 +296,9 @@ function arrayAccessTestSuite () {
 
       result = AQL_EXECUTE("LET values = @values LET bound = ROUND(RAND() * 1000) % 10 RETURN values[? 1..bound FILTER CURRENT <= 0]", { values }).json;
       assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = [1,2,3,4,5,6,7,8,9,10,11] LET x = 1..5 RETURN values[? x FILTER CURRENT >= 3]").json;
+      assertEqual([ false ], result);
 
       // numeric quantifiers
       result = AQL_EXECUTE("LET values = @values RETURN values[? 1 FILTER CURRENT == 3]", { values }).json;
