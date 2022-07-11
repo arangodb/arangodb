@@ -1972,7 +1972,7 @@ void ClusterInfo::loadCurrent() {
   _current.swap(newCurrent);
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
-  LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
       << "Updating current in ClusterInfo: version=" << changeSet.version
       << " index=" << _currentIndex;
 

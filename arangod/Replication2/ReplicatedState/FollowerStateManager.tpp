@@ -30,6 +30,11 @@
 #include "Basics/Exceptions.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include <fmt/core.h>
+#include <fmt/chrono.h>
+
+#include <chrono>
+
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
@@ -489,11 +494,59 @@ auto FollowerStateManager<S>::applyNewEntries() -> futures::Future<Result> {
 
   return state->applyEntries(std::move(iter));
 }
+
+namespace {
+constexpr auto statesAreCoherent(FollowerInternalState const followerState,
+                                 SnapshotStatus const snapshotState) -> bool {
+  switch (followerState) {
+    case FollowerInternalState::kUninitializedState:
+    case FollowerInternalState::kWaitForLeaderConfirmation:
+      return snapshotState == SnapshotStatus::kUninitialized;
+    case FollowerInternalState::kTransferSnapshot:
+      return snapshotState == SnapshotStatus::kInProgress;
+    case FollowerInternalState::kSnapshotTransferFailed:
+      return snapshotState == SnapshotStatus::kFailed;
+    case FollowerInternalState::kWaitForNewEntries:
+    case FollowerInternalState::kApplyRecentEntries:
+      return snapshotState == SnapshotStatus::kCompleted;
+  }
+  ADB_PROD_ASSERT(false) << "Unhandled state " << to_string(followerState);
+  return false;
+}
+}  // namespace
+
 template<typename S>
 void FollowerStateManager<S>::GuardedData::updateInternalState(
     FollowerInternalState newState) {
+  if (token == nullptr) {
+    using namespace fmt::literals;
+    throw replicated_log::ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+        fmt::format(
+            "Replicated state already resigned, while switching from {old} to "
+            "{new}. Was in {old} for {dur:%S}s.",
+            "old"_a = to_string(internalState), "new"_a = to_string(newState),
+            "dur"_a =
+                (std::chrono::system_clock::now() - lastInternalStateChange)),
+        ADB_HERE);
+  }
+  TRI_ASSERT(statesAreCoherent(internalState, token->snapshot.status));
   internalState = newState;
   lastInternalStateChange = std::chrono::system_clock::now();
+  switch (newState) {
+    case FollowerInternalState::kTransferSnapshot: {
+      token->snapshot.updateStatus(SnapshotStatus::kInProgress);
+    } break;
+    case FollowerInternalState::kSnapshotTransferFailed: {
+      token->snapshot.updateStatus(SnapshotStatus::kFailed);
+    } break;
+    case FollowerInternalState::kWaitForNewEntries: {
+      token->snapshot.updateStatus(SnapshotStatus::kCompleted);
+    } break;
+    default:
+      break;
+  }
+  TRI_ASSERT(statesAreCoherent(internalState, token->snapshot.status));
 }
 
 template<typename S>

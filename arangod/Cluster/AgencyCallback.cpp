@@ -148,7 +148,7 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData,
   if (!_lastData || forceCheck ||
       !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(),
                                                  newData->slice(), false)) {
-    LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("2bd14", TRACE, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
     if (execute(newData->slice(), raftIndex)) {
@@ -171,7 +171,7 @@ bool AgencyCallback::execute(velocypack::Slice newData,
                              consensus::index_t raftIndex) {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("add4e", TRACE, Logger::CLUSTER)
       << "Executing" << (newData.isNone() ? " (empty)" : "");
   try {
     bool result = _cb(newData, raftIndex);
