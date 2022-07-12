@@ -110,9 +110,9 @@ struct ColumnVariant {
         postfix(std::move(postfix)) {}
 };
 
-template<bool postfixLen, typename Attrs>
+template<bool postfixLen, typename Attrs, typename SortMeta>
 bool attributesMatch(
-    iresearch::IResearchViewSort const& primarySort,
+    SortMeta const& primarySort,
     iresearch::IResearchViewStoredValues const& storedValues, Attrs& attrs,
     std::vector<std::vector<ColumnVariant<postfixLen>>>& usedColumnsCounter,
     size_t columnsCount);

@@ -28,7 +28,7 @@
 #include "analysis/token_attributes.hpp"
 
 #include "analysis/analyzer.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 
 #include "Geo/ShapeContainer.h"
 #include "IResearch/Geo.h"
@@ -47,13 +47,17 @@ namespace iresearch {
 /// @class GeoAnalyzer
 /// @brief base class for other geo analyzers
 ////////////////////////////////////////////////////////////////////////////////
-class GeoAnalyzer : public irs::frozen_attributes<2, irs::analysis::analyzer>,
+class GeoAnalyzer : public irs::analysis::analyzer,
                     private irs::util::noncopyable {
  public:
   virtual bool next() noexcept override final;
   using irs::analysis::analyzer::reset;
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const = 0;
+
+  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
+    return irs::get_mutable(_attrs, id);
+  }
 
  protected:
   explicit GeoAnalyzer(const irs::type_info& type);
@@ -64,12 +68,13 @@ class GeoAnalyzer : public irs::frozen_attributes<2, irs::analysis::analyzer>,
   }
 
  private:
+  using attributes = std::tuple<irs::increment, irs::term_attribute>;
+
   std::vector<std::string> _terms;
   const std::string* _begin{_terms.data()};
   const std::string* _end{_begin};
   irs::offset _offset;
-  irs::increment _inc;
-  irs::term_attribute _term;
+  attributes _attrs;
 };  // GeoAnalyzer
 
 ////////////////////////////////////////////////////////////////////////////////

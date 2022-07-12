@@ -995,6 +995,10 @@ function processQuery(query, explain, planIndex) {
         return buildExpression(node.subNodes[0]) + '[' + buildExpression(node.subNodes[1]) + ']';
       case 'range':
         return buildExpression(node.subNodes[0]) + ' .. ' + buildExpression(node.subNodes[1]) + '   ' + annotation('/* range */');
+      case 'no-op':
+        return '';
+      case 'quantifier':
+        return node.quantifier.toUpperCase();
       case 'expand':
       case 'expansion':
         if (node.subNodes.length > 2) {
@@ -1005,6 +1009,8 @@ function processQuery(query, explain, planIndex) {
           references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
         }
         return buildExpression(node.subNodes[1]);
+      case 'array filter':
+        return buildExpression(node.subNodes[0]) + " " + buildExpression(node.subNodes[1]);
       case 'user function call':
         return func(node.name) + '(' + ((node.subNodes && node.subNodes[0].subNodes) || []).map(buildExpression).join(', ') + ')' + '   ' + annotation('/* user-defined function */');
       case 'function call':
