@@ -71,17 +71,13 @@ export class GraphView extends React.Component {
       offsetY: -90,
       itemTypes: ['node', 'edge', 'canvas'],
     });
-    
-    const toolbar = new G6.ToolBar({
-      position: { x: 10, y: 10 },
-    });
 
     const container = ReactDOM.findDOMNode(this.ref.current);
     this.graph = new G6.Graph({
       container: this.ref.current,
       width: 1200,
       height: 800,
-      plugins: [toolbar, contextMenu],
+      plugins: [contextMenu],
       enabledStack: true,
       layout: {
         type: 'force',
@@ -94,6 +90,7 @@ export class GraphView extends React.Component {
           'brush-select',
           'drag-canvas',
           'drag-node',
+          'zoom-canvas',
           {
             type: 'tooltip',
             formatText(model) {
