@@ -116,10 +116,6 @@ template<typename V, typename E>
 void GraphStore<V, E>::loadShards(
     WorkerConfig* config, std::function<void()> const& statusUpdateCallback,
     std::function<void()> const& finishedLoadingCallback) {
-  _observables.verticesLoaded = 0;
-  _observables.edgesLoaded = 0;
-  _observables.memoryBytesUsed = 0;
-
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
 
@@ -402,7 +398,7 @@ void GraphStore<V, E>::loadVertices(
       _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(segmentSize);
     }
     Vertex<V, E>* ventry = vertexBuff->appendElement();
-    *_observables.memoryBytesUsed += sizeof(Vertex<V, E>);
+    _observables.memoryBytesUsed += sizeof(Vertex<V, E>);
 
     VPackValueLength keyLen;
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
@@ -423,7 +419,7 @@ void GraphStore<V, E>::loadVertices(
     // actually copy in the key
     memcpy(keyBuff->end(), key, keyLen);
     keyBuff->advance(keyLen);
-    *_observables.memoryBytesUsed += keyLen;
+    _observables.memoryBytesUsed += keyLen;
 
     // load vertex data
     documentId = trx.extractIdString(slice);
@@ -440,7 +436,7 @@ void GraphStore<V, E>::loadVertices(
       loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices,
                 info);
     }
-    ++(*_observables.verticesLoaded);
+    ++_observables.verticesLoaded;
     return true;
   };
 
@@ -529,8 +525,8 @@ void GraphStore<V, E>::loadEdges(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "too many edges for vertex");
     }
-    ++(*_observables.edgesLoaded);
-    *_observables.memoryBytesUsed += sizeof(Edge<E>);
+    ++_observables.edgesLoaded;
+    _observables.memoryBytesUsed += sizeof(Edge<E>);
 
     std::size_t pos = toValue.find('/');
     collectionName = std::string(toValue.substr(0, pos));
@@ -541,7 +537,7 @@ void GraphStore<V, E>::loadEdges(
     keyBuff->advance(key.size());
     // actually copy in the key
     memcpy(edge->_toKey, key.data(), key.size());
-    *_observables.memoryBytesUsed += key.size();
+    _observables.memoryBytesUsed += key.size();
 
     if (isCluster) {
       // resolve the shard of the target vertex.
@@ -637,7 +633,6 @@ template<typename V, typename E>
 void GraphStore<V, E>::storeVertices(
     std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
     size_t threadNumber, std::function<void()> const& statusUpdateCallback) {
-  _observables.verticesStored = 0;
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -740,7 +735,7 @@ void GraphStore<V, E>::storeVertices(
     }
     builder.close();
     ++numDocs;
-    ++(*_observables.verticesStored);
+    ++_observables.verticesStored;
     if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
       SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
                                          statusUpdateCallback);

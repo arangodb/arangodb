@@ -79,24 +79,23 @@ auto inspect(Inspector& f, Status& x) {
 }
 
 struct Observables {
-  std::optional<std::atomic<std::size_t>> verticesLoaded;
-  std::optional<std::atomic<std::size_t>> edgesLoaded;
-  std::optional<std::atomic<std::size_t>> memoryBytesUsed;
-  std::optional<std::atomic<std::size_t>> verticesStored;
+  std::atomic<std::size_t> verticesLoaded{0};
+  std::atomic<std::size_t> edgesLoaded{0};
+  std::atomic<std::size_t> memoryBytesUsed{0};
+  std::atomic<std::size_t> verticesStored{0};
   auto observe() const -> Status {
-    return Status{
-        .verticesLoaded = verticesLoaded.has_value()
-                              ? std::optional{verticesLoaded.value().load()}
-                              : std::nullopt,
-        .edgesLoaded = edgesLoaded.has_value()
-                           ? std::optional{edgesLoaded.value().load()}
-                           : std::nullopt,
-        .memoryBytesUsed = memoryBytesUsed.has_value()
-                               ? std::optional{memoryBytesUsed.value().load()}
-                               : std::nullopt,
-        .verticesStored = verticesStored.has_value()
-                              ? std::optional{verticesStored.value().load()}
-                              : std::nullopt};
+    return Status{.verticesLoaded = verticesLoaded.load() > 0
+                                        ? std::optional{verticesLoaded.load()}
+                                        : std::nullopt,
+                  .edgesLoaded = edgesLoaded.load() > 0
+                                     ? std::optional{edgesLoaded.load()}
+                                     : std::nullopt,
+                  .memoryBytesUsed = memoryBytesUsed.load() > 0
+                                         ? std::optional{memoryBytesUsed.load()}
+                                         : std::nullopt,
+                  .verticesStored = verticesStored.load() > 0
+                                        ? std::optional{verticesStored.load()}
+                                        : std::nullopt};
   }
 };
 
