@@ -44,18 +44,17 @@ namespace iresearch {
 ///////////////////////////////////////////////////////////////////////////////
 struct ExpressionCompilationContext {
   bool operator==(ExpressionCompilationContext const& rhs) const noexcept {
-    return plan == rhs.plan && ast == rhs.ast && node == rhs.node;
+    return ast == rhs.ast && node == rhs.node;
   }
 
   bool operator!=(ExpressionCompilationContext const& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  explicit operator bool() const noexcept { return plan && ast && node; }
+  explicit operator bool() const noexcept { return ast && node; }
 
   size_t hash() const noexcept;
 
-  arangodb::aql::ExecutionPlan const* plan{};
   arangodb::aql::Ast* ast{};
   std::shared_ptr<arangodb::aql::AstNode> node{};
 };  // ExpressionCompilationContext
@@ -92,20 +91,15 @@ class ByExpression final : public irs::filter {
     return "arangodb::iresearch::ByExpression";
   }
 
-  static ptr make();
-
   ByExpression() noexcept;
 
-  void init(aql::ExecutionPlan const& plan, aql::Ast& ast,
-            arangodb::aql::AstNode& node) noexcept {
-    _ctx.plan = &plan;
+  void init(aql::Ast& ast, arangodb::aql::AstNode& node) noexcept {
     _ctx.ast = &ast;
     _ctx.node.reset(&node, [](arangodb::aql::AstNode*) {});
   }
 
-  void init(aql::ExecutionPlan const& plan, aql::Ast& ast,
+  void init(aql::Ast& ast,
             std::shared_ptr<arangodb::aql::AstNode>&& node) noexcept {
-    _ctx.plan = &plan;
     _ctx.ast = &ast;
     _ctx.node = std::move(node);
   }
@@ -113,8 +107,8 @@ class ByExpression final : public irs::filter {
   using irs::filter::prepare;
 
   virtual irs::filter::prepared::ptr prepare(
-      irs::index_reader const& index, irs::order::prepared const& ord,
-      irs::boost_t boost, irs::attribute_provider const* ctx) const override;
+      irs::index_reader const& index, irs::Order const& ord, irs::score_t boost,
+      irs::attribute_provider const* ctx) const override;
 
   virtual size_t hash() const noexcept override;
 

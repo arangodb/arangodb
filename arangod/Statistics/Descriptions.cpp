@@ -452,6 +452,8 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
         VPackValue(info._transactionsStatistics._intermediateCommits.load()));
   b.add("readOnly",
         VPackValue(info._transactionsStatistics._readTransactions.load()));
+  b.add("dirtyReadOnly",
+        VPackValue(info._transactionsStatistics._dirtyReadTransactions.load()));
   b.close();
 
   if (dealer.isEnabled()) {

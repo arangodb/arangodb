@@ -32,6 +32,25 @@
 namespace arangodb {
 namespace iresearch {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the delimiter used to separate jSON nesting levels when
+/// generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LEVEL_DELIMITER = '.';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the prefix used to denote start of jSON list offset when generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the suffix used to denote end of jSON list offset when generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
+
 [[maybe_unused]] extern LogTopic TOPIC;
 [[maybe_unused]] inline constexpr std::string_view
     IRESEARCH_INVERTED_INDEX_TYPE = "inverted";

@@ -523,7 +523,7 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
         }
         auto columnReader = segment.column(val.id());
         ASSERT_TRUE(columnReader);
-        auto valReader = columnReader->iterator(false);
+        auto valReader = columnReader->iterator(irs::ColumnHint::kNormal);
         ASSERT_TRUE(valReader);
         auto* value = irs::get<irs::payload>(*valReader);
         ASSERT_TRUE(value);
@@ -685,7 +685,7 @@ TEST_P(IResearchQueryNoMaterializationTest,
         }
         auto columnReader = segment.column(val.id());
         ASSERT_TRUE(columnReader);
-        auto valReader = columnReader->iterator(false);
+        auto valReader = columnReader->iterator(irs::ColumnHint::kNormal);
         ASSERT_TRUE(valReader);
         auto* value = irs::get<irs::payload>(*valReader);
         ASSERT_TRUE(value);
