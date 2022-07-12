@@ -163,6 +163,12 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   }
 
   if (_leaderState == nullptr) {
+    // Note that doing this here is only correct as long as we're not supporting
+    // distributeShardsLike.
+    // Later, we must make sure to get the very same state for all collections
+    // (shards) belonging to the same collection group (shard sheaf) (i.e.
+    // belong to the same distributeShardsLike group) See
+    // https://arangodb.atlassian.net/browse/CINFRA-294.
     _leaderState = _collection->getDocumentStateLeader();
     ADB_PROD_ASSERT(_leaderState != nullptr);
   }
