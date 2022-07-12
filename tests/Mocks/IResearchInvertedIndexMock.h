@@ -44,6 +44,12 @@ public:
 
   virtual ~IResearchInvertedIndexMock(){};
 
+  [[nodiscard]] static auto setCallbakForScope(
+      std::function<irs::directory_attributes()> callback) {
+    InitCallback = callback;
+    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
+  }
+
   void toVelocyPack(
       VPackBuilder &builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
@@ -108,7 +114,7 @@ public:
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
 
-  //  void toVelocyPackFigures(velocypack::Builder &builder) const override;
+  void toVelocyPackFigures(velocypack::Builder &builder) const override;
 
   void unload() override;
 

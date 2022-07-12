@@ -159,9 +159,6 @@ aql::AstNode *IResearchInvertedIndexMock::specializeCondition(
 Result IResearchInvertedIndexMock::insert(transaction::Methods &trx,
                                           LocalDocumentId documentId,
                                           velocypack::Slice doc) {
-////  IResearchInvertedIndexMeta meta;
-//  using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
-//      arangodb::iresearch::IResearchInvertedIndexMeta>;
 
   IResearchInvertedIndexMetaIndexingContext ctx(this->meta());
   auto s = this->stats();
@@ -176,10 +173,10 @@ IResearchInvertedIndexMock::findAnalyzer(AnalyzerPool const &analyzer) const {
   return IResearchInvertedIndex::findAnalyzer(analyzer);
 }
 
-// void IResearchInvertedIndexMock::toVelocyPackFigures(
-//    velocypack::Builder &builder) const {
-//  IResearchInvertedIndex::toVelocyPackStats(builder);
-//}
+ void IResearchInvertedIndexMock::toVelocyPackFigures(
+    velocypack::Builder &builder) const {
+  IResearchInvertedIndex::toVelocyPackStats(builder);
+}
 
 void IResearchInvertedIndexMock::unload() { shutdownDataStore(); }
 

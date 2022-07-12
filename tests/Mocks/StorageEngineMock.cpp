@@ -1604,8 +1604,8 @@ StorageEngineMock::buildInvertedIndexMock(
   }
   cleanup.cancel();
 
-  auto result = index->init(info, pathExists);
-  std::cout << "RESULT = " << result << std::endl;
+//  auto result = index->init(info, pathExists);
+  std::cout << "RESULT = " << res << std::endl;
   std::cout << "pathExists = " << pathExists << std::endl;
 
   return index;
