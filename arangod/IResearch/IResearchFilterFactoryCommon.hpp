@@ -73,7 +73,7 @@ struct IsExactValue : std::false_type {};
 template<size_t Value>
 struct IsExactValue<ExactValue<Value>> : std::true_type {};
 
-[[maybe_unused]] Result notImplementedEE(char const* funcName) {
+[[maybe_unused]] inline Result notImplementedEE(char const* funcName) {
   return {TRI_ERROR_NOT_IMPLEMENTED,
           absl::StrCat("Function '", funcName,
                        "' is available in ArangoDB Enterprise Edition only.")};
@@ -121,7 +121,7 @@ Result invalidArgsCount(char const* funcName) {
               "' AQL function: Invalid number of arguments passed")};
 }
 
-Result negativeNumber(char const* funcName, size_t i) {
+inline Result negativeNumber(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
           "'"s.append(funcName)
               .append("' AQL function: argument at position '")
@@ -129,13 +129,13 @@ Result negativeNumber(char const* funcName, size_t i) {
               .append("' must be a positive number")};
 }
 
-Result nondeterministicArgs(char const* funcName) {
+inline Result nondeterministicArgs(char const* funcName) {
   return {TRI_ERROR_BAD_PARAMETER,
           "Unable to handle non-deterministic arguments for '"s.append(funcName)
               .append("' function")};
 }
 
-Result nondeterministicArg(char const* funcName, size_t i) {
+inline Result nondeterministicArg(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
           "'"s.append(funcName)
               .append("' AQL function: argument at position '")
@@ -143,7 +143,7 @@ Result nondeterministicArg(char const* funcName, size_t i) {
               .append("' is intended to be deterministic")};
 }
 
-Result invalidAttribute(char const* funcName, size_t i) {
+inline Result invalidAttribute(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
           "'"s.append(funcName)
               .append("' AQL function: Unable to parse argument at position '")
@@ -151,7 +151,7 @@ Result invalidAttribute(char const* funcName, size_t i) {
               .append("' as an attribute identifier")};
 }
 
-Result invalidArgument(char const* funcName, size_t i) {
+inline Result invalidArgument(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
           "'"s.append(funcName)
               .append("' AQL function: argument at position '")
@@ -159,7 +159,7 @@ Result invalidArgument(char const* funcName, size_t i) {
               .append("' is invalid")};
 }
 
-Result failedToEvaluate(const char* funcName, size_t i) {
+inline Result failedToEvaluate(const char* funcName, size_t i) {
   return {
       TRI_ERROR_BAD_PARAMETER,
       "'"s.append(funcName)
@@ -168,8 +168,9 @@ Result failedToEvaluate(const char* funcName, size_t i) {
           .append(("'"))};
 }
 
-Result typeMismatch(const char* funcName, size_t i,
-                    ScopedValueType expectedType, ScopedValueType actualType) {
+inline Result typeMismatch(const char* funcName, size_t i,
+                           ScopedValueType expectedType,
+                           ScopedValueType actualType) {
   return {TRI_ERROR_BAD_PARAMETER,
           "'"s.append(funcName)
               .append("' AQL function: argument at position '")
@@ -181,8 +182,8 @@ Result typeMismatch(const char* funcName, size_t i,
               .append("' expected)")};
 }
 
-Result failedToParse(char const* funcName, size_t i,
-                     ScopedValueType expectedType) {
+inline Result failedToParse(char const* funcName, size_t i,
+                            ScopedValueType expectedType) {
   return {TRI_ERROR_BAD_PARAMETER,
           "'"s.append(funcName)
               .append("' AQL function: Unable to parse argument at position '")
@@ -191,7 +192,7 @@ Result failedToParse(char const* funcName, size_t i,
               .append(ScopedAqlValue::typeString(expectedType).c_str())};
 }
 
-Result failedToGenerateName(char const* funcName, size_t i) {
+inline Result failedToGenerateName(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
           "'"s.append(funcName)
               .append("' AQL function: Failed to generate field name from the "
@@ -200,7 +201,7 @@ Result failedToGenerateName(char const* funcName, size_t i) {
               .append("'")};
 }
 
-Result malformedNode(aql::AstNodeType type) {
+inline Result malformedNode(aql::AstNodeType type) {
   auto const* typeName = getNodeTypeName(type);
 
   std::string message("Can't process malformed AstNode of type '");
@@ -276,9 +277,9 @@ Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
   return {};
 }
 
-Result getAnalyzerByName(FieldMeta::Analyzer& out,
-                         const irs::string_ref& analyzerId,
-                         char const* funcName, QueryContext const& ctx) {
+inline Result getAnalyzerByName(FieldMeta::Analyzer& out,
+                                const irs::string_ref& analyzerId,
+                                char const* funcName, QueryContext const& ctx) {
   TRI_ASSERT(ctx.trx);
   auto& server = ctx.trx->vocbase().server();
   if (!server.hasFeature<IResearchAnalyzerFeature>()) {
@@ -307,10 +308,11 @@ Result getAnalyzerByName(FieldMeta::Analyzer& out,
   return {};
 }
 
-Result extractAnalyzerFromArg(FieldMeta::Analyzer& out, char const* funcName,
-                              irs::boolean_filter const* filter,
-                              aql::AstNode const& args, size_t i,
-                              QueryContext const& ctx) {
+inline Result extractAnalyzerFromArg(FieldMeta::Analyzer& out,
+                                     char const* funcName,
+                                     irs::boolean_filter const* filter,
+                                     aql::AstNode const& args, size_t i,
+                                     QueryContext const& ctx) {
   auto const* analyzerArg = args.getMemberUnchecked(i);
 
   if (!analyzerArg) {
