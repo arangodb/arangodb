@@ -7,7 +7,7 @@ import { ArrowUpOutlined } from '@ant-design/icons';
 const ButtonScrollTo = ({ graphName, onGraphDataLoaded }) => {
   return (
     <>
-      <Tooltip placement="bottom" title={"Scroll to settings"}>
+      <Tooltip placement="bottom" title={"Scroll to settings"} overlayClassName='graph-border-box'>
         <Button
           type="primary"
           style={{ background: "#2ecc71", borderColor: "#2ecc71", float: "right" }}

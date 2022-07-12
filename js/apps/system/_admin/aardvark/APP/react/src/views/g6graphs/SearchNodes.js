@@ -45,7 +45,7 @@ const SearchNodes = ({ nodes, graphData, data, onDeleteNode, onNodeSelect }) => 
               node={node} />
           ))}
         </datalist>
-        <Tooltip placement="bottom" title={"Select the node you are looking for."}>
+        <Tooltip placement="bottom" title={"Select the node you are looking for."} overlayClassName="graph-border-box">
           <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
         </Tooltip>
       </div>

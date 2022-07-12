@@ -65,7 +65,7 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
           );
         })}
       </Select>
-      <Tooltip placement="bottom" title={"The type of the edge."}>
+      <Tooltip placement="bottom" title={"The type of the edge."} overlayClassName="graph-border-box">
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
     </div>

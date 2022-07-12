@@ -49,6 +49,8 @@ const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
         <Select
           name="graphlayout"
           value={layout}
+          className="graphReactViewContainer"
+          dropdownClassName="graphReactViewContainer"
           onChange={handleChange}
           style={{
             'width': '200px',
@@ -67,7 +69,12 @@ const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
           {layouts.map(style => {
             const { layout } = style;
             return (
-              <SelectOption key={layout} value={layout}>
+              <SelectOption 
+                key={layout} 
+                value={layout} 
+                className='graphReactViewContainer' 
+                dropdownClassName="graphReactViewContainer"
+              >
                 {layout}
               </SelectOption>
             );

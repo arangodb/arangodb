@@ -60,15 +60,15 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
   </>;
 
 const screenshotMenu = (
-  <Menu>
+  <Menu className='graphReactViewContainer'>
     <Menu.Item onClick={() => {
       onDownloadScreenshot();
-    }}>
+    }} className='graphReactViewContainer'>
       Download visible graph
     </Menu.Item>
     <Menu.Item onClick={() => {
       onDownloadFullScreenshot();
-    }}>
+    }} className='graphReactViewContainer'>
       Download full graph
     </Menu.Item>
   </Menu>
@@ -88,21 +88,22 @@ const screenshotMenu = (
               <Button key="1" onClick={onLoadFullGraph()}><DownloadOutlined /></Button>
             </Tooltip>
             
-            <Dropdown overlay={screenshotMenu} placement="bottomRight">
+            <Dropdown overlayClassName='graphReactViewContainer screenshot-button' overlay={screenshotMenu} placement="bottomRight">
               <Button key="2"><CameraOutlined /></Button>
             </Dropdown>
 
-            <Tooltip placement="bottom" title={"Enter full screen"}>
+            <Tooltip placement="bottom" title={"Enter full screen"} overlayClassName='graph-border-box' >
               <Button key="3"
                 onClick={() => {
                   const elem = document.getElementById("graph-card");
                   if (elem.requestFullscreen) {
                     elem.requestFullscreen();
-                  }}}><FullscreenOutlined />
+                  }}}>
+                    <FullscreenOutlined />
               </Button>
             </Tooltip>
 
-            <Tooltip placement="bottom" title={"Switch to the old graph viewer"}>
+            <Tooltip placement="bottom" title={"Switch to the old graph viewer"} overlayClassName='graph-border-box' >
               <Button key="4"
                 onClick={() => {
                   window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;

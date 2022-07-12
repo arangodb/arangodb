@@ -12,6 +12,11 @@ const ModalBackground = styled.div`
   height: 100%;
   overflow: auto;
   background-color: rgba(0, 0, 0, 0.5);
+
+  & div, & button {
+    box-sizing: content-box !important;
+  }
+  
 `;
 
 const ModalBody = styled.div`
@@ -19,6 +24,11 @@ const ModalBody = styled.div`
   margin: 10% auto;
   padding: 20px;
   width: 50%;
+`;
+
+const StyledButton = styled.button`
+  margin-left: 15px !important;
+  color: white !important;
 `;
 
 export const FetchFullGraphModal = ({ shouldShow, onRequestClose, children, onFullGraphLoaded, graphName }) => {
@@ -63,8 +73,8 @@ let responseTimesObject = {
           {children}<br />
         </div>
         <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
-          <button className="button-close" onClick={onRequestClose}>Cancel</button>
-          <button className="button-success" onClick={() => { fetchFullGraph() }}>Load full graph</button>
+          <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
+          <StyledButton className="button-success" onClick={() => { fetchFullGraph() }}>Load full graph</StyledButton>
         </div>
       </ModalBody>
     </ModalBackground>
