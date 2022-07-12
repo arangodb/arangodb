@@ -33,6 +33,8 @@
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
+#include "Pregel/Status/ConductorStatus.h"
+
 #include <chrono>
 
 namespace arangodb {
@@ -115,6 +117,11 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   double _stepStartTimeSecs = 0.0;  // start time of current gss
   Scheduler::WorkHandle _workHandle;
 
+  // Work in Progress: Move data incrementally into this
+  // struct; sort it into categories and make it (de)serialisable
+  // with the Inspecotr framework
+  ConductorStatus _status;
+
   bool _startGlobalStep();
   ErrorCode _initializeWorkers(std::string const& suffix,
                                VPackSlice additional);
@@ -127,6 +134,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void _ensureUniqueResponse(VPackSlice body);
 
   // === REST callbacks ===
+  void workerStatusUpdate(VPackSlice const& data);
   void finishedWorkerStartup(VPackSlice const& data);
   VPackBuilder finishedWorkerStep(VPackSlice const& data);
   void finishedWorkerFinalize(VPackSlice data);

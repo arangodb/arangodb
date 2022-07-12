@@ -24,6 +24,8 @@
 #include <chrono>
 #include <thread>
 
+#include <fmt/core.h>
+
 #include "Conductor.h"
 
 #include "Pregel/Aggregator.h"
@@ -33,6 +35,8 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Status/WorkerStatus.h"
+#include "Pregel/Status/ConductorStatus.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
@@ -51,6 +55,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -315,6 +320,22 @@ bool Conductor::_startGlobalStep() {
 }
 
 // ============ Conductor callbacks ===============
+
+// The worker can (and should) periodically call back
+// to update its status
+void Conductor::workerStatusUpdate(VPackSlice const& data) {
+  MUTEX_LOCKER(guard, _callbackMutex);
+  // TODO: for these updates we do not care about uniqueness of responses
+  // _ensureUniqueResponse(data);
+
+  auto update = deserialize<WorkerStatus>(data.get(Utils::payloadKey));
+  auto sender = data.get(Utils::senderKey).copyString();
+
+  LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
+
+  _status.updateWorkerStatus(sender, update);
+}
+
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
@@ -643,6 +664,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
   }
+  _status = ConductorStatus::forWorkers(_dbServers);
   // do not reload all shard id's, this list must stay in the same order
   if (_allShards.size() == 0) {
     _allShards = shardList;
@@ -954,6 +976,10 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     _masterContext->serializeValues(result);
   }
   result.add("useMemoryMaps", VPackValue(_useMemoryMaps));
+
+  result.add(VPackValue("detail"));
+  serialize(result, _status);
+
   result.close();
 }
 
