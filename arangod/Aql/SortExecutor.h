@@ -29,6 +29,7 @@
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/RegisterInfos.h"
 
 #include <cstddef>
@@ -64,7 +65,8 @@ class SortExecutorInfos {
                     AqlItemBlockManager& manager,
                     TemporaryStorageFeature& tempStorage,
                     velocypack::Options const* options,
-                    arangodb::ResourceMonitor& resourceMonitor, bool stable);
+                    arangodb::ResourceMonitor& resourceMonitor,
+                    size_t thresholdNumRows, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -87,6 +89,8 @@ class SortExecutorInfos {
 
   [[nodiscard]] size_t limit() const noexcept;
 
+  [[nodiscard]] size_t thresholdNumRows() const noexcept;
+
   [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
 
   [[nodiscard]] TemporaryStorageFeature& getTemporaryStorageFeature() noexcept;
@@ -101,6 +105,7 @@ class SortExecutorInfos {
   velocypack::Options const* _vpackOptions;
   arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
+  size_t _thresholdNumRows;
   bool _stable;
 };
 

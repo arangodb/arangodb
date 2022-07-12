@@ -36,13 +36,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SortExecutorInfos::SortExecutorInfos(
-    RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-    RegIdFlatSet const& registersToClear,
-    std::vector<SortRegister> sortRegisters, std::size_t limit,
-    AqlItemBlockManager& manager, TemporaryStorageFeature& tempStorage,
-    velocypack::Options const* options,
-    arangodb::ResourceMonitor& resourceMonitor, bool stable)
+SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
+                                     RegisterCount nrOutputRegisters,
+                                     RegIdFlatSet const& registersToClear,
+                                     std::vector<SortRegister> sortRegisters,
+                                     std::size_t limit,
+                                     AqlItemBlockManager& manager,
+                                     TemporaryStorageFeature& tempStorage,
+                                     velocypack::Options const* options,
+                                     arangodb::ResourceMonitor& resourceMonitor,
+                                     size_t thresholdNumRows, bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
@@ -52,6 +55,7 @@ SortExecutorInfos::SortExecutorInfos(
       _vpackOptions(options),
       _resourceMonitor(resourceMonitor),
       _sortRegisters(std::move(sortRegisters)),
+      _thresholdNumRows(thresholdNumRows),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
 }
@@ -90,6 +94,10 @@ AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
 TemporaryStorageFeature&
 SortExecutorInfos::getTemporaryStorageFeature() noexcept {
   return _tempStorage;
+}
+
+size_t SortExecutorInfos::thresholdNumRows() const noexcept {
+  return _thresholdNumRows;
 }
 
 size_t SortExecutorInfos::limit() const noexcept { return _limit; }

@@ -127,7 +127,8 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
 bool SortedRowsStorageBackendMemory::hasReachedCapacityLimit() const noexcept {
   // TODO: track actual memory usage here. this hard-coded value is just here
   // for testing
-  return _rowIndexes.size() > 5000;
+  return _rowIndexes.size() > _infos.thresholdNumRows();
+  // return _rowIndexes.size() > 5000;
 }
 
 bool SortedRowsStorageBackendMemory::hasMore() const {

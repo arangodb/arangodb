@@ -38,8 +38,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
-#include "Transaction/Methods.h"
-#include "VocBase/vocbase.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
@@ -194,6 +192,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     sortRegs.emplace_back(id, element);
     inputRegs.emplace(id);
   }
+
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
   auto executorInfos = SortExecutorInfos(
       registerInfos.numberOfInputRegisters(),
@@ -204,7 +203,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
           .server()
           .getFeature<TemporaryStorageFeature>(),
       &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
-      _stable);
+      engine.getQuery().queryOptions().thresholdNumRows, _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
