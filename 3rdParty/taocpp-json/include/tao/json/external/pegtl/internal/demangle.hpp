@@ -115,11 +115,14 @@ namespace TAO_JSON_PEGTL_NAMESPACE::internal
    {
       constexpr std::string_view sv = __FUNCSIG__;
       constexpr auto begin = sv.find( "demangle<" );
-      static_assert( begin != std::string_view::npos );
-      constexpr auto tmp = sv.substr( begin + 9 );
-      constexpr auto end = tmp.rfind( '>' );
-      static_assert( end != std::string_view::npos );
-      return tmp.substr( 0, end );
+      if constexpr(begin != std::string_view::npos) {
+            constexpr auto tmp = sv.substr( begin + 9 );
+            constexpr auto end = tmp.rfind( '>' );
+            static_assert( end != std::string_view::npos );
+            return tmp.substr( 0, end );
+      } else {
+         return sv;
+      }
    }
 
 #endif
