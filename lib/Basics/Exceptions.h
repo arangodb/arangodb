@@ -123,6 +123,7 @@ class Exception : public virtual std::exception {
   [[nodiscard]] char const* what() const noexcept override;
   [[nodiscard]] std::string const& message() const noexcept;
   [[nodiscard]] ErrorCode code() const noexcept;
+  [[nodiscard]] SourceLocation location() const noexcept;
 
  private:
   void appendLocation() noexcept;

@@ -119,7 +119,6 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    using namespace fmt::literals;
     throw basics::Exception::fmt(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
@@ -130,7 +129,6 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    using namespace fmt::literals;
     throw basics::Exception::fmt(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
@@ -901,8 +899,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
 
       engine.getCollectionInfo(*this, collection->id(), builder, false, 0);
 
-      auto res = collection->properties(builder.slice().get("parameters"),
-                                        false);  // always a full-update
+      auto res = collection->properties(builder.slice().get("parameters"));
 
       if (!res.ok()) {
         // TODO: Here we're only returning the errorNumber. The errorMessage is
@@ -2165,7 +2162,7 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
 /// the result is the object excluding _id, _key and _rev
-void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
+void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
@@ -2174,26 +2171,7 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString)) {
-      builder.add(key.data(), key.size(), it.value());
-    }
-    it.next();
-  }
-}
-
-/// @brief sanitize an object, given as slice, builder must contain an
-/// open object which will remain open. also excludes _from and _to
-void TRI_SanitizeObjectWithEdges(VPackSlice const slice,
-                                 VPackBuilder& builder) {
-  TRI_ASSERT(slice.isObject());
-  VPackObjectIterator it(slice, true);
-  while (it.valid()) {
-    std::string_view key(it.key().stringView());
-    // _id, _key, _rev, _from, _to. minimum size here is 3
-    if (key.size() < 3 || key[0] != '_' ||
-        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
-         key != StaticStrings::RevString && key != StaticStrings::FromString &&
-         key != StaticStrings::ToString)) {
-      builder.add(key.data(), key.length(), it.value());
+      builder.add(key, it.value());
     }
     it.next();
   }

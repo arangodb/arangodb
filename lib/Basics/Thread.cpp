@@ -50,33 +50,84 @@
 #include <process.h>
 #endif
 
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
-/// @brief local thread number
-static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
-static thread_local char const* LOCAL_THREAD_NAME = nullptr;
+namespace {
 
 #ifndef _WIN32
-namespace {
+// ever-increasing counter for thread numbers.
+// not used on Windows
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
-}
 #endif
+
+// helper struct to assign and retrieve a thread id
+struct ThreadNumber {
+  ThreadNumber() noexcept
+      :
+#ifdef _WIN32
+        value(static_cast<uint64_t>(GetCurrentThreadId())) {
+  }
+#else
+        value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {
+  }
+#endif
+
+  uint64_t get() const noexcept { return value; }
+
+ private:
+  uint64_t value;
+};
+
+}  // namespace
+
+/// @brief local thread number
+static thread_local ::ThreadNumber LOCAL_THREAD_NUMBER{};
+static thread_local char const* LOCAL_THREAD_NAME = nullptr;
+
+// retrieve the current thread's name. the string view will
+// remain valid as long as the ThreadNameFetcher remains valid.
+ThreadNameFetcher::ThreadNameFetcher() noexcept {
+  memset(&_buffer[0], 0, sizeof(_buffer));
+
+  char const* name = LOCAL_THREAD_NAME;
+  if (name != nullptr) {
+    size_t len = strlen(name);
+    if (len > sizeof(_buffer) - 1) {
+      len = sizeof(_buffer) - 1;
+    }
+    memcpy(&_buffer[0], name, len);
+  } else {
+#ifdef TRI_HAVE_SYS_PRCTL_H
+    // will read at most 16 bytes and null-terminate the data
+    prctl(PR_GET_NAME, &_buffer, 0, 0, 0);
+    // be extra cautious about null-termination of the buffer
+    _buffer[sizeof(_buffer) - 1] = '\0';
+#endif
+  }
+  if (_buffer[0] == '\0') {
+    // if there is no other name, simply return "main"
+    memcpy(&_buffer[0], "main", 4);
+  }
+}
+
+std::string_view ThreadNameFetcher::get() const noexcept {
+  // guaranteed to be properly null-terminated
+  return {&_buffer[0]};
+}
 
 /// @brief static started with access to the private variables
 void Thread::startThread(void* arg) {
-#ifdef _WIN32
-  LOCAL_THREAD_NUMBER = (uint64_t)GetCurrentThreadId();
-#else
-  LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
-#endif
-
   TRI_ASSERT(arg != nullptr);
   Thread* ptr = static_cast<Thread*>(arg);
   TRI_ASSERT(ptr != nullptr);
 
-  ptr->_threadNumber = LOCAL_THREAD_NUMBER;
+  ptr->_threadNumber = LOCAL_THREAD_NUMBER.get();
 
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
@@ -115,11 +166,9 @@ TRI_pid_t Thread::currentProcessId() {
 }
 
 /// @brief returns the thread process id
-uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
-
-/// @brief returns the name of the current thread, if set
-/// note that this function may return a nullptr
-char const* Thread::currentThreadName() { return LOCAL_THREAD_NAME; }
+uint64_t Thread::currentThreadNumber() noexcept {
+  return LOCAL_THREAD_NUMBER.get();
+}
 
 /// @brief returns the thread id
 TRI_tid_t Thread::currentThreadId() {

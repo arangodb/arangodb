@@ -665,20 +665,34 @@ auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
     return;
   }
 
+  // Wait for sync
+  if (target.config.waitForSync != plan.participantsConfig.config.waitForSync) {
+    // FIXME: assumedWaitForSync does not change here.
+    ctx.createAction<UpdateWaitForSyncAction>(
+        target.config.waitForSync, current.supervision->assumedWaitForSync);
+    return;
+  }
+
   if (!current.leader.has_value() ||
       !current.leader->committedParticipantsConfig.has_value()) {
     return;
   }
-  if (plan.participantsConfig.generation ==
-          current.leader->committedParticipantsConfig->generation and
-      plan.participantsConfig.config.effectiveWriteConcern !=
-          current.supervision->assumedWriteConcern) {
-    // update assumedWriteConcern
-    ctx.createAction<SetAssumedWriteConcernAction>(
-        plan.participantsConfig.config.effectiveWriteConcern);
-  }
 
-  // TODO: waitForSync
+  if (plan.participantsConfig.generation ==
+      current.leader->committedParticipantsConfig->generation)
+
+    if (plan.participantsConfig.config.effectiveWriteConcern !=
+        current.supervision->assumedWriteConcern) {
+      // update assumedWriteConcern
+      ctx.createAction<SetAssumedWriteConcernAction>(
+          plan.participantsConfig.config.effectiveWriteConcern);
+    }
+
+  if (plan.participantsConfig.config.waitForSync !=
+      current.supervision->assumedWaitForSync) {
+    ctx.createAction<SetAssumedWaitForSyncAction>(
+        plan.participantsConfig.config.waitForSync);
+  }
 }
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {
@@ -692,6 +706,10 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
 
   if (log.plan->participantsConfig.generation !=
       current.leader->committedParticipantsConfig->generation) {
+    return;
+  }
+
+  if (!current.leader->leadershipEstablished) {
     return;
   }
 
@@ -735,6 +753,8 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // In the next round this will lead to a leadership election.
   checkLeaderHealthy(ctx, log, health);
 
+  checkConfigUpdated(ctx, log, health);
+
   // Check whether a participant was added in Target that is not in Plan.
   // If so, add it to Plan.
   //
@@ -770,9 +790,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // If the configuration differs between Target and Plan,
   // apply the new configuration.
   checkParticipantWithFlagsToUpdate(ctx, log, health);
-
-  // TODO: This has not been implemented yet!
-  checkConfigUpdated(ctx, log, health);
 
   // Check whether we have converged, and if so, report and set version
   // to target version

@@ -79,7 +79,7 @@ struct LeaderStateManager
     explicit GuardedData(LeaderStateManager& self,
                          LeaderInternalState internalState,
                          std::unique_ptr<CoreType> core,
-                         std::unique_ptr<ReplicatedStateToken> token);
+                         std::unique_ptr<ReplicatedStateToken> token) noexcept;
     LeaderStateManager& self;
     std::shared_ptr<IReplicatedLeaderState<S>> state;
     std::shared_ptr<Stream> stream;
@@ -92,10 +92,7 @@ struct LeaderStateManager
     std::unique_ptr<ReplicatedStateToken> token;
     bool _didResign = false;
 
-    void updateInternalState(LeaderInternalState newState) {
-      internalState = newState;
-      lastInternalStateChange = std::chrono::system_clock::now();
-    }
+    void updateInternalState(LeaderInternalState newState) noexcept;
   };
 
   Guarded<GuardedData> guardedData;
@@ -108,20 +105,9 @@ struct LeaderStateManager
  private:
   void beginWaitingForLogLeaderResigned();
 
-  auto waitForLeadership() -> futures::Future<Result>;
-  auto recoverEntries() -> futures::Future<Result>;
+  auto waitForLeadership() noexcept -> futures::Future<futures::Unit>;
+  auto recoverEntries() noexcept -> futures::Future<Result>;
   auto startService() -> Result;
 };
 
-template<typename S>
-LeaderStateManager<S>::GuardedData::GuardedData(
-    LeaderStateManager& self, LeaderInternalState internalState,
-    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    : self(self),
-      internalState(internalState),
-      core(std::move(core)),
-      token(std::move(token)) {
-  TRI_ASSERT(this->core != nullptr);
-  TRI_ASSERT(this->token != nullptr);
-}
 }  // namespace arangodb::replication2::replicated_state

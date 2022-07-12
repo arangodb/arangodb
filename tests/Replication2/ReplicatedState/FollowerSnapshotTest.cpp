@@ -81,6 +81,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
     auto status = *manager->getStatus().asFollowerStatus();
     EXPECT_EQ(status.managerState.state,
               FollowerInternalState::kWaitForLeaderConfirmation);
+    EXPECT_EQ(status.snapshot.status, SnapshotStatus::kUninitialized);
   }
 
   // required for leader to become established
@@ -92,6 +93,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
     auto status = *manager->getStatus().asFollowerStatus();
     EXPECT_EQ(status.managerState.state,
               FollowerInternalState::kTransferSnapshot);
+    EXPECT_EQ(status.snapshot.status, SnapshotStatus::kInProgress);
   }
 
   // now here we expect that the state is internally created
@@ -112,6 +114,12 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   state->acquire.resolveWithAndReset(
       Result{TRI_ERROR_HTTP_SERVICE_UNAVAILABLE});
 
+  {
+    auto status = *manager->getStatus().asFollowerStatus();
+    EXPECT_EQ(status.managerState.state,
+              FollowerInternalState::kTransferSnapshot);
+    EXPECT_EQ(status.snapshot.status, SnapshotStatus::kInProgress);
+  }
   // we expect a retry
   {
     ASSERT_TRUE(state->acquire.wasTriggered())
@@ -130,7 +138,8 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   {
     auto status = *manager->getStatus().asFollowerStatus();
     EXPECT_EQ(status.managerState.state,
-              FollowerInternalState::kNothingToApply);
+              FollowerInternalState::kWaitForNewEntries);
+    EXPECT_EQ(status.snapshot.status, SnapshotStatus::kCompleted);
   }
   ASSERT_NE(nullptr, manager->getFollowerState())
       << "follower state should be available";
@@ -150,7 +159,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   {
     auto status = *manager->getStatus().asFollowerStatus();
     EXPECT_EQ(status.managerState.state,
-              FollowerInternalState::kNothingToApply);
+              FollowerInternalState::kWaitForNewEntries);
   }
 }
 
