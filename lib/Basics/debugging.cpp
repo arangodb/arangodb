@@ -80,7 +80,7 @@ void TRI_TerminateDebugging(std::string_view message) {
     // note: when using ASan/UBSan, this actually does not crash
     // the program but continues.
     auto f = []() noexcept {
-    // intentionally crashes the program!
+      // intentionally crashes the program!
       // cppcheck-suppress *
       *static_cast<volatile int*>(nullptr) = 1;
     };
