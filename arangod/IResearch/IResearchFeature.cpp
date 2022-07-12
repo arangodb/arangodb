@@ -823,6 +823,7 @@ bool isFilter(aql::Function const& func) noexcept {
          func.implementation == &contextFunc ||
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
+         func.implementation == &aql::functions::MinHashMatch ||
          func.implementation == &aql::functions::GeoContains ||
          func.implementation == &aql::functions::GeoInRange ||
          func.implementation == &aql::functions::GeoIntersects ||

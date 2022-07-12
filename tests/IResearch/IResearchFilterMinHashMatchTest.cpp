@@ -30,10 +30,7 @@
 
 #include "gtest/gtest.h"
 
-#include "search/boolean_filter.hpp"
-#include "search/column_existence_filter.hpp"
-#include "search/nested_filter.hpp"
-#include "search/term_filter.hpp"
+#include "search/terms_filter.hpp"
 
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -46,40 +43,25 @@
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
 
-// exists(name)
-auto makeByColumnExistence(std::string_view name) {
-  return [name](irs::sub_reader const& segment) {
-    auto* col = segment.column(name);
+using namespace std::string_view_literals;
 
-    return col ? col->iterator(irs::ColumnHint::kMask |
-                               irs::ColumnHint::kPrevDoc)
-               : nullptr;
-  };
-}
-
-// name == value
-auto makeByTerm(std::string_view name, std::string_view value,
-                irs::score_t boost) {
-  auto filter = std::make_unique<irs::by_term>();
-  *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
-  filter->boost(boost);
+auto makeByTerms(std::string_view name,
+                 std::span<const std::string_view> values, size_t match_count,
+                 irs::score_t boost,
+                 irs::sort::MergeType type = irs::sort::MergeType::kSum) {
+  irs::by_terms filter;
+  *filter.mutable_field() = name;
+  filter.boost(boost);
+  auto& [terms, min_match, merge_type] = *filter.mutable_options();
+  min_match = match_count;
+  merge_type = type;
+  for (irs::string_ref value : values) {
+    terms.emplace(irs::ref_cast<irs::byte_type>(value), irs::kNoBoost);
+  }
   return filter;
 }
 
-void makeAnd(
-    irs::Or& root,
-    std::vector<std::tuple<std::string_view, std::string_view, irs::score_t>>
-        parts) {
-  auto& filter = root.add<irs::And>();
-  for (const auto& [name, value, boost] : parts) {
-    auto& sub = filter.add<irs::by_term>();
-    sub =
-        std::move(static_cast<irs::by_term&>(*makeByTerm(name, value, boost)));
-  }
-}
-
-class IResearchFilterNestedTest
+class IResearchFilterMinHashMatchTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR> {
@@ -90,7 +72,7 @@ class IResearchFilterNestedTest
   TRI_vocbase_t* _vocbase;
 
  protected:
-  IResearchFilterNestedTest() {
+  IResearchFilterMinHashMatchTest() {
     arangodb::tests::init();
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
@@ -138,10 +120,18 @@ class IResearchFilterNestedTest
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
-    analyzers.emplace(
-        result, "testVocbase::test_analyzer", "TestAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")
-            ->slice());  // cache analyzer
+
+    auto props = arangodb::velocypack::Parser::fromJson(R"({
+          "analyzer" : { "type": "delimiter", "properties": { "delimiter": " " } },
+          "numHashes": 10
+        })");
+    auto res = analyzers.emplace(result, "testVocbase::test_analyzer",
+                                 "minhash", props->slice());
+#ifdef USE_ENTERPRISE
+    EXPECT_TRUE(res.ok());
+#else
+    EXPECT_FALSE(res.ok());
+#endif
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -150,5 +140,60 @@ class IResearchFilterNestedTest
 // TODO Add community only tests (byExpression)
 
 #if USE_ENTERPRISE
-#include "tests/IResearch/IResearchFilterNestedTestEE.h"
+#include "tests/IResearch/IResearchFilterMinHashMatchTestEE.hpp"
 #endif
+
+TEST_F(IResearchFilterMinHashMatchTest, MinMatch3Hashes) {
+  irs::Or expected;
+  expected.add<irs::by_terms>() = makeByTerms(
+      "foo", std::array{"44OTL2BvXFU"sv, "F3tEoNARof4"sv, "ZZHTGoxTKjQ"sv}, 3,
+      irs::kNoBoost);
+
+  ExpressionContextMock ctx;
+  arangodb::aql::Variable varAnalyzer("analyzer", 0, false);
+  arangodb::aql::AqlValue valueAnalyzer("testVocbase::test_analyzer");
+  arangodb::aql::AqlValueGuard guardAnalyzer(valueAnalyzer, true);
+  arangodb::aql::Variable varField("field", 1, false);
+  arangodb::aql::AqlValue valueField("foo");
+  arangodb::aql::AqlValueGuard guardField(valueField, true);
+  arangodb::aql::Variable varCount("count", 2, false);
+  arangodb::aql::AqlValue valueCount(arangodb::aql::AqlValueHintUInt{1});
+  arangodb::aql::AqlValueGuard guardCount(valueCount, true);
+  arangodb::aql::Variable varInput("input", 3, false);
+  arangodb::aql::AqlValue valueInput("foo bar baz");
+  arangodb::aql::AqlValueGuard guardInput(valueInput, true);
+  ctx.vars.emplace(varAnalyzer.name, valueAnalyzer);
+  ctx.vars.emplace(varField.name, valueField);
+  ctx.vars.emplace(varCount.name, valueCount);
+  ctx.vars.emplace(varInput.name, valueInput);
+
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)",
+      expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(MINHASH_MATCH(d.foo, "foo bar baz", 1, "testVocbase::test_analyzer"), 1) RETURN d)",
+      expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(ANALYZER(MINHASH_MATCH(d.foo, "foo bar baz", 1), "testVocbase::test_analyzer"), 1) RETURN d)",
+      expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(Let count = 1 LET field = "foo" LET analyzer = "testVocbase::test_analyzer" let input = "foo bar baz"
+         FOR d IN myView FILTER BOOST(ANALYZER(MINHASH_MATCH(d[field], input, count), analyzer), 1) RETURN d)",
+      expected, &ctx);
+
+  // Not a MinHash analyzer
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, "text_en") RETURN d)");
+  // Invalid threshold
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1.1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 0, "testVocbase::test_analyzer") RETURN d)");
+}
