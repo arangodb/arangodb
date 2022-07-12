@@ -23,7 +23,7 @@ const ParameterNodeSize = () => {
         }}
         disabled={urlParameters.nodeSizeByEdges}>
       </Textinput>
-      <Tooltip placement="bottom" title={"Enter a numeric value larger than 0."}>
+      <Tooltip placement="bottom" title={"Enter a numeric value larger than 0."} overlayClassName='graph-border-box'>
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
     </div>

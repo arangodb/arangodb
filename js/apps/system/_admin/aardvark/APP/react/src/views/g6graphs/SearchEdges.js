@@ -45,7 +45,7 @@ const SearchEdges = ({ edges, graphData, onEdgeInfo, data, onDeleteEdge, onEdgeS
               edge={edge} />
           ))}
         </datalist>
-        <Tooltip placement="bottom" title={"Select the edge you are looking for."}>
+        <Tooltip placement="bottom" title={"Select the edge you are looking for."} overlayClassName="graph-border-box">
           <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
         </Tooltip>
       </div>
