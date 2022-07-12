@@ -70,6 +70,7 @@
 
     events: {
       'click #downloadPNG': 'downloadPNG',
+      'click #switchToG6GraphViewer': 'switchToG6GraphViewer',
       'click #loadFullGraph': 'loadFullGraphModal',
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
@@ -101,6 +102,12 @@
         background: 'white',
         zoom: false
       });
+    },
+
+    switchToG6GraphViewer: function () {
+      const url = window.location.href;
+      const linkToNewGraphViewer = url.substring(url.lastIndexOf('/') + 1);
+      window.location.href = `/_db/_system/_admin/aardvark/index.html#g6graphs/${linkToNewGraphViewer}`;
     },
 
     loadFullGraphModal: function () {
