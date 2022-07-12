@@ -98,7 +98,7 @@ AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t numRows,
 }
 
 /// @brief init the block from VelocyPack, note that this can throw
-void AqlItemBlock::initFromSlice(VPackSlice const slice) {
+void AqlItemBlock::initFromSlice(VPackSlice slice) {
   int64_t numRows =
       VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   if (numRows <= 0) {
@@ -871,25 +871,23 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 }
 
 void AqlItemBlock::rowToSimpleVPack(
-    size_t const row, velocypack::Options const* options,
+    size_t row, velocypack::Options const* options,
     arangodb::velocypack::Builder& builder) const {
-  {
-    VPackArrayBuilder rowBuilder{&builder};
+  VPackArrayBuilder rowBuilder{&builder};
 
-    if (isShadowRow(row)) {
-      builder.add(VPackValue(getShadowRowDepth(row)));
+  if (isShadowRow(row)) {
+    builder.add(VPackValue(getShadowRowDepth(row)));
+  } else {
+    builder.add(VPackSlice::nullSlice());
+  }
+  auto const n = numRegisters();
+  for (RegisterId::value_t reg = 0; reg < n; ++reg) {
+    AqlValue const& ref = getValueReference(row, reg);
+    if (ref.isEmpty()) {
+      builder.add(VPackSlice::noneSlice());
     } else {
-      builder.add(VPackSlice::nullSlice());
-    }
-    auto const n = numRegisters();
-    for (RegisterId::value_t reg = 0; reg < n; ++reg) {
-      AqlValue const& ref = getValueReference(row, reg);
-      if (ref.isEmpty()) {
-        builder.add(VPackSlice::noneSlice());
-      } else {
-        ref.toVelocyPack(options, builder, /*resolveExternals*/ false,
-                         /*allowUnindexed*/ true);
-      }
+      ref.toVelocyPack(options, builder, /*resolveExternals*/ false,
+                       /*allowUnindexed*/ true);
     }
   }
 }
