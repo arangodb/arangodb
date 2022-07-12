@@ -91,7 +91,7 @@ const ViewJSONReactView = ({ name }) => {
         </div>
         {
           isAdminUser && changed
-            ? <div className="tab-content" id="Save">
+            ? <div className="tab-content" id="Save" style={{ marginTop: 30 }}>
               <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
             </div>
             : null

@@ -118,7 +118,6 @@ export const SaveButton = ({
 
 
   return <IconButton icon={"save"} onClick={handleSave} type={"success"} style={{
-    marginTop: 10,
     marginBottom: 10,
     marginRight: 10,
     float: 'right'
