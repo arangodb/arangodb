@@ -3822,7 +3822,7 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
 }
 
 frozen::map<irs::string_ref, ConvertionHandler,
-            13> constexpr kFCallSystemConvertionHandlers{
+            14> constexpr kFCallSystemConvertionHandlers{
     // filter functions
     {"PHRASE", fromFuncPhrase},
     {"STARTS_WITH", fromFuncStartsWith},

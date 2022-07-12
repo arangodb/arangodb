@@ -143,6 +143,8 @@ class IResearchFilterMinHashMatchTest
 #include "tests/IResearch/IResearchFilterMinHashMatchTestEE.hpp"
 #endif
 
+// FIXME(gnusi): 0 threshold
+
 TEST_F(IResearchFilterMinHashMatchTest, MinMatch3Hashes) {
   irs::Or expected;
   expected.add<irs::by_terms>() = makeByTerms(
@@ -181,6 +183,10 @@ TEST_F(IResearchFilterMinHashMatchTest, MinMatch3Hashes) {
       expected);
   assertFilterSuccess(
       vocbase(),
+      R"(FOR d IN myView FILTER BOOST(ANALYZER(MINHASH_MATCH(d.foo, "foo bar baz", 0.99), "testVocbase::test_analyzer"), 1) RETURN d)",
+      expected);
+  assertFilterSuccess(
+      vocbase(),
       R"(Let count = 1 LET field = "foo" LET analyzer = "testVocbase::test_analyzer" let input = "foo bar baz"
          FOR d IN myView FILTER BOOST(ANALYZER(MINHASH_MATCH(d[field], input, count), analyzer), 1) RETURN d)",
       expected, &ctx);
@@ -189,11 +195,12 @@ TEST_F(IResearchFilterMinHashMatchTest, MinMatch3Hashes) {
   assertFilterFail(
       vocbase(),
       R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, "text_en") RETURN d)");
+
   // Invalid threshold
   assertFilterFail(
       vocbase(),
       R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1.1, "testVocbase::test_analyzer") RETURN d)");
   assertFilterFail(
       vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 0, "testVocbase::test_analyzer") RETURN d)");
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", -0.1, "testVocbase::test_analyzer") RETURN d)");
 }
