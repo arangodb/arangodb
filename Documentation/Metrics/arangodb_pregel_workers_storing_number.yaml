@@ -1,7 +1,7 @@
-name: arangodb_pregel_active_executions_number
+name: arangodb_pregel_workers_storing_number
 introducedIn: "3.10.0"
 help: |
-  Number of active Pregel executions.
+  Number of storing Pregel workers.
 unit: number
 type: gauge
 category: Pregel
@@ -11,4 +11,4 @@ exposedBy:
   - single
   - coordinator
 description: |
-  The number of Pregel algorithm executions active on this server.
+  Number of storing Pregel workers.
