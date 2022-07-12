@@ -32,7 +32,25 @@
 
 namespace arangodb {
 
-DECLARE_GAUGE(arangodb_pregel_executions_number, std::uint64_t,
-              "Number of Pregel executions run on this arangodb instance");
+DECLARE_COUNTER(arangodb_pregel_executions_total,
+                "Number of Pregel executions that have been run");
+
+DECLARE_GAUGE(arangodb_pregel_executions_within_ttl_number, std::uint64_t,
+              "Number of Pregel executions that are still within TTL");
+
+DECLARE_GAUGE(arangodb_pregel_active_executions_number, std::uint64_t,
+              "Number of running Pregel executions on this arangodb instance");
+
+DECLARE_COUNTER(arangodb_pregel_messages_sent_total,
+                "Number of messages sent by Pregel");
+
+DECLARE_COUNTER(arangodb_pregel_messages_received_total,
+                "Number of messages received by Pregel");
+
+DECLARE_GAUGE(arangodb_pregel_threads_number, std::uint64_t,
+              "Number of threads used by Pregel");
+
+DECLARE_GAUGE(arangodb_pregel_graph_memory_bytes_number, std::uint64_t,
+              "Amount of memory in use for Pregel graph storage");
 
 }  // namespace arangodb

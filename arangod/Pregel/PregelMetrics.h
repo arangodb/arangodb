@@ -48,7 +48,13 @@ struct PregelMetrics {
   explicit PregelMetrics(MFP metricsFeature);
 
  public:
-  std::shared_ptr<metrics::Gauge<uint64_t>> const pregelExecutions;
+  std::shared_ptr<metrics::Counter> const pregelExecutions;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const pregelRunningExecutions;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const pregelExecutionsWithinTTL;
+  std::shared_ptr<metrics::Counter> const pregelMessagesSent;
+  std::shared_ptr<metrics::Counter> const pregelMessagesReceived;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const pregelNumberOfThreads;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const pregelMemoryUsedForGraph;
 };
 
 }  // namespace arangodb::pregel

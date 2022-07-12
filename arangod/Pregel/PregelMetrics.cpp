@@ -29,7 +29,7 @@
 using namespace arangodb::pregel;
 
 PregelMetrics::PregelMetrics(metrics::MetricsFeature& metricsFeature)
-    : ReplicatedLogMetrics(&metricsFeature) {}
+    : PregelMetrics(&metricsFeature) {}
 
 template<typename Builder, bool mock>
 auto PregelMetrics::createMetric(metrics::MetricsFeature* metricsFeature)
@@ -50,31 +50,32 @@ template<
                      int>,
     bool mock>
 PregelMetrics::PregelMetrics(MFP metricsFeature)
-    : pregelExecutions(createMetric<arangodb_pregel_executions_number, mock>(
-          metricsFeature)) {
+    : pregelExecutions(
+          createMetric<arangodb_pregel_executions_total, mock>(metricsFeature)),
+      pregelRunningExecutions(
+          createMetric<arangodb_pregel_active_executions_number, mock>(
+              metricsFeature)),
+      pregelExecutionsWithinTTL(
+          createMetric<arangodb_pregel_executions_within_ttl_number, mock>(
+              metricsFeature)),
+      pregelMessagesSent(
+          createMetric<arangodb_pregel_messages_sent_total, mock>(
+              metricsFeature)),
+      pregelMessagesReceived(
+          createMetric<arangodb_pregel_messages_received_total, mock>(
+              metricsFeature)),
+      pregelNumberOfThreads(
+          createMetric<arangodb_pregel_threads_number, mock>(metricsFeature)),
+      pregelMemoryUsedForGraph(
+          createMetric<arangodb_pregel_graph_memory_bytes_number, mock>(
+              metricsFeature))
+
+{
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   static_assert(!mock);
   static_assert(!std::is_null_pointer_v<MFP>);
 #endif
 }
-
-MeasureTimeGuard::MeasureTimeGuard(
-    std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
-        histogram) noexcept
-    : _start(std::chrono::steady_clock::now()),
-      _histogram(std::move(histogram)) {}
-
-void MeasureTimeGuard::fire() {
-  if (_histogram) {
-    auto const endTime = std::chrono::steady_clock::now();
-    auto const duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
-    _histogram->count(duration.count());
-    _histogram.reset();
-  }
-}
-
-MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
 
 template arangodb::pregel::PregelMetrics::PregelMetrics(
     arangodb::metrics::MetricsFeature*);

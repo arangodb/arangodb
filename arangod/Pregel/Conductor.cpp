@@ -47,6 +47,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -134,6 +136,9 @@ Conductor::Conductor(
   _ttl = std::chrono::seconds(
       VelocyPackHelper::getNumericValue(config, "ttl", ttl));
 
+  _feature.metrics()->pregelExecutions->count(1);
+  _feature.metrics()->pregelExecutionsWithinTTL->fetch_add(1);
+
   LOG_PREGEL("00f5f", INFO)
       << "Starting " << _algorithm->name() << " in database '" << vocbase.name()
       << "', ttl: " << _ttl.count() << "s"
@@ -152,6 +157,7 @@ Conductor::~Conductor() {
       // must not throw exception from here
     }
   }
+  _feature.metrics()->pregelExecutionsWithinTTL->fetch_sub(1);
 }
 
 void Conductor::start() {

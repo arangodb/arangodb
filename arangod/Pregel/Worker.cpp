@@ -35,6 +35,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -80,6 +82,10 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _graphStore = std::make_unique<GraphStore<V, E>>(
       _feature, vocbase, _config.executionNumber(), _algorithm->inputFormat());
 
+  _feature.metrics()->pregelExecutions->count(1);
+  _feature.metrics()->pregelRunningExecutions->fetch_add(1);
+  _feature.metrics()->pregelExecutionsWithinTTL->fetch_add(1);
+
   if (_config.asynchronousMode()) {
     _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
   } else {
@@ -104,6 +110,8 @@ Worker<V, E, M>::~Worker() {
     delete cache;
   }
   _writeCache = nullptr;
+
+  _feature.metrics()->pregelExecutionsWithinTTL->fetch_sub(1);
 }
 
 template<typename V, typename E, typename M>
@@ -367,6 +375,8 @@ void Worker<V, E, M>::_startProcessing() {
   } else {
     _runningThreads = 1;
   }
+  LOG_DEVEL << "threads? " << _runningThreads;
+  _feature.metrics()->pregelNumberOfThreads->fetch_add(_runningThreads);
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());
   size_t numT = _runningThreads;
@@ -471,6 +481,7 @@ bool Worker<V, E, M>::_processVertices(
   // TODO ask how to implement message sending without waiting for a response
   // t = TRI_microtime() - t;
 
+  _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
@@ -486,6 +497,7 @@ bool Worker<V, E, M>::_processVertices(
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
+    _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
     _reports.append(std::move(vertexComputation->_reports));
     lastThread = _runningThreads == 0;  // should work like a join operation
   }
@@ -512,6 +524,9 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     // count all received messages
     _messageStats.receivedCount = _readCache->containedMessageCount();
+
+    _feature.metrics()->pregelMessagesReceived->count(
+        _readCache->containedMessageCount());
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
