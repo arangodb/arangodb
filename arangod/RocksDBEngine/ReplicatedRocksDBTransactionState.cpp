@@ -88,16 +88,15 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   auto options = replication2::replicated_state::document::ReplicationOptions{
       .waitForCommit = true};
   std::vector<futures::Future<Result>> commits;
-  allCollections([&](TransactionCollection& c) {
-    auto leader = c.collection()->waitForDocumentStateLeader();
-    commits.emplace_back(
-        leader
-            ->replicateOperation(velocypack::SharedSlice{}, operation, id(),
-                                 options)
-            .thenValue([&c](auto&& res) -> Result {
-              return static_cast<ReplicatedRocksDBTransactionCollection&>(c)
-                  .commitTransaction();
-            }));
+  allCollections([&](TransactionCollection& tc) {
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
+    auto leader = rtc.leaderState();
+    commits.emplace_back(leader
+                             ->replicateOperation(velocypack::SharedSlice{},
+                                                  operation, id(), options)
+                             .thenValue([&rtc](auto&& res) -> Result {
+                               return rtc.commitTransaction();
+                             }));
     return true;
   });
 
@@ -124,8 +123,8 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   if (!mustBeReplicated()) {
     Result res;
     for (auto& col : _collections) {
-      res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-                .abortTransaction();
+      auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
+      res = rtc.abortTransaction();
       if (!res.ok()) {
         break;
       }
@@ -140,11 +139,11 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   // The following code has been simplified based on this assertion.
   TRI_ASSERT(options.waitForCommit == false);
   for (auto& col : _collections) {
-    auto leader = col->collection()->waitForDocumentStateLeader();
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
+    auto leader = rtc.leaderState();
     leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
                                options);
-    auto r = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-                 .abortTransaction();
+    auto r = rtc.abortTransaction();
     if (r.fail()) {
       return r;
     }
