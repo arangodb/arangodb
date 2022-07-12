@@ -1,0 +1,14 @@
+name: arangodb_pregel_executions_total
+introducedIn: "3.10.0"
+help: |
+  Number of Pregel executions.
+unit: number
+type: counter
+category: Pregel
+complexity: simple
+exposedBy:
+  - dbserver
+  - single
+  - coordinator
+description: |
+  The number of Pregel algorithm executions this server has participated in.
