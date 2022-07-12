@@ -20,6 +20,8 @@ devel
   parameter name to specify the field into which results are stored.
   The name `_resultField` will be deprecated in future.
 
+* Update Windows CI compiler to Visual Studio 2022.
+
 * Web UI: Fixes a GraphViewer issue related to display issues with node
   and edge labels. Boolean node or edge values could not be used as label
   values (ES-1084).
