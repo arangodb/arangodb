@@ -97,6 +97,7 @@ void RocksDBSortedRowsStorageContext::ingestAll() {
         _db->IngestExternalFile(_cf, fileNames, std::move(ingestOptions));
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s));
+      // TODO: is the cleanup of the files performed here?
     }
   }
 
@@ -158,8 +159,9 @@ void RocksDBSortedRowsStorageContext::cleanup() {
   }
 
   if (!s.ok()) {
-    LOG_DEVEL << "failure during range deletion of intermediate results: "
-              << rocksutils::convertStatus(s).errorMessage();
+    LOG_TOPIC("d1e84", WARN, Logger::ENGINES)
+        << "failure during range deletion of intermediate results: "
+        << rocksutils::convertStatus(s).errorMessage();
   }
   _needsCleanup = false;
 }
