@@ -78,7 +78,10 @@ namespace arangodb::aql {
 
 SortedRowsStorageBackendMemory::SortedRowsStorageBackendMemory(
     SortExecutorInfos& infos)
-    : _infos(infos), _returnNext(0), _sealed(false) {}
+    : _infos(infos),
+      _returnNext(0),
+      _memoryUsageForInputBlocks(0),
+      _sealed(false) {}
 
 SortedRowsStorageBackendMemory::~SortedRowsStorageBackendMemory() {
   _infos.getResourceMonitor().decreaseMemoryUsage(currentMemoryUsage());
@@ -93,6 +96,7 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
   auto inputBlock = inputRange.getBlock();
   if (inputBlock != nullptr) {
     _inputBlocks.emplace_back(inputBlock);
+    _memoryUsageForInputBlocks += inputBlock->getMemoryUsage();
   }
   size_t numDataRows = inputRange.countDataRows();
 
@@ -131,10 +135,8 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
 }
 
 bool SortedRowsStorageBackendMemory::hasReachedCapacityLimit() const noexcept {
-  // TODO: track actual memory usage here. this hard-coded value is just here
-  // for testing
-  return _rowIndexes.size() > _infos.thresholdNumRows();
-  // return _rowIndexes.size() > 5000;
+  return (_rowIndexes.size() > _infos.spillOverThresholdNumRows() ||
+          _memoryUsageForInputBlocks > _infos.spillOverThresholdMemoryUsage());
 }
 
 bool SortedRowsStorageBackendMemory::hasMore() const {
@@ -191,6 +193,7 @@ void SortedRowsStorageBackendMemory::spillOver(
   _rowIndexes.clear();
   _rowIndexes.shrink_to_fit();
   TRI_ASSERT(currentMemoryUsage() == 0);
+  _memoryUsageForInputBlocks = 0;
 }
 
 void SortedRowsStorageBackendMemory::doSorting() {

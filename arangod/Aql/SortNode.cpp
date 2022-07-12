@@ -203,7 +203,8 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
           .server()
           .getFeature<TemporaryStorageFeature>(),
       &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
-      engine.getQuery().queryOptions().thresholdNumRows, _stable);
+      engine.getQuery().queryOptions().spillOverThresholdNumRows,
+      engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));

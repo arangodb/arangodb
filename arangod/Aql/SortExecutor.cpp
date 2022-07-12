@@ -36,16 +36,15 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
-                                     RegisterCount nrOutputRegisters,
-                                     RegIdFlatSet const& registersToClear,
-                                     std::vector<SortRegister> sortRegisters,
-                                     std::size_t limit,
-                                     AqlItemBlockManager& manager,
-                                     TemporaryStorageFeature& tempStorage,
-                                     velocypack::Options const* options,
-                                     arangodb::ResourceMonitor& resourceMonitor,
-                                     size_t thresholdNumRows, bool stable)
+SortExecutorInfos::SortExecutorInfos(
+    RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
+    RegIdFlatSet const& registersToClear,
+    std::vector<SortRegister> sortRegisters, std::size_t limit,
+    AqlItemBlockManager& manager, TemporaryStorageFeature& tempStorage,
+    velocypack::Options const* options,
+    arangodb::ResourceMonitor& resourceMonitor,
+    size_t spillOverThresholdNumRows, size_t spillOverThresholdMemoryUsage,
+    bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
@@ -55,7 +54,8 @@ SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
       _vpackOptions(options),
       _resourceMonitor(resourceMonitor),
       _sortRegisters(std::move(sortRegisters)),
-      _thresholdNumRows(thresholdNumRows),
+      _spillOverThresholdNumRows(spillOverThresholdNumRows),
+      _spillOverThresholdMemoryUsage(spillOverThresholdMemoryUsage),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
 }
@@ -96,8 +96,12 @@ SortExecutorInfos::getTemporaryStorageFeature() noexcept {
   return _tempStorage;
 }
 
-size_t SortExecutorInfos::thresholdNumRows() const noexcept {
-  return _thresholdNumRows;
+size_t SortExecutorInfos::spillOverThresholdNumRows() const noexcept {
+  return _spillOverThresholdNumRows;
+}
+
+size_t SortExecutorInfos::spillOverThresholdMemoryUsage() const noexcept {
+  return _spillOverThresholdMemoryUsage;
 }
 
 size_t SortExecutorInfos::limit() const noexcept { return _limit; }

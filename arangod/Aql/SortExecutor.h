@@ -66,7 +66,8 @@ class SortExecutorInfos {
                     TemporaryStorageFeature& tempStorage,
                     velocypack::Options const* options,
                     arangodb::ResourceMonitor& resourceMonitor,
-                    size_t thresholdNumRows, bool stable);
+                    size_t spillOverThresholdNumRows,
+                    size_t spillOverThresholdMemoryUsage, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -89,7 +90,9 @@ class SortExecutorInfos {
 
   [[nodiscard]] size_t limit() const noexcept;
 
-  [[nodiscard]] size_t thresholdNumRows() const noexcept;
+  [[nodiscard]] size_t spillOverThresholdNumRows() const noexcept;
+
+  [[nodiscard]] size_t spillOverThresholdMemoryUsage() const noexcept;
 
   [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
 
@@ -105,7 +108,8 @@ class SortExecutorInfos {
   velocypack::Options const* _vpackOptions;
   arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
-  size_t _thresholdNumRows;
+  size_t _spillOverThresholdNumRows;
+  size_t _spillOverThresholdMemoryUsage;
   bool _stable;
 };
 

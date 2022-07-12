@@ -59,6 +59,7 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
   std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
 
   size_t _returnNext;
+  size_t _memoryUsageForInputBlocks;
   bool _sealed;
 };
 
