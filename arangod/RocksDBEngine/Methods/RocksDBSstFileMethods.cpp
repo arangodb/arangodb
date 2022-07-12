@@ -132,10 +132,15 @@ Result RocksDBSstFileMethods::stealFileNames(
   return rocksutils::convertStatus(res);
 }
 
-void RocksDBSstFileMethods::cleanUpFiles() {
-  for (auto const& fileName : _sstFileNames) {
+void RocksDBSstFileMethods::cleanUpFiles(
+    std::vector<std::string> const& fileNames) {
+  for (auto const& fileName : fileNames) {
     TRI_UnlinkFile(fileName.data());
   }
+}
+
+void RocksDBSstFileMethods::cleanUpFiles() {
+  cleanUpFiles(_sstFileNames);
   _sstFileNames.clear();
 }
 

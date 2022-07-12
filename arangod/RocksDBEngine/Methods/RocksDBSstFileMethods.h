@@ -68,6 +68,8 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
 
   Result stealFileNames(std::vector<std::string>& fileNames);
 
+  static void cleanUpFiles(std::vector<std::string> const& fileNames);
+
  private:
   void cleanUpFiles();
 

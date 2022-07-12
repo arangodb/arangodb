@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -85,6 +86,10 @@ void RocksDBSortedRowsStorageContext::ingestAll() {
   std::vector<std::string> fileNames;
   Result res = _methods->stealFileNames(fileNames);
 
+  TRI_IF_FAILURE("failOnIngestAll1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   if (res.ok() && !fileNames.empty()) {
     rocksdb::IngestExternalFileOptions ingestOptions;
     ingestOptions.move_files = true;
@@ -95,9 +100,14 @@ void RocksDBSortedRowsStorageContext::ingestAll() {
 
     rocksdb::Status s =
         _db->IngestExternalFile(_cf, fileNames, std::move(ingestOptions));
+
+    TRI_IF_FAILURE("failOnIngestAll2") {
+      s = rocksdb::Status::Corruption("broken");
+    }
+
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s));
-      // TODO: is the cleanup of the files performed here?
+      _methods->cleanUpFiles(fileNames);
     }
   }
 

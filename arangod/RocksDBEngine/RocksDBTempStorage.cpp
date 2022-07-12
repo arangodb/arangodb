@@ -50,24 +50,27 @@ using namespace arangodb;
 
 namespace {
 
-// TODO: rename it
 class KeysComparator : public rocksdb::Comparator {
  public:
   KeysComparator() = default;
   int Compare(rocksdb::Slice const& lhs,
               rocksdb::Slice const& rhs) const override {
+    TRI_ASSERT(lhs.size() >= sizeof(uint64_t));
+    TRI_ASSERT(rhs.size() >= sizeof(uint64_t));
+    // compare first 8 bytes, which is the "context id"
     int diff = memcmp(lhs.data(), rhs.data(), sizeof(uint64_t));
     if (diff != 0) {
       return diff;
     }
+
+    // move beyond "context id"
     auto p1 = lhs.data() + sizeof(uint64_t);
     auto p2 = rhs.data() + sizeof(uint64_t);
 
+    // now compare the running number (used for stable sorts)
     int diffInId = 0;
-    bool hasPrefixId1 =
-        (static_cast<size_t>(p1 - lhs.data()) < lhs.size()) ? true : false;
-    bool hasPrefixId2 =
-        (static_cast<size_t>(p2 - rhs.data()) < rhs.size()) ? true : false;
+    bool hasPrefixId1 = static_cast<size_t>(p1 - lhs.data()) < lhs.size();
+    bool hasPrefixId2 = static_cast<size_t>(p2 - rhs.data()) < rhs.size();
     if (hasPrefixId1 && hasPrefixId2) {
       diffInId = memcmp(p1, p2, sizeof(uint64_t));
       p1 += sizeof(uint64_t);
@@ -79,9 +82,9 @@ class KeysComparator : public rocksdb::Comparator {
     }
     while (static_cast<size_t>(p1 - lhs.data()) < lhs.size() &&
            static_cast<size_t>(p2 - rhs.data()) < rhs.size()) {
-      arangodb::velocypack::Slice slice1(reinterpret_cast<uint8_t const*>(p1));
+      velocypack::Slice slice1(reinterpret_cast<uint8_t const*>(p1));
       p1 += slice1.byteSize();
-      arangodb::velocypack::Slice slice2(reinterpret_cast<uint8_t const*>(p2));
+      velocypack::Slice slice2(reinterpret_cast<uint8_t const*>(p2));
       p2 += slice2.byteSize();
       char order1 = *p1;
       char order2 = *p2;
