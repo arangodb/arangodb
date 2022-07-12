@@ -53,7 +53,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "common.h"
 #include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
@@ -196,7 +195,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
 
     auto before = PhysicalCollectionMock::before;
     auto restore = irs::make_finally(
-        [&before]() -> void { PhysicalCollectionMock::before = before; });
+        [&before]() noexcept { PhysicalCollectionMock::before = before; });
     PhysicalCollectionMock::before = []() -> void { throw std::exception(); };
 
     EXPECT_FALSE(impl->drop().ok());
@@ -259,7 +258,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   size_t beforeCount = 0;
   auto before = PhysicalCollectionMock::before;
   auto restore = irs::make_finally(
-      [&before]() -> void { PhysicalCollectionMock::before = before; });
+      [&before]() noexcept { PhysicalCollectionMock::before = before; });
   PhysicalCollectionMock::before = [&beforeCount]() -> void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -570,12 +569,12 @@ TEST_F(IResearchViewDBServerTest, test_query) {
           collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
-      arangodb::ManagedDocumentResult inserted;
       arangodb::OperationOptions options;
       for (size_t i = 1; i <= 12; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options);
+        EXPECT_TRUE(
+            trx.insert(logicalCollection->name(), doc->slice(), options).ok());
       }
 
       EXPECT_TRUE(trx.commit().ok());
@@ -617,12 +616,12 @@ TEST_F(IResearchViewDBServerTest, test_query) {
           collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
-      arangodb::ManagedDocumentResult inserted;
       arangodb::OperationOptions options;
       for (size_t i = 13; i <= 24; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options);
+        EXPECT_TRUE(
+            trx.insert(logicalCollection->name(), doc->slice(), options).ok());
       }
 
       EXPECT_TRUE(trx.commit().ok());
