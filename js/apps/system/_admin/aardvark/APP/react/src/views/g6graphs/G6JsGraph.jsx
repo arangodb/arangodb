@@ -131,7 +131,7 @@ const G6JsGraph = () => {
         setGraphData(data);
       },
       error: function (e) {
-        arangoHelper.arangoError('Graph', 'Could not load graph.');
+        arangoHelper.arangoError('Graph', e.responseJSON.errorMessage);
         console.log(e);
       }
     });

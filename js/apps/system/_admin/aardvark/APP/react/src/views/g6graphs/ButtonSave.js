@@ -37,7 +37,10 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
         onGraphDataLoaded(data, responseTimesObject);
       },
       error: function (e) {
-        arangoHelper.arangoError('Graph', 'Could not load graph.');
+        console.log(e);
+        arangoHelper.arangoError('Graph', e.responseJSON.errorMessage);
+        setIsLoadingData(false);
+        onIsLoadingData(false);
       }
     });
   };
