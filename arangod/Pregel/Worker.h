@@ -30,6 +30,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 #include "Reports.h"
@@ -127,6 +128,8 @@ class Worker : public IWorker {
   // preallocated ootgoing caches
   std::vector<OutCache<M>*> _outCaches;
 
+  GssObservables _currentGssObservables;
+  AllGssStatus _allGssStatus;
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
   ReportManager _reports;
@@ -151,6 +154,13 @@ class Worker : public IWorker {
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
+  // TODO combine _allGssStatus and _currentGssobservables
+  Status observeStatus() const {
+    return Status{.graphStoreStatus = _graphStore->status(),
+                  .allGssStatus = _allGssStatus.gss.size() > 0
+                                      ? std::optional{_allGssStatus}
+                                      : std::nullopt};
+  }
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,

@@ -44,72 +44,84 @@ TEST(PregelStatus,
             Status{.timeStamp = laterStatus.timeStamp});
 }
 
-TEST(PregelStatus, adding_two_status_adds_measurements) {
-  auto earlierStatus =
-      Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
-             .verticesLoaded = 2,
-             .edgesLoaded = 119,
-             .memoryBytesUsed = 92228,
-             .verticesStored = 1};
-  auto laterStatus = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
-                            .verticesLoaded = 987,
-                            .edgesLoaded = 1,
-                            .memoryBytesUsed = 322,
-                            .verticesStored = 0};
+TEST(PregelGraphStoreStatus, adding_two_status_adds_measurements) {
+  auto earlierStatus = GraphStoreStatus{.verticesLoaded = 2,
+                                        .edgesLoaded = 119,
+                                        .memoryBytesUsed = 92228,
+                                        .verticesStored = 1};
+  auto laterStatus = GraphStoreStatus{.verticesLoaded = 987,
+                                      .edgesLoaded = 1,
+                                      .memoryBytesUsed = 322,
+                                      .verticesStored = 0};
 
   ASSERT_EQ(earlierStatus + laterStatus,
-            (Status{.timeStamp = laterStatus.timeStamp,
-                    .verticesLoaded = 989,
-                    .edgesLoaded = 120,
-                    .memoryBytesUsed = 92550,
-                    .verticesStored = 1}));
+            (GraphStoreStatus{.verticesLoaded = 989,
+                              .edgesLoaded = 120,
+                              .memoryBytesUsed = 92550,
+                              .verticesStored = 1}));
 }
 
-TEST(PregelStatus,
+TEST(PregelGraphStoreStatus,
      empty_option_measurements_are_discarded_when_adding_two_status) {
-  auto earlierStatus =
-      Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
-             .verticesLoaded = std::nullopt,
-             .edgesLoaded = std::nullopt,
-             .memoryBytesUsed = 92228,
-             .verticesStored = 1};
-  auto laterStatus = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
-                            .verticesLoaded = std::nullopt,
-                            .edgesLoaded = 1,
-                            .memoryBytesUsed = std::nullopt,
-                            .verticesStored = 4};
+  auto earlierStatus = GraphStoreStatus{.verticesLoaded = std::nullopt,
+                                        .edgesLoaded = std::nullopt,
+                                        .memoryBytesUsed = 92228,
+                                        .verticesStored = 1};
+  auto laterStatus = GraphStoreStatus{.verticesLoaded = std::nullopt,
+                                      .edgesLoaded = 1,
+                                      .memoryBytesUsed = std::nullopt,
+                                      .verticesStored = 4};
 
   ASSERT_EQ(earlierStatus + laterStatus,
-            (Status{.timeStamp = laterStatus.timeStamp,
-                    .verticesLoaded = std::nullopt,
-                    .edgesLoaded = 1,
-                    .memoryBytesUsed = 92228,
-                    .verticesStored = 5}));
+            (GraphStoreStatus{.verticesLoaded = std::nullopt,
+                              .edgesLoaded = 1,
+                              .memoryBytesUsed = 92228,
+                              .verticesStored = 5}));
+}
+
+TEST(PregelGssGssStatus, adding_two_status_adds_mutual_gss_status) {
+  auto statusWith2Gss =
+      AllGssStatus{.gss = {GssStatus{.verticesProcessed = 1},
+                           GssStatus{.verticesProcessed = 10}}};
+  auto statusWith1Gss =
+      AllGssStatus{.gss = {GssStatus{.verticesProcessed = 2}}};
+
+  ASSERT_EQ(statusWith2Gss + statusWith1Gss,
+            (AllGssStatus{.gss = {GssStatus{.verticesProcessed = 3}}}));
+  ASSERT_EQ(statusWith1Gss + statusWith2Gss,
+            (AllGssStatus{.gss = {GssStatus{.verticesProcessed = 3}}}));
 }
 
 TEST(PregelConductorStatus, accumulates_worker_status) {
   auto workers = std::unordered_map<arangodb::ServerID, Status>{
       {"worker_with_later_status",
        Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
-              .verticesLoaded = 2,
-              .edgesLoaded = 119,
-              .memoryBytesUsed = 92228,
-              .verticesStored = 1}},
+              .graphStoreStatus = GraphStoreStatus{.verticesLoaded = 2,
+                                                   .edgesLoaded = 119,
+                                                   .memoryBytesUsed = 92228,
+                                                   .verticesStored = 1},
+              .allGssStatus = std::nullopt}},
       {"worker_with_earlier_status",
        Status{.timeStamp = date::sys_days{date::March / 4 / 2020},
-              .verticesLoaded = 987,
-              .edgesLoaded = 1,
-              .memoryBytesUsed = 322,
-              .verticesStored = 0}}};
+              .graphStoreStatus = GraphStoreStatus{.verticesLoaded = 987,
+                                                   .edgesLoaded = 1,
+                                                   .memoryBytesUsed = 322,
+                                                   .verticesStored = 0},
+              .allGssStatus =
+                  AllGssStatus{.gss = {GssStatus{.verticesProcessed = 3}}}}}};
   auto conductorStatus = ConductorStatus{.workers = workers};
 
   ASSERT_EQ(
       conductorStatus.accumulate(),
       (AccumulatedConductorStatus{
-          .status = Status{.timeStamp = date::sys_days{date::March / 7 / 2020},
-                           .verticesLoaded = 989,
-                           .edgesLoaded = 120,
-                           .memoryBytesUsed = 92550,
-                           .verticesStored = 1},
+          .status =
+              Status{
+                  .timeStamp = date::sys_days{date::March / 7 / 2020},
+                  .graphStoreStatus = GraphStoreStatus{.verticesLoaded = 989,
+                                                       .edgesLoaded = 120,
+                                                       .memoryBytesUsed = 92550,
+                                                       .verticesStored = 1},
+                  .allGssStatus =
+                      AllGssStatus{.gss = {GssStatus{.verticesProcessed = 3}}}},
           .workers = workers}));
 }

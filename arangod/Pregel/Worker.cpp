@@ -178,7 +178,7 @@ void Worker<V, E, M>::setupWorker() {
       statusUpdateMsg.add(Utils::executionNumberKey,
                           VPackValue(_config.executionNumber()));
       statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = _graphStore->status();
+      auto update = observeStatus();
       serialize(statusUpdateMsg, update);
     }
 
@@ -455,6 +455,9 @@ bool Worker<V, E, M>::_processVertices(
     Vertex<V, E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
+    _currentGssObservables.messagesReceived += messages.size();
+    _currentGssObservables.memoryBytesUsedForMessages +=
+        messages.size() * sizeof(M);
 
     if (messages.size() > 0 || vertexEntry->active()) {
       vertexComputation->_vertexEntry = vertexEntry;
@@ -466,6 +469,7 @@ bool Worker<V, E, M>::_processVertices(
     if (_state != WorkerState::COMPUTING) {
       break;
     }
+    ++_currentGssObservables.verticesProcessed;
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
@@ -487,6 +491,9 @@ bool Worker<V, E, M>::_processVertices(
   _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
+  _currentGssObservables.messagesSent += outCache->sendCount();
+  _currentGssObservables.memoryBytesUsedForMessages +=
+      outCache->sendCount() * sizeof(M);
   stats.superstepRuntimeSecs = TRI_microtime() - start;
   inCache->clear();
   outCache->clear();
@@ -528,9 +535,11 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     // count all received messages
     _messageStats.receivedCount = _readCache->containedMessageCount();
-
     _feature.metrics()->pregelMessagesReceived->count(
         _readCache->containedMessageCount());
+
+    _allGssStatus.push(_currentGssObservables.observe());
+    _currentGssObservables.zero();
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -670,7 +679,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
       statusUpdateMsg.add(Utils::executionNumberKey,
                           VPackValue(_config.executionNumber()));
       statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = _graphStore->status();
+      auto update = observeStatus();
       serialize(statusUpdateMsg, update);
     }
 
