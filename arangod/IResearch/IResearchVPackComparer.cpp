@@ -24,6 +24,7 @@
 
 #include "IResearchVPackComparer.h"
 #include "IResearchViewMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 
 #include "Basics/VelocyPackHelper.h"
 
@@ -39,11 +40,11 @@ constexpr const int MULTIPLIER[]{-1, 1};
 namespace arangodb {
 namespace iresearch {
 
-VPackComparer::VPackComparer()
-    : VPackComparer(IResearchViewMeta::DEFAULT()._primarySort) {}
+template<typename Sort>
+VPackComparer<Sort>::VPackComparer() : _sort(nullptr), _size(0) {}
 
-bool VPackComparer::less(const irs::bytes_ref& lhs,
-                         const irs::bytes_ref& rhs) const {
+template<typename Sort>
+bool VPackComparer<Sort>::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());
@@ -70,6 +71,9 @@ bool VPackComparer::less(const irs::bytes_ref& lhs,
 
   return false;
 }
+
+template class VPackComparer<IResearchViewSort>;
+template class VPackComparer<IResearchInvertedIndexSort>;
 
 }  // namespace iresearch
 }  // namespace arangodb
