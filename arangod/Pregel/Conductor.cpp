@@ -166,7 +166,7 @@ void Conductor::start() {
 
   _globalSuperstep = 0;
   updateState(ExecutionState::RUNNING);
-  _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
+  _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
@@ -859,6 +859,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
                               : ExecutionState::DONE);
     didStore = true;
     _timing.storing.finish();
+    _feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
   }
   _timing.total.finish();
 

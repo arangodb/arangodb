@@ -165,6 +165,7 @@ void Worker<V, E, M>::setupWorker() {
     package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
     package.close();
     _callConductor(Utils::finishedStartupPath, package);
+    _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   };
 
   std::function<void()> statusUpdateCallback = [self = shared_from_this(),
@@ -187,6 +188,7 @@ void Worker<V, E, M>::setupWorker() {
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
                    [this, self = shared_from_this(),
@@ -637,7 +639,13 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
 
-  auto cleanup = [self = shared_from_this(), this, cb] {
+  VPackSlice store = body.get(Utils::storeResultsKey);
+  auto const doStore = store.isBool() && store.getBool() == true;
+  auto cleanup = [self = shared_from_this(), this, doStore, cb] {
+    if (doStore) {
+      _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+    }
+
     VPackBuilder body;
     body.openObject();
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -651,12 +659,12 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
   };
 
   _state = WorkerState::DONE;
-  VPackSlice store = body.get(Utils::storeResultsKey);
-  if (store.isBool() && store.getBool() == true) {
+  if (doStore) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
     _graphStore->storeResults(&_config, std::move(cleanup));
+    _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
