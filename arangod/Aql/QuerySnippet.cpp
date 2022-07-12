@@ -164,7 +164,7 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
   if (permuter != _localExpansions.end()) {
     if (clone->getType() == ExecutionNode::TRAVERSAL ||
         clone->getType() == ExecutionNode::SHORTEST_PATH ||
-        clone->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+        clone->getType() == ExecutionNode::ENUMERATE_PATHS) {
       // GraphNodes handle multiple collections
       auto graphNode = dynamic_cast<GraphNode*>(clone);
       if (graphNode != nullptr) {
@@ -306,7 +306,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
     }
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS: {
+    case ExecutionNode::ENUMERATE_PATHS: {
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
       bool const isSatellite = graphNode->isUsedAsSatellite();
       _expansions.emplace_back(node, !isSatellite, isSatellite);
@@ -627,7 +627,7 @@ auto QuerySnippet::prepareFirstBranch(
       }
     } else if (exp.node->getType() == ExecutionNode::TRAVERSAL ||
                exp.node->getType() == ExecutionNode::SHORTEST_PATH ||
-               exp.node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+               exp.node->getType() == ExecutionNode::ENUMERATE_PATHS) {
 #ifndef USE_ENTERPRISE
       // These can only ever be LocalGraphNodes, which are only available in
       // Enterprise. This should never happen without enterprise optimization,

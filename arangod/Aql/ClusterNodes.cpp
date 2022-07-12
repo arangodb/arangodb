@@ -396,7 +396,7 @@ void DistributeNode::addSatellite(aql::Collection* satellite) {
       case MATERIALIZE:
       case TRAVERSAL:
       case SHORTEST_PATH:
-      case K_SHORTEST_PATHS:
+      case ENUMERATE_PATHS:
       case INDEX:
       case ENUMERATE_COLLECTION: {
         auto const* cNode = castTo<CollectionAccessingNode const*>(node);

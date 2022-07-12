@@ -40,6 +40,7 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/Methods/Collections.h"
@@ -64,8 +65,10 @@ class IResearchInvertedIndexConditionTest
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
  protected:
-  IResearchInvertedIndexConditionTest() {
+  IResearchInvertedIndexConditionTest() : server(false) {
     arangodb::tests::init();
+    server.addFeature<arangodb::FlushFeature>(false);
+    server.startFeatures();
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);
 
@@ -83,15 +86,16 @@ class IResearchInvertedIndexConditionTest
       Projections const& expected) {
     Projections projections(attributes);
     arangodb::IndexId id(1);
-    arangodb::iresearch::IResearchInvertedIndexMeta meta;
-    std::string errorField;
     std::vector<std::string> fields = {"a"};
-    ASSERT_TRUE(meta.init(
-        server.server(),
-        getInvertedIndexPropertiesSlice(id, fields, &storedFields).slice(),
-        false, errorField, _vocbase->name()));
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection,
-                                                      std::move(meta));
+    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
+    bool tmp;
+    ASSERT_TRUE(
+        Index
+            .init(getInvertedIndexPropertiesSlice(id, fields, &storedFields)
+                      .slice(),
+                  tmp)
+            .ok());
+
     ASSERT_TRUE(Index.covers(projections));
     ASSERT_EQ(expected.size(), projections.size());
     for (size_t i = 0; i < expected.size(); ++i) {
@@ -113,19 +117,13 @@ class IResearchInvertedIndexConditionTest
                  << queryString
                  << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
-    arangodb::iresearch::IResearchInvertedIndexMeta meta;
-    std::string errorField;
-    if (!meta.init(server.server(),
-                   getInvertedIndexPropertiesSlice(id, fields).slice(), false,
-                   errorField, _vocbase->name())) {
-      SCOPED_TRACE(testing::Message("Init failed:") << errorField);
-      ASSERT_TRUE(false);
-    }
+    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
+    bool tmp;
+    ASSERT_TRUE(
+        Index.init(getInvertedIndexPropertiesSlice(id, fields).slice(), tmp)
+            .ok());
     auto indexFields =
-        arangodb::iresearch::IResearchInvertedIndex::fields(meta);
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection,
-                                                      std::move(meta));
-
+        arangodb::iresearch::IResearchInvertedIndex::fields(Index.meta());
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
     auto query = Query::create(ctx, QueryString(queryString), bindVars);
@@ -185,20 +183,16 @@ class IResearchInvertedIndexConditionTest
                  << queryString
                  << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
-    arangodb::iresearch::IResearchInvertedIndexMeta meta;
-    std::string errorField;
     std::vector<std::string> indexFields;
     for (auto const& f : fields) {
       indexFields.push_back(f.first);
     }
-    ASSERT_TRUE(meta.init(
-        server.server(),
+    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
+    bool tmp;
+    Index.init(
         getInvertedIndexPropertiesSlice(id, indexFields, nullptr, &fields)
             .slice(),
-        false, errorField, _vocbase->name()));
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection,
-                                                      std::move(meta));
-
+        tmp);
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
     auto query = Query::create(ctx, QueryString(queryString), bindVars);

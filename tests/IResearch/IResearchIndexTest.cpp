@@ -290,6 +290,17 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     } }");
 
     EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
+
+    auto nestedIndex = arangodb::velocypack::Parser::fromJson(
+        R"({"type":"inverted", "name":"nest1", "fields":[{"name":"name", "nested":[{"name":"nested", "nested":[{"name":"color1"}]}]}]})");
+    bool createdIndex;
+    auto index = collection0->createIndex(nestedIndex->slice(), createdIndex);
+    //    collection->createIndex(nestedIndex->slice(), result);
+    //    ASSERT_TRUE(createdIndex);
+
+    //    VPackBuilder outputDefinition;
+    //    ASSERT_TRUE(arangodb::methods::Indexes::ensureIndex(collection,
+    //    nestedIndex->slice(), createdIndex, outputDefinition).ok());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1

@@ -270,7 +270,7 @@ struct SingleServerQueryInstanciator final
   void after(ExecutionNode* en) override {
     if (en->getType() == ExecutionNode::TRAVERSAL ||
         en->getType() == ExecutionNode::SHORTEST_PATH ||
-        en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+        en->getType() == ExecutionNode::ENUMERATE_PATHS) {
       // We have to prepare the options before we build the block
       ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
     }
@@ -465,7 +465,7 @@ struct DistributedQueryInstanciator final
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
-        case ExecutionNode::K_SHORTEST_PATHS:
+        case ExecutionNode::ENUMERATE_PATHS:
           _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en),
                                       _pushToSingleServer);
           break;

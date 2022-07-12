@@ -26,7 +26,6 @@
 
 #include "ExecutionBlockImpl.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CalculationExecutor.h"
@@ -44,7 +43,7 @@
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/KShortestPathsExecutor.h"
+#include "Aql/EnumeratePathsExecutor.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationExecutor.h"
@@ -701,11 +700,11 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-              KShortestPathsExecutor<graph::KShortestPathsFinder>,
-              KShortestPathsExecutor<KPathRefactored>,
-              KShortestPathsExecutor<KPathRefactoredTracer>,
-              KShortestPathsExecutor<KPathRefactoredCluster>,
-              KShortestPathsExecutor<KPathRefactoredClusterTracer>,
+              EnumeratePathsExecutor<graph::KShortestPathsFinder>,
+              EnumeratePathsExecutor<KPathRefactored>,
+              EnumeratePathsExecutor<KPathRefactoredTracer>,
+              EnumeratePathsExecutor<KPathRefactoredCluster>,
+              EnumeratePathsExecutor<KPathRefactoredClusterTracer>,
               ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
               IdExecutor<ConstFetcher>, HashedCollectExecutor,
@@ -883,7 +882,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               SingleRemoteModificationExecutor<Remove>,
               SingleRemoteModificationExecutor<Update>,
               SingleRemoteModificationExecutor<Replace>,
-              SingleRemoteModificationExecutor<Upsert>,
+              SingleRemoteModificationExecutor<Upsert>, SortExecutor,
               MaterializeExecutor<RegisterId>,
               MaterializeExecutor<std::string const&>>),
       "Unexpected executor for SkipVariants::EXECUTOR");
@@ -1405,8 +1404,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
       auto [state, stats, skippedLocal, call] =
           executeSkipRowsRange(_lastRange, clientCall);
 
-      if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix,
-                                MultiAqlItemBlockInputRange>) {
+      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
         // The executor will have used all rows.
         // However we need to drop them from the input
         // here.
@@ -1424,8 +1422,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
       auto [state, stats, skippedLocal, call] =
           executeSkipRowsRange(_lastRange, dummy);
 
-      if constexpr (is_one_of_v<DataRange, AqlItemBlockInputMatrix,
-                                MultiAqlItemBlockInputRange>) {
+      if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
         // The executor will have used all rows.
         // However we need to drop them from the input
         // here.
@@ -2723,18 +2720,18 @@ template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>>;
+    EnumeratePathsExecutor<arangodb::graph::KShortestPathsFinder>>;
 
 /* SingleServer */
 template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<KPathRefactored>>;
+    EnumeratePathsExecutor<KPathRefactored>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<KPathRefactoredTracer>>;
+    EnumeratePathsExecutor<KPathRefactoredTracer>>;
 /* Cluster */
 template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<KPathRefactoredCluster>>;
+    EnumeratePathsExecutor<KPathRefactoredCluster>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
-    KShortestPathsExecutor<KPathRefactoredClusterTracer>>;
+    EnumeratePathsExecutor<KPathRefactoredClusterTracer>>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;

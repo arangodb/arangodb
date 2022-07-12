@@ -61,6 +61,7 @@
 #include <velocypack/Slice.h>
 
 #include <algorithm>
+#include <array>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -99,9 +100,12 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
-  static std::vector<std::string> const compareProperties{
-      WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
+  static std::array<std::string, 6> const compareProperties{
+      StaticStrings::WaitForSyncString,
+      StaticStrings::Schema,
+      StaticStrings::CacheEnabled,
       StaticStrings::InternalValidatorTypes,
+      StaticStrings::ComputedValues,
       StaticStrings::GraphSmartGraphAttribute};
   auto result = std::make_shared<VPackBuilder>();
   {

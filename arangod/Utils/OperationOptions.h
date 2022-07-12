@@ -31,7 +31,6 @@
 
 namespace arangodb {
 class ExecContext;
-struct ValidatorBase;
 
 /// @brief Indicates whether we want to observe writes performed within the
 /// current (sub) transaction. This is only relevant for AQL queries.
@@ -78,7 +77,7 @@ struct OperationOptions {
     Ignore     // keep the target document unmodified (no writes)
   };
 
-  OperationOptions();
+  OperationOptions() = default;
   explicit OperationOptions(ExecContext const&);
 
 // The following code does not work with VisualStudi 2019's `cl`
@@ -110,41 +109,41 @@ struct OperationOptions {
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
 
-  IndexOperationMode indexOperationMode;
+  IndexOperationMode indexOperationMode = IndexOperationMode::normal;
 
   // INSERT ... OPTIONS { overwrite: true } behavior:
   // - replace an existing document, update an existing document, or do nothing
-  OverwriteMode overwriteMode;
+  OverwriteMode overwriteMode = OverwriteMode::Unknown;
 
   // wait until the operation has been synced
-  bool waitForSync;
+  bool waitForSync = false;
 
-  // apply document vaidators if there are any available
-  bool validate;
+  // apply document validators if there are any available
+  bool validate = true;
 
   // keep null values on update (=true) or remove them (=false). only used for
   // update operations
-  bool keepNull;
+  bool keepNull = true;
 
   // merge objects. only used for update operations
-  bool mergeObjects;
+  bool mergeObjects = true;
 
   // be silent. this will build smaller results and thus may speed up operations
-  bool silent;
+  bool silent = false;
 
   // ignore _rev attributes given in documents (for replace and update)
-  bool ignoreRevs;
+  bool ignoreRevs = true;
 
   // returnOld: for replace, update and remove return previous value
-  bool returnOld;
+  bool returnOld = false;
 
   // returnNew: for insert, replace and update return complete new value
-  bool returnNew;
+  bool returnNew = false;
 
   // for insert operations: use _key value even when this is normally prohibited
   // for the end user this option is there to ensure _key values once set can be
   // restored by replicated and arangorestore
-  bool isRestore;
+  bool isRestore = false;
 
   // for replication; only set true if case insert/replace should have a
   // read-only preflight phase, in which it checks whether a document can
@@ -153,16 +152,16 @@ struct OperationOptions {
   // the preflight check without modifying the transaction's underlying
   // WriteBatch object, so in case a unique constraint violation is detected, it
   // does not need to be rebuilt (this would be _very_ expensive).
-  bool checkUniqueConstraintsInPreflight;
+  bool checkUniqueConstraintsInPreflight = false;
 
   // when truncating - should we also run the compaction?
   // defaults to true.
-  bool truncateCompact;
+  bool truncateCompact = true;
 
   // whether or not this request is a DOCUMENT() call from inside AQL. only set
   // for exactly this case on a coordinator, in order to make it set a special
   // header when putting together the requests for DB servers
-  bool documentCallFromAql;
+  bool documentCallFromAql = false;
 
   // whether or not indexing can be disabed. We must not disable indexing if we
   // have to ensure that writes become visible to the current query. This is
@@ -178,15 +177,11 @@ struct OperationOptions {
   /// using a transaction or creates a new one.
   bool allowDirtyReads = false;
 
-  // schema used for validation during INSERT/UPDATE/REPLACE. this value is only
-  // set temporarily.
-  std::shared_ptr<ValidatorBase> schema = nullptr;
-
   // get associated execution context
   ExecContext const& context() const;
 
  private:
-  ExecContext const* _context;
+  ExecContext const* _context = nullptr;
 };
 
 std::ostream& operator<<(std::ostream& os, OperationOptions const& ops);

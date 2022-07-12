@@ -26,7 +26,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "Aql/Ast.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlockManager.h"

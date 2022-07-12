@@ -335,10 +335,8 @@ void logBacktrace() try {
 
     p += arangodb::basics::StringUtils::itoa(
         uint64_t(arangodb::Thread::currentThreadNumber()), p);
-    arangodb::ThreadNameFetcher nameFetcher;
-    std::string_view name = nameFetcher.get();
     appendNullTerminatedString(" [", p);
-    appendNullTerminatedString(name, p);
+    appendNullTerminatedString(currentThreadName, p);
     appendNullTerminatedString("]", p);
 
     LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH)
