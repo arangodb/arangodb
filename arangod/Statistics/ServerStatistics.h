@@ -47,6 +47,7 @@ struct TransactionStatistics {
   metrics::Counter& _transactionsCommitted;
   metrics::Counter& _intermediateCommits;
   metrics::Counter& _readTransactions;
+  metrics::Counter& _dirtyReadTransactions;
 
   // total number of lock timeouts for exclusive locks
   metrics::Counter& _exclusiveLockTimeouts;

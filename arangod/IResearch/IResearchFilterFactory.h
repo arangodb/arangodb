@@ -26,6 +26,7 @@
 
 #include "IResearchFilterOptimization.h"
 #include "IResearchLinkMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 
 #include "VocBase/voc-types.h"
 
@@ -53,6 +54,22 @@ struct QueryContext;
 using AnalyzerProvider =
     std::function<FieldMeta::Analyzer const&(std::string_view)>;
 
+struct FilterContext {
+  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name) const {
+    if (analyzerProvider == nullptr) {
+      return analyzer;
+    }
+    return (*analyzerProvider)(name);
+  }
+
+  AnalyzerProvider const* analyzerProvider{};
+  // need shared_ptr since pool could be deleted from the feature
+  FieldMeta::Analyzer const& analyzer;
+  std::span<const InvertedIndexField> fields{};
+  std::string_view namePrefix{};  // field name prefix
+  irs::score_t boost{irs::kNoBoost};
+};
+
 struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch filter
@@ -60,9 +77,8 @@ struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static arangodb::Result filter(irs::boolean_filter* filter,
                                  QueryContext const& ctx,
-                                 arangodb::aql::AstNode const& node,
-                                 bool forSearch = true,
-                                 AnalyzerProvider const* provider = nullptr);
+                                 FilterContext const& filterCtx,
+                                 arangodb::aql::AstNode const& node);
 };  // FilterFactory
 
 struct FilterConstants {
