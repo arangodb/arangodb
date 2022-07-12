@@ -81,12 +81,8 @@ void TRI_TerminateDebugging(std::string_view message) {
     // the program but continues.
     auto f = []() noexcept {
     // intentionally crashes the program!
-    // MSVC has this constexpr ctor deleted. But as Asan/Ubsan is anyway not an
-    // option for MSVC right now, just disable the code here.
-#ifndef _MSC_VER
       // cppcheck-suppress *
-      return std::string(nullptr);
-#endif
+      *static_cast<volatile int*>(nullptr) = 1;
     };
     f();
     // we will get here at least with ASan/UBSan.
