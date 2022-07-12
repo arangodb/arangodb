@@ -1,6 +1,7 @@
 /* global arangoHelper, $ */
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import styled from "styled-components";
+import { UrlParametersContext } from "./url-parameters-context";
 
 const ModalBackground = styled.div`
   position: fixed;
@@ -27,36 +28,18 @@ let responseTimesObject = {
     fetchDuration: null
   }
   const [responseTimes, setResponseTimes] = useState(responseTimesObject);
+  const urlParameters = useContext(UrlParametersContext);
 
   const fetchFullGraph = () => {
     
-    const ajaxData = {
-      "depth": "2",
-      "limit": "250",
-      "nodeColor": "#CBDF2F",
-      "nodeColorAttribute": "",
-      "nodeColorByCollection": "false",
-      "edgeColor": "#cccccc",
-      "edgeColorAttribute": "",
-      "edgeColorByCollection": "false",
-      "nodeLabel": "_key",
-      "edgeLabel": "",
-      "nodeSize": "",
-      "nodeSizeByEdges": "false",
-      "edgeEditable": "true",
-      "nodeLabelByCollection": "false",
-      "edgeLabelByCollection": "false",
-      "nodeStart": "",
-      "barnesHutOptimize": true,
-      "mode": "all"
-    };
     responseTimesObject.fetchStarted = new Date();
+    urlParameters[0].mode = "all";
 
     $.ajax({
       type: 'GET',
       url: arangoHelper.databaseUrl(`/_admin/aardvark/graph/${graphName}`),
       contentType: 'application/json',
-      data: ajaxData,
+      data: urlParameters[0],
       success: function (data) {
         responseTimesObject.fetchFinished = new Date();
         responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
@@ -67,7 +50,8 @@ let responseTimesObject = {
         element.scrollIntoView({ behavior: "smooth" });
       },
       error: function (e) {
-        arangoHelper.arangoError('Graph', 'Could not update this edge.');
+        console.log(e);
+        arangoHelper.arangoError('Graph', e.responseJSON.errorMessage);
       }
     });
   }
