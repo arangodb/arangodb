@@ -50,22 +50,41 @@ template<
                      int>,
     bool mock>
 PregelMetrics::PregelMetrics(MFP metricsFeature)
-    : pregelExecutions(
-          createMetric<arangodb_pregel_executions_total, mock>(metricsFeature)),
-      pregelRunningExecutions(
-          createMetric<arangodb_pregel_active_executions_number, mock>(
+    : pregelConductorsNumber(
+          createMetric<arangodb_pregel_conductors_number, mock>(
               metricsFeature)),
-      pregelExecutionsWithinTTL(
-          createMetric<arangodb_pregel_executions_within_ttl_number, mock>(
+      pregelConductorsLoadingNumber(
+          createMetric<arangodb_pregel_conductors_loading_number, mock>(
               metricsFeature)),
+      pregelConductorsRunningNumber(
+          createMetric<arangodb_pregel_conductors_running_number, mock>(
+              metricsFeature)),
+      pregelConductorsStoringNumber(
+          createMetric<arangodb_pregel_conductors_storing_number, mock>(
+              metricsFeature)),
+
+      pregelWorkersNumber(
+          createMetric<arangodb_pregel_workers_number, mock>(metricsFeature)),
+      pregelWorkersLoadingNumber(
+          createMetric<arangodb_pregel_workers_loading_number, mock>(
+              metricsFeature)),
+      pregelWorkersRunningNumber(
+          createMetric<arangodb_pregel_workers_running_number, mock>(
+              metricsFeature)),
+      pregelWorkersStoringNumber(
+          createMetric<arangodb_pregel_workers_storing_number, mock>(
+              metricsFeature)),
+
       pregelMessagesSent(
           createMetric<arangodb_pregel_messages_sent_total, mock>(
               metricsFeature)),
       pregelMessagesReceived(
           createMetric<arangodb_pregel_messages_received_total, mock>(
               metricsFeature)),
+
       pregelNumberOfThreads(
           createMetric<arangodb_pregel_threads_number, mock>(metricsFeature)),
+
       pregelMemoryUsedForGraph(
           createMetric<arangodb_pregel_graph_memory_bytes_number, mock>(
               metricsFeature))

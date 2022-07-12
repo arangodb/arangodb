@@ -32,14 +32,29 @@
 
 namespace arangodb {
 
-DECLARE_COUNTER(arangodb_pregel_executions_total,
-                "Number of Pregel executions that have been run");
+DECLARE_GAUGE(arangodb_pregel_conductors_number, std::uint64_t,
+              "Number of live Pregel conductors");
 
-DECLARE_GAUGE(arangodb_pregel_executions_within_ttl_number, std::uint64_t,
-              "Number of Pregel executions that are still within TTL");
+DECLARE_GAUGE(arangodb_pregel_conductors_loading_number, std::uint64_t,
+              "Number of Pregel conductors in loading state");
 
-DECLARE_GAUGE(arangodb_pregel_active_executions_number, std::uint64_t,
-              "Number of running Pregel executions on this arangodb instance");
+DECLARE_GAUGE(arangodb_pregel_conductors_running_number, std::uint64_t,
+              "Number of Pregel conductors in running state");
+
+DECLARE_GAUGE(arangodb_pregel_conductors_storing_number, std::uint64_t,
+              "Number of Pregel conductors in storing state");
+
+DECLARE_GAUGE(arangodb_pregel_workers_number, std::uint64_t,
+              "Number of live Pregel workers");
+
+DECLARE_GAUGE(arangodb_pregel_workers_loading_number, std::uint64_t,
+              "Number of Pregel conductors in loading state");
+
+DECLARE_GAUGE(arangodb_pregel_workers_running_number, std::uint64_t,
+              "Number of Pregel conductors in running state");
+
+DECLARE_GAUGE(arangodb_pregel_workers_storing_number, std::uint64_t,
+              "Number of Pregel conductors in storing state");
 
 DECLARE_COUNTER(arangodb_pregel_messages_sent_total,
                 "Number of messages sent by Pregel");

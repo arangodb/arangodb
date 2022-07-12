@@ -82,9 +82,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _graphStore = std::make_unique<GraphStore<V, E>>(
       _feature, vocbase, _config.executionNumber(), _algorithm->inputFormat());
 
-  _feature.metrics()->pregelExecutions->count(1);
-  _feature.metrics()->pregelRunningExecutions->fetch_add(1);
-  _feature.metrics()->pregelExecutionsWithinTTL->fetch_add(1);
+  _feature.metrics()->pregelWorkersNumber->fetch_add(1);
 
   if (_config.asynchronousMode()) {
     _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
@@ -111,7 +109,9 @@ Worker<V, E, M>::~Worker() {
   }
   _writeCache = nullptr;
 
-  _feature.metrics()->pregelExecutionsWithinTTL->fetch_sub(1);
+  _feature.metrics()->pregelWorkersNumber->fetch_sub(1);
+  _feature.metrics()->pregelMemoryUsedForGraph->fetch_sub(
+      _graphStore->allocatedSize());
 }
 
 template<typename V, typename E, typename M>
