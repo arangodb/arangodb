@@ -186,6 +186,37 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return makeClique(size, "bidirected");
     };
 
+    // Creates a path of length length.
+    // The parameter kind has the following meaning:
+    //  - "directed" (default):  directed path
+    //  - "bidirected": as "directed" but for every edge (v,w), we also have the edge (w,v)
+    //  - "alternating": as "directed" but every second edge is inverted
+    const makePath = function (length, kind = "directed") {
+        let vertices = makeVertices(length);
+        let edges = [];
+        for (let v = 0; v < length - 1; ++v) {
+            switch (kind) {
+                case "directed":
+                    edges.push(makeEdge(v, v + 1));
+                    break;
+                case "bidirected":
+                    edges.push(makeEdge(v, v + 1));
+                    edges.push(makeEdge(v + 1, v));
+                    break;
+                case "alternating":
+                    const inverted = v % 2 === 0;
+                    if (inverted) {
+                        edges.push(makeEdge(v + 1, v));
+                    } else {
+                        edges.push(makeEdge(v, v + 1));
+                    }
+                    break;
+            }
+
+        }
+        return {vertices, edges};
+    };
+
     return {
         makeVertices,
         makeOneVertex,
@@ -194,9 +225,9 @@ const graphGenerator = function (verticesEdgesGenerator) {
         makeAlternatingCycle,
         makeFullBinaryTree,
         makeClique,
-        makeBidirectedClique
+        makeBidirectedClique,
+        makePath
     };
-
 };
 
 const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
