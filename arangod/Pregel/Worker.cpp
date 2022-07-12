@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Worker.h"
+#include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
@@ -469,7 +470,30 @@ bool Worker<V, E, M>::_processVertices(
     if (_state != WorkerState::COMPUTING) {
       break;
     }
+
     ++_currentGssObservables.verticesProcessed;
+    if (_currentGssObservables.verticesProcessed %
+            Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+        0) {
+      std::function<void()> statusUpdateCallback = [self = shared_from_this(),
+                                                    this] {
+        VPackBuilder statusUpdateMsg;
+        {
+          auto ob = VPackObjectBuilder(&statusUpdateMsg);
+          statusUpdateMsg.add(Utils::senderKey,
+                              VPackValue(ServerState::instance()->getId()));
+          statusUpdateMsg.add(Utils::executionNumberKey,
+                              VPackValue(_config.executionNumber()));
+          statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+          auto update = observeStatus();
+          serialize(statusUpdateMsg, update);
+        }
+        _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+      };
+
+      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                         statusUpdateCallback);
+    }
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
@@ -540,6 +564,23 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     _allGssStatus.push(_currentGssObservables.observe());
     _currentGssObservables.zero();
+    std::function<void()> statusUpdateCallback = [self = shared_from_this(),
+                                                  this] {
+      VPackBuilder statusUpdateMsg;
+      {
+        auto ob = VPackObjectBuilder(&statusUpdateMsg);
+        statusUpdateMsg.add(Utils::senderKey,
+                            VPackValue(ServerState::instance()->getId()));
+        statusUpdateMsg.add(Utils::executionNumberKey,
+                            VPackValue(_config.executionNumber()));
+        statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+        auto update = observeStatus();
+        serialize(statusUpdateMsg, update);
+      }
+      _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+    };
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                       statusUpdateCallback);
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;

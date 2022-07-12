@@ -154,11 +154,15 @@ class Worker : public IWorker {
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
-  // TODO combine _allGssStatus and _currentGssobservables
   Status observeStatus() const {
+    auto currentGss = _currentGssObservables.observe();
+    auto fullGssStatus = _allGssStatus;
+    if (!currentGss.isDefault()) {
+      fullGssStatus.gss.emplace_back(currentGss);
+    }
     return Status{.graphStoreStatus = _graphStore->status(),
-                  .allGssStatus = _allGssStatus.gss.size() > 0
-                                      ? std::optional{_allGssStatus}
+                  .allGssStatus = fullGssStatus.gss.size() > 0
+                                      ? std::optional{fullGssStatus}
                                       : std::nullopt};
   }
 

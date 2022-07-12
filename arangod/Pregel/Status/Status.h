@@ -65,6 +65,7 @@ struct GssStatus {
             memoryBytesUsedForMessages + other.memoryBytesUsedForMessages};
     return status;
   }
+  auto isDefault() const -> bool { return *this == GssStatus{}; }
 };
 
 template<typename Inspector>
