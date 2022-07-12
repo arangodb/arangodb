@@ -1,5 +1,9 @@
 devel
 -----
+* BugFix in Pregel's Label Propagation: the union of three undirected cliques
+  of size at least three connected by an undirected triangle now returns
+  three communities (each clique is a community) instead of two.
+
 * Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
 
 * Updated arangosync to v2.11.0.
