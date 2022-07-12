@@ -35,6 +35,7 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/ManagerFeature.h"
@@ -154,18 +155,27 @@ auto DocumentStateTransaction::getState() -> std::shared_ptr<TransactionState> {
 }
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
-    TRI_vocbase_t* vocbase)
-    : _vocbase(vocbase) {}
+    DatabaseFeature& databaseFeature)
+    : _databaseFeature(databaseFeature), _vocbase(nullptr) {}
+
+DocumentStateTransactionHandler::DocumentStateTransactionHandler(
+    std::shared_ptr<IDocumentStateTransactionHandler> const& handler,
+    std::string const& database)
+    : _databaseFeature(
+          std::dynamic_pointer_cast<DocumentStateTransactionHandler>(handler)
+              ->_databaseFeature) {
+  _vocbase = _databaseFeature.useDatabase(database);
+  TRI_ASSERT(_vocbase != nullptr);
+}
 
 auto DocumentStateTransactionHandler::ensureTransaction(TransactionId tid)
     -> std::shared_ptr<DocumentStateTransaction> {
-  if (auto it = _transactions.find(tid); it != _transactions.end()) {
+  auto followerTid = tid;
+  if (auto it = _transactions.find(followerTid); it != _transactions.end()) {
     return it->second;
   }
-  auto state = std::make_shared<DocumentStateTransaction>(_vocbase, tid);
-  _transactions.emplace(tid, state);
+  auto state =
+      std::make_shared<DocumentStateTransaction>(_vocbase, followerTid);
+  _transactions.emplace(followerTid, state);
   return state;
 }
-
-void DocumentStateTransactionHandlder::execute(
-    std::shared_ptr<DocumentStateTransaction>) {}

@@ -25,6 +25,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "RestServer/DatabaseFeature.h"
 
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
@@ -46,12 +47,12 @@ void DocumentStateMachineFeature::start() {
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
   auto& databaseFeature = s.getFeature<DatabaseFeature>();
 
-
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
       std::make_shared<DocumentStateAgencyHandler>(
           s, clusterFeature.agencyCache()),
-      std::make_shared<DocumentStateShardHandler>(maintenanceFeature));
+      std::make_shared<DocumentStateShardHandler>(maintenanceFeature),
+      std::make_shared<DocumentStateTransactionHandler>(databaseFeature));
 }
 
 DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)

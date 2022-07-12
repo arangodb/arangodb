@@ -27,6 +27,8 @@
 #include "DocumentStateMachine.h"
 #include "Transaction/Context.h"
 
+#include "Basics/UnshackledMutex.h"
+
 namespace arangodb::replication2::replicated_state::document {
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState> {

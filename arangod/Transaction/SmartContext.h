@@ -79,7 +79,8 @@ struct TransactionContextSideUser {};
 struct ManagedContext final : public SmartContext {
   ManagedContext(TransactionId globalId,
                  std::shared_ptr<TransactionState> state,
-                 bool responsibleForCommit, bool cloned);
+                 bool responsibleForCommit, bool cloned,
+                 bool disableLease = false);
 
   ManagedContext(TransactionId globalId,
                  std::shared_ptr<TransactionState> state,
@@ -100,6 +101,7 @@ struct ManagedContext final : public SmartContext {
   bool const _responsibleForCommit;
   bool const _cloned;
   bool const _isSideUser;
+  bool const _disableLease;
 };
 
 /// Used for a standalone AQL query. Always creates the state first.

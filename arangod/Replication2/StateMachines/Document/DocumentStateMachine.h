@@ -45,6 +45,7 @@ struct DocumentCoreParameters;
 
 struct IDocumentStateAgencyHandler;
 struct IDocumentStateShardHandler;
+struct IDocumentStateTransactionHandler;
 
 struct ReplicationOptions {
   bool waitForCommit{false};
@@ -77,21 +78,27 @@ struct DocumentCoreParameters {
 struct DocumentFactory {
   explicit DocumentFactory(
       std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler);
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+      std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler);
 
   auto constructFollower(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentFollowerState>;
+
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
+
   auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
 
   auto getAgencyReader() -> std::shared_ptr<IDocumentStateAgencyHandler>;
   auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
+  auto getTransactionHandler()
+      -> std::shared_ptr<IDocumentStateTransactionHandler>;
 
  private:
   std::shared_ptr<IDocumentStateAgencyHandler> const _agencyReader;
   std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
+  std::shared_ptr<IDocumentStateTransactionHandler> const _transactionHandlder;
 };
 }  // namespace document
 

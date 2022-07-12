@@ -42,9 +42,11 @@ auto DocumentCoreParameters::toSharedSlice() -> velocypack::SharedSlice {
 
 DocumentFactory::DocumentFactory(
     std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler)
     : _agencyReader(std::move(agencyReader)),
-      _shardHandler(std::move(shardHandler)){};
+      _shardHandler(std::move(shardHandler)),
+      _transactionHandlder(std::move(transactionHandler)){};
 
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentFollowerState> {
@@ -67,7 +69,7 @@ auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
           .with<logContextKeyLogId>(gid.id);
   return std::make_unique<DocumentCore>(
       std::move(gid), std::move(coreParameters), getAgencyReader(),
-      getShardHandler(), std::move(logContext));
+      getShardHandler(), getTransactionHandler(), std::move(logContext));
 }
 
 auto DocumentFactory::getAgencyReader()
@@ -79,6 +81,11 @@ auto DocumentFactory::getShardHandler()
     -> std::shared_ptr<IDocumentStateShardHandler> {
   return _shardHandler;
 };
+
+auto DocumentFactory::getTransactionHandler()
+    -> std::shared_ptr<IDocumentStateTransactionHandler> {
+  return _transactionHandlder;
+}
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 

@@ -34,6 +34,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class AgencyCache;
+class DatabaseFeature;
 class MaintenanceFeature;
 class TransactionState;
 
@@ -106,27 +107,32 @@ class DocumentStateTransaction {
   DocumentStateTransaction(TRI_vocbase_t* vocbase, TransactionId tid);
   auto getState() -> std::shared_ptr<TransactionState>;
 
- private:
+  // TODO make private
   transaction::Options _options;
+
+ private:
   std::shared_ptr<TransactionState> _state;
 };
 
 struct IDocumentStateTransactionHandler {
   virtual ~IDocumentStateTransactionHandler() = default;
   virtual auto ensureTransaction(TransactionId tid)
-      -> std::shared_ptr<DocumentStateTransaction>;
-  virtual void execute(std::shared_ptr<DocumentStateTransaction>);
+      -> std::shared_ptr<DocumentStateTransaction> = 0;
 };
 
 class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
-  explicit DocumentStateTransactionHandler(TRI_vocbase_t* vocbase);
+  explicit DocumentStateTransactionHandler(DatabaseFeature& databaseFeature);
+  explicit DocumentStateTransactionHandler(
+      std::shared_ptr<IDocumentStateTransactionHandler> const& handler,
+      std::string const& database);
+
   auto ensureTransaction(TransactionId tid)
       -> std::shared_ptr<DocumentStateTransaction> override;
-  void execute(std::shared_ptr<DocumentStateTransaction>) override;
 
  private:
+  DatabaseFeature& _databaseFeature;
   TRI_vocbase_t* _vocbase;
   std::unordered_map<TransactionId, std::shared_ptr<DocumentStateTransaction>>
       _transactions;

@@ -25,7 +25,10 @@
 #include "DocumentFollowerState.h"
 #include "DocumentLeaderState.h"
 #include "Transaction/Manager.h"
+#include "Transaction/Methods.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/ManagerFeature.h"
+#include "Utils/OperationResult.h"
 
 #include <Futures/Future.h>
 
@@ -52,27 +55,56 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
+  auto shardId = _guardedData.doUnderLock([](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+    }
+    return data.core->getShardId();
+  });
+
+  std::vector<std::string> const readCollections{};
+  std::vector<std::string> const writeCollections = {std::string(shardId)};
+  std::vector<std::string> const exclusiveCollections{};
+
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-    auto methods = _guardedData.doUnderLock([tid = doc.trx](auto& data) {
+    VPackBuilder b;
+    velocypack::serialize(b, doc);
+    LOG_DEVEL << "got doc " << b.toJson();
+    auto tid = doc.trx;
+    auto docTrx = _guardedData.doUnderLock([tid](auto& data) {
       if (data.didResign()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
       }
       auto docTransaction = data.core->ensureTransaction(tid);
-      auto ctx = std::make_shared<transaction::ManagedContext>(
-          tid, docTransaction->getState(), false, false);
-      return std::make_unique<transaction::Methods>(std::move(ctx));
+      return docTransaction;
     });
+    docTrx->getState()->setWriteAccessType();
+    auto ctx = std::make_shared<transaction::ManagedContext>(
+        tid, docTrx->getState(), false, false, true);
+    auto& options = docTrx->getState()->options();
+    options.allowImplicitCollectionsForWrite = true;
+    auto activeTrx = std::make_unique<transaction::Methods>(
+        ctx, readCollections, writeCollections, exclusiveCollections, options);
 
-    Result res = methods->begin();
+    Result res = activeTrx->begin();
     TRI_ASSERT(res.ok());
 
+    auto opOptions = arangodb::OperationOptions();
     if (doc.operation == OperationType::kInsert) {
-      // methods.
-      auto opOptions = arangodb::Options();
-      methods->insertAsync(doc.shardId, doc.data, opOptions).thenValue([=, this](OperationResult&& opres) {
-      }
+      auto f = activeTrx->insertAsync(doc.shardId, doc.data.slice(), opOptions)
+                   .thenValue([activeTrx = std::move(activeTrx)](
+                                  arangodb::OperationResult&& opRes) {
+                     return activeTrx->finishAsync(opRes.result)
+                         .thenValue([opRes(std::move(opRes))](Result&& result) {
+                           TRI_ASSERT(opRes.ok());
+                           TRI_ASSERT(result.ok());
+                         });
+                   });
+      f.wait();
+      f.result().throwIfFailed();
     }
+  }
   return {TRI_ERROR_NO_ERROR};
 }
 

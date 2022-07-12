@@ -37,11 +37,14 @@ struct DocumentCore {
       GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
       std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+      std::shared_ptr<IDocumentStateTransactionHandler> const&
+          transactionHandler,
       LoggerContext loggerContext);
 
   LoggerContext const loggerContext;
 
   auto getShardId() -> std::string_view;
+
   auto ensureTransaction(TransactionId tid)
       -> std::shared_ptr<DocumentStateTransaction>;
 

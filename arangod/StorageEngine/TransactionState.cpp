@@ -350,6 +350,8 @@ void TransactionState::setExclusiveAccessType() {
   _type = AccessMode::Type::EXCLUSIVE;
 }
 
+void TransactionState::setWriteAccessType() { _type = AccessMode::Type::WRITE; }
+
 void TransactionState::acceptAnalyzersRevision(
     QueryAnalyzerRevisions const& analyzersRevision) noexcept {
   // only init from default allowed! Or we have problem -> different
