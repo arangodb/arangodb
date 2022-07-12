@@ -512,7 +512,10 @@ const G6JsGraph = () => {
           onRequestClose={() => {
             setShowFetchFullGraphModal(false);
           }}
-          onFullGraphLoaded={(newGraphData) => setGraphData(newGraphData)}
+          onFullGraphLoaded={(newGraphData, responseTimesObject) => {
+            setResponseTimes(responseTimesObject);
+            setGraphData(newGraphData);}
+          }
           graphName={graphName}
         >
           <strong>Fetch full graph</strong>
@@ -558,7 +561,7 @@ const G6JsGraph = () => {
         >
           <strong>Add node</strong>
         </AddNodeModal>
-        
+
 
         <GraphView
               data={graphData}
@@ -584,7 +587,7 @@ const G6JsGraph = () => {
               onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
               onClickDocument={(document) => lookUpDocument(document)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
-              onGraphDataLoaded={(newGraphData) => {
+              onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
                 if(newGraphData.settings.nodesColorAttributes) {
                   setNodesColorAttributes(newGraphData.settings.nodesColorAttributes);
                 }
@@ -597,6 +600,7 @@ const G6JsGraph = () => {
                 if(newGraphData.settings.edgesColorAttributes) {
                   setEdgesColorAttributes(newGraphData.settings.edgesColorAttributes);
                 }
+                setResponseTimes(responseTimesObject);
                 setGraphData(newGraphData);
               }}
               vertexCollectionsColors={vertexCollectionsColors}

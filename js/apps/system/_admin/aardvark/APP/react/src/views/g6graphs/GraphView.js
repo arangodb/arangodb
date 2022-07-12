@@ -687,7 +687,8 @@ export class GraphView extends React.Component {
         onEdgeSearched={(previousSearchedEdge, edge) => this.highlightEdge(previousSearchedEdge, edge)}
         onEdgeStyleChanged={(edgeStyle) => this.changeEdgeStyleFromUi(edgeStyle)}
         onGraphLayoutChange={(layout) => this.changeGraphLayoutFromUi(layout)}
-        onGraphDataLoaded={(newGraphData) => this.props.onGraphDataLoaded(newGraphData)}
+        onGraphDataLoaded={(newGraphData, responseTimesObject) => {
+          this.props.onGraphDataLoaded({newGraphData, responseTimesObject})}}
       />
       <Card
           title={null}

@@ -51,7 +51,9 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
     <Space>
       <ButtonSave
         graphName={graphName}
-        onGraphDataLoaded={(newGraphData) => onGraphDataLoaded(newGraphData)}
+        onGraphDataLoaded={(newGraphData, responseTimesObject) => {
+          onGraphDataLoaded(newGraphData, responseTimesObject)}
+        }
         onIsLoadingData={(isLoadingData) => setIsLoadingData(isLoadingData)}
       />
     </Space>

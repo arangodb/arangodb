@@ -1,5 +1,5 @@
 /* global arangoHelper, $ */
-import React from 'react';
+import React, { useState } from 'react';
 import styled from "styled-components";
 
 const ModalBackground = styled.div`
@@ -21,6 +21,12 @@ const ModalBody = styled.div`
 `;
 
 export const FetchFullGraphModal = ({ shouldShow, onRequestClose, children, onFullGraphLoaded, graphName }) => {
+let responseTimesObject = {
+    fetchStarted: null,
+    fetchFinished: null,
+    fetchDuration: null
+  }
+  const [responseTimes, setResponseTimes] = useState(responseTimesObject);
 
   const fetchFullGraph = () => {
     
@@ -36,7 +42,7 @@ export const FetchFullGraphModal = ({ shouldShow, onRequestClose, children, onFu
       "nodeLabel": "_key",
       "edgeLabel": "",
       "nodeSize": "",
-      "nodeSizeByEdges": "true",
+      "nodeSizeByEdges": "false",
       "edgeEditable": "true",
       "nodeLabelByCollection": "false",
       "edgeLabelByCollection": "false",
@@ -44,6 +50,7 @@ export const FetchFullGraphModal = ({ shouldShow, onRequestClose, children, onFu
       "barnesHutOptimize": true,
       "mode": "all"
     };
+    responseTimesObject.fetchStarted = new Date();
 
     $.ajax({
       type: 'GET',
@@ -51,8 +58,11 @@ export const FetchFullGraphModal = ({ shouldShow, onRequestClose, children, onFu
       contentType: 'application/json',
       data: ajaxData,
       success: function (data) {
+        responseTimesObject.fetchFinished = new Date();
+        responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
+        setResponseTimes(responseTimesObject);
         onRequestClose();
-        onFullGraphLoaded(data);
+        onFullGraphLoaded(data, responseTimesObject);
         const element = document.getElementById("graph-card");
         element.scrollIntoView({ behavior: "smooth" });
       },

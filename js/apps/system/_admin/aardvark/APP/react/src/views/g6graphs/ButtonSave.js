@@ -8,11 +8,18 @@ import { SaveOutlined } from '@ant-design/icons';
 const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
   const urlParameters = useContext(UrlParametersContext);
   const [isLoadingData, setIsLoadingData] = useState(false)
+  let responseTimesObject = {
+    fetchStarted: null,
+    fetchFinished: null,
+    fetchDuration: null
+  }
+  const [responseTimes, setResponseTimes] = useState(responseTimesObject);
 
   const callApi = () => {
     localStorage.setItem(`${graphName}-gv-urlparameters`, JSON.stringify(urlParameters[0]));
     setIsLoadingData(true);
     onIsLoadingData(true);
+    responseTimesObject.fetchStarted = new Date();
 
     $.ajax({
       type: 'GET',
@@ -20,12 +27,14 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
       contentType: 'application/json',
       data: urlParameters[0],
       success: function (data) {
+        responseTimesObject.fetchFinished = new Date();
+        responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
+        setResponseTimes(responseTimesObject);
         const element = document.getElementById("graph-card");
-        console.log("element: ", element);
         element.scrollIntoView({ behavior: "smooth" });
         setIsLoadingData(false);
         onIsLoadingData(false);
-        onGraphDataLoaded(data);
+        onGraphDataLoaded(data, responseTimesObject);
       },
       error: function (e) {
         arangoHelper.arangoError('Graph', 'Could not load graph.');
@@ -41,7 +50,6 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
           style={{ background: "#2ecc71", borderColor: "#2ecc71" }}
           icon={<SaveOutlined />}
           onClick={() => {
-            console.log("urlParameters (to make API call): ", urlParameters);
             callApi();
           }}
           disabled={isLoadingData}
