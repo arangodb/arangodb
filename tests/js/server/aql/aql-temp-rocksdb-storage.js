@@ -66,41 +66,54 @@ function StorageForQueryWithCollectionSortSuite() {
 
     testSortComparePeakMemoryUsageAscCollection: function() {
       let query = `FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`;
+      let res = db._query(query, null, {thresholdNumRows: 100000000, silent: true, options: { silent: true } });
+      let queryStats = res.getExtra().stats;
+      assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
+      const memoryUsage1 = queryStats.peakMemoryUsage;
+      
+      res = db._query(query, null, {thresholdNumRows: 10000, silent: true, options: { silent: true } });
+      queryStats = res.getExtra().stats;
+      assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
+      assertTrue(queryStats.peakMemoryUsage * 2 < memoryUsage1, { current: queryStats.peakMemoryUsage, previous: memoryUsage1 });
+    },
+
+    testSortComparePeakMemoryUsageDescCollection: function() {
+      let query = `FOR doc IN ${cn} SORT doc.value1 DESC RETURN doc`;
+      let res = db._query(query, null, {thresholdNumRows: 100000000, silent: true, options: { silent: true } });
+      let queryStats = res.getExtra().stats;
+      assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
+      const memoryUsage1 = queryStats.peakMemoryUsage;
+      
+      res = db._query(query, null, {thresholdNumRows: 5000, silent: true, options: { silent: true } });
+      queryStats = res.getExtra().stats;
+      assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
+      assertTrue(queryStats.peakMemoryUsage * 2 < memoryUsage1, { current: queryStats.peakMemoryUsage, previous: memoryUsage1 });
+    },
+    
+    testSortAscCollectionResults: function() {
+      let query = `FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`;
       let res = db._query(query, null, {thresholdNumRows: 100000000});
       let allDocs = res.toArray();
       assertEqual(allDocs.length, 500000);
       assertOrder("asc", allDocs);
-      let queryStats = res.getExtra().stats;
-      assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
-      const memoryUsage1 = queryStats.peakMemoryUsage;
       
       res = db._query(query, null, {thresholdNumRows: 10000});
       allDocs = res.toArray();
       assertEqual(allDocs.length, 500000);
       assertOrder("asc", allDocs);
-      queryStats = res.getExtra().stats;
-      assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
-      assertTrue(queryStats.peakMemoryUsage * 2 < memoryUsage1);
-
     },
 
-    testSortComparePeakMemoryUsageDescCollection: function() {
+    testSortDescCollectionResults: function() {
       let query = `FOR doc IN ${cn} SORT doc.value1 DESC RETURN doc`;
       let res = db._query(query, null, {thresholdNumRows: 100000000});
       let allDocs = res.toArray();
       assertEqual(allDocs.length, 500000);
       assertOrder("desc", allDocs);
-      let queryStats = res.getExtra().stats;
-      assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
-      const memoryUsage1 = queryStats.peakMemoryUsage;
       
       res = db._query(query, null, {thresholdNumRows: 5000});
       allDocs = res.toArray();
       assertEqual(allDocs.length, 500000);
       assertOrder("desc", allDocs);
-      queryStats = res.getExtra().stats;
-      assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
-      assertTrue(queryStats.peakMemoryUsage * 2 < memoryUsage1);
     },
 
   };
