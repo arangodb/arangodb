@@ -51,9 +51,9 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
 
  private:
   void doSorting();
+  size_t currentMemoryUsage() const noexcept;
 
   SortExecutorInfos& _infos;
-  size_t _memoryUsageForRowIndexes;
 
   std::vector<SharedAqlItemBlockPtr> _inputBlocks;
   std::vector<AqlItemMatrix::RowIndex> _rowIndexes;

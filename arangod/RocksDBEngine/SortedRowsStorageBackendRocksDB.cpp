@@ -41,6 +41,9 @@
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
 
+#include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 
 SortedRowsStorageBackendRocksDB::SortedRowsStorageBackendRocksDB(
@@ -75,6 +78,8 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
 
   aql::ExecutorState state = aql::ExecutorState::HASMORE;
   aql::InputAqlItemRow input{aql::CreateInvalidInputRowHint{}};
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
 
   auto inputBlock = inputRange.getBlock();
 
@@ -100,11 +105,14 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
 
     rocksDBKey.constructFromBuffer(keyWithPrefix);
 
+    // build value for insertion
+    builder.clear();
+
     // TODO: this is very inefficient. improve it
-    aql::InputAqlItemRow newRow(inputBlock, inputRange.getRowIndex());
-    velocypack::Builder builder;
     builder.openObject();
-    newRow.toVelocyPack(_infos.vpackOptions(), builder);
+    inputBlock->toVelocyPack(inputRange.getRowIndex(),
+                             inputRange.getRowIndex() + 1,
+                             _infos.vpackOptions(), builder);
     builder.close();
 
     auto res = _context->storeRow(rocksDBKey, builder.slice());
@@ -135,8 +143,8 @@ void SortedRowsStorageBackendRocksDB::produceOutputRow(
     aql::OutputAqlItemRow& output) {
   TRI_ASSERT(hasMore());
 
-  auto p = _iterator->value().data();
-  velocypack::Slice slice(reinterpret_cast<uint8_t const*>(p));
+  velocypack::Slice slice(
+      reinterpret_cast<uint8_t const*>(_iterator->value().data()));
 
   // TODO: improve the efficiency of this
   auto curBlock = _infos.itemBlockManager().requestAndInitBlock(slice);
@@ -146,6 +154,7 @@ void SortedRowsStorageBackendRocksDB::produceOutputRow(
   }
 
   output.advanceRow();
+
   _iterator->Next();
 }
 
