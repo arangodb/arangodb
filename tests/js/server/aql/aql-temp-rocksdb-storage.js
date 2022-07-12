@@ -2,10 +2,6 @@
 /* global AQL_EXECUTE, assertTrue, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Spec for the AQL FOR x IN GRAPH name statement
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
 // / Copyright 2022 ArangoDB GmbH, Cologne, Germany
@@ -43,7 +39,7 @@ function StorageForQueryWithCollectionSortSuite() {
   let assertOrder = (order, values) => {
     let firstVal = values[0].value1;
     values.forEach(el => {
-      assertTrue(order === "asc" ? el.value1 >= firstVal : el.value1 <= firstVal);
+      assertTrue(order === "asc" ? el.value1 >= firstVal : el.value1 <= firstVal, { order, el, firstVal });
       firstVal = el.value1;
     });
   };
@@ -52,24 +48,23 @@ function StorageForQueryWithCollectionSortSuite() {
 
     setUpAll: function() {
       db._drop(cn);
-      db._create(cn);
+      let c = db._create(cn);
 
       let docs = [];
       for (let i = 0; i < 500000; ++i) {
         docs.push({value1: i, value2: "a" + i});
-        if (docs.length > 10000) {
-          db[cn].insert(docs);
+        if (docs.length === 10000) {
+          c.insert(docs);
           docs = [];
         }
       }
-      db[cn].insert(docs);
     },
 
     tearDownAll: function() {
       db._drop(cn);
     },
 
-    testSortComparePeakMemoryUsageAsc: function() {
+    testSortComparePeakMemoryUsageAscCollection: function() {
       let query = `FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`;
       let res = db._query(query, null, {thresholdNumRows: 100000000});
       let allDocs = res.toArray();
@@ -78,7 +73,7 @@ function StorageForQueryWithCollectionSortSuite() {
       let queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       const memoryUsage1 = queryStats.peakMemoryUsage;
-      query = `FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`;
+      
       res = db._query(query, null, {thresholdNumRows: 10000});
       allDocs = res.toArray();
       assertEqual(allDocs.length, 500000);
@@ -89,7 +84,7 @@ function StorageForQueryWithCollectionSortSuite() {
 
     },
 
-    testSortComparePeakMemoryUsageDesc: function() {
+    testSortComparePeakMemoryUsageDescCollection: function() {
       let query = `FOR doc IN ${cn} SORT doc.value1 DESC RETURN doc`;
       let res = db._query(query, null, {thresholdNumRows: 100000000});
       let allDocs = res.toArray();
@@ -98,7 +93,7 @@ function StorageForQueryWithCollectionSortSuite() {
       let queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       const memoryUsage1 = queryStats.peakMemoryUsage;
-      query = `FOR doc IN ${cn} SORT doc.value1 DESC RETURN doc`;
+      
       res = db._query(query, null, {thresholdNumRows: 5000});
       allDocs = res.toArray();
       assertEqual(allDocs.length, 500000);
@@ -115,16 +110,16 @@ function StorageForQueryWithoutCollectionSortSuite() {
   const cn = 'UnitTestCollection';
 
   let assertOrder = (order, values) => {
-    let firstVal = values[0].value1;
+    let firstVal = values[0];
     values.forEach(el => {
-      assertTrue(order === "asc" ? el >= firstVal : el <= firstVal);
-      firstVal = el.value1;
+      assertTrue(order === "asc" ? el >= firstVal : el <= firstVal, { order, el, firstVal });
+      firstVal = el;
     });
   };
 
   return {
 
-    testSortComparePeakMemoryUsageAsc: function() {
+    testSortComparePeakMemoryUsageAscRange: function() {
       let query = `FOR i IN 1..500000 SORT i ASC RETURN i`;
       let res = db._query(query, null, {thresholdNumRows: 100000000});
       let allDocs = res.toArray();
@@ -133,7 +128,7 @@ function StorageForQueryWithoutCollectionSortSuite() {
       let queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       const memoryUsage1 = queryStats.peakMemoryUsage;
-      query = `FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`;
+      
       res = db._query(query, null, {thresholdNumRows: 10000});
       allDocs = res.toArray();
       assertEqual(allDocs.length, 500000);
@@ -144,7 +139,7 @@ function StorageForQueryWithoutCollectionSortSuite() {
 
     },
 
-    testSortComparePeakMemoryUsageDesc: function() {
+    testSortComparePeakMemoryUsageDescRange: function() {
       let query = `FOR i IN 1..500000 SORT i DESC RETURN i`;
       let res = db._query(query, null, {thresholdNumRows: 100000000});
       let allDocs = res.toArray();
@@ -153,7 +148,7 @@ function StorageForQueryWithoutCollectionSortSuite() {
       let queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       const memoryUsage1 = queryStats.peakMemoryUsage;
-      query = `FOR doc IN ${cn} SORT doc.value1 DESC RETURN doc`;
+      
       res = db._query(query, null, {thresholdNumRows: 5000});
       allDocs = res.toArray();
       assertEqual(allDocs.length, 500000);
