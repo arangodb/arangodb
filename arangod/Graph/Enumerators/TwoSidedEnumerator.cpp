@@ -312,6 +312,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator,
             validatorOptions, resourceMonitor},
       _right{Direction::BACKWARD, std::move(backwardProvider), _options,
              std::move(validatorOptions), resourceMonitor},
+      _baselineDepth(_options.getMaxDepth()),
       _resultPath{_left.provider(), _right.provider()} {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -442,10 +443,10 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator,
     }
   }
 
-  if constexpr (stopAtFirstDepth) {  // _options.getStopAtFirstDepth()
+  if (_options.getStopAtFirstDepth()) {
     size_t currentDepth = _left.getDepth() + _right.getDepth();
-    if (currentDepth < _options.getMaxDepth()) {
-      _options.setMaxDepth(currentDepth);
+    if (currentDepth < _baselineDepth) {
+      _baselineDepth = currentDepth;
     }
   }
 
@@ -493,7 +494,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator,
                         stopAtFirstDepth>::searchDone() const -> bool {
   return _left.noPathLeft() || _right.noPathLeft() ||
-         _left.getDepth() + _right.getDepth() > _options.getMaxDepth();
+         _left.getDepth() + _right.getDepth() > _baselineDepth;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
