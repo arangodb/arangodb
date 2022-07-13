@@ -250,6 +250,7 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
+  Pregel/DurationTest.cpp
   Pregel/typedbuffer.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
