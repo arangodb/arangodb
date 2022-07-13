@@ -17,9 +17,13 @@ export class GraphView extends React.Component {
 
   constructor(props) {
     super(props)
-    this.ref = React.createRef();
+    this.ref = React.createRef(); 
+    this.handleResize = () => {
+      this.graph.changeSize(this.ref.current.clientWidth, this.ref.current.clientHeight);
+      this.graph.fitCenter();
+    }
   }
-
+    
   componentDidMount() {
     const contextMenu = new G6.Menu({
       getContent(evt) {
@@ -82,7 +86,6 @@ export class GraphView extends React.Component {
       layout: {
         type: 'force',
         preventOverlap: true,
-        fitView: true,
         linkDistance: 100
       },
       modes: {
@@ -317,6 +320,8 @@ export class GraphView extends React.Component {
       this.graph.addItem('edge', edgeModel);
       this.props.onAddSingleEdge(edgeModel);
     });
+
+    window.addEventListener("resize", this.handleResize);
   }
 
   componentDidUpdate() {
@@ -344,6 +349,10 @@ export class GraphView extends React.Component {
         this.colorEdgesByAttribute();
       }
     }
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.handleResize);
   }
 
   getNodes = () => {
@@ -659,7 +668,6 @@ export class GraphView extends React.Component {
     this.graph.updateLayout({
       type: layout,
       preventOverlap: true,
-      fitView: true,
     });
   }
 
@@ -690,7 +698,7 @@ export class GraphView extends React.Component {
       <Card
           title={null}
           id="graph-card"
-          bodyStyle={{ 'height': '800px', 'backgroundColor': '#f2f2f2' }}
+          bodyStyle={{ 'minHeight': '800px', 'height': '100%', 'backgroundColor': '#f2f2f2' }}
         >
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>

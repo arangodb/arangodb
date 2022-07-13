@@ -28,6 +28,16 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
   const [isLoadingData, setIsLoadingData] = useState(false);
   const { TabPane } = Tabs;
 
+  const enterFullscreen = (element) => {
+    if(element.requestFullscreen) {
+      element.requestFullscreen();
+    } else if(element.msRequestFullscreen) {
+      element.msRequestFullscreen();
+    } else if(element.webkitRequestFullscreen) {
+      element.webkitRequestFullscreen();
+    }
+  }
+
   const renderContent = (column = 2) => (
     <>
       <Descriptions size="small" column={column}>
@@ -92,9 +102,8 @@ const screenshotMenu = (
               <Button key="3"
                 onClick={() => {
                   const elem = document.getElementById("graph-card");
-                  if (elem.requestFullscreen) {
-                    elem.requestFullscreen();
-                  }}}>
+                  enterFullscreen(elem);
+                  }}>
                     <FullscreenOutlined />
               </Button>
             </Tooltip>
