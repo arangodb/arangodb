@@ -139,7 +139,11 @@ auto LeaderStateManager<S>::waitForLeadership() noexcept
     -> futures::Future<futures::Unit> try {
   GaugeScopedCounter counter(metrics->replicatedStateNumberWaitingForLeader);
   return logLeader->waitForLeadership().thenValue(
-      [](replicated_log::WaitForResult const&) { return futures::Unit(); });
+      [counter =
+           std::move(counter)](replicated_log::WaitForResult const&) mutable {
+        counter.fire();
+        return futures::Unit();
+      });
 } catch (...) {
   return futures::Try<futures::Unit>(std::current_exception());
 }
