@@ -80,9 +80,13 @@ void TRI_TerminateDebugging(std::string_view message) {
     // note: when using ASan/UBSan, this actually does not crash
     // the program but continues.
     auto f = []() noexcept {
-      // intentionally crashes the program!
+    // intentionally crashes the program!
+    // MSVC has this constexpr ctor deleted. But as Asan/Ubsan is anyway not an
+    // option for MSVC right now, just disable the code here.
+#ifndef _MSC_VER
       // cppcheck-suppress *
       return std::string(nullptr);
+#endif
     };
     f();
     // we will get here at least with ASan/UBSan.
