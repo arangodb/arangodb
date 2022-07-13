@@ -54,6 +54,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "velocypack/Builder.h"
 
 #include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
@@ -155,10 +156,8 @@ Conductor::~Conductor() {
 
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _startTimeSecs = TRI_microtime();
-  _computationStartTimeSecs = _startTimeSecs;
-  _finalizationStartTimeSecs = _startTimeSecs;
-  _endTimeSecs = _startTimeSecs;
+  _timing.total.start();
+  _timing.loading.start();
 
   _globalSuperstep = 0;
   updateState(ExecutionState::RUNNING);
@@ -259,15 +258,17 @@ bool Conductor::_startGlobalStep() {
   // TODO make maximum configurable
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     // tells workers to store / discard results
+    _timing.computation.finish();
     if (_storeResults) {
       updateState(ExecutionState::STORING);
+      _timing.storing.start();
       _finalizeWorkers();
     } else {  // just stop the timer
       updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                                 : ExecutionState::DONE);
-      _endTimeSecs = TRI_microtime();
       LOG_PREGEL("9e82c", INFO)
-          << "Done, execution took: " << totalRuntimeSecs() << " s";
+          << "Done, execution took: " << _timing.total.elapsedSeconds().count()
+          << " s";
     }
     return false;
   }
@@ -280,7 +281,6 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_reports = &_reports;
     if (!_masterContext->preGlobalSuperstepWithResult()) {
       updateState(ExecutionState::FATAL_ERROR);
-      _endTimeSecs = TRI_microtime();
       return false;
     }
     _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
@@ -302,8 +302,8 @@ bool Conductor::_startGlobalStep() {
   b.close();
 
   LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
-
-  _stepStartTimeSecs = TRI_microtime();
+  _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
+                                    ._finish = std::nullopt});
 
   // start vertex level operations, does not get a response
   auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
@@ -362,7 +362,8 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     _masterContext->preApplication();
   }
 
-  _computationStartTimeSecs = TRI_microtime();
+  _timing.loading.finish();
+  _timing.computation.start();
   _startGlobalStep();
 }
 
@@ -411,8 +412,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  LOG_PREGEL("39385", DEBUG) << "Finished gss " << _globalSuperstep << " in "
-                             << (TRI_microtime() - _stepStartTimeSecs) << "s";
+  _timing.gss.back().finish();
+  LOG_PREGEL("39385", DEBUG)
+      << "Finished gss " << _globalSuperstep << " in "
+      << _timing.gss.back().elapsedSeconds().count() << "s";
   //_statistics.debugOutput();
   _globalSuperstep++;
 
@@ -802,7 +805,6 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 
 ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
-  _finalizationStartTimeSecs = TRI_microtime();
 
   bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
@@ -845,8 +847,9 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                               : ExecutionState::DONE);
     didStore = true;
+    _timing.storing.finish();
   }
-  _endTimeSecs = TRI_microtime();  // offically done
+  _timing.total.finish();
 
   VPackBuilder debugOut;
   debugOut.openObject();
@@ -856,24 +859,20 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   _aggregators->serializeValues(debugOut);
   debugOut.close();
 
-  if (_finalizationStartTimeSecs < _computationStartTimeSecs) {
-    // prevent negative computation times from being reported
-    _finalizationStartTimeSecs = _computationStartTimeSecs;
-  }
-
-  double compTime = _finalizationStartTimeSecs - _computationStartTimeSecs;
-  TRI_ASSERT(compTime >= 0);
-  if (didStore) {
-    _storeTimeSecs = TRI_microtime() - _finalizationStartTimeSecs;
-  }
-
   LOG_PREGEL("063b5", INFO)
-      << "Done. We did " << _globalSuperstep << " rounds"
-      << ". Startup time: " << _computationStartTimeSecs - _startTimeSecs << "s"
-      << ", computation time: " << compTime << "s"
-      << (didStore ? (", storage time: " + std::to_string(_storeTimeSecs) + "s")
+      << "Done. We did " << _globalSuperstep << " rounds."
+      << (_timing.loading.hasStarted()
+              ? fmt::format("Startup time: {}s",
+                            _timing.loading.elapsedSeconds().count())
+              : "")
+      << (_timing.computation.hasStarted()
+              ? fmt::format(", computation time: {}s",
+                            _timing.computation.elapsedSeconds().count())
+              : "")
+      << (didStore ? fmt::format(", storage time: {}s",
+                                 _timing.storing.elapsedSeconds().count())
                    : "")
-      << ", overall: " << totalRuntimeSecs() << "s"
+      << ", overall: " << _timing.total.elapsedSeconds().count() << "s"
       << ", stats: " << debugOut.slice().toJson();
 
   // always try to cleanup
@@ -951,13 +950,29 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.add("ttl", VPackValue(_ttl.count()));
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
-  result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
-  result.add("startupTime",
-             VPackValue(_computationStartTimeSecs - _startTimeSecs));
-  result.add("computationTime", VPackValue(_finalizationStartTimeSecs -
-                                           _computationStartTimeSecs));
-  if (_storeTimeSecs > 0.0) {
-    result.add("storageTime", VPackValue(_storeTimeSecs));
+
+  if (_timing.total.hasStarted()) {
+    result.add("totalRuntime",
+               VPackValue(_timing.total.elapsedSeconds().count()));
+  }
+  if (_timing.loading.hasStarted()) {
+    result.add("startupTime",
+               VPackValue(_timing.loading.elapsedSeconds().count()));
+  }
+  if (_timing.computation.hasStarted()) {
+    result.add("computationTime",
+               VPackValue(_timing.computation.elapsedSeconds().count()));
+  }
+  if (_timing.storing.hasStarted()) {
+    result.add("storageTime",
+               VPackValue(_timing.storing.elapsedSeconds().count()));
+  }
+  {
+    result.add(VPackValue("gssTimes"));
+    VPackArrayBuilder array(&result);
+    for (auto const& gssTime : _timing.gss) {
+      result.add(VPackValue(gssTime.elapsedSeconds().count()));
+    }
   }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
