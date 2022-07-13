@@ -49,7 +49,8 @@ class RocksDBSortedRowsStorageContext {
  public:
   RocksDBSortedRowsStorageContext(rocksdb::DB* db,
                                   rocksdb::ColumnFamilyHandle* cf,
-                                  std::string const& path, uint64_t keyPrefix);
+                                  std::string const& path, uint64_t keyPrefix,
+                                  std::uint64_t maxCapacity);
   ~RocksDBSortedRowsStorageContext();
 
   Result storeRow(RocksDBKey const& key, velocypack::Slice data);

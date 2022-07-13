@@ -183,8 +183,8 @@ void TemporaryStorageFeature::start() {
     return;
   }
 
-  auto backend = std::make_unique<RocksDBTempStorage>(_basePath, _useEncryption,
-                                                      _allowHWAcceleration);
+  auto backend = std::make_unique<RocksDBTempStorage>(
+      _basePath, _maxCapacity, _useEncryption, _allowHWAcceleration);
 
   Result res = backend->init();
   if (res.fail()) {

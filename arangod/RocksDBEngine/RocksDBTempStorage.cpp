@@ -112,9 +112,11 @@ class KeysComparator : public rocksdb::Comparator {
 }  // namespace
 
 RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
+                                       std::uint64_t maxCapacity,
                                        bool useEncryption,
                                        bool allowHWAcceleration)
     : _basePath(basePath),
+      _maxCapacity(maxCapacity),
       _useEncryption(useEncryption),
       _allowHWAcceleration(allowHWAcceleration),
       _nextId(0),
@@ -250,7 +252,7 @@ void RocksDBTempStorage::close() {
 std::unique_ptr<RocksDBSortedRowsStorageContext>
 RocksDBTempStorage::getSortedRowsStorageContext() {
   return std::make_unique<RocksDBSortedRowsStorageContext>(
-      _db, _cfHandles[0], _tempFilesPath, nextId());
+      _db, _cfHandles[0], _tempFilesPath, nextId(), _maxCapacity);
 }
 
 uint64_t RocksDBTempStorage::nextId() noexcept {

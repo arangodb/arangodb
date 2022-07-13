@@ -30,6 +30,8 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 namespace FU = basics::FileUtils;
 
@@ -85,6 +87,11 @@ void RocksDBSstFileMethods::insertEstimators() {
 }
 
 rocksdb::Status RocksDBSstFileMethods::writeToFile() {
+  if (_maxCapacity != 0 && _bytesWrittenToDir >= _maxCapacity) {
+    LOG_TOPIC("b2c7f", WARN, Logger::ENGINES)
+        << "Directory capacity limit exceeded for writing temporary files";
+    return rocksdb::Status::Aborted();
+  }
   if (_keyValPairs.empty()) {
     return rocksdb::Status::OK();
   }
@@ -112,6 +119,7 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
     }
     _keyValPairs.clear();
     if (res.ok()) {
+      _bytesWrittenToDir += _sstFileWriter.FileSize();
       res = _sstFileWriter.Finish();
     }
     if (!res.ok()) {

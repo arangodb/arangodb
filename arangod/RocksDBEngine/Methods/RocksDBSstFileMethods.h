@@ -70,6 +70,10 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
 
   static void cleanUpFiles(std::vector<std::string> const& fileNames);
 
+  void setMaxCapacity(std::uint64_t maxCapacity) noexcept {
+    _maxCapacity = maxCapacity;
+  }
+
  private:
   void cleanUpFiles();
 
@@ -88,6 +92,8 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   std::string _idxPath;
   std::vector<std::string> _sstFileNames;
   std::vector<std::pair<std::string, std::string>> _keyValPairs;
+  std::uint64_t _bytesWrittenToDir = 0;
+  std::uint64_t _maxCapacity = 0;  // default unlimited
 };
 
 }  // namespace arangodb

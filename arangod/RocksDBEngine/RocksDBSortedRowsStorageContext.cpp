@@ -39,11 +39,13 @@
 #include <rocksdb/iterator.h>
 #include <rocksdb/slice.h>
 
+#include "Logger/LogMacros.h"
+
 namespace arangodb {
 
 RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
     rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf, std::string const& path,
-    uint64_t keyPrefix)
+    uint64_t keyPrefix, uint64_t maxCapacity)
     : _db(db),
       _cf(cf),
       _path(path),
@@ -62,6 +64,7 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
   // create SstFileMethods instance that we will use for file ingestion
   rocksdb::Options options = _db->GetOptions();
   _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path);
+  _methods->setMaxCapacity(maxCapacity);
 }
 
 RocksDBSortedRowsStorageContext::~RocksDBSortedRowsStorageContext() {
@@ -84,11 +87,12 @@ Result RocksDBSortedRowsStorageContext::storeRow(RocksDBKey const& key,
 
 void RocksDBSortedRowsStorageContext::ingestAll() {
   std::vector<std::string> fileNames;
-  Result res = _methods->stealFileNames(fileNames);
-
   TRI_IF_FAILURE("failOnIngestAll1") {
+    rocksdb::Status s = rocksdb::Status::Corruption("broken");
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  Result res = _methods->stealFileNames(fileNames);
 
   if (res.ok() && !fileNames.empty()) {
     rocksdb::IngestExternalFileOptions ingestOptions;
@@ -103,6 +107,9 @@ void RocksDBSortedRowsStorageContext::ingestAll() {
 
     TRI_IF_FAILURE("failOnIngestAll2") {
       s = rocksdb::Status::Corruption("broken");
+      // not throw exception because the sst file methods don't have access
+      // to the file names anymore, so clean up has to be called from here
+      // with the file names
     }
 
     if (!s.ok()) {

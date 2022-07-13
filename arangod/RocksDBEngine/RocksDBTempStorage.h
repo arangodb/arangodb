@@ -48,7 +48,8 @@ class EncryptionProvider;
 
 class RocksDBTempStorage {
  public:
-  explicit RocksDBTempStorage(std::string const& basePath, bool useEncryption,
+  explicit RocksDBTempStorage(std::string const& basePath,
+                              std::uint64_t maxCapacity, bool useEncryption,
                               bool allowHWAcceleration);
   ~RocksDBTempStorage();
 
@@ -63,6 +64,7 @@ class RocksDBTempStorage {
   uint64_t nextId() noexcept;
 
   std::string const _basePath;
+  std::uint64_t _maxCapacity;
   bool const _useEncryption;
   bool const _allowHWAcceleration;
 
