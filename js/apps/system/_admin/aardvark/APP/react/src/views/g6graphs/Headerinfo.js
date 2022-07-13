@@ -85,7 +85,7 @@ const screenshotMenu = (
         extra={[
           <>
             <Dropdown overlayClassName='graphReactViewContainer screenshot-button' overlay={screenshotMenu} placement="bottomRight">
-              <Button key="2"><CameraOutlined /></Button>
+              <Button key="2"><DownloadOutlined /></Button>
             </Dropdown>
 
             <Tooltip placement="bottom" title={"Enter full screen"} overlayClassName='graph-border-box' >
