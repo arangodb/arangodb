@@ -27,8 +27,8 @@
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
-#include "Pregel/TypedBuffer.h"
 #include "Pregel/Reports.h"
+#include "Pregel/TypedBuffer.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -72,10 +72,13 @@ class GraphStore final {
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
+
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
   // ====================== NOT THREAD SAFE ===========================
-  void loadShards(WorkerConfig* state, std::function<void()> const&);
+  void loadShards(WorkerConfig* config,
+                  std::function<void()> const& statusUpdateCallback,
+                  std::function<void()> const& finishedLoadingCallback);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
   void loadDocument(WorkerConfig* config, PregelShard sourceShard,
                     std::string_view key);
@@ -94,7 +97,8 @@ class GraphStore final {
 
  private:
   void loadVertices(ShardID const& vertexShard,
-                    std::vector<ShardID> const& edgeShards);
+                    std::vector<ShardID> const& edgeShards,
+                    std::function<void()> const& statusUpdateCallback);
   void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                  ShardID const& edgeShard, std::string const& documentID,
                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
