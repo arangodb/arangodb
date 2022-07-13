@@ -31,7 +31,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/VertexComputation.h"
 
-#include "Pregel/Status/WorkerStatus.h"
+#include "Pregel/Status/Status.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
@@ -169,7 +169,7 @@ void Worker<V, E, M>::setupWorker() {
       statusUpdateMsg.add(Utils::executionNumberKey,
                           VPackValue(_config.executionNumber()));
       statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = WorkerStatus{};
+      auto update = _graphStore->status();
       serialize(statusUpdateMsg, update);
     }
 

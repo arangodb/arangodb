@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -33,15 +34,38 @@
 #include <Pregel/Common.h>
 
 namespace arangodb::pregel {
-struct WorkerStatus {
-  TimeStamp timeStamp = std::chrono::system_clock::now();
+struct Status {
+  TimeStamp timeStamp{std::chrono::system_clock::now()};
+  std::size_t verticesLoaded{0};
+  std::size_t edgesLoaded{0};
+  std::size_t memoryBytesUsed{0};
+  bool operator==(Status const&) const = default;
+  auto operator+(Status const& other) const -> Status {
+    return Status{.timeStamp = std::max(timeStamp, other.timeStamp),
+                  .verticesLoaded = verticesLoaded + other.verticesLoaded,
+                  .edgesLoaded = edgesLoaded + other.edgesLoaded,
+                  .memoryBytesUsed = memoryBytesUsed + other.memoryBytesUsed};
+  };
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, WorkerStatus& x) {
+auto inspect(Inspector& f, Status& x) {
   return f.object(x).fields(
       f.field(timeStampString, x.timeStamp)
-          .transformWith(inspection::TimeStampTransformer{}));
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field("verticesLoaded", x.verticesLoaded),
+      f.field("edgesLoaded", x.edgesLoaded),
+      f.field("memoryUsed", x.memoryBytesUsed));
 }
 
+struct Observables {
+  std::atomic<std::size_t> verticesLoaded{0};
+  std::atomic<std::size_t> edgesLoaded{0};
+  std::atomic<std::size_t> memoryBytesUsed{0};
+  auto observe() const -> Status {
+    return Status{.verticesLoaded = verticesLoaded.load(),
+                  .edgesLoaded = edgesLoaded.load(),
+                  .memoryBytesUsed = memoryBytesUsed.load()};
+  }
+};
 }  // namespace arangodb::pregel
