@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import { Input, notification, Select, Tooltip } from 'antd';
+import { Input, Select, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 
 const ModalBackground = styled.div`
@@ -18,9 +18,14 @@ const ModalBackground = styled.div`
 
 const ModalBody = styled.div`
   background-color: white;
-  margin: 10% auto;
+  margin: 5% auto;
   padding: 20px;
   width: 50%;
+`;
+
+const StyledButton = styled.button`
+  margin-left: 15px !important;
+  color: white !important;
 `;
 
   export const AddNodeModal = ({ shouldShow, onUpdateNode, onRequestClose, node, vertexCollections, nodeData, editorContent, children, onNodeCreation, graphName, graphData }) => {
@@ -30,13 +35,10 @@ const ModalBody = styled.div`
   const jsonEditorRef = useRef();
   const [json, setJson] = useState(nodeData);
   const [collection, setCollection] = useState([]);
+  const SelectOption = Select.Option;
 
   const openNotificationWithIcon = nodeName => {
-    notification['success']({
-      message: 'Node created',
-      description:
-        `The node ${nodeName} was successfully created`,
-    });
+    arangoHelper.arangoNotification(`The node ${nodeName} was successfully created`);
   };
 
   const addNode = (graphData, updateNodeId) => {
@@ -89,9 +91,15 @@ const ModalBody = styled.div`
           }
           style={{ width: "100%", marginTop: '24px', marginBottom: '24px' }}
         />
+        
         <Select
           placeholder="Please choose the vertex collection"
-          style={{ width: "100%", marginBottom: '24px' }}
+          className="graphReactViewContainer"
+          dropdownClassName="graphReactViewContainer"
+          style={{
+            width: '100%',
+            marginBottom: '24px'
+          }}
           onChange={handleChange}
           suffixIcon={
             <Tooltip title="Please select the target collection for the new node.">
@@ -101,7 +109,12 @@ const ModalBody = styled.div`
         >
           {
             vertexCollections.map((vertexCollection) => {
-              return <Option value={vertexCollection.name}>{vertexCollection.name}</Option>;
+              return <SelectOption
+                value={vertexCollection.name}
+                className='graphReactViewContainer' 
+                dropdownClassName="graphReactViewContainer">
+                  {vertexCollection.name}
+                </SelectOption>;
             })
           }
         </Select>
@@ -120,8 +133,8 @@ const ModalBody = styled.div`
           }
         </div>
         <div style={{ 'marginTop': '38px', 'textAlign': 'right' }}>
-          <button className="button-close" onClick={onRequestClose}>Cancel</button>
-          <button className="button-success" onClick={() => { addNode(node) }}>Create</button>
+          <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
+          <StyledButton className="button-success" onClick={() => { addNode(node) }}>Create</StyledButton>
         </div>
       </ModalBody>
     </ModalBackground>

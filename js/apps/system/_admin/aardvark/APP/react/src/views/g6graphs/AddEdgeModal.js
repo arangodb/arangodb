@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import { Input, notification, Select, Tooltip } from 'antd';
+import { Input, Select, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 
 const ModalBackground = styled.div`
@@ -18,9 +18,14 @@ const ModalBackground = styled.div`
 
 const ModalBody = styled.div`
   background-color: white;
-  margin: 10% auto;
+  margin: 5% auto;
   padding: 20px;
   width: 50%;
+`;
+
+const StyledButton = styled.button`
+  margin-left: 15px !important;
+  color: white !important;
 `;
 
 export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onRequestClose, edge, edgeCollections, edgeData, editorContent, children, edgeKey, edgeCollection, onEdgeCreation, graphName, graphData, nodeFrom, nodeTo }) => {
@@ -31,11 +36,7 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
   const [json, setJson] = useState(edgeData);
   const [collection, setCollection] = useState([]);
   const openNotificationWithIcon = edgeName => {
-    notification['success']({
-      message: 'Edge created',
-      description:
-        `The edge ${edgeName} was successfully created`,
-    });
+    arangoHelper.arangoNotification(`The edge ${edgeName} was successfully created`);
   };
 
   const addEdge = (graphData, updateEdgeId) => {
@@ -125,8 +126,8 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
           }
         </div>
         <div style={{ 'marginTop': '38px', 'textAlign': 'right' }}>
-          <button className="button-close" onClick={onRequestClose}>Cancel</button>
-          <button className="button-success" onClick={() => { addEdge(edge) }}>Create</button>
+          <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
+          <StyledButton className="button-success" onClick={() => { addEdge(edge) }}>Create</StyledButton>
         </div>
       </ModalBody>
     </ModalBackground>

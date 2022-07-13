@@ -14,6 +14,10 @@ const ModalBackground = styled.div`
   height: 100%;
   overflow: auto;
   background-color: rgba(0, 0, 0, 0.5);
+
+  & div, & button {
+    box-sizing: content-box !important;
+  }
 `;
 
 const ModalBody = styled.div`
@@ -23,17 +27,18 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
+const StyledButton = styled.button`
+  margin-left: 15px !important;
+  color: white !important;
+`;
+
 export const EditNodeModal = ({ shouldShow, onUpdateNode, onRequestClose, node, nodeData, basicNodeData, editorContent, children, nodeKey, nodeCollection }) => {
 
   const jsonEditorRef = useRef();
   const [json, setJson] = useState(nodeData);
 
   const openNotificationWithIcon = type => {
-    notification[type]({
-      message: 'Node updates',
-      description:
-        `The node ${node} was successfully updated`,
-    });
+    arangoHelper.arangoNotification(`The node ${node} was successfully updated`);
   };
 
   const updateNode = (graphData, updateNodeId) => {
@@ -81,8 +86,8 @@ export const EditNodeModal = ({ shouldShow, onUpdateNode, onRequestClose, node, 
           }
         </div>
         <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
-          <button className="button-close" onClick={onRequestClose}>Cancel</button>
-          <button className="button-success" onClick={() => { updateNode(node) }}>Update</button>
+          <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
+          <StyledButton className="button-success" onClick={() => { updateNode(node) }}>Update</StyledButton>
         </div>
       </ModalBody>
     </ModalBackground>

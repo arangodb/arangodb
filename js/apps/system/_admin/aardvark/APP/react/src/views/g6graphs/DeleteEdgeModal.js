@@ -23,14 +23,15 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
+const StyledButton = styled.button`
+  margin-left: 15px !important;
+  color: white !important;
+`;
+
 export const DeleteEdgeModal = ({ shouldShow, onDeleteEdge, onRequestClose, edge, edgeData, basicEdgeData, editorContent, children, edgeKey, edgeCollection }) => {
 
   const openNotificationWithIcon = type => {
-    notification[type]({
-      message: 'Edge deletes',
-      description:
-        `The edge ${edge} was successfully deleted`,
-    });
+    arangoHelper.arangoNotification(`The edge ${edge} was successfully deleted`);
   };
 
   const deleteEdge = (deleteEdgeId) => {
@@ -66,8 +67,8 @@ export const DeleteEdgeModal = ({ shouldShow, onDeleteEdge, onRequestClose, edge
         </div>
         <AttributesInfo attributes={basicEdgeData} />
         <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
-          <button className="button-close" onClick={onRequestClose}>Cancel</button>
-          <button className="button-danger" onClick={() => { deleteEdge(edge) }}>Delete</button>
+          <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
+          <StyledButton className="button-danger" onClick={() => { deleteEdge(edge) }}>Delete</StyledButton>
         </div>
       </ModalBody>
     </ModalBackground>

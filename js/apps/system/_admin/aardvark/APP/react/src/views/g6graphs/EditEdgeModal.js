@@ -23,17 +23,18 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
+const StyledButton = styled.button`
+  margin-left: 15px !important;
+  color: white !important;
+`;
+
 export const EditEdgeModal = ({ shouldShow, onUpdateEdge, onRequestClose, edge, edgeData, basicEdgeData, editorContent, children, edgeKey, edgeCollection }) => {
 
   const jsonEditorRef = useRef();
   const [json, setJson] = useState(edgeData);
 
   const openNotificationWithIcon = type => {
-    notification[type]({
-      message: 'Edge updates',
-      description:
-        `The edge ${edge} was successfully updated`,
-    });
+    arangoHelper.arangoNotification(`The edge ${edge} was successfully updated`);
   };
 
   const updateEdge = (graphData, updateEdgeId) => {
@@ -82,8 +83,8 @@ export const EditEdgeModal = ({ shouldShow, onUpdateEdge, onRequestClose, edge, 
           }
         </div>
         <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
-          <button className="button-close" onClick={onRequestClose}>Cancel</button>
-          <button className="button-success" onClick={() => { updateEdge(edge) }}>Update</button>
+          <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
+          <StyledButton className="button-success" onClick={() => { updateEdge(edge) }}>Update</StyledButton>
         </div>
       </ModalBody>
     </ModalBackground>
