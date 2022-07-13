@@ -35,7 +35,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Status/WorkerStatus.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/Status/ConductorStatus.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -328,12 +328,12 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
 
-  auto update = deserialize<WorkerStatus>(data.get(Utils::payloadKey));
+  auto update = deserialize<Status>(data.get(Utils::payloadKey));
   auto sender = data.get(Utils::senderKey).copyString();
 
   LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
 
-  _status.updateWorkerStatus(sender, update);
+  _status.updateWorkerStatus(sender, std::move(update));
 }
 
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {
@@ -993,7 +993,8 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.add("useMemoryMaps", VPackValue(_useMemoryMaps));
 
   result.add(VPackValue("detail"));
-  serialize(result, _status);
+  auto conductorStatus = _status.accumulate();
+  serialize(result, conductorStatus);
 
   result.close();
 }
