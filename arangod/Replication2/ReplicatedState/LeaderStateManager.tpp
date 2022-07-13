@@ -26,6 +26,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Replication2/MetricsHelper.h"
 
 namespace arangodb::replication2::replicated_state {
 template<typename S>
@@ -136,8 +137,13 @@ void LeaderStateManager<S>::run() noexcept {
 template<typename S>
 auto LeaderStateManager<S>::waitForLeadership() noexcept
     -> futures::Future<futures::Unit> try {
+  GaugeScopedCounter counter(metrics->replicatedStateNumberWaitingForLeader);
   return logLeader->waitForLeadership().thenValue(
-      [](replicated_log::WaitForResult const&) { return futures::Unit(); });
+      [counter =
+           std::move(counter)](replicated_log::WaitForResult const&) mutable {
+        counter.fire();
+        return futures::Unit();
+      });
 } catch (...) {
   return futures::Try<futures::Unit>(std::current_exception());
 }
@@ -192,7 +198,12 @@ auto LeaderStateManager<S>::recoverEntries() noexcept
   LOG_CTX("5af0d", DEBUG, loggerContext)
       << "starting recovery on range " << result->range();
 
-  return machine->recoverEntries(std::move(result));
+  MeasureTimeGuard timeGuard(metrics->replicatedStateRecoverEntriesRtt);
+  return machine->recoverEntries(std::move(result))
+      .then([guard = std::move(timeGuard)](auto&& res) mutable {
+        guard.fire();
+        return std::move(res.get());
+      });
 } catch (...) {
   return futures::Try<Result>(std::current_exception());
 }
