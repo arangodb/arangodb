@@ -137,135 +137,14 @@ class IResearchFilterMinHashMatchTest
   TRI_vocbase_t& vocbase() { return *_vocbase; }
 };
 
-// TODO Add community only tests (byExpression)
-
 #if USE_ENTERPRISE
 #include "tests/IResearch/IResearchFilterMinHashMatchTestEE.hpp"
-#endif
-
-// FIXME(gnusi): 0 threshold
-
-TEST_F(IResearchFilterMinHashMatchTest, MinMatch3Hashes) {
-  irs::Or expected;
-  expected.add<irs::by_terms>() = makeByTerms(
-      "foo", std::array{"44OTL2BvXFU"sv, "F3tEoNARof4"sv, "ZZHTGoxTKjQ"sv}, 3,
-      irs::kNoBoost);
-
-  ExpressionContextMock ctx;
-  arangodb::aql::Variable varAnalyzer("analyzer", 0, false);
-  arangodb::aql::AqlValue valueAnalyzer("testVocbase::test_analyzer");
-  arangodb::aql::AqlValueGuard guardAnalyzer(valueAnalyzer, true);
-  arangodb::aql::Variable varField("field", 1, false);
-  arangodb::aql::AqlValue valueField("foo");
-  arangodb::aql::AqlValueGuard guardField(valueField, true);
-  arangodb::aql::Variable varCount("count", 2, false);
-  arangodb::aql::AqlValue valueCount(arangodb::aql::AqlValueHintUInt{1});
-  arangodb::aql::AqlValueGuard guardCount(valueCount, true);
-  arangodb::aql::Variable varInput("input", 3, false);
-  arangodb::aql::AqlValue valueInput("foo bar baz");
-  arangodb::aql::AqlValueGuard guardInput(valueInput, true);
-  ctx.vars.emplace(varAnalyzer.name, valueAnalyzer);
-  ctx.vars.emplace(varField.name, valueField);
-  ctx.vars.emplace(varCount.name, valueCount);
-  ctx.vars.emplace(varInput.name, valueInput);
-
-  assertFilterSuccess(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)",
-      expected);
-  assertFilterSuccess(
-      vocbase(),
-      R"(FOR d IN myView FILTER BOOST(MINHASH_MATCH(d.foo, "foo bar baz", 1, "testVocbase::test_analyzer"), 1) RETURN d)",
-      expected);
-  assertFilterSuccess(
-      vocbase(),
-      R"(FOR d IN myView FILTER BOOST(ANALYZER(MINHASH_MATCH(d.foo, "foo bar baz", 1), "testVocbase::test_analyzer"), 1) RETURN d)",
-      expected);
-  assertFilterSuccess(
-      vocbase(),
-      R"(FOR d IN myView FILTER BOOST(ANALYZER(MINHASH_MATCH(d.foo, "foo bar baz", 0.99), "testVocbase::test_analyzer"), 1) RETURN d)",
-      expected);
-  assertFilterSuccess(
-      vocbase(),
-      R"(Let count = 1 LET field = "foo" LET analyzer = "testVocbase::test_analyzer" let input = "foo bar baz"
-         FOR d IN myView FILTER BOOST(ANALYZER(MINHASH_MATCH(d[field], input, count), analyzer), 1) RETURN d)",
-      expected, &ctx);
-
-  // Invalid field
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH("d.foo", "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(true, "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(null, "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH([d.foo], "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH({}, "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
-
-  // Invalid input
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, ["foo bar baz"], 1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, true, 1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, null, 1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, {}, 1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, 42, 1, "testVocbase::test_analyzer") RETURN d)");
-
-  // Invalid threshold
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1.1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", -0.1, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", [1], "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", null, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", true, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", {}, "testVocbase::test_analyzer") RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", "1", "testVocbase::test_analyzer") RETURN d)");
-
-  // Invalid analyzer
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, []) RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, {}) RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, true) RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, 42) RETURN d)");
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, null) RETURN d)");
-  // Not a MinHash analyzer
-  assertFilterFail(
-      vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, "text_en") RETURN d)");
+#else
+TEST_F(IResearchFilterMinHashMatchTest, MinHashMatchCE) {
+  assertFilterFail(vocbase(),
+                   R"(FOR d IN myView
+                         FILTER MINHASH_MATCH(d.foo, "foo bar baz quick brown fox jumps over the lazy dog",
+                                              1, "testVocbase::test_analyzer")
+                         RETURN d)");
 }
+#endif
