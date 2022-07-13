@@ -30,7 +30,7 @@ const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertException, as
   = jsunity.jsUnity.assertions;
 
 const internal = require("internal");
-const {debugSetFailAt, debugCanUseFailAt, debugClearFailAt, db, isEnterprise} = internal;
+const {debugSetFailAt, debugCanUseFailAt, debugRemoveFailAt, db, isEnterprise} = internal;
 const {aql, errors} = require("@arangodb");
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
@@ -2635,7 +2635,7 @@ const testParallelism = (testGraph, mode) => {
     } else {
       db._query(query);
     }
-    debugClearFailAt();
+    debugRemoveFailAt("MutexExecutor::distributeBlock");
   }
 
   executeParallelQuery(makeQuery);
