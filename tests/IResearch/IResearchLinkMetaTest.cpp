@@ -402,8 +402,9 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
 
 TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
-  auto restoreRole = irs::make_finally(
-      [oldRole]() { arangodb::ServerState::instance()->setRole(oldRole); });
+  auto restoreRole = irs::make_finally([oldRole]() noexcept {
+    arangodb::ServerState::instance()->setRole(oldRole);
+  });
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   auto json = VPackParser::fromJson(
@@ -1427,8 +1428,9 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 
 TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
-  auto restoreRole = irs::make_finally(
-      [oldRole]() { arangodb::ServerState::instance()->setRole(oldRole); });
+  auto restoreRole = irs::make_finally([oldRole]() noexcept {
+    arangodb::ServerState::instance()->setRole(oldRole);
+  });
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   // not fullAnalyzerDefinition
@@ -1568,7 +1570,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -1763,7 +1765,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -1783,7 +1785,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -1803,7 +1805,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -1831,7 +1833,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -1851,7 +1853,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -1911,7 +1913,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -1971,7 +1973,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2000,7 +2002,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2020,7 +2022,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2040,7 +2042,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2100,7 +2102,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2165,7 +2167,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -2191,7 +2193,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -2210,7 +2212,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -2250,7 +2252,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -2273,7 +2275,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
 
@@ -2333,7 +2335,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
 
@@ -2456,7 +2458,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -2504,7 +2506,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -2532,7 +2534,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -2596,7 +2598,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
   // this is for test cleanup
   auto testCleanup =
       irs::make_finally([&analyzerCustomInSystem, &analyzers,
-                         &analyzerCustomInTestVocbase]() -> void {
+                         &analyzerCustomInTestVocbase]() noexcept {
         analyzers.remove(analyzerCustomInSystem);
         analyzers.remove(analyzerCustomInTestVocbase);
       });
@@ -2754,7 +2756,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -2896,7 +2898,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2916,7 +2918,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2936,7 +2938,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2964,7 +2966,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -2985,7 +2987,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -3045,7 +3047,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -3105,7 +3107,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -3134,7 +3136,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -3155,7 +3157,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -3175,7 +3177,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -3235,7 +3237,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
     });
 
@@ -3300,7 +3302,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -3327,7 +3329,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -3346,7 +3348,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -3386,7 +3388,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -3409,7 +3411,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
 
@@ -3469,7 +3471,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
 
@@ -3592,7 +3594,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -3640,7 +3642,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -3668,7 +3670,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchLinkMeta meta;

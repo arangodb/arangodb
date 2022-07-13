@@ -22,6 +22,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchLinkMeta.h"
+
+#include "frozen/map.h"
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
@@ -36,7 +40,6 @@
 #include "Cluster/ServerState.h"
 #include "VocBase/vocbase.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearchLinkMeta.h"
 #include "Misc.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -728,37 +731,13 @@ bool IResearchLinkMeta::init(
 
           if (value.hasKey(kSubFieldName)) {
             auto subField = value.get(kSubFieldName);
-
-            if (!subField.isArray()) {
-              errorField = std::string{kFieldName} + "[" +
-                           std::to_string(itr.index()) + "]." +
-                           std::string{kSubFieldName};
-
+            auto featuresRes = features.fromVelocyPack(subField);
+            if (featuresRes.fail()) {
+              errorField = std::string{kFieldName}
+                               .append(" (")
+                               .append(featuresRes.errorMessage())
+                               .append(")");
               return false;
-            }
-
-            for (velocypack::ArrayIterator subItr(subField); subItr.valid();
-                 ++subItr) {
-              auto subValue = *subItr;
-
-              if (!subValue.isString() && !subValue.isNull()) {
-                errorField = std::string{kFieldName} + "[" +
-                             std::to_string(itr.index()) + "]." +
-                             std::string{kSubFieldName} + "[" +
-                             std::to_string(subItr.index()) + +"]";
-
-                return false;
-              }
-
-              const auto featureName = getStringRef(subValue);
-              if (!features.add(featureName)) {
-                errorField = std::string{kFieldName} + "[" +
-                             std::to_string(itr.index()) + "]." +
-                             std::string{kSubFieldName} + "." +
-                             std::string{featureName};
-
-                return false;
-              }
             }
           }
         }

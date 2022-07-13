@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/*global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -34,8 +34,8 @@ var db = require("@arangodb").db;
 var graph_module = require("@arangodb/general-graph");
 var internal = require("internal");
 var console = require("console");
-var EPS = 0.0001;
 let pregel = require("@arangodb/pregel");
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
@@ -412,6 +412,12 @@ function wccRegressionTestSuite() {
   };
 }
 
+const wccTestSuite = pregelTestHelpers.makeWCCTestSuite(false, "", 4);
+
+const sccTestSuite = pregelTestHelpers.makeSCCTestSuite(false, "", 4);
+
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
+jsunity.run(wccTestSuite);
+jsunity.run(sccTestSuite);
 return jsunity.done();

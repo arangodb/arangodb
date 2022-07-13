@@ -37,7 +37,7 @@ const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
-
+const netstat = require('node-netstat');
 /* Functions: */
 const toArgv = internal.toArgv;
 const executeExternal = internal.executeExternal;
@@ -435,7 +435,7 @@ class instanceManager {
             myDeltaStats[key] = newStats[key] - arangod.stats[key];
           }
         }
-        deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
+        deltaStats[arangod.pid + '_' + arangod.instanceRole] = myDeltaStats;
         arangod.stats = newStats;
         for (let key in myDeltaStats) {
           if (deltaSum.hasOwnProperty(key)) {
@@ -491,8 +491,8 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
     this.arangods.forEach((arangod) => {
-      if (arangod.role === "agent") {
-        if (arangod.hasOwnProperty('exitStatus')) {
+      if (arangod.isAgent()) {
+        if (!arangod.checkArangoAlive()) {
           print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
         } else {
           print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
@@ -554,11 +554,35 @@ class instanceManager {
     return true;
   }
 
+  getNetstat() {
+    let ret = {};
+    this.arangods.forEach( arangod => {
+      ret[arangod.name] = arangod.netstat;;
+    });
+    return ret;
+  }
 
+  printNetstat() {
+    this.arangods.forEach( arangod => {
+      print(arangod.name + " => " + JSON.stringify(arangod.netstat));
+    });
+  }
 
   // skipHealthCheck can be set to true to avoid a call to /_admin/cluster/health
   // on the coordinator. This is necessary if only the agency is running yet.
   checkInstanceAlive({skipHealthCheck = false} = {}) {
+    this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
+    let obj = this;
+    netstat({platform: process.platform}, function (data) {
+      // skip server ports, we know what we bound.
+      if (data.state !== 'LISTEN') {
+        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+      }
+    });
+    if (!this.options.noStartStopLogs) {
+      this.printNetstat();
+    }
+    
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
         (this.url !== this.agencyConfig.urls[0])
@@ -619,13 +643,13 @@ class instanceManager {
     let failurePoints = [];
     instanceInfo.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
-      if ((arangod.role !== "agent") &&
+      if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
           !arangod.args.hasOwnProperty('server.jwt-secret')) {
         let fp = debugGetFailurePoints(arangod.endpoint);
         if (fp.length > 0) {
           failurePoints.push({
-            "role": arangod.role,
+            "role": arangod.instanceRole,
             "pid":  arangod.pid,
             "database.directory": arangod['database.directory'],
             "failurePoints": fp
@@ -767,6 +791,7 @@ class instanceManager {
     if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
       this.dumpAgency();
     }
+
     var shutdownTime = internal.time();
     while (toShutdown.length > 0) {
       toShutdown = toShutdown.filter(arangod => {

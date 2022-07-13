@@ -195,6 +195,7 @@ void RestTransactionHandler::executeBegin() {
       // a new transaction. Otherwise, we use the default given by the
       // existing transaction.
       allowDirtyReads = true;
+      setOutgoingDirtyReadsHeader(true);
     }
 
     // start
