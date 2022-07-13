@@ -1,4 +1,4 @@
-name: arangodb_pregel_threads_number
+name: arangodb_pregel_workers_loading_number
 introducedIn: "3.10.0"
 help: |
   Number of loading Pregel workers.
