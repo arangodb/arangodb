@@ -28,6 +28,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <stdexcept>
 
 #include "debugging.h"
 
@@ -82,7 +83,7 @@ void TRI_TerminateDebugging(std::string_view message) {
     auto f = []() noexcept {
       // intentionally crashes the program!
       // cppcheck-suppress *
-      *static_cast<volatile int*>(nullptr) = 1;
+      throw std::runtime_error("Intentional test error");
     };
     f();
     // we will get here at least with ASan/UBSan.
