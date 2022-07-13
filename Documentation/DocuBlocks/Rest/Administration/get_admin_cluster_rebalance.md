@@ -5,7 +5,7 @@
 
 @RESTDESCRIPTION
 Calculates the current cluster imbalance and returns the result. 
-It additionally shows the amount of ongoing and pending moveshard operations.
+It additionally shows the amount of ongoing and pending move shard operations.
 
 @RESTRETURNCODES
 
