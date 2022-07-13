@@ -25,6 +25,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <numeric>
 #include <string>
 
 #include <Inspection/VPack.h>
@@ -33,34 +34,45 @@
 #include <Cluster/ClusterTypes.h>
 
 #include <Pregel/Common.h>
-#include <Pregel/Status/WorkerStatus.h>
+#include <Pregel/Status/Status.h>
 
 namespace arangodb::pregel {
 
-struct ConductorStatus {
-  TimeStamp timeStamp = std::chrono::system_clock::now();
-  std::unordered_map<ServerID, WorkerStatus> workers;
-
-  static auto forWorkers(std::vector<ServerID> const& ids) -> ConductorStatus {
-    auto status = ConductorStatus{};
-    for (auto const& id : ids) {
-      status.workers.emplace(id, WorkerStatus{});
-    }
-    return status;
-  }
-  auto updateWorkerStatus(ServerID const& id, WorkerStatus const& status)
-      -> void {
-    workers.at(id) = status;
-    timeStamp = status.timeStamp;
-  }
+struct AccumulatedConductorStatus {
+  Status status;
+  std::unordered_map<ServerID, Status> workers;
+  bool operator==(AccumulatedConductorStatus const&) const = default;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, ConductorStatus& x) {
+auto inspect(Inspector& f, AccumulatedConductorStatus& x) {
   return f.object(x).fields(
-      f.field(timeStampString, x.timeStamp)
-          .transformWith(inspection::TimeStampTransformer{}),
+      f.field("aggregatedStatus",
+              x.status),  // TODO status entries should be on top level
       f.field("workerStatus", x.workers));
 }
+
+struct ConductorStatus {
+  std::unordered_map<ServerID, Status> workers;
+  static auto forWorkers(std::vector<ServerID> const& ids) -> ConductorStatus {
+    auto status = ConductorStatus{};
+    for (auto const& id : ids) {
+      status.workers.emplace(id, Status{});
+    }
+    return status;
+  }
+  auto updateWorkerStatus(ServerID const& id, Status&& status) -> void {
+    workers.at(id) = status;
+  }
+  auto accumulate() const -> AccumulatedConductorStatus {
+    auto aggregate = std::accumulate(
+        workers.begin(), workers.end(), Status{.timeStamp = TimeStamp::min()},
+        [](Status const& accumulation,
+           std::unordered_map<ServerID, Status>::value_type const& workers) {
+          return accumulation + workers.second;
+        });
+    return AccumulatedConductorStatus{.status = aggregate, .workers = workers};
+  }
+};
 
 }  // namespace arangodb::pregel
