@@ -645,7 +645,8 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   RestHandler/RestLogHandler.cpp
   RestHandler/RestPrototypeStateHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
-        Replication2/MetricsHelper.cpp Replication2/MetricsHelper.h)
+  Replication2/MetricsHelper.cpp
+)
 
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp
