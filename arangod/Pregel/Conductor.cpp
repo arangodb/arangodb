@@ -68,8 +68,8 @@ using namespace arangodb::basics;
 #define LOG_PREGEL(logId, level) \
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
-const char* arangodb::pregel::ExecutionStateNames[8] = {
-    "none",     "running",  "storing",    "done",
+const char* arangodb::pregel::ExecutionStateNames[9] = {
+    "none",     "loading",  "running",    "storing",    "done",
     "canceled", "in error", "recovering", "fatal error"};
 
 Conductor::Conductor(
@@ -165,7 +165,8 @@ void Conductor::start() {
   _timing.loading.start();
 
   _globalSuperstep = 0;
-  updateState(ExecutionState::RUNNING);
+
+  updateState(ExecutionState::LOADING);
   _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
@@ -180,6 +181,7 @@ void Conductor::start() {
 // only called by the conductor, is protected by the
 // mutex locked in finishedGlobalStep
 bool Conductor::_startGlobalStep() {
+  updateState(ExecutionState::RUNNING);
   if (_feature.isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -348,7 +350,7 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
-  if (_state != ExecutionState::RUNNING) {
+  if (_state != ExecutionState::LOADING) {
     LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
@@ -991,7 +993,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   _statistics.serializeValues(result);
   result.add(VPackValue("reports"));
   _reports.intoBuilder(result);
-  if (_state != ExecutionState::RUNNING) {
+  if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
