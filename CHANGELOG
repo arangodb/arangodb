@@ -1,5 +1,12 @@
 devel
 -----
+* BugFix in Pregel's Label Propagation: the union of three undirected cliques
+  of size at least three connected by an undirected triangle now returns
+  three communities (each clique is a community) instead of two.
+  
+* Pregel now reports correct and ongoing runtimes for loading, running, and
+  storing as well as runtimes for the separate global supersteps.
+
 * Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
 
 * Updated arangosync to v2.11.0.

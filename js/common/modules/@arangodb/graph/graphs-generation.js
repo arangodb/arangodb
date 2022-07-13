@@ -217,6 +217,46 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return {vertices, edges};
     };
 
+    // Creates a with numberLeaves many rays.
+    // The parameter kind has the following meaning:
+    //  - "fromCenter":  the edges point from the center to the leaves
+    //  - "toCenter":  the edges point from the leaves to the center
+    //  - "bidirected" (default): as "directed" but for every edge (v,w), we also have the edge (w,v)
+    //  - "fromAndToCenter": the half of the edges point as with "fromCenter", the other half vice versa; if
+    //      numberLeaves is odd, one more edge points from the center to a leaf
+    const makeStar = function (numberLeaves, kind = "bidirected") {
+        let vertices = makeVertices(numberLeaves + 1);
+        let edges = [];
+        switch (kind) {
+            case "fromCenter":
+                for (let v = 1; v <= numberLeaves; ++v) {
+                    edges.push(makeEdge(0, v));
+                }
+                break;
+            case "toCenter":
+                for (let v = 1; v <= numberLeaves; ++v) {
+                    edges.push(makeEdge(v, 0));
+                }
+                break;
+            case "bidirected":
+                for (let v = 1; v <= numberLeaves; ++v) {
+                    edges.push(makeEdge(0, v));
+                    edges.push(makeEdge(v, 0));
+                }
+                break;
+            case "fromAndToCenter":
+                for (let v = 1; v < Math.floor(numberLeaves / 2); ++v) {
+                    edges.push(makeEdge(v, 0));
+                }
+                for (let v = Math.floor(numberLeaves / 2); v <= numberLeaves; ++v) {
+                    edges.push(makeEdge(0, v));
+                }
+                break;
+        }
+        // console.warn(edges);
+        return {vertices, edges};
+    };
+
     return {
         makeVertices,
         makeOneVertex,
@@ -226,7 +266,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
         makeFullBinaryTree,
         makeClique,
         makeBidirectedClique,
-        makePath
+        makePath,
+        makeStar
     };
 };
 
