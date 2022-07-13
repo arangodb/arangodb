@@ -57,5 +57,6 @@ GaugeScopedCounter::~GaugeScopedCounter() { fire(); }
 void GaugeScopedCounter::fire() noexcept {
   if (_metric != nullptr) {
     _metric->fetch_sub(1);
+    _metric.reset();
   }
 }
