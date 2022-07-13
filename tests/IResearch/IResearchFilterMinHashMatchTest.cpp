@@ -191,10 +191,39 @@ TEST_F(IResearchFilterMinHashMatchTest, MinMatch3Hashes) {
          FOR d IN myView FILTER BOOST(ANALYZER(MINHASH_MATCH(d[field], input, count), analyzer), 1) RETURN d)",
       expected, &ctx);
 
-  // Not a MinHash analyzer
+  // Invalid field
   assertFilterFail(
       vocbase(),
-      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, "text_en") RETURN d)");
+      R"(FOR d IN myView FILTER MINHASH_MATCH("d.foo", "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(true, "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(null, "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH([d.foo], "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH({}, "foo bar baz", 1, "testVocbase::test_analyzer") RETURN d)");
+
+  // Invalid input
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, ["foo bar baz"], 1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, true, 1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, null, 1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, {}, 1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, 42, 1, "testVocbase::test_analyzer") RETURN d)");
 
   // Invalid threshold
   assertFilterFail(
@@ -203,4 +232,40 @@ TEST_F(IResearchFilterMinHashMatchTest, MinMatch3Hashes) {
   assertFilterFail(
       vocbase(),
       R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", -0.1, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", [1], "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", null, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", true, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", {}, "testVocbase::test_analyzer") RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", "1", "testVocbase::test_analyzer") RETURN d)");
+
+  // Invalid analyzer
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, []) RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, {}) RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, true) RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, 42) RETURN d)");
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, null) RETURN d)");
+  // Not a MinHash analyzer
+  assertFilterFail(
+      vocbase(),
+      R"(FOR d IN myView FILTER MINHASH_MATCH(d.foo, "foo bar baz", 1, "text_en") RETURN d)");
 }
