@@ -85,7 +85,7 @@ void TRI_TerminateDebugging(std::string_view message) {
 #pragma clang diagnostic ignored "-Wexceptions"
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Werror=terminate"
+#pragma GCC diagnostic ignored "-Wterminate"
 #elif _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4297)
