@@ -1,6 +1,15 @@
 devel
 -----
 
+* APM-84: Whenever the amount of entries for an AQL query SORT statement
+  reaches a specific threshold in memory usage, the entries are stored
+  on disk temporarily using rocksdb to constrain the RAM usage of running
+  queries.
+
+* BugFix in Pregel's Label Propagation: the union of three undirected cliques
+  of size at least three connected by an undirected triangle now returns
+  three communities (each clique is a community) instead of two.
+  
 * Pregel now reports correct and ongoing runtimes for loading, running, and
   storing as well as runtimes for the separate global supersteps.
 
@@ -13,11 +22,6 @@ devel
 
 * Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
   explain outputs for AQL queries.
-
-* APM-84: Whenever the amount of entries for an AQL query SORT statement
-  reaches a specific threshold in memory usage, the entries are stored
-  on disk temporarily using rocksdb to constrain the RAM usage of running
-  queries.
 
 * Pregel SSSP now supports `resultField` as well as `_resultField` as 
   parameter name to specify the field into which results are stored.
