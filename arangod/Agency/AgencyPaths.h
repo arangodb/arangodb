@@ -2280,6 +2280,33 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return FailedServers::make_shared(shared_from_this());
       }
 
+      class MaintenanceDBServers
+          : public StaticComponent<MaintenanceDBServers, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "MaintenanceDBServers";
+        }
+
+        using BaseType::StaticComponent;
+
+        class DBServer : public DynamicComponent<DBServer, MaintenanceDBServers,
+                                                 std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<DBServer const> dbserver(std::string dbserverId) const {
+          return DBServer::make_shared(shared_from_this(),
+                                       std::move(dbserverId));
+        }
+      };
+
+      std::shared_ptr<MaintenanceDBServers const> maintenanceDBServers() const {
+        return MaintenanceDBServers::make_shared(shared_from_this());
+      }
+
       class NumberOfCoordinators
           : public StaticComponent<NumberOfCoordinators, Target> {
        public:

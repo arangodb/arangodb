@@ -369,6 +369,8 @@ RestStatus RestAdminClusterHandler::execute() {
     std::string const& command = suffixes.at(0);
     if (command == FailureOracle) {
       return handleFailureOracle();
+    } else if (command == Maintenance) {
+      return handleDBServerMaintenance(suffixes.at(1));
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
@@ -1426,6 +1428,39 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
           }));
 }
 
+RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
+    std::string const& serverId) {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
+  auto maintenancePath = arangodb::cluster::paths::root()
+                             ->arango()
+                             ->target()
+                             ->maintenanceDBServers()
+                             ->dbserver(serverId);
+
+  return waitForFuture(
+      AsyncAgencyComm()
+          .getValues(maintenancePath)
+          .thenValue([this](AgencyReadResult&& result) {
+            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+              generateOk(rest::ResponseCode::OK, result.value());
+            } else {
+              generateError(result.asResult());
+            }
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
+}
+
 RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::waitForSupervisionState(
     bool state, std::string const& reactivationTime,
@@ -1525,6 +1560,76 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate,
           }));
 }
 
+RestStatus RestAdminClusterHandler::setDBServerMaintenance(
+    std::string const& serverId, bool wantToActivate, uint64_t timeout) {
+  // we don't need a timeout when disabling the maintenance
+  TRI_ASSERT(wantToActivate || timeout == 0);
+
+  auto maintenancePath = arangodb::cluster::paths::root()
+                             ->arango()
+                             ->target()
+                             ->maintenanceDBServers()
+                             ->dbserver(serverId);
+  auto healthPath = arangodb::cluster::paths::root()
+                        ->arango()
+                        ->supervision()
+                        ->health()
+                        ->server(serverId)
+                        ->status();
+
+  // (stringified) timepoint at which maintenance will reactivate itself
+  std::string reactivationTime;
+  if (wantToActivate) {
+    reactivationTime = timepointToString(std::chrono::system_clock::now() +
+                                         std::chrono::seconds(timeout));
+  }
+
+  auto sendTransaction = [&] {
+    if (wantToActivate) {
+      std::vector<AgencyOperation> operations{AgencyOperation{
+          maintenancePath->str(cluster::paths::SkipComponents(1)),
+          AgencyValueOperationType::SET, VPackValue(reactivationTime)}};
+      std::vector<AgencyPrecondition> preconds{AgencyPrecondition{
+          healthPath->str(cluster::paths::SkipComponents(1)),
+          AgencyPrecondition::Type::VALUE, VPackValue("GOOD")}};
+      AgencyWriteTransaction trx(operations, preconds);
+      return AsyncAgencyComm().sendTransaction(60s, trx);
+    } else {
+      std::vector<AgencyOperation> operations{AgencyOperation{
+          maintenancePath->str(cluster::paths::SkipComponents(1)),
+          AgencySimpleOperationType::DELETE_OP}};
+      std::vector<AgencyPrecondition> preconds{AgencyPrecondition{
+          healthPath->str(cluster::paths::SkipComponents(1)),
+          AgencyPrecondition::Type::VALUE, VPackValue("GOOD")}};
+      AgencyWriteTransaction trx(operations, preconds);
+      return AsyncAgencyComm().sendTransaction(60s, trx);
+    }
+  };
+
+  auto self(shared_from_this());
+
+  return waitForFuture(
+      sendTransaction()
+          .thenValue([this, reactivationTime](AsyncAgencyCommResult&& result) {
+            if (result.ok() && result.statusCode() == 200) {
+              VPackBuilder builder;
+              { VPackObjectBuilder obj(&builder); }
+              generateOk(rest::ResponseCode::OK, builder);
+              return futures::makeFuture();
+            } else {
+              generateError(result.asResult());
+            }
+            return futures::makeFuture();
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
+}
+
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
@@ -1569,6 +1674,47 @@ RestStatus RestAdminClusterHandler::handlePutMaintenance() {
   return RestStatus::DONE;
 }
 
+RestStatus RestAdminClusterHandler::handlePutDBServerMaintenance(
+    std::string const& serverId) {
+  TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  if (body.isString()) {
+    if (body.isEqualString("on")) {
+      // supervision maintenance will turn itself off automatically
+      // after one hour by default
+      constexpr uint64_t timeout = 3600;  // 1 hour
+      return setDBServerMaintenance(serverId, true, timeout);
+    } else if (body.isEqualString("off")) {
+      // timeout doesn't matter for turning off the supervision
+      return setDBServerMaintenance(serverId, false, /*timeout*/ 0);
+    } else {
+      // user sent a stringified timeout value, so lets honor this
+      VPackValueLength l;
+      char const* p = body.getString(l);
+      bool valid = false;
+      uint64_t timeout = NumberUtils::atoi_positive<uint64_t>(p, p + l, valid);
+      if (valid) {
+        return setDBServerMaintenance(serverId, true, timeout);
+      }
+      // otherwise fall-through to error
+    }
+  } else if (body.isNumber()) {
+    // user sent a numeric timeout value, so lets honor this
+    uint64_t timeout = body.getNumber<uint64_t>();
+    return setDBServerMaintenance(serverId, true, timeout);
+  }
+
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                "string expected with value `on` or `off`");
+  return RestStatus::DONE;
+}
+
 RestStatus RestAdminClusterHandler::handleMaintenance() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -1593,6 +1739,33 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
       return handleGetMaintenance();
     case rest::RequestType::PUT:
       return handlePutMaintenance();
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      return RestStatus::DONE;
+  }
+}
+
+RestStatus RestAdminClusterHandler::handleDBServerMaintenance(
+    std::string const& serverId) {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
+
+  switch (request()->requestType()) {
+    case rest::RequestType::GET:
+      return handleGetDBServerMaintenance(serverId);
+    case rest::RequestType::PUT:
+      return handlePutDBServerMaintenance(serverId);
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
