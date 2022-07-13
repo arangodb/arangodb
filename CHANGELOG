@@ -1,5 +1,9 @@
 devel
 -----
+
+* Added startup option `--rocksdb.compaction-style` to configure the compaction
+  style which is used to pick the next file(s) to be compacted.
+
 * BugFix in Pregel's Label Propagation: the union of three undirected cliques
   of size at least three connected by an undirected triangle now returns
   three communities (each clique is a community) instead of two.
