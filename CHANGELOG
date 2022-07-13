@@ -1,5 +1,12 @@
 devel
 -----
+* BugFix in Pregel's Label Propagation: the union of three undirected cliques
+  of size at least three connected by an undirected triangle now returns
+  three communities (each clique is a community) instead of two.
+  
+* Pregel now reports correct and ongoing runtimes for loading, running, and
+  storing as well as runtimes for the separate global supersteps.
+
 * Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
 
 * Updated arangosync to v2.11.0.
@@ -13,6 +20,8 @@ devel
 * Pregel SSSP now supports `resultField` as well as `_resultField` as 
   parameter name to specify the field into which results are stored.
   The name `_resultField` will be deprecated in future.
+
+* Update Windows CI compiler to Visual Studio 2022.
 
 * Web UI: Fixes a GraphViewer issue related to display issues with node
   and edge labels. Boolean node or edge values could not be used as label
@@ -59,6 +68,10 @@ devel
   change.
   The responses which can contain dirty reads will have set the HTTP header
   "x-arango-potential-dirty-read" set to "true".
+  There are the following new metrics showing the use of this feature:
+    - `arangodb_dirty_read_transactions_total`
+    - `arangodb_potentially_dirty_document_reads_total`
+    - `arangodb_dirty_read_queries_total`
 
 * Changed HTTP response code for error number 1521 from 500 to 400.
 

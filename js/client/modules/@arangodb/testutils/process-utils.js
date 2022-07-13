@@ -721,7 +721,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   let instanceInfo = {
     rootDir: rootDir,
     pid: 0,
-    exitStatus: {}
+    exitStatus: {},
+    getStructure: function() { return {}; }
   };
 
   let res = {};

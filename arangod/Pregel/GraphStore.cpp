@@ -32,12 +32,12 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
+#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -111,8 +111,9 @@ static const char* shardError =
     " use distributeShardsLike";
 
 template<typename V, typename E>
-void GraphStore<V, E>::loadShards(WorkerConfig* config,
-                                  std::function<void()> const& cb) {
+void GraphStore<V, E>::loadShards(
+    WorkerConfig* config, std::function<void()> const& statusUpdateCallback,
+    std::function<void()> const& finishedLoadingCallback) {
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
 
@@ -181,13 +182,14 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
           continue;
         }
         auto task = std::make_shared<basics::LambdaTask>(
-            queue, [this, vertexShard, edges]() -> Result {
+            queue,
+            [this, vertexShard, edges, statusUpdateCallback]() -> Result {
               if (_vocbaseGuard.database().server().isStopping()) {
                 LOG_PREGEL("4355b", WARN) << "Aborting graph loading";
                 return {TRI_ERROR_SHUTTING_DOWN};
               }
               try {
-                loadVertices(vertexShard, edges);
+                loadVertices(vertexShard, edges, statusUpdateCallback);
                 return Result();
               } catch (basics::Exception const& ex) {
                 LOG_PREGEL("8682a", WARN)
@@ -221,7 +223,11 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     THROW_ARANGO_EXCEPTION(queue->status());
   }
 
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, cb);
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     statusUpdateCallback);
+
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     finishedLoadingCallback);
 }
 
 template<typename V, typename E>
@@ -325,8 +331,9 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(PregelFeature& feature,
 }  // namespace
 
 template<typename V, typename E>
-void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
-                                    std::vector<ShardID> const& edgeShards) {
+void GraphStore<V, E>::loadVertices(
+    ShardID const& vertexShard, std::vector<ShardID> const& edgeShards,
+    std::function<void()> const& statusUpdateCallback) {
   LOG_PREGEL("24838", DEBUG) << "Loading from vertex shard " << vertexShard
                              << ", edge shards: " << edgeShards;
 
@@ -387,8 +394,9 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
           createBuffer<Vertex<V, E>>(_feature, *_config, segmentSize));
       vertexBuff = vertices.back().get();
     }
-
     Vertex<V, E>* ventry = vertexBuff->appendElement();
+    _observables.memoryBytesUsed += sizeof(Vertex<V, E>);
+
     VPackValueLength keyLen;
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
     char const* key = keySlice.getString(keyLen);
@@ -408,6 +416,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     // actually copy in the key
     memcpy(keyBuff->end(), key, keyLen);
     keyBuff->advance(keyLen);
+    _observables.memoryBytesUsed += keyLen;
 
     // load vertex data
     documentId = trx.extractIdString(slice);
@@ -424,6 +433,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
       loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices,
                 info);
     }
+    ++_observables.verticesLoaded;
     return true;
   };
 
@@ -452,6 +462,9 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
                                  << numVertices << " left to load";
     }
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
+
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                       statusUpdateCallback);
   }
 
   // we must not overflow the range we have been assigned to
@@ -502,10 +515,12 @@ void GraphStore<V, E>::loadEdges(
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
+    ++_observables.edgesLoaded;
     if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "too many edges for vertex");
     }
+    _observables.memoryBytesUsed += sizeof(Edge<E>);
 
     std::size_t pos = toValue.find('/');
     collectionName = std::string(toValue.substr(0, pos));
@@ -514,9 +529,9 @@ void GraphStore<V, E>::loadEdges(
     edge->_toKeyLength = static_cast<uint16_t>(key.size());
     TRI_ASSERT(key.size() <= std::numeric_limits<uint16_t>::max());
     keyBuff->advance(key.size());
-
     // actually copy in the key
     memcpy(edge->_toKey, key.data(), key.size());
+    _observables.memoryBytesUsed += key.size();
 
     if (isCluster) {
       // resolve the shard of the target vertex.
@@ -561,6 +576,7 @@ void GraphStore<V, E>::loadEdges(
           return true;
         },
         1000)) { /* continue loading */
+      // Might overcount a bit;
     }
   } else {
     while (cursor->nextDocument(
@@ -580,6 +596,7 @@ void GraphStore<V, E>::loadEdges(
           return true;
         },
         1000)) { /* continue loading */
+      // Might overcount a bit;
     }
   }
 

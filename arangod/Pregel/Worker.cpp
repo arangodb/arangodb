@@ -31,10 +31,15 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/VertexComputation.h"
 
+#include "Pregel/Status/Status.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
 #include "Network/Methods.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include "Inspection/VPack.h"
+#include "velocypack/Builder.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -141,7 +146,7 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  std::function<void()> cb = [self = shared_from_this(), this] {
+  std::function<void()> finishedCallback = [self = shared_from_this(), this] {
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -154,23 +159,44 @@ void Worker<V, E, M>::setupWorker() {
     _callConductor(Utils::finishedStartupPath, package);
   };
 
+  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
+                                                this] {
+    VPackBuilder statusUpdateMsg;
+    {
+      auto ob = VPackObjectBuilder(&statusUpdateMsg);
+      statusUpdateMsg.add(Utils::senderKey,
+                          VPackValue(ServerState::instance()->getId()));
+      statusUpdateMsg.add(Utils::executionNumberKey,
+                          VPackValue(_config.executionNumber()));
+      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+      auto update = _graphStore->status();
+      serialize(statusUpdateMsg, update);
+    }
+
+    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+  };
+
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, [this, self = shared_from_this(),
-                                               cb = std::move(cb)] {
-    try {
-      _graphStore->loadShards(&_config, cb);
-    } catch (std::exception const& ex) {
-      LOG_PREGEL("a47c4", WARN)
-          << "caught exception in loadShards: " << ex.what();
-      throw;
-    } catch (...) {
-      LOG_PREGEL("e932d", WARN) << "caught unknown exception in loadShards";
-      throw;
-    }
-  });
+  scheduler->queue(RequestLane::INTERNAL_LOW,
+                   [this, self = shared_from_this(),
+                    statusUpdateCallback = std::move(statusUpdateCallback),
+                    finishedCallback = std::move(finishedCallback)] {
+                     try {
+                       _graphStore->loadShards(&_config, statusUpdateCallback,
+                                               finishedCallback);
+                     } catch (std::exception const& ex) {
+                       LOG_PREGEL("a47c4", WARN)
+                           << "caught exception in loadShards: " << ex.what();
+                       throw;
+                     } catch (...) {
+                       LOG_PREGEL("e932d", WARN)
+                           << "caught unknown exception in loadShards";
+                       throw;
+                     }
+                   });
 }
 
 template<typename V, typename E, typename M>
@@ -255,7 +281,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
   uint64_t gss = gssSlice.getUInt();
   if (gss == _config._globalSuperstep) {
     {  // make sure the pointer is not changed while
-       // parsing messages
+      // parsing messages
       MY_READ_LOCKER(guard, _cacheRWLock);
       // handles locking for us
       _writeCache->parseMessages(data);
@@ -696,10 +722,12 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   _preRecoveryTotal = _graphStore->localVertexCount();
   WorkerConfig nextState(_config);
   nextState.updateConfig(_feature, data);
-  _graphStore->loadShards(&nextState, [this, nextState, copy] {
-    _config = nextState;
-    compensateStep(copy.slice());
-  });
+  _graphStore->loadShards(
+      &nextState, []() {},
+      [this, nextState, copy] {
+        _config = nextState;
+        compensateStep(copy.slice());
+      });
 }
 
 template<typename V, typename E, typename M>
