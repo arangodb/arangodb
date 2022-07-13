@@ -1158,6 +1158,30 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
                 testPageRankOnGraph(vertices, edges);
             },
 
+            testSPR10StarMultipleEdges: function () {
+                const numberLeaves = 10;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                // insert each edges twice
+                let edges2 = [];
+                for (const e of edges) {
+                    edges2.push(e);
+                    edges2.push(e);
+                }
+                let seeds = new Map();
+                // put all probability on the leaves
+                for (let i = 1; i < numberLeaves; ++i) {
+                    seeds[vertices[i]] = 1 / numberLeaves;
+                }
+                setSeeds(vertices, seeds);
+                testPageRankOnGraph(vertices, edges2);
+
+                seeds.clear();
+                // put all probability on the center
+                seeds[vertices[0]] = 1;
+                setSeeds(vertices, seeds);
+                testPageRankOnGraph(vertices, edges2);
+            },
+
         };
     };
 }
