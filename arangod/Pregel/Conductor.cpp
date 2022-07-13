@@ -374,6 +374,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   _timing.loading.finish();
   _timing.computation.start();
 
+  _feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
   _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
   _startGlobalStep();
 }
