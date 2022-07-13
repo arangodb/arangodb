@@ -365,6 +365,7 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
+  _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
   _activeCount = 0;  // active count is only valid after the run
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
@@ -520,6 +521,7 @@ void Worker<V, E, M>::_finishedProcessing() {
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
+    _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
     if (_state != WorkerState::COMPUTING) {
       return;  // probably canceled
     }
