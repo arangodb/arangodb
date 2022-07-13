@@ -151,7 +151,11 @@ auto LeaderStateManager<S>::recoverEntries() noexcept
         << "Unexpected state " << to_string(data.internalState);
     auto mux = Multiplexer::construct(logLeader);
     mux->digestAvailableEntries();
-    data.stream = mux->template getStreamById<1>(); /* TODO fix stream id*/
+#ifdef _MSC_VER                             // circumventing bug in msvc
+    data.stream = mux->getStreamById<1>();  // TODO fix stream id
+#else
+    data.stream = mux->template getStreamById<1>();  // TODO fix stream id
+#endif
     return data.stream->waitForIterator(LogIndex{0});
   });
 
