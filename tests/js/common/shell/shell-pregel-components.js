@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/*global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -414,9 +414,10 @@ function wccRegressionTestSuite() {
 
 const wccTestSuite = pregelTestHelpers.makeWCCTestSuite(false, "", 4);
 
-
+const sccTestSuite = pregelTestHelpers.makeSCCTestSuite(false, "", 4);
 
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
 jsunity.run(wccTestSuite);
+jsunity.run(sccTestSuite);
 return jsunity.done();

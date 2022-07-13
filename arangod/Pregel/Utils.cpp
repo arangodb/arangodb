@@ -38,6 +38,7 @@ std::string const Utils::workerPrefix = "worker";
 
 std::string const Utils::startExecutionPath = "startExecution";
 std::string const Utils::finishedStartupPath = "finishedStartup";
+std::string const Utils::statusUpdatePath = "statusUpdate";
 std::string const Utils::prepareGSSPath = "prepareGSS";
 std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedWorkerStepPath = "finishedStep";
@@ -75,6 +76,7 @@ std::string const Utils::edgeCountKey = "edgeCount";
 std::string const Utils::shardIdKey = "shrdId";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
+std::string const Utils::payloadKey = "payload";
 std::string const Utils::recoveryMethodKey = "rmethod";
 std::string const Utils::storeResultsKey = "storeResults";
 std::string const Utils::aggregatorValuesKey = "aggregators";
