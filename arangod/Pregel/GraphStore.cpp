@@ -394,8 +394,9 @@ void GraphStore<V, E>::loadVertices(
           createBuffer<Vertex<V, E>>(_feature, *_config, segmentSize));
       vertexBuff = vertices.back().get();
     }
-
     Vertex<V, E>* ventry = vertexBuff->appendElement();
+    _observables.memoryBytesUsed += sizeof(Vertex<V, E>);
+
     VPackValueLength keyLen;
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
     char const* key = keySlice.getString(keyLen);
@@ -415,6 +416,7 @@ void GraphStore<V, E>::loadVertices(
     // actually copy in the key
     memcpy(keyBuff->end(), key, keyLen);
     keyBuff->advance(keyLen);
+    _observables.memoryBytesUsed += keyLen;
 
     // load vertex data
     documentId = trx.extractIdString(slice);
@@ -431,6 +433,7 @@ void GraphStore<V, E>::loadVertices(
       loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices,
                 info);
     }
+    ++_observables.verticesLoaded;
     return true;
   };
 
@@ -512,10 +515,12 @@ void GraphStore<V, E>::loadEdges(
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
+    ++_observables.edgesLoaded;
     if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "too many edges for vertex");
     }
+    _observables.memoryBytesUsed += sizeof(Edge<E>);
 
     std::size_t pos = toValue.find('/');
     collectionName = std::string(toValue.substr(0, pos));
@@ -524,9 +529,9 @@ void GraphStore<V, E>::loadEdges(
     edge->_toKeyLength = static_cast<uint16_t>(key.size());
     TRI_ASSERT(key.size() <= std::numeric_limits<uint16_t>::max());
     keyBuff->advance(key.size());
-
     // actually copy in the key
     memcpy(edge->_toKey, key.data(), key.size());
+    _observables.memoryBytesUsed += key.size();
 
     if (isCluster) {
       // resolve the shard of the target vertex.
