@@ -84,10 +84,6 @@ const screenshotMenu = (
         subTitle=""
         extra={[
           <>
-            <Tooltip placement="bottom" title={"Display the full graph - use with caution"}>
-              <Button key="1" onClick={onLoadFullGraph()}><DownloadOutlined /></Button>
-            </Tooltip>
-            
             <Dropdown overlayClassName='graphReactViewContainer screenshot-button' overlay={screenshotMenu} placement="bottomRight">
               <Button key="2"><CameraOutlined /></Button>
             </Dropdown>
