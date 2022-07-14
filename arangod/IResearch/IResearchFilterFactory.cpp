@@ -32,6 +32,7 @@
 #include "date/date.h"
 #endif
 
+#include "Aql/Functions.h"
 #include "IResearch/IResearchFilterFactory.h"
 
 #include "s2/s2latlng.h"
@@ -3375,7 +3376,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
 Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter*,
                             QueryContext const&, FilterContext const&,
                             aql::AstNode const&) {
-  return NotImplementedEE(funcName);
+  return aql::functions::NotImplementedEE(funcName);
 }
 #endif
 
