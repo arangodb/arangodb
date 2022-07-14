@@ -248,10 +248,9 @@ const waitForReplicatedLogAvailable = function (id) {
 
 
 const getServerProcessID = function (serverId) {
-  let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
   // Now look for instanceManager:
   let pos = _.findIndex(global.instanceManager.arangods,
-                        x => x.endpoint === endpoint);
+      x => x.id === serverId);
   return global.instanceManager.arangods[pos].pid;
 };
 
@@ -293,10 +292,7 @@ const registerAgencyTestEnd = function (testName) {
   helper.agency.set(`Testing/${testName}/End`, (new Date()).toISOString());
 };
 
-const getServerUrl = function (serverId) {
-  let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
-  return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-};
+const getServerUrl = helper.getEndpointById;
 
 const checkRequestResult = function (requestResult, expectingError=false) {
   if (requestResult === undefined) {

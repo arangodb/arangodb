@@ -26,6 +26,7 @@ const _ = require("lodash");
 const LH = require("@arangodb/testutils/replicated-logs-helper");
 const request = require('@arangodb/request');
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
+const helper = require('@arangodb/test-helper');
 
 /**
  * @param {string} database
@@ -77,22 +78,22 @@ const updateReplicatedStatePlan = function (database, logId, callback) {
   }
   const {state, log} = callback(_.cloneDeep(planState), _.cloneDeep(planLog));
   if (!_.isEqual(planState, state)) {
-    global.ArangoAgency.set(`Plan/ReplicatedStates/${database}/${logId}`, state);
+    helper.agency.set(`Plan/ReplicatedStates/${database}/${logId}`, state);
   }
   if (!_.isEqual(planLog, log)) {
-    global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, log);
+    helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}`, log);
   }
-  global.ArangoAgency.increaseVersion(`Plan/Version`);
+  helper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedStateDeletePlan = function (database, logId) {
-  global.ArangoAgency.remove(`Plan/ReplicatedStates/${database}/${logId}`);
-  global.ArangoAgency.increaseVersion(`Plan/Version`);
+  helper.agency.remove(`Plan/ReplicatedStates/${database}/${logId}`);
+  helper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedStateDeleteTarget = function (database, logId) {
-  global.ArangoAgency.remove(`Target/ReplicatedStates/${database}/${logId}`);
-  global.ArangoAgency.increaseVersion(`Target/Version`);
+  helper.agency.remove(`Target/ReplicatedStates/${database}/${logId}`);
+  helper.agency.increaseVersion(`Target/Version`);
 };
 
 
@@ -108,8 +109,8 @@ const updateReplicatedStateTarget = function (database, stateId, callback) {
 
   const state = callback(targetState);
 
-  global.ArangoAgency.set(`Target/ReplicatedStates/${database}/${stateId}`, state);
-  global.ArangoAgency.increaseVersion(`Target/Version`);
+  helper.agency.set(`Target/ReplicatedStates/${database}/${stateId}`, state);
+  helper.agency.increaseVersion(`Target/Version`);
 };
 
 const createReplicatedStateTargetWithServers = function (database, targetConfig, type, servers) {
