@@ -33,7 +33,7 @@ namespace NumberOfCores {
 std::size_t getValue();
 bool overridden();
 #ifdef USE_ENTERPRISE
-void setValue(std::size_t);
+bool setValue(std::size_t);
 #endif
 }  // namespace NumberOfCores
 }  // namespace arangodb

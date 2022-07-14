@@ -36,6 +36,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/RestartAction.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

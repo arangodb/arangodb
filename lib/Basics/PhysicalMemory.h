@@ -33,7 +33,7 @@ namespace PhysicalMemory {
 uint64_t getValue();
 bool overridden();
 #ifdef USE_ENTERPRISE
-void setValue(uint64_t);
+bool setValue(uint64_t);
 #endif
 }  // namespace PhysicalMemory
 }  // namespace arangodb
@@ -43,5 +43,3 @@ struct PhysicalMemoryCache {
   std::atomic<uint64_t> cachedValue;
   std::atomic<bool> overridden;
 };
-
-
