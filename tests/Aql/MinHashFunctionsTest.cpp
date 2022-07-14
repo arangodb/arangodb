@@ -132,10 +132,10 @@ void assertMinHashMatchThrow(char const* args) {
 TEST(MinHashErrorFunctionTest, test) { assertMinHashErrorThrow("[ 400 ]"); }
 TEST(MinHashCountFunctionTest, test) { assertMinHashCountThrow("[ 0.5 ]"); }
 TEST(MinHashFunctionTest, test) {
-  assertMinHashThrow(R"([ ["foo", "bar", "baz" ], 5 ] ])");
+  assertMinHashThrow(R"([ ["foo", "bar", "baz" ], 5 ])");
 }
 TEST(MinMatchHashFunctionTest, test) {
   assertMinHashMatchThrow(
-      R"([ ["foo", "bar", "baz" ], ["foo", "bar", "baz" ], 0.75, "analyzer" ] ])");
+      R"([ ["foo", "bar", "baz" ], ["foo", "bar", "baz" ], 0.75, "analyzer" ])");
 }
 #endif
