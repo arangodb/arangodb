@@ -3375,7 +3375,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
 Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter*,
                             QueryContext const&, FilterContext const&,
                             aql::AstNode const&) {
-  return notImplementedEE(funcName);
+  return NotImplementedEE(funcName);
 }
 #endif
 
