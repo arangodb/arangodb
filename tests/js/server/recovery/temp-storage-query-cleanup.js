@@ -24,9 +24,9 @@
 // / @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
-var internal = require('internal');
-var jsunity = require('jsunity');
+const db = require('@arangodb').db;
+const internal = require('internal');
+const jsunity = require('jsunity');
 const fs = require('fs');
 const cn = "UnitTestCollection";
 
@@ -51,20 +51,11 @@ function runSetup() {
   internal.debugTerminate('crashing server');
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite
-// //////////////////////////////////////////////////////////////////////////////
-
 function recoverySuite() {
   'use strict';
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function() {
-    },
-    tearDown: function() {
-    },
-
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test whether the temp directory was cleaned up after query execution
     // //////////////////////////////////////////////////////////////////////////////
@@ -76,10 +67,6 @@ function recoverySuite() {
     }
   };
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
 
 function main(argv) {
   'use strict';

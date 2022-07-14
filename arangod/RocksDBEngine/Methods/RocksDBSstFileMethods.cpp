@@ -24,21 +24,23 @@
 #include "RocksDBSstFileMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/files.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/RocksDBUtils.h"
+#include "Basics/files.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/TemporaryStorageFeature.h"
 
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
-namespace FU = basics::FileUtils;
 
 RocksDBSstFileMethods::RocksDBSstFileMethods(
     bool isForeground, rocksdb::DB* rootDB,
     RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx,
-    rocksdb::Options const& dbOptions, std::string const& idxPath)
+    rocksdb::Options const& dbOptions, std::string const& idxPath,
+    StorageUsageTracker& usageTracker)
     : RocksDBMethods(),
       _isForeground(isForeground),
       _rootDB(rootDB),
@@ -47,21 +49,25 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
       _cf(ridx.columnFamily()),
       _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
                      ridx.columnFamily()->GetComparator(), ridx.columnFamily()),
-      _idxPath(idxPath) {}
+      _idxPath(idxPath),
+      _usageTracker(usageTracker),
+      _bytesWrittenToDir(0) {}
 
 RocksDBSstFileMethods::RocksDBSstFileMethods(rocksdb::DB* rootDB,
                                              rocksdb::ColumnFamilyHandle* cf,
                                              rocksdb::Options const& dbOptions,
-                                             std::string const& idxPath)
+                                             std::string const& idxPath,
+                                             StorageUsageTracker& usageTracker)
     : RocksDBMethods(),
       _isForeground(false),
       _rootDB(rootDB),
       _trxColl(nullptr),
-      //  _ridx(nullptr),
       _cf(cf),
       _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
                      _cf->GetComparator(), _cf),
-      _idxPath(idxPath) {}
+      _idxPath(idxPath),
+      _usageTracker(usageTracker),
+      _bytesWrittenToDir(0) {}
 
 RocksDBSstFileMethods::~RocksDBSstFileMethods() { cleanUpFiles(); }
 
@@ -87,11 +93,6 @@ void RocksDBSstFileMethods::insertEstimators() {
 }
 
 rocksdb::Status RocksDBSstFileMethods::writeToFile() {
-  if (_maxCapacity != 0 && _bytesWrittenToDir >= _maxCapacity) {
-    LOG_TOPIC("b2c7f", WARN, Logger::ENGINES)
-        << "Directory capacity limit exceeded for writing temporary files";
-    return rocksdb::Status::Aborted();
-  }
   if (_keyValPairs.empty()) {
     return rocksdb::Status::OK();
   }
@@ -105,7 +106,8 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
   std::string tmpFileName =
       std::to_string(pid) + '-' +
       std::to_string(RandomGenerator::interval(UINT32_MAX));
-  std::string fileName = FU::buildFilename(_idxPath, tmpFileName);
+  std::string fileName =
+      basics::FileUtils::buildFilename(_idxPath, tmpFileName);
   fileName += ".sst";
   rocksdb::Status res = _sstFileWriter.Open(fileName);
   if (res.ok()) {
@@ -119,8 +121,16 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
     }
     _keyValPairs.clear();
     if (res.ok()) {
-      _bytesWrittenToDir += _sstFileWriter.FileSize();
-      res = _sstFileWriter.Finish();
+      uint64_t size = _sstFileWriter.FileSize();
+      // track the disk usage for this file. this may throw.
+      try {
+        _usageTracker.increaseUsage(size);
+        _bytesWrittenToDir += size;
+        res = _sstFileWriter.Finish();
+      } catch (...) {
+        cleanUpFiles();
+        throw;
+      }
     }
     if (!res.ok()) {
       cleanUpFiles();
@@ -140,6 +150,12 @@ Result RocksDBSstFileMethods::stealFileNames(
   return rocksutils::convertStatus(res);
 }
 
+uint64_t RocksDBSstFileMethods::stealBytesWrittenToDir() noexcept {
+  uint64_t value = _bytesWrittenToDir;
+  _bytesWrittenToDir = 0;
+  return value;
+}
+
 void RocksDBSstFileMethods::cleanUpFiles(
     std::vector<std::string> const& fileNames) {
   for (auto const& fileName : fileNames) {
@@ -150,6 +166,8 @@ void RocksDBSstFileMethods::cleanUpFiles(
 void RocksDBSstFileMethods::cleanUpFiles() {
   cleanUpFiles(_sstFileNames);
   _sstFileNames.clear();
+  _usageTracker.decreaseUsage(_bytesWrittenToDir);
+  _bytesWrittenToDir = 0;
 }
 
 rocksdb::Status RocksDBSstFileMethods::Get(rocksdb::ColumnFamilyHandle* cf,

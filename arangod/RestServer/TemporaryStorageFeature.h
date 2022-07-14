@@ -40,6 +40,34 @@ namespace application_features {
 class ApplicationServer;
 }
 
+class StorageUsageTracker {
+ public:
+  explicit StorageUsageTracker(std::uint64_t maxCapacity) noexcept;
+  StorageUsageTracker(StorageUsageTracker const&) = delete;
+  StorageUsageTracker& operator=(StorageUsageTracker const&) = delete;
+
+  // returns configured maximum disk capacity for intermediate results storage
+  // (0 = unlimited)
+  std::uint64_t maxCapacity() const noexcept;
+
+  // returns current disk usage for intermediate results storage
+  std::uint64_t currentUsage() const noexcept;
+
+  // increases capacity usage by value bytes. throws an exception if
+  // that would move _currentUsage to a value > _maxCapacity
+  void increaseUsage(std::uint64_t value);
+
+  // decreases capacity usage by value bytes. assumes that _currentUsage >=
+  // value
+  void decreaseUsage(std::uint64_t value) noexcept;
+
+ private:
+  std::uint64_t const _maxCapacity;
+
+  // runtime parameters
+  std::atomic<std::uint64_t> _currentUsage;
+};
+
 class TemporaryStorageFeature : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept {
@@ -66,21 +94,6 @@ class TemporaryStorageFeature : public ArangodFeature {
         *_backend, std::forward<Args>(args)...);
   }
 
-  // returns configured maximum disk capacity for intermediate results storage
-  // (0 = unlimited)
-  std::uint64_t maxCapacity() const noexcept;
-
-  // returns current disk usage for intermediate results storage
-  std::uint64_t currentUsage() const noexcept;
-
-  // increases capacity usage by value bytes. throws an exception if
-  // that would move _currentUsage to a value > _maxCapacity
-  void increaseUsage(std::uint64_t value);
-
-  // decreases capacity usage by value bytes. assumes that _currentUsage >=
-  // value
-  void decreaseUsage(std::uint64_t value) noexcept;
-
  private:
   void cleanupDirectory();
 
@@ -88,13 +101,17 @@ class TemporaryStorageFeature : public ArangodFeature {
   std::string _basePath;
   bool _useEncryption;
   bool _allowHWAcceleration;
-  std::uint64_t _maxCapacity;
 
-  // runtime parameters
-  std::atomic<std::uint64_t> _currentUsage;
+  std::uint64_t _maxDiskCapacity;
+  size_t _spillOverThresholdNumRows;
+  size_t _spillOverThresholdMemoryUsage;
 
   // populated only if !_path.empty()
   std::unique_ptr<RocksDBTempStorage> _backend;
+  // populated only if !_path.empty()
+  std::unique_ptr<StorageUsageTracker> _usageTracker;
+
+  // whether or not we have cleaned up our temp directory already
   bool _cleanedUpDirectory;
 };
 

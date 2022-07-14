@@ -29,6 +29,7 @@
 #include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBSortedRowsStorageContext.h"
 
@@ -99,11 +100,14 @@ class KeysComparator : public rocksdb::Comparator {
       ++p2;
     }
 
+    // if everything else is equal, return the difference of the
+    // bytes 8-15, which is the insertion id. this makes the result
+    // predictable when there are multiple identical keys (stable sort).
     return diffInId;
   }
 
   // Ignore the following methods for now:
-  const char* Name() const override { return "KeysComparator"; }
+  char const* Name() const override { return "KeysComparator"; }
   void FindShortestSeparator(std::string*,
                              rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}
@@ -112,11 +116,11 @@ class KeysComparator : public rocksdb::Comparator {
 }  // namespace
 
 RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
-                                       std::uint64_t maxCapacity,
+                                       StorageUsageTracker& usageTracker,
                                        bool useEncryption,
                                        bool allowHWAcceleration)
     : _basePath(basePath),
-      _maxCapacity(maxCapacity),
+      _usageTracker(usageTracker),
       _useEncryption(useEncryption),
       _allowHWAcceleration(allowHWAcceleration),
       _nextId(0),
@@ -126,6 +130,7 @@ RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
 RocksDBTempStorage::~RocksDBTempStorage() = default;
 
 Result RocksDBTempStorage::init() {
+  // path for temporary files, not managed by RocksDB, but by us.
   _tempFilesPath = basics::FileUtils::buildFilename(_basePath, "temp");
 
   {
@@ -169,7 +174,8 @@ Result RocksDBTempStorage::init() {
   }
 #endif
 
-  // set per-level compression
+  // set per-level compression. we start compression from level 2 onwards.
+  // this may or may not be optimal
   options.compression_per_level.resize(options.num_levels);
   for (int level = 0; level < options.num_levels; ++level) {
     options.compression_per_level[level] =
@@ -190,12 +196,13 @@ Result RocksDBTempStorage::init() {
   // ephemeral data only
   options.paranoid_checks = false;
 
+  // TODO: this configuration may not be optimal. we need to experiment
+  // with the settings to see which configuration provides the best
+  // performance and least background activity.
   options.max_background_jobs = 2;
   options.max_subcompactions = 2;
 
-  // TODO: configure write buffer sizes!
-
-  // TODO: try SstFileManager
+  // TODO: later configure write buffer sizes and/or block cache.
 
   std::vector<rocksdb::ColumnFamilyDescriptor> columnFamilies;
 
@@ -220,14 +227,12 @@ Result RocksDBTempStorage::init() {
   cfOptions.table_factory = std::shared_ptr<rocksdb::TableFactory>(
       rocksdb::NewBlockBasedTableFactory(tableOptions));
 
-  // TODO: configure block cache and its size!
-
-  // TODO: rename this column family?
   columnFamilies.emplace_back(
       rocksdb::ColumnFamilyDescriptor("SortCF", cfOptions));
   columnFamilies.emplace_back(rocksdb::ColumnFamilyDescriptor(
       rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions()));
 
+  // path for RocksDB data directory, managed by RocksDB.
   std::string rocksDBPath =
       basics::FileUtils::buildFilename(_basePath, "rocksdb");
 
@@ -252,7 +257,7 @@ void RocksDBTempStorage::close() {
 std::unique_ptr<RocksDBSortedRowsStorageContext>
 RocksDBTempStorage::getSortedRowsStorageContext() {
   return std::make_unique<RocksDBSortedRowsStorageContext>(
-      _db, _cfHandles[0], _tempFilesPath, nextId(), _maxCapacity);
+      _db, _cfHandles[0], _tempFilesPath, nextId(), _usageTracker);
 }
 
 uint64_t RocksDBTempStorage::nextId() noexcept {

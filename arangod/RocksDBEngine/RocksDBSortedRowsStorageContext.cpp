@@ -28,6 +28,7 @@
 #include "Basics/RocksDBUtils.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -45,11 +46,13 @@ namespace arangodb {
 
 RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
     rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf, std::string const& path,
-    uint64_t keyPrefix, uint64_t maxCapacity)
+    uint64_t keyPrefix, StorageUsageTracker& usageTracker)
     : _db(db),
       _cf(cf),
       _path(path),
       _keyPrefix(keyPrefix),
+      _usageTracker(usageTracker),
+      _bytesWrittenToDir(0),
       _needsCleanup(false) {
   // build lower bound for iterator
   rocksutils::uintToPersistentBigEndian<std::uint64_t>(_lowerBoundPrefix,
@@ -63,8 +66,8 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
 
   // create SstFileMethods instance that we will use for file ingestion
   rocksdb::Options options = _db->GetOptions();
-  _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path);
-  _methods->setMaxCapacity(maxCapacity);
+  _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path,
+                                                     usageTracker);
 }
 
 RocksDBSortedRowsStorageContext::~RocksDBSortedRowsStorageContext() {
@@ -113,8 +116,12 @@ void RocksDBSortedRowsStorageContext::ingestAll() {
     }
 
     if (!s.ok()) {
+      // an error occured. now let the SstFileMethods do the cleanup
       res.reset(rocksutils::convertStatus(s));
       _methods->cleanUpFiles(fileNames);
+    } else {
+      // everything went well. now we are responsible for any later cleanup
+      _bytesWrittenToDir = _methods->stealBytesWrittenToDir();
     }
   }
 
@@ -137,7 +144,10 @@ RocksDBSortedRowsStorageContext::getIterator() {
   // as we are reading the data only once and then will get rid of it, there
   // is no need to populate the block cache with it
   readOptions.fill_cache = false;
-  // all data that we have wiped we can safely ignore
+  // note: RangeDeletes can safely be ignored when reading data, because
+  // all keys are prefixed with a unique context id, and every operation
+  // will only read its own keys (i.e. the keys with its own context id
+  // prefix). and all RangeDeleted must be from a different context id.
   readOptions.ignore_range_deletions = true;
   // try to use readhead
   readOptions.adaptive_readahead = true;
@@ -162,6 +172,8 @@ void RocksDBSortedRowsStorageContext::cleanup() {
     return;
   }
 
+  // first delete all files that only contain data for the range in
+  // question
   rocksdb::Status s = rocksdb::DeleteFilesInRange(_db, _cf, &_lowerBoundSlice,
                                                   &_upperBoundSlice, false);
 
@@ -172,6 +184,11 @@ void RocksDBSortedRowsStorageContext::cleanup() {
     writeOptions.sync = false;
     writeOptions.disableWAL = true;
 
+    // get rid of the remaining keys via a RangeDelete.
+    // note: RangeDeletes can safely be ignored when reading data, because
+    // all keys are prefixed with a unique context id, and every operation
+    // will only read its own keys (i.e. the keys with its own context id
+    // prefix)
     s = _db->DeleteRange(writeOptions, _cf, _lowerBoundSlice, _upperBoundSlice);
   }
 
@@ -181,6 +198,8 @@ void RocksDBSortedRowsStorageContext::cleanup() {
         << rocksutils::convertStatus(s).errorMessage();
   }
   _needsCleanup = false;
+  _usageTracker.decreaseUsage(_bytesWrittenToDir);
+  _bytesWrittenToDir = 0;
 }
 
 }  // namespace arangodb

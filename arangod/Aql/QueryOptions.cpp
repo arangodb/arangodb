@@ -41,9 +41,9 @@ size_t QueryOptions::defaultMaxNumberOfPlans = 128;
 size_t QueryOptions::defaultMaxNodesPerCallstack = 150;
 #else
 size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
-size_t QueryOptions::defaultSpillOverThresholdNumRows = 1000000;
-size_t QueryOptions::defaultSpillOverThresholdMemoryUsage = 1024 * 1024 * 128;
 #endif
+size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000;
+size_t QueryOptions::defaultSpillOverThresholdMemoryUsage = 128 * 1024 * 1024;
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning = false;

@@ -40,6 +40,7 @@ class Iterator;
 namespace arangodb {
 class RocksDBKey;
 class RocksDBSstFileMethods;
+class StorageUsageTracker;
 
 namespace velocypack {
 class Slice;
@@ -50,7 +51,7 @@ class RocksDBSortedRowsStorageContext {
   RocksDBSortedRowsStorageContext(rocksdb::DB* db,
                                   rocksdb::ColumnFamilyHandle* cf,
                                   std::string const& path, uint64_t keyPrefix,
-                                  std::uint64_t maxCapacity);
+                                  StorageUsageTracker& usageTracker);
   ~RocksDBSortedRowsStorageContext();
 
   Result storeRow(RocksDBKey const& key, velocypack::Slice data);
@@ -66,12 +67,14 @@ class RocksDBSortedRowsStorageContext {
 
   std::string const _path;
   uint64_t const _keyPrefix;
+  StorageUsageTracker& _usageTracker;
 
   std::string _lowerBoundPrefix;
   rocksdb::Slice _lowerBoundSlice;
   std::string _upperBoundPrefix;
   rocksdb::Slice _upperBoundSlice;
 
+  uint64_t _bytesWrittenToDir;
   bool _needsCleanup;
 
   std::unique_ptr<RocksDBSstFileMethods> _methods;
