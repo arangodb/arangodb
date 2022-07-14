@@ -320,6 +320,18 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
 
 auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool old = false;
+  TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
+  TRI_ASSERT(_isBlockInUse);
+
+  auto guard = scopeGuard([&]() noexcept {
+    bool old = true;
+    TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
+    TRI_ASSERT(!_isBlockInUse);
+  });
+#endif
+
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
