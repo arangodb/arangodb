@@ -133,7 +133,8 @@ bool addView(arangodb::LogicalView const& view,
   auto& collections = query.collections();
 
   // linked collections
-  auto visitor = [&collections](arangodb::DataSourceId cid) {
+  auto visitor = [&collections](arangodb::DataSourceId cid,
+                                LogicalView::Indexes*) {
     collections.add(arangodb::basics::StringUtils::itoa(cid.id()),
                     arangodb::AccessMode::Type::READ,
                     arangodb::aql::Collection::Hint::Collection);
@@ -160,7 +161,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   Condition searchCondition(plan.getAst());
 
   auto nodeFilter = viewNode.filterCondition();
-  if (!filterConditionIsEmpty(&nodeFilter)) {
+  if (!isFilterConditionEmpty(&nodeFilter)) {
     searchCondition.andCombine(&nodeFilter);
     searchCondition.normalize(&plan, true,
                               viewNode.options().conditionOptimization);
@@ -218,7 +219,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   }
 
   if (!searchCondition.isEmpty()) {
-    viewNode.filterCondition(searchCondition.root());
+    viewNode.setFilterCondition(searchCondition.root());
   }
 
   return true;
@@ -318,7 +319,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   TRI_ASSERT(viewNode.view());
-  auto& primarySort = ::primarySort(*viewNode.view());
+  auto const& primarySort = ::primarySort(*viewNode.view());
 
   if (primarySort.empty()) {
     // use system sort
@@ -436,7 +437,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     assert(!primarySort.empty());
-    viewNode.sort(&primarySort, sortElements.size());
+    viewNode.setSort(primarySort, sortElements.size());
 
     sortNode->_reinsertInCluster = false;
     if (!arangodb::ServerState::instance()->isCoordinator()) {
@@ -614,7 +615,7 @@ void lateDocumentMaterializationArangoSearchRule(
     if (loop != nullptr &&
         ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
-      if (viewNode.noMaterialization() || viewNode.isLateMaterialized()) {
+      if (viewNode.isNoMaterialization() || viewNode.isLateMaterialized()) {
         continue;  // loop is already optimized
       }
       auto* current = limitNode->getFirstDependency();
@@ -872,7 +873,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
     // find scorers that have to be evaluated by a view
     scorerReplacer.extract(viewNode, scorers);
-    viewNode.scorers(std::move(scorers));
+    viewNode.setScorers(std::move(scorers));
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
       continue;

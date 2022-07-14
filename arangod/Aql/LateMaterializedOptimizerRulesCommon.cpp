@@ -251,7 +251,7 @@ void setAttributesMaxMatchedColumns(
         f.afData->field = f.field;
         // if assertion below is violated consider adding proper i -> columnNum
         // conversion for filling f.afData->columnNumber
-        static_assert((-1) == iresearch::IResearchViewNode::SortColumnNumber,
+        static_assert((-1) == iresearch::IResearchViewNode::kSortColumnNumber,
                       "Value is no more valid for such implementation");
         f.afData->columnNumber = i - 1;
         f.afData->postfix = std::move(f.postfix);

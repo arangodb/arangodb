@@ -295,7 +295,7 @@ bool IResearchViewCoordinator::visitCollections(
     CollectionVisitor const& visitor) const {
   std::shared_lock lock{_mutex};
   for (auto& entry : _collections) {
-    if (!visitor(entry.first)) {
+    if (!visitor(entry.first, nullptr)) {
       return false;
     }
   }
@@ -411,7 +411,7 @@ Result IResearchViewCoordinator::dropImpl() {
   auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   // drop links first
   std::unordered_set<DataSourceId> currentCids;
-  visitCollections([&currentCids](DataSourceId cid) {
+  visitCollections([&](DataSourceId cid, LogicalView::Indexes*) {
     currentCids.emplace(cid);
     return true;
   });

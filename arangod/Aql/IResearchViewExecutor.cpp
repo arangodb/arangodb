@@ -214,7 +214,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
       _countApproximate(countApproximate),
-      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
+      _filterConditionIsEmpty(isFilterConditionEmpty(&_filterCondition)),
       _filterOptimization(filterOptimization),
       _scorersSort(std::move(scorersSort)),
       _scorersSortLimit(scorersSortLimit) {
@@ -925,7 +925,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
     auto index = storedValuesIndex * columnsFieldsRegs.size();
-    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+    if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
       auto sortReader = ::sortColumn(segmentReader);
       if (ADB_UNLIKELY(!sortReader)) {
         LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
@@ -941,7 +941,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
       auto const& columns = _infos.storedValues().columns();
       TRI_ASSERT(!columns.empty());
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-        TRI_ASSERT(IResearchViewNode::SortColumnNumber <
+        TRI_ASSERT(IResearchViewNode::kSortColumnNumber <
                    columnFieldsRegs->first);
         auto const storedColumnNumber =
             static_cast<size_t>(columnFieldsRegs->first);
@@ -1645,7 +1645,7 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
   this->_storedValuesReaders.resize(size * storedValuesCount);
   auto isSortReaderUsedInStoredValues =
       storedValuesCount > 0 &&
-      IResearchViewNode::SortColumnNumber == columnsFieldsRegs.cbegin()->first;
+      IResearchViewNode::kSortColumnNumber == columnsFieldsRegs.cbegin()->first;
 
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
