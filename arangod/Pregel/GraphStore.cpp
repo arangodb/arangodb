@@ -37,6 +37,7 @@
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
@@ -520,11 +521,11 @@ void GraphStore<V, E>::loadEdges(
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
-    ++_observables.edgesLoaded;
     if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "too many edges for vertex");
     }
+    ++_observables.edgesLoaded;
     _observables.memoryBytesUsed += sizeof(Edge<E>);
 
     std::size_t pos = toValue.find('/');
@@ -629,9 +630,9 @@ uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
 /// Loops over the array starting a new transaction for different shards
 /// Should not dead-lock unless we have to wait really long for other threads
 template<typename V, typename E>
-void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
-                                     RangeIterator<Vertex<V, E>>& it,
-                                     size_t threadNumber) {
+void GraphStore<V, E>::storeVertices(
+    std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
+    size_t threadNumber, std::function<void()> const& statusUpdateCallback) {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -734,16 +735,24 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
     }
     builder.close();
     ++numDocs;
+    ++_observables.verticesStored;
+    if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
+      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                         statusUpdateCallback);
+    }
   }
 
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     statusUpdateCallback);
   // commit the remainders in our buffer
   // will throw if it fails
   commitTransaction();
 }
 
 template<typename V, typename E>
-void GraphStore<V, E>::storeResults(WorkerConfig* config,
-                                    std::function<void()> cb) {
+void GraphStore<V, E>::storeResults(
+    WorkerConfig* config, std::function<void()> cb,
+    std::function<void()> const& statusUpdateCallback) {
   _config = config;
   double now = TRI_microtime();
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
@@ -771,7 +780,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 
       try {
         RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
-        storeVertices(_config->globalShardIDs(), it, i);
+        storeVertices(_config->globalShardIDs(), it, i, statusUpdateCallback);
         // TODO can't just write edges with SmartGraphs
       } catch (std::exception const& e) {
         LOG_PREGEL("e22c8", ERR) << "Storing vertex data failed: " << e.what();
