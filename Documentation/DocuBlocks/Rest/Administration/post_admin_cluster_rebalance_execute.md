@@ -8,6 +8,11 @@
 Execute the given set of move shard operations. Such a set can be calculated using
 other rebalance apis.
 
+@RESTBODYPARAM{version, number, required,}
+Must be set to `1`.
+@RESTBODYPARAM{moves, array, required, move_shard_operation}
+Set of move shard operations to be executed.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

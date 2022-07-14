@@ -33,7 +33,4 @@ Measures the total imbalance. A high value indicates a high imbalance.
 @RESTSTRUCT{totalShards,shard_imbalance_struct,number,required,}
 Total number of shards. (counting leader and follower shards)
 
-@RESTSTRUCT{totalShards,shard_imbalance_struct,number,required,}
-Total number of shards. (counting leader and follower shards)
-
 @endDocuBlock

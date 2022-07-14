@@ -2222,15 +2222,35 @@ RestStatus RestAdminClusterHandler::handleRebalanceGet() {
   return RestStatus::DONE;
 }
 
+namespace {
+struct RebalanceExecuteOptions {
+  std::vector<MoveShardDescription> moves;
+  std::uint64_t version{0};
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, RebalanceExecuteOptions& x) {
+  return f.object(x).fields(f.field("moves", x.moves),
+                            f.field("version", x.version));
+}
+}  // namespace
+
 RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
+  auto opts =
+      velocypack::deserialize<RebalanceExecuteOptions>(_request->payload());
 
-  auto batch = velocypack::deserialize<std::vector<MoveShardDescription>>(
-      _request->payload());
+  if (opts.version != 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "unknown version provided");
+    return RestStatus::DONE;
+  }
+
+  auto& batch = opts.moves;
 
   if (batch.empty()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());

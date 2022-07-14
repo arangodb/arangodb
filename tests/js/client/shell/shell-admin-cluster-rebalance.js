@@ -80,13 +80,20 @@ function clusterRebalanceSuite() {
       assertEqual(result.error, false);
       let moves = result.result.moves;
       assertTrue(moves.length > 0);
-      result = arango.POST('/_admin/cluster/rebalance/execute', moves);
+      result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1, moves});
 
       // empty set of moves
-      result = arango.POST('/_admin/cluster/rebalance/execute', []);
+      result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1, moves: []});
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
 
+    },
+
+    testExecuteRebalanceVersion: function () {
+      let result = arango.POST('/_admin/cluster/rebalance/execute', {
+        version: 3, moves: []
+      });
+      assertEqual(result.code, 400);
     },
   };
 }

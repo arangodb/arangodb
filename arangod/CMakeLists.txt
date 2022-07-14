@@ -741,7 +741,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/AutoRebalance.cpp
-  Cluster/AutoRebalance.h
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
