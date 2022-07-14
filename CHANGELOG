@@ -1,5 +1,15 @@
 devel
 -----
+
+* arangoimport now supports an additional option "--overwrite-collection-prefix".
+  This option will only help while importing edge collections, and if it is used
+  together with "--to-collection-prefix" or "--from-collection-prefix". If there
+  are vertex collection prefixes in the file you want to import (e.g. you just
+  exported an edge collection from ArangoDB) you allow arangoimport to overwrite
+  those with the commandline prefixes. If the option is false (default value)
+  only _from and _to values without a prefix will be prefixed by the handed in
+  values.
+
 * Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
 
 * Updated arangosync to v2.11.0.
