@@ -3376,7 +3376,11 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
 Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter*,
                             QueryContext const&, FilterContext const&,
                             aql::AstNode const&) {
-  return aql::functions::NotImplementedEE(funcName);
+  TRI_ASSERT(funcName);
+
+  return {TRI_ERROR_NOT_IMPLEMENTED,
+          absl::StrCat("Function ", funcName,
+                       "' is available in ArangoDB Enterprise Edition only.")};
 }
 #endif
 

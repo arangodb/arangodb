@@ -206,14 +206,14 @@ aql::AqlValue minMatchFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
   return aql::AqlValue(aql::AqlValueHintBool(matchesLeft == 0));
 }
 
-aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const&,
+aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const& node,
                               std::span<aql::AqlValue const>) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
+  THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch scorer functions BM25() and TFIDF() are designed to "
+      "ArangoSearch scorer function '%s' are designed to "
       "be used only outside SEARCH statement within a context of ArangoSearch "
-      "view."
-      " Please ensure function signature is correct.");
+      "view. Please ensure function signature is correct.",
+      aql::getFunctionName(node).data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
