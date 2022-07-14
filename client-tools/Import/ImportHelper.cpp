@@ -189,6 +189,7 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
       _keyColumn(-1),
       _onDuplicateAction("error"),
       _collectionName(),
+      _overwriteCollectionPrefix(false),
       _lineBuffer(false),
       _outputBuffer(false),
       _firstLine(""),
@@ -1174,7 +1175,9 @@ void ImportHelper::handleCsvBuffer(uint64_t bufferSizeThreshold) {
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
                   StringUtils::urlEncode(_onDuplicateAction) +
-                  "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
+                  "&ignoreMissing=" + (_ignoreMissing ? "true" : "false") +
+                  "&" + StaticStrings::OverwriteCollectionPrefix + "=" +
+                  (_overwriteCollectionPrefix ? "true" : "false"));
 
   if (!_fromCollectionPrefix.empty()) {
     url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
@@ -1210,7 +1213,9 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   // build target url
   std::string url("/_api/import?" + getCollectionUrlPart() +
                   "&details=true&onDuplicate=" +
-                  StringUtils::urlEncode(_onDuplicateAction));
+                  StringUtils::urlEncode(_onDuplicateAction) + "&" +
+                  StaticStrings::OverwriteCollectionPrefix + "=" +
+                  (_overwriteCollectionPrefix ? "true" : "false"));
   if (isObject) {
     url += "&type=array";
   } else {

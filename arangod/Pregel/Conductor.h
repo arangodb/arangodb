@@ -43,6 +43,7 @@ namespace pregel {
 
 enum ExecutionState {
   DEFAULT = 0,  // before calling start
+  LOADING,      // load graph into memory
   RUNNING,      // during normal operation
   STORING,      // store results
   DONE,         // after everyting is done
@@ -51,7 +52,7 @@ enum ExecutionState {
   RECOVERING,   // during recovery
   FATAL_ERROR,  // execution can not continue because of errors
 };
-extern const char* ExecutionStateNames[8];
+extern const char* ExecutionStateNames[9];
 
 class PregelFeature;
 class MasterContext;

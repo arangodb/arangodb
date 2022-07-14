@@ -208,7 +208,7 @@ function componentsTestSuite() {
       do {
         internal.sleep(0.2);
         let stats = pregel.status(pid);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, numComponents * n, stats);
           assertEqual(stats.edgeCount, numComponents * (m + n), stats);
 
@@ -243,7 +243,7 @@ function componentsTestSuite() {
 
       while (true) {
         var status = pregel.status(handle);
-        if (status.state !== 'running' && status.state !== 'storing') {
+        if (status.state !== 'loading' && status.state !== 'running' && status.state !== 'storing') {
           console.log(status);
           break;
         } else {
