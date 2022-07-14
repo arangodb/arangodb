@@ -303,7 +303,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
             if (layer === 0) {
                 continue;
             }
-            for (let i = 0; i < thickness - 1; ++i) {
+            for (let i = 0; i < thickness; ++i) {
                 const t = layer * thickness + i;
                 const s = t - thickness;
                 edges.push(makeEdge(s, t));

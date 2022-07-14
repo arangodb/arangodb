@@ -422,7 +422,7 @@ const pagerankTestSuite = pregelTestHelpers.makePagerankTestSuite(false, "", 4);
 
 const seededPagerankTestSuite = pregelTestHelpers.makeSeededPagerankTestSuite(false, "", 4);
 
-const ssspTestSuite = pregelTestHelpers.makeSCCTestSuite(false, "", 4);
+const ssspTestSuite = pregelTestHelpers.makeSSSPTestSuite(false, "", 4);
 
 // jsunity.run(componentsTestSuite);
 // jsunity.run(wccRegressionTestSuite);
@@ -432,5 +432,4 @@ const ssspTestSuite = pregelTestHelpers.makeSCCTestSuite(false, "", 4);
 // jsunity.run(pagerankTestSuite);
 // jsunity.run(seededPagerankTestSuite);
 jsunity.run(ssspTestSuite);
-jsunity.run(seededPagerankTestSuite);
 return jsunity.done();
