@@ -85,18 +85,6 @@ std::vector<AqlValue> buildArgs(char const* args) {
   return params;
 }
 
-AqlValue evaluateFunc(char const* args, arangodb::aql::Function const& f) {
-  auto params = buildArgs(args);
-
-  auto cleanup = arangodb::scopeGuard([&params]() noexcept {
-    for (auto& p : params) {
-      p.destroy();
-    }
-  });
-
-  return evaluateFunc(params, f);
-}
-
 #ifndef USE_ENTERPRISE
 
 void assertFuncThrow(std::span<const AqlValue> args,
