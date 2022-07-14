@@ -30,10 +30,15 @@ let jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 
+const database = "cluster_rebalance_db";
+let prevDB = null;
 
 function clusterRebalanceSuite() {
   return {
     setUpAll: function () {
+      prevDB = db._name();
+      db._createDatabase(database);
+      db._useDatabase(database);
       for (let i = 0; i < 10; i++) {
         db._create("col" + i);
       }
@@ -43,6 +48,8 @@ function clusterRebalanceSuite() {
       for (let i = 0; i < 10; i++) {
         db._drop("col" + i);
       }
+      db._useDatabase(prevDB);
+      db._dropDatabase(database);
     },
 
     testGetImbalance: function () {
@@ -61,12 +68,16 @@ function clusterRebalanceSuite() {
         version: 1,
         moveLeaders: true,
         moveFollowers: true,
-        leaderChanges: true
+        leaderChanges: true,
+        databasesExcluded: ["_system"],
       });
       assertEqual(result.code, 200); // should be refused
       assertEqual(result.error, false); // should be refused
       const moves = result.result.moves;
       assertTrue(moves.length > 0);
+      for (const job of moves) {
+        assertNotEqual(job.database, "_system");
+      }
     },
 
     testCalcRebalanceAndExecute: function () {
@@ -74,13 +85,20 @@ function clusterRebalanceSuite() {
         version: 1,
         moveLeaders: true,
         moveFollowers: true,
-        leaderChanges: true
+        leaderChanges: true,
+        databasesExcluded: ["_system"],
       });
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
       let moves = result.result.moves;
       assertTrue(moves.length > 0);
+      for (const job of moves) {
+        assertNotEqual(job.database, "_system");
+      }
+
       result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1, moves});
+      assertEqual(result.code, 202);
+      assertEqual(result.error, false);
 
       // empty set of moves
       result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1, moves: []});

@@ -183,6 +183,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
       std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);
 
   struct MoveShardDescription {
+    std::string database;
     std::string collection;
     std::string shard;
     std::string from;
@@ -192,8 +193,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   using ShardMap =
       std::map<std::string, std::unordered_set<CollectionShardPair>>;
-  using ReshardAlgorithm = std::function<void(
-      ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
+  using ReshardAlgorithm =
+      std::function<void(ShardMap&, std::vector<MoveShardDescription>&,
+                         std::uint32_t, std::string)>;
 
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
@@ -211,10 +213,10 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
 template<class Inspector>
 auto inspect(Inspector& f, RestAdminClusterHandler::MoveShardDescription& x) {
-  return f.object(x).fields(f.field("collection", x.collection),
-                            f.field("shard", x.shard), f.field("from", x.from),
-                            f.field("to", x.to),
-                            f.field("isLeader", x.isLeader));
+  return f.object(x).fields(
+      f.field("collection", x.collection), f.field("database", x.database),
+      f.field("shard", x.shard), f.field("from", x.from), f.field("to", x.to),
+      f.field("isLeader", x.isLeader));
 }
 
 }  // namespace arangodb

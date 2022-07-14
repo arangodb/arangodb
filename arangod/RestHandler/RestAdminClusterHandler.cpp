@@ -1989,7 +1989,8 @@ using MoveShardDescription = RestAdminClusterHandler::MoveShardDescription;
 
 void theSimpleStupidOne(
     std::map<std::string, std::unordered_set<CollectionShardPair>>& shardMap,
-    std::vector<MoveShardDescription>& moves, std::uint32_t numMoveShards) {
+    std::vector<MoveShardDescription>& moves, std::uint32_t numMoveShards,
+    DatabaseID database) {
   // If you dislike this algorithm feel free to add a new one.
   // shardMap is a map from dbserver to a set of shards located on that
   // server. your algorithm has to fill `moves` with the move shard operations
@@ -2026,9 +2027,9 @@ void theSimpleStupidOne(
     }
 
     // move the shard
-    moves.push_back(MoveShardDescription{pair->collection, pair->shard,
-                                         fullest->first, emptiest->first,
-                                         pair->isLeader});
+    moves.push_back(MoveShardDescription{database, pair->collection,
+                                         pair->shard, fullest->first,
+                                         emptiest->first, pair->isLeader});
     movedShards.insert(pair->shard);
     emptiest->second.emplace(*pair);
     fullest->second.erase(pair);
@@ -2045,7 +2046,8 @@ RestAdminClusterHandler::handlePostRebalanceShards(
   getShardDistribution(shardMap);
 
   algorithm(shardMap, moves,
-            server().getFeature<ClusterFeature>().maxNumberOfMoveShards());
+            server().getFeature<ClusterFeature>().maxNumberOfMoveShards(),
+            _vocbase.name());
 
   VPackBuilder responseBuilder;
   responseBuilder.openObject();
@@ -2233,6 +2235,55 @@ auto inspect(Inspector& f, RebalanceExecuteOptions& x) {
   return f.object(x).fields(f.field("moves", x.moves),
                             f.field("version", x.version));
 }
+
+template<typename T, typename F>
+futures::Future<Result> executeMoveShardOperations(std::vector<T> const& batch,
+                                                   ClusterInfo& ci,
+                                                   F const& mapper) {
+  if (batch.empty()) {
+    return Result{};
+  }
+
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    auto write = arangodb::agency::envelope::into_builder(builder).write();
+
+    std::string timestamp = timepointToString(std::chrono::system_clock::now());
+    for (auto const& move : batch) {
+      auto const& mappedMove = mapper(move);
+      std::string jobId = std::to_string(ci.uniqid());
+      auto jobToDoPath =
+          arangodb::cluster::paths::root()->arango()->target()->toDo()->job(
+              jobId);
+      write = std::move(write).emplace(
+          jobToDoPath->str(), [&](VPackBuilder& builder) {
+            builder.add("type", VPackValue("moveShard"));
+            builder.add("database", VPackValue(mappedMove.database));
+            builder.add("collection", VPackValue(mappedMove.collection));
+            builder.add("jobId", VPackValue(jobId));
+            builder.add("shard", VPackValue(mappedMove.shard));
+            builder.add("fromServer", VPackValue(mappedMove.from));
+            builder.add("toServer", VPackValue(mappedMove.to));
+            builder.add("isLeader", VPackValue(mappedMove.isLeader));
+            builder.add("creator",
+                        VPackValue(ServerState::instance()->getId()));
+            builder.add("timeCreated", VPackValue(timestamp));
+          });
+    }
+    std::move(write).end().done();
+  }
+
+  return AsyncAgencyComm()
+      .sendWriteTransaction(20s, std::move(trx))
+      .thenValue([](AsyncAgencyCommResult&& result) {
+        if (result.ok() && result.statusCode() == 200) {
+          return Result{};
+        } else {
+          return result.asResult();
+        }
+      });
+}
 }  // namespace
 
 RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
@@ -2250,55 +2301,28 @@ RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
     return RestStatus::DONE;
   }
 
-  auto& batch = opts.moves;
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
-  if (batch.empty()) {
+  auto const idMapper = [](MoveShardDescription const& desc) -> auto& {
+    return desc;
+  };
+
+  if (opts.moves.empty()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
     return RestStatus::DONE;
   }
-  VPackBuffer<uint8_t> trx;
-  {
-    VPackBuilder builder(trx);
-    auto write = arangodb::agency::envelope::into_builder(builder).write();
 
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    std::string timestamp = timepointToString(std::chrono::system_clock::now());
-    for (auto const& move : batch) {
-      std::string jobId = std::to_string(ci.uniqid());
-      auto jobToDoPath =
-          arangodb::cluster::paths::root()->arango()->target()->toDo()->job(
-              jobId);
-      write = std::move(write).emplace(
-          jobToDoPath->str(), [&](VPackBuilder& builder) {
-            builder.add("type", VPackValue("moveShard"));
-            builder.add("database", VPackValue(_vocbase.name()));
-            builder.add("collection", VPackValue(move.collection));
-            builder.add("jobId", VPackValue(jobId));
-            builder.add("shard", VPackValue(move.shard));
-            builder.add("fromServer", VPackValue(move.from));
-            builder.add("toServer", VPackValue(move.to));
-            builder.add("isLeader", VPackValue(move.isLeader));
-            builder.add("creator",
-                        VPackValue(ServerState::instance()->getId()));
-            builder.add("timeCreated", VPackValue(timestamp));
-          });
-    }
-    std::move(write).end().done();
-  }
-
-  return waitForFuture(AsyncAgencyComm()
-                           .sendWriteTransaction(20s, std::move(trx))
-                           .thenValue([this](AsyncAgencyCommResult&& result) {
-                             if (result.ok() && result.statusCode() == 200) {
+  return waitForFuture(executeMoveShardOperations(opts.moves, ci, idMapper)
+                           .thenValue([this](auto&& result) {
+                             if (result.ok()) {
                                generateOk(rest::ResponseCode::ACCEPTED,
                                           VPackSlice::noneSlice());
                              } else {
-                               generateError(result.asResult());
+                               generateError(result);
                              }
                            }));
-
-  return RestStatus::DONE;
 }
+
 RestStatus RestAdminClusterHandler::handleRebalancePlan() {
   using namespace cluster::rebalance;
 
@@ -2338,92 +2362,72 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
   auto const imbalanceLeaderAfter = p.computeLeaderImbalance();
   auto const imbalanceShardsAfter = p.computeShardImbalance();
 
+  auto const buildResponse = [&](rest::ResponseCode responseCode) {
+    {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder ob1(&builder);
+        {
+          VPackObjectBuilder ob(&builder, "imbalanceBefore");
+          builder.add(VPackValue("leader"));
+          velocypack::serialize(builder, imbalanceLeaderBefore);
+          builder.add(VPackValue("shards"));
+          velocypack::serialize(builder, imbalanceShardsBefore);
+        }
+        {
+          VPackObjectBuilder ob(&builder, "imbalanceAfter");
+          builder.add(VPackValue("leader"));
+          velocypack::serialize(builder, imbalanceLeaderAfter);
+          builder.add(VPackValue("shards"));
+          velocypack::serialize(builder, imbalanceShardsAfter);
+        }
+        {
+          VPackArrayBuilder ab(&builder, "moves");
+          for (auto const& move : moves) {
+            auto const& shard = p.shards[move.shardId];
+            auto const& collection = p.collections[shard.collectionId];
+            VPackObjectBuilder ob(&builder);
+            builder.add("from", VPackValue(p.dbServers[move.from].id));
+            builder.add("to", VPackValue(p.dbServers[move.to].id));
+            builder.add("shard", VPackValue(shard.name));
+            builder.add("collection", VPackValue(collection.name));
+            builder.add("database",
+                        VPackValue(p.databases[collection.dbId].name));
+            builder.add("isLeader", VPackValue(move.isLeader));
+          }
+        }
+      }
+      generateOk(responseCode, builder.slice());
+    }
+  };
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  auto const moveShardConverter = [&](MoveShardJob const& job) {
+    auto& shard = p.shards[job.shardId];
+    auto& col = p.collections[shard.collectionId];
+
+    return MoveShardDescription{p.databases[col.dbId].name,
+                                col.name,
+                                shard.name,
+                                p.dbServers[job.from].id,
+                                p.dbServers[job.to].id,
+                                job.isLeader};
+  };
+
   switch (request()->requestType()) {
     case rest::RequestType::POST: {
-      {
-        VPackBuilder builder;
-        {
-          VPackObjectBuilder ob1(&builder);
-          {
-            VPackObjectBuilder ob(&builder, "imbalanceBefore");
-            builder.add(VPackValue("leader"));
-            velocypack::serialize(builder, imbalanceLeaderBefore);
-            builder.add(VPackValue("shards"));
-            velocypack::serialize(builder, imbalanceShardsBefore);
-          }
-          {
-            VPackObjectBuilder ob(&builder, "imbalanceAfter");
-            builder.add(VPackValue("leader"));
-            velocypack::serialize(builder, imbalanceLeaderAfter);
-            builder.add(VPackValue("shards"));
-            velocypack::serialize(builder, imbalanceShardsAfter);
-          }
-          {
-            VPackArrayBuilder ab(&builder, "moves");
-            for (auto const& move : moves) {
-              auto const& shard = p.shards[move.shardId];
-              VPackObjectBuilder ob(&builder);
-              builder.add("from", VPackValue(p.dbServers[move.from].id));
-              builder.add("to", VPackValue(p.dbServers[move.to].id));
-              builder.add("shard", VPackValue(shard.name));
-              builder.add("collection",
-                          VPackValue(p.collections[shard.collectionId].name));
-              builder.add("isLeader", VPackValue(move.isLeader));
-            }
-          }
-        }
-        generateOk(rest::ResponseCode::OK, builder.slice());
-        return RestStatus::DONE;
-      }
+      buildResponse(rest::ResponseCode::OK);
+      return RestStatus::DONE;
     }
     case rest::RequestType::PUT: {
-      if (moves.empty()) {
-        generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
-        return RestStatus::DONE;
-      }
-      VPackBuffer<uint8_t> trx;
-      {
-        VPackBuilder builder(trx);
-        auto write = arangodb::agency::envelope::into_builder(builder).write();
-
-        auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-        std::string timestamp =
-            timepointToString(std::chrono::system_clock::now());
-        for (auto const& move : moves) {
-          std::string jobId = std::to_string(ci.uniqid());
-          auto jobToDoPath =
-              arangodb::cluster::paths::root()->arango()->target()->toDo()->job(
-                  jobId);
-          auto& shard = p.shards[move.shardId];
-          auto& col = p.collections[shard.collectionId];
-          write = std::move(write).emplace(
-              jobToDoPath->str(), [&, &p = p](VPackBuilder& builder) {
-                builder.add("type", VPackValue("moveShard"));
-                builder.add("database", VPackValue(_vocbase.name()));
-                builder.add("collection", VPackValue(col.name));
-                builder.add("jobId", VPackValue(jobId));
-                builder.add("shard", VPackValue(p.shards[move.shardId].name));
-                builder.add("fromServer",
-                            VPackValue(p.dbServers[move.from].id));
-                builder.add("toServer", VPackValue(p.dbServers[move.to].id));
-                builder.add("isLeader", VPackValue(move.isLeader));
-                builder.add("creator",
-                            VPackValue(ServerState::instance()->getId()));
-                builder.add("timeCreated", VPackValue(timestamp));
-              });
-        }
-        std::move(write).end().done();
-      }
-
       return waitForFuture(
-          AsyncAgencyComm()
-              .sendWriteTransaction(20s, std::move(trx))
-              .thenValue([this](AsyncAgencyCommResult&& result) {
-                if (result.ok() && result.statusCode() == 200) {
+          executeMoveShardOperations(moves, ci, moveShardConverter)
+              .thenValue([this](auto&& result) {
+                if (result.ok()) {
                   generateOk(rest::ResponseCode::ACCEPTED,
                              VPackSlice::noneSlice());
                 } else {
-                  generateError(result.asResult());
+                  generateError(result);
                 }
               }));
     }
