@@ -1048,6 +1048,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     index = EdgeIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare("hash")) {
     index = HashIndexMock::make(id, _logicalCollection, info);
+  } else if (0 == type.compare("inverted")) {
+    index =
+        StorageEngineMock::buildInvertedIndexMock(id, _logicalCollection, info);
   } else if (0 == type.compare(
                       arangodb::iresearch::StaticStrings::ViewType.data())) {
     try {
@@ -1095,6 +1098,13 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     for (auto const& pair : docs) {
       l->insert(trx, pair.first, pair.second);
     }
+  } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchInvertedIndexMock*>(
+        index.get());
+    TRI_ASSERT(l != nullptr);
+    for (auto const& pair : docs) {
+      l->insert(trx, pair.first, pair.second);
+    }
   } else {
     TRI_ASSERT(false);
   }
@@ -1104,6 +1114,14 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
 
   res = trx.commit();
   TRI_ASSERT(res.ok());
+
+  if (index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchInvertedIndexMock*>(
+        index.get());
+    TRI_ASSERT(l != nullptr);
+    auto commitRes = l->commit();
+    TRI_ASSERT(commitRes.ok());
+  }
 
   return index;
 }
@@ -1219,6 +1237,13 @@ arangodb::Result PhysicalCollectionMock::insert(
         if (!l->insert(trx, id, newDocument).ok()) {
           return {TRI_ERROR_BAD_PARAMETER};
         }
+      }
+      continue;
+    } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+      auto* l = static_cast<arangodb::iresearch::IResearchInvertedIndexMock*>(
+          index.get());
+      if (!l->insert(trx, ref->second.docId(), newDocument).ok()) {
+        return {TRI_ERROR_BAD_PARAMETER};
       }
       continue;
     }
@@ -1525,6 +1550,61 @@ StorageEngineMock::buildLinkMock(arangodb::IndexId id,
             if (arangodb::iresearch::IResearchLinkMock::InitCallback !=
                 nullptr) {
               return arangodb::iresearch::IResearchLinkMock::InitCallback();
+            }
+            return irs::directory_attributes{};
+          });
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  cleanup.cancel();
+
+//  std::cout << "pathExistsLink = " << pathExists << std::endl;
+  return index;
+}
+
+std::shared_ptr<arangodb::iresearch::IResearchInvertedIndexMock>
+StorageEngineMock::buildInvertedIndexMock(
+    arangodb::IndexId id, arangodb::LogicalCollection& collection,
+    VPackSlice const& info) {
+  std::string name;
+
+  if (info.isObject()) {
+    VPackSlice sub = info.get(arangodb::StaticStrings::IndexName);
+    if (sub.isString()) {
+      name = sub.copyString();
+    }
+  }
+
+  arangodb::iresearch::IResearchInvertedIndexMeta meta;
+  std::string errField;
+  meta.init(collection.vocbase().server(), info, false, errField,
+            collection.vocbase().name());
+
+  auto attrs = arangodb::iresearch::IResearchInvertedIndex::fields(meta);
+  auto index = std::shared_ptr<arangodb::iresearch::IResearchInvertedIndexMock>(
+      new arangodb::iresearch::IResearchInvertedIndexMock(id, collection, name,
+                                                          attrs, false, true));
+
+  bool pathExists = false;
+  auto cleanup = arangodb::scopeGuard([&]() noexcept {
+    if (pathExists) {
+      try {
+        index->unload();  // TODO(MBkkt) unload should be implicit noexcept?
+      } catch (...) {
+      }
+    } else {
+      index->drop();
+    }
+  });
+
+  auto res =
+      static_cast<arangodb::iresearch::IResearchInvertedIndexMock*>(index.get())
+          ->init(info, pathExists, []() -> irs::directory_attributes {
+            if (arangodb::iresearch::IResearchInvertedIndexMock::InitCallback !=
+                nullptr) {
+              return arangodb::iresearch::IResearchInvertedIndexMock::
+                  InitCallback();
             }
             return irs::directory_attributes{};
           });
