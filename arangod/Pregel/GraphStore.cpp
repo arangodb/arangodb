@@ -33,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "Pregel/Algos/AIR/AIR.h"
+#include "Metrics/Gauge.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
@@ -393,17 +394,19 @@ void GraphStore<V, E>::loadVertices(
       vertices.push_back(
           createBuffer<Vertex<V, E>>(_feature, *_config, segmentSize));
       vertexBuff = vertices.back().get();
+      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(segmentSize);
     }
-
     Vertex<V, E>* ventry = vertexBuff->appendElement();
+    _observables.memoryBytesUsed += sizeof(Vertex<V, E>);
+
     VPackValueLength keyLen;
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
     char const* key = keySlice.getString(keyLen);
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < ::maxStringChunkSize);
-      vKeys.push_back(createBuffer<char>(
-          _feature, *_config,
-          ::stringChunkSize(vKeys.size(), numVertices, true)));
+      auto const chunkSize = ::stringChunkSize(vKeys.size(), numVertices, true);
+      vKeys.push_back(createBuffer<char>(_feature, *_config, chunkSize));
+      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(chunkSize);
       keyBuff = vKeys.back().get();
     }
 
@@ -415,6 +418,7 @@ void GraphStore<V, E>::loadVertices(
     // actually copy in the key
     memcpy(keyBuff->end(), key, keyLen);
     keyBuff->advance(keyLen);
+    _observables.memoryBytesUsed += keyLen;
 
     // load vertex data
     documentId = trx.extractIdString(slice);
@@ -431,6 +435,7 @@ void GraphStore<V, E>::loadVertices(
       loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices,
                 info);
     }
+    ++_observables.verticesLoaded;
     return true;
   };
 
@@ -494,13 +499,16 @@ void GraphStore<V, E>::loadEdges(
     if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
       edges.push_back(
           createBuffer<Edge<E>>(_feature, *_config, edgeSegmentSize()));
+      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(
+          edgeSegmentSize());
       edgeBuff = edges.back().get();
     }
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < ::maxStringChunkSize);
-      edgeKeys.push_back(createBuffer<char>(
-          _feature, *_config,
-          ::stringChunkSize(edgeKeys.size(), numVertices, false)));
+      auto const chunkSize =
+          ::stringChunkSize(edgeKeys.size(), numVertices, false);
+      edgeKeys.push_back(createBuffer<char>(_feature, *_config, chunkSize));
+      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(chunkSize);
       keyBuff = edgeKeys.back().get();
     }
   };
@@ -512,10 +520,12 @@ void GraphStore<V, E>::loadEdges(
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
+    ++_observables.edgesLoaded;
     if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "too many edges for vertex");
     }
+    _observables.memoryBytesUsed += sizeof(Edge<E>);
 
     std::size_t pos = toValue.find('/');
     collectionName = std::string(toValue.substr(0, pos));
@@ -524,9 +534,9 @@ void GraphStore<V, E>::loadEdges(
     edge->_toKeyLength = static_cast<uint16_t>(key.size());
     TRI_ASSERT(key.size() <= std::numeric_limits<uint16_t>::max());
     keyBuff->advance(key.size());
-
     // actually copy in the key
     memcpy(edge->_toKey, key.data(), key.size());
+    _observables.memoryBytesUsed += key.size();
 
     if (isCluster) {
       // resolve the shard of the target vertex.
@@ -748,6 +758,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   }
 
   _runningThreads.store(numThreads, std::memory_order_relaxed);
+  _feature.metrics()->pregelNumberOfThreads->fetch_add(numThreads);
   size_t const numT = numThreads;
   LOG_PREGEL("f3fd9", DEBUG) << "Storing vertex data (" << numSegments
                              << " vertices) using " << numT << " threads";
@@ -770,6 +781,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 
       uint32_t numRunning =
           _runningThreads.fetch_sub(1, std::memory_order_relaxed);
+      _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
       TRI_ASSERT(numRunning > 0);
       if (numRunning - 1 == 0) {
         LOG_PREGEL("b5a21", DEBUG)

@@ -21,27 +21,52 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-
-#include <chrono>
-#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <chrono>
 
 #include <Inspection/VPack.h>
-#include <Inspection/Transformers.h>
-
-#include <Pregel/Common.h>
 
 namespace arangodb::pregel {
-struct WorkerStatus {
-  TimeStamp timeStamp = std::chrono::system_clock::now();
+
+using TimePoint = std::chrono::steady_clock::time_point;
+using OptTimePoint = std::optional<TimePoint>;
+using Seconds = std::chrono::duration<double>;
+
+struct Duration {
+  OptTimePoint _start;
+  OptTimePoint _finish;
+
+  [[nodiscard]] bool hasStarted() const { return _start.has_value(); }
+  [[nodiscard]] bool hasFinished() const { return _finish.has_value(); }
+
+  void start() {
+    ADB_PROD_ASSERT(not _start.has_value());
+    _start.emplace(std::chrono::steady_clock::now());
+  }
+  void finish() {
+    ADB_PROD_ASSERT(_start.has_value());
+    ADB_PROD_ASSERT(not _finish.has_value());
+    _finish.emplace(std::chrono::steady_clock::now());
+  }
+  [[nodiscard]] auto elapsedSeconds() const -> Seconds {
+    ADB_PROD_ASSERT(_start.has_value());
+    if (not _finish.has_value()) {
+      return std::chrono::steady_clock::now() - *_start;
+    } else {
+      return *_finish - *_start;
+    }
+  }
 };
 
-template<typename Inspector>
-auto inspect(Inspector& f, WorkerStatus& x) {
-  return f.object(x).fields(
-      f.field(timeStampString, x.timeStamp)
-          .transformWith(inspection::TimeStampTransformer{}));
-}
+struct ExecutionTimings {
+  Duration loading;
+  Duration computation;
+  Duration storing;
+  // FIXME: just sum the times above?
+  Duration total;
+
+  std::vector<Duration> gss;
+};
 
 }  // namespace arangodb::pregel
