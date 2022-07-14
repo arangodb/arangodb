@@ -8587,13 +8587,14 @@ AqlValue Functions::PregelResult(ExpressionContext* expressionContext,
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
+  uint64_t execNr = arg1.toInt64();
+
   bool withId = false;
   AqlValue arg2 = extractFunctionParameterValue(parameters, 1);
   if (arg2.isBoolean()) {
     withId = arg2.slice().getBool();
   }
 
-  uint64_t execNr = arg1.toInt64();
   auto& server = expressionContext->trx().vocbase().server();
   if (!server.hasFeature<pregel::PregelFeature>()) {
     registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);

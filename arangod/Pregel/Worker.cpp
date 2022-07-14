@@ -630,14 +630,12 @@ void Worker<V, E, M>::_continueAsync() {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void()> cb) {
+void Worker<V, E, M>::finalizeExecution(VPackSlice const& body) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
     LOG_PREGEL("4067a", DEBUG) << "removing worker";
-    cb();
     return;
   }
 
@@ -657,7 +655,6 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     _reports.clear();
     body.close();
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
-    cb();
   };
 
   std::function<void()> statusUpdateCallback = [self = shared_from_this(),

@@ -84,7 +84,6 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<IWorker> worker(uint64_t executionNumber);
 
   void cleanupConductor(uint64_t executionNumber);
-  void cleanupWorker(uint64_t executionNumber);
 
   RecoveryManager* recoveryManager() {
     return _recoveryManagerPtr.load(std::memory_order_acquire);

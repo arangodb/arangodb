@@ -56,8 +56,7 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice const& data) = 0;
-  virtual void finalizeExecution(VPackSlice const& data,
-                                 std::function<void()> cb) = 0;
+  virtual void finalizeExecution(VPackSlice const& data) = 0;
   virtual void startRecovery(VPackSlice const& data) = 0;
   virtual void compensateStep(VPackSlice const& data) = 0;
   virtual void finalizeRecovery(VPackSlice const& data) = 0;
@@ -163,8 +162,7 @@ class Worker : public IWorker {
   void startGlobalStep(VPackSlice const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(VPackSlice const& data) override;
-  void finalizeExecution(VPackSlice const& data,
-                         std::function<void()> cb) override;
+  void finalizeExecution(VPackSlice const& data) override;
   void startRecovery(VPackSlice const& data) override;
   void compensateStep(VPackSlice const& data) override;
   void finalizeRecovery(VPackSlice const& data) override;

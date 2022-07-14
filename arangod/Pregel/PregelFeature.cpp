@@ -625,16 +625,6 @@ void PregelFeature::cleanupConductor(uint64_t executionNumber) {
   _workers.erase(executionNumber);
 }
 
-void PregelFeature::cleanupWorker(uint64_t executionNumber) {
-  // unmapping etc might need a few seconds
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
-    MUTEX_LOCKER(guard, _mutex);
-    _workers.erase(executionNumber);
-  });
-}
-
 void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
                                            std::string const& path,
                                            VPackSlice const& body,
@@ -740,7 +730,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
+    w->finalizeExecution(body);
   } else if (path == Utils::continueRecoveryPath) {
     w->compensateStep(body);
   } else if (path == Utils::finalizeRecoveryPath) {
