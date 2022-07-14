@@ -540,7 +540,7 @@ void ExecutionNode::allToVelocyPack(VPackBuilder& builder,
   } nodeSerializer{builder, flags};
 
   VPackArrayBuilder guard(&builder);
-  const_cast<ExecutionNode*>(this)->walk(nodeSerializer);
+  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer, true);
 }
 
 /// @brief execution Node clone utility to be called by derived classes
@@ -696,7 +696,7 @@ CostEstimate ExecutionNode::getCost() const {
 
 /// @brief functionality to walk an execution plan recursively
 bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
-  return doWalk(worker, false);
+  return doWalk(worker, false, FlattenType::NONE);
 }
 
 /// @brief functionality to walk an execution plan recursively.
@@ -707,11 +707,19 @@ bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
 /// recursing into the subquery.
 bool ExecutionNode::walkSubqueriesFirst(
     WalkerWorkerBase<ExecutionNode>& worker) {
-  return doWalk(worker, true);
+  return doWalk(worker, true, FlattenType::NONE);
+}
+
+bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
+                             bool onlyFlattenAsync) {
+  if (onlyFlattenAsync) {
+    return doWalk(worker, false, FlattenType::INLINE_ASYNC);
+  }
+  return doWalk(worker, false, FlattenType::INLINE_ALL);
 }
 
 bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
-                           bool subQueryFirst) {
+                           bool subQueryFirst, FlattenType flattenType) {
   enum class State { Pending, Processed, InSubQuery };
 
   using Entry = std::pair<ExecutionNode*, State>;
@@ -729,10 +737,73 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
     }
   };
 
+  constexpr std::size_t NumJumpBackPointers = 10;
+  struct ParallelEntry {
+    explicit ParallelEntry(ExecutionNode* n) : _node(n), _nextVisit(1) {}
+
+    /// @brief Indicates that we have now visited all parallel paths
+    bool isComplete() const {
+      return _node->getDependencies().size() <= _nextVisit;
+    }
+
+    /// @brief Return the Next child to visit
+    ExecutionNode* visitNext() {
+      TRI_ASSERT(!isComplete());
+      return _node->getDependencies().at(_nextVisit++);
+    }
+
+   private:
+    ExecutionNode* _node;
+    size_t _nextVisit;
+  };
+
+  containers::SmallVector<ParallelEntry, NumJumpBackPointers> parallelStarter;
+
   while (!nodes.empty()) {
     auto& [n, state] = nodes.back();
     switch (state) {
       case State::Pending: {
+        if (flattenType != FlattenType::NONE && n->getParents().size() > 1) {
+          // This assert is not strictly necessary,
+          // by the time this code was implemented only
+          // SCATTER, MUTEX and DISTRIBUTE nodes were allowed to have more
+          // than one parent, so all others indicated an issue on plan
+          if (!(n->getType() == SCATTER || n->getType() == MUTEX ||
+                n->getType() == DISTRIBUTE)) {
+            VPackBuilder builder;
+
+            n->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+            std::vector<ExecutionNode*> parents{};
+            n->parents(parents);
+
+            for (auto p : parents) {
+              builder.clear();
+              p->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+            }
+          }
+          TRI_ASSERT(n->getType() == SCATTER || n->getType() == MUTEX ||
+                     n->getType() == DISTRIBUTE);
+          if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX) {
+            ADB_PROD_ASSERT(!parallelStarter.empty());
+            // If we are not INLINE_ALL, only flatten the MUTEX, which is the
+            // counterpart of ASYNC
+            auto& starter = parallelStarter.back();
+            if (starter.isComplete()) {
+              // All parallel steps complete drop the corresponding parallel
+              // starter
+              parallelStarter.pop_back();
+            } else {
+              // Discard this state, we will visit it in the next time around
+              // on the parallel branch
+              nodes.pop_back();
+              // Jump back, and continue visiting the next parallel branch.
+              nodes.emplace_back(starter.visitNext(), State::Pending);
+              // Just pretend we have not seen this
+              // and continue with the next one to visit
+              continue;
+            }
+          }
+        }
         if (worker.done(n)) {
           nodes.pop_back();
           break;
@@ -753,7 +824,41 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           }
         }
         state = State::Processed;
-        enqueDependencies(n->_dependencies);
+        if (flattenType == FlattenType::NONE ||
+            n->getDependencies().size() <= 1) {
+          enqueDependencies(n->_dependencies);
+        } else {
+          if (n->getDependencies().size() > 1) {
+            // We have a multi-dependency node, that we need to handle
+
+            // This assert is not strictly necessary,
+            // by the time this code was implemented only
+            // GATHER nodes were allowed to have more than
+            // one dependency, so all others indicated an issue on plan
+            TRI_ASSERT(n->getType() == GATHER);
+            if (flattenType == FlattenType::INLINE_ALL) {
+              // Remember where we started the flattening process
+              parallelStarter.emplace_back(n);
+              // Add the next dependency to continue
+              nodes.emplace_back(n->getFirstDependency(), State::Pending);
+            } else {
+              TRI_ASSERT(flattenType == FlattenType::INLINE_ASYNC);
+              auto peek = n->getFirstDependency();
+              if (peek->getType() == ASYNC) {
+                // Only Async nodes shall be flattened
+                // So yes we found the combination we want to falten here
+
+                // Remember where we started the flattening process
+                parallelStarter.emplace_back(n);
+                // Add the next dependency to continue
+                nodes.emplace_back(n->getFirstDependency(), State::Pending);
+              } else {
+                // Non-Async gather, do not flatten.
+                enqueDependencies(n->_dependencies);
+              }
+            }
+          }
+        }
         break;
       }
 
