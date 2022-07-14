@@ -1605,6 +1605,10 @@ function iResearchFeatureAqlTestSuite () {
     },
 
     testCustomClassificationAnalyzer : function() {
+      if (!isEnterprise) {
+        return;
+      }
+
       let analyzerName = "classificationUnderTest";
       const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
       const modelFile = require("path").resolve(filePath);
@@ -1712,6 +1716,11 @@ function iResearchFeatureAqlTestSuite () {
     },
 
     testCustomNearestNeighborsAnalyzer: function() {
+      if (!isEnterprise) {
+        return;
+      }
+
+
       let analyzerName = "nearestNeighborsUnderTest";
       const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
       const modelFile = require("path").resolve(filePath);
