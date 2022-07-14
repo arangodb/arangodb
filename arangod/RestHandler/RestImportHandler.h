@@ -185,6 +185,8 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   std::string _fromPrefix;
   std::string _toPrefix;
 
+  bool _overwritePrefix{false};
+
   /// @brief whether or not we will tolerate missing values for the CSV import
   bool _ignoreMissing;
 };
