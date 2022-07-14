@@ -29,7 +29,6 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockInputMatrix.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
