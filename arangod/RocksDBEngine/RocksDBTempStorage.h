@@ -43,7 +43,7 @@ class StorageUsageTracker;
 
 #ifdef USE_ENTERPRISE
 namespace enterprise {
-class EncryptionProvider;
+struct EncryptionProvider;
 }
 #endif
 
