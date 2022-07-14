@@ -33,9 +33,11 @@
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "Pregel/Algos/AIR/AIR.h"
+#include "Metrics/Gauge.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
@@ -393,6 +395,7 @@ void GraphStore<V, E>::loadVertices(
       vertices.push_back(
           createBuffer<Vertex<V, E>>(_feature, *_config, segmentSize));
       vertexBuff = vertices.back().get();
+      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(segmentSize);
     }
     Vertex<V, E>* ventry = vertexBuff->appendElement();
     _observables.memoryBytesUsed += sizeof(Vertex<V, E>);
@@ -402,9 +405,9 @@ void GraphStore<V, E>::loadVertices(
     char const* key = keySlice.getString(keyLen);
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < ::maxStringChunkSize);
-      vKeys.push_back(createBuffer<char>(
-          _feature, *_config,
-          ::stringChunkSize(vKeys.size(), numVertices, true)));
+      auto const chunkSize = ::stringChunkSize(vKeys.size(), numVertices, true);
+      vKeys.push_back(createBuffer<char>(_feature, *_config, chunkSize));
+      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(chunkSize);
       keyBuff = vKeys.back().get();
     }
 
@@ -497,13 +500,16 @@ void GraphStore<V, E>::loadEdges(
     if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
       edges.push_back(
           createBuffer<Edge<E>>(_feature, *_config, edgeSegmentSize()));
+      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(
+          edgeSegmentSize());
       edgeBuff = edges.back().get();
     }
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < ::maxStringChunkSize);
-      edgeKeys.push_back(createBuffer<char>(
-          _feature, *_config,
-          ::stringChunkSize(edgeKeys.size(), numVertices, false)));
+      auto const chunkSize =
+          ::stringChunkSize(edgeKeys.size(), numVertices, false);
+      edgeKeys.push_back(createBuffer<char>(_feature, *_config, chunkSize));
+      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(chunkSize);
       keyBuff = edgeKeys.back().get();
     }
   };
@@ -515,11 +521,11 @@ void GraphStore<V, E>::loadEdges(
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
-    ++_observables.edgesLoaded;
     if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "too many edges for vertex");
     }
+    ++_observables.edgesLoaded;
     _observables.memoryBytesUsed += sizeof(Edge<E>);
 
     std::size_t pos = toValue.find('/');
@@ -624,9 +630,9 @@ uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
 /// Loops over the array starting a new transaction for different shards
 /// Should not dead-lock unless we have to wait really long for other threads
 template<typename V, typename E>
-void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
-                                     RangeIterator<Vertex<V, E>>& it,
-                                     size_t threadNumber) {
+void GraphStore<V, E>::storeVertices(
+    std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
+    size_t threadNumber, std::function<void()> const& statusUpdateCallback) {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -729,16 +735,24 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
     }
     builder.close();
     ++numDocs;
+    ++_observables.verticesStored;
+    if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
+      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                         statusUpdateCallback);
+    }
   }
 
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     statusUpdateCallback);
   // commit the remainders in our buffer
   // will throw if it fails
   commitTransaction();
 }
 
 template<typename V, typename E>
-void GraphStore<V, E>::storeResults(WorkerConfig* config,
-                                    std::function<void()> cb) {
+void GraphStore<V, E>::storeResults(
+    WorkerConfig* config, std::function<void()> cb,
+    std::function<void()> const& statusUpdateCallback) {
   _config = config;
   double now = TRI_microtime();
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
@@ -753,6 +767,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   }
 
   _runningThreads.store(numThreads, std::memory_order_relaxed);
+  _feature.metrics()->pregelNumberOfThreads->fetch_add(numThreads);
   size_t const numT = numThreads;
   LOG_PREGEL("f3fd9", DEBUG) << "Storing vertex data (" << numSegments
                              << " vertices) using " << numT << " threads";
@@ -765,7 +780,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 
       try {
         RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
-        storeVertices(_config->globalShardIDs(), it, i);
+        storeVertices(_config->globalShardIDs(), it, i, statusUpdateCallback);
         // TODO can't just write edges with SmartGraphs
       } catch (std::exception const& e) {
         LOG_PREGEL("e22c8", ERR) << "Storing vertex data failed: " << e.what();
@@ -775,6 +790,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 
       uint32_t numRunning =
           _runningThreads.fetch_sub(1, std::memory_order_relaxed);
+      _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
       TRI_ASSERT(numRunning > 0);
       if (numRunning - 1 == 0) {
         LOG_PREGEL("b5a21", DEBUG)

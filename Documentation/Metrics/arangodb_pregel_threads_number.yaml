@@ -1,0 +1,14 @@
+name: arangodb_pregel_threads_number
+introducedIn: "3.10.0"
+help: |
+  Number of threads running for Pregel.
+unit: number
+type: gauge
+category: Pregel
+complexity: simple
+exposedBy:
+  - dbserver
+  - single
+  - coordinator
+description: |
+  Number of threads running for Pregel.

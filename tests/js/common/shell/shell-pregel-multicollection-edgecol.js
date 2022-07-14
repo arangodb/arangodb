@@ -196,7 +196,7 @@ function multiCollectionTestSuite() {
       do {
         internal.sleep(0.2);
         let stats = pregel.status(pid);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, numComponents * n, stats);
           assertEqual(stats.edgeCount, numComponents * (m + n), stats);
           assertFalse(stats.hasOwnProperty("parallelism"));
@@ -228,7 +228,7 @@ function multiCollectionTestSuite() {
         do {
           internal.sleep(0.2);
           let stats = pregel.status(pid);
-          if (stats.state !== "running" && stats.state !== "storing") {
+          if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
             assertTrue( stats.gss <= 25);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
@@ -263,7 +263,7 @@ function multiCollectionTestSuite() {
         do {
           internal.sleep(0.2);
           let stats = pregel.status(pid);
-          if (stats.state !== "running" && stats.state !== "storing") {
+          if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
             assertTrue(stats.gss <= 25);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
@@ -304,7 +304,7 @@ function edgeCollectionRestrictionsTestSuite() {
     do {
       internal.sleep(0.2);
       let stats = pregel.status(pid);
-      if (stats.state !== "running" && stats.state !== "storing") {
+      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
         assertEqual(200, stats.vertexCount, stats);
         assertEqual(90, stats.edgeCount, stats);
         assertTrue(stats.hasOwnProperty("parallelism"));
