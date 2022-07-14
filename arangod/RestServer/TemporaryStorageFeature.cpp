@@ -152,7 +152,7 @@ void TemporaryStorageFeature::collectOptions(
           "--temp.intermediate-results-spillover-threshold-num-rows",
           "number of result rows after which a spillover to disk will "
           "happen for intermediate results (threshold per query executor)",
-          new UInt64Parameter(&_spillOverThresholdNumRows),
+          new SizeTParameter(&_spillOverThresholdNumRows),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
@@ -162,7 +162,7 @@ void TemporaryStorageFeature::collectOptions(
           "--temp.intermediate-results-spillover-threshold-memory-usage",
           "memory usage threshold after which a spillover to disk will "
           "happen for intermediate results (threshold per query executor)",
-          new UInt64Parameter(&_spillOverThresholdMemoryUsage),
+          new SizeTParameter(&_spillOverThresholdMemoryUsage),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
