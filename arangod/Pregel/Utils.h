@@ -132,6 +132,8 @@ class Utils {
   static std::string const rollback;
   static std::string const reportsKey;
 
+  static size_t const batchOfVerticesStoredBeforeUpdatingStatus;
+
   // pass the db name and either "worker" or "conductor" as target.
   static std::string baseUrl(std::string const& target);
 

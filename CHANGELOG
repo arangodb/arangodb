@@ -1,8 +1,5 @@
 devel
 -----
-* BugFix in Pregel's status: When loading the graph into memory,
-  Pregel's state is now 'loading' instead of 'running'. When loading is finished,
-  Pregel's state changes to the 'running' state.
 
 * APM-84: Added option to spill intermediate AQL query results from RAM to
   disk when their size exceeds certain thresholds. Currently the only AQL
@@ -50,6 +47,19 @@ devel
   on coordinators and single servers for non-streaming queries. In order to
   avoid the buildup of the entire query result in RAM, a streaming query
   should be used.
+
+* Bugfix in Pregel's status: When loading the graph into memory,
+  Pregel's state is now 'loading' instead of 'running'. When loading is finished,
+  Pregel's state changes to the 'running' state.
+
+* arangoimport now supports an additional option "--overwrite-collection-prefix".
+  This option will only help while importing edge collections, and if it is used
+  together with "--to-collection-prefix" or "--from-collection-prefix". If there
+  are vertex collection prefixes in the file you want to import (e.g. you just
+  exported an edge collection from ArangoDB) you allow arangoimport to overwrite
+  those with the commandline prefixes. If the option is false (default value)
+  only _from and _to values without a prefix will be prefixed by the handed in
+  values.
 
 * Added startup option `--rocksdb.compaction-style` to configure the compaction
   style which is used to pick the next file(s) to be compacted. 
