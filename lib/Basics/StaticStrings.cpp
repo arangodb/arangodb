@@ -61,6 +61,8 @@ std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
 std::string const StaticStrings::SkipDocumentValidation(
     "skipDocumentValidation");
+std::string const StaticStrings::OverwriteCollectionPrefix(
+    "overwriteCollectionPrefix");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::Group("group");
