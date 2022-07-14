@@ -81,14 +81,22 @@ TemporaryStorageFeature::~TemporaryStorageFeature() {
 
 void TemporaryStorageFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--temp.intermediate-results-path",
-                     "path for ephemeral, intermediate results",
-                     new StringParameter(&_basePath));
+  options
+      ->addOption("--temp.intermediate-results-path",
+                  "path for ephemeral, intermediate results (empty = not used)",
+                  new StringParameter(&_basePath),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31000);
 
-  options->addOption("--temp.intermediate-results-capacity",
-                     "maximum capacity (in bytes) to use for ephemeral, "
-                     "intermediate results (0 = unlimited)",
-                     new UInt64Parameter(&_maxCapacity));
+  options
+      ->addOption("--temp.intermediate-results-capacity",
+                  "maximum capacity (in bytes) to use for ephemeral, "
+                  "intermediate results (0 = unlimited)",
+                  new UInt64Parameter(&_maxCapacity),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31000);
 
 #ifdef USE_ENTERPRISE
   options
@@ -96,7 +104,8 @@ void TemporaryStorageFeature::collectOptions(
                   "encrypt ephemeral, intermediate results on disk",
                   new BooleanParameter(&_useEncryption),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Enterprise))
+                      arangodb::options::Flags::Enterprise,
+                      arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 
   options
@@ -108,7 +117,8 @@ void TemporaryStorageFeature::collectOptions(
           "hardware-accelarated encryption too.",
           new BooleanParameter(&_allowHWAcceleration),
           arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Enterprise))
+              arangodb::options::Flags::Enterprise,
+              arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 #endif
 }
