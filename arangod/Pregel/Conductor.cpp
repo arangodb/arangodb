@@ -47,6 +47,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -134,6 +136,8 @@ Conductor::Conductor(
   _ttl = std::chrono::seconds(
       VelocyPackHelper::getNumericValue(config, "ttl", ttl));
 
+  _feature.metrics()->pregelConductorsNumber->fetch_add(1);
+
   LOG_PREGEL("00f5f", INFO)
       << "Starting " << _algorithm->name() << " in database '" << vocbase.name()
       << "', ttl: " << _ttl.count() << "s"
@@ -152,6 +156,7 @@ Conductor::~Conductor() {
       // must not throw exception from here
     }
   }
+  _feature.metrics()->pregelConductorsNumber->fetch_sub(1);
 }
 
 void Conductor::start() {
@@ -161,11 +166,13 @@ void Conductor::start() {
 
   _globalSuperstep = 0;
   updateState(ExecutionState::RUNNING);
+  _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
+    _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
     LOG_PREGEL("30171", ERR) << "Not all DBServers started the execution";
   }
 }
@@ -259,8 +266,10 @@ bool Conductor::_startGlobalStep() {
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     // tells workers to store / discard results
     _timing.computation.finish();
+    _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
     if (_storeResults) {
       updateState(ExecutionState::STORING);
+      _feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
       _timing.storing.start();
       _finalizeWorkers();
     } else {  // just stop the timer
@@ -364,6 +373,9 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
 
   _timing.loading.finish();
   _timing.computation.start();
+
+  _feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
+  _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
   _startGlobalStep();
 }
 
@@ -848,6 +860,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
                               : ExecutionState::DONE);
     didStore = true;
     _timing.storing.finish();
+    _feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
   }
   _timing.total.finish();
 

@@ -68,6 +68,17 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   //  }
 
   std::lock_guard<std::mutex> guard(_mutex);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool old = false;
+  TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
+  TRI_ASSERT(_isBlockInUse);
+
+  auto blockInUseGuard = scopeGuard([&]() noexcept {
+    bool old = true;
+    TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
+    TRI_ASSERT(!_isBlockInUse);
+  });
+#endif
 
   TRI_ASSERT(_dependencies.size() == 1);
 
@@ -96,24 +107,58 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
           auto [state, skip, block] = _dependencies[0]->execute(stack);
           if (isAsync) {
             guard.lock();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+            bool old = false;
+            TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
+            TRI_ASSERT(_isBlockInUse);
+#endif
           }
           _returnState = state;
           _returnSkip = std::move(skip);
           _returnBlock = std::move(block);
 
           _internalState = AsyncState::GotResult;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          if (isAsync) {
+            bool old = true;
+            TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
+            TRI_ASSERT(!_isBlockInUse);
+          }
+#endif
         } catch (...) {
           if (isAsync) {
             guard.lock();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+            bool old = false;
+            TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
+            TRI_ASSERT(_isBlockInUse);
+#endif
           }
           _returnException = std::current_exception();
           _internalState = AsyncState::GotException;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          if (isAsync) {
+            bool old = true;
+            TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
+            TRI_ASSERT(!_isBlockInUse);
+          }
+#endif
         }
       });
 
   if (!queued) {
-    _internalState = AsyncState::Empty;
-    return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
+    if (_internalState == AsyncState::GotException) {
+      TRI_ASSERT(_returnException != nullptr);
+      std::rethrow_exception(_returnException);
+    } else {
+      // The callback can only end up with GotResult or GetException
+      TRI_ASSERT(_internalState == AsyncState::GotResult);
+      _internalState = AsyncState::Empty;
+      return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
+    }
   }
   return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
 }

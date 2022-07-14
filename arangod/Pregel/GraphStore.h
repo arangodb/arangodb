@@ -73,6 +73,23 @@ class GraphStore final {
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
+  auto allocatedSize() -> size_t {
+    auto total = size_t{0};
+
+    for (auto&& vb : _vertices) {
+      total += vb->capacity();
+    }
+    for (auto&& vb : _vertexKeys) {
+      total += vb->capacity();
+    }
+    for (auto&& vb : _edges) {
+      total += vb->capacity();
+    }
+    for (auto&& vb : _edgeKeys) {
+      total += vb->capacity();
+    }
+    return total;
+  }
 
   Status status() const { return _observables.observe(); }
 
