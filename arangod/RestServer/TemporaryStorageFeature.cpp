@@ -24,6 +24,7 @@
 #include "TemporaryStorageFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/QueryOptions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -107,6 +108,9 @@ TemporaryStorageFeature::TemporaryStorageFeature(Server& server)
     : ArangodFeature{server, *this},
       _useEncryption(false),
       _allowHWAcceleration(true),
+      _maxDiskCapacity(0),
+      _spillOverThresholdNumRows(5000000),
+      _spillOverThresholdMemoryUsage(128 * 1024 * 1024),
       _cleanedUpDirectory(false) {
   startsAfter<EngineSelectorFeature>();
   startsAfter<StorageEngineFeature>();
@@ -126,20 +130,41 @@ TemporaryStorageFeature::~TemporaryStorageFeature() {
 void TemporaryStorageFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options
-      ->addOption("--temp.intermediate-results-path",
-                  "path for ephemeral, intermediate results (empty = not used)",
-                  new StringParameter(&_basePath),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Experimental))
+      ->addOption(
+          "--temp.intermediate-results-path",
+          "path for ephemeral, intermediate results on disk (empty = not used)",
+          new StringParameter(&_basePath),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 
   options
       ->addOption("--temp.intermediate-results-capacity",
                   "maximum capacity (in bytes) to use for ephemeral, "
-                  "intermediate results (0 = unlimited)",
-                  new UInt64Parameter(&_maxCapacity),
+                  "intermediate results on disk (0 = unlimited)",
+                  new UInt64Parameter(&_maxDiskCapacity),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption(
+          "--temp.intermediate-results-spillover-threshold-num-rows",
+          "number of result rows after which a spillover to disk will "
+          "happen for intermediate results (threshold per query executor)",
+          new UInt64Parameter(&_spillOverThresholdNumRows),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption(
+          "--temp.intermediate-results-spillover-threshold-memory-usage",
+          "memory usage threshold after which a spillover to disk will "
+          "happen for intermediate results (threshold per query executor)",
+          new UInt64Parameter(&_spillOverThresholdMemoryUsage),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 
 #ifdef USE_ENTERPRISE
@@ -196,6 +221,11 @@ void TemporaryStorageFeature::validateOptions(
   }
 
   _basePath = ourPath;
+  // configure defaults for query options
+  aql::QueryOptions::defaultSpillOverThresholdNumRows =
+      _spillOverThresholdNumRows;
+  aql::QueryOptions::defaultSpillOverThresholdMemoryUsage =
+      _spillOverThresholdMemoryUsage;
 }
 
 void TemporaryStorageFeature::prepare() {
@@ -237,7 +267,7 @@ void TemporaryStorageFeature::start() {
     return;
   }
 
-  _usageTracker = std::make_unique<StorageUsageTracker>(_maxCapacity);
+  _usageTracker = std::make_unique<StorageUsageTracker>(_maxDiskCapacity);
 
   auto backend = std::make_unique<RocksDBTempStorage>(
       _basePath, *_usageTracker, _useEncryption, _allowHWAcceleration);

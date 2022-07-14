@@ -101,7 +101,10 @@ class TemporaryStorageFeature : public ArangodFeature {
   std::string _basePath;
   bool _useEncryption;
   bool _allowHWAcceleration;
-  std::uint64_t _maxCapacity;
+
+  std::uint64_t _maxDiskCapacity;
+  size_t _spillOverThresholdNumRows;
+  size_t _spillOverThresholdMemoryUsage;
 
   // populated only if !_path.empty()
   std::unique_ptr<RocksDBTempStorage> _backend;
