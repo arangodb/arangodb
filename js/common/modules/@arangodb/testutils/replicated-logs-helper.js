@@ -102,10 +102,10 @@ const getServerHealth = function (serverId) {
 };
 
 const dbservers = (function () {
-  return helper.getDBServers().map((x) => x.serverId);
+  return helper.getDBServers().map((x) => x.id);
 }());
 const coordinators = (function () {
-  return helper.getCoordinators();
+  return helper.getCoordinators().map((x) => x.id);
 }());
 
 
@@ -155,13 +155,13 @@ const readReplicatedLogAgency = function (database, logId) {
 };
 
 const replicatedLogSetPlanParticipantsConfig = function (database, logId, participantsConfig) {
-  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`, participantsConfig);
-  global.ArangoAgency.increaseVersion(`Plan/Version`);
+  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`, participantsConfig);
+  helper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetTargetParticipantsConfig = function (database, logId, participantsConfig) {
-  global.ArangoAgency.set(`Target/ReplicatedLogs/${database}/${logId}/participants`, participantsConfig);
-  global.ArangoAgency.increaseVersion(`Target/Version`);
+  helper.agency.set(`Target/ReplicatedLogs/${database}/${logId}/participants`, participantsConfig);
+  helper.agency.increaseVersion(`Target/Version`);
 };
 
 const replicatedLogUpdatePlanParticipantsConfigParticipants = function (database, logId, participants) {
@@ -198,28 +198,28 @@ const replicatedLogSetPlanTerm = function (database, logId, term) {
 };
 
 const replicatedLogSetPlanTermConfig = function (database, logId, term) {
-  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
-  global.ArangoAgency.increaseVersion(`Plan/Version`);
+  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
+  helper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetPlan = function (database, logId, spec) {
-  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
-  global.ArangoAgency.increaseVersion(`Plan/Version`);
+  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
+  helper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetTarget = function (database, logId, spec) {
-  global.ArangoAgency.set(`Target/ReplicatedLogs/${database}/${logId}`, spec);
-  global.ArangoAgency.increaseVersion(`Target/Version`);
+  helper.agency.set(`Target/ReplicatedLogs/${database}/${logId}`, spec);
+  helper.agency.increaseVersion(`Target/Version`);
 };
 
 const replicatedLogDeletePlan = function (database, logId) {
-  global.ArangoAgency.remove(`Plan/ReplicatedLogs/${database}/${logId}`);
-  global.ArangoAgency.increaseVersion(`Plan/Version`);
+  helper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}`);
+  helper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogDeleteTarget = function (database, logId) {
-  global.ArangoAgency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
-  global.ArangoAgency.increaseVersion(`Target/Version`);
+  helper.agency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
+  helper.agency.increaseVersion(`Target/Version`);
 };
 
 const waitForReplicatedLogAvailable = function (id) {
@@ -282,15 +282,15 @@ const stopServerWaitFailed = function (serverId) {
 };
 
 const nextUniqueLogId = function () {
-  return parseInt(global.ArangoClusterInfo.uniqid());
+  return parseInt(helper.uniqid());
 };
 
 const registerAgencyTestBegin = function (testName) {
-  global.ArangoAgency.set(`Testing/${testName}/Begin`, (new Date()).toISOString());
+  helper.agency.set(`Testing/${testName}/Begin`, (new Date()).toISOString());
 };
 
 const registerAgencyTestEnd = function (testName) {
-  global.ArangoAgency.set(`Testing/${testName}/End`, (new Date()).toISOString());
+  helper.agency.set(`Testing/${testName}/End`, (new Date()).toISOString());
 };
 
 const getServerUrl = function (serverId) {

@@ -482,19 +482,20 @@ const callAgency = function (operation, body) {
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
   assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
-  return arangosh.checkRequestResult(res.json)[0];
+  return arangosh.checkRequestResult(res.json);
 };
 
 // client-side API compatible to global.ArangoAgency
 exports.agency = {
   get: function (key) {
-    return callAgency('read', [[
+    const res = callAgency('read', [[
       `/arango/${key}`,
     ]]);
+    return res[0];
   },
 
   set: function (path, value) {
-    return callAgency('write', [[{
+    callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'set',
         'new': value,
@@ -502,8 +503,16 @@ exports.agency = {
     }]]);
   },
 
+  remove: function (path) {
+    callAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'delete'
+      },
+    }]]);
+  },
+
   increaseVersion: function (path) {
-    return callAgency('write', [[{
+    callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'increment',
       },
@@ -511,4 +520,8 @@ exports.agency = {
   },
 
   // TODO implement the rest...
+};
+
+exports.uniqid = function  () {
+  return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
 };

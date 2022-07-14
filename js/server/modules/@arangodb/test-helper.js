@@ -186,4 +186,5 @@ exports.waitForShardsInSync = function(cn, timeout) {
 exports.getCoordinators = global.ArangoClusterInfo.getCoordinators;
 exports.getDBServers = global.ArangoClusterInfo.getDBServers;
 
+exports.uniqid = global.ArangoClusterInfo.uniqid;
 exports.agency = global.ArangoAgency;
