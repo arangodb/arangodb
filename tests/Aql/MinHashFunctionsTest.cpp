@@ -154,6 +154,21 @@ void assertMinHashThrow(char const* args) {
 
   assertFuncThrow(params, f);
 }
+
+void assertMinHashMatchThrow(char const* args) {
+  arangodb::aql::Function f("MINHASH_MATCH", &functions::MinHash);
+
+  auto params = buildArgs(args);
+
+  auto cleanup = arangodb::scopeGuard([&params]() noexcept {
+    for (auto& p : params) {
+      p.destroy();
+    }
+  });
+
+  assertFuncThrow(params, f);
+}
+
 #endif
 
 }  // namespace
@@ -167,5 +182,7 @@ TEST(MinHashFunctionTest, test) {
   assertMinHashThrow(R"([ ["foo", "bar", "baz" ], 5 ] ])");
 }
 TEST(MinMatchHashFunctionTest, test) {
-// FIXME(gnusi): implement
+  assertMinHashMatchThrow(
+      R"([ ["foo", "bar", "baz" ], ["foo", "bar", "baz" ], 0.75, "analyzer" ] ])");
+}
 #endif
