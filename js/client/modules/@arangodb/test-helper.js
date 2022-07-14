@@ -485,6 +485,7 @@ const callAgency = function (operation, body) {
   return arangosh.checkRequestResult(res.json)[0];
 };
 
+// client-side API compatible to global.ArangoAgency
 exports.agency = {
   get: function (key) {
     return callAgency('read', [[
