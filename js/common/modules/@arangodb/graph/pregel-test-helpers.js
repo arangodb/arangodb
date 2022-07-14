@@ -125,6 +125,30 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
     return runPregelInstance(algName, graphName, parameters, query);
 };
 
+/**
+ *
+ * @param vertices
+ * @param edges
+ * @param source
+ * @param expected a Map mapping vertex _keys to expected distances from source
+ */
+const testSSSPOnGraph = function(vertices, edges, source, expected) {
+    db[vColl].save(vertices);
+    db[eColl].save(edges);
+    const query = `
+                  FOR v in ${vColl}
+                  RETURN {"key": v._key, "result": v.distance}  
+              `;
+    let parameters = {maxGSS:100, source: source, resultField: "distance"};
+
+    const result = runPregelInstance("sssp", graphName, parameters, query);
+
+    const graph = new Graph(result, edges);
+
+
+};
+
+
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
@@ -295,21 +319,100 @@ class Graph {
      *      and for each value of "_from" and "_to" there should be a vertex whose key is this value.
      */
     constructor(vertices, edges) {
+        const getKey = function (v) {
+            return v.substr(v.indexOf('/') + 1);
+        };
+
         this.vertices = new Map();
         for (const v of vertices) {
-            this.vertices[v.key] = new Vertex(v.key, v.result);
+            this.vertices.set(v._key, new Vertex(v._key, v.label));
         }
 
         this.edges = new Set();
         for (const e of edges) {
-            this.edges.add(e);
-            e._from = e._from.substr(e._from.indexOf('/') + 1);
-            e._to = e._to.substr(e._to.indexOf('/') + 1);
+            const from = getKey(e._from);
+            const to = getKey(e._to);
+            assertTrue(this.vertices.has(from),
+                `vertices do not contain the _from of ${JSON.stringify(e)} (which is ${from})`);
+            assertTrue(this.vertices.has(`${to}`),
+                `vertices do not contain the _to of ${JSON.stringify(e)} (which is ${to})`);
 
-            this.vertices[e._from].outEdges.push(e);
-            this.vertices[e._from].outNeighbors.push(e._to);
-            this.vertices[e._to].inEdges.push(e);
-            this.vertices[e._to].inNeighbors.push(e._from);
+            this.edges.add(e);
+
+            this.vertices.get(from).outEdges.push(e);
+            this.vertices.get(from).outNeighbors.push(to);
+            this.vertices.get(to).inEdges.push(e);
+            this.vertices.get(to).inNeighbors.push(from);
+        }
+    }
+
+    vertex(key) {
+        return this.vertices.get(key);
+    }
+
+    /**
+     * Performs BFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
+     * when the vertex is popped from the queue.
+     * @param source The key of the vertex to start the search from
+     * @param cbOnFindVertex Either undefiend or the callback function to run on a vertex
+     *              that is being pushed on the queue. The function can have one or two arguments:
+     *              the vertex being pushed and its parent in the search. The second argument can be undefined.
+     * @param cbOnPopVertex Either undefined or the callback function to run on a vertex
+     *              that is being popped from the queue. The function must have one argument: the vertex being popped.
+     */
+    bfs (source, cbOnFindVertex, cbOnPopVertex) {
+        assertTrue(this.vertices.has(source), `bfs: the given source "${source}" is not a vertex`);
+        let visited = new Set();
+        visited.add(source);
+        if (cbOnFindVertex !== undefined) {
+            cbOnFindVertex(this.vertex(source));
+        }
+        let queue = [source];
+        while (queue.length !== 0) {
+            const vKey = queue.shift();
+            const v = this.vertex(vKey);
+            if (cbOnPopVertex !== undefined) {
+                cbOnPopVertex(v);
+            }
+            for (const wKey of v.outNeighbors) {
+                if (! visited.has(wKey)) {
+                    visited.add(wKey);
+                    if (cbOnFindVertex !== undefined) {
+                        cbOnFindVertex(this.vertex(wKey), v);
+                    }
+                    queue.push(wKey);
+                }
+            }
+        }
+    }
+
+    /**
+     * Performs DFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
+     * when the vertex is popped from the queue.
+     */
+    dfs (source, cbOnFindVertex, cbOnPopVertex) {
+        assertTrue(this.vertices.has(source), `dfs: the given source "${source}" is not a vertex`);
+        let visited = new Set();
+        visited.add(source);
+        let stack = [source];
+        if (cbOnFindVertex !== undefined) {
+            cbOnFindVertex(this.vertex(source));
+        }
+        while (stack.length !== 0) {
+            const vKey = stack.pop();
+            const v = this.vertex(vKey);
+            if (cbOnPopVertex !== undefined) {
+                cbOnPopVertex(v);
+            }
+            for (const wKey of v.outNeighbors) {
+                if (! visited.has(wKey)) {
+                    visited.add(wKey);
+                    if (cbOnFindVertex !== undefined) {
+                        cbOnFindVertex(this.vertex(wKey), v);
+                    }
+                    stack.push(wKey);
+                }
+            }
         }
     }
 }
@@ -1186,10 +1289,258 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
     };
 }
 
+function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
+
+    const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+    // const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
+
+    return function () {
+        'use strict';
+
+        // const unionGraph = graphGeneration.unionGraph;
+
+        // only for debugging
+        const printVertexKey = function (vertex) {
+            console.warn(`printVertexKey: ${vertex.key}`);
+        };
+
+        const writeDistance = function (vertex, parent) {
+            if (parent === undefined) {
+                vertex.result = 0;
+            } else {
+                vertex.result = parent.result + 1;
+            }
+            console.warn(`${vertex.key}:${vertex.result}`);
+        };
+
+
+        return {
+
+            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+
+            tearDown: makeTearDown(isSmart),
+
+            testGridGraph: function () {
+
+                const numberLayers = 3;
+                const thickness = 3;
+                for (const kind of ["bidirected"/*, "undirected", "zigzag"*/]) {
+                    const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v"))
+                        .makeCrystal(numberLayers, thickness, kind);
+                    let graph = new Graph(vertices, edges);
+                    graph.bfs(`v_0`, writeDistance, undefined);
+                }
+
+            },
+
+
+
+        };
+    };
+}
+
+function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
+
+    const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+    const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
+
+    return function () {
+        'use strict';
+
+        const unionGraph = graphGeneration.unionGraph;
+
+        /**
+         * Set initial probability for vertices given in seeds as given there
+         * and set the rest probability for other vertices equally.
+         * The property for the initial probability is "input".
+         * @param vertices array of vertices
+         * @param seeds a Map mapping vertex names to probabilities
+         */
+        const setSeeds = function (vertices, seeds) {
+            let verticesCopy = new Set(vertices);
+
+            let totalProbability = 0;
+            for (const vertexName of seeds) {
+                if (! verticesCopy.contains(vertexName)) {
+                    console.error(`Error: seeds should not contain probabilities` +
+                        ` for vertices that do not appear in vertices: ${vertexName}`);
+                    assertTrue(false);
+                }
+                if (! seeds[vertexName].isNumber) {
+                    console.error(`Error: the value ${seeds[vertexName]} of ${vertexName} is not a number.`);
+                    assertTrue(false);
+                }
+                totalProbability += seeds[vertexName];
+                if (totalProbability > 1) {
+                    console.error(`Error: totalProbability should be at most 1, now it is ${totalProbability}`);
+                    assertTrue(false);
+                }
+            }
+            if (vertices.length === seeds.length && totalProbability < 0.999 /* === 1.0 modulo precision*/) {
+                console.error(`Error: totalProbability should be at least 1, now it is ${totalProbability} and` +
+                    " there are no vertices any more.");
+                assertTrue(false);
+            }
+            const restProbPerRestVertex = (1 - totalProbability) / (vertices.length - seeds.length
+                /*!= 0 by the previous check*/);
+            for (let i = 0; i < vertices.length; ++i) {
+                if (vertices[i]._key in seeds) {
+                    vertices[i].input = seeds[vertices[i]._key];
+                } else {
+                    vertices[i].input = restProbPerRestVertex;
+                }
+            }
+        };
+
+        return {
+
+            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+
+            tearDown: makeTearDown(isSmart),
+
+            testSPROneDirectedCycle: function () {
+                const length = 3;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeDirectedCycle(length);
+                let seeds = new Map();
+                seeds[vertices[0]] = 0.3;
+                seeds[vertices[1]] = 0.4;
+                setSeeds(vertices, seeds);
+                testPageRankOnGraph(vertices, edges);
+                seeds.clear();
+                seeds[vertices[0]] = 0.01;
+                seeds[vertices[1]] = 0.01;
+                setSeeds(vertices, seeds);
+                testPageRankOnGraph(vertices, edges);
+            },
+
+            testSPRTwoDisjointDirectedCycles: function () {
+                const length = 3;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
+                const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                let seeds = new Map();
+                seeds[vertices[0]] = 0.1; // "v0_0"
+                seeds[vertices[length]] = 0.2; // "v1_0"
+                testPageRankOnGraph(vertices, edges);
+            },
+
+            testSPRTwoDirectedCyclesConnectedByDirectedEdge: function () {
+                const size = 5;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(size);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(size);
+                let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                let seeds = new Map();
+                // share probability 0.4 equally among the first cycle
+                for (let i = 0; i < size; ++i) {
+                    seeds[vertices[i]] = 0.4 / size;
+                }
+                // share probability 0.3 equally among the second cycle
+                for (let i = size; i < size * 2; ++i) {
+                    seeds[vertices[i]] = 0.3 / size;
+                }
+                setSeeds(vertices, seeds);
+                edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
+                testPageRankOnGraph(vertices, edges);
+            },
+
+            testSPRTwo4CliquesConnectedByDirectedEdge: function () {
+                const size = 4;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeBidirectedClique(size);
+                let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                let seeds = new Map();
+                // share probability 0.4 equally among the first clique
+                for (let i = 0; i < size; ++i) {
+                    seeds[vertices[i]] = 0.4 / size;
+                }
+                // share probability 0.3 equally among the second clique
+                for (let i = size; i < size * 2; ++i) {
+                    seeds[vertices[i]] = 0.3 / size;
+                }
+                setSeeds(vertices, seeds);
+                edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
+                testPageRankOnGraph(vertices, edges);
+            },
+            testSPRThree4_5_6CliquesConnectedByUndirectedTriangle: function () {
+                const sizes = [4, 5, 6];
+                let subgraphs = [];
+                for (let i = 0; i < 3; ++i) {
+                    subgraphs.push(graphGenerator(verticesEdgesGenerator(vColl, `v${i}`)).makeBidirectedClique(sizes[i]));
+                }
+                let {vertices, edges} = unionGraph(subgraphs);
+                let seeds = new Map();
+                // share probability 0.8 equally among the first clique
+                for (let i = 0; i < sizes[0]; ++i) {
+                    seeds[vertices[i]] = 0.4 / sizes[0];
+                }
+                // share probability 0.2 equally among the second clique
+                for (let i = sizes[0]; i < sizes[1]; ++i) {
+                    seeds[vertices[i]] = 0.3 / sizes[1];
+                }
+                // the third clique has no probability
+                setSeeds(vertices, seeds);
+
+                for (let i = 0; i < 3; ++i){
+                    for (let j = i+1; j < 3; ++j){
+                        edges.push(makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`));
+                        edges.push(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
+                    }
+                }
+                testPageRankOnGraph(vertices, edges);
+            },
+
+            testSPR10Star: function () {
+                const numberLeaves = 10;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                let seeds = new Map();
+                // put all probability on the leaves
+                for (let i = 1; i < numberLeaves; ++i) {
+                    seeds[vertices[i]] = 1 / numberLeaves;
+                }
+                setSeeds(vertices, seeds);
+                testPageRankOnGraph(vertices, edges);
+
+                seeds.clear();
+                // put all probability on the center
+                seeds[vertices[0]] = 1;
+                setSeeds(vertices, seeds);
+                testPageRankOnGraph(vertices, edges);
+            },
+
+            testSPR10StarMultipleEdges: function () {
+                const numberLeaves = 10;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                // insert each edges twice
+                let edges2 = [];
+                for (const e of edges) {
+                    edges2.push(e);
+                    edges2.push(e);
+                }
+                let seeds = new Map();
+                // put all probability on the leaves
+                for (let i = 1; i < numberLeaves; ++i) {
+                    seeds[vertices[i]] = 1 / numberLeaves;
+                }
+                setSeeds(vertices, seeds);
+                testPageRankOnGraph(vertices, edges2);
+
+                seeds.clear();
+                // put all probability on the center
+                seeds[vertices[0]] = 1;
+                setSeeds(vertices, seeds);
+                testPageRankOnGraph(vertices, edges2);
+            },
+
+        };
+    };
+}
+
 
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
 exports.makeSCCTestSuite = makeSCCTestSuite;
 exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;
 exports.makePagerankTestSuite = makePagerankTestSuite;
+exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
+exports.makeSCCTestSuite = makeSSSPTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;

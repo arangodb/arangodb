@@ -253,7 +253,6 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 }
                 break;
         }
-        // console.warn(edges);
         return {vertices, edges};
     };
 
@@ -270,6 +269,12 @@ const graphGenerator = function (verticesEdgesGenerator) {
      */
 
     const makeGrid = function (numberLayers, thickness, kind) {
+        assertTrue(numberLayers > 1,
+            `makeGrid: numberLayers should be at least 2, it is ${numberLayers}`);
+        assertTrue(thickness > 1,
+            `makeGrid: thickness should be at least 2, it is ${thickness}`);
+        assertTrue(kind === "directed" || kind === "zigzag" || kind === "bidirected",
+            `makeGrid: kind should one of {"directed", "zigzag", "bidirected"}, it is ${kind}`);
         let vertices = makeVertices(numberLayers * thickness);
         let edges = [];
         for (let layer = 0; layer < numberLayers; ++layer) {
@@ -288,7 +293,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
                             edges.push(makeEdge(t, s));
                         }
                         break;
-                    case "undirected":
+                    case "bidirected":
                         edges.push(makeEdge(s, t));
                         edges.push(makeEdge(t, s));
                         break;
@@ -325,7 +330,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
      * @param thickness the number of vertices in each layer
      * @param kind "directed", "zigzag" or "bidirected"
      */
-    const makeCristall = function (numberLayers, thickness, kind) {
+    const makeCrystal = function (numberLayers, thickness, kind) {
         let {vertices, edges} = makeGrid(numberLayers, thickness, kind);
         const source = vertices.length;
         const target = vertices.length + 1;
@@ -333,10 +338,11 @@ const graphGenerator = function (verticesEdgesGenerator) {
         vertices.push(makeVertex(target));
         for (let i = 0; i < thickness; ++i) {
             edges.push(makeEdge(source, i));
-            edges.push(makeEdge(numberLayers * (thickness - 1) + i), target);
+            edges.push(makeEdge(numberLayers * (thickness - 1) + i, target));
         }
         return {vertices, edges};
     };
+
 
     return {
         makeVertices,
@@ -350,7 +356,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
         makePath,
         makeStar,
         makeGrid,
-        makeCristall
+        makeCrystal
     };
 };
 
@@ -380,7 +386,25 @@ const unionGraph = function(subgraphs) {
     return {vertices, edges};
 };
 
+/**
+ * Prints the topology of a graph (for manual testing of generated graphs).
+ * @param vertices
+ * @param edges
+ */
+const printTopology = function (vertices, edges) {
+    console.warn("VERTICES:");
+    for (const v of vertices) {
+        console.warn(`    ${v._key}`);
+    }
+    console.warn("EDGES:");
+    for (const e of edges) {
+        console.warn(`    ${e._from.substr(e._from.indexOf('/') + 1)} ${e._to.substr(e._to.indexOf('/') + 1)}`);
+    }
+};
+
 exports.communityGenerator = communityGenerator;
 exports.graphGenerator = graphGenerator;
 exports.makeEdgeBetweenVertices = makeEdgeBetweenVertices;
+exports.unionGraph = unionGraph;
+exports.printTopology = printTopology;
 exports.unionGraph = unionGraph;
