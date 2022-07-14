@@ -55,6 +55,7 @@
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -1233,8 +1234,9 @@ Future<OperationResult> transaction::Methods::insertLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  auto& transactionCollection = *trxCollection(cid);
   std::shared_ptr<LogicalCollection> const& collection =
-      trxCollection(cid)->collection();
+      transactionCollection.collection();
 
   ReplicationType replicationType = ReplicationType::NONE;
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1493,7 +1495,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options,
+      return replicateOperations(transactionCollection, followers, options,
                                  *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_INSERT)
           .thenValue([options, errs = std::move(errorCounter),
@@ -1647,8 +1649,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     OperationOptions& options, bool isUpdate) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  auto& transactionCollection = *trxCollection(cid);
   std::shared_ptr<LogicalCollection> const& collection =
-      trxCollection(cid)->collection();
+      transactionCollection.collection();
   TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::WRITE));
 
   // this call will populate replicationType and followers
@@ -1835,7 +1838,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options,
+      return replicateOperations(transactionCollection, followers, options,
                                  *replicationData,
                                  isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
                                           : TRI_VOC_DOCUMENT_OPERATION_REPLACE)
@@ -2008,8 +2011,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  auto& transactionCollection = *trxCollection(cid);
   std::shared_ptr<LogicalCollection> const& collection =
-      trxCollection(cid)->collection();
+      transactionCollection.collection();
   TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::WRITE));
 
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2165,7 +2169,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options,
+      return replicateOperations(transactionCollection, followers, options,
                                  *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_REMOVE)
           .thenValue([options, errs = std::move(errorCounter),
@@ -2310,7 +2314,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
     std::string const& collectionName, OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto const& collection = trxCollection(cid)->collection();
+  auto& tc = *trxCollection(cid);
+  auto const& collection = tc.collection();
 
   // this call will populate replicationType and followers
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2333,7 +2338,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
   auto replicationVersion = collection->replicationVersion();
   if (replicationType == ReplicationType::LEADER &&
       replicationVersion == replication::Version::TWO) {
-    auto leaderState = collection->waitForDocumentStateLeader();
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
+    auto leaderState = rtc.leaderState();
     auto body = VPackBuilder();
     {
       VPackObjectBuilder ob(&body);
@@ -2801,10 +2807,11 @@ Result transaction::Methods::resolveId(
 // Unified replication of operations. May be inserts (with or without
 // overwrite), removes, or modifies (updates/replaces).
 Future<Result> Methods::replicateOperations(
-    std::shared_ptr<LogicalCollection> collection,
+    TransactionCollection& transactionCollection,
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, velocypack::Builder const& replicationData,
     TRI_voc_document_operation_e operation) {
+  auto const& collection = transactionCollection.collection();
   TRI_ASSERT(followerList != nullptr);
 
   // It is normal to have an empty followerList when using replication2
@@ -2817,7 +2824,9 @@ Future<Result> Methods::replicateOperations(
 
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
-    auto leaderState = collection->waitForDocumentStateLeader();
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
+        transactionCollection);
+    auto leaderState = rtc.leaderState();
     leaderState->replicateOperation(
         replicationData.sharedSlice(),
         replication2::replicated_state::document::fromDocumentOperation(

@@ -570,7 +570,7 @@ class Methods {
   bool _mainTransaction;
 
   Future<Result> replicateOperations(
-      std::shared_ptr<LogicalCollection> collection,
+      TransactionCollection& collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options,
       velocypack::Builder const& replicationData,
