@@ -25,6 +25,11 @@
 
 #include "fakeit.hpp"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
@@ -33,11 +38,6 @@
 #include "IResearch/common.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -85,6 +85,18 @@ std::vector<AqlValue> buildArgs(char const* args) {
   return params;
 }
 
+AqlValue evaluateFunc(char const* args, arangodb::aql::Function const& f) {
+  auto params = buildArgs(args);
+
+  auto cleanup = arangodb::scopeGuard([&params]() noexcept {
+    for (auto& p : params) {
+      p.destroy();
+    }
+  });
+
+  return evaluateFunc(params, f);
+}
+
 #ifndef USE_ENTERPRISE
 
 void assertFuncThrow(std::span<const AqlValue> args,
@@ -114,8 +126,9 @@ void assertFuncThrow(std::span<const AqlValue> args,
                arangodb::basics::Exception);
 }
 
-void assertMinHashErrorThrow(char const* args) {
-  arangodb::aql::Function f("MINHASH_ERROR", &functions::MinHashError);
+void assertFuncThrow(char const* args, arangodb::aql::Function const& f) {
+  ASSERT_NE(nullptr, args);
+
   auto params = buildArgs(args);
 
   auto cleanup = arangodb::scopeGuard([&params]() noexcept {
@@ -125,48 +138,26 @@ void assertMinHashErrorThrow(char const* args) {
   });
 
   assertFuncThrow(params, f);
+}
+
+void assertMinHashErrorThrow(char const* args) {
+  arangodb::aql::Function f("MINHASH_ERROR", &functions::MinHashError);
+  assertFuncThrow(args, f);
 }
 
 void assertMinHashCountThrow(char const* args) {
   arangodb::aql::Function f("MINHASH_COUNT", &functions::MinHashCount);
-
-  auto params = buildArgs(args);
-
-  auto cleanup = arangodb::scopeGuard([&params]() noexcept {
-    for (auto& p : params) {
-      p.destroy();
-    }
-  });
-
-  assertFuncThrow(params, f);
+  assertFuncThrow(args, f);
 }
 
 void assertMinHashThrow(char const* args) {
   arangodb::aql::Function f("MINHASH", &functions::MinHash);
-
-  auto params = buildArgs(args);
-
-  auto cleanup = arangodb::scopeGuard([&params]() noexcept {
-    for (auto& p : params) {
-      p.destroy();
-    }
-  });
-
-  assertFuncThrow(params, f);
+  assertFuncThrow(args, f);
 }
 
 void assertMinHashMatchThrow(char const* args) {
   arangodb::aql::Function f("MINHASH_MATCH", &functions::MinHash);
-
-  auto params = buildArgs(args);
-
-  auto cleanup = arangodb::scopeGuard([&params]() noexcept {
-    for (auto& p : params) {
-      p.destroy();
-    }
-  });
-
-  assertFuncThrow(params, f);
+  assertFuncThrow(args, f);
 }
 
 #endif
@@ -174,7 +165,7 @@ void assertMinHashMatchThrow(char const* args) {
 }  // namespace
 
 #if USE_ENTERPRISE
-#include "tests/Aql/MinHashFunctionsTest.hpp"
+#include "tests/Aql/MinHashFunctionsTestEE.hpp"
 #else
 TEST(MinHashErrorFunctionTest, test) { assertMinHashErrorThrow("[ 400 ]"); }
 TEST(MinHashCountFunctionTest, test) { assertMinHashCountThrow("[ 0.5 ]"); }
