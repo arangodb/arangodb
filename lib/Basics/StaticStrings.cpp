@@ -162,6 +162,7 @@ std::string const StaticStrings::MaxProjections("maxProjections");
 std::string const StaticStrings::ProducesResult("producesResult");
 std::string const StaticStrings::ReadOwnWrites("readOwnWrites");
 std::string const StaticStrings::UseCache("useCache");
+std::string const StaticStrings::Parallelism("parallelism");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");

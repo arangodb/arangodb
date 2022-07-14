@@ -34,6 +34,7 @@
 #include "Utils/DatabaseGuard.h"
 
 #include "Pregel/Status/ConductorStatus.h"
+#include "Pregel/Status/ExecutionStatus.h"
 
 #include <chrono>
 
@@ -42,6 +43,7 @@ namespace pregel {
 
 enum ExecutionState {
   DEFAULT = 0,  // before calling start
+  LOADING,      // load graph into memory
   RUNNING,      // during normal operation
   STORING,      // store results
   DONE,         // after everyting is done
@@ -50,7 +52,7 @@ enum ExecutionState {
   RECOVERING,   // during recovery
   FATAL_ERROR,  // execution can not continue because of errors
 };
-extern const char* ExecutionStateNames[8];
+extern const char* ExecutionStateNames[9];
 
 class PregelFeature;
 class MasterContext;
@@ -108,13 +110,10 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   /// Current number of vertices
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;
-  /// some tracking info
-  double _startTimeSecs = 0.0;
-  double _computationStartTimeSecs = 0.0;
-  double _finalizationStartTimeSecs = 0.0;
-  double _storeTimeSecs = 0.0;
-  double _endTimeSecs = 0.0;
-  double _stepStartTimeSecs = 0.0;  // start time of current gss
+
+  /// Timings
+  ExecutionTimings _timing;
+
   Scheduler::WorkHandle _workHandle;
 
   // Work in Progress: Move data incrementally into this
@@ -158,11 +157,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void startRecovery();
   void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
-
-  double totalRuntimeSecs() const {
-    return _endTimeSecs == 0.0 ? TRI_microtime() - _startTimeSecs
-                               : _endTimeSecs - _startTimeSecs;
-  }
 
   bool canBeGarbageCollected() const;
 

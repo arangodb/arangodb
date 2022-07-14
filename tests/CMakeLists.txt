@@ -135,6 +135,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NgramMatchFunctionTest.cpp
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
+  Aql/NodeWalkerTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryCursorTest.cpp
@@ -250,7 +251,9 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
+  Pregel/DurationTest.cpp
   Pregel/typedbuffer.cpp
+  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp

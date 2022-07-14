@@ -286,6 +286,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
+  Pregel/PregelMetrics.cpp
   Pregel/Recovery.cpp
   Pregel/Reports.cpp
   Pregel/Reports.h
