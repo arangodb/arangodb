@@ -80,7 +80,7 @@ const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
             );
           })}
         </Select>
-        <Tooltip placement="bottom" title={"Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes)."}>
+        <Tooltip placement="bottom" title={"Graph layouts are the algorithms arranging the node positions."}>
           <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
         </Tooltip>
       </div>

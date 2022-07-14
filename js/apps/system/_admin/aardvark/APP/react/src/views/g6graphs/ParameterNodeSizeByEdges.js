@@ -23,7 +23,7 @@ const ParameterNodeSizeByEdges = () => {
       >
         Size by connections
       </Checkbox>
-      <Tooltip placement="bottom" title={"Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored."}>
+      <Tooltip placement="bottom" title={"If enabled, nodes are sized according to the number of edges they have. This option overrides the sizing attribute."}>
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
     </div>

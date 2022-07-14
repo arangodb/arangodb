@@ -9,7 +9,7 @@ const SearchNodes = ({ nodes, graphData, data, onDeleteNode, onNodeSelect }) => 
 
   return (
     <div style={{'marginTop': '24px'}}>
-      <PlainLabel htmlFor={'searchnodes'}>Search node</PlainLabel>
+      <PlainLabel htmlFor={'searchnodes'}>Search for a node</PlainLabel>
       <div className="node-list">
         <input
           list="searchnodelist"

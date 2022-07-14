@@ -23,7 +23,7 @@ const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
         }}
         disabled={urlParameters.edgeColorByCollection}>
       </Textinput>
-      <Tooltip placement="bottom" title={"If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set."}>
+      <Tooltip placement="bottom" title={"If an attribute is given, edges will be colorized by the attribute. This setting ignores default edge color if set."}>
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
     </div>

@@ -9,7 +9,7 @@ const SearchEdges = ({ edges, graphData, onEdgeInfo, data, onDeleteEdge, onEdgeS
   
   return (
     <div style={{'marginTop': '24px', marginBottom: '20px'}}>
-      <PlainLabel htmlFor={'searchedges'}>Search edge</PlainLabel>
+      <PlainLabel htmlFor={'searchedges'}>Search for an edge</PlainLabel>
       <div className="edge-list">
         <input
           list="searchedgelist"

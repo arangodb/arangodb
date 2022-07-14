@@ -23,7 +23,7 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
       >
         Show collection name
       </Checkbox>
-      <Tooltip placement="bottom" title={"Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes)."}>
+      <Tooltip placement="bottom" title={"Adds a collection name to the node label."}>
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
     </div>

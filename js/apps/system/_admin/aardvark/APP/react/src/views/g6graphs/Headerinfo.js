@@ -71,16 +71,20 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorA
 
 const screenshotMenu = (
   <Menu className='graphReactViewContainer'>
-    <Menu.Item onClick={() => {
-      onDownloadScreenshot();
-    }} className='graphReactViewContainer'>
-      Download visible graph
-    </Menu.Item>
-    <Menu.Item onClick={() => {
-      onDownloadFullScreenshot();
-    }} className='graphReactViewContainer'>
-      Download full graph
-    </Menu.Item>
+    <Tooltip placement="left" title={"Screenshot of the visible graph"} overlayClassName='graph-border-box' >
+      <Menu.Item onClick={() => {
+        onDownloadScreenshot();
+      }} className='graphReactViewContainer'>
+        Download visible graph
+      </Menu.Item>
+    </Tooltip>
+    <Tooltip placement="left" title={"Screenshot of the full graph"} overlayClassName='graph-border-box' >
+      <Menu.Item onClick={() => {
+        onDownloadFullScreenshot();
+      }} className='graphReactViewContainer'>
+        Download full graph
+      </Menu.Item>
+    </Tooltip>
   </Menu>
 );
 
@@ -98,7 +102,7 @@ const screenshotMenu = (
               <Button key="2"><DownloadOutlined /></Button>
             </Dropdown>
 
-            <Tooltip placement="bottom" title={"Enter full screen"} overlayClassName='graph-border-box' >
+            <Tooltip placement="left" title={"Enter full screen"} overlayClassName='graph-border-box' >
               <Button key="3"
                 onClick={() => {
                   const elem = document.getElementById("graph-card");
@@ -108,7 +112,7 @@ const screenshotMenu = (
               </Button>
             </Tooltip>
 
-            <Tooltip placement="bottom" title={"Switch to the old graph viewer"} overlayClassName='graph-border-box' >
+            <Tooltip placement="left" title={"Switch to the old graph viewer"} overlayClassName='graph-border-box' >
               <Button key="4"
                 onClick={() => {
                   window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
