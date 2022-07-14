@@ -71,7 +71,6 @@
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
-  db._drop("UnitTestsImportRemoveAttribute");
 
   let dbs = {
     "maçã": true,
