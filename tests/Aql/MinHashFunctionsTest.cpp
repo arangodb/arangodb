@@ -45,32 +45,6 @@ using namespace arangodb::containers;
 
 namespace {
 
-AqlValue evaluateFunc(std::span<const AqlValue> args,
-                      arangodb::aql::Function const& f) {
-  fakeit::Mock<ExpressionContext> expressionContextMock;
-  ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
-
-  VPackOptions options;
-  fakeit::Mock<transaction::Context> trxCtxMock;
-  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
-  transaction::Context& trxCtx = trxCtxMock.get();
-
-  fakeit::Mock<transaction::Methods> trxMock;
-  fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&trxCtx);
-  fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
-  transaction::Methods& trx = trxMock.get();
-
-  fakeit::When(Method(expressionContextMock, trx))
-      .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
-
-  arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  node.setData(static_cast<void const*>(&f));
-
-  return f.implementation(&expressionContext, node, args);
-}
-
 std::vector<AqlValue> buildArgs(char const* args) {
   EXPECT_NE(nullptr, args);
   auto const argsJson = arangodb::velocypack::Parser::fromJson(args);
