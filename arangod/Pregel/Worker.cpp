@@ -660,12 +660,30 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     cb();
   };
 
+  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
+                                                this] {
+    VPackBuilder statusUpdateMsg;
+    {
+      auto ob = VPackObjectBuilder(&statusUpdateMsg);
+      statusUpdateMsg.add(Utils::senderKey,
+                          VPackValue(ServerState::instance()->getId()));
+      statusUpdateMsg.add(Utils::executionNumberKey,
+                          VPackValue(_config.executionNumber()));
+      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+      auto update = _graphStore->status();
+      serialize(statusUpdateMsg, update);
+    }
+
+    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+  };
+
   _state = WorkerState::DONE;
   if (doStore) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup));
+    _graphStore->storeResults(&_config, std::move(cleanup),
+                              statusUpdateCallback);
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
