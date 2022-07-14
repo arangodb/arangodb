@@ -137,7 +137,10 @@ RocksDBSortedRowsStorageContext::getIterator() {
   // as we are reading the data only once and then will get rid of it, there
   // is no need to populate the block cache with it
   readOptions.fill_cache = false;
-  // all data that we have wiped we can safely ignore
+  // note: RangeDeletes can safely be ignored when reading data, because
+  // all keys are prefixed with a unique context id, and every operation
+  // will only read its own keys (i.e. the keys with its own context id
+  // prefix). and all RangeDeleted must be from a different context id.
   readOptions.ignore_range_deletions = true;
   // try to use readhead
   readOptions.adaptive_readahead = true;
@@ -162,6 +165,8 @@ void RocksDBSortedRowsStorageContext::cleanup() {
     return;
   }
 
+  // first delete all files that only contain data for the range in
+  // question
   rocksdb::Status s = rocksdb::DeleteFilesInRange(_db, _cf, &_lowerBoundSlice,
                                                   &_upperBoundSlice, false);
 
@@ -172,6 +177,11 @@ void RocksDBSortedRowsStorageContext::cleanup() {
     writeOptions.sync = false;
     writeOptions.disableWAL = true;
 
+    // get rid of the remaining keys via a RangeDelete.
+    // note: RangeDeletes can safely be ignored when reading data, because
+    // all keys are prefixed with a unique context id, and every operation
+    // will only read its own keys (i.e. the keys with its own context id
+    // prefix)
     s = _db->DeleteRange(writeOptions, _cf, _lowerBoundSlice, _upperBoundSlice);
   }
 
