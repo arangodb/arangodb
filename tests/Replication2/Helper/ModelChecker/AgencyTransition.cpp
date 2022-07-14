@@ -163,7 +163,7 @@ DBServerReportTermAction::DBServerReportTermAction(ParticipantId name,
     : name(std::move(name)), term(term) {}
 
 auto DBServerCommitConfigAction::toString() const -> std::string {
-  return std::string{"Commit for"} + name + ", generation " +
+  return std::string{"Commit for "} + name + ", generation " +
          std::to_string(generation) + ", term " + to_string(term);
 }
 
@@ -269,6 +269,16 @@ void RemoveLogParticipantAction::apply(AgencyState& agency) const {
 
 auto RemoveLogParticipantAction::toString() const -> std::string {
   return fmt::format("removing participant {}", server);
+}
+
+DBServerLoadTransition::DBServerLoadTransition(
+    replication2::ParticipantId server)
+    : server(std::move(server)) {}
+
+void DBServerLoadTransition::apply(AgencyState& agency) const {}
+
+auto DBServerLoadTransition::toString() const -> std::string {
+  return fmt::format("load cache for participant {}", server);
 }
 
 SetWriteConcernAction::SetWriteConcernAction(size_t newWriteConcern)

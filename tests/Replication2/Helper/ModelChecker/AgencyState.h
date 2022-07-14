@@ -30,13 +30,15 @@
 namespace arangodb::test {
 
 struct AgencyState {
+  // version helps to reduce the amount of load operations
+  std::size_t version{0};
   std::optional<arangodb::replication2::replicated_state::agency::State>
       replicatedState{};
   std::optional<arangodb::replication2::agency::Log> replicatedLog{};
   arangodb::replication2::replicated_log::ParticipantsHealth health;
 
   // FIXME: strictly speaking this is a hack, as it does not form part of the
-  // agency's state; it is currently the simplest way to persist informatioon
+  // agency's state; it is currently the simplest way to persist information
   // for predicates to access;
   std::optional<size_t> logLeaderWriteConcern;
 
@@ -45,6 +47,7 @@ struct AgencyState {
     boost::hash_combine(seed, s.replicatedState);
     boost::hash_combine(seed, s.replicatedLog);
     boost::hash_combine(seed, s.health);
+    boost::hash_combine(seed, s.version);
     return seed;
   }
   friend auto operator==(AgencyState const& s, AgencyState const& s2) noexcept

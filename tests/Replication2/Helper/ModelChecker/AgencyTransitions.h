@@ -162,6 +162,13 @@ struct RemoveLogParticipantAction {
   replication2::ParticipantId server;
 };
 
+struct DBServerLoadTransition {
+  DBServerLoadTransition(replication2::ParticipantId server);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  replication2::ParticipantId server;
+};
+
 using AgencyTransition =
     std::variant<SupervisionStateAction, SupervisionLogAction,
                  DBServerSnapshotCompleteAction, DBServerReportTermAction,
@@ -170,7 +177,7 @@ using AgencyTransition =
                  SetLeaderInTargetAction, RemoveLogParticipantAction,
                  SetWriteConcernAction, SetSoftWriteConcernAction,
                  SetBothWriteConcernAction, ReplaceServerTargetLog,
-                 SetWaitForSyncAction>;
+                 SetWaitForSyncAction, DBServerLoadTransition>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test

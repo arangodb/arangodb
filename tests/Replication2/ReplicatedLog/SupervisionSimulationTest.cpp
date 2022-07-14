@@ -543,10 +543,10 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
       model_checker::ActorDriver{SupervisionActor{},
                                  ReplaceSpecificLogServerActor{"A", "D"},
                                  ModifySoftWCMultipleStepsActor{4, 3},
-                                 DBServerActor{"A"},
-                                 DBServerActor{"B"},
-                                 DBServerActor{"C"},
-                                 DBServerActor{"D"}};
+                                 DBServerWithCacheActor{"A"},
+                                 DBServerWithCacheActor{"B"},
+                                 DBServerWithCacheActor{"C"},
+                                 DBServerWithCacheActor{"D"}};
 
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),

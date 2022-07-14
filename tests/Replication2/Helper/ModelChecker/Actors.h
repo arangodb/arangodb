@@ -57,6 +57,7 @@ struct ActorBase {
     auto actions = reinterpret_cast<Derived const&>(*this).step(s);
     for (auto& action : actions) {
       auto newState = s;
+      newState.version += 1;
       std::visit([&](auto& action) { action.apply(newState); }, action);
       result.emplace_back(std::move(action), std::move(newState),
                           InternalState{});
@@ -117,16 +118,32 @@ struct SupervisionActor : ActorBase<SupervisionActor> {
 struct DBServerActor : ActorBase<DBServerActor> {
   explicit DBServerActor(replication2::ParticipantId name);
 
-  [[nodiscard]] auto stepReplicatedState(AgencyState const& agency) const
-      -> std::optional<AgencyTransition>;
-
-  auto stepReplicatedLogReportTerm(AgencyState const& agency) const
-      -> std::optional<AgencyTransition>;
-
-  auto stepReplicatedLogLeaderCommit(AgencyState const& agency) const
-      -> std::optional<AgencyTransition>;
-
   auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  replication2::ParticipantId name;
+};
+
+struct DBServerWithCacheActor {
+  struct InternalState {
+    std::optional<AgencyState> visibleState;
+    friend auto operator==(InternalState const&, InternalState const&)
+        -> bool = default;
+    friend auto hash_value(InternalState const& i) -> std::size_t {
+      return boost::hash_value(i.visibleState);
+    }
+    friend auto operator<<(std::ostream& os, InternalState const& i)
+        -> std::ostream& {
+      if (i.visibleState) {
+        return os << "visible state = " << *i.visibleState;
+      } else {
+        return os << "empty visible state";
+      }
+    }
+  };
+  explicit DBServerWithCacheActor(replication2::ParticipantId name);
+
+  auto expand(AgencyState const& s, InternalState const& i)
+      -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>;
 
   replication2::ParticipantId name;
 };

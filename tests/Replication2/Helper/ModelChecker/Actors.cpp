@@ -94,23 +94,10 @@ auto SupervisionActor::stepReplicatedState(AgencyState const& agency)
   return SupervisionStateAction{std::move(action)};
 }
 
-auto DBServerActor::step(AgencyState const& agency) const
-    -> std::vector<AgencyTransition> {
-  std::vector<AgencyTransition> v;
-  if (auto action = stepReplicatedState(agency); action) {
-    v.emplace_back(std::move(*action));
-  }
-  if (auto action = stepReplicatedLogReportTerm(agency); action) {
-    v.emplace_back(std::move(*action));
-  }
-  if (auto action = stepReplicatedLogLeaderCommit(agency); action) {
-    v.emplace_back(std::move(*action));
-  }
-  return v;
-}
-
-auto DBServerActor::stepReplicatedLogLeaderCommit(
-    AgencyState const& agency) const -> std::optional<AgencyTransition> {
+namespace {
+auto stepReplicatedLogLeaderCommit(AgencyState const& agency,
+                                   ParticipantId const& name)
+    -> std::optional<AgencyTransition> {
   if (!agency.replicatedLog || !agency.replicatedLog->plan) {
     return std::nullopt;
   }
@@ -163,7 +150,8 @@ auto DBServerActor::stepReplicatedLogLeaderCommit(
   return std::nullopt;
 }
 
-auto DBServerActor::stepReplicatedLogReportTerm(AgencyState const& agency) const
+auto stepReplicatedLogReportTerm(AgencyState const& agency,
+                                 ParticipantId const& name)
     -> std::optional<AgencyTransition> {
   if (!agency.replicatedLog || !agency.replicatedLog->plan) {
     return std::nullopt;
@@ -190,7 +178,7 @@ auto DBServerActor::stepReplicatedLogReportTerm(AgencyState const& agency) const
   return std::nullopt;
 }
 
-auto DBServerActor::stepReplicatedState(AgencyState const& agency) const
+auto stepReplicatedState(AgencyState const& agency, ParticipantId const& name)
     -> std::optional<AgencyTransition> {
   if (!agency.replicatedState) {
     return std::nullopt;
@@ -216,6 +204,27 @@ auto DBServerActor::stepReplicatedState(AgencyState const& agency) const
   }
 
   return std::nullopt;
+}
+
+auto dbServerStep(AgencyState const& agency, ParticipantId const& name)
+    -> std::vector<AgencyTransition> {
+  std::vector<AgencyTransition> v;
+  if (auto action = stepReplicatedState(agency, name); action) {
+    v.emplace_back(std::move(*action));
+  }
+  if (auto action = stepReplicatedLogReportTerm(agency, name); action) {
+    v.emplace_back(std::move(*action));
+  }
+  if (auto action = stepReplicatedLogLeaderCommit(agency, name); action) {
+    v.emplace_back(std::move(*action));
+  }
+  return v;
+}
+}  // namespace
+
+auto DBServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return dbServerStep(agency, name);
 }
 
 DBServerActor::DBServerActor(ParticipantId name) : name(std::move(name)) {}
@@ -432,6 +441,33 @@ auto ModifySoftWCMultipleStepsActor::expand(AgencyState const& s,
 ModifySoftWCMultipleStepsActor::ModifySoftWCMultipleStepsActor(
     size_t setInvalidWc, size_t resetValidWc)
     : setInvalidWC(setInvalidWc), resetValidWC(resetValidWc) {}
+
+auto DBServerWithCacheActor::expand(
+    const AgencyState& s, const DBServerWithCacheActor::InternalState& i)
+    -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>> {
+  auto result =
+      std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>{};
+  if (!i.visibleState || i.visibleState->version != s.version) {
+    // trigger load operation
+    result.emplace_back(DBServerLoadTransition{name}, s,
+                        InternalState{.visibleState = s});
+  }
+  if (i.visibleState) {
+    auto actions = dbServerStep(*i.visibleState, name);
+    for (auto& action : actions) {
+      auto newState = s;
+      newState.version += 1;
+      std::visit([&](auto& action) { action.apply(newState); }, action);
+      result.emplace_back(std::move(action), std::move(newState),
+                          InternalState{.visibleState = *i.visibleState});
+    }
+  }
+
+  return result;
+}
+
+DBServerWithCacheActor::DBServerWithCacheActor(replication2::ParticipantId name)
+    : name(std::move(name)) {}
 }  // namespace arangodb::test
 
 SetWaitForSyncActor::SetWaitForSyncActor(bool newWaitForSync)
