@@ -86,7 +86,8 @@ export class GraphView extends React.Component {
       layout: {
         type: 'force',
         preventOverlap: true,
-        linkDistance: 100
+        linkDistance: 150
+        //maxIteration: 500
       },
       modes: {
         default: [
@@ -130,12 +131,13 @@ export class GraphView extends React.Component {
           cursor: 'pointer',
         },
         labelCfg: {
-          position: 'right',
+          position: 'bottom',
+          offset: 6,
           style: {
             fill: '#555555',
             fontStyle: 'regular',
             fontFamily: 'Roboto',
-            fontSize: 12
+            fontSize: 12,
           },
         },
       },
@@ -698,7 +700,7 @@ export class GraphView extends React.Component {
       <Card
           title={null}
           id="graph-card"
-          bodyStyle={{ 'minHeight': '800px', 'height': '100%', 'backgroundColor': '#f2f2f2' }}
+          bodyStyle={{ 'minHeight': '400px', 'height': '100%', 'backgroundColor': '#f2f2f2' }}
         >
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>
