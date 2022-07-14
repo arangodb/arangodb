@@ -35,6 +35,7 @@
 #include <rocksdb/status.h>
 
 namespace arangodb {
+class StorageUsageTracker;
 
 /// wraps an sst file writer - non transactional
 class RocksDBSstFileMethods final : public RocksDBMethods {
@@ -43,11 +44,15 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
                                  RocksDBTransactionCollection* trxColl,
                                  RocksDBIndex& ridx,
                                  rocksdb::Options const& dbOptions,
-                                 std::string const& idxPath);
+                                 std::string const& idxPath,
+                                 StorageUsageTracker& usageTracker);
+
   explicit RocksDBSstFileMethods(rocksdb::DB* rootDB,
                                  rocksdb::ColumnFamilyHandle* cf,
                                  rocksdb::Options const& dbOptions,
-                                 std::string const& idxPath);
+                                 std::string const& idxPath,
+                                 StorageUsageTracker& usageTracker);
+
   ~RocksDBSstFileMethods();
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
@@ -68,11 +73,9 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
 
   Result stealFileNames(std::vector<std::string>& fileNames);
 
-  static void cleanUpFiles(std::vector<std::string> const& fileNames);
+  uint64_t stealBytesWrittenToDir() noexcept;
 
-  void setMaxCapacity(std::uint64_t maxCapacity) noexcept {
-    _maxCapacity = maxCapacity;
-  }
+  static void cleanUpFiles(std::vector<std::string> const& fileNames);
 
  private:
   void cleanUpFiles();
@@ -92,8 +95,8 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   std::string _idxPath;
   std::vector<std::string> _sstFileNames;
   std::vector<std::pair<std::string, std::string>> _keyValPairs;
-  std::uint64_t _bytesWrittenToDir = 0;
-  std::uint64_t _maxCapacity = 0;  // default unlimited
+  StorageUsageTracker& _usageTracker;
+  uint64_t _bytesWrittenToDir;
 };
 
 }  // namespace arangodb

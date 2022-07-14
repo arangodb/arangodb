@@ -39,6 +39,7 @@ class Env;
 
 namespace arangodb {
 class RocksDBSortedRowsStorageContext;
+class StorageUsageTracker;
 
 #ifdef USE_ENTERPRISE
 namespace enterprise {
@@ -49,8 +50,8 @@ class EncryptionProvider;
 class RocksDBTempStorage {
  public:
   explicit RocksDBTempStorage(std::string const& basePath,
-                              std::uint64_t maxCapacity, bool useEncryption,
-                              bool allowHWAcceleration);
+                              StorageUsageTracker& usageTracker,
+                              bool useEncryption, bool allowHWAcceleration);
   ~RocksDBTempStorage();
 
   Result init();
@@ -64,7 +65,7 @@ class RocksDBTempStorage {
   uint64_t nextId() noexcept;
 
   std::string const _basePath;
-  std::uint64_t _maxCapacity;
+  StorageUsageTracker& _usageTracker;
   bool const _useEncryption;
   bool const _allowHWAcceleration;
 

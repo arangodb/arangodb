@@ -58,11 +58,55 @@ std::string normalizePath(std::string const& currentDir,
 
 }  // namespace
 
+StorageUsageTracker::StorageUsageTracker(std::uint64_t maxCapacity) noexcept
+    : _maxCapacity(maxCapacity), _currentUsage(0) {}
+
+// returns configured maximum disk capacity for intermediate results storage
+// (0 = unlimited)
+std::uint64_t StorageUsageTracker::maxCapacity() const noexcept {
+  return _maxCapacity;
+}
+
+// returns current disk usage for intermediate results storage
+std::uint64_t StorageUsageTracker::currentUsage() const noexcept {
+  return _currentUsage.load(std::memory_order_relaxed);
+}
+
+// increases capacity usage by value bytes. throws an exception if
+// that would move _currentUsage to a value > _maxCapacity
+void StorageUsageTracker::increaseUsage(std::uint64_t value) {
+  std::uint64_t old = _currentUsage.fetch_add(value, std::memory_order_relaxed);
+
+  TRI_IF_FAILURE("lowTempStorageCapacity") {
+    // simulate a low capacity value
+    if (old + value >= 32 * 1024 * 1024) {
+      decreaseUsage(value);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_RESOURCE_LIMIT,
+          "disk capacity limit for intermediate results exceeded");
+    }
+  }
+
+  if (_maxCapacity > 0 && old + value > _maxCapacity) {
+    decreaseUsage(value);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_RESOURCE_LIMIT,
+        "disk capacity limit for intermediate results exceeded");
+  }
+}
+
+// decreases capacity usage by value bytes. assumes that _currentUsage >=
+// value
+void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
+  [[maybe_unused]] std::uint64_t old =
+      _currentUsage.fetch_sub(value, std::memory_order_relaxed);
+  TRI_ASSERT(old >= value);
+}
+
 TemporaryStorageFeature::TemporaryStorageFeature(Server& server)
     : ArangodFeature{server, *this},
       _useEncryption(false),
       _allowHWAcceleration(true),
-      _currentUsage(0),
       _cleanedUpDirectory(false) {
   startsAfter<EngineSelectorFeature>();
   startsAfter<StorageEngineFeature>();
@@ -160,7 +204,7 @@ void TemporaryStorageFeature::prepare() {
     // massive AQL queries will not be executed on them.
     LOG_TOPIC("97ac6", WARN, Logger::STARTUP)
         << "disabling storage for intermediate results on agent instance, "
-           "because it is not required there";
+           "because it is not useful here";
     _basePath.clear();
     TRI_ASSERT(!canBeUsed());
   }
@@ -193,8 +237,10 @@ void TemporaryStorageFeature::start() {
     return;
   }
 
+  _usageTracker = std::make_unique<StorageUsageTracker>(_maxCapacity);
+
   auto backend = std::make_unique<RocksDBTempStorage>(
-      _basePath, _maxCapacity, _useEncryption, _allowHWAcceleration);
+      _basePath, *_usageTracker, _useEncryption, _allowHWAcceleration);
 
   Result res = backend->init();
   if (res.fail()) {
@@ -228,37 +274,6 @@ void TemporaryStorageFeature::unprepare() {
 
 bool TemporaryStorageFeature::canBeUsed() const noexcept {
   return !_basePath.empty();
-}
-
-std::uint64_t TemporaryStorageFeature::maxCapacity() const noexcept {
-  return _maxCapacity;
-}
-
-std::uint64_t TemporaryStorageFeature::currentUsage() const noexcept {
-  return _currentUsage.load(std::memory_order_relaxed);
-}
-
-// increases capacity usage by value bytes. throws an exception if
-// that would move _currentUsage to a value > _maxCapacity
-void TemporaryStorageFeature::increaseUsage(std::uint64_t value) {
-  TRI_ASSERT(canBeUsed());
-  std::uint64_t old = _currentUsage.fetch_add(value, std::memory_order_relaxed);
-
-  if (_maxCapacity > 0 && old + value > _maxCapacity) {
-    decreaseUsage(value);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_RESOURCE_LIMIT,
-        "disk capacity limit for intermediate results exceeded");
-  }
-}
-
-// decreases capacity usage by value bytes. assumes that _currentUsage >= value
-void TemporaryStorageFeature::decreaseUsage(std::uint64_t value) noexcept {
-  TRI_ASSERT(canBeUsed());
-
-  [[maybe_unused]] std::uint64_t old =
-      _currentUsage.fetch_sub(value, std::memory_order_relaxed);
-  TRI_ASSERT(old >= value);
 }
 
 void TemporaryStorageFeature::cleanupDirectory() {

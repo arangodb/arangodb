@@ -219,6 +219,20 @@ function StorageForQueryCleanUpWhenFailureSuite() {
         }
       });
     },
+    
+    testQueryFailureBecauseCapacityReached: function() {
+      internal.debugSetFailAt("lowTempStorageCapacity");
+      try {
+        const query = `FOR i IN 1..5000000 SORT i ASC RETURN i`;
+        db._query(query, null, {spillOverThresholdNumRows: 5000});
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+        assertRangeCleanUp("");
+      } finally {
+        internal.debugClearFailAt();
+      }
+    },
 
     testQueryFailureIngestAll1NoExtraSst: function() {
       internal.debugSetFailAt("failOnIngestAll1");
