@@ -31,6 +31,7 @@ const ArangoError = arangodb.ArangoError;
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
+const helper = require('@arangodb/test-helper');
 
 const waitFor = function (checkFn, maxTries = 240) {
   let count = 0;
@@ -53,8 +54,8 @@ const waitFor = function (checkFn, maxTries = 240) {
 };
 
 const readAgencyValueAt = function (key) {
-  const response = global.ArangoAgency.get(key);
-  const path = ["arango", ...key.split('/')];
+  const response = helper.agency.get(key);
+  const path = ['arango', ...key.split('/')];
   let result = response;
   for (const p of path) {
     if (result === undefined) {
@@ -101,10 +102,10 @@ const getServerHealth = function (serverId) {
 };
 
 const dbservers = (function () {
-  return global.ArangoClusterInfo.getDBServers().map((x) => x.serverId);
+  return helper.getDBServers().map((x) => x.serverId);
 }());
 const coordinators = (function () {
-  return global.ArangoClusterInfo.getCoordinators();
+  return helper.getCoordinators();
 }());
 
 
@@ -131,7 +132,13 @@ const coordinators = (function () {
  *       plan: {
  *         id: number,
  *         participantsConfig: Object,
- *         currentTerm?: Object
+ *         currentTerm?: {
+ *           term: number,
+ *           leader: {
+ *             serverId: string,
+ *             rebootId: number
+ *           }
+ *         }
  *       },
  *       current: {
  *         localState: Object,
@@ -186,6 +193,11 @@ const replicatedLogUpdateTargetParticipants = function (database, logId, partici
 };
 
 const replicatedLogSetPlanTerm = function (database, logId, term) {
+  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`, term);
+  helper.agency.increaseVersion(`Plan/Version`);
+};
+
+const replicatedLogSetPlanTermConfig = function (database, logId, term) {
   global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
@@ -555,6 +567,7 @@ exports.replicatedLogDeletePlan = replicatedLogDeletePlan;
 exports.replicatedLogDeleteTarget = replicatedLogDeleteTarget;
 exports.replicatedLogSetPlan = replicatedLogSetPlan;
 exports.replicatedLogSetPlanParticipantsConfig = replicatedLogSetPlanParticipantsConfig;
+exports.replicatedLogSetPlanTermConfig = replicatedLogSetPlanTermConfig;
 exports.replicatedLogSetPlanTerm = replicatedLogSetPlanTerm;
 exports.replicatedLogSetTarget = replicatedLogSetTarget;
 exports.replicatedLogUpdatePlanParticipantsConfigParticipants = replicatedLogUpdatePlanParticipantsConfigParticipants;

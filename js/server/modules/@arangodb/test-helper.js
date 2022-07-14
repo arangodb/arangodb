@@ -182,3 +182,8 @@ exports.waitForShardsInSync = function(cn, timeout) {
   assertTrue(false, "Shards were not getting in sync in time, giving up!");
   return;
 };
+
+exports.getCoordinators = global.ArangoClusterInfo.getCoordinators;
+exports.getDBServers = global.ArangoClusterInfo.getDBServers;
+
+exports.agency = global.ArangoAgency;

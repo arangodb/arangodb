@@ -1,5 +1,4 @@
 /*jshint strict: false */
-/*global arango, db, assertTrue, assertFalse, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
@@ -29,7 +28,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: processCsvFile
-const { 
+const {
   getServerById,
   getServersByType,
   getEndpointById,
@@ -45,7 +44,13 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
-    
+const request = require('@arangodb/request');
+const arangosh = require('@arangodb/arangosh');
+const jsunity = require('jsunity');
+const arango = internal.arango;
+const db = internal.db;
+const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;
@@ -453,4 +458,56 @@ exports.getDBServerEndpoints = function () {
 };
 exports.getAgentEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.agent);
+};
+
+exports.agency = {
+  get: function (path) {
+    const agents = exports.getAgentEndpoints();
+    assertTrue(agents.length > 0, 'No agents present');
+    var res = request.post({
+      url: agents[0] + '/_api/agency/read',
+      body: JSON.stringify([[`/arango/${path}`]]),
+      timeout: 300,
+    });
+    assertTrue(res instanceof request.Response);
+    assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
+    assertEqual(res.statusCode, 200, JSON.stringify(res));
+    assertTrue(res.hasOwnProperty('json'));
+    return arangosh.checkRequestResult(res.json)[0];
+  },
+
+  set: function (path, value) {
+    const agents = exports.getAgentEndpoints();
+    assertTrue(agents.length > 0, 'No agents present');
+    var res = request.post({
+      url: agents[0] + '/_api/agency/write',
+      body: JSON.stringify([[{
+        [`/arango/${path}`]: {
+          'op': 'set',
+          'new': value,
+        },
+      }]]),
+      timeout: 300,
+    });
+    assertTrue(res instanceof request.Response);
+    assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
+    assertEqual(res.statusCode, 200, JSON.stringify(res));
+    assertTrue(res.hasOwnProperty('json'));
+    return arangosh.checkRequestResult(res.json)[0];
+  },
+
+  increaseVersion: function (path) {
+    const agents = exports.getAgentEndpoints();
+    assertTrue(agents.length > 0, 'No agents present');
+    var res = request.post({
+      url: agents[0] + '/_api/agency/write',
+      body: JSON.stringify([[{[`/arango/${path}`]: {'op': 'increment'}}]]),
+      timeout: 300,
+    });
+    assertTrue(res instanceof request.Response);
+    assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
+    assertEqual(res.statusCode, 200, JSON.stringify(res));
+    assertTrue(res.hasOwnProperty('json'));
+    return arangosh.checkRequestResult(res.json)[0];
+  },
 };
