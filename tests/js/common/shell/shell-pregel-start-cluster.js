@@ -61,7 +61,7 @@ function shardKeysTestSuite() {
     tearDown: function () {
 
       if(pid !== 0) {
-        while(pregel.status(pid).state === 'running') {
+        while(pregel.status(pid).state === 'loading' || pregel.status(pid).state === 'running') {
           internal.sleep(0.1);
         }
         pregel.cancel(pid); // delete contents
@@ -138,7 +138,7 @@ function basicTestSuite() {
     do {
       internal.wait(0.2);
       var stats = pregel.status(pid);
-      if (stats.state !== "running" && stats.state !== "storing") {
+      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
         assertEqual(stats.vertexCount, 11, stats);
         assertEqual(stats.edgeCount, 17, stats);
   
@@ -260,7 +260,7 @@ function basicTestSuite() {
       do {
         internal.wait(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
 
