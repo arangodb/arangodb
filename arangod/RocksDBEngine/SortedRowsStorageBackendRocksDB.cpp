@@ -130,8 +130,8 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
 }
 
 bool SortedRowsStorageBackendRocksDB::hasReachedCapacityLimit() const noexcept {
+  return _context->hasReachedMaxCapacity();
   // TODO: honor capacity setting from TemporaryStorageFeature
-  return false;
 }
 
 bool SortedRowsStorageBackendRocksDB::hasMore() const {

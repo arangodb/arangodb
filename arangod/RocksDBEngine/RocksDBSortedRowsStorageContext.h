@@ -61,6 +61,8 @@ class RocksDBSortedRowsStorageContext {
 
   uint64_t keyPrefix() const noexcept { return _keyPrefix; }
 
+  bool hasReachedMaxCapacity();
+
  private:
   rocksdb::DB* _db;
   rocksdb::ColumnFamilyHandle* _cf;

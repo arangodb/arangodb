@@ -66,7 +66,7 @@ ExecutorState SortedRowsStorageBackendStaged::consumeInputRange(
 }
 
 bool SortedRowsStorageBackendStaged::hasReachedCapacityLimit() const noexcept {
-  return false;
+  return _backends[_currentBackend]->hasReachedCapacityLimit();
 }
 
 bool SortedRowsStorageBackendStaged::hasMore() const {

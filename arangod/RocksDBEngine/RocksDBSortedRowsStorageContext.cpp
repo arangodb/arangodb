@@ -202,4 +202,13 @@ void RocksDBSortedRowsStorageContext::cleanup() {
   _bytesWrittenToDir = 0;
 }
 
+bool RocksDBSortedRowsStorageContext::hasReachedMaxCapacity() {
+  std::uint64_t maxCapacity = _usageTracker.maxCapacity();
+  if (maxCapacity == 0) {
+    return false;
+  } else {
+    return _usageTracker.currentUsage() >= maxCapacity;
+  }
+}
+
 }  // namespace arangodb
