@@ -91,7 +91,7 @@ class GraphStore final {
     return total;
   }
 
-  Status status() const { return _observables.observe(); }
+  GraphStoreStatus status() const { return _observables.observe(); }
 
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
@@ -156,7 +156,7 @@ class GraphStore final {
   std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
 
-  Observables _observables;
+  GraphStoreObservables _observables;
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
