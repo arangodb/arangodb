@@ -105,6 +105,16 @@ function clusterRebalanceSuite() {
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
 
+      while (true) {
+        require('internal').wait(0.5);
+        let result = arango.GET('/_admin/cluster/rebalance');
+        assertEqual(result.code, 200);
+        assertEqual(result.error, false);
+
+        if (result.result.pendingMoveShards === 0 && result.result.todoMoveShards === 0) {
+          break;
+        }
+      }
     },
 
     testExecuteRebalanceVersion: function () {

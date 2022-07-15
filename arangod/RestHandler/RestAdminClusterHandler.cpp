@@ -2359,6 +2359,10 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
   p.optimize(options->leaderChanges, options->moveFollowers,
              options->moveLeaders, options->maximumNumberOfMoves, moves);
 
+  for (auto const& move : moves) {
+    p.applyMoveShardJob(move, false, nullptr, nullptr);
+  }
+
   auto const imbalanceLeaderAfter = p.computeLeaderImbalance();
   auto const imbalanceShardsAfter = p.computeShardImbalance();
 
@@ -2420,13 +2424,11 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
       return RestStatus::DONE;
     }
     case rest::RequestType::PUT: {
+      buildResponse(rest::ResponseCode::ACCEPTED);
       return waitForFuture(
           executeMoveShardOperations(moves, ci, moveShardConverter)
-              .thenValue([this](auto&& result) {
-                if (result.ok()) {
-                  generateOk(rest::ResponseCode::ACCEPTED,
-                             VPackSlice::noneSlice());
-                } else {
+              .thenValue([&](auto&& result) {
+                if (!result.ok()) {
                   generateError(result);
                 }
               }));
@@ -2522,7 +2524,7 @@ RestAdminClusterHandler::collectRebalanceInformation(
 
     struct CollectionMetaData {
       std::size_t index = 0;
-      std::size_t distributeShardsLikeCounter = 1;
+      std::size_t distributeShardsLikeCounter = 0;
     };
 
     std::unordered_map<std::string, CollectionMetaData>
