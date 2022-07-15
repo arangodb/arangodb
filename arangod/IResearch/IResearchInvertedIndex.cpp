@@ -67,41 +67,6 @@ irs::bytes_ref refFromSlice(VPackSlice slice) {
   return {slice.startAs<irs::byte_type>(), slice.byteSize()};
 }
 
-struct CheckFieldsAccess {
-  CheckFieldsAccess(
-      QueryContext const& ctx, aql::Variable const& ref,
-      std::vector<std::vector<basics::AttributeName>> const& fields)
-      : _ctx{ctx}, _ref{ref}, _fields{fields} {}
-
-  bool operator()(std::string_view name) const {
-    try {
-      _parsed.clear();
-      TRI_ParseAttributeString(name, _parsed, true);
-      if (std::find_if(std::begin(_fields), std::end(_fields),
-                       [&parsed = std::as_const(_parsed)](
-                           std::vector<basics::AttributeName> const& f) {
-                         return basics::AttributeName::isIdentical(f, parsed,
-                                                                   true);
-                       }) == _fields.end()) {
-        LOG_TOPIC("bf92f", TRACE, arangodb::iresearch::TOPIC)
-            << "Attribute '" << name << "' is not covered by index";
-        return false;
-      }
-    } catch (basics::Exception const& ex) {
-      // we can`t handle expansion in ArangoSearch index
-      LOG_TOPIC("2ec9a", TRACE, arangodb::iresearch::TOPIC)
-          << "Failed to parse attribute access: " << ex.message();
-      return false;
-    }
-    return true;
-  }
-
-  mutable std::vector<basics::AttributeName> _parsed;
-  QueryContext const& _ctx;
-  aql::Variable const& _ref;
-  std::span<std::vector<basics::AttributeName> const> _fields;
-};
-
 bool supportsFilterNode(
     IndexId id, std::vector<std::vector<basics::AttributeName>> const& fields,
     aql::AstNode const* node, aql::Variable const* reference,
@@ -115,14 +80,6 @@ bool supportsFilterNode(
   // variable from the upstream loop we may get here a field we don`t have in
   // the index.
   QueryContext const queryCtx{.ref = reference, .isSearchQuery = false};
-
-  if (!nameFromAttributeAccesses(
-          node, *reference, true, queryCtx,
-          CheckFieldsAccess(queryCtx, *reference, fields))) {
-    LOG_TOPIC("d2beb", TRACE, arangodb::iresearch::TOPIC)
-        << "Found unknown attribute access. Skipping index " << id.id();
-    return false;
-  }
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
