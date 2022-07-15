@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agency/AgencyComm.h"
@@ -58,6 +58,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/terms_filter.hpp"
 #include "search/nested_filter.hpp"
 #include "search/scorers.hpp"
 #include "search/term_filter.hpp"
@@ -192,6 +193,16 @@ std::ostream& operator<<(std::ostream& os, by_prefix const& filter) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, by_terms const& filter) {
+  os << "TERMS[";
+  os << filter.field() << ", {";
+  for (auto& [term, boost] : filter.options().terms) {
+    os << "[" << ref_cast<char>(term) << ", " << boost << "],";
+  }
+  os << "}, " << filter.options().min_match << "]";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, filter const& filter) {
   const auto& type = filter.type();
   if (type == irs::type<And>::id()) {
@@ -202,6 +213,8 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<Not const&>(filter);
   } else if (type == irs::type<by_term>::id()) {
     return os << static_cast<by_term const&>(filter);
+  } else if (type == irs::type<by_terms>::id()) {
+    return os << static_cast<by_terms const&>(filter);
   } else if (type == irs::type<by_range>::id()) {
     return os << static_cast<by_range const&>(filter);
   } else if (type == irs::type<by_ngram_similarity>::id()) {

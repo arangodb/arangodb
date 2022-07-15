@@ -40,7 +40,7 @@ const GRAPH_PREFIX = '/_api/gharial/';
 const graphToClass = graph => {
   if (internal.isEnterprise()) {
     if (graph.isSmart) {
-      if (Object.hasOwnProperty(graph, "smartGraphAttribute")) {
+      if (graph.hasOwnProperty("smartGraphAttribute")) {
         return new SmartGraph(graph);
       } else {
         return new EnterpriseGraph(graph);
