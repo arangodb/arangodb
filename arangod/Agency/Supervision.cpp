@@ -1015,6 +1015,94 @@ void Supervision::reportStatus(std::string const& status) {
   }
 }
 
+void Supervision::updateDBServerMaintenance() {
+  // This method checks all entries in /arango/Target/MaintenanceDBServers
+  // and makes sure that /arango/Current/MaintenanceDBServers reflects
+  // the state of the Target entries (including potentially run out
+  // timeouts. Furthermore, it updates the set _DBServersInMaintenance,
+  // which will be used for the rest of the supervision run.
+
+  // Algorithm for each entry in Target:
+  //   If Target says maintenance:
+  //     if timeout reached:
+  //       remove entry from Target
+  //       stop
+  //     else:
+  //       if Current entry differs: copy over
+  //       put server in _DBServersInMaintenance
+  // Algorithm for each entry in Current:
+  //   If Current says maintenance:
+  //     if server not in _DBServersInMaintenance:
+  //       remove entry
+
+  auto ensureDBServerInCurrent = [this](std::string const& serverId, bool yes) {
+    // This closure will copy the entry
+    // /Target/MaintenanceDBServers/<serverId>
+    // to /Current/MaintenanceDBServers/<serverId> if they differ and `yes`
+    // is `true`. If `yes` is `false`, the entry will be removed.
+    std::string targetPath =
+        std::string(TARGET_MAINTENANCE_DBSERVERS) + "/" + serverId;
+    std::string currentPath =
+        std::string(CURRENT_MAINTENANCE_DBSERVERS) + "/" + serverId;
+    auto current = snapshot().has(currentPath);
+    if (yes == false) {
+      if (current) {
+        // DELETE ENTRY IN CURRENT HERE
+      }
+      return;
+    }
+    auto target = snapshot().has(targetPath);
+    if (target) {
+      if (!current || target != current) {
+        // COPY TARGET ENTRY TO CURRENT
+      }
+    }
+  };
+
+  std::unordered_set<std::string> newDBServersInMaintenance;
+  auto target = snapshot().hasAsChildren(TARGET_MAINTENANCE_DBSERVERS);
+  if (target) {
+    // If the key is not there or there is no object there, nobody is in
+    // maintenance.
+    Node::Children const& targetServers = target.value().get();
+    for (auto const& p : targetServers) {
+      std::string const& serverId = p.first;
+      std::shared_ptr<Node> const& entry = p.second;
+      auto mode = entry->hasAsString("Mode");
+      if (mode) {
+        std::string const& modeSt = mode.value();
+        if (modeSt == "maintenance") {
+          // Yes, it says maintenance, now check the timeout:
+          auto timeout = entry->hasAsString("Until");
+          if (timeout) {
+            auto const maintenanceExpires = stringToTimepoint(timeout.value());
+            if (maintenanceExpires >= std::chrono::system_clock::now()) {
+              // Need to switch off maintenance mode
+              ensureDBServerInCurrent(serverId, false);
+            } else {
+              // Server is in maintenance mode:
+              newDBServersInMaintenance.insert(serverId);
+              ensureDBServerInCurrent(serverId, true);
+            }
+          }
+        }
+      }
+    }
+  }
+  auto current = snapshot().hasAsChildren(CURRENT_MAINTENANCE_DBSERVERS);
+  if (current) {
+    Node::Children const& currentServers = current.value().get();
+    for (auto const& p : currentServers) {
+      std::string const& serverId = p.first;
+      if (newDBServersInMaintenance.find(serverId) ==
+          newDBServersInMaintenance.end()) {
+        ensureDBServerInCurrent(serverId, false);
+      }
+    }
+  }
+  _DBServersInMaintenance.swap(newDBServersInMaintenance);
+}
+
 void Supervision::step() {
   _lock.assertLockedByCurrentThread();
   if (_jobId == 0 || _jobId == _jobIdMax) {
@@ -1062,6 +1150,17 @@ void Supervision::step() {
     reportStatus("Normal");
 
     _haveAborts = false;
+
+    // We now need to check for any changes in DBServer maintenance modes.
+    // Note that if we confirm a switch to maintenance mode from
+    // /arango/Target/MaintenanceDBServers in
+    // /arango/Current/MaintenanceDBServers, then this maintenance mode
+    // must already count for **this** run of the supervision. Therefore,
+    // the following function not only updates the actual place in Current,
+    // but also computes the list of DBServers in maintenance mode in
+    // _DBServersInMaintenance, which can then be used in the rest of the
+    // checks.
+    updateDBServerMaintenance();
 
     if (_agent->leaderFor() > 55 || earlyBird()) {
       // 55 seconds is less than a minute, which fits to the
