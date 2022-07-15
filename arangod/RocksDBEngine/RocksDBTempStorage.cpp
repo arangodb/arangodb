@@ -70,8 +70,11 @@ class KeysComparator : public rocksdb::Comparator {
 
     // now compare the running number (used for stable sorts)
     int diffInId = 0;
-    bool hasPrefixId1 = static_cast<size_t>(p1 - lhs.data()) < lhs.size();
-    bool hasPrefixId2 = static_cast<size_t>(p2 - rhs.data()) < rhs.size();
+    bool hasPrefixId1 =
+        static_cast<size_t>(p1 - lhs.data()) + sizeof(uint64_t) <= lhs.size();
+    bool hasPrefixId2 =
+        static_cast<size_t>(p2 - rhs.data()) + sizeof(uint64_t) <= rhs.size();
+
     if (hasPrefixId1 && hasPrefixId2) {
       diffInId = memcmp(p1, p2, sizeof(uint64_t));
       p1 += sizeof(uint64_t);
