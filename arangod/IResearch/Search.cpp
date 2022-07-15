@@ -24,6 +24,7 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
+#include "Basics/Exceptions.h"
 #include "Basics/DownCast.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -45,6 +46,39 @@
 #include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
+namespace {
+
+std::shared_ptr<LogicalCollection> getCollection(
+    CollectionNameResolver& resolver, velocypack::Slice cidOrName) {
+  if (cidOrName.isString()) {
+    return resolver.getCollection(cidOrName.stringView());
+  } else if (cidOrName.isNumber<DataSourceId::BaseType>()) {
+    std::this_thread::sleep_for(std::chrono::seconds{10});
+    auto const cid = cidOrName.getNumber<DataSourceId::BaseType>();
+    absl::AlphaNum const cidStr{cid};  // TODO make resolve by id?
+    return resolver.getCollection(cidStr.Piece());
+  }
+  return nullptr;
+}
+
+std::shared_ptr<Index> getIndex(LogicalCollection const& collection,
+                                velocypack::Slice index) {
+  auto indexId = IndexId::none().id();
+  if (index.isString()) {
+    auto const indexNameOrId = index.stringView();
+    if (auto handle = collection.lookupIndex(indexNameOrId); handle) {
+      return handle;
+    } else if (absl::SimpleAtoi(indexNameOrId, &indexId)) {
+      return collection.lookupIndex(IndexId{indexId});
+    }
+  } else if (index.isNumber<IndexId::BaseType>()) {
+    indexId = index.getNumber<IndexId::BaseType>();
+    return collection.lookupIndex(IndexId{indexId});
+  }
+  return nullptr;
+}
+
+}  // namespace
 
 class SearchFactory : public ViewFactory {
   // LogicalView factory for end-user validation instantiation and
@@ -67,10 +101,7 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
   if (!definition.hasKey("name") || !definition.hasKey("indexes")) {
     return {TRI_ERROR_BAD_PARAMETER};
   }
-  auto& server = vocbase.server();
   if (ServerState::instance()->isCoordinator()) {
-    TRI_ASSERT(server.hasFeature<ClusterFeature>());
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
     // auto indexesSlice = definition.get("indexes");
     // auto r = Some::validateIndexes(vocbase, indexesSlice);
     // if (!r.ok()) {
@@ -81,11 +112,10 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     if (!r.ok()) {
       return r;
     }
-    // refresh view from Agency
-    absl::AlphaNum idStr{impl->id().id()};
-    view = ci.getView(vocbase.name(), idStr.Piece());
+    view = impl;
   } else {
     TRI_ASSERT(ServerState::instance()->isSingleServer());
+    // auto& server = vocbase.server();
     // TRI_ASSERT(server.hasFeature<EngineSelectorFeature>());
     // auto& engine = server.getFeature<EngineSelectorFeature>().engine();
     // auto indexesSlice = definition.get("indexes");
@@ -120,40 +150,25 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
   CollectionNameResolver resolver{vocbase};
   for (; it.valid(); ++it) {
     auto value = *it;
-    auto collectionNameOrId = value.get("collection").stringView();
-    auto collection = resolver.getCollection(collectionNameOrId);
-    if (!collection) {
-      return {TRI_ERROR_BAD_PARAMETER};
-    }
     auto const operation =
         value.hasKey("operation") ? value.get("operation").stringView() : "";
     TRI_ASSERT(operation.empty() || operation == "add");
-    if (operation == "del") {
+    if (!(operation.empty() || operation == "add")) {
       // TODO maybe log and skip?
-      return {TRI_ERROR_BAD_PARAMETER};
+      return {TRI_ERROR_BAD_PARAMETER, "Invalid type of operation"};
     }
-    auto indexName = value.get("index").stringView();
-    auto index = collection->lookupIndex(indexName);
-    uint64_t indexId;
-    if (!index) {
-      if (!absl::SimpleAtoi(indexName, &indexId)) {
-        return {TRI_ERROR_BAD_PARAMETER};
-      }
-      if (index = collection->lookupIndex(IndexId{indexId}); !index) {
-        return {TRI_ERROR_BAD_PARAMETER};
-      }
-    } else {
-      indexId = index->id().id();
+    auto collection = getCollection(resolver, value.get("collection"));
+    if (!collection) {
+      return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
     }
+    auto index = getIndex(*collection, value.get("index"));
     // TODO Remove dynamic_cast
-    auto* indexPtr = dynamic_cast<IResearchInvertedIndex*>(index.get());
-    if (!indexPtr) {
-      return {TRI_ERROR_BAD_PARAMETER};
+    auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
+    if (!inverted) {
+      return {TRI_ERROR_BAD_PARAMETER, "Cannot parse index"};
     }
-    TRI_ASSERT(index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX);
-    TRI_ASSERT(index->id().id() == indexId);
     auto& indexes = impl->_indexes[collection->id()];
-    indexes.emplace_back(indexPtr->self());
+    indexes.emplace_back(inverted->self());
     TRI_ASSERT(indexes.back());
   }
   view = impl;
@@ -208,6 +223,34 @@ Search::~Search() {
   }
 }
 
+IResearchInvertedIndexSort const& Search::primarySort() const {
+  std::shared_lock lock{_mutex};
+  for (auto const& [_, handles] : _indexes) {
+    for (auto const& handle : handles) {
+      if (auto index = handle->lock(); index) {
+        auto* inverted = basics::downCast<IResearchInvertedIndex>(index.get());
+        return inverted->meta()._sort;
+      }
+    }
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                 "Try to query empty view");
+}
+
+IResearchViewStoredValues const& Search::storedValues() const {
+  std::shared_lock lock{_mutex};
+  for (auto const& [_, handles] : _indexes) {
+    for (auto const& handle : handles) {
+      if (auto index = handle->lock(); index) {
+        auto* inverted = basics::downCast<IResearchInvertedIndex>(index.get());
+        return inverted->meta()._storedValues;
+      }
+    }
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                 "Try to query empty view");
+}
+
 bool Search::apply(transaction::Methods& trx) {
   // called from Search when this view is added to a transaction
   return trx.addStatusChangeCallback(&_trxCallback);  // add snapshot
@@ -242,54 +285,45 @@ Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
   }
   for (; it.valid(); ++it) {
     auto value = *it;
-    auto collectionNameOrId = value.get("collection").stringView();
-    auto collection = resolver.getCollection(collectionNameOrId);
+    auto collection = getCollection(resolver, value.get("collection"));
     if (!collection) {
-      return {TRI_ERROR_BAD_PARAMETER};
+      return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
     }
     auto const cid = collection->id();
     auto const operation =
         value.hasKey("operation") ? value.get("operation").stringView() : "";
     TRI_ASSERT(operation.empty() || operation == "add" || operation == "del");
     if (operation == "del" && !_indexes.contains(cid)) {
-      return {TRI_ERROR_BAD_PARAMETER};
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Cannot find collection for index to delete"};
     }
-    auto indexName = value.get("index").stringView();
-    auto index = collection->lookupIndex(indexName);
-    uint64_t indexId;
-    if (!index) {
-      if (!absl::SimpleAtoi(indexName, &indexId)) {
-        return {TRI_ERROR_BAD_PARAMETER};
-      }
-      if (index = collection->lookupIndex(IndexId{indexId}); !index) {
-        return {TRI_ERROR_BAD_PARAMETER};
-      }
-    } else {
-      indexId = index->id().id();
+    auto index = getIndex(*collection, value.get("index"));
+    // TODO Remove dynamic_cast
+    auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
+    if (!inverted) {
+      return {TRI_ERROR_BAD_PARAMETER, "Cannot parse index"};
     }
-    auto indexPtr = std::dynamic_pointer_cast<IResearchInvertedIndex>(index);
-    if (!indexPtr) {
-      return {TRI_ERROR_BAD_PARAMETER};
-    }
-    TRI_ASSERT(index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX);
-    TRI_ASSERT(indexId == indexPtr->id().id());
+    auto const indexId = inverted->id();
     auto& indexes = _indexes[cid];
-    auto it = std::find_if(begin(indexes), end(indexes),
-                           [indexId](const auto& handle) {
-                             auto index = handle->lock();
-                             return index && index->id().id() == indexId;
-                           });
+    auto indexIt = std::find_if(begin(indexes), end(indexes),
+                                [indexId](const auto& handle) {
+                                  auto other = handle->lock();
+                                  return other && other->id() == indexId;
+                                });
     if (operation == "del") {
-      if (it == end(indexes)) {
-        return {TRI_ERROR_BAD_PARAMETER};
+      if (indexIt == end(indexes)) {
+        // TODO log and skip?
+        return {TRI_ERROR_BAD_PARAMETER, "Cannot find index to delete"};
       }
-      indexes.back().swap(*it);
+      indexes.back().swap(*indexIt);
       indexes.pop_back();
     } else {
-      if (it != end(indexes)) {
-        return {TRI_ERROR_BAD_PARAMETER};
+      if (indexIt != end(indexes)) {
+        // TODO log and skip?
+        return {TRI_ERROR_BAD_PARAMETER,
+                "This index already exit in that view"};
       }
-      indexes.emplace_back(indexPtr->self());
+      indexes.emplace_back(inverted->self());
       TRI_ASSERT(indexes.back());
     }
   }
@@ -357,6 +391,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
           } else {
             build.add(velocypack::Value{velocypack::ValueType::Object});
             build.add("collection", velocypack::Value{cid.id()});
+            // TODO Maybe guid or planId?
             build.add("index", velocypack::Value{index->id().id()});
           }
           build.close();

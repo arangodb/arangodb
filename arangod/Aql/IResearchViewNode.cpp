@@ -100,11 +100,11 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan,
   TRI_ASSERT(ast);
   auto const* vars = plan.getAst()->variables();
   TRI_ASSERT(vars);
-
+  velocypack::ArrayIterator scorersArray{slice};
   std::vector<Scorer> scorers;
-
+  scorers.reserve(scorersArray.size());
   size_t i = 0;
-  for (auto const sortSlice : velocypack::ArrayIterator(slice)) {
+  for (auto const sortSlice : scorersArray) {
     auto const varIdSlice = sortSlice.get("id");
 
     if (!varIdSlice.isNumber()) {
@@ -349,11 +349,11 @@ constexpr auto kHandlers = frozen::make_map<std::string_view, OptionHandler>(
         };
         view.visitCollections(checkCids);
         if (sourcesFound != sources.size()) {
-          error = "only " + basics::StringUtils::itoa(sourcesFound) +
-                  " out of " + basics::StringUtils::itoa(sources.size()) +
-                  " provided collection(s) in option 'collections' are "
-                  "registered with the view '" +
-                  view.name() + "'";
+          error =
+              absl::StrCat("only ", sourcesFound, " out of ", sources.size(),
+                           " provided collection(s) in option 'collections' "
+                           "are registered with the view '",
+                           view.name(), "'");
           return false;
         }
         // parsing is done
@@ -412,8 +412,8 @@ constexpr auto kHandlers = frozen::make_map<std::string_view, OptionHandler>(
         auto type = value.getString();
         auto conditionTypeIt = conditionOptimizationTypeMap.find(type);
         if (conditionTypeIt == conditionOptimizationTypeMap.end()) {
-          error =
-              "unknown value '" + type + "' for option 'conditionOptimization'";
+          error = absl::StrCat("unknown value '", type,
+                               "' for option 'conditionOptimization'");
           return false;
         }
         options.conditionOptimization = conditionTypeIt->second;
@@ -608,7 +608,9 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
   // TODO We want transactional cluster, now it's not
   // So we don't make sense to make ViewSnapshotView for restrictSources
   // and we can use node address as key
-  void const* key = static_cast<void const*>(&node);
+  void const* key = (options.restrictSources || view == nullptr)
+                        ? static_cast<void const*>(&node)
+                        : static_cast<void const*>(view.get());
   auto* snapshot = getViewSnapshot(trx, key);
   if (snapshot != nullptr) {
     if (options.forceSync) {
@@ -623,11 +625,11 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
   ViewSnapshot::Links links;
   links.reserve(shards.size());
   // TODO fu2::function_view
-  std::function<void(ViewSnapshot::Links&, LogicalCollection&,
+  std::function<void(ViewSnapshot::Links&, LogicalCollection const&,
                      LogicalView::Indexes const&)>
       linksLock;
   auto searchLinksLock = [&](ViewSnapshot::Links& links,
-                             LogicalCollection& collection,
+                             LogicalCollection const& collection,
                              LogicalView::Indexes const& indexes) {
     for (auto indexId : indexes) {
       auto index = std::dynamic_pointer_cast<IResearchInvertedIndex>(
@@ -639,7 +641,7 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
   };
   std::shared_lock<boost::upgrade_mutex> viewLock;
   auto viewLinksLock = [&](ViewSnapshot::Links& links,
-                           LogicalCollection& collection,
+                           LogicalCollection const& collection,
                            LogicalView::Indexes const&) {
     links.emplace_back(viewImpl->linkLock(viewLock, collection.id()));
   };
@@ -716,7 +718,12 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
   return {ViewSnapshotPtr{}, snapshot};
 }
 
-IResearchViewSort const& primarySort(LogicalView const& view) {
+IResearchSortBase const& primarySort(LogicalView const& view) {
+  if (view.type() == ViewType::kSearch) {
+    auto const& viewImpl = basics::downCast<Search>(view);
+    return viewImpl.primarySort();
+  }
+  TRI_ASSERT(view.type() == ViewType::kView);
   if (ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.primarySort();
@@ -726,6 +733,11 @@ IResearchViewSort const& primarySort(LogicalView const& view) {
 }
 
 IResearchViewStoredValues const& storedValues(LogicalView const& view) {
+  if (view.type() == ViewType::kSearch) {
+    auto const& viewImpl = basics::downCast<Search>(view);
+    return viewImpl.storedValues();
+  }
+  TRI_ASSERT(view.type() == ViewType::kView);
   if (ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.storedValues();
@@ -747,6 +759,7 @@ const char* NODE_INDEXES_PARAM = "indexes";
 const char* NODE_OPTIONS_PARAM = "options";
 const char* NODE_VOLATILITY_PARAM = "volatility";
 const char* NODE_PRIMARY_SORT_PARAM = "primarySort";
+const char* NODE_STORED_VALUES_PARAM = "storedValues";
 const char* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
 const char* NODE_VIEW_VALUES_VARS = "viewValuesVars";
 const char* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
@@ -887,14 +900,16 @@ IResearchViewNode::IResearchViewNode(
       // set it to surrogate 'RETURN ALL' node
       _filterCondition{filterCondition ? filterCondition : &kAll},
       _scorers{std::move(scorers)} {
-  if (ServerState::instance()->isSingleServer() ||
-      ServerState::instance()->isCoordinator()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "TODO(MBkkt)");
+  if (!(ServerState::instance()->isSingleServer() ||
+        ServerState::instance()->isCoordinator())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "IResearchViewNode should be constructed on "
+                                   "Coordinator or SingleServer");
   }
-  TRI_ASSERT(_view);
   auto* ast = plan.getAst();
   // FIXME any other way to validate options before object creation???
   std::string error;
+  TRI_ASSERT(_view);
   if (!parseOptions(ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -931,20 +946,22 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         absl::StrCat("invalid vpack format, '", NODE_VIEW_ID_PARAM,
                      "' attribute is intended to be a string"));
   }
-  auto const viewId = viewIdSlice.stringView();
+  auto const viewIdOrName = viewIdSlice.stringView();
   if (ServerState::instance()->isSingleServer()) {
-    _view =
-        _vocbase.lookupView(DataSourceId{basics::StringUtils::uint64(viewId)});
-    if (!_view) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          absl::StrCat("unable to find ArangoSearch view with id '", viewId,
-                       "'"));
+    uint64_t viewId = 0;
+    if (absl::SimpleAtoi(viewIdOrName, &viewId)) {
+      _view = _vocbase.lookupView(DataSourceId{viewId});
     }
   } else {
     // need cluster wide view
     auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-    _view = ci.getView(_vocbase.name(), viewId);
+    _view = ci.getView(_vocbase.name(), viewIdOrName);
+  }
+  if (!ServerState::instance()->isDBServer() && !_view) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        absl::StrCat("unable to find ArangoSearch view with id '", viewIdOrName,
+                     "'"));
   }
   // filter condition
   auto const conditionSlice = base.get(NODE_CONDITION_PARAM);
@@ -954,41 +971,39 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   }
   // shards
   auto const shardsSlice = base.get(NODE_SHARDS_PARAM);
-  auto const indexesSlice = base.get(NODE_INDEXES_PARAM);
   if (shardsSlice.isArray()) {
     TRI_ASSERT(plan.getAst());
     auto const& collections = plan.getAst()->query().collections();
-    auto shardIt = velocypack::ArrayIterator{shardsSlice};
-    auto const isSearch = indexesSlice.isArray();
-    auto indexIt = [&] {
-      if (!isSearch) {
-        return velocypack::ArrayIterator{velocypack::ArrayIterator::Empty{}};
-      }
-      auto it = velocypack::ArrayIterator{indexesSlice};
-      TRI_ASSERT(it.size() == shardIt.size());
-      return it;
-    }();
+    velocypack::ArrayIterator shardIt{shardsSlice};
     for (; shardIt.valid(); ++shardIt) {
-      // shardID is collection name on db server
       auto const shardId = (*shardIt).stringView();
       auto const* shard = collections.get(shardId);
-
       if (!shard) {
         LOG_TOPIC("6fba2", ERR, iresearch::TOPIC)
             << "unable to lookup shard '" << shardId << "' for the view '"
             << (_view ? _view->name() : "") << "'";
         continue;
       }
-      auto const indexId = [&] {
-        if (!isSearch) {
-          return IndexId::none();
+      _shards[shard->name()];
+    }
+    auto const indexesSlice = base.get(NODE_INDEXES_PARAM);
+    if (indexesSlice.isArray()) {
+      velocypack::ArrayIterator indexIt{indexesSlice};
+      TRI_ASSERT(indexIt.size() % 2 == 0);
+      for (; indexIt.valid(); ++indexIt) {
+        auto const indexId = (*indexIt).getNumber<uint64_t>();
+        auto const shardIndex = (*++indexIt).getNumber<uint64_t>();
+        auto const shardName = shardsSlice.at(shardIndex).stringView();
+        auto const* shard = collections.get(shardName);
+        if (!shard) {
+          continue;
         }
-        TRI_ASSERT(indexIt.valid());
-        auto const id = (*indexIt).getNumber<uint64_t>();
-        ++indexIt;
-        return IndexId{id};
-      }();
-      _shards[shard->name()].emplace_back(indexId);
+        _shards[shard->name()].emplace_back(indexId);
+      }
+    } else if (!_view || _view->type() == ViewType::kSearch) {
+      LOG_TOPIC("a48f5", ERR, iresearch::TOPIC)
+          << "invalid 'IResearchViewNode' json format: unable to find "
+             "'indexes' array";
     }
   } else {
     LOG_TOPIC("a48f3", ERR, iresearch::TOPIC)
@@ -1009,58 +1024,79 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
   // primary sort
-  auto const primarySortSlice = base.get(NODE_PRIMARY_SORT_PARAM);
-  if (!primarySortSlice.isNone()) {
+  auto const sortSlice = base.get(NODE_PRIMARY_SORT_PARAM);
+  if (!sortSlice.isNone()) {
     std::string error;
-    IResearchViewSort primarySort;
-    if (!primarySort.fromVelocyPack(primarySortSlice, error)) {
+    IResearchSortBase vpackSort;
+    if (!vpackSort.fromVelocyPack(sortSlice, error)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           absl::StrCat("failed to parse 'IResearchViewNode' primary sort: ",
-                       primarySortSlice.toString(), ", error: '", error, "'"));
+                       sortSlice.toString(), ", error: '", error, "'"));
     }
-
-    if (_view && _view->type() == ViewType::kView) {
-      if (primarySort !=
-          basics::downCast<IResearchView>(*_view).primarySort()) {
+    auto const& sort = *[&]() -> IResearchSortBase const* {
+      if (!_view) {
+        return &vpackSort;
+      }
+      auto& viewSort = primarySort(*_view);
+      if (vpackSort != viewSort) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("primary sort ", primarySortSlice.toString(),
+            absl::StrCat("primary sort ", sortSlice.toString(),
                          " for 'IResearchViewNode' doesn't match the one "
                          "specified in view '",
                          _view->name(), "'"));
       }
-    }
-    if (!primarySort.empty()) {
-      size_t primarySortBuckets = primarySort.size();
-      auto const primarySortBucketsSlice =
-          base.get(NODE_PRIMARY_SORT_BUCKETS_PARAM);
-      if (!primarySortBucketsSlice.isNone()) {
-        if (!primarySortBucketsSlice.isNumber()) {
+      return &viewSort;
+    }();
+    auto sortBuckets = sort.size();
+    if (sortBuckets != 0) {
+      auto const sortBucketsSlice = base.get(NODE_PRIMARY_SORT_BUCKETS_PARAM);
+      if (!sortBucketsSlice.isNone()) {
+        if (!sortBucketsSlice.isNumber()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
               "invalid vpack format: 'primarySortBuckets' attribute is "
               "intended to be a number");
         }
-        primarySortBuckets = primarySortBucketsSlice.getNumber<size_t>();
-        if (primarySortBuckets > primarySort.size()) {
+        sortBuckets = sortBucketsSlice.getNumber<size_t>();
+        if (sortBuckets > sort.size()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("invalid vpack format: value of "
                            "'primarySortBuckets' attribute '",
-                           primarySortBuckets,
+                           sortBuckets,
                            "' is greater than number of buckets specified in "
                            "'primarySort' attribute '",
-                           primarySort.size(), "'"));
+                           sort.size(), "'"));
         }
       }
-      // set sort from corresponding view
-      setSort(std::move(primarySort), primarySortBuckets);
+
+      if (&sort == &vpackSort) {
+        _sortBuckets = sortBuckets;
+        _sort = std::make_shared<IResearchSortBase const>(std::move(vpackSort));
+      } else {
+        setSort(sort, sortBuckets);
+      }
     }
   }
+  // stored values
+  if (!_view) {
+    auto const valuesSlice = base.get(NODE_STORED_VALUES_PARAM);
+    std::string error;
+    IResearchViewStoredValues vpackValues;
+    if (!vpackValues.fromVelocyPack(valuesSlice, error)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("failed to parse 'IResearchViewNode' stored values: ",
+                       sortSlice.toString(), ", error: '", error, "'"));
+    }
+    _storedValues = std::make_shared<IResearchViewStoredValues const>(
+        std::move(vpackValues));
+  }
 
-  if (base.hasKey(NODE_VIEW_NO_MATERIALIZATION)) {
-    auto const noMaterializationSlice = base.get(NODE_VIEW_NO_MATERIALIZATION);
+  auto const noMaterializationSlice = base.get(NODE_VIEW_NO_MATERIALIZATION);
+  if (!noMaterializationSlice.isNone()) {
     if (!noMaterializationSlice.isBool()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -1069,6 +1105,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                        " should be a bool value"));
     }
     _noMaterialization = noMaterializationSlice.getBool();
+  } else {
+    _noMaterialization = false;
   }
 
   if (isLateMaterialized() || isNoMaterialization()) {
@@ -1083,13 +1121,13 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     ViewValuesVars viewValuesVars;
     for (auto const columnFieldsVars :
          velocypack::ArrayIterator(viewValuesVarsSlice)) {
-      if (columnFieldsVars.hasKey(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER)) {
+      auto const columnNumberSlice =
+          columnFieldsVars.get(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER);
+      if (columnNumberSlice.isNone()) {
         extractViewValuesVar(vars, viewValuesVars, kSortColumnNumber,
                              columnFieldsVars);
         continue;
       }
-      auto const columnNumberSlice =
-          columnFieldsVars.get(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER);
       if (!columnNumberSlice.isNumber<size_t>()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
@@ -1121,8 +1159,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         "'scorersSort' and 'scorersSortLimit' attributes should be both "
         "present or both absent");
   }
-  if (base.hasKey(NODE_VIEW_SCORERS_SORT)) {
-    auto const scorersSortSlice = base.get(NODE_VIEW_SCORERS_SORT);
+  auto const scorersSortSlice = base.get(NODE_VIEW_SCORERS_SORT);
+  if (!scorersSortSlice.isNone()) {
     if (!scorersSortSlice.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "'scorersSort' should be an array");
@@ -1153,14 +1191,14 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       }
     }
   }
-  if (base.hasKey(NODE_VIEW_SCORERS_SORT_LIMIT)) {
-    auto const slice = base.get(NODE_VIEW_SCORERS_SORT_LIMIT);
-    if (!slice.isNumber()) {
+  auto const scorersSortLimitSlice = base.get(NODE_VIEW_SCORERS_SORT_LIMIT);
+  if (!scorersSortLimitSlice.isNone()) {
+    if (!scorersSortLimitSlice.isNumber()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "'scorersSortLimit' attribute should be a numeric");
     }
-    _scorersSortLimit = slice.getNumber<size_t>();
+    _scorersSortLimit = scorersSortLimitSlice.getNumber<size_t>();
   }
 }
 
@@ -1182,7 +1220,8 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   TRI_ASSERT(_view);
   // need 'view' field to correctly print view name in JS explanation
   nodes.add(NODE_VIEW_NAME_PARAM, VPackValue(_view->name()));
-  nodes.add(NODE_VIEW_ID_PARAM, VPackValue(_view->id().id()));
+  absl::AlphaNum viewId{_view->id().id()};
+  nodes.add(NODE_VIEW_ID_PARAM, VPackValue(viewId.Piece()));
 
   // our variable
   nodes.add(VPackValue(NODE_OUT_VARIABLE_PARAM));
@@ -1215,14 +1254,18 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // stored values
   {
     TRI_ASSERT(_view);
-    auto const& primarySort = iresearch::primarySort(*_view);
-    auto const& storedValues = iresearch::storedValues(*_view);
+    auto const& values = storedValues(*_view);
+    {
+      VPackArrayBuilder arrayScope{&nodes, NODE_STORED_VALUES_PARAM};
+      values.toVelocyPack(nodes);
+    }
+    auto const& sort = primarySort(*_view);
     VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VARS);
     std::string fieldName;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       if (columnFieldsVars.first != kSortColumnNumber) {
         VPackObjectBuilder objectScope(&nodes);
-        auto const& columns = storedValues.columns();
+        auto const& columns = values.columns();
         auto const storedColumnNumber =
             static_cast<size_t>(columnFieldsVars.first);
         TRI_ASSERT(storedColumnNumber < columns.size());
@@ -1243,9 +1286,9 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
         for (auto const& fieldVar : columnFieldsVars.second) {
           VPackObjectBuilder objectScope(&nodes);
           fieldName.clear();
-          TRI_ASSERT(fieldVar.fieldNum < primarySort.fields().size());
-          basics::TRI_AttributeNamesToString(
-              primarySort.fields()[fieldVar.fieldNum], fieldName, true);
+          TRI_ASSERT(fieldVar.fieldNum < sort.fields().size());
+          basics::TRI_AttributeNamesToString(sort.fields()[fieldVar.fieldNum],
+                                             fieldName, true);
           addViewValuesVar(nodes, fieldName, fieldVar);
         }
       }
@@ -1268,22 +1311,21 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // shards
   {
     VPackArrayBuilder arrayScope(&nodes, NODE_SHARDS_PARAM);
-    for (auto const& [shard, indexes] : _shards) {
-      for ([[maybe_unused]] auto const& _ : indexes) {
-        // TODO(MBkkt) check options.sources
-        nodes.add(VPackValue(shard));
-      }
+    for (auto const& [shard, _] : _shards) {
+      nodes.add(VPackValue(shard));
     }
   }
-
   // indexes
   {
-    VPackArrayBuilder arrayScope(&nodes, NODE_INDEXES_PARAM);
+    VPackArrayBuilder arrayScope(&nodes, NODE_INDEXES_PARAM, true);
+    uint64_t i = 0;
     for (auto const& [_, indexes] : _shards) {
       for (auto const& index : indexes) {
         // TODO(MBkkt) check options.sources
-        nodes.add(VPackValue(index.id()));
+        nodes.add(VPackValue{index.id()});
+        nodes.add(VPackValue{i});
       }
+      ++i;
     }
   }
 
@@ -1295,12 +1337,12 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   nodes.add(NODE_VOLATILITY_PARAM, VPackValue(_volatilityMask));
 
   // primarySort
-  if (_sort && !_sort->condition.empty()) {
+  if (_sort && !_sort->empty()) {
     {
-      VPackArrayBuilder arrayScope(&nodes, NODE_PRIMARY_SORT_PARAM);
-      _sort->condition.toVelocyPack(nodes);
+      VPackArrayBuilder arrayScope{&nodes, NODE_PRIMARY_SORT_PARAM};
+      _sort->toVelocyPack(nodes);
     }
-    nodes.add(NODE_PRIMARY_SORT_BUCKETS_PARAM, VPackValue(_sort->buckets));
+    nodes.add(NODE_PRIMARY_SORT_BUCKETS_PARAM, VPackValue(_sortBuckets));
   }
 }
 
@@ -1312,14 +1354,14 @@ IResearchViewNode::Collections IResearchViewNode::collections() const {
     if (_options.restrictSources && !_options.sources.contains(cid)) {
       return true;
     }
-    absl::AlphaNum const idStr{cid.id()};
-    auto const* collection = collections.get(idStr.Piece());
+    absl::AlphaNum const cidStr{cid.id()};
+    auto const* collection = collections.get(cidStr.Piece());
     if (collection) {
       viewCollections.emplace_back(
           *collection, indexes ? std::move(*indexes) : LogicalView::Indexes{});
     } else {
       LOG_TOPIC("ee270", WARN, iresearch::TOPIC)
-          << "collection with id '" << idStr.Piece()
+          << "collection with id '" << cidStr.Piece()
           << "' is not registered with the query";
     }
     return true;
@@ -1385,6 +1427,7 @@ bool IResearchViewNode::empty() const noexcept {
   if (_view) {
     return _view->visitCollections(sEmptyView);
   } else {
+    TRI_ASSERT(false);
     return _shards.empty();
   }
 }
@@ -1405,15 +1448,15 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
     if (_options.restrictSources && !_options.sources.contains(cid)) {
       return true;
     }
-    auto const id = basics::StringUtils::itoa(cid.id());
-    auto const* collection = collections.get(id);
+    absl::AlphaNum const cidStr{cid.id()};
+    auto const* collection = collections.get(cidStr.Piece());
     if (collection) {
       // FIXME better to gather count for multiple collections at once
       estimatedNrItems +=
           collection->count(&trx, transaction::CountType::TryCache);
     } else {
       LOG_TOPIC("ee276", WARN, iresearch::TOPIC)
-          << "collection with id '" << id
+          << "collection with id '" << cidStr.Piece()
           << "' is not registered with the query";
     }
     return true;
@@ -1685,7 +1728,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                    numViewVarsRegisters);
     aql::RegisterInfos registerInfos = createRegisterInfos(
         calcInputRegs(), std::move(writableOutputRegisters));
-    TRI_ASSERT(_view);
+    TRI_ASSERT(_view || _storedValues);
     auto executorInfos = aql::IResearchViewExecutorInfos{
         std::move(reader),
         outRegister,
@@ -1693,7 +1736,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         engine.getQuery(),
         scorers(),
         sort(),
-        storedValues(*_view),
+        _view ? storedValues(*_view) : *_storedValues,
         *plan(),
         outVariable(),
         filterCondition(),
@@ -1721,13 +1764,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto [materializeType, executorInfos, registerInfos] =
       buildExecutorInfo(engine, std::move(reader));
   // guaranteed by optimizer rule
-  TRI_ASSERT(!_sort.has_value() || !_sort->condition.empty());
+  TRI_ASSERT(_sort == nullptr || !_sort->empty());
   bool const ordered = !_scorers.empty();
-  bool const sorted = _sort.has_value();
+  bool const sorted = _sort != nullptr;
   bool const heapsort = !_scorersSort.empty();
 #ifdef USE_ENTERPRISE
   auto& engineSelectorFeature =
-      _view->vocbase().server().getFeature<EngineSelectorFeature>();
+      _vocbase.server().getFeature<EngineSelectorFeature>();
   bool const encrypted =
       engineSelectorFeature.isRocksDB() &&
       engineSelectorFeature.engine<RocksDBEngine>().isEncryptionEnabled();

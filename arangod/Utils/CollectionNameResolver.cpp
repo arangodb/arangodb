@@ -41,6 +41,10 @@ constexpr std::string_view kUnknown = "_unknown";
 }  // namespace
 namespace arangodb {
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfree-nonheap-object"
+#endif
 // copy an existing resolver
 CollectionNameResolver::CollectionNameResolver(
     CollectionNameResolver const& other)
@@ -50,6 +54,9 @@ CollectionNameResolver::CollectionNameResolver(
   _dataSourceById = other._dataSourceById;
   _dataSourceByName = other._dataSourceByName;
 }
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
     DataSourceId id) const {

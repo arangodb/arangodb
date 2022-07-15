@@ -48,6 +48,7 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/Search.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -60,7 +61,12 @@ using namespace arangodb::basics;
 
 namespace {
 
-inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
+inline IResearchSortBase const& primarySort(arangodb::LogicalView const& view) {
+  if (view.type() == ViewType::kSearch) {
+    auto const& viewImpl = basics::downCast<Search>(view);
+    return viewImpl.primarySort();
+  }
+  TRI_ASSERT(view.type() == ViewType::kView);
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.primarySort();
@@ -71,6 +77,11 @@ inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
 
 inline IResearchViewStoredValues const& storedValues(
     arangodb::LogicalView const& view) {
+  if (view.type() == ViewType::kSearch) {
+    auto const& viewImpl = basics::downCast<Search>(view);
+    return viewImpl.storedValues();
+  }
+  TRI_ASSERT(view.type() == ViewType::kView);
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.storedValues();

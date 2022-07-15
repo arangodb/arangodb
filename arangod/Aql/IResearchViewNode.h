@@ -179,16 +179,15 @@ class IResearchViewNode final : public aql::ExecutionNode {
   }
 
   /// @return sort condition satisfied by a sorted index
-  auto sort() const noexcept {
-    using Sort = std::pair<iresearch::IResearchViewSort const*, size_t>;
-    return _sort.has_value() ? Sort{&_sort->condition, _sort->buckets}
-                             : Sort{nullptr, 0};
+  std::pair<iresearch::IResearchSortBase const*, size_t> sort() const noexcept {
+    return {_sort.get(), _sortBuckets};
   }
 
   /// @brief set sort condition satisfied by a sorted index
-  void setSort(IResearchViewSort condition, size_t buckets) noexcept {
-    buckets = std::min(buckets, condition.size());
-    _sort = {std::move(condition), buckets};
+  void setSort(IResearchSortBase const& sort, size_t buckets) noexcept {
+    _sortBuckets = std::min(buckets, sort.size());
+    _sort = std::shared_ptr<IResearchSortBase const>(
+        &sort, [](IResearchSortBase const*) noexcept {});
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -322,7 +321,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
   /// @brief view
   /// @note need shared_ptr to ensure view validity
-  std::shared_ptr<const LogicalView> _view;
+  std::shared_ptr<LogicalView const> _view;
 
   /// @brief output variable to write to
   aql::Variable const* _outVariable{nullptr};
@@ -346,16 +345,16 @@ class IResearchViewNode final : public aql::ExecutionNode {
   OptimizationState _optState;
 
   /// @brief filter node to pass to the view
-  aql::AstNode const* _filterCondition;
+  aql::AstNode const* _filterCondition{nullptr};
 
   /// @brief sort condition covered by the view
-  /// condition - sort condition
-  /// buckets - number of sort buckets to use
-  struct Sort {
-    IResearchViewSort condition;
-    size_t buckets{0};
-  };
-  std::optional<Sort> _sort;
+  /// _sort - sort condition
+  /// _sortBuckets - number of sort buckets to use
+  std::shared_ptr<IResearchSortBase const> _sort;
+  size_t _sortBuckets{0};
+
+  /// @brief stored values covered by the view
+  std::shared_ptr<IResearchViewStoredValues const> _storedValues;
 
   /// @brief scorers related to the view
   std::vector<Scorer> _scorers;

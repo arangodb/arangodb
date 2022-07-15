@@ -98,6 +98,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     if (!r.ok()) {
       return r;
     }
+    TRI_ASSERT(impl);
     // create links on a best-effort basis
     // link creation failure does not cause view creation failure
     try {
@@ -129,6 +130,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     }
     // refresh view from Agency
     view = ci.getView(vocbase.name(), std::to_string(impl->id().id()));
+    TRI_ASSERT(view);
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView
