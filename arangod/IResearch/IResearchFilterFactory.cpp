@@ -583,7 +583,9 @@ Result byTerm(irs::by_term* filter, aql::AstNode const& attribute,
               ScopedAqlValue const& value, QueryContext const& ctx,
               FilterContext const& filterCtx) {
   std::string name{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(name, attribute, ctx)) {
+
+  if (!nameFromAttributeAccess(name, attribute, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attribute))};
@@ -620,7 +622,8 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attribute,
   TRI_ASSERT(attribute.isDeterministic());
 
   std::string name{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(name, attribute, ctx)) {
+  if (!nameFromAttributeAccess(name, attribute, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attribute))};
@@ -655,7 +658,8 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
                ScopedAqlValue const& max, bool const maxInclude,
                QueryContext const& ctx, FilterContext const& filterCtx) {
   std::string name{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(name, attributeNode, ctx)) {
+  if (!nameFromAttributeAccess(name, attributeNode, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attributeNode))};
@@ -938,7 +942,8 @@ Result byRange(irs::boolean_filter* filter, NormalizedCmpNode const& node,
   TRI_ASSERT(node.value && node.value->isDeterministic());
 
   std::string name{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(name, *node.attribute, ctx)) {
+  if (!nameFromAttributeAccess(name, *node.attribute, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(node.attribute))};
@@ -1064,12 +1069,12 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     }
   }
 
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, fieldNodeIdx);
+  }
   if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
-      return error::failedToGenerateName(funcName, fieldNodeIdx);
-    }
-
     auto& geo_filter = filter->add<GeoDistanceFilter>();
     geo_filter.boost(filterCtx.boost);
 
@@ -1169,12 +1174,12 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     }
   }
 
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
+  }
   if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
-      return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
-    }
-
     auto& geo_filter =
         (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp
              ? filter->add<irs::Not>().filter<GeoDistanceFilter>()
@@ -1740,7 +1745,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
           .boost = irs::kNoBoost};  // reset boost
 
       std::string fieldName{filterCtx.namePrefix};
-      if (filter && !nameFromAttributeAccess(fieldName, *attributeNode, ctx)) {
+      if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx,
+                                   filter != nullptr, filterCtx.fields)) {
         return {TRI_ERROR_BAD_PARAMETER,
                 "Failed to generate field name from node " +
                     aql::AstNode::toString(attributeNode)};
@@ -2044,6 +2050,7 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
   FilterContext const subFilterCtx{
       .analyzerProvider = filterCtx.analyzerProvider,
       .analyzer = filterCtx.analyzer,
+      .fields = filterCtx.fields,
       .namePrefix = filterCtx.namePrefix,
       .boost = irs::kNoBoost};  // reset boost
 
@@ -2312,7 +2319,8 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   auto const isIndexFilter = ctx.isSearchQuery;
 
   std::string fieldName{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(fieldName, *fieldArg, ctx)) {
+  if (!nameFromAttributeAccess(fieldName, *fieldArg, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return error::failedToGenerateName(funcName, 1);
   }
 
@@ -3454,13 +3462,14 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
 
   irs::by_phrase* phrase = nullptr;
   AnalyzerPool::CacheType::ptr analyzer;
+
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *fieldArg, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
   // prepare filter if execution phase
   if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *fieldArg, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
-    }
-
     // now get the actual analyzer for the known field name if it is not
     // overridden
     if (!analyzerPool._pool) {
@@ -3615,16 +3624,13 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
     }
   }
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      auto message = "'"s.append(funcName).append(
-          "' AQL function: Failed to generate field name from the 1st "
-          "argument");
-      LOG_TOPIC("91862", WARN, TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
 
+  if (filter) {
     if (!analyzerPool._pool) {
       analyzerPool = filterCtx.fieldAnalyzer(name);
     }
@@ -3773,12 +3779,13 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
     scoringLimit = static_cast<size_t>(scoringLimitValue);
   }
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
 
+  if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
     kludge::mangleField(name, ctx.isSearchQuery, analyzer);
@@ -3883,12 +3890,13 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
 
   const auto scoringLimit = FilterConstants::DefaultScoringTermsLimit;
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
 
+  if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
     kludge::mangleField(name, ctx.isSearchQuery, analyzer);
@@ -3923,12 +3931,13 @@ Result fromFuncLevenshteinMatch(char const* funcName,
     return res;
   }
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
 
+  if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
     kludge::mangleField(name, ctx.isSearchQuery, analyzer);
@@ -4031,12 +4040,13 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     }
   }
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
-      return error::failedToGenerateName(funcName, fieldNodeIdx);
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, fieldNodeIdx);
+  }
 
+  if (filter) {
     auto& geo_filter = filter->add<GeoFilter>();
     geo_filter.boost(filterCtx.boost);
 

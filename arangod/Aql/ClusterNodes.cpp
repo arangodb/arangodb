@@ -463,7 +463,7 @@ GatherNode::GatherNode(ExecutionPlan* plan,
   }
 
   setParallelism(parallelismFromString(
-      VelocyPackHelper::getStringValue(base, "parellelism", "")));
+      VelocyPackHelper::getStringValue(base, StaticStrings::Parallelism, "")));
 }
 
 GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,

@@ -66,6 +66,7 @@ class StaticStrings {
   static std::string const SilentString;
   static std::string const WaitForSyncString;
   static std::string const SkipDocumentValidation;
+  static std::string const OverwriteCollectionPrefix;
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
   static std::string const Namespace;
@@ -161,6 +162,7 @@ class StaticStrings {
   static std::string const ProducesResult;
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
+  static std::string const Parallelism;
 
   // HTTP headers
   static std::string const Accept;
