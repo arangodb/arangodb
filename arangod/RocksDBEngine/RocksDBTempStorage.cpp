@@ -81,6 +81,11 @@ class KeysComparator : public rocksdb::Comparator {
     } else if (hasPrefixId2) {
       diffInId = -1;
     }
+    // here, we expect always pairs of the actual key value to compare (the
+    // slice) + the byte that represents the order in which to compare. As we
+    // build the arguments ourselves to call this comparator, we can expect that
+    // either there would be no more value with order to compare, or the value
+    // would be present with the order byte
     while (static_cast<size_t>(p1 - lhs.data()) < lhs.size() &&
            static_cast<size_t>(p2 - rhs.data()) < rhs.size()) {
       velocypack::Slice slice1(reinterpret_cast<uint8_t const*>(p1));
