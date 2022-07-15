@@ -24,9 +24,9 @@ devel
 
   * `--temp.intermediate-results-capacity`: maximum on-disk size (in bytes) 
     for intermediate results. If set to 0, it means that the on-disk size
-    is not constrained. It can be set a value other than 0 to restrict the
+    is not constrained. It can be set to a value other than 0 to restrict the
     size of the temporary directory. Once the cumulated on-disk size of
-    intermediate results reaches the configured maximum capacity, then the
+    intermediate results reaches the configured maximum capacity, the
     query will be aborted with failure "disk capacity limit for intermediate
     results exceeded".
   * `--temp.intermediate-results-spillover-threshold-num-rows`: number of
@@ -37,7 +37,7 @@ devel
     data should be encrypted. This option is only available in the Enterprise
     Edition.
   * `--temp.-intermediate-results-encryption-hardware-acceleration`: whether
-    or not to use hardware acceleration for the no-disk encryption. This
+    or not to use hardware acceleration for the on-disk encryption. This
     option is only available in the Enterprise Edition.
 
   Please note that the feature is currently still experimental and may slightly
