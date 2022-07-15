@@ -379,7 +379,6 @@ void Worker<V, E, M>::_startProcessing() {
   } else {
     _runningThreads = 1;
   }
-  LOG_DEVEL << "threads? " << _runningThreads;
   _feature.metrics()->pregelNumberOfThreads->fetch_add(_runningThreads);
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());

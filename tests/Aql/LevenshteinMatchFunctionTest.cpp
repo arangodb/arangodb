@@ -82,12 +82,12 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs,
     params.emplace_back(VPackSlice::nullSlice());  // redundant argument
   }
 
-  arangodb::aql::Function f("LEVENSHTEIN_MATCH", &Functions::LevenshteinMatch);
+  arangodb::aql::Function f("LEVENSHTEIN_MATCH", &functions::LevenshteinMatch);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
   AqlValue result =
-      Functions::LevenshteinMatch(&expressionContext, node, params);
+      functions::LevenshteinMatch(&expressionContext, node, params);
 
   // explicitly call cleanup on the mocked transaction context because
   // for whatever reason the context's dtor does not fire and thus we
