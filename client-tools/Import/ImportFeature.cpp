@@ -60,6 +60,7 @@ ImportFeature::ImportFeature(Server& server, int* result)
       _collectionName(""),
       _fromCollectionPrefix(""),
       _toCollectionPrefix(""),
+      _overwriteCollectionPrefix(false),
       _createCollection(false),
       _createDatabase(false),
       _createCollectionType("document"),
@@ -118,6 +119,11 @@ void ImportFeature::collectOptions(
       "--to-collection-prefix",
       "_to collection name prefix (will be prepended to all values in '_to')",
       new StringParameter(&_toCollectionPrefix));
+
+  options->addOption("--overwrite-collection-prefix",
+                     "only useful with '--from/--to-collection-prefix', if the "
+                     "value is already prefixed, overwrite the prefix.",
+                     new BooleanParameter(&_overwriteCollectionPrefix));
 
   options->addOption("--create-collection",
                      "create collection if it does not yet exist",
@@ -407,6 +413,8 @@ void ImportFeature::start() {
       std::cout << "to collection prefix:   " << _toCollectionPrefix
                 << std::endl;
     }
+    std::cout << "overwrite coll. prefix: "
+              << (_overwriteCollectionPrefix ? "yes" : "no") << std::endl;
     std::cout << "create:                 "
               << (_createCollection ? "yes" : "no") << std::endl;
     std::cout << "create database:        " << (_createDatabase ? "yes" : "no")
@@ -591,6 +599,7 @@ void ImportFeature::start() {
     // set prefixes
     ih.setFrom(_fromCollectionPrefix);
     ih.setTo(_toCollectionPrefix);
+    ih.setOverwritePrefix(_overwriteCollectionPrefix);
 
     TRI_NormalizePath(_filename);
     // import type
