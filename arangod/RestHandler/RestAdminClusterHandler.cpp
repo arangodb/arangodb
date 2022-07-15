@@ -2500,9 +2500,9 @@ RestAdminClusterHandler::collectRebalanceInformation(
       auto& ref = p.dbServers.emplace_back();
       ref.id = serverName;
       ref.zone = 0;
-      ref.volumeSize = 1;
-      ref.freeDiskSize = 1;
-      ref.CPUcapacity = 1;
+      ref.volumeSize = 7000000000;
+      ref.freeDiskSize = 5000000000;
+      ref.CPUcapacity = 32;
       return idx;
     }
   };
@@ -2553,7 +2553,7 @@ RestAdminClusterHandler::collectRebalanceInformation(
           shardRef.collectionId = index;
           shardRef.replicationFactor = shard.second.size();
           shardRef.weight = 1.;
-          shardRef.size = 1;  // size of data in that shard
+          shardRef.size = 1024 * 1024;  // size of data in that shard
           bool first = true;
           for (auto const& server : shard.second) {
             if (first) {
