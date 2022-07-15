@@ -48,7 +48,12 @@ devel
   avoid the buildup of the entire query result in RAM, a streaming query
   should be used.
 
-* Bugfix in Pregel's status: When loading the graph into memory,
+* Enterprise only: Added `MINHASH`, `MINHASH_MATCH`, `MINHASH_ERROR`, 
+  `MINHASH_COUNT` AQL functions.
+
+* Enterprise only: Added `minhash` analyzer.
+
+* BugFix in Pregel's status: When loading the graph into memory,
   Pregel's state is now 'loading' instead of 'running'. When loading is finished,
   Pregel's state changes to the 'running' state.
 
@@ -67,7 +72,7 @@ devel
 * BugFix in Pregel's Label Propagation: the union of three undirected cliques
   of size at least three connected by an undirected triangle now returns
   three communities (each clique is a community) instead of two.
-  
+
 * Pregel now reports correct and ongoing runtimes for loading, running, and
   storing as well as runtimes for the separate global supersteps.
 

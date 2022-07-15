@@ -901,7 +901,7 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines();
     });
-    this.cleanup = shutdownSuccess;
+    this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
   }
 

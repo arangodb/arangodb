@@ -190,8 +190,8 @@ irs::doc_iterator::ptr make_iterator(
     const irs::term_reader& field, const irs::byte_type* query_stats,
     irs::Order const& order, irs::score_t boost, Acceptor& acceptor) {
   return irs::memory::make_managed<GeoIterator<Acceptor>>(
-      irs::make_disjunction<Disjunction>(std::move(itrs)), std::move(columnIt),
-      acceptor, reader, field, query_stats, order, boost);
+      irs::MakeDisjunction<Disjunction>(std::move(itrs), irs::NoopAggregator{}),
+      std::move(columnIt), acceptor, reader, field, query_stats, order, boost);
 }
 
 //////////////////////////////////////////////////////////////////////////////

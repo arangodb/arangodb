@@ -46,11 +46,6 @@
 #include "VocBase/Methods/Collections.h"
 #include "Basics/StaticStrings.h"
 
-namespace {
-std::vector<std::vector<std::string>> EMPTY_STORED_FIELDS{};
-std::vector<std::pair<std::string, bool>> EMPTY_SORTED_FIELDS{};
-}  // namespace
-
 using namespace arangodb::aql;
 
 class IResearchInvertedIndexConditionTest
@@ -107,8 +102,9 @@ class IResearchInvertedIndexConditionTest
     }
   }
 
+  template<typename Fields>
   void estimateFilterCondition(
-      std::string const& queryString, std::vector<std::string> const& fields,
+      std::string const& queryString, Fields const& fields,
       arangodb::Index::FilterCosts const& expectedCosts,
       ExpressionContext* exprCtx = nullptr,
       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
@@ -1013,3 +1009,7 @@ TEST_F(IResearchInvertedIndexConditionTest,
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
+
+#if USE_ENTERPRISE
+#include "tests/IResearch/IResearchInvertedIndexConditionTestEE.hpp"
+#endif
