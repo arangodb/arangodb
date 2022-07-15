@@ -68,20 +68,7 @@ class WalkerWorker : public WalkerWorkerBase<T> {
       return !_done.emplace(en).second;
     }
 
-    // this is a no-op in non-maintainer mode
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // make sure a node is only processed once
-    if (_done.emplace(en).second) {
-      return false;
-    }
-
-    // should never happen
-    TRI_ASSERT(false);
-
-    return true;
-#else
     return false;
-#endif
   }
 
   void reset() {
@@ -89,10 +76,6 @@ class WalkerWorker : public WalkerWorkerBase<T> {
       _done.clear();
       return;
     }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    _done.clear();
-#endif
   }
 
  private:
