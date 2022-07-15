@@ -322,6 +322,13 @@ const impTodos = [{
   create: 'true',
   removeAttribute: 'a'
 }, {
+  id: 'removeAttributeJSON',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportRemoveAttributeJSON',
+  type: 'csv',
+  create: 'true',
+  removeAttribute: 'a'
+}, {
   id: 'createDB',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
   coll: 'UnitTestsImportJson1',

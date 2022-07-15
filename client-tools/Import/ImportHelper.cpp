@@ -589,6 +589,143 @@ bool ImportHelper::importJson(std::string const& collectionName,
   return !_hasError;
 }
 
+bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
+                                         std::string const& pathName,
+                                         bool assumeLinewise) {
+  /**************
+   * This Block is copied over from importJson
+   * If this test works out we should unify them
+   ***************/
+  ManagedDirectory directory(_encryption, TRI_Dirname(pathName), false, false,
+                             true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
+  _collectionName = collectionName;
+  _firstLine = "";
+  _outputBuffer.clear();
+  _errorMessages.clear();
+  _hasError = false;
+
+  if (!checkCreateCollection()) {
+    return false;
+  }
+  if (!collectionExists()) {
+    return false;
+  }
+
+  // read and convert
+  int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
+
+  if (fileName == "-") {
+    // we don't have a filesize
+    totalLength = 0;
+    fd = directory.readableFile(STDIN_FILENO);
+  } else {
+    // read filesize
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd = directory.readableFile(fileName.c_str(), 0);
+
+    if (!fd) {
+      _errorMessages.push_back(TRI_LAST_ERROR_STR);
+      return false;
+    }
+  }
+
+  bool isObject = false;
+  bool checkedFront = false;
+
+  if (assumeLinewise) {
+    checkedFront = true;
+    isObject = false;
+  }
+
+  // progress display control variables
+  // double nextProgress = ProgressStep;
+
+  constexpr int BUFFER_SIZE = 1048576;
+  /**************
+   * End of copy
+   **************/
+  arangodb::basics::StringBuffer tmpBuffer;
+  if (tmpBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+    _errorMessages.emplace_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+
+    return false;
+  }
+
+  // read into temporary buffer
+  // TODO: We can optimize this and go in smaller steps! No need to read the
+  // full file, the [ sign should be at the very beginning of the file
+  ssize_t n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+  if (n < 0) {
+    _errorMessages.push_back(TRI_LAST_ERROR_STR);
+    return false;
+  } else if (n == 0) {
+    // we're done
+    TRI_ASSERT(false);
+    // TODO HANDLE empty input
+    return false;
+  }
+  tmpBuffer.increaseLength(n);
+  // DETECT if we are in a single Json-Array case.
+  if (!checkedFront) {
+    // detect the import file format (single lines with individual JSON
+    // objects or a JSON array with all documents)
+    char const* p = tmpBuffer.begin();
+    char const* e = tmpBuffer.end();
+
+    while (p < e && (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t' ||
+                     *p == '\f' || *p == '\b')) {
+      ++p;
+    }
+
+    isObject = (*p == '[');
+    checkedFront = true;
+  }
+  uint64_t maxUploadSize = getMaxUploadSize();
+  auto doTransformAndOutputOneDoc = [&](VPackSlice document) {
+    LOG_DEVEL << document.toJson();
+  };
+  if (isObject) {
+    // Single Array case, we need to read the full file at once
+    if (totalLength > 0) {
+      // We have a given file, we can do shortcuts here
+      if (static_cast<uint64_t>(totalLength) > maxUploadSize) {
+        _errorMessages.push_back(
+            "import file is too big. please increase the value of --batch-size "
+            "(currently " +
+            StringUtils::itoa(maxUploadSize) + ")");
+        return false;
+      }
+      // Read the remainder of the file, we know that it fits
+      while (n > 0) {
+        n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+        if (n < 0) {
+          _errorMessages.push_back(TRI_LAST_ERROR_STR);
+          return false;
+        }
+        if (n == 0) {
+          break;
+        }
+        tmpBuffer.increaseLength(n);
+      }
+
+      // Full file in tmpBuffer, read + parse it
+      auto builder =
+          VPackParser::fromJson(tmpBuffer.begin(), tmpBuffer.length());
+      // We either have an array here, or invalid JSON.
+      // Just make sure we do not crash do bogus stuff in case one of
+      // the above has a bug.
+      ADB_PROD_ASSERT(builder->slice().isArray());
+      for (auto const& doc : VPackArrayIterator(builder->slice())) {
+        doTransformAndOutputOneDoc(doc);
+      }
+    }
+  }
+  // TODO Continue implementation
+  return false;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// private functions
 ////////////////////////////////////////////////////////////////////////////////

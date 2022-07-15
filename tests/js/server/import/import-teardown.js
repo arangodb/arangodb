@@ -68,16 +68,18 @@
   db._drop("UnitTestsImportEdgeGz");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
-  
+  db._drop("UnitTestsImportRemoveAttribute");
+  db._drop("UnitTestsImportRemoveAttributeJSON");
+
   let dbs = ["maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "abc mötor !\" ' & <>", "UnitTestImportCreateDatabase"];
   dbs.forEach((name) => {
     try {
       db._dropDatabase(name);
-    } catch(err) {}
+    } catch (err) {
+    }
   });
 })();
 
 return {
   status: true
 };
-
