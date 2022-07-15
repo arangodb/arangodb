@@ -153,6 +153,9 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(oldCount, db._analyzers.count());
       }
       {
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+        const modelFile = require("path").resolve(filePath);
+
         if (!isEnterprise) {
           try {
             analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true}); 
@@ -162,8 +165,6 @@ function iResearchFeatureAqlTestSuite () {
         } else {
           try {analyzers.remove("classificationPropAnalyzer"); } catch (e) {}
           let oldCount = db._analyzers.count();
-          const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
-          const modelFile = require("path").resolve(filePath);
           let analyzer = analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true});
           try {
             assertEqual(oldCount + 1, db._analyzers.count());
@@ -176,6 +177,9 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
       {
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+        const modelFile = require("path").resolve(filePath);
+
         if (!isEnterprise) {
           try { 
             analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
@@ -185,8 +189,6 @@ function iResearchFeatureAqlTestSuite () {
         } else {
           try {analyzers.remove("nearestNeighborsPropAnalyzer"); } catch (e) {}
           let oldCount = db._analyzers.count();
-          const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
-          const modelFile = require("path").resolve(filePath);
           let analyzer = analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
           try {
             assertEqual(oldCount + 1, db._analyzers.count());
