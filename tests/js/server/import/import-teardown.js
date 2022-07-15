@@ -66,6 +66,8 @@
   db._drop("UnitTestsImportVertex");
   db._drop("UnitTestsImportEdge");
   db._drop("UnitTestsImportEdgeGz");
+  db._drop("UnitTestsImportEdgeRewriteCollectionOn");
+  db._drop("UnitTestsImportEdgeRewriteCollectionOff");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
