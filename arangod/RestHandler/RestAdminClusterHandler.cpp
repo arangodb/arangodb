@@ -2165,7 +2165,7 @@ auto inspect(Inspector& f, RebalanceOptions& x) {
       f.field("leaderChanges", x.leaderChanges).fallback(true),
       f.field("moveLeaders", x.moveLeaders).fallback(false),
       f.field("moveFollowers", x.moveFollowers).fallback(false),
-      f.field("piFactor", x.piFactor).fallback(256e6),
+      f.field("piFactor", x.piFactor).fallback(1.0),
       f.field("databasesExcluded", x.databasesExcluded)
           .fallback(std::vector<DatabaseID>{}));
 };
