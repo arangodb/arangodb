@@ -342,7 +342,6 @@ bool FieldMeta::init(
   // .............................................................................
   // process fields last since children inherit from parent
   // .............................................................................
-
   {
     // optional string map<name, overrides>
     constexpr std::string_view kFieldName{"fields"};
@@ -398,6 +397,67 @@ bool FieldMeta::init(
       }
     }
   }
+
+#ifdef USE_ENTERPRISE
+  {
+    // optional string map<name, overrides>
+    constexpr std::string_view kFieldName{"nested"};
+    if (slice.hasKey(kFieldName)) {
+      auto field = slice.get(kFieldName);
+
+      if (!field.isObject()) {
+        errorField = kFieldName;
+
+        return false;
+      }
+
+      auto subDefaults = *this;
+
+      _nested.clear();  // reset to match either defaults or read values exactly
+
+      for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+        auto key = itr.key();
+        auto value = itr.value();
+
+        if (!key.isString()) {
+          errorField = std::string{kFieldName} + "[" +
+                       basics::StringUtils::itoa(itr.index()) + "]";
+
+          return false;
+        }
+
+        auto name = key.copyString();
+
+        if (!value.isObject()) {
+          errorField = std::string{kFieldName} + "." + name;
+
+          return false;
+        }
+
+        std::string childErrorField;
+
+        if (!_nested[name]->init(server, value, childErrorField, defaultVocbase,
+                                 version, subDefaults, referencedAnalyzers,
+                                 nullptr)) {
+          errorField =
+              std::string{kFieldName} + "." + name + "." + childErrorField;
+
+          return false;
+        }
+      }
+    }
+  }
+  _hasNested = !_nested.empty();
+  if (!_hasNested) {
+    for (auto const& f : _fields) {
+      if (!f.value()->_nested.empty()) {
+        _hasNested = true;
+        break;
+      }
+    }
+  }
+#endif
+
   return true;
 }
 
@@ -474,6 +534,32 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     }
     fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
+  }
+
+  if (!_nested.empty()) {  // fields are not inherited from parent
+    velocypack::Builder fieldsBuilder;
+    Mask fieldMask(true);      // output all non-matching fields
+    auto subDefaults = *this;  // make modifable copy
+    fieldsBuilder.openObject();
+
+    for (auto& entry : _nested) {
+      fieldMask._fields =
+          !entry.value()
+               ->_fields.empty();  // do not output empty fields on subobjects
+      fieldsBuilder.add(           // add sub-object
+          std::string_view(entry.key().c_str(),
+                           entry.key().size()),  // field name
+          VPackValue(velocypack::ValueType::Object));
+
+      if (!entry.value()->json(server, fieldsBuilder, &subDefaults,
+                               defaultVocbase, &fieldMask)) {
+        return false;
+      }
+
+      fieldsBuilder.close();
+    }
+    fieldsBuilder.close();
+    builder.add("nested", fieldsBuilder.slice());
   }
 
   if ((!ignoreEqual || _includeAllFields != ignoreEqual->_includeAllFields) &&
