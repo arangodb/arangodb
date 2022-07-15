@@ -1,0 +1,340 @@
+version: 2.1
+
+orbs:
+  win: circleci/windows@4.1
+
+jobs:
+  compile-linux-community:
+    machine:
+      image: ubuntu-2004:202201-02
+    resource_class: large
+    environment:
+      GIT_SSH_COMMAND: ssh -v
+    steps:
+      - run:
+          name: Install required software
+          command: |
+            sudo apt-get update
+            sudo apt-get install libssl-dev gcc-10 g++-10 snapd ccache flex bison
+      - run:
+          name: Checkout Source
+          command: |
+            cd ..
+            git clone --no-tags --depth 1 "$CIRCLE_REPOSITORY_URL" --branch "$CIRCLE_BRANCH" project
+      - restore_cache:
+          keys:
+            - ccache-v1-{{ .Branch }}-{{ .Revision }}
+            - ccache-v1-{{ .Branch }}-
+            - ccache-v1-
+      - run:
+          name: Zero CCache Statistics
+          command: ccache -z
+      - run:
+          name: Create build directories
+          command: |
+            mkdir -p build
+      - run:
+          name: Configure
+          command: |
+            cd build
+            cmake .. -DUSE_SEPARATE_REPLICATION2_TESTS_BINARY=On -DUSE_MAINTAINER_MODE=On -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc-10 -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++-10
+      - run:
+          name: Build
+          command: |
+            cd build
+            make -j $(nproc) arangodbtests_replication2 arangod arangosh arangobench arangodump arangorestore arangoimport arangoexport
+      - run:
+          name: CCache Statistics
+          command: ccache -s
+      - store_artifacts:
+          path: build/bin/arango*
+      - save_cache:
+          when: always
+          key: ccache-v1-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /home/circleci/.ccache
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/bin
+            - scripts/
+            - js/
+            - etc/
+            - tests/js
+            - utils
+            - UnitTests
+
+  compile-macos-llvm-community:
+    macos:
+      xcode: "12.5.1"
+    resource_class: medium
+    environment:
+      GIT_SSH_COMMAND: ssh -v
+      PATH: "/Users/distiller/symlinks/ccache:/Users/distiller/symlinks/clang"
+    steps:
+      - run:
+          name: Install required software
+          command: |
+            brew install llvm ccache cmake openssl@1.1
+      - run:
+          name: Checkout Source
+          command: |
+            cd ..
+            git clone --no-tags --depth 1 "$CIRCLE_REPOSITORY_URL" --branch "$CIRCLE_BRANCH" project
+      - restore_cache:
+          keys:
+            - ccache-mac-v1-{{ .Branch }}-{{ .Revision }}
+            - ccache-mac-v1-{{ .Branch }}-
+            - ccache-mac-v1-
+      - run:
+          name: Zero CCache Statistics
+          command: ccache -z
+      - run:
+          name: Create build directories
+          command: |
+            mkdir -p build
+            cd ..
+            mkdir -p symlinks/clang
+            mkdir -p symlinks/ccache
+            cd symlinks
+            ln -s /usr/local/opt/llvm/bin/clang clang/clang-13
+            ln -s /usr/local/opt/llvm/bin/clang++ clang/clang++-13
+            ln -s /usr/local/opt/ccache/libexec/clang ccache/clang-13
+            ln -s /usr/local/opt/ccache/libexec/clang++ ccache/clang++-13
+            echo $PATH
+
+          #echo -e '#!/bin/bash\nccache /usr/local/opt/llvm/bin/clang "$@"' > ccache-clang-wrapper.sh
+          #echo -e '#!/bin/bash\nccache /usr/local/opt/llvm/bin/clang++ "$@"' > ccache-clang++-wrapper.sh
+          #chmod u+x ccache-clang-wrapper.sh ccache-clang++-wrapper.sh
+      - run:
+          name: Configure
+          command: >
+            cd build ; cmake .. \
+              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9 \
+              -DUSE_SEPARATE_REPLICATION2_TESTS_BINARY=On \
+              -DUSE_MAINTAINER_MODE=On \
+              -DCMAKE_C_COMPILER=/Users/distiller/symlinks/ccache/clang-13 \
+              -DCMAKE_CXX_COMPILER=/Users/distiller/symlinks/ccache/clang++-13 \
+              -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl \
+          # ccache-clang-wrapper.sh
+      - run:
+          name: Build
+          command: |
+            cd build
+            make -j $(nproc)  arangodbtests_replication2 arangod arangosh arangobench arangodump arangorestore arangoimport arangoexport
+      - run:
+          name: CCache Statistics
+          command: ccache -sv
+      - store_artifacts:
+          path: build/bin/arango*
+      - save_cache:
+          when: always
+          key: ccache-mac-v1-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /Users/distiller/Library/Caches/ccache
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/bin
+            - scripts/
+            - js/
+            - etc/
+            - tests/js
+            - utils
+            - UnitTests
+
+  compile-windows-community:
+    executor:
+      name: win/default
+      size: "large"
+    environment:
+      GIT_SSH_COMMAND: ssh -v -oBatchMode=yes
+    steps:
+      - run:
+          name: Install required software
+          command: |
+            choco install cmake -y --installargs 'ADD_CMAKE_TO_PATH=System'
+          # choco install winflexbison3 -y
+      #- add_ssh_keys:
+      #    fingerprints:
+      #      - "94:d7:e4:7c:73:20:4c:5a:26:dc:d0:0b:ae:f5:38:c6"
+      #- run:
+      #    name: Checkout Source
+      #    command: |
+      #      cd ..
+      #      git clone --no-tags --depth 1 "$Env:CIRCLE_REPOSITORY_URL" --branch "$Env:CIRCLE_BRANCH" project
+      - checkout
+      - run:
+          name: Create build directories
+          command: |
+            md build
+      - run:
+          name: Configure
+          command: |
+            cd build
+            cmake .. -DUSE_SEPARATE_REPLICATION2_TESTS_BINARY=On -DUSE_MAINTAINER_MODE=On
+      - run:
+          name: Build
+          command: |
+            cmake --build build --target arangodump
+      - store_artifacts:
+          path: build/bin/Debug/arango*
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/bin
+            - scripts/
+            - js/
+            - etc/
+            - tests/js
+            - utils
+            - UnitTests
+
+  run-gtest-executable-linux:
+    parameters:
+      executable:
+        type: string
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run GTest
+          command: |
+            << parameters.executable >> --gtest_output=xml
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+      - store_test_results:
+          path: test_detail.xml
+
+  run-gtest-executable-macos:
+    parameters:
+      executable:
+        type: string
+    macos:
+      xcode: "12.5.1"
+    resource_class: medium
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run GTest
+          command: |
+            << parameters.executable >> --gtest_output=xml
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+      - store_test_results:
+          path: test_detail.xml
+
+  run-gtest-executable-windows:
+    parameters:
+      executable:
+        type: string
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Run GTest
+          command: |
+            << parameters.executable >> --gtest_output=xml
+      - store_test_results:
+          path: test_detail.xml
+
+  testing-js-run-test-suite:
+    parameters:
+      suite:
+        type: string
+      bucketCount:
+        type: integer
+        default: 1
+      bucketIndex:
+        type: integer
+        default: 0
+    machine:
+      image: ubuntu-2004:202201-02
+    resource_class: medium
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run << parameters.suite >> suite
+          command: |
+            scripts/unittest << parameters.suite >> --cluster true --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets << parameters.bucketCount >>/<< parameters.bucketIndex >>
+      - store_artifacts:
+          destination: << parameters.suite >>
+          path: out/*
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+      - store_artifacts:
+          destination: << parameters.suite >>
+          path: /tmp/*
+
+
+workflows:
+  replication-two-pr:
+    when:
+      matches:
+        pattern: /^(bug-fix|feature)\/cinfra-.*$/
+        value: << pipeline.git.branch >>
+    jobs:
+      - compile-linux-community
+      - compile-macos-llvm-community
+      #- compile-windows-community
+      - run-gtest-executable-linux:
+          name: replication2 gtest linux
+          executable: 'build/bin/arangodbtests_replication2'
+          requires:
+            - compile-linux-community
+      #- run-gtest-executable-windows:
+      #    name: replication2-gtest-windows
+      #    executable: 'build/bin/Debug/arangodbtests_replication2'
+      #    requires:
+      #      - compile-windows-community
+      - run-gtest-executable-macos:
+          name: replication2-gtest-mac
+          executable: 'build/bin/arangodbtests_replication2'
+          requires:
+            - compile-macos-llvm-community
+      - testing-js-run-test-suite:
+          name: replication2 server - << matrix.bucketIndex >>
+          matrix:
+            parameters:
+              bucketIndex: [0, 1, 2]
+          suite: replication2_server
+          bucketCount: 3
+          requires:
+            - compile-linux-community
+      - testing-js-run-test-suite:
+          name: replication2 client
+          suite: replication2_client
+          requires:
+            - compile-linux-community
