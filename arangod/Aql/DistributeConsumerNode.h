@@ -78,13 +78,7 @@ class DistributeConsumerNode : public ExecutionNode {
 
   /// @brief clone execution Node recursively, this makes the class abstract
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override {
-    // This node is not allowed to be cloned.
-    // Clone specialization!
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "DistributeConsumerNode cannot be cloned");
-  }
+                       bool withProperties) const override;
 
   CostEstimate estimateCost() const override {
     TRI_ASSERT(false);

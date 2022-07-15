@@ -118,12 +118,6 @@ struct Field {
 #endif
 };  // Field
 
-using MissingFieldsContainer = containers::FlatHashSet<std::string_view>;
-// "attribute" names are tmp strings so need to store them here.
-// but "path" is string_view to meta internals so just string_views.
-using MissingFieldsMap =
-    containers::FlatHashMap<std::string, MissingFieldsContainer>;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack accoring the specified
 ///        IResearchLinkMeta
