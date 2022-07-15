@@ -70,6 +70,8 @@
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
   db._drop("UnitTestsImportRemoveAttributeJSON");
+  db._drop("UnitTestsImportJsonLarge");
+  db._drop("UnitTestsImportRemoveAttributeJsonLarge");
 
   let dbs = ["maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "abc mötor !\" ' & <>", "UnitTestImportCreateDatabase"];
   dbs.forEach((name) => {

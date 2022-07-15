@@ -773,20 +773,27 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
         if (startOfNextLine == tmpBuffer.end()) {
           // We consumed all of our tmp buffer.
           // Easy case, just clear it and fill it fresh
-          n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
-          if (n < 0) {
-            _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
-            return false;
-          }
-          if (n == 0) {
-            break;
-          }
-
-          startOfNextLine = tmpBuffer.begin();
-          endOfNextLine = tmpBuffer.end();
+          tmpBuffer.clear();
         } else {
-          TRI_ASSERT(false);
+          // We still need to process pieces of the input
+          // Clear only the front!
+          tmpBuffer.erase_front(
+              std::distance<char const*>(tmpBuffer.begin(), startOfNextLine));
         }
+
+        n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+        if (n < 0) {
+          _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
+          return false;
+        }
+        if (n == 0) {
+          break;
+        }
+        tmpBuffer.increaseLength(n);
+        reportProgress(totalLength, fd->offset(), nextProgress);
+
+        startOfNextLine = tmpBuffer.begin();
+        endOfNextLine = tmpBuffer.end();
       } else {
         // We now have a single line between start and end, let's throw it
         // through the parsing process
