@@ -1438,7 +1438,7 @@ RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
 
   auto maintenancePath = arangodb::cluster::paths::root()
                              ->arango()
-                             ->target()
+                             ->current()
                              ->maintenanceDBServers()
                              ->dbserver(serverId);
 
@@ -1561,10 +1561,7 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate,
 }
 
 RestStatus RestAdminClusterHandler::setDBServerMaintenance(
-    std::string const& serverId, bool wantToActivate, uint64_t timeout) {
-  // we don't need a timeout when disabling the maintenance
-  TRI_ASSERT(wantToActivate || timeout == 0);
-
+    std::string const& serverId, std::string const& mode, uint64_t timeout) {
   auto maintenancePath = arangodb::cluster::paths::root()
                              ->arango()
                              ->target()
@@ -1579,16 +1576,23 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
 
   // (stringified) timepoint at which maintenance will reactivate itself
   std::string reactivationTime;
-  if (wantToActivate) {
+  if (mode == "maintenance") {
     reactivationTime = timepointToString(std::chrono::system_clock::now() +
                                          std::chrono::seconds(timeout));
   }
 
   auto sendTransaction = [&] {
-    if (wantToActivate) {
+    if (mode == "maintenance") {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder guard(&builder);
+        builder.add("Mode", VPackValue(mode));
+        builder.add("Until", VPackValue(reactivationTime));
+      }
+
       std::vector<AgencyOperation> operations{AgencyOperation{
           maintenancePath->str(cluster::paths::SkipComponents(1)),
-          AgencyValueOperationType::SET, VPackValue(reactivationTime)}};
+          AgencyValueOperationType::SET, builder.slice()}};
       std::vector<AgencyPrecondition> preconds{AgencyPrecondition{
           healthPath->str(cluster::paths::SkipComponents(1)),
           AgencyPrecondition::Type::VALUE, VPackValue("GOOD")}};
@@ -1684,34 +1688,28 @@ RestStatus RestAdminClusterHandler::handlePutDBServerMaintenance(
     return RestStatus::DONE;
   }
 
-  if (body.isString()) {
-    if (body.isEqualString("on")) {
-      // supervision maintenance will turn itself off automatically
-      // after one hour by default
-      constexpr uint64_t timeout = 3600;  // 1 hour
-      return setDBServerMaintenance(serverId, true, timeout);
-    } else if (body.isEqualString("off")) {
-      // timeout doesn't matter for turning off the supervision
-      return setDBServerMaintenance(serverId, false, /*timeout*/ 0);
-    } else {
-      // user sent a stringified timeout value, so lets honor this
-      VPackValueLength l;
-      char const* p = body.getString(l);
-      bool valid = false;
-      uint64_t timeout = NumberUtils::atoi_positive<uint64_t>(p, p + l, valid);
-      if (valid) {
-        return setDBServerMaintenance(serverId, true, timeout);
+  if (body.isObject() && body.hasKey("mode")) {
+    std::string mode = body.get("mode").copyString();
+    if (mode == "maintenance" || mode == "normal") {
+      uint64_t timeout = 3600;  // 1 hour
+      if (body.hasKey("timeout")) {
+        VPackSlice timeoutSlice = body.get("timeout");
+        if (timeoutSlice.isInteger()) {
+          try {
+            timeout = timeoutSlice.getNumber<uint64_t>();
+          } catch (std::exception const&) {
+            // If the value is negative or a float, we simply keep 3600
+          }
+        }
       }
-      // otherwise fall-through to error
+      return setDBServerMaintenance(serverId, mode, timeout);
     }
-  } else if (body.isNumber()) {
-    // user sent a numeric timeout value, so lets honor this
-    uint64_t timeout = body.getNumber<uint64_t>();
-    return setDBServerMaintenance(serverId, true, timeout);
+    // otherwise fall-through to error
   }
 
-  generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                "string expected with value `on` or `off`");
+  generateError(
+      rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+      "object expected with attribute 'mode' and optional attribute 'timeout'");
   return RestStatus::DONE;
 }
 

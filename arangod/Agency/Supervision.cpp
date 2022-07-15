@@ -1051,7 +1051,7 @@ void Supervision::step() {
       }
     } catch (std::exception const& e) {
       LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
-          << "Supervision maintenace key in agency is not a string. "
+          << "Supervision maintenance key in agency is not a string. "
              "This should never happen and will prevent hot backups. "
           << e.what();
       return;

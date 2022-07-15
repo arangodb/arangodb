@@ -73,8 +73,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   // timeout can be used to set an arbitrary timeout for the maintenance
   // duration. it will be ignored if "state" is not true.
   RestStatus setMaintenance(bool state, uint64_t timeout);
-  RestStatus setDBServerMaintenance(std::string const& serverId, bool state,
-                                    uint64_t timeout);
+  RestStatus setDBServerMaintenance(std::string const& serverId,
+                                    std::string const& mode, uint64_t timeout);
   RestStatus handlePutMaintenance();
   RestStatus handleGetMaintenance();
   RestStatus handlePutDBServerMaintenance(std::string const& serverId);
