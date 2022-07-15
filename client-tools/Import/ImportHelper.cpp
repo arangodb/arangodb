@@ -802,13 +802,26 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
               startOfNextLine, std::distance(startOfNextLine, endOfNextLine));
           // We are required to have an object here, otherwise the format is
           // invalid
-          // TODO: proper error reporting
-          ADB_PROD_ASSERT(builder->slice().isObject());
-          LOG_DEVEL << "Try to transform " << builder->toJson();
+          if (!builder->slice().isObject()) {
+            // Will be ignored in the lines below
+            // We have the option to do a more sophisticated error reporting
+            // here.
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+          }
           doTransformAndOutputOneDoc(builder->slice());
         } catch (...) {
-          LOG_DEVEL << "Catched exception, we have not handled it yet, and "
-                       "silently ignore";
+          {
+            // Count the error
+            MUTEX_LOCKER(guard, _stats._mutex);
+            _stats._numberErrors++;
+          }
+          // Produce a log message
+          auto keyLength = std::distance(startOfNextLine, endOfNextLine);
+          LOG_TOPIC("ad69b", WARN, arangodb::Logger::FIXME)
+              << "invalid JSON type: "
+              << std::string_view(startOfNextLine,
+                                  std::min<uint64_t>(keyLength, 255))
+              << (keyLength > 255 ? "..." : "");
         }
         // Move the start forward
         startOfNextLine = endOfNextLine;
