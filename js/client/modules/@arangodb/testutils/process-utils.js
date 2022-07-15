@@ -144,6 +144,16 @@ class ConfigBuilder {
     if (what.batchSize !== undefined) {
       this.config['batch-size'] = what.batchSize;
     }
+
+    if (what["from-collection-prefix"] !== undefined) {
+      this.config["from-collection-prefix"] = what["from-collection-prefix"];
+    }
+    if (what["to-collection-prefix"] !== undefined) {
+      this.config["to-collection-prefix"] = what["to-collection-prefix"];
+    }
+    if (what["overwrite-collection-prefix"] !== undefined) {
+      this.config["overwrite-collection-prefix"] = what["overwrite-collection-prefix"];
+    }
   }
 
   setAuth(username, password) {

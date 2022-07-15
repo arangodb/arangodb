@@ -27,12 +27,19 @@
 #include "IResearchLinkMeta.h"
 #include "IResearchViewStoredValues.h"
 #include "VocBase/LogicalCollection.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 
 #include <unicode/locid.h>
 
 namespace arangodb::iresearch {
-
 enum class Consistency { kEventual, kImmediate };
+
+using MissingFieldsContainer = containers::FlatHashSet<std::string_view>;
+// "attribute" names are tmp strings so need to store them here.
+// but "path" is string_view to meta internals so just string_views.
+using MissingFieldsMap =
+    containers::FlatHashMap<std::string, MissingFieldsContainer>;
 
 class IResearchInvertedIndexSort {
  public:
@@ -184,6 +191,31 @@ struct InvertedIndexField {
   bool _hasExpansion{false};
 };
 
+struct IResearchInvertedIndexMeta;
+
+struct IResearchInvertedIndexMetaIndexingContext {
+  IResearchInvertedIndexMetaIndexingContext(
+      IResearchInvertedIndexMeta const* field, bool add = true);
+
+  void addField(InvertedIndexField const& field);
+
+  absl::flat_hash_map<std::string_view,
+                      IResearchInvertedIndexMetaIndexingContext>
+      _subFields;
+  std::array<FieldMeta::Analyzer, 1> const* _analyzers;
+  size_t _primitiveOffset;
+  IResearchInvertedIndexMeta const* _meta;
+  bool _isArray{false};
+  bool _hasNested;
+  bool _includeAllFields;
+  bool _trackListPositions;
+  ValueStorage const _storeValues{ValueStorage::ID};
+  std::string _collectionName;
+  IResearchInvertedIndexSort const& _sort;
+  IResearchViewStoredValues const& _storedValues;
+  MissingFieldsMap _missingFieldsMap;
+};
+
 struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
                                     public InvertedIndexField {
   IResearchInvertedIndexMeta();
@@ -230,6 +262,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
 
   bool hasNested() const noexcept { return _hasNested; }
 
+  std::unique_ptr<IResearchInvertedIndexMetaIndexingContext> _indexingContext;
+
   InvertedIndexField::AnalyzerDefinitions _analyzerDefinitions;
   // sort condition associated with the link (primarySort)
   IResearchInvertedIndexSort _sort;
@@ -241,39 +275,4 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   Consistency _consistency{Consistency::kEventual};
   bool _hasNested{false};
 };
-
-struct IResearchInvertedIndexMetaIndexingContext {
-  IResearchInvertedIndexMetaIndexingContext(
-      IResearchInvertedIndexMeta const& field, bool add = true)
-      : _analyzers(&field._analyzers),
-        _primitiveOffset(field._primitiveOffset),
-        _meta(&field),
-        _hasNested(field._hasNested),
-        _includeAllFields(field._includeAllFields),
-        _trackListPositions(field._trackListPositions),
-        _sort(field._sort),
-        _storedValues(field._storedValues) {
-    if (add) {
-      addField(field);
-    }
-  }
-
-  void addField(InvertedIndexField const& field);
-
-  absl::flat_hash_map<std::string_view,
-                      IResearchInvertedIndexMetaIndexingContext>
-      _subFields;
-  std::array<FieldMeta::Analyzer, 1> const* _analyzers;
-  size_t _primitiveOffset;
-  IResearchInvertedIndexMeta const* _meta;
-  bool _isArray{false};
-  bool _hasNested;
-  bool _includeAllFields;
-  bool _trackListPositions;
-  ValueStorage const _storeValues{ValueStorage::ID};
-  std::string _collectionName;
-  IResearchInvertedIndexSort const& _sort;
-  IResearchViewStoredValues const& _storedValues;
-};
-
 }  // namespace arangodb::iresearch
