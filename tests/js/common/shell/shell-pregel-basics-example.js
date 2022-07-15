@@ -261,6 +261,32 @@ function basicTestSuite() {
       if (i === 0) {
         assertTrue(false, "timeout in pregel execution");
       }
+    },
+
+    test_AQL_pregel_result_is_empty_when_pregel_results_are_stored_in_database: function () {
+      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: true });
+      var i = 10000;
+      do {
+        internal.sleep(0.2);
+        var stats = pregel.status(pid);
+        if (stats.state === "done") {
+          assertEqual(stats.vertexCount, 11, stats);
+          assertEqual(stats.edgeCount, 17, stats);
+
+          let vertices = db._collection(vColl);
+          vertices.all().toArray().forEach(d => assertTrue(Math.abs(d.pagerank - d.result) < EPS));
+
+          let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+          assertEqual(array.length, 1);
+          let results = array[0];
+          assertEqual(results.length, 0);
+
+          break;
+        }
+      } while (i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in pregel execution");
+      }
     }
   };
 };
