@@ -37,7 +37,7 @@ devel
     data should be encrypted. This option is only available in the Enterprise
     Edition.
   * `--temp.-intermediate-results-encryption-hardware-acceleration`: whether
-    or not to use hardware acceleration for the no-disk encryption. This
+    or not to use hardware acceleration for the on-disk encryption. This
     option is only available in the Enterprise Edition.
 
   Please note that the feature is currently still experimental and may slightly
