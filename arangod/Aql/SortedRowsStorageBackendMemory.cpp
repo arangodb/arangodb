@@ -102,11 +102,9 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
 
   ResourceUsageScope guard(_infos.getResourceMonitor());
 
+
   if (_rowIndexes.capacity() < _rowIndexes.size() + numDataRows) {
-    size_t newCapacity = std::max(_rowIndexes.capacity() * 2, numDataRows);
-    while (newCapacity < _rowIndexes.size() + numDataRows) {
-      newCapacity *= 2;
-    }
+    size_t newCapacity = std::max(_rowIndexes.capacity() * 2, _rowIndexes.size() + numDataRows);
 
     // may throw
     guard.increase((newCapacity - _rowIndexes.capacity()) *
@@ -114,8 +112,6 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
 
     _rowIndexes.reserve(newCapacity);
   }
-
-  _rowIndexes.reserve(_rowIndexes.size() + numDataRows);
 
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
