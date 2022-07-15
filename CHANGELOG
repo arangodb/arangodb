@@ -1,5 +1,9 @@
 devel
 -----
+
+* arangoimport now supports the option --remove-attribute on type JSON as well.
+  Before it was restricted to TSV and CSV only.
+
 * BugFix in Pregel's status: When loading the graph into memory,
   Pregel's state is now 'loading' instead of 'running'. When loading is finished,
   Pregel's state changes to the 'running' state.
