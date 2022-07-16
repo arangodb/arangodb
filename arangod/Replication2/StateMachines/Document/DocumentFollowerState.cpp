@@ -53,9 +53,6 @@ auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-    VPackBuilder b;
-    velocypack::serialize(b, doc);
-    LOG_DEVEL << b.toJson();
 
     auto transactionHandler = _guardedData.doUnderLock(
         [](auto& data) -> std::shared_ptr<IDocumentStateTransactionHandler> {
@@ -73,17 +70,14 @@ auto DocumentFollowerState::applyEntries(
       switch (doc.operation) {
         case OperationType::kInsert:
           transactionHandler->ensureTransaction(doc);
-          LOG_DEVEL << "ensured";
           if (auto res = transactionHandler->initTransaction(doc.tid);
               res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
           }
-          LOG_DEVEL << "inited";
           if (auto res = transactionHandler->startTransaction(doc.tid);
               res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
           }
-          LOG_DEVEL << "started";
           fut = transactionHandler->applyTransaction(doc.tid);
           break;
         case OperationType::kCommit:
@@ -94,7 +88,6 @@ auto DocumentFollowerState::applyEntries(
       }
 
       fut.wait();
-      LOG_DEVEL << "waited";
       fut.result().throwIfFailed();
     } catch (std::exception& e) {
       VPackBuilder builder;

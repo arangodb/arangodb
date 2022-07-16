@@ -145,14 +145,11 @@ auto DocumentStateShardHandler::createLocalShard(
 
 DocumentStateTransaction::DocumentStateTransaction(TRI_vocbase_t* vocbase,
                                                    DocumentLogEntry entry)
-    : _entry{std::move(entry)} {
+    : _entry{std::move(entry)}, _tid(_entry.tid) {
   _options = transaction::Options();
-  /*
   _options.isReplication2Transaction = true;
   _options.isFollowerTransaction = true;
   _options.allowImplicitCollectionsForWrite = true;
-   */
-
   _state =
       std::make_shared<SimpleRocksDBTransactionState>(*vocbase, _tid, _options);
 }
@@ -231,11 +228,6 @@ auto DocumentStateTransactionHandler::initTransaction(TransactionId tid)
     hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
     auto state = trx->getState();
     state->setWriteAccessType();
-
-    auto& options = state->options();
-    options.isReplication2Transaction = true;
-    options.isFollowerTransaction = true;
-    options.allowImplicitCollectionsForWrite = true;
     return state->beginTransaction(hints);
   }
   return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
@@ -260,7 +252,7 @@ auto DocumentStateTransactionHandler::startTransaction(TransactionId tid)
 
   auto methods = std::make_unique<transaction::Methods>(
       ctx, readCollections, writeCollections, exclusiveCollections,
-      trx->getState()->options());
+      trx->getOptions());
 
   auto res = methods->begin();
   trx->setMethods(std::move(methods));
