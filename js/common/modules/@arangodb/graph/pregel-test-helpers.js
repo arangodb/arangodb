@@ -185,13 +185,13 @@ const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
     // sorting in the descending order is needed because pregelRunSmallInstanceGetComponents
     // sorts the results like this
     expectedSizes.sort(function (a, b) {return b - a;});
-    if (parameters.hasOwnProperty("test")) {
+    if (parameters.hasOwnProperty("test") && parameters.test) {
         delete parameters.test;
         const query = `
         FOR v in ${vColl}
         RETURN {"vertex": v._key, "result": v.result}
     `;
-        runPregelInstance(algName, graphName, parameters, query);
+        const result = runPregelInstance(algName, graphName, parameters, query);
         return;
     }
     const computedComponents = pregelRunSmallInstanceGetComponents(algName, graphName, parameters);
