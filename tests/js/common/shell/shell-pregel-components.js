@@ -424,12 +424,12 @@ const seededPagerankTestSuite = pregelTestHelpers.makeSeededPagerankTestSuite(fa
 
 const ssspTestSuite = pregelTestHelpers.makeSSSPTestSuite(false, "", 4);
 
-// jsunity.run(componentsTestSuite);
-// jsunity.run(wccRegressionTestSuite);
-// jsunity.run(wccTestSuite);
-// jsunity.run(sccTestSuite);
-// jsunity.run(labelPropagationTestSuite);
-// jsunity.run(pagerankTestSuite);
-// jsunity.run(seededPagerankTestSuite);
+jsunity.run(componentsTestSuite);
+jsunity.run(wccRegressionTestSuite);
+jsunity.run(wccTestSuite);
+jsunity.run(sccTestSuite);
+jsunity.run(labelPropagationTestSuite);
+jsunity.run(pagerankTestSuite);
+jsunity.run(seededPagerankTestSuite);
 jsunity.run(ssspTestSuite);
 return jsunity.done();

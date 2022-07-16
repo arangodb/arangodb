@@ -186,7 +186,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return makeClique(size, "bidirected");
     };
 
-    // Creates a path of length length.
+    // Creates a path with length many vertices.
     // The parameter kind has the following meaning:
     //  - "directed" (default):  directed path
     //  - "bidirected": as "directed" but for every edge (v,w), we also have the edge (w,v)
@@ -221,7 +221,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
     // The parameter kind has the following meaning:
     //  - "fromCenter":  the edges point from the center to the leaves
     //  - "toCenter":  the edges point from the leaves to the center
-    //  - "bidirected" (default): as "directed" but for every edge (v,w), we also have the edge (w,v)
+    //  - "bidirected" (default): as "fromCenter" but for every edge (v,w), we also have the edge (w,v)
     //  - "fromAndToCenter": the half of the edges point as with "fromCenter", the other half vice versa; if
     //      numberLeaves is odd, one more edge points from the center to a leaf
     const makeStar = function (numberLeaves, kind = "bidirected") {

@@ -38,6 +38,7 @@ if (isEnterprise) {
 let internal = require("internal");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
+const {makeEdgeBetweenVertices} = require("./graphs-generation");
 
 const graphGenerator = graphGeneration.graphGenerator;
 
@@ -84,7 +85,7 @@ const testPageRankOnGraph = function(vertices, edges, seeded = false) {
     db[eColl].save(edges);
     const query = `
                   FOR v in ${vColl}
-                  RETURN {"_key": v._key, "label": v.pagerank}  
+                  RETURN {"_key": v._key, "value": v.pagerank}  
               `;
     let parameters = {maxGSS:100, resultField: "pagerank"};
     if (seeded) {
@@ -92,14 +93,17 @@ const testPageRankOnGraph = function(vertices, edges, seeded = false) {
     }
     const result = runPregelInstance("pagerank", graphName, parameters, query);
 
-    const graph = new Graph(result, edges);
+    const graph = new Graph(vertices, edges);
+    for (const v of result) {
+        graph.vertex(v._key).value = v.value;
+    }
     const pr = new PageRank(dampingFactor, vertices.length);
     for (const resultV of result) {
-        if (!amostEquals(resultV.label, pr.doOnePagerankStep(resultV._key, graph), epsilon)) {
+        if (!amostEquals(resultV.value, pr.doOnePagerankStep(resultV._key, graph), epsilon)) {
             console.error(`The Pagerank algorithm 
-            did not find a fixed point: it returned '
-                    '${resultV.label}, but another test iteration returned ' 
-                    '${pr.doOnePagerankStep(resultV._key, graph)} for vertex ${JSON.stringify(resultV)}. '
+            did not find a fixed point: it returned ' +
+                    '${resultV.value}, but another test iteration returned ' + 
+                    '${pr.doOnePagerankStep(resultV._key, graph)} for vertex ${JSON.stringify(resultV)}. ' +
                     'The ranks returned by the algorithm are ${JSON.stringify(result)}.`);
         }
     }
@@ -125,30 +129,6 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
       `;
     return runPregelInstance(algName, graphName, parameters, query);
 };
-
-/**
- *
- * @param vertices
- * @param edges
- * @param source
- * @param expected a Map mapping vertex _keys to expected distances from source
- */
-const testSSSPOnGraph = function(vertices, edges, source, expected) {
-    db[vColl].save(vertices);
-    db[eColl].save(edges);
-    const query = `
-                  FOR v in ${vColl}
-                  RETURN {"_key": v._key, "result": v.distance}  
-              `;
-    let parameters = {maxGSS:100, source: source, resultField: "distance"};
-
-    const result = runPregelInstance("sssp", graphName, parameters, query);
-
-    const graph = new Graph(result, edges);
-
-
-};
-
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
@@ -297,21 +277,34 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
 
 
 class Vertex {
-    constructor(key, result) {
+    constructor(key, label, value=0) {
         this.outEdges = [];
-        this.outNeighbors = [];
+        this.outNeighbors = new Set();
         this.inEdges = [];
-        this.inNeighbors = [];
+        this.inNeighbors = new Set();
         this._key = key;
-        this.result = result;
+        this.label = label;
+        this.value = value;
     }
 
     outDegree() {
-        return this.outNeighbors.length;
+        return this.outNeighbors.size;
     }
 }
 
 class Graph {
+
+    vertex(key) {
+        return this.vertices.get(key);
+    }
+
+    printVertices() {
+        let listVertices = [];
+        for (const [vKey, v] of this.vertices) {
+            listVertices.push([vKey, v.label, v.value, v.outNeighbors, v.inNeighbors]);
+        }
+        console.warn(listVertices);
+    }
 
     /**
      * Constructs a graph.
@@ -329,7 +322,6 @@ class Graph {
             this.vertices.set(v._key, new Vertex(v._key, v.label));
         }
 
-
         this.edges = new Set();
         for (const e of edges) {
             const from = getKey(e._from);
@@ -342,15 +334,15 @@ class Graph {
             this.edges.add(e);
 
             this.vertices.get(from).outEdges.push(e);
-            this.vertices.get(from).outNeighbors.push(to);
             this.vertices.get(to).inEdges.push(e);
-            this.vertices.get(to).inNeighbors.push(from);
+            if (from !== to) {
+                this.vertices.get(from).outNeighbors.add(to);
+                this.vertices.get(to).inNeighbors.add(from);
+            }
         }
+        // this.printVertices();
     }
 
-    vertex(key) {
-        return this.vertices.get(key);
-    }
 
     /**
      * Performs BFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
@@ -376,7 +368,7 @@ class Graph {
             if (cbOnPopVertex !== undefined) {
                 cbOnPopVertex(v);
             }
-            for (const wKey of v.outNeighbors) {
+                for (const wKey of v.outNeighbors) {
                 if (! visited.has(wKey)) {
                     visited.add(wKey);
                     if (cbOnFindVertex !== undefined) {
@@ -437,8 +429,8 @@ class PageRank {
         const v = graph.vertex(vKey);
         for (const predKey of v.inNeighbors) {
             const pred = graph.vertex(predKey);
-            assertTrue(pred.hasOwnProperty("result"));
-            sum += pred.result / pred.outDegree();
+            assertTrue(pred.hasOwnProperty("value"));
+            sum += pred.value / pred.outDegree();
         }
         return this.dampingFactor * sum + this.commonProbability;
     }
@@ -1267,7 +1259,7 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
             testSPR10StarMultipleEdges: function () {
                 const numberLeaves = 10;
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
-                // insert each edges twice
+                // insert each edge twice
                 let edges2 = [];
                 for (const e of edges) {
                     edges2.push(e);
@@ -1297,25 +1289,58 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     // const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
 
+
+
+    // only for debugging
+    const printVertexKey = function (vertex) {
+        console.warn(`printVertexKey: ${vertex._key}`);
+    };
+
+    const writeDistance = function (vertex, parent) {
+        if (parent === undefined) {
+            vertex.value = 0;
+        } else {
+            vertex.value = parent.value + 1;
+        }
+    };
+
+    /**
+     *
+     * @param vertices
+     * @param edges
+     * @param source
+     */
+    const testSSSPOnGraph = function(vertices, edges, source) {
+        db[vColl].save(vertices);
+        db[eColl].save(edges);
+        const query = `
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "result": v.distance}  
+              `;
+        let parameters = {source: `${vColl}/${source}`, resultField: "distance"};
+        const result = runPregelInstance("sssp", graphName, parameters, query);
+        const graph = new Graph(vertices, edges);
+        // assign to each vertex.value infinity
+        // (This is what Pregel, in fact, returns if a vertex is not reachable.
+        // The documentation says "length above 9007199254740991 (max safe integer)".)
+        const infinity = 9223372036854776000n;
+        for (let [ , vertex] of graph.vertices) {
+             vertex.value = infinity;
+        }
+        graph.bfs(source, writeDistance, undefined);
+        for (const element of result) {
+            assertTrue(element.result === (graph.vertex(element._key)).value
+                || (element.result > 9007199254740991 && (graph.vertex(element._key)).value === infinity),
+                `Different distances. Pregel returned ${element.result}, ` +
+                    `test computed ${(graph.vertex(element._key)).value} for vertex ${element._key} ` +
+                    `where source is ${source}`);
+        }
+    };
+
     return function () {
         'use strict';
 
-        // const unionGraph = graphGeneration.unionGraph;
-
-        // only for debugging
-        const printVertexKey = function (vertex) {
-            console.warn(`printVertexKey: ${vertex._key}`);
-        };
-
-        const writeDistance = function (vertex, parent) {
-            if (parent === undefined) {
-                vertex.result = 0;
-            } else {
-                vertex.result = parent.result + 1;
-            }
-            console.warn(`${vertex._key}:${vertex.result}`);
-        };
-
+        const unionGraph = graphGeneration.unionGraph;
 
         return {
 
@@ -1323,20 +1348,86 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             tearDown: makeTearDown(isSmart),
 
-            testGridGraph: function () {
+            testDirectedCrystalGraphWithAdditionalEdge: function () {
+                // directed crystal graph (vertical edges go down):
+                //   ->0 -> 3 -> 6 ->
+                //     |    |    |
+                // 9 ->1 -> 4 -> 7 -> 10
+                //     |    |    |
+                //   ->2 -> 5 -> 8 ->
+
+                // this test includes cases of unreachable vertices (vertex v_9),
+                // of vertices reachable by paths of different lengths (vertex v_7)
+                // and of vertices reachable by different paths of minimal
+                // length (vertex v_4)
 
                 const numberLayers = 3;
                 const thickness = 3;
-                for (const kind of ["bidirected"/*, "undirected", "zigzag"*/]) {
-                    const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v"))
-                        .makeCrystal(numberLayers, thickness, kind);
-                    let graph = new Graph(vertices, edges);
-                    console.warn(edges);
-                    graph.bfs(`v_9`, writeDistance, undefined);
-                }
+
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v"))
+                    .makeCrystal(numberLayers, thickness, "directed");
+                // add an edge
+                edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "7", "v"));
+                const source = 'v_0';
+                testSSSPOnGraph(vertices, edges, source);
 
             },
 
+            testSSSPTwoEdges: function () {
+                const vertices = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeVertices(3);
+                let edges = [];
+                edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "1", "v"));
+                edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "1", "v"));
+
+                testSSSPOnGraph(vertices, edges, "v_0");
+            },
+
+            testSSSPTwoEdgesWithSelfloops: function () {
+                const vertices = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeVertices(3);
+                let edges = [];
+                edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "1", "v"));
+                edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "1", "v"));
+                // self-loops
+                edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "0", "v"));
+                edges.push(makeEdgeBetweenVertices(vColl, "1", "v", "1", "v"));
+                edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "2", "v"));
+
+                testSSSPOnGraph(vertices, edges, "v_0");
+            },
+
+            testSSSPTwoDisjointDirectedCycles: function () {
+
+                const length = 3;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
+                const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+
+                testSSSPOnGraph(vertices, edges, "v0_0");
+            },
+
+            testSSSP10Star: function () {
+                const numberLeaves = 10;
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                testSSSPOnGraph(vertices, edges, "v_0");
+            },
+
+            testSSSP10StarMultipleEdges: function () {
+                const numberLeaves = 10;
+
+                    const {
+                        vertices,
+                        edges
+                    } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                    // insert each edge twice
+                    let edges2 = edges.slice();
+                    for (const e of edges) {
+                        edges2.push({... e});
+                    }
+                    testSSSPOnGraph(vertices, edges2, "v_0");
+            }
 
 
         };
