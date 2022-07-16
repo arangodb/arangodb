@@ -400,7 +400,6 @@ const replicatedStateFollowerSuite = function (dbParams) {
       lh.registerAgencyTestEnd(testName);
     },
 
-    /*
     testFollowersSingleDocument: function() {
       let collection = db._collection(collectionName);
       let shardId = collection.shards()[0];
@@ -415,6 +414,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
       checkFollowersValue(endpoints, shardId, "foo", "baz", isReplication2);
 
       handle = collection.replace(handle, {_key: "foo", value: "bar"});
+      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
 
       collection.remove(handle);
@@ -485,15 +485,16 @@ const replicatedStateFollowerSuite = function (dbParams) {
       }
     },
 
-     */
     testFollowersTruncate: function() {
       let collection = db._collection(collectionName);
       let shardId = collection.shards()[0];
       let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
 
       collection.insert({_key: "foo", value: "bar"});
+      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
       collection.truncate();
+      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
     }
   };

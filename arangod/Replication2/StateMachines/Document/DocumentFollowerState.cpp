@@ -54,6 +54,10 @@ auto DocumentFollowerState::applyEntries(
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
 
+    VPackBuilder b;
+    velocypack::serialize(b, doc);
+    LOG_DEVEL << b.toJson();
+
     auto transactionHandler = _guardedData.doUnderLock(
         [](auto& data) -> std::shared_ptr<IDocumentStateTransactionHandler> {
           if (data.didResign()) {
@@ -70,6 +74,9 @@ auto DocumentFollowerState::applyEntries(
       switch (doc.operation) {
         case OperationType::kInsert:
         case OperationType::kUpdate:
+        case OperationType::kReplace:
+        case OperationType::kRemove:
+        case OperationType::kTruncate:
           transactionHandler->ensureTransaction(doc);
           if (auto res = transactionHandler->initTransaction(doc.tid);
               res.fail()) {

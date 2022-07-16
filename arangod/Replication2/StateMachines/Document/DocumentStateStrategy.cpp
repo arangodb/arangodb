@@ -227,7 +227,11 @@ auto DocumentStateTransactionHandler::initTransaction(TransactionId tid)
     transaction::Hints hints;
     hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
     auto state = trx->getState();
-    state->setWriteAccessType();
+    if (trx->getOperation() == kTruncate) {
+      state->setExclusiveAccessType();
+    } else {
+      state->setWriteAccessType();
+    }
     return state->beginTransaction(hints);
   }
   return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
@@ -312,6 +316,19 @@ auto DocumentStateTransactionHandler::applyTransaction(TransactionId tid)
   } else if (trx->getOperation() == OperationType::kRemove) {
     auto opOptions = arangodb::OperationOptions();
     return methods->removeAsync(trx->getShardId(), trx->getPayload(), opOptions)
+        .thenValue(
+            [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
+              return methods->finishAsync(opRes.result)
+                  .thenValue([opRes(std::move(opRes))](Result&& result) {
+                    if (opRes.fail()) {
+                      return opRes.result;
+                    }
+                    return result;
+                  });
+            });
+  } else if (trx->getOperation() == OperationType::kTruncate) {
+    auto opOptions = arangodb::OperationOptions();
+    return methods->truncateAsync(trx->getShardId(), opOptions)
         .thenValue(
             [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
               return methods->finishAsync(opRes.result)
