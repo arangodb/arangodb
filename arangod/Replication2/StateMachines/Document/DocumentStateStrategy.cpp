@@ -272,72 +272,51 @@ auto DocumentStateTransactionHandler::applyTransaction(TransactionId tid)
   }
 
   auto methods = trx->getMethods();
+  auto finish = [methods = methods](arangodb::OperationResult&& opRes) {
+    return methods->finishAsync(opRes.result)
+        .thenValue([opRes(std::move(opRes))](Result&& result) {
+          if (opRes.fail()) {
+            return opRes.result;
+          }
+          return result;
+        });
+  };
 
   if (trx->getOperation() == OperationType::kInsert) {
     auto opOptions = arangodb::OperationOptions();
     return methods->insertAsync(trx->getShardId(), trx->getPayload(), opOptions)
         .thenValue(
-            [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
-              return methods->finishAsync(opRes.result)
-                  .thenValue([opRes(std::move(opRes))](Result&& result) {
-                    if (opRes.fail()) {
-                      return opRes.result;
-                    }
-                    return result;
-                  });
+            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
+              return finish(std::move(opRes));
             });
   } else if (trx->getOperation() == OperationType::kUpdate) {
     auto opOptions = arangodb::OperationOptions();
     return methods->updateAsync(trx->getShardId(), trx->getPayload(), opOptions)
         .thenValue(
-            [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
-              return methods->finishAsync(opRes.result)
-                  .thenValue([opRes(std::move(opRes))](Result&& result) {
-                    if (opRes.fail()) {
-                      return opRes.result;
-                    }
-                    return result;
-                  });
+            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
+              return finish(std::move(opRes));
             });
   } else if (trx->getOperation() == OperationType::kReplace) {
     auto opOptions = arangodb::OperationOptions();
     return methods
         ->replaceAsync(trx->getShardId(), trx->getPayload(), opOptions)
         .thenValue(
-            [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
-              return methods->finishAsync(opRes.result)
-                  .thenValue([opRes(std::move(opRes))](Result&& result) {
-                    if (opRes.fail()) {
-                      return opRes.result;
-                    }
-                    return result;
-                  });
+            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
+              return finish(std::move(opRes));
             });
   } else if (trx->getOperation() == OperationType::kRemove) {
     auto opOptions = arangodb::OperationOptions();
     return methods->removeAsync(trx->getShardId(), trx->getPayload(), opOptions)
         .thenValue(
-            [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
-              return methods->finishAsync(opRes.result)
-                  .thenValue([opRes(std::move(opRes))](Result&& result) {
-                    if (opRes.fail()) {
-                      return opRes.result;
-                    }
-                    return result;
-                  });
+            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
+              return finish(std::move(opRes));
             });
   } else if (trx->getOperation() == OperationType::kTruncate) {
     auto opOptions = arangodb::OperationOptions();
     return methods->truncateAsync(trx->getShardId(), opOptions)
         .thenValue(
-            [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
-              return methods->finishAsync(opRes.result)
-                  .thenValue([opRes(std::move(opRes))](Result&& result) {
-                    if (opRes.fail()) {
-                      return opRes.result;
-                    }
-                    return result;
-                  });
+            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
+              return finish(std::move(opRes));
             });
   }
 
