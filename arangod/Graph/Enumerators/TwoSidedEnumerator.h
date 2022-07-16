@@ -54,7 +54,7 @@ template<class ProviderType, class Step>
 class PathResult;
 
 template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidatorType, bool stopAtFirstDepth>
+         class PathValidatorType>
 class TwoSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access

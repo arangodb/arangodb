@@ -46,8 +46,7 @@ using KPathEnumerator = TwoSidedEnumerator<
     FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>,
-    false>;
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 // ALL_SHORTEST_PATHS implementation
 template<class Provider>
@@ -55,8 +54,7 @@ using AllShortestPathsEnumerator = TwoSidedEnumerator<
     FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>,
-    true>;
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 // K_PATH implementation using Tracing
 template<class Provider>
@@ -66,8 +64,7 @@ using TracedKPathEnumerator = TwoSidedEnumerator<
     ProviderTracer<Provider>,
     PathValidator<ProviderTracer<Provider>,
                   PathStoreTracer<PathStore<typename Provider::Step>>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>,
-    false>;
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 // ALL_SHORTEST_PATHS implementation using Tracing
 template<class Provider>
@@ -77,8 +74,7 @@ using TracedAllShortestPathsEnumerator = TwoSidedEnumerator<
     ProviderTracer<Provider>,
     PathValidator<ProviderTracer<Provider>,
                   PathStoreTracer<PathStore<typename Provider::Step>>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>,
-    true>;
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness, bool useTracing>
