@@ -414,11 +414,10 @@ const replicatedStateFollowerSuite = function (dbParams) {
       checkFollowersValue(endpoints, shardId, "foo", "baz", isReplication2);
 
       handle = collection.replace(handle, {_key: "foo", value: "bar"});
-      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
-      return;
 
       collection.remove(handle);
+      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
     },
 
