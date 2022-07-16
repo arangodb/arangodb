@@ -282,6 +282,19 @@ auto DocumentStateTransactionHandler::applyTransaction(TransactionId tid)
                     return result;
                   });
             });
+  } else if (trx->getOperation() == OperationType::kUpdate) {
+    auto opOptions = arangodb::OperationOptions();
+    return methods->updateAsync(trx->getShardId(), trx->getPayload(), opOptions)
+        .thenValue(
+            [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
+              return methods->finishAsync(opRes.result)
+                  .thenValue([opRes(std::move(opRes))](Result&& result) {
+                    if (opRes.fail()) {
+                      return opRes.result;
+                    }
+                    return result;
+                  });
+            });
   }
 
   return Result{

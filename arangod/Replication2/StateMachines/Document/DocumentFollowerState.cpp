@@ -69,6 +69,7 @@ auto DocumentFollowerState::applyEntries(
       auto fut = futures::Future<Result>{Result{}};
       switch (doc.operation) {
         case OperationType::kInsert:
+        case OperationType::kUpdate:
           transactionHandler->ensureTransaction(doc);
           if (auto res = transactionHandler->initTransaction(doc.tid);
               res.fail()) {

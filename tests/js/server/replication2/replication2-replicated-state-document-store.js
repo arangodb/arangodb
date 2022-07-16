@@ -406,15 +406,17 @@ const replicatedStateFollowerSuite = function (dbParams) {
       let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
 
       let handle = collection.insert({_key: "foo", value: "bar"});
-      sleep(5);
+      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
-      return;
 
       handle = collection.update(handle, {value: "baz"});
+      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "baz", isReplication2);
 
       handle = collection.replace(handle, {_key: "foo", value: "bar"});
+      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
+      return;
 
       collection.remove(handle);
       checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
