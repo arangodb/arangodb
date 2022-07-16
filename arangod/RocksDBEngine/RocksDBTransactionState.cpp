@@ -216,8 +216,10 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
   LOG_TRX("5cb03", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
+  auto passThroughReplication2 =
+      _options.isReplication2Transaction && _options.isFollowerTransaction;
   TRI_ASSERT(_status == transaction::Status::RUNNING);
-  TRI_ASSERT(activeTrx->isMainTransaction());
+  TRI_ASSERT(activeTrx->isMainTransaction() || passThroughReplication2);
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
     return Result(TRI_ERROR_DEBUG);
   }

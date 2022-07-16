@@ -59,7 +59,7 @@ DocumentCore::DocumentCore(
 
 auto DocumentCore::getShardId() -> std::string_view { return _shardId; }
 
-auto DocumentCore::ensureTransaction(TransactionId tid)
-    -> std::shared_ptr<DocumentStateTransaction> {
-  return _transactionHandler->ensureTransaction(tid);
+auto DocumentCore::getTransactionHandler()
+    -> std::shared_ptr<IDocumentStateTransactionHandler> {
+  return _transactionHandler;
 }

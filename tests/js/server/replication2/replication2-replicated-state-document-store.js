@@ -32,6 +32,7 @@ const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
+const {sleep} = require('internal');
 
 const database = "replication2_document_store_test_db";
 const collectionName = "testCollection";
@@ -75,6 +76,7 @@ const checkFollowersValue = function (endpoints, shardId, key, value, isReplicat
   for (const endpoint of Object.values(endpoints)) {
     localValues[endpoint] = getLocalValue(endpoint, database, shardId, key);
   }
+  require('internal').print(JSON.stringify(localValues));
 
   var replication2Log = '';
   if (isReplication2) {
@@ -404,7 +406,9 @@ const replicatedStateFollowerSuite = function (dbParams) {
       let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
 
       let handle = collection.insert({_key: "foo", value: "bar"});
+      sleep(5);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
+      return;
 
       handle = collection.update(handle, {value: "baz"});
       checkFollowersValue(endpoints, shardId, "foo", "baz", isReplication2);
@@ -416,6 +420,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
       checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
     },
 
+    /*
     testFollowersMultiDocuments: function() {
       let collection = db._collection(collectionName);
       let shardId = collection.shards()[0];
@@ -481,6 +486,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
       collection.truncate();
       checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
     }
+     */
   };
 };
 
@@ -552,11 +558,12 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
 function replicatedStateFollowerSuiteV1() { return makeTestSuites(replicatedStateFollowerSuite)[0]; }
 function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStateFollowerSuite)[1]; }
 
+/*
 jsunity.run(replicatedStateDocumentStoreSuiteReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteReplication1);
 jsunity.run(replicatedStateFollowerSuiteV1);
-/** Currently disabled integration tests - TDD
- * jsunity.run(replicatedStateFollowerSuiteV2);
  */
+jsunity.run(replicatedStateFollowerSuiteV2);
+
 return jsunity.done();

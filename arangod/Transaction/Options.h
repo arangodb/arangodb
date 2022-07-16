@@ -80,6 +80,7 @@ struct Options {
 #endif
   bool waitForSync = false;
   bool fillBlockCache = true;
+  bool isReplication2Transaction = false;
   bool isFollowerTransaction = false;
   /// The following flag indicates if a transaction is allowed to perform
   /// dirty reads (aka read-from-followers). This is stored in the

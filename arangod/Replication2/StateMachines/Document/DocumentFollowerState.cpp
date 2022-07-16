@@ -23,13 +23,9 @@
 
 #include "DocumentCore.h"
 #include "DocumentFollowerState.h"
-#include "DocumentLeaderState.h"
 #include "Transaction/Manager.h"
-#include "Transaction/Methods.h"
-#include "StorageEngine/TransactionState.h"
-#include "Transaction/ManagerFeature.h"
-#include "Utils/OperationResult.h"
 
+#include <Basics/Exceptions.h>
 #include <Futures/Future.h>
 
 using namespace arangodb::replication2::replicated_state::document;
@@ -55,56 +51,58 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  auto shardId = _guardedData.doUnderLock([](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
-    }
-    return data.core->getShardId();
-  });
-
-  std::vector<std::string> const readCollections{};
-  std::vector<std::string> const writeCollections = {std::string(shardId)};
-  std::vector<std::string> const exclusiveCollections{};
-
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
     VPackBuilder b;
     velocypack::serialize(b, doc);
-    LOG_DEVEL << "got doc " << b.toJson();
-    auto tid = doc.trx;
-    auto docTrx = _guardedData.doUnderLock([tid](auto& data) {
-      if (data.didResign()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+    LOG_DEVEL << b.toJson();
+
+    auto transactionHandler = _guardedData.doUnderLock(
+        [](auto& data) -> std::shared_ptr<IDocumentStateTransactionHandler> {
+          if (data.didResign()) {
+            return nullptr;
+          }
+          return data.core->getTransactionHandler();
+        });
+    if (transactionHandler == nullptr) {
+      return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+    }
+
+    try {
+      auto fut = futures::Future<Result>{Result{}};
+      switch (doc.operation) {
+        case OperationType::kInsert:
+          transactionHandler->ensureTransaction(doc);
+          LOG_DEVEL << "ensured";
+          if (auto res = transactionHandler->initTransaction(doc.tid);
+              res.fail()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+          LOG_DEVEL << "inited";
+          if (auto res = transactionHandler->startTransaction(doc.tid);
+              res.fail()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+          LOG_DEVEL << "started";
+          fut = transactionHandler->applyTransaction(doc.tid);
+          break;
+        case OperationType::kCommit:
+          fut = transactionHandler->finishTransaction(doc.tid);
+          break;
+        default:
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
       }
-      auto docTransaction = data.core->ensureTransaction(tid);
-      return docTransaction;
-    });
-    docTrx->getState()->setWriteAccessType();
-    auto ctx = std::make_shared<transaction::ManagedContext>(
-        tid, docTrx->getState(), false, false, true);
-    auto& options = docTrx->getState()->options();
-    options.allowImplicitCollectionsForWrite = true;
-    auto activeTrx = std::make_unique<transaction::Methods>(
-        ctx, readCollections, writeCollections, exclusiveCollections, options);
 
-    Result res = activeTrx->begin();
-    TRI_ASSERT(res.ok());
-
-    auto opOptions = arangodb::OperationOptions();
-    if (doc.operation == OperationType::kInsert) {
-      auto f = activeTrx->insertAsync(doc.shardId, doc.data.slice(), opOptions)
-                   .thenValue([activeTrx = std::move(activeTrx)](
-                                  arangodb::OperationResult&& opRes) {
-                     return activeTrx->finishAsync(opRes.result)
-                         .thenValue([opRes(std::move(opRes))](Result&& result) {
-                           TRI_ASSERT(opRes.ok());
-                           TRI_ASSERT(result.ok());
-                         });
-                   });
-      f.wait();
-      f.result().throwIfFailed();
+      fut.wait();
+      LOG_DEVEL << "waited";
+      fut.result().throwIfFailed();
+    } catch (std::exception& e) {
+      VPackBuilder builder;
+      velocypack::serialize(builder, doc);
+      TRI_ASSERT(false) << e.what() << " " << builder.toJson();
     }
   }
+
   return {TRI_ERROR_NO_ERROR};
 }
 

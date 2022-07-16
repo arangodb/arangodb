@@ -45,8 +45,8 @@ struct DocumentCore {
 
   auto getShardId() -> std::string_view;
 
-  auto ensureTransaction(TransactionId tid)
-      -> std::shared_ptr<DocumentStateTransaction>;
+  auto getTransactionHandler()
+      -> std::shared_ptr<IDocumentStateTransactionHandler>;
 
  private:
   GlobalLogIdentifier _gid;

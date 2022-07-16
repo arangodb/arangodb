@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentStateStrategy.h"
+#include "DocumentLogEntry.h"
 
 #include <velocypack/Builder.h>
 
@@ -40,6 +41,9 @@
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Options.h"
+#include "Transaction/SmartContext.h"
+
+#include <fmt/core.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -140,18 +144,49 @@ auto DocumentStateShardHandler::createLocalShard(
 }
 
 DocumentStateTransaction::DocumentStateTransaction(TRI_vocbase_t* vocbase,
-                                                   TransactionId tid)
-    : _options() {
+                                                   DocumentLogEntry entry)
+    : _entry{std::move(entry)} {
+  _options = transaction::Options();
+  /*
+  _options.isReplication2Transaction = true;
+  _options.isFollowerTransaction = true;
+  _options.allowImplicitCollectionsForWrite = true;
+   */
+
   _state =
-      std::make_shared<SimpleRocksDBTransactionState>(*vocbase, tid, _options);
-  transaction::Hints hints;
-  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  auto result = _state->beginTransaction(hints);
-  TRI_ASSERT(result.ok());
+      std::make_shared<SimpleRocksDBTransactionState>(*vocbase, _tid, _options);
+}
+
+auto DocumentStateTransaction::getShardId() -> ShardID {
+  return _entry.shardId;
+}
+
+auto DocumentStateTransaction::getOptions() -> transaction::Options {
+  return _options;
+}
+
+auto DocumentStateTransaction::getTid() -> TransactionId { return _tid; }
+
+auto DocumentStateTransaction::getOperation() -> OperationType {
+  return _entry.operation;
 }
 
 auto DocumentStateTransaction::getState() -> std::shared_ptr<TransactionState> {
   return _state;
+}
+
+auto DocumentStateTransaction::getPayload() -> VPackSlice {
+  return _entry.data.slice();
+}
+
+void DocumentStateTransaction::setMethods(
+    std::shared_ptr<transaction::Methods> methods) {
+  _methods = std::move(methods);
+}
+
+auto DocumentStateTransaction::getMethods()
+    -> std::shared_ptr<transaction::Methods> {
+  return _methods;
 }
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
@@ -168,14 +203,117 @@ DocumentStateTransactionHandler::DocumentStateTransactionHandler(
   TRI_ASSERT(_vocbase != nullptr);
 }
 
-auto DocumentStateTransactionHandler::ensureTransaction(TransactionId tid)
+auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
     -> std::shared_ptr<DocumentStateTransaction> {
-  auto followerTid = tid;
-  if (auto it = _transactions.find(followerTid); it != _transactions.end()) {
-    return it->second;
+  auto it = _transactions.find(tid);
+  if (it == _transactions.end()) {
+    return nullptr;
   }
-  auto state =
-      std::make_shared<DocumentStateTransaction>(_vocbase, followerTid);
-  _transactions.emplace(followerTid, state);
-  return state;
+  return it->second;
+}
+
+auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
+    -> std::shared_ptr<IDocumentStateTransaction> {
+  auto tid = entry.tid;
+  if (auto trx = getTrx(tid); trx != nullptr) {
+    return std::move(trx);
+  }
+  auto trx =
+      std::make_shared<DocumentStateTransaction>(_vocbase, std::move(entry));
+  _transactions.emplace(tid, trx);
+  return std::move(trx);
+}
+
+auto DocumentStateTransactionHandler::initTransaction(TransactionId tid)
+    -> Result {
+  if (auto trx = getTrx(tid); trx != nullptr) {
+    transaction::Hints hints;
+    hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
+    auto state = trx->getState();
+    state->setWriteAccessType();
+
+    auto& options = state->options();
+    options.isReplication2Transaction = true;
+    options.isFollowerTransaction = true;
+    options.allowImplicitCollectionsForWrite = true;
+    return state->beginTransaction(hints);
+  }
+  return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
+                fmt::format("Could not find transaction ID {}", tid.id())};
+}
+
+auto DocumentStateTransactionHandler::startTransaction(TransactionId tid)
+    -> Result {
+  auto trx = getTrx(tid);
+  if (trx == nullptr) {
+    return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
+                  fmt::format("Could not find transaction ID {}", tid.id())};
+  }
+
+  auto ctx = std::make_shared<transaction::ManagedContext>(tid, trx->getState(),
+                                                           false, false, true);
+
+  std::vector<std::string> const readCollections{};
+  std::vector<std::string> const writeCollections = {
+      std::string(trx->getShardId())};
+  std::vector<std::string> const exclusiveCollections{};
+
+  auto methods = std::make_unique<transaction::Methods>(
+      ctx, readCollections, writeCollections, exclusiveCollections,
+      trx->getState()->options());
+
+  auto res = methods->begin();
+  trx->setMethods(std::move(methods));
+  return res;
+}
+
+auto DocumentStateTransactionHandler::applyTransaction(TransactionId tid)
+    -> futures::Future<Result> {
+  auto trx = getTrx(tid);
+  if (trx == nullptr) {
+    return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
+                  fmt::format("Could not find transaction ID {}", tid.id())};
+  }
+
+  auto methods = trx->getMethods();
+
+  if (trx->getOperation() == OperationType::kInsert) {
+    auto opOptions = arangodb::OperationOptions();
+    return methods->insertAsync(trx->getShardId(), trx->getPayload(), opOptions)
+        .thenValue(
+            [methods = std::move(methods)](arangodb::OperationResult&& opRes) {
+              return methods->finishAsync(opRes.result)
+                  .thenValue([opRes(std::move(opRes))](Result&& result) {
+                    if (opRes.fail()) {
+                      return opRes.result;
+                    }
+                    return result;
+                  });
+            });
+  }
+
+  return Result{
+      TRI_ERROR_TRANSACTION_INTERNAL,
+      fmt::format("Transaction of type {} with ID {} could not be applied",
+                  to_string(trx->getOperation()), tid.id())};
+}
+
+auto DocumentStateTransactionHandler::finishTransaction(TransactionId tid)
+    -> futures::Future<Result> {
+  auto trx = getTrx(tid);
+  if (trx == nullptr) {
+    return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
+                  fmt::format("Could not find transaction ID {}", tid.id())};
+  }
+
+  auto methods = trx->getMethods();
+
+  if (trx->getOperation() == OperationType::kCommit) {
+    return methods->commitAsync();
+  }
+
+  return Result{
+      TRI_ERROR_TRANSACTION_INTERNAL,
+      fmt::format("Transaction of type {} with ID {} could not be finished",
+                  to_string(trx->getOperation()), tid.id())};
 }
