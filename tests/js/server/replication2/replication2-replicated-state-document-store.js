@@ -76,7 +76,6 @@ const checkFollowersValue = function (endpoints, shardId, key, value, isReplicat
   for (const endpoint of Object.values(endpoints)) {
     localValues[endpoint] = getLocalValue(endpoint, database, shardId, key);
   }
-  require('internal').print(JSON.stringify(localValues));
 
   var replication2Log = '';
   if (isReplication2) {

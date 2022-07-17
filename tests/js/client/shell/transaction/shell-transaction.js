@@ -4991,12 +4991,14 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       tc.insert({ _key: "foo" });
       trx.abort();
 
+      internal.sleep(3);
       let shards = c.shards();
       let dbServers = getDBServers(db);
       let localValues = {};
       for (const endpoint of Object.values(dbServers)) {
         localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
       }
+
       var replication2Log = '';
       if (isReplication2) {
         let log = db._replicatedLog(shards[0].slice(1));
@@ -5018,6 +5020,9 @@ function transactionReplicationOnFollowersSuite(dbParams) {
         }
       };
 
+      let shards = c.shards();
+      let dbServers = getDBServers(db);
+
       let trx;
       try {
         trx = db._createTransaction(obj);
@@ -5027,18 +5032,37 @@ function transactionReplicationOnFollowersSuite(dbParams) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
+          internal.sleep(3);
+          let localValues = {};
+          for (const endpoint of Object.values(dbServers)) {
+            localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+          }
+
+          // Make sure nothing is committed just yet
+          let replication2Log = '';
+          if (isReplication2) {
+            let log = db._replicatedLog(shards[0].slice(1));
+            let entries = log.head(1000);
+            replication2Log = `Log entries: ${JSON.stringify(entries)}`;
+          }
+          for (const [endpoint, res] of Object.entries(localValues)) {
+            assertTrue(res.code === 404,
+              `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
+              `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
+              `\n${replication2Log}`);
+          }
+
           trx.commit();
         }
       }
 
-      let shards = c.shards();
-      let dbServers = getDBServers(db);
+      internal.sleep(3);
       let localValues = {};
       for (const endpoint of Object.values(dbServers)) {
         localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 
-      var replication2Log = '';
+      let replication2Log = '';
       if (isReplication2) {
         let log = db._replicatedLog(shards[0].slice(1));
         let entries = log.head(1000);
@@ -5118,6 +5142,7 @@ function transactionOverlapSuiteV2() { return makeTestSuites(transactionOverlapS
 function transactionReplicationOnFollowersSuiteV1() {return makeTestSuites(transactionReplicationOnFollowersSuite)[0];}
 function transactionReplicationOnFollowersSuiteV2() {return makeTestSuites(transactionReplicationOnFollowersSuite)[1];}
 
+/*
 jsunity.run(transactionRevisionsSuiteV1);
 jsunity.run(transactionRollbackSuiteV1);
 jsunity.run(transactionInvocationSuiteV1);
@@ -5133,9 +5158,11 @@ jsunity.run(transactionIteratorSuiteV1);
 jsunity.run(transactionOverlapSuiteV1);
 jsunity.run(transactionDatabaseSuite);
 jsunity.run(transactionReplicationOnFollowersSuiteV1);
+ */
 
 if (isReplication2Enabled) {
   let suites = [
+    /*
     transactionRevisionsSuiteV2,
     transactionRollbackSuiteV2,
     transactionInvocationSuiteV2,
@@ -5150,9 +5177,8 @@ if (isReplication2Enabled) {
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
     transactionReplication2ReplicateOperationSuite,
-    /** Currently disabled integration tests - TDD
-     * transactionReplicationOnFollowersSuiteV2
      */
+     transactionReplicationOnFollowersSuiteV2
   ];
 
   for (const suite of suites) {

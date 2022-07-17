@@ -89,7 +89,8 @@ auto DocumentFollowerState::applyEntries(
           fut = transactionHandler->applyTransaction(doc.tid);
           break;
         case OperationType::kCommit:
-          fut = transactionHandler->finishTransaction(doc.tid);
+        case OperationType::kAbort:
+          fut = transactionHandler->finishTransaction(doc);
           break;
         default:
           THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
@@ -100,7 +101,7 @@ auto DocumentFollowerState::applyEntries(
     } catch (std::exception& e) {
       VPackBuilder builder;
       velocypack::serialize(builder, doc);
-      TRI_ASSERT(false) << e.what() << " " << builder.toJson();
+      ADB_PROD_ASSERT(false) << e.what() << " " << builder.toJson();
     }
   }
 

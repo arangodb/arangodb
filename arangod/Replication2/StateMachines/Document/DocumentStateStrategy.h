@@ -115,33 +115,33 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
 struct IDocumentStateTransaction {
   virtual ~IDocumentStateTransaction() = default;
 
-  virtual auto getTid() -> TransactionId = 0;
-  virtual auto getOperation() -> OperationType = 0;
+  virtual auto getTid() const -> TransactionId = 0;
+  virtual auto getOperation() const -> OperationType = 0;
 };
 
 class DocumentStateTransaction : public IDocumentStateTransaction {
  public:
   explicit DocumentStateTransaction(TRI_vocbase_t* vocbase,
                                     DocumentLogEntry entry);
-  auto getTid() -> TransactionId override;
-  auto getOperation() -> OperationType override;
+  auto getTid() const -> TransactionId override;
+  auto getOperation() const -> OperationType override;
 
-  auto getShardId() -> ShardID;
-  auto getOptions() -> transaction::Options;
-  auto getState() -> std::shared_ptr<TransactionState>;
-  auto getPayload() -> VPackSlice;
-  auto getMethods() -> std::shared_ptr<transaction::Methods>;
+  auto getShardId() const -> ShardID;
+  auto getOptions() const -> transaction::Options;
+  auto getState() const -> std::shared_ptr<TransactionState>;
+  auto getPayload() const -> VPackSlice;
+  auto getMethods() const -> std::shared_ptr<transaction::Methods>;
+  auto getResult() const -> std::shared_ptr<OperationResult>;
 
   void setMethods(std::shared_ptr<transaction::Methods> methods);
+  void setResult(std::shared_ptr<OperationResult> result);
 
  private:
   DocumentLogEntry _entry;
-  const TransactionId _tid;
-
- public:
+  std::shared_ptr<transaction::Methods> _methods;
+  std::shared_ptr<OperationResult> _result;
   transaction::Options _options;
   std::shared_ptr<TransactionState> _state;
-  std::shared_ptr<transaction::Methods> _methods;
 };
 
 struct IDocumentStateTransactionHandler {
@@ -152,7 +152,7 @@ struct IDocumentStateTransactionHandler {
   virtual auto startTransaction(TransactionId tid) -> Result = 0;
   virtual auto applyTransaction(TransactionId tid)
       -> futures::Future<Result> = 0;
-  virtual auto finishTransaction(TransactionId tid)
+  virtual auto finishTransaction(DocumentLogEntry entry)
       -> futures::Future<Result> = 0;
 };
 
@@ -169,7 +169,8 @@ class DocumentStateTransactionHandler
   auto initTransaction(TransactionId tid) -> Result override;
   auto startTransaction(TransactionId tid) -> Result override;
   auto applyTransaction(TransactionId tid) -> futures::Future<Result> override;
-  auto finishTransaction(TransactionId tid) -> futures::Future<Result> override;
+  auto finishTransaction(DocumentLogEntry entry)
+      -> futures::Future<Result> override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<DocumentStateTransaction>;

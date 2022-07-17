@@ -145,35 +145,48 @@ auto DocumentStateShardHandler::createLocalShard(
 
 DocumentStateTransaction::DocumentStateTransaction(TRI_vocbase_t* vocbase,
                                                    DocumentLogEntry entry)
-    : _entry{std::move(entry)}, _tid(_entry.tid) {
+    : _entry{std::move(entry)}, _methods(nullptr), _result(nullptr) {
   _options = transaction::Options();
   _options.isReplication2Transaction = true;
   _options.isFollowerTransaction = true;
   _options.allowImplicitCollectionsForWrite = true;
-  _state =
-      std::make_shared<SimpleRocksDBTransactionState>(*vocbase, _tid, _options);
+  _state = std::make_shared<SimpleRocksDBTransactionState>(*vocbase, _entry.tid,
+                                                           _options);
 }
 
-auto DocumentStateTransaction::getShardId() -> ShardID {
+auto DocumentStateTransaction::getShardId() const -> ShardID {
   return _entry.shardId;
 }
 
-auto DocumentStateTransaction::getOptions() -> transaction::Options {
+auto DocumentStateTransaction::getOptions() const -> transaction::Options {
   return _options;
 }
 
-auto DocumentStateTransaction::getTid() -> TransactionId { return _tid; }
+auto DocumentStateTransaction::getTid() const -> TransactionId {
+  return _entry.tid;
+}
 
-auto DocumentStateTransaction::getOperation() -> OperationType {
+auto DocumentStateTransaction::getOperation() const -> OperationType {
   return _entry.operation;
 }
 
-auto DocumentStateTransaction::getState() -> std::shared_ptr<TransactionState> {
+auto DocumentStateTransaction::getState() const
+    -> std::shared_ptr<TransactionState> {
   return _state;
 }
 
-auto DocumentStateTransaction::getPayload() -> VPackSlice {
+auto DocumentStateTransaction::getPayload() const -> VPackSlice {
   return _entry.data.slice();
+}
+
+auto DocumentStateTransaction::getMethods() const
+    -> std::shared_ptr<transaction::Methods> {
+  return _methods;
+}
+
+auto DocumentStateTransaction::getResult() const
+    -> std::shared_ptr<OperationResult> {
+  return _result;
 }
 
 void DocumentStateTransaction::setMethods(
@@ -181,9 +194,9 @@ void DocumentStateTransaction::setMethods(
   _methods = std::move(methods);
 }
 
-auto DocumentStateTransaction::getMethods()
-    -> std::shared_ptr<transaction::Methods> {
-  return _methods;
+void DocumentStateTransaction::setResult(
+    std::shared_ptr<OperationResult> result) {
+  _result = std::move(result);
 }
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
@@ -272,52 +285,48 @@ auto DocumentStateTransactionHandler::applyTransaction(TransactionId tid)
   }
 
   auto methods = trx->getMethods();
-  auto finish = [methods = methods](arangodb::OperationResult&& opRes) {
-    return methods->finishAsync(opRes.result)
-        .thenValue([opRes(std::move(opRes))](Result&& result) {
-          if (opRes.fail()) {
-            return opRes.result;
-          }
-          return result;
-        });
-  };
 
   if (trx->getOperation() == OperationType::kInsert) {
-    auto opOptions = arangodb::OperationOptions();
+    auto opOptions = OperationOptions();
     return methods->insertAsync(trx->getShardId(), trx->getPayload(), opOptions)
-        .thenValue(
-            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
-              return finish(std::move(opRes));
-            });
+        .thenValue([opOptions, trx = std::move(trx)](OperationResult&& opRes) {
+          trx->setResult(
+              std::make_shared<OperationResult>(opRes.result, opOptions));
+          return opRes.result;
+        });
   } else if (trx->getOperation() == OperationType::kUpdate) {
     auto opOptions = arangodb::OperationOptions();
     return methods->updateAsync(trx->getShardId(), trx->getPayload(), opOptions)
-        .thenValue(
-            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
-              return finish(std::move(opRes));
-            });
+        .thenValue([opOptions, trx = std::move(trx)](OperationResult&& opRes) {
+          trx->setResult(
+              std::make_shared<OperationResult>(opRes.result, opOptions));
+          return opRes.result;
+        });
   } else if (trx->getOperation() == OperationType::kReplace) {
     auto opOptions = arangodb::OperationOptions();
     return methods
         ->replaceAsync(trx->getShardId(), trx->getPayload(), opOptions)
-        .thenValue(
-            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
-              return finish(std::move(opRes));
-            });
+        .thenValue([opOptions, trx = std::move(trx)](OperationResult&& opRes) {
+          trx->setResult(
+              std::make_shared<OperationResult>(opRes.result, opOptions));
+          return opRes.result;
+        });
   } else if (trx->getOperation() == OperationType::kRemove) {
     auto opOptions = arangodb::OperationOptions();
     return methods->removeAsync(trx->getShardId(), trx->getPayload(), opOptions)
-        .thenValue(
-            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
-              return finish(std::move(opRes));
-            });
+        .thenValue([opOptions, trx = std::move(trx)](OperationResult&& opRes) {
+          trx->setResult(
+              std::make_shared<OperationResult>(opRes.result, opOptions));
+          return opRes.result;
+        });
   } else if (trx->getOperation() == OperationType::kTruncate) {
     auto opOptions = arangodb::OperationOptions();
     return methods->truncateAsync(trx->getShardId(), opOptions)
-        .thenValue(
-            [finish = std::move(finish)](arangodb::OperationResult&& opRes) {
-              return finish(std::move(opRes));
-            });
+        .thenValue([opOptions, trx = std::move(trx)](OperationResult&& opRes) {
+          trx->setResult(
+              std::make_shared<OperationResult>(opRes.result, opOptions));
+          return opRes.result;
+        });
   }
 
   return Result{
@@ -326,22 +335,27 @@ auto DocumentStateTransactionHandler::applyTransaction(TransactionId tid)
                   to_string(trx->getOperation()), tid.id())};
 }
 
-auto DocumentStateTransactionHandler::finishTransaction(TransactionId tid)
+auto DocumentStateTransactionHandler::finishTransaction(DocumentLogEntry entry)
     -> futures::Future<Result> {
-  auto trx = getTrx(tid);
+  auto trx = getTrx(entry.tid);
   if (trx == nullptr) {
-    return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
-                  fmt::format("Could not find transaction ID {}", tid.id())};
+    return Result{
+        TRI_ERROR_TRANSACTION_NOT_FOUND,
+        fmt::format("Could not find transaction ID {}", entry.tid.id())};
   }
 
   auto methods = trx->getMethods();
 
-  if (trx->getOperation() == OperationType::kCommit) {
-    return methods->commitAsync();
+  switch (entry.operation) {
+    case OperationType::kCommit:
+      // Try to commit the operation or abort in case it failed
+      return methods->finishAsync(trx->getResult()->result);
+    case OperationType::kAbort:
+      return methods->abortAsync();
+    default:
+      return Result{
+          TRI_ERROR_TRANSACTION_INTERNAL,
+          fmt::format("Transaction of type {} with ID {} could not be finished",
+                      to_string(trx->getOperation()), entry.tid.id())};
   }
-
-  return Result{
-      TRI_ERROR_TRANSACTION_INTERNAL,
-      fmt::format("Transaction of type {} with ID {} could not be finished",
-                  to_string(trx->getOperation()), tid.id())};
 }
