@@ -286,6 +286,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
+  Pregel/PregelMetrics.cpp
   Pregel/Recovery.cpp
   Pregel/Reports.cpp
   Pregel/Reports.h
@@ -645,6 +646,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   RestHandler/RestLogHandler.cpp
   RestHandler/RestPrototypeStateHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
+  Replication2/MetricsHelper.cpp
 )
 
 set (LIB_ARANGO_METRICS_SOURCES

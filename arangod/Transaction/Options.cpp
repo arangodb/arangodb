@@ -124,6 +124,10 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   value = slice.get("allowDirtyReads");
   if (value.isBool()) {
     allowDirtyReads = value.getBool();
+  } else {
+    TRI_IF_FAILURE("TransactionState::dirtyReadsAreDefault") {
+      allowDirtyReads = true;
+    }
   }
 
   if (!ServerState::instance()->isSingleServer()) {

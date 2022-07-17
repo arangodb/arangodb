@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/*global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -208,7 +208,7 @@ function componentsTestSuite() {
       do {
         internal.sleep(0.2);
         let stats = pregel.status(pid);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, numComponents * n, stats);
           assertEqual(stats.edgeCount, numComponents * (m + n), stats);
 
@@ -243,7 +243,7 @@ function componentsTestSuite() {
 
       while (true) {
         var status = pregel.status(handle);
-        if (status.state !== 'running' && status.state !== 'storing') {
+        if (status.state !== 'loading' && status.state !== 'running' && status.state !== 'storing') {
           console.log(status);
           break;
         } else {
@@ -414,9 +414,13 @@ function wccRegressionTestSuite() {
 
 const wccTestSuite = pregelTestHelpers.makeWCCTestSuite(false, "", 4);
 
+const sccTestSuite = pregelTestHelpers.makeSCCTestSuite(false, "", 4);
 
+const labelPropagationTestSuite = pregelTestHelpers.makeLabelPropagationTestSuite(false, "", 4);
 
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
 jsunity.run(wccTestSuite);
+jsunity.run(sccTestSuite);
+jsunity.run(labelPropagationTestSuite);
 return jsunity.done();

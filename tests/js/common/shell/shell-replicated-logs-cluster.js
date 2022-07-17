@@ -99,20 +99,24 @@ function ReplicatedLogsWriteSuite() {
     let status = log.status();
     const leaderId = status.leaderId;
     if (leaderId === undefined) {
-      console.info(`leader not available for replicated log ${log.id()}`);
+      console.error(`leader not available for replicated log ${log.id()}`);
+      console.error(JSON.stringify(status));
       return null;
     }
     if (status.participants === undefined || status.participants[leaderId] === undefined) {
-      console.info(`participants status not available for replicated log ${log.id()}`);
+      console.error(`participants status not available for replicated log ${log.id()}`);
+      console.error(JSON.stringify(status));
       return null;
     }
     const leaderResponse = status.participants[leaderId].response;
     if (leaderResponse === undefined || leaderResponse.role !== "leader") {
-      console.info(`leader not available for replicated log ${log.id()}`);
+      console.error(`leader not available for replicated log ${log.id()}`);
+      console.error(JSON.stringify(status));
       return null;
     }
     if (!leaderResponse.leadershipEstablished) {
-      console.info(`leadership not yet established`);
+      console.error(`leadership not yet established`);
+      console.error(JSON.stringify(status));
       return null;
     }
     return status.participants[leaderId].response;

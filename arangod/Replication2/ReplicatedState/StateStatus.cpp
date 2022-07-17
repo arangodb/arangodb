@@ -46,13 +46,13 @@ inline constexpr std::string_view StringServiceStarting = "ServiceStarting";
 inline constexpr std::string_view StringWaitForLeaderConfirmation =
     "WaitForLeaderConfirmation";
 inline constexpr std::string_view StringTransferSnapshot = "TransferSnapshot";
-inline constexpr std::string_view StringNothingToApply = "NothingToApply";
 inline constexpr std::string_view StringApplyRecentEntries =
     "ApplyRecentEntries";
 inline constexpr std::string_view StringUninitializedState =
     "UninitializedState";
 inline constexpr std::string_view StringSnapshotTransferFailed =
     "SnapshotTransferFailed";
+inline constexpr std::string_view StringWaitForNewEntries = "WaitForNewEntries";
 
 }  // namespace
 
@@ -81,14 +81,14 @@ auto replicated_state::to_string(FollowerInternalState state) noexcept
       return StringWaitForLeaderConfirmation;
     case FollowerInternalState::kTransferSnapshot:
       return StringTransferSnapshot;
-    case FollowerInternalState::kNothingToApply:
-      return StringNothingToApply;
     case FollowerInternalState::kApplyRecentEntries:
       return StringApplyRecentEntries;
     case FollowerInternalState::kUninitializedState:
       return StringUninitializedState;
     case FollowerInternalState::kSnapshotTransferFailed:
       return StringSnapshotTransferFailed;
+    case FollowerInternalState::kWaitForNewEntries:
+      return StringWaitForNewEntries;
   }
   TRI_ASSERT(false) << "invalid state value " << int(state);
   return "(unknown-internal-follower-state)";
@@ -136,12 +136,12 @@ auto FollowerInternalStateStringTransformer::fromSerialized(
     target = FollowerInternalState::kWaitForLeaderConfirmation;
   } else if (source == StringTransferSnapshot) {
     target = FollowerInternalState::kTransferSnapshot;
-  } else if (source == StringNothingToApply) {
-    target = FollowerInternalState::kNothingToApply;
   } else if (source == StringApplyRecentEntries) {
     target = FollowerInternalState::kApplyRecentEntries;
   } else if (source == StringSnapshotTransferFailed) {
     target = FollowerInternalState::kSnapshotTransferFailed;
+  } else if (source == StringWaitForNewEntries) {
+    target = FollowerInternalState::kWaitForNewEntries;
   } else {
     return inspection::Status{"unknown follower internal state " + source};
   }

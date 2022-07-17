@@ -38,6 +38,7 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -81,27 +82,27 @@ class RocksDBThrottle : public rocksdb::EventListener {
   void OnCompactionCompleted(rocksdb::DB* db,
                              const rocksdb::CompactionJobInfo& ci) override;
 
-  void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
+  void setFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
     _families = Families;
   }
 
   void stopThread();
 
-  uint64_t GetThrottle() const { return _throttleBps; }
+  uint64_t getThrottle() const { return _throttleBps; }
 
- protected:
+ private:
   void startup(rocksdb::DB* db);
 
-  void SetThrottleWriteRate(std::chrono::microseconds Micros, uint64_t Keys,
+  void setThrottleWriteRate(std::chrono::microseconds Micros, uint64_t Keys,
                             uint64_t Bytes, bool IsLevel0);
 
-  void ThreadLoop();
+  void threadLoop();
 
-  void SetThrottle();
+  void setThrottle();
 
-  int64_t ComputeBacklog();
+  std::pair<int64_t, int64_t> computeBacklog();
 
-  void RecalculateThrottle();
+  void recalculateThrottle();
 
   struct ThrottleData_t {
     std::chrono::microseconds _micros{};
@@ -143,10 +144,8 @@ class RocksDBThrottle : public rocksdb::EventListener {
   std::atomic<uint64_t> _throttleBps;
   bool _firstThrottle;
 
-  std::unique_ptr<rocksdb::WriteControllerToken> _delayToken;
   std::vector<rocksdb::ColumnFamilyHandle*> _families;
 
- private:
   uint64_t const _numSlots;
   // frequency in milliseconds
   uint64_t const _frequency;
