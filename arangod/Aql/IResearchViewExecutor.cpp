@@ -1041,9 +1041,10 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
     size_t const count = this->_reader->size();
     for (size_t readerOffset = 0; readerOffset < count; ++readerOffset) {
       auto& segmentReader = (*this->_reader)[readerOffset];
-      auto itr =
-          this->_filter->execute(segmentReader, this->_order,
-                                 irs::ExecutionMode::kAll, &this->_filterCtx);
+      auto itr = this->_filter->execute({.segment = segmentReader,
+                                         .scorers = this->_order,
+                                         .ctx = &this->_filterCtx,
+                                         .mode = irs::ExecutionMode::kAll});
       TRI_ASSERT(itr);
       if (!itr) {
         continue;
@@ -1144,8 +1145,10 @@ bool IResearchViewHeapSortExecutor<
   for (size_t readerOffset = 0; readerOffset < count;) {
     if (!itr) {
       auto& segmentReader = (*this->_reader)[readerOffset];
-      itr = this->_filter->execute(segmentReader, this->_order,
-                                   irs::ExecutionMode::kAll, &this->_filterCtx);
+      itr = this->_filter->execute({.segment = segmentReader,
+                                    .scorers = this->_order,
+                                    .ctx = &this->_filterCtx,
+                                    .mode = irs::ExecutionMode::kAll});
       TRI_ASSERT(itr);
       doc = irs::get<irs::document>(*itr);
       TRI_ASSERT(doc);
@@ -1415,8 +1418,10 @@ bool IResearchViewExecutor<copyStored, ordered,
     }
   }
 
-  _itr = this->_filter->execute(segmentReader, this->_order,
-                                irs::ExecutionMode::kAll, &this->_filterCtx);
+  _itr = this->_filter->execute({.segment = segmentReader,
+                                 .scorers = this->_order,
+                                 .ctx = &this->_filterCtx,
+                                 .mode = irs::ExecutionMode::kAll});
   TRI_ASSERT(_itr);
   _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
@@ -1650,8 +1655,11 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
 
-    irs::doc_iterator::ptr it = segment.mask(this->_filter->execute(
-        segment, this->_order, irs::ExecutionMode::kAll, &this->_filterCtx));
+    auto it = segment.mask(
+        this->_filter->execute({.segment = segment,
+                                .scorers = this->_order,
+                                .ctx = &this->_filterCtx,
+                                .mode = irs::ExecutionMode::kAll}));
     TRI_ASSERT(it);
 
     auto const* doc = irs::get<irs::document>(*it);

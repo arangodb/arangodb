@@ -55,9 +55,7 @@ class PrimaryKeyFilter final : public irs::filter,
         _nested(nested) {}
 
   virtual irs::doc_iterator::ptr execute(
-      irs::sub_reader const& segment, irs::Order const& /*order*/,
-      irs::ExecutionMode,
-      irs::attribute_provider const* /*ctx*/) const override;
+      irs::ExecutionContext const& ctx) const override;
 
   virtual size_t hash() const noexcept override;
 

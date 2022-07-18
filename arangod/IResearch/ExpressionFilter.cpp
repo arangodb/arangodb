@@ -145,16 +145,15 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
       irs::bstring&& stats, irs::score_t boost) noexcept
       : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
 
-  virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr, const irs::Order& order, irs::ExecutionMode,
-      const irs::attribute_provider* ctx) const override {
-    if (ADB_UNLIKELY(!ctx)) {
+  irs::doc_iterator::ptr execute(
+      irs::ExecutionContext const& ctx) const override {
+    if (ADB_UNLIKELY(!ctx.ctx)) {
       // no context provided
       return irs::doc_iterator::empty();
     }
 
     auto const* execCtx =
-        irs::get<arangodb::iresearch::ExpressionExecutionContext>(*ctx);
+        irs::get<arangodb::iresearch::ExpressionExecutionContext>(*ctx.ctx);
 
     if (!execCtx || !static_cast<bool>(*execCtx)) {
       // no execution context provided
@@ -164,8 +163,10 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
+    auto& segment = ctx.segment;
     return irs::memory::make_managed<NondeterministicExpressionIterator>(
-        rdr, stats_.c_str(), order, rdr.docs_count(), _ctx, *execCtx, boost());
+        segment, stats_.c_str(), ctx.scorers, segment.docs_count(), _ctx,
+        *execCtx, boost());
   }
 
  private:
@@ -184,15 +185,14 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
       : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
 
   irs::doc_iterator::ptr execute(
-      irs::sub_reader const& segment, irs::Order const& order,
-      irs::ExecutionMode, irs::attribute_provider const* ctx) const override {
-    if (ADB_UNLIKELY(!ctx)) {
+      irs::ExecutionContext const& ctx) const override {
+    if (ADB_UNLIKELY(!ctx.ctx)) {
       // no context provided
       return irs::doc_iterator::empty();
     }
 
     auto const* execCtx =
-        irs::get<arangodb::iresearch::ExpressionExecutionContext>(*ctx);
+        irs::get<arangodb::iresearch::ExpressionExecutionContext>(*ctx.ctx);
 
     if (!execCtx || !static_cast<bool>(*execCtx)) {
       // no execution context provided
@@ -208,8 +208,9 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     arangodb::aql::AqlValueGuard guard(value, mustDestroy);
 
     if (value.toBoolean()) {
+      auto& segment = ctx.segment;
       return irs::memory::make_managed<irs::all_iterator>(
-          segment, stats_.c_str(), order, segment.docs_count(), boost());
+          segment, stats_.c_str(), ctx.scorers, segment.docs_count(), boost());
     }
 
     return irs::doc_iterator::empty();

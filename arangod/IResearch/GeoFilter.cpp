@@ -233,10 +233,10 @@ class GeoQuery final : public irs::filter::prepared {
         _stats(std::move(stats)),
         _acceptor(std::move(acceptor)) {}
 
-  virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& segment, irs::Order const& ord, irs::ExecutionMode,
-      const irs::attribute_provider* /*ctx*/) const override {
+  irs::doc_iterator::ptr execute(
+      irs::ExecutionContext const& ctx) const override {
     // get term state for the specified reader
+    auto& segment = ctx.segment;
     auto state = _states.find(segment);
 
     if (!state) {
@@ -272,7 +272,7 @@ class GeoQuery final : public irs::filter::prepared {
     }
 
     return make_iterator(std::move(itrs), std::move(columnIt), segment,
-                         *state->reader, _stats.c_str(), ord, boost(),
+                         *state->reader, _stats.c_str(), ctx.scorers, boost(),
                          _acceptor);
   }
 
