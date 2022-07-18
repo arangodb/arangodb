@@ -32,13 +32,14 @@ DocumentCore::DocumentCore(
     GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
     std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
     std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-    std::shared_ptr<IDocumentStateTransactionHandler> const& transactionHandler,
+    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler,
     LoggerContext loggerContext)
     : loggerContext(std::move(loggerContext)),
       _gid(std::move(gid)),
       _params(std::move(coreParameters)),
       _agencyHandler(std::move(agencyHandler)),
-      _shardHandler(std::move(shardHandler)) {
+      _shardHandler(std::move(shardHandler)),
+      _transactionHandler(std::move(transactionHandler)) {
   auto collectionProperties =
       _agencyHandler->getCollectionPlan(_gid.database, _params.collectionId);
 
@@ -51,8 +52,7 @@ DocumentCore::DocumentCore(
       _gid.database, _params.collectionId, _shardId, collectionProperties);
   TRI_ASSERT(shardResult.ok());
 
-  _transactionHandler = std::make_shared<DocumentStateTransactionHandler>(
-      transactionHandler, _gid.database);
+  _transactionHandler->setDatabase(_gid.database);
 
   LOG_CTX("b7e0d", TRACE, this->loggerContext) << "Created shard " << _shardId;
 }

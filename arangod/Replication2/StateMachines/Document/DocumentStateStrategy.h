@@ -116,36 +116,41 @@ struct IDocumentStateTransaction {
   virtual ~IDocumentStateTransaction() = default;
 
   virtual auto getTid() const -> TransactionId = 0;
-  virtual auto getOperation() const -> OperationType = 0;
 };
 
 class DocumentStateTransaction : public IDocumentStateTransaction {
  public:
   explicit DocumentStateTransaction(TRI_vocbase_t* vocbase,
-                                    DocumentLogEntry entry);
+                                    DocumentLogEntry const& entry);
   auto getTid() const -> TransactionId override;
-  auto getOperation() const -> OperationType override;
 
+  auto getLastOperation() const -> OperationType;
   auto getShardId() const -> ShardID;
   auto getOptions() const -> transaction::Options;
   auto getState() const -> std::shared_ptr<TransactionState>;
-  auto getPayload() const -> VPackSlice;
+  auto getLastPayload() const -> VPackSlice;
   auto getMethods() const -> std::shared_ptr<transaction::Methods>;
-  auto getResult() const -> std::shared_ptr<OperationResult>;
+  auto getResult() const -> OperationResult const&;
+  auto getLastEntry() const -> DocumentLogEntry;
+  auto getTrxCount() const -> std::size_t;
 
   void setMethods(std::shared_ptr<transaction::Methods> methods);
-  void setResult(std::shared_ptr<OperationResult> result);
+  void appendResult(OperationResult result);
+  void appendEntry(DocumentLogEntry entry);
 
  private:
-  DocumentLogEntry _entry;
+  std::vector<DocumentLogEntry> _entries;
   std::shared_ptr<transaction::Methods> _methods;
-  std::shared_ptr<OperationResult> _result;
+  std::vector<OperationResult> _results;
+  ShardID _shardId;
+  TransactionId _tid;
   transaction::Options _options;
   std::shared_ptr<TransactionState> _state;
 };
 
 struct IDocumentStateTransactionHandler {
   virtual ~IDocumentStateTransactionHandler() = default;
+  virtual void setDatabase(std::string const& database) = 0;
   virtual auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto initTransaction(TransactionId tid) -> Result = 0;
@@ -160,9 +165,7 @@ class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
   explicit DocumentStateTransactionHandler(DatabaseFeature& databaseFeature);
-  explicit DocumentStateTransactionHandler(
-      std::shared_ptr<IDocumentStateTransactionHandler> const& handler,
-      std::string const& database);
+  void setDatabase(std::string const& database) override;
 
   auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> override;

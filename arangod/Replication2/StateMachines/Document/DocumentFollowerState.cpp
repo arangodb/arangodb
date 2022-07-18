@@ -54,9 +54,11 @@ auto DocumentFollowerState::applyEntries(
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
 
+    /* Leaving this here for debugging
     VPackBuilder b;
     velocypack::serialize(b, doc);
     LOG_DEVEL << b.toJson();
+     */
 
     auto transactionHandler = _guardedData.doUnderLock(
         [](auto& data) -> std::shared_ptr<IDocumentStateTransactionHandler> {

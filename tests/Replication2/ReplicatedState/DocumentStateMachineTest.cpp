@@ -72,10 +72,100 @@ struct MockDocumentStateShardHandler : public IDocumentStateShardHandler {
   int shardId;
 };
 
+struct MockDocumentStateTransaction : public IDocumentStateTransaction {
+  explicit MockDocumentStateTransaction(TransactionId tid) : tid(tid) {}
+
+  auto getTid() const -> TransactionId override { return tid; }
+
+  TransactionId tid;
+  bool ensured = false;
+  bool inited = false;
+  bool started = false;
+  bool applied = false;
+  bool finished = false;
+};
+
+struct MockDocumentStateTransactionHandler
+    : public IDocumentStateTransactionHandler {
+  void setDatabase(std::string const& database) override {
+    this->database = database;
+  }
+
+  auto ensureTransaction(DocumentLogEntry entry)
+      -> std::shared_ptr<IDocumentStateTransaction> override {
+    auto trx = std::make_shared<MockDocumentStateTransaction>(entry.tid);
+    trx->ensured = true;
+    transactions.emplace(entry.tid, trx);
+    return trx;
+  }
+
+  auto initTransaction(TransactionId tid) -> Result override {
+    if (auto trx = transactions.find(tid); trx != transactions.end()) {
+      if (!trx->second->ensured) {
+        return {TRI_ERROR_TRANSACTION_INTERNAL};
+      }
+      trx->second->inited = true;
+      return Result{};
+    }
+    return {TRI_ERROR_TRANSACTION_NOT_FOUND};
+  }
+
+  auto startTransaction(TransactionId tid) -> Result override {
+    if (auto trx = transactions.find(tid); trx != transactions.end()) {
+      if (!trx->second->ensured || !trx->second->inited) {
+        return {TRI_ERROR_TRANSACTION_INTERNAL};
+      }
+      trx->second->started = true;
+      return Result{};
+    }
+    return {TRI_ERROR_TRANSACTION_NOT_FOUND};
+  }
+
+  auto applyTransaction(TransactionId tid) -> futures::Future<Result> override {
+    if (auto trx = transactions.find(tid); trx != transactions.end()) {
+      if (!trx->second->ensured || !trx->second->inited ||
+          !trx->second->started) {
+        return {TRI_ERROR_TRANSACTION_INTERNAL};
+      }
+      trx->second->applied = true;
+      return Result{};
+    }
+    return {TRI_ERROR_TRANSACTION_NOT_FOUND};
+  }
+
+  auto finishTransaction(DocumentLogEntry entry)
+      -> futures::Future<Result> override {
+    auto tid = entry.tid;
+    if (auto trx = transactions.find(tid); trx != transactions.end()) {
+      if (!trx->second->ensured || !trx->second->inited ||
+          !trx->second->started || !trx->second->applied) {
+        return {TRI_ERROR_TRANSACTION_INTERNAL};
+      }
+      trx->second->finished = true;
+      return Result{};
+    }
+    return {TRI_ERROR_TRANSACTION_NOT_FOUND};
+  }
+
+  auto getTransaction(TransactionId tid)
+      -> std::shared_ptr<MockDocumentStateTransaction> {
+    if (auto trx = transactions.find(tid); trx != transactions.end()) {
+      return trx->second;
+    }
+    return nullptr;
+  }
+
+  std::string database;
+  std::unordered_map<TransactionId,
+                     std::shared_ptr<MockDocumentStateTransaction>>
+      transactions;
+};
+
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
   DocumentStateMachineTest() {
     feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
-                                              agencyHandler, shardHandler);
+                                              agencyHandler, shardHandler,
+                                              transactionHandler);
   }
 
   std::shared_ptr<ReplicatedStateFeature> feature =
@@ -84,6 +174,8 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockDocumentStateAgencyHandler>();
   std::shared_ptr<MockDocumentStateShardHandler> shardHandler =
       std::make_shared<MockDocumentStateShardHandler>();
+  std::shared_ptr<MockDocumentStateTransactionHandler> transactionHandler =
+      std::make_shared<MockDocumentStateTransactionHandler>();
 };
 
 TEST_F(DocumentStateMachineTest, simple_operations) {
@@ -98,7 +190,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
   leader->triggerAsyncReplication();
 
   auto parameters =
-      document::DocumentCoreParameters{collectionId}.toSharedSlice();
+      document::DocumentCoreParameters{collectionId, "testDb"}.toSharedSlice();
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
@@ -136,14 +228,14 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
   VPackBuilder builder;
   {
     VPackObjectBuilder ob(&builder);
-    builder.add("test", "insert");
+    builder.add("testfoo", "testbar");
     ob->close();
 
     auto logIndex = LogIndex{2};
     auto operation = OperationType::kInsert;
-    auto trx = TransactionId{0};
+    auto tid = TransactionId{1};
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                               trx, ReplicationOptions{});
+                                               tid, ReplicationOptions{});
 
     ASSERT_TRUE(res.isReady());
     ASSERT_EQ(res.result().get(), logIndex);
@@ -155,17 +247,25 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
         entry->entry().logPayload()->slice()[1]);
     ASSERT_EQ(docEntry.shardId, "1");
     ASSERT_EQ(docEntry.operation, operation);
-    ASSERT_EQ(docEntry.trx, trx);
-    ASSERT_EQ(docEntry.data.get("test").stringView(), "insert");
+    ASSERT_EQ(docEntry.tid, tid);
+    ASSERT_EQ(docEntry.data.get("testfoo").stringView(), "testbar");
+
+    auto trx = transactionHandler->getTransaction(tid);
+    ASSERT_NE(trx, nullptr);
+    ASSERT_TRUE(trx->ensured);
+    ASSERT_TRUE(trx->inited);
+    ASSERT_TRUE(trx->started);
+    ASSERT_TRUE(trx->applied);
+    ASSERT_FALSE(trx->finished);
   }
 
   // commit operation
   {
     auto logIndex = LogIndex{3};
     auto operation = OperationType::kCommit;
-    auto trx = TransactionId{1};
+    auto tid = TransactionId{1};
     auto res = leaderState->replicateOperation(
-        velocypack::SharedSlice{}, operation, trx,
+        velocypack::SharedSlice{}, operation, tid,
         ReplicationOptions{.waitForCommit = true});
 
     ASSERT_FALSE(res.isReady());
@@ -180,7 +280,11 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
         entry->entry().logPayload()->slice()[1]);
     ASSERT_EQ(docEntry.shardId, "1");
     ASSERT_EQ(docEntry.operation, operation);
-    ASSERT_EQ(docEntry.trx, trx);
+    ASSERT_EQ(docEntry.tid, tid);
     ASSERT_TRUE(docEntry.data.isNone());
+
+    auto trx = transactionHandler->getTransaction(tid);
+    ASSERT_NE(trx, nullptr);
+    ASSERT_TRUE(trx->finished);
   }
 }

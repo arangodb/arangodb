@@ -4847,6 +4847,7 @@ function transactionDatabaseSuite() {
 
 /**
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
+ * For the commit test, we additionally look at the follower contents.
  */
 function transactionReplication2ReplicateOperationSuite() {
   'use strict';
@@ -4915,8 +4916,9 @@ function transactionReplication2ReplicateOperationSuite() {
         trx = db._createTransaction(obj);
         let tc = trx.collection(cn);
 
-        tc.save({ _key: 'foo' });
-        tc.save({ _key: 'bar' });
+        for (let cnt = 0; cnt < 100; ++cnt) {
+          tc.save({ _key: `foo${cnt}` })
+        }
 
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
@@ -4925,21 +4927,65 @@ function transactionReplication2ReplicateOperationSuite() {
           trx.commit();
         }
       }
+      internal.sleep(3);
 
       let shards = c.shards();
+      let dbServers = getDBServers(db);
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       for (const log of logs) {
         let entries = log.head(1000);
         let commitFound = false;
+        let keysFound = [];
+        const shardId = `s${log.id()}`;
+
+        // Gather all log entries and see if we have any inserts on this shard.
         for (const entry of entries) {
-          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Commit") {
-            commitFound = true;
-            break;
+          if (entry.hasOwnProperty("payload")) {
+            let payload = entry.payload[1];
+            assertEqual(shardId, payload.shardId);
+            if (payload.operation === "Commit") {
+              commitFound = true;
+            } else if (payload.operation === "Insert") {
+              keysFound.push(payload.data[0]._key);
+            }
           }
         }
-        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}!\n` +
+
+        // Check there is a commit entry and no duplicates.
+        if (keysFound.length > 0) {
+          assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}!\n` +
             `Log entries: ${JSON.stringify(entries)}`);
+          const keysSet = new Set(keysFound);
+          assertEqual(keysFound.length, keysSet.size, `Found duplicate keys in the replicated log${log.id()}!\n` +
+            `Log entries: ${JSON.stringify(entries)}`);
+        }
+
+        // Keys should be available on the current shard only.
+        let replication2Log = `Log entries: ${JSON.stringify(entries)}`;
+        for (const shard in shards) {
+          for (const key in keysFound) {
+            let localValues = {};
+            for (const endpoint of Object.values(dbServers)) {
+              localValues[endpoint] = getLocalValue(endpoint, dbn, shards, key);
+            }
+            for (const [endpoint, res] of Object.entries(localValues)) {
+              if (shard === shardId) {
+                assertTrue(res.code === undefined,
+                  `Error while reading key from ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+                  `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
+                assertEqual(res._key, key,
+                  `Wrong key returned by ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+                  `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
+              } else {
+              assertTrue(res.code === 404,
+                `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
+                `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
+                `\n${replication2Log}`);
+              }
+            }
+          }
+        }
       }
     },
   };
@@ -5045,6 +5091,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
             let entries = log.head(1000);
             replication2Log = `Log entries: ${JSON.stringify(entries)}`;
           }
+
           for (const [endpoint, res] of Object.entries(localValues)) {
             assertTrue(res.code === 404,
               `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
@@ -5142,7 +5189,6 @@ function transactionOverlapSuiteV2() { return makeTestSuites(transactionOverlapS
 function transactionReplicationOnFollowersSuiteV1() {return makeTestSuites(transactionReplicationOnFollowersSuite)[0];}
 function transactionReplicationOnFollowersSuiteV2() {return makeTestSuites(transactionReplicationOnFollowersSuite)[1];}
 
-/*
 jsunity.run(transactionRevisionsSuiteV1);
 jsunity.run(transactionRollbackSuiteV1);
 jsunity.run(transactionInvocationSuiteV1);
@@ -5158,11 +5204,9 @@ jsunity.run(transactionIteratorSuiteV1);
 jsunity.run(transactionOverlapSuiteV1);
 jsunity.run(transactionDatabaseSuite);
 jsunity.run(transactionReplicationOnFollowersSuiteV1);
- */
 
 if (isReplication2Enabled) {
   let suites = [
-    /*
     transactionRevisionsSuiteV2,
     transactionRollbackSuiteV2,
     transactionInvocationSuiteV2,
@@ -5177,8 +5221,7 @@ if (isReplication2Enabled) {
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
     transactionReplication2ReplicateOperationSuite,
-     */
-     transactionReplicationOnFollowersSuiteV2
+    transactionReplicationOnFollowersSuiteV2
   ];
 
   for (const suite of suites) {

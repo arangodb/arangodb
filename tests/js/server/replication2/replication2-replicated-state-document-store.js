@@ -567,12 +567,10 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
 function replicatedStateFollowerSuiteV1() { return makeTestSuites(replicatedStateFollowerSuite)[0]; }
 function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStateFollowerSuite)[1]; }
 
-/*
 jsunity.run(replicatedStateDocumentStoreSuiteReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteReplication1);
 jsunity.run(replicatedStateFollowerSuiteV1);
- */
 jsunity.run(replicatedStateFollowerSuiteV2);
 
 return jsunity.done();
