@@ -180,6 +180,10 @@ function ddlSuite() {
 
     testCreateDatabaseWithNewReplication: function () {
       const dbName = 'replv2db';
+      const server = require('@arangodb/test-helper').getDBServers()[0].id;
+      const url = require("@arangodb/testutils/replicated-logs-helper").getServerUrl(server);
+      console.error({server, url});
+
       db._createDatabase(dbName, {replicationVersion: "2"});
       try {
         runInDb(dbName, () => {

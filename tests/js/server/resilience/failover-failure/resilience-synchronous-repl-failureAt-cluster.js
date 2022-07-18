@@ -35,16 +35,12 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
-let { getEndpointById,
-      getEndpointsByType,
-      getServersByType,
-      debugCanUseFailAt,
-      debugRemoveFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
-      reconnectRetry,
-      getDBServers
-    } = require('@arangodb/test-helper');
+const {
+  debugRemoveFailAt,
+  debugSetFailAt,
+  debugClearFailAt,
+  getDBServers
+} = require('@arangodb/test-helper');
 
 
 ////////////////////////////////////////////////////////////////////////////////

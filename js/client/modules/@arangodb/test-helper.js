@@ -29,19 +29,15 @@
 
 const internal = require('internal'); // OK: processCsvFile
 const {
-  getServerById,
-  getServersByType,
-  getEndpointById,
-  getEndpointsByType,
   Helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
+  endpointToURL,
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
-const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
@@ -51,10 +47,6 @@ const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 
-exports.getServerById = getServerById;
-exports.getServersByType = getServersByType;
-exports.getEndpointById = getEndpointById;
-exports.getEndpointsByType = getEndpointsByType;
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
@@ -429,25 +421,37 @@ exports.getAgents = function () {
   return exports.getServers(inst.instanceRole.agent);
 };
 
+exports.getServerById = function (id) {
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.find((d) => (d.id === id));
+};
+
+exports.getServersByType = function (type) {
+  const isType = (d) => (d.instanceRole.toLowerCase() === type);
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isType);
+};
+
+exports.getEndpointById = function (id) {
+  const toEndpoint = (d) => (d.endpoint);
+
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instance = instanceInfo.arangods.find(d => d.id === id);
+  return endpointToURL(toEndpoint(instance));
+};
+
+exports.getEndpointsByType = function (type) {
+  const isType = (d) => (d.instanceRole.toLowerCase() === type);
+  const toEndpoint = (d) => (d.endpoint);
+
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isType)
+    .map(toEndpoint)
+    .map(endpointToURL);
+};
+
 exports.getEndpoints = function (role) {
-  const endpointToURL = (instance) => {
-    let protocol = instance.endpoint.split('://')[0];
-    switch(protocol) {
-    case 'ssl':
-      return 'https://' + instance.endpoint.substr(6);
-      break;
-    case 'tcp':
-      return 'http://' + instance.endpoint.substr(6);
-      break;
-    default:
-      var pos = instance.endpoint.indexOf('://');
-      if (pos === -1) {
-        return 'http://' + instance.endpoint;
-      }
-      return 'http' + instance.endpoint.substr(pos);
-    }
-  };
-  return exports.getServers(role).map(endpointToURL);
+  return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
 };
 
 exports.getCoordinatorEndpoints = function () {
