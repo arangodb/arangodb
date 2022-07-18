@@ -135,6 +135,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NgramMatchFunctionTest.cpp
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
+  Aql/NodeWalkerTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryCursorTest.cpp
@@ -250,7 +251,9 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
+  Pregel/DurationTest.cpp
   Pregel/typedbuffer.cpp
+  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
@@ -305,6 +308,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/FakeFailureOracle.h
   Replication2/Mocks/FakeFollower.cpp
   Replication2/Mocks/FakeFollower.h
+  Replication2/Mocks/FakeLeader.cpp Replication2/Mocks/FakeLeader.h
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
@@ -368,7 +372,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/TestLogSpecification.h
   Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   Replication2/ReplicatedLog/MetricsTest.cpp
-        Replication2/Mocks/FakeLeader.cpp Replication2/Mocks/FakeLeader.h)
+  Replication2/ReplicatedState/FollowerResignTest.cpp
+)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp

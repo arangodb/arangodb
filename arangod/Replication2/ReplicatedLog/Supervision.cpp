@@ -636,8 +636,7 @@ auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
   }
 }
 
-// TODO/FIXME: This could be two separate functions
-auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
+auto checkConfigChanged(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
   if (!log.plan.has_value() || !log.current.has_value()) {
     return;
@@ -672,6 +671,19 @@ auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
         target.config.waitForSync, current.supervision->assumedWaitForSync);
     return;
   }
+}
+
+auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
+  if (!log.plan.has_value() || !log.current.has_value()) {
+    return;
+  }
+  ADB_PROD_ASSERT(log.plan.has_value());
+  ADB_PROD_ASSERT(log.current.has_value());
+
+  auto const& plan = *log.plan;
+  auto const& current = *log.current;
+
+  ADB_PROD_ASSERT(current.supervision.has_value());
 
   if (!current.leader.has_value() ||
       !current.leader->committedParticipantsConfig.has_value()) {
@@ -703,6 +715,10 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
   }
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
+
+  if (!current.leader.has_value()) {
+    return;
+  }
 
   if (log.plan->participantsConfig.generation !=
       current.leader->committedParticipantsConfig->generation) {
@@ -753,7 +769,8 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // In the next round this will lead to a leadership election.
   checkLeaderHealthy(ctx, log, health);
 
-  checkConfigUpdated(ctx, log, health);
+  checkConfigChanged(ctx, log, health);
+  checkConfigCommitted(ctx, log);
 
   // Check whether a participant was added in Target that is not in Plan.
   // If so, add it to Plan.

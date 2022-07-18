@@ -23,12 +23,16 @@
 #include "FollowerStateManager.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
+#include "Replication2/MetricsHelper.h"
 
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "Basics/Exceptions.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
 
 #include <fmt/core.h>
 #include <fmt/chrono.h>
@@ -276,12 +280,39 @@ void FollowerStateManager<S>::registerError(Result error) {
 template<typename S>
 auto FollowerStateManager<S>::backOffSnapshotRetry()
     -> futures::Future<futures::Unit> {
+  constexpr static auto countSuffix = [](auto count) {
+    switch (count) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
+    }
+  };
+  constexpr static auto fmtTime = [](auto duration) {
+    using namespace std::chrono_literals;
+    using namespace std::chrono;
+    if (duration < 10us) {
+      return fmt::format("{}ns", duration_cast<nanoseconds>(duration).count());
+    } else if (duration < 10ms) {
+      return fmt::format("{}us", duration_cast<microseconds>(duration).count());
+    } else if (duration < 10s) {
+      return fmt::format("{}ms", duration_cast<milliseconds>(duration).count());
+    } else if (duration < 10min) {
+      return fmt::format("{}s", duration_cast<seconds>(duration).count());
+    } else {
+      return fmt::format("{}min", duration_cast<minutes>(duration).count());
+    }
+  };
+
   auto const retryCount = this->_guardedData.getLockedGuard()->errorCounter;
   auto const duration = calcRetryDuration(retryCount);
   LOG_CTX("2ea59", TRACE, loggerContext)
-      << "retry snapshot transfer after "
-      << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
-      << "ms";
+      << "retry snapshot transfer after " << fmtTime(duration) << ", "
+      << retryCount << countSuffix(retryCount) << " retry";
   return delayedFuture(duration);
 }
 
@@ -417,8 +448,14 @@ auto FollowerStateManager<S>::needsSnapshot() const noexcept -> bool {
 template<typename S>
 auto FollowerStateManager<S>::waitForLeaderAcked()
     -> futures::Future<futures::Unit> {
+  GaugeScopedCounter waitForLeaderCounter(
+      metrics->replicatedStateNumberWaitingForLeader);
   return logFollower->waitForLeaderAcked().thenValue(
-      [](replicated_log::WaitForResult const&) { return futures::Unit(); });
+      [waitForLeaderCounter = std::move(waitForLeaderCounter)](
+          replicated_log::WaitForResult const&) mutable {
+        waitForLeaderCounter.fire();
+        return futures::Unit();
+      });
 }
 
 template<typename S>
@@ -436,8 +473,19 @@ auto FollowerStateManager<S>::tryTransferSnapshot()
     ADB_PROD_ASSERT(data.state != nullptr)
         << "State machine must have been initialized before acquiring a "
            "snapshot.";
+
+    MeasureTimeGuard rttGuard(metrics->replicatedStateAcquireSnapshotRtt);
+    GaugeScopedCounter snapshotCounter(
+        metrics->replicatedStateNumberWaitingForSnapshot);
     return data.state->acquireSnapshot(*leader, commitIndex)
-        .then([ctx = loggerContext](futures::Try<Result>&& tryResult) {
+        .then([ctx = loggerContext,
+               errorCounter =
+                   metrics->replicatedStateNumberAcquireSnapshotErrors,
+               rttGuard = std::move(rttGuard),
+               snapshotCounter = std::move(snapshotCounter)](
+                  futures::Try<Result>&& tryResult) mutable {
+          rttGuard.fire();
+          snapshotCounter.fire();
           auto result = basics::catchToResult([&] { return tryResult.get(); });
           if (result.ok()) {
             LOG_CTX("44d58", DEBUG, ctx)
@@ -446,6 +494,7 @@ auto FollowerStateManager<S>::tryTransferSnapshot()
             LOG_CTX("9a68a", ERR, ctx)
                 << "failed to transfer snapshot: " << result.errorMessage()
                 << " - retry scheduled";
+            errorCounter->operator++();
             throw basics::Exception(std::move(result), ADB_HERE);
           }
         });
@@ -491,8 +540,23 @@ auto FollowerStateManager<S>::applyNewEntries() -> futures::Future<Result> {
   TRI_ASSERT(state != nullptr);
   auto range = iter->range();
   LOG_CTX("3678e", TRACE, loggerContext) << "apply entries in range " << range;
-
-  return state->applyEntries(std::move(iter));
+  MeasureTimeGuard rttGuard(metrics->replicatedStateApplyEntriesRtt);
+  return state->applyEntries(std::move(iter))
+      .then([ctx = loggerContext, rttGuard = std::move(rttGuard),
+             metrics = metrics, range](auto&& tryResult) mutable {
+        rttGuard.fire();
+        auto result =
+            basics::catchToResult([&] { return std::move(tryResult.get()); });
+        if (result.fail()) {
+          LOG_CTX("dd84e", ERR, ctx)
+              << "failed to transfer snapshot: " << result.errorMessage()
+              << " - retry scheduled";
+          metrics->replicatedStateNumberApplyEntriesErrors->operator++();
+        } else {
+          metrics->replicatedStateNumberProcessedEntries->count(range.count());
+        }
+        return std::forward<decltype(result)>(result);
+      });
 }
 
 namespace {
