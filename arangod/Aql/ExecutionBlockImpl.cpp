@@ -2734,10 +2734,10 @@ template class ::arangodb::aql::ExecutionBlockImpl<
 template class ::arangodb::aql::ExecutionBlockImpl<
     EnumeratePathsExecutor<KPathRefactoredTracer>>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<AllShortestPaths>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<AllShortestPathsTracer>>;
+// template class ::arangodb::aql::ExecutionBlockImpl<
+//     EnumeratePathsExecutor<AllShortestPaths>>;
+// template class ::arangodb::aql::ExecutionBlockImpl<
+//     EnumeratePathsExecutor<AllShortestPathsTracer>>;
 
 /* Cluster */
 template class ::arangodb::aql::ExecutionBlockImpl<
@@ -2745,10 +2745,10 @@ template class ::arangodb::aql::ExecutionBlockImpl<
 template class ::arangodb::aql::ExecutionBlockImpl<
     EnumeratePathsExecutor<KPathRefactoredClusterTracer>>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<AllShortestPathsCluster>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<AllShortestPathsClusterTracer>>;
+// template class ::arangodb::aql::ExecutionBlockImpl<
+//     EnumeratePathsExecutor<AllShortestPathsCluster>>;
+// template class ::arangodb::aql::ExecutionBlockImpl<
+//     EnumeratePathsExecutor<AllShortestPathsClusterTracer>>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
