@@ -350,6 +350,9 @@ void TransactionState::setExclusiveAccessType() {
   _type = AccessMode::Type::EXCLUSIVE;
 }
 
+/**
+ * Needed for Replication2 only.
+ */
 void TransactionState::setWriteAccessType() { _type = AccessMode::Type::WRITE; }
 
 void TransactionState::acceptAnalyzersRevision(
