@@ -74,6 +74,7 @@ static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
+using arangodb::LogicalView;
 
 class IResearchLinkTest
     : public ::testing::Test,
@@ -452,7 +453,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -476,7 +477,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -497,7 +498,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -533,7 +534,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -556,7 +557,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -577,7 +578,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -663,7 +664,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -687,7 +688,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -710,7 +711,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -732,7 +733,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -773,7 +774,7 @@ TEST_F(IResearchLinkTest, test_unload) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -798,7 +799,7 @@ TEST_F(IResearchLinkTest, test_unload) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -819,7 +820,7 @@ TEST_F(IResearchLinkTest, test_unload) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2785,7 +2786,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2802,7 +2803,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2832,7 +2833,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2849,7 +2850,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2879,7 +2880,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2896,7 +2897,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2926,7 +2927,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2945,7 +2946,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2974,7 +2975,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2993,7 +2994,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -3008,7 +3009,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));

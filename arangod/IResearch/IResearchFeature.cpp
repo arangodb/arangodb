@@ -22,6 +22,7 @@
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 #include "Basics/DownCast.h"
+#include "Basics/StaticStrings.h"
 
 // otherwise define conflict between 3rdParty\date\include\date\date.h and
 // 3rdParty\iresearch\core\shared.hpp
@@ -63,6 +64,7 @@
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/Search.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -710,32 +712,37 @@ void registerUpgradeTasks(ArangodServer& server) {
 }
 
 void registerViewFactory(ArangodServer& server) {
-  static_assert(IResearchView::typeInfo() ==
-                IResearchViewCoordinator::typeInfo());
-  constexpr std::string_view kViewType{IResearchView::typeInfo().second};
-
-  Result res;
-
+  Result r;
+  auto check = [&] {
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering arangosearch view factory: ",
+                       r.errorMessage()));
+    }
+  };
   // DB server in custer or single-server
-  if (auto& viewTypes = server.getFeature<ViewTypesFeature>();
-      ServerState::instance()->isCoordinator()) {
-    res = viewTypes.emplace(kViewType, IResearchViewCoordinator::factory());
-  } else if (ServerState::instance()->isDBServer() ||
-             ServerState::instance()->isSingleServer()) {
-    res = viewTypes.emplace(kViewType, IResearchView::factory());
+  auto& viewTypes = server.getFeature<ViewTypesFeature>();
+  if (ServerState::instance()->isCoordinator()) {
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
+                          IResearchViewCoordinator::factory());
+    check();
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::SearchType,
+                          Search::factory());
+  } else if (ServerState::instance()->isSingleServer()) {
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
+                          IResearchView::factory());
+    check();
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::SearchType,
+                          Search::factory());
+  } else if (ServerState::instance()->isDBServer()) {
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
+                          IResearchView::factory());
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FAILED,
-        std::string("Invalid role for arangosearch view creation."));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "Invalid role for view creation.");
   }
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res.errorNumber(),
-        basics::StringUtils::concatT(
-            "failure registering arangosearch view factory: ",
-            res.errorMessage()));
-  }
+  check();
 }
 
 Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
@@ -754,13 +761,14 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
     return {TRI_ERROR_INTERNAL};
   }
 
-  if (ViewType::kSearch != view->type()) {
-    return {};  // not a search view
+  if (view->type() == ViewType::kSearch) {
+    auto& impl = basics::downCast<Search>(*view);
+    return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
+  } else if (view->type() == ViewType::kView) {
+    auto& impl = basics::downCast<IResearchView>(*view);
+    return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
   }
-
-  // TODO FIXME find a better way to look up an IResearch View
-  auto& impl = basics::downCast<IResearchView>(*view);
-  return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
+  return {};  // not a needed view
 }
 
 void registerTransactionDataSourceRegistrationCallback() {

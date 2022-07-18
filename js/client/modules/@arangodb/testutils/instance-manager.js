@@ -271,6 +271,7 @@ class instanceManager {
     }
   }
   launchInstance() {
+    internal.env['INSTANCEINFO'] = JSON.stringify(this.getStructure());
     const startTime = time();
     try {
       this.arangods.forEach(arangod => arangod.startArango());
@@ -705,6 +706,11 @@ class instanceManager {
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
+    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    if (timeoutReached) {
+      print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      forceTerminate = true;
+    }
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
@@ -718,7 +724,7 @@ class instanceManager {
       }
     }
 
-    if (!this.checkInstanceAlive()) {
+    if (!forceTerminate && !this.checkInstanceAlive()) {
       print(Date() + ' Server already dead, doing nothing. This shouldn\'t happen?');
     }
 
