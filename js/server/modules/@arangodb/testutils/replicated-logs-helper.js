@@ -311,6 +311,15 @@ const checkRequestResult = function (requestResult, expectingError=false) {
     delete requestResult.error;
   }
 
+  if (requestResult.json === undefined) {
+    throw new ArangoError({
+      'error': true,
+      'code': 4,
+      'errorNum': arangodb.ERROR_INTERNAL,
+      'errorMessage': JSON.stringify(requestResult)
+    });
+  }
+
   if (requestResult.json.error && !expectingError) {
     throw new ArangoError({
       'error': true,
