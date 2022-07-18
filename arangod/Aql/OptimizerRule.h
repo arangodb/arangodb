@@ -347,6 +347,11 @@ struct OptimizerRule {
     // for index
     lateDocumentMaterializationRule,
 
+#ifdef USE_ENTERPRISE
+    // handle OFFSET_INFO functions calls
+    hanldeOffsetInfoFunc,
+#endif
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.

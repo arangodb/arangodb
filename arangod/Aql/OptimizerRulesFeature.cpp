@@ -312,7 +312,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeFiltersCoveredByTraversal,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // move filters and sort conditions into views
+  // move search and scorers into views
   registerRule(
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
       OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
@@ -488,6 +488,13 @@ void OptimizerRulesFeature::addRules() {
                arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
+#ifdef USE_ENTERPRISE
+  // apply late materialization for view queries
+  registerRule("handle-offset-info", arangodb::iresearch::handleOffsetInfo,
+               OptimizerRule::hanldeOffsetInfoFunc,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::EnterpriseOnly));
+#endif
 
   // add the storage-engine specific rules
   addStorageEngineRules();

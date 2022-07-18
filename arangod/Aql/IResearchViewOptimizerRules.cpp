@@ -818,7 +818,6 @@ void handleConstrainedSortInView(Optimizer* opt,
   }
 }
 
-/// @brief move filters and sort conditions into views
 void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
   TRI_ASSERT(plan && plan->getAst());
