@@ -1540,7 +1540,9 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
       LogicalDataSource::Category::kView != it1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(it1->second));
+  // Important to save it here, before emplace in map
+  auto dataSource = it1->second;
+  TRI_ASSERT(std::dynamic_pointer_cast<LogicalView>(dataSource));
   // skip persistence while in recovery since definition already from engine
   if (!engine.inRecovery()) {
     velocypack::Builder build;
@@ -1557,7 +1559,7 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
   }
 
   // stores the parameters on disk
-  auto it2 = _dataSourceByName.emplace(newName, it1->second);
+  auto it2 = _dataSourceByName.emplace(newName, std::move(dataSource));
   TRI_ASSERT(it2.second);
   _dataSourceByName.erase(oldName);
 
@@ -1639,9 +1641,9 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid,
       LogicalDataSource::Category::kCollection != it1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-
-  TRI_ASSERT(
-      std::dynamic_pointer_cast<arangodb::LogicalCollection>(it1->second));
+  // Important to save it here, before emplace in map
+  auto dataSource = it1->second;
+  TRI_ASSERT(std::dynamic_pointer_cast<LogicalCollection>(dataSource));
 
   auto res = it1->second->rename(std::string(newName));
 
@@ -1661,7 +1663,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   }
 
   // The collection is renamed. Now swap cache entries.
-  auto it2 = _dataSourceByName.emplace(newName, std::move(it1->second));
+  auto it2 = _dataSourceByName.emplace(newName, std::move(dataSource));
   TRI_ASSERT(it2.second);
   _dataSourceByName.erase(oldName);
 
