@@ -21,11 +21,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Worker.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/FinishedMessage.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
@@ -33,8 +34,7 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/Status/StatusMessage.h"
 #include "Pregel/VertexComputation.h"
-
-#include "Pregel/Status/Status.h"
+#include "Pregel/Worker.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
@@ -177,17 +177,17 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  std::function<void()> finishedCallback = [self = shared_from_this(), this] {
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::vertexCountKey,
-                VPackValue(_graphStore->localVertexCount()));
-    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
-    package.close();
-    _callConductor(Utils::finishedStartupPath, package);
+  std::function<void()> graphLoadedCallback = [self = shared_from_this(),
+                                               this] {
+    auto finishedMessage =
+        GraphLoadedMessage{.senderId = ServerState::instance()->getId(),
+                           .executionNumber = _config.executionNumber(),
+                           .vertexCount = _graphStore->localVertexCount(),
+                           .edgeCount = _graphStore->localEdgeCount()};
+    VPackBuilder message;
+    serialize(message, finishedMessage);
+    _callConductor(Utils::finishedStartupPath, message);
+
     _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   };
 
@@ -196,22 +196,23 @@ void Worker<V, E, M>::setupWorker() {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(
-      RequestLane::INTERNAL_LOW,
-      [this, self = shared_from_this(),
-       statusCallback = std::move(_statusCallback()),
-       finishedCallback = std::move(finishedCallback)] {
-        try {
-          _graphStore->loadShards(&_config, statusCallback, finishedCallback);
-        } catch (std::exception const& ex) {
-          LOG_PREGEL("a47c4", WARN)
-              << "caught exception in loadShards: " << ex.what();
-          throw;
-        } catch (...) {
-          LOG_PREGEL("e932d", WARN) << "caught unknown exception in loadShards";
-          throw;
-        }
-      });
+  scheduler->queue(RequestLane::INTERNAL_LOW,
+                   [this, self = shared_from_this(),
+                    statusCallback = std::move(_statusCallback()),
+                    graphLoadedCallback = std::move(graphLoadedCallback)] {
+                     try {
+                       _graphStore->loadShards(&_config, statusCallback,
+                                               graphLoadedCallback);
+                     } catch (std::exception const& ex) {
+                       LOG_PREGEL("a47c4", WARN)
+                           << "caught exception in loadShards: " << ex.what();
+                       throw;
+                     } catch (...) {
+                       LOG_PREGEL("e932d", WARN)
+                           << "caught unknown exception in loadShards";
+                       throw;
+                     }
+                   });
 }
 
 template<typename V, typename E, typename M>

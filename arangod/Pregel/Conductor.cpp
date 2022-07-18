@@ -31,6 +31,7 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/FinishedMessage.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
@@ -356,8 +357,10 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     return;
   }
 
-  _totalVerticesCount += data.get(Utils::vertexCountKey).getUInt();
-  _totalEdgesCount += data.get(Utils::edgeCountKey).getUInt();
+  auto loadedMessage = deserialize<GraphLoadedMessage>(data);
+  _totalVerticesCount += loadedMessage.vertexCount;
+  _totalEdgesCount += loadedMessage.edgeCount;
+
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
