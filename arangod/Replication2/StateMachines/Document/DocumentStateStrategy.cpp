@@ -240,14 +240,14 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
   auto tid = entry.tid;
   if (auto trx = getTrx(tid); trx != nullptr) {
     trx->appendEntry(std::move(entry));
-    return std::move(trx);
+    return trx;
   }
 
   TRI_ASSERT(_vocbase != nullptr);
   auto trx =
       std::make_shared<DocumentStateTransaction>(_vocbase, std::move(entry));
   _transactions.emplace(tid, trx);
-  return std::move(trx);
+  return trx;
 }
 
 auto DocumentStateTransactionHandler::initTransaction(TransactionId tid)
