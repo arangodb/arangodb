@@ -2484,9 +2484,10 @@ RestAdminClusterHandler::collectRebalanceInformation(
   cluster::rebalance::AutoRebalanceProblem p;
   p.zones.emplace_back(cluster::rebalance::Zone{.id = "ZONE"});
 
-  std::unordered_map<ServerID, std::size_t> serverToIndex;
+  std::unordered_map<ServerID, std::uint32_t> serverToIndex;
 
-  auto const getDBServerIndex = [&](std::string const& server) {
+  auto const getDBServerIndex =
+      [&](std::string const& server) -> std::uint32_t {
     auto serverName = server;
     if (serverName.starts_with("_")) {
       serverName = serverName.substr(1);
@@ -2496,7 +2497,8 @@ RestAdminClusterHandler::collectRebalanceInformation(
         iter != std::end(serverToIndex)) {
       return iter->second;
     } else {
-      auto idx = serverToIndex[serverName] = p.dbServers.size();
+      auto idx = serverToIndex[serverName] =
+          static_cast<std::uint32_t>(p.dbServers.size());
       auto& ref = p.dbServers.emplace_back();
       ref.id = serverName;
       ref.zone = 0;
@@ -2544,14 +2546,18 @@ RestAdminClusterHandler::collectRebalanceInformation(
         distributeShardsLikeCounter[collectionRef.name].index = index;
 
         for (auto const& shard : *collection->shardIds()) {
-          std::size_t shardIndex = p.shards.size();
+          auto shardIndex =
+              static_cast<decltype(collectionRef.shards)::value_type>(
+                  p.shards.size());
           collectionRef.shards.push_back(shardIndex);
           auto& shardRef = p.shards.emplace_back();
           shardRef.name = shard.first;
           shardRef.leader = getDBServerIndex(shard.second[0]);
           shardRef.id = shardIndex;
           shardRef.collectionId = index;
-          shardRef.replicationFactor = shard.second.size();
+          shardRef.replicationFactor =
+              static_cast<decltype(shardRef.replicationFactor)>(
+                  shard.second.size());
           shardRef.weight = 1.;
           shardRef.size = 1024 * 1024;  // size of data in that shard
           bool first = true;

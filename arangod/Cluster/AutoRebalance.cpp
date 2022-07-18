@@ -40,7 +40,9 @@ std::string_view const charset{
 
 std::string randomReadableString(uint32_t len) {
   std::default_random_engine rng(std::random_device{}());
-  std::uniform_int_distribution<> dist(0, charset.size() - 1);
+  using Dist = std::uniform_int_distribution<>;
+  auto m = static_cast<Dist::result_type>(charset.size() - 1);
+  auto dist = Dist(0, m);
   auto randchar = [&dist, &rng]() { return charset[dist(rng)]; };
   std::string s(len, 0);
   std::generate_n(s.begin(), len, randchar);
@@ -93,7 +95,8 @@ uint64_t AutoRebalanceProblem::createCollection(std::string const& name,
   }
   uint64_t dbId = it->second;
 
-  uint64_t collId = collections.size();
+  auto collId = static_cast<decltype(databases[0].collections)::value_type>(
+      collections.size());
 
   // First create the shards:
   std::vector<uint32_t> positionsNewShards;
@@ -138,7 +141,7 @@ void AutoRebalanceProblem::createRandomDatabasesAndCollections(
   dbCollByName.clear();
   dbByName.clear();
 
-  uint64_t currId = 123452;
+  uint32_t currId = 123452;
   std::default_random_engine rng(std::random_device{}());
   std::uniform_int_distribution<> replRand(minReplFactor, maxReplFactor);
 
@@ -158,7 +161,7 @@ void AutoRebalanceProblem::distributeShardsRandomly(
     std::vector<double> const& probabilities) {
   std::default_random_engine rng(std::random_device{}());
   std::uniform_real_distribution<double> random;
-  uint32_t nrDBservers = dbServers.size();
+  auto nrDBservers = static_cast<std::uint32_t>(dbServers.size());
   assert(nrDBservers == probabilities.size());
   for (auto& s : shards) {
     // First the leader:
