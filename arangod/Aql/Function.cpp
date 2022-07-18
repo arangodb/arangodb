@@ -190,10 +190,6 @@ bool Function::hasCxxImplementation() const noexcept {
   return implementation != nullptr;
 }
 
-std::underlying_type<Function::Flags>::type Function::makeFlags() noexcept {
-  return static_cast<std::underlying_type<Flags>::type>(Flags::None);
-}
-
 bool Function::hasFlag(Function::Flags flag) const noexcept {
   return (flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0;
 }
@@ -239,6 +235,6 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
 
   builder.add("stub",
-              velocypack::Value(implementation == &Functions::NotImplemented));
+              velocypack::Value(implementation == &functions::NotImplemented));
   builder.close();
 }

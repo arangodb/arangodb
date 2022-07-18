@@ -75,8 +75,18 @@ bool RocksDBKey::containsLocalDocumentId(
   return false;
 }
 
+void RocksDBKey::constructFromBuffer(std::string_view buffer) {
+  // we don't know what the exact type is. we will simply take
+  // over the data from the incoming buffer
+  _type = RocksDBEntryType::Placeholder;
+  size_t keyLength = buffer.size();
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  _buffer->append(buffer.data(), buffer.size());
+}
+
 void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
-                                        const zkd::byte_string& value) {
+                                        zkd::byte_string const& value) {
   _type = RocksDBEntryType::ZkdIndexValue;
   size_t keyLength = sizeof(uint64_t) + value.size();
   _buffer->clear();

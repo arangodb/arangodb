@@ -92,14 +92,15 @@ class Query;
 namespace arangodb::iresearch {
 namespace {
 
-aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const&,
+aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const& node,
                               std::span<aql::AqlValue const>) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
+  THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter functions EXISTS, PHRASE "
-      " are designed to be used only within a corresponding SEARCH statement "
+      "ArangoSearch filter function '%s' "
+      " is designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
-      " Please ensure function signature is correct.");
+      " Please ensure function signature is correct.",
+      getFunctionName(node).data());
 }
 
 // Function body for ArangoSearch context functions ANALYZER/BOOST.
@@ -205,14 +206,14 @@ aql::AqlValue minMatchFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
   return aql::AqlValue(aql::AqlValueHintBool(matchesLeft == 0));
 }
 
-aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const&,
+aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const& node,
                               std::span<aql::AqlValue const>) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
+  THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch scorer functions BM25() and TFIDF() are designed to "
+      "ArangoSearch scorer function '%s' are designed to "
       "be used only outside SEARCH statement within a context of ArangoSearch "
-      "view."
-      " Please ensure function signature is correct.");
+      "view. Please ensure function signature is correct.",
+      aql::getFunctionName(node).data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -531,18 +532,18 @@ bool upgradeSingleServerArangoSearchView0_1(
 void registerFilters(aql::AqlFunctionFeature& functions) {
   using arangodb::iresearch::addFunction;
 
-  auto flags = aql::Function::makeFlags(
+  constexpr auto flags = aql::Function::makeFlags(
       aql::Function::Flags::Deterministic, aql::Function::Flags::Cacheable,
       aql::Function::Flags::CanRunOnDBServerCluster,
       aql::Function::Flags::CanRunOnDBServerOneShard,
       aql::Function::Flags::CanUseInAnalyzer);
 
-  auto flagsNoAnalyzer = aql::Function::makeFlags(
+  constexpr auto flagsNoAnalyzer = aql::Function::makeFlags(
       aql::Function::Flags::Deterministic, aql::Function::Flags::Cacheable,
       aql::Function::Flags::CanRunOnDBServerCluster,
       aql::Function::Flags::CanRunOnDBServerOneShard);
 
-  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ]).
+  // (attribute, ["analyzer"|"type"|"string"|"numeric"|"bool"|"null"]).
   // cannot be used in analyzers!
   addFunction(functions,
               {"EXISTS", ".|.,.", flagsNoAnalyzer, &dummyFilterFunc});
@@ -822,13 +823,14 @@ bool isFilter(aql::Function const& func) noexcept {
          func.implementation == &contextFunc ||
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
-         func.implementation == &aql::Functions::GeoContains ||
-         func.implementation == &aql::Functions::GeoInRange ||
-         func.implementation == &aql::Functions::GeoIntersects ||
-         func.implementation == &aql::Functions::LevenshteinMatch ||
-         func.implementation == &aql::Functions::Like ||
-         func.implementation == &aql::Functions::NgramMatch ||
-         func.implementation == &aql::Functions::InRange;
+         func.implementation == &aql::functions::MinHashMatch ||
+         func.implementation == &aql::functions::GeoContains ||
+         func.implementation == &aql::functions::GeoInRange ||
+         func.implementation == &aql::functions::GeoIntersects ||
+         func.implementation == &aql::functions::LevenshteinMatch ||
+         func.implementation == &aql::functions::Like ||
+         func.implementation == &aql::functions::NgramMatch ||
+         func.implementation == &aql::functions::InRange;
 }
 
 bool isScorer(aql::Function const& func) noexcept {
