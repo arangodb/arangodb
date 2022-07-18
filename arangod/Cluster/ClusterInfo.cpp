@@ -1160,6 +1160,14 @@ void ClusterInfo::loadPlan() {
     }
   }
 
+  // Since we have few types of view requiring initialization we perform
+  // dedicated loop to ensure database involved are properly cleared
+  for (auto const& database : changeSet.dbs) {
+    // TODO Why database name can be emtpy
+    if (!database.first.empty()) {
+      _newPlannedViews.erase(database.first);
+    }
+  }
   // Immediate children of "Views" are database names, then ids
   // of views, then one JSON object with the description:
   // "Plan":{"Views": {
@@ -1173,21 +1181,20 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   //  }}
-
   auto ensureViews = [&](std::string_view type) {
     for (auto const& database : changeSet.dbs) {
+      // TODO Why database name can be emtpy
       if (database.first.empty()) {  // Rest of plan
         continue;
       }
       auto const& databaseName = database.first;
-      _newPlannedViews.erase(databaseName);  // clear views for this database
       std::initializer_list<std::string_view> const viewsPath{
           AgencyCommHelper::path(), "Plan", "Views", databaseName};
       auto viewsSlice = database.second->slice()[0];
-      if (!viewsSlice.hasKey(viewsPath)) {
+      viewsSlice = viewsSlice.get(viewsPath);
+      if (viewsSlice.isNone()) {
         continue;
       }
-      viewsSlice = viewsSlice.get(viewsPath);
 
       auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
