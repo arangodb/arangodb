@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "Cluster/AutoRebalance.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::cluster::rebalance;
 
@@ -9,7 +10,7 @@ TEST(AutoShardRebalancer, simple_randomized_test) {
   const auto nrDBs = 5;
   const auto nrColls = 500;
   const auto minReplFactor = 1;
-  const auto maxReplFactor = 5;
+  const auto maxReplFactor = 3;
   const auto atMostJobs = 500;
 
   AutoRebalanceProblem p;

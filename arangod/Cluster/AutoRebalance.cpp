@@ -174,6 +174,8 @@ void AutoRebalanceProblem::distributeShardsRandomly(
     used |= 1ull << i;
     // Now the followers, we need to exclude already used ones:
     s.followers.clear();
+    assert(s.replicationFactor <=
+           nrDBservers);  // otherwise this will never terminate
     for (uint32_t j = 1; j < s.replicationFactor; ++j) {
       do {
         r = random(rng);
