@@ -183,8 +183,17 @@ exports.waitForShardsInSync = function(cn, timeout) {
   return;
 };
 
-exports.getCoordinators = global.ArangoClusterInfo.getCoordinators;
-exports.getDBServers = global.ArangoClusterInfo.getDBServers;
+exports.getCoordinators = function () {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getCoordinators().map(id => ({id}));
+}
+
+exports.getDBServers = function() {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getDBServers().map(x => ({id: x.serverId}));
+};
 
 exports.uniqid = global.ArangoClusterInfo.uniqid;
 exports.agency = global.ArangoAgency;
