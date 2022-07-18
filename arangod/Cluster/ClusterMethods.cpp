@@ -42,6 +42,7 @@
 #include "Futures/Utilities.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Metrics/Counter.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -2031,6 +2032,8 @@ Future<OperationResult> getDocumentOnCoordinator(
           builder.close();
         }
         if (allowDirtyReads) {
+          auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
+          ++cf.potentiallyDirtyDocumentReadsCounter();
           reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
           headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
         }
@@ -2079,7 +2082,9 @@ Future<OperationResult> getDocumentOnCoordinator(
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+  auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
+  auto& nf = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = nf.pool();
   const size_t expectedLen = useMultiple ? slice.length() : 0;
   if (!useMultiple) {
     std::string_view const key(
@@ -2102,6 +2107,7 @@ Future<OperationResult> getDocumentOnCoordinator(
       }
 
       if (allowDirtyReads) {
+        ++cf.potentiallyDirtyDocumentReadsCounter();
         reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }
@@ -2121,6 +2127,7 @@ Future<OperationResult> getDocumentOnCoordinator(
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
       if (allowDirtyReads) {
+        ++cf.potentiallyDirtyDocumentReadsCounter();
         reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }

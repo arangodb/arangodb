@@ -46,6 +46,7 @@
 #include "Aql/UnsortedGatherExecutor.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
+#include "RestServer/TemporaryStorageFeature.h"
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
@@ -252,13 +253,21 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
           std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
     }
     if constexpr (std::is_same_v<ExecutorType, SortExecutor>) {
+      TemporaryStorageFeature tempStorage(fakedQuery->vocbase().server());
       std::vector<SortRegister> sortRegisters{};
       // We do not care for sorting, we skip anyways.
       sortRegisters.emplace_back(SortRegister{0, SortElement{nullptr, true}});
-      SortExecutorInfos execInfos{1,       1,
-                                  {},      std::move(sortRegisters),
-                                  0,       fakedQuery->itemBlockManager(),
-                                  nullptr, monitor,
+      SortExecutorInfos execInfos{1,
+                                  1,
+                                  {},
+                                  std::move(sortRegisters),
+                                  0,
+                                  fakedQuery->itemBlockManager(),
+                                  tempStorage,
+                                  nullptr,
+                                  monitor,
+                                  /*spillOverThresholdNumRows*/ 1000,
+                                  /*spillOverThresholdMemoryUsage*/ 1024 * 1024,
                                   true};
       return ExecutionBlockImpl<ExecutorType>{
           fakedQuery->rootEngine(), generateNodeDummy(),

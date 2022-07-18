@@ -359,6 +359,8 @@ class ExecutionNode {
 
   bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
 
+  bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, bool onlyFlattenAsync);
+
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS = 1;
   /// include estimate cost  (used in the explainer)
@@ -587,8 +589,11 @@ class ExecutionNode {
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
 
+  enum FlattenType { NONE, INLINE_ASYNC, INLINE_ALL };
+
  private:
-  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst);
+  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst,
+              FlattenType flattenType);
 };
 
 /// @brief class SingletonNode

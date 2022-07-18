@@ -17,9 +17,12 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterFunctionTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterGeoTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterInTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterMinHashMatchTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterNestedTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchIndexTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexConditionTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexIteratorTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexMetaTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkCoordinatorTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkHelperTest.cpp
@@ -69,6 +72,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSortedTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewCountApproximateTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/VelocyPackHelperTest.cpp
+  ${ADDITIONAL_IRESEARCH_TEST_SOURCES}
 )
 
 set(ARANGODB_IRESEARCH_TESTS_SOURCES

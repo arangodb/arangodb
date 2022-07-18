@@ -395,6 +395,9 @@ class RocksDBEngine final : public StorageEngine {
       std::string const& keystorePath,
       std::vector<enterprise::EncryptionSecret>& userKeys,
       std::string& encryptionKey) const;
+
+  void configureEnterpriseRocksDBOptions(rocksdb::DBOptions& options,
+                                         bool createdEngineDir);
 #endif
 
   // returns whether sha files are created or not
@@ -468,8 +471,7 @@ class RocksDBEngine final : public StorageEngine {
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
-  void configureEnterpriseRocksDBOptions(rocksdb::DBOptions& options,
-                                         bool createdEngineDir);
+
   void validateJournalFiles() const;
 
   Result readUserEncryptionSecrets(

@@ -1,0 +1,14 @@
+name: arangodb_pregel_conductors_loading_number
+introducedIn: "3.10.0"
+help: |
+  Number of loading Pregel conductors.
+unit: number
+type: gauge
+category: Pregel
+complexity: simple
+exposedBy:
+  - dbserver
+  - single
+  - coordinator
+description: |
+  Number of loading Pregel conductors.

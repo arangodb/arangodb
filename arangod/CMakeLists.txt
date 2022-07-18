@@ -57,6 +57,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchCommon.h
   IResearch/IResearchCompression.h
   IResearch/IResearchDataStore.h
+  IResearch/IResearchDataStoreMeta.h
   IResearch/IResearchDocument.h
   IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.h
@@ -100,6 +101,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchCommon.cpp
   IResearch/IResearchCompression.cpp
   IResearch/IResearchDataStore.cpp
+  IResearch/IResearchDataStoreMeta.cpp
   IResearch/IResearchDocument.cpp
   IResearch/IResearchExpressionContext.cpp
   IResearch/IResearchFeature.cpp
@@ -284,6 +286,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
+  Pregel/PregelMetrics.cpp
   Pregel/Recovery.cpp
   Pregel/Reports.cpp
   Pregel/Reports.h
@@ -447,6 +450,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
   Aql/SortedCollectExecutor.cpp
+  Aql/SortedRowsStorageBackendMemory.cpp
+  Aql/SortedRowsStorageBackendStaged.cpp
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryEndExecutor.cpp
@@ -870,6 +875,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
+  RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
