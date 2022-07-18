@@ -17,6 +17,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterFunctionTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterGeoTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterInTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterMinHashMatchTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterNestedTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchIndexTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexConditionTest.cpp

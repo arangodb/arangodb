@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "Basics/DownCast.h"
 
 #include <frozen/map.h>
@@ -31,6 +32,7 @@
 #include "date/date.h"
 #endif
 
+#include "Aql/Functions.h"
 #include "IResearch/IResearchFilterFactory.h"
 
 #include "s2/s2latlng.h"
@@ -65,6 +67,7 @@
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/GeoFilter.h"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchFilterFactoryCommon.hpp"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -94,6 +97,11 @@ Result fromBooleanExpansion(irs::boolean_filter* filter,
                             aql::AstNode const& node);
 #endif
 
+Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
+                            QueryContext const& ctx,
+                            FilterContext const& filterCtx,
+                            aql::AstNode const& args);
+
 }  // namespace arangodb::iresearch
 
 namespace {
@@ -104,177 +112,6 @@ using namespace arangodb::iresearch;
 constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
 constexpr char const* GEO_DISTANCE_FUNC = "GEO_DISTANCE";
 constexpr char const* TERMS_FUNC = "TERMS";
-
-namespace error {
-
-template<size_t Min, size_t Max>
-struct Range {
-  static constexpr size_t MIN = Min;
-  static constexpr size_t MAX = Max;
-};
-
-template<typename>
-struct IsRange : std::false_type {};
-template<size_t Min, size_t Max>
-struct IsRange<Range<Min, Max>> : std::true_type {};
-
-template<bool MaxBound, size_t Value>
-struct OpenRange {
-  static constexpr bool MAX_BOUND = MaxBound;
-  static constexpr size_t VALUE = Value;
-};
-
-template<typename>
-struct IsOpenRange : std::false_type {};
-template<bool MaxBound, size_t Value>
-struct IsOpenRange<OpenRange<MaxBound, Value>> : std::true_type {};
-
-template<size_t Value>
-struct ExactValue {
-  static constexpr size_t VALUE = Value;
-};
-
-template<typename>
-struct IsExactValue : std::false_type {};
-template<size_t Value>
-struct IsExactValue<ExactValue<Value>> : std::true_type {};
-
-template<typename RangeType>
-Result invalidArgsCount(char const* funcName) {
-  if constexpr (IsRange<RangeType>::value) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: Invalid number of arguments passed "
-                        "(expected >= ")
-                .append(std::to_string(RangeType::MIN))
-                .append(" and <= ")
-                .append(std::to_string(RangeType::MAX))
-                .append(")")};
-  } else if constexpr (IsOpenRange<RangeType>::value) {
-    if constexpr (RangeType::MAX_BOUND) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName)
-                  .append("' AQL function: Invalid number of arguments passed "
-                          "(expected <= ")
-                  .append(std::to_string(RangeType::VALUE))
-                  .append(")")};
-    }
-
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: Invalid number of arguments passed "
-                        "(expected >= ")
-                .append(std::to_string(RangeType::VALUE))
-                .append(")")};
-  } else if constexpr (IsExactValue<RangeType>::value) {
-    return {
-        TRI_ERROR_BAD_PARAMETER,
-        "'"s.append(funcName)
-            .append(
-                "' AQL function: Invalid number of arguments passed (expected ")
-            .append(std::to_string(RangeType::VALUE))
-            .append(")")};
-  }
-
-  return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName).append(
-              "' AQL function: Invalid number of arguments passed")};
-}
-
-Result negativeNumber(char const* funcName, size_t i) {
-  return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(i))
-              .append("' must be a positive number")};
-}
-
-Result nondeterministicArgs(char const* funcName) {
-  return {TRI_ERROR_BAD_PARAMETER,
-          "Unable to handle non-deterministic arguments for '"s.append(funcName)
-              .append("' function")};
-}
-
-Result nondeterministicArg(char const* funcName, size_t i) {
-  return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(i))
-              .append("' is intended to be deterministic")};
-}
-
-Result invalidAttribute(char const* funcName, size_t i) {
-  return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: Unable to parse argument at position '")
-              .append(std::to_string(i))
-              .append("' as an attribute identifier")};
-}
-
-Result invalidArgument(char const* funcName, size_t i) {
-  return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(i))
-              .append("' is invalid")};
-}
-
-Result failedToEvaluate(const char* funcName, size_t i) {
-  return {
-      TRI_ERROR_BAD_PARAMETER,
-      "'"s.append(funcName)
-          .append("' AQL function: Failed to evaluate argument at position '")
-          .append(std::to_string(i))
-          .append(("'"))};
-}
-
-Result typeMismatch(const char* funcName, size_t i,
-                    ScopedValueType expectedType, ScopedValueType actualType) {
-  return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(i))
-              .append("' has invalid type '")
-              .append(ScopedAqlValue::typeString(actualType).c_str())
-              .append("' ('")
-              .append(ScopedAqlValue::typeString(expectedType).c_str())
-              .append("' expected)")};
-}
-
-Result failedToParse(char const* funcName, size_t i,
-                     ScopedValueType expectedType) {
-  return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: Unable to parse argument at position '")
-              .append(std::to_string(i))
-              .append("' as ")
-              .append(ScopedAqlValue::typeString(expectedType).c_str())};
-}
-
-Result failedToGenerateName(char const* funcName, size_t i) {
-  return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: Failed to generate field name from the "
-                      "argument at position '")
-              .append(std::to_string(i))
-              .append("'")};
-}
-
-Result malformedNode(aql::AstNodeType type) {
-  auto const* typeName = getNodeTypeName(type);
-
-  std::string message("Can't process malformed AstNode of type '");
-  if (typeName) {
-    message += *typeName;
-  } else {
-    message += std::to_string(type);
-  }
-  message += "'";
-
-  return {TRI_ERROR_BAD_PARAMETER, message};
-}
-
-}  // namespace error
 
 void setupAllTypedFilter(irs::Or& disjunction, std::string&& mangledName,
                          irs::score_t boost) {
@@ -305,66 +142,6 @@ bool setupGeoFilter(FieldMeta::Analyzer const& a,
   }
 
   return false;
-}
-
-template<typename T, bool CheckDeterminism = false>
-Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
-                   aql::AstNode const& args, size_t i, bool isFilter,
-                   QueryContext const& ctx) {
-  static_assert(std::is_same<T, irs::string_ref>::value ||
-                std::is_same<T, int64_t>::value ||
-                std::is_same<T, double_t>::value ||
-                std::is_same<T, bool>::value);
-
-  auto const* arg = args.getMemberUnchecked(i);
-
-  if (!arg) {
-    return error::invalidArgument(funcName, 2);
-  }
-
-  if constexpr (CheckDeterminism) {
-    if (!arg->isDeterministic()) {
-      return error::nondeterministicArg(funcName, i);
-    }
-  }
-
-  value.reset(*arg);
-
-  if (isFilter || value.isConstant()) {
-    if (!value.execute(ctx)) {
-      return error::failedToEvaluate(funcName, i + 1);
-    }
-
-    ScopedValueType expectedType = ScopedValueType::SCOPED_VALUE_TYPE_INVALID;
-    if constexpr (std::is_same<T, irs::string_ref>::value) {
-      expectedType = SCOPED_VALUE_TYPE_STRING;
-    } else if constexpr (std::is_same<T, int64_t>::value ||
-                         std::is_same<T, double_t>::value) {
-      expectedType = SCOPED_VALUE_TYPE_DOUBLE;
-    } else if constexpr (std::is_same<T, bool>::value) {
-      expectedType = SCOPED_VALUE_TYPE_BOOL;
-    }
-
-    if (expectedType != value.type()) {
-      return error::typeMismatch(funcName, i + 1, expectedType, value.type());
-    }
-
-    if constexpr (std::is_same<T, irs::string_ref>::value) {
-      if (!value.getString(out)) {
-        return error::failedToParse(funcName, i + 1, expectedType);
-      }
-    } else if constexpr (std::is_same<T, int64_t>::value) {
-      out = value.getInt64();
-    } else if constexpr (std::is_same<T, double>::value) {
-      if (!value.getDouble(out)) {
-        return error::failedToParse(funcName, i + 1, expectedType);
-      }
-    } else if constexpr (std::is_same<T, bool>::value) {
-      out = value.getBoolean();
-    }
-  }
-
-  return {};
 }
 
 Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
@@ -410,69 +187,6 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
       return error::invalidArgument(funcName, argIdx);
     }
   }
-}
-
-Result getAnalyzerByName(FieldMeta::Analyzer& out,
-                         const irs::string_ref& analyzerId,
-                         char const* funcName, QueryContext const& ctx) {
-  auto& analyzer = out._pool;
-  auto& shortName = out._shortName;
-
-  TRI_ASSERT(ctx.trx);
-  auto& server = ctx.trx->vocbase().server();
-  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
-    return {TRI_ERROR_INTERNAL,
-            "'"s.append(IResearchAnalyzerFeature::name())
-                .append("' feature is not registered, unable to evaluate '")
-                .append(funcName)
-                .append("' function")};
-  }
-  auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-
-  analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
-                                 ctx.trx->state()->analyzersRevision());
-  if (!analyzer) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append("' AQL function: Unable to load requested analyzer '")
-                .append(analyzerId.c_str(), analyzerId.size())
-                .append("'")};
-  }
-
-  shortName = IResearchAnalyzerFeature::normalize(
-      analyzerId, ctx.trx->vocbase().name(), false);
-
-  return {};
-}
-
-Result extractAnalyzerFromArg(FieldMeta::Analyzer& out, char const* funcName,
-                              irs::boolean_filter const* filter,
-                              aql::AstNode const& args, size_t i,
-                              QueryContext const& ctx) {
-  auto const* analyzerArg = args.getMemberUnchecked(i);
-
-  if (!analyzerArg) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: ")
-                .append(std::to_string(i + 1))
-                .append(" argument is invalid analyzer")};
-  }
-
-  ScopedAqlValue analyzerValue(*analyzerArg);
-  irs::string_ref analyzerId;
-
-  auto rv =
-      evaluateArg(analyzerId, analyzerValue, funcName, args, i, filter, ctx);
-
-  if (rv.fail()) {
-    return rv;
-  }
-
-  if (!filter && !analyzerValue.isConstant()) {
-    return {};
-  }
-
-  return getAnalyzerByName(out, analyzerId, funcName, ctx);
 }
 
 using ConvertionHandler = Result (*)(char const* funcName, irs::boolean_filter*,
@@ -583,7 +297,9 @@ Result byTerm(irs::by_term* filter, aql::AstNode const& attribute,
               ScopedAqlValue const& value, QueryContext const& ctx,
               FilterContext const& filterCtx) {
   std::string name{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(name, attribute, ctx)) {
+
+  if (!nameFromAttributeAccess(name, attribute, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attribute))};
@@ -620,7 +336,8 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attribute,
   TRI_ASSERT(attribute.isDeterministic());
 
   std::string name{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(name, attribute, ctx)) {
+  if (!nameFromAttributeAccess(name, attribute, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attribute))};
@@ -655,7 +372,8 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
                ScopedAqlValue const& max, bool const maxInclude,
                QueryContext const& ctx, FilterContext const& filterCtx) {
   std::string name{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(name, attributeNode, ctx)) {
+  if (!nameFromAttributeAccess(name, attributeNode, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attributeNode))};
@@ -938,7 +656,8 @@ Result byRange(irs::boolean_filter* filter, NormalizedCmpNode const& node,
   TRI_ASSERT(node.value && node.value->isDeterministic());
 
   std::string name{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(name, *node.attribute, ctx)) {
+  if (!nameFromAttributeAccess(name, *node.attribute, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(node.attribute))};
@@ -1064,12 +783,12 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     }
   }
 
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, fieldNodeIdx);
+  }
   if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
-      return error::failedToGenerateName(funcName, fieldNodeIdx);
-    }
-
     auto& geo_filter = filter->add<GeoDistanceFilter>();
     geo_filter.boost(filterCtx.boost);
 
@@ -1104,7 +823,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
   TRI_ASSERT(
       node.attribute && node.attribute->isDeterministic() &&
       aql::NODE_TYPE_FCALL == node.attribute->type &&
-      &aql::Functions::GeoDistance ==
+      &aql::functions::GeoDistance ==
           reinterpret_cast<aql::Function const*>(node.attribute->getData())
               ->implementation);
   TRI_ASSERT(node.value && node.value->isDeterministic());
@@ -1169,12 +888,12 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     }
   }
 
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
+  }
   if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
-      return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
-    }
-
     auto& geo_filter =
         (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp
              ? filter->add<irs::Not>().filter<GeoDistanceFilter>()
@@ -1740,7 +1459,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
           .boost = irs::kNoBoost};  // reset boost
 
       std::string fieldName{filterCtx.namePrefix};
-      if (filter && !nameFromAttributeAccess(fieldName, *attributeNode, ctx)) {
+      if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx,
+                                   filter != nullptr, filterCtx.fields)) {
         return {TRI_ERROR_BAD_PARAMETER,
                 "Failed to generate field name from node " +
                     aql::AstNode::toString(attributeNode)};
@@ -2044,6 +1764,7 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
   FilterContext const subFilterCtx{
       .analyzerProvider = filterCtx.analyzerProvider,
       .analyzer = filterCtx.analyzer,
+      .fields = filterCtx.fields,
       .namePrefix = filterCtx.namePrefix,
       .boost = irs::kNoBoost};  // reset boost
 
@@ -2312,7 +2033,8 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   auto const isIndexFilter = ctx.isSearchQuery;
 
   std::string fieldName{filterCtx.namePrefix};
-  if (filter && !nameFromAttributeAccess(fieldName, *fieldArg, ctx)) {
+  if (!nameFromAttributeAccess(fieldName, *fieldArg, ctx, filter != nullptr,
+                               filterCtx.fields)) {
     return error::failedToGenerateName(funcName, 1);
   }
 
@@ -3454,13 +3176,14 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
 
   irs::by_phrase* phrase = nullptr;
   AnalyzerPool::CacheType::ptr analyzer;
+
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *fieldArg, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
   // prepare filter if execution phase
   if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *fieldArg, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
-    }
-
     // now get the actual analyzer for the known field name if it is not
     // overridden
     if (!analyzerPool._pool) {
@@ -3615,16 +3338,13 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
     }
   }
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      auto message = "'"s.append(funcName).append(
-          "' AQL function: Failed to generate field name from the 1st "
-          "argument");
-      LOG_TOPIC("91862", WARN, TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
 
+  if (filter) {
     if (!analyzerPool._pool) {
       analyzerPool = filterCtx.fieldAnalyzer(name);
     }
@@ -3657,6 +3377,18 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   }
   return {};
 }
+
+#ifndef USE_ENTERPRISE
+Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter*,
+                            QueryContext const&, FilterContext const&,
+                            aql::AstNode const&) {
+  TRI_ASSERT(funcName);
+
+  return {TRI_ERROR_NOT_IMPLEMENTED,
+          absl::StrCat("Function ", funcName,
+                       "' is available in ArangoDB Enterprise Edition only.")};
+}
+#endif
 
 // STARTS_WITH(<attribute>, [ '[' ] <prefix> [, <prefix>, ... ']' ], [
 // <scoring-limit>|<min-match-count> ] [, <scoring-limit> ])
@@ -3773,12 +3505,13 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
     scoringLimit = static_cast<size_t>(scoringLimitValue);
   }
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
 
+  if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
     kludge::mangleField(name, ctx.isSearchQuery, analyzer);
@@ -3883,12 +3616,13 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
 
   const auto scoringLimit = FilterConstants::DefaultScoringTermsLimit;
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
 
+  if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
     kludge::mangleField(name, ctx.isSearchQuery, analyzer);
@@ -3923,12 +3657,13 @@ Result fromFuncLevenshteinMatch(char const* funcName,
     return res;
   }
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
-      return error::failedToGenerateName(funcName, 1);
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, 1);
+  }
 
+  if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
     kludge::mangleField(name, ctx.isSearchQuery, analyzer);
@@ -4031,12 +3766,13 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     }
   }
 
-  if (filter) {
-    std::string name{filterCtx.namePrefix};
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
-      return error::failedToGenerateName(funcName, fieldNodeIdx);
-    }
+  std::string name{filterCtx.namePrefix};
+  if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr,
+                               filterCtx.fields)) {
+    return error::failedToGenerateName(funcName, fieldNodeIdx);
+  }
 
+  if (filter) {
     auto& geo_filter = filter->add<GeoFilter>();
     geo_filter.boost(filterCtx.boost);
 
@@ -4101,7 +3837,7 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
 }
 
 frozen::map<irs::string_ref, ConvertionHandler,
-            13> constexpr kFCallSystemConvertionHandlers{
+            14> constexpr kFCallSystemConvertionHandlers{
     // filter functions
     {"PHRASE", fromFuncPhrase},
     {"STARTS_WITH", fromFuncStartsWith},
@@ -4111,6 +3847,7 @@ frozen::map<irs::string_ref, ConvertionHandler,
     {"LIKE", fromFuncLike},
     {"LEVENSHTEIN_MATCH", fromFuncLevenshteinMatch},
     {"NGRAM_MATCH", fromFuncNgramMatch},
+    {"MINHASH_MATCH", fromFuncMinHashMatch},
     // geo function
     {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
     {"GEO_IN_RANGE", fromFuncGeoInRange},

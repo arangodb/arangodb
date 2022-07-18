@@ -62,7 +62,18 @@ arangodb::aql::AstNodeType const CmpMap[]{
                                       // 3 >= a <==> a <= 3
 };
 
+auto getNested(
+    std::string_view parent,
+    std::span<const arangodb::iresearch::InvertedIndexField> fields) noexcept {
+  if (parent.ends_with("[*]")) {
+    parent = parent.substr(0, parent.size() - 3);
+  }
+  return std::find_if(
+      std::begin(fields), std::end(fields),
+      [parent](const auto& field) noexcept { return field.path() == parent; });
 }
+
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -421,7 +432,7 @@ bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
     auto* impl =
         reinterpret_cast<aql::Function const*>(node->getData())->implementation;
 
-    if (impl != &aql::Functions::GeoDistance) {
+    if (impl != &aql::functions::GeoDistance) {
       return false;
     }
 
@@ -655,12 +666,18 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
          rhsValue.type != NodeValue::Type::INVALID && rhsValue == lhsValue;
 }
 
-bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
-                             QueryContext const& ctx) {
+bool nameFromAttributeAccess(
+    std::string& name, aql::AstNode const& node, QueryContext const& ctx,
+    bool filter, std::span<InvertedIndexField const> fields,
+    std::span<InvertedIndexField const>* subFields /*= nullptr*/) {
   class AttributeChecker {
    public:
-    AttributeChecker(std::string& str, QueryContext const& ctx) noexcept
-        : _str{str}, _ctx{ctx}, _expansion{!ctx.isSearchQuery} {}
+    AttributeChecker(std::string& str, QueryContext const& ctx,
+                     bool filter) noexcept
+        : _str{str},
+          _ctx{ctx},
+          _expansion{!ctx.isSearchQuery},
+          _filter{filter} {}
 
     bool attributeAccess(aql::AstNode const& node) {
       irs::string_ref strValue;
@@ -685,7 +702,13 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
     bool indexAccess(aql::AstNode const& node) {
       _value.reset(node);
 
-      if (!_value.execute(_ctx)) {
+      if (!_filter && _ctx.isSearchQuery) {
+        // view query parsing time. Just accept anything
+        return true;
+      }
+
+      if ((!_ctx.isSearchQuery && !node.isConstant() && !_ctx.ctx) ||
+          !_value.execute(_ctx)) {
         // failed to evaluate value
         return false;
       }
@@ -730,11 +753,21 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
     QueryContext const& _ctx;
     char _buf[21];  // enough to hold all numbers up to 64-bits
     bool _expansion;
-  } builder{name, ctx};
+    bool _filter;
+  } builder{name, ctx, filter};
 
   aql::AstNode const* head = nullptr;
-  return visitAttributeAccess(head, &node, builder) && head &&
-         aql::NODE_TYPE_REFERENCE == head->type;
+  auto visitRes = visitAttributeAccess(head, &node, builder) && head &&
+                  aql::NODE_TYPE_REFERENCE == head->type;
+
+  if (visitRes && !ctx.isSearchQuery) {
+    auto it = getNested(name, fields);
+    visitRes = it != std::end(fields);
+    if (visitRes && subFields) {
+      *subFields = it->_fields;
+    }
+  }
+  return visitRes;
 }
 
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,

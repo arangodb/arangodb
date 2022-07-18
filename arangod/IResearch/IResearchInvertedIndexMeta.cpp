@@ -66,6 +66,58 @@ constexpr std::string_view kStoredValuesFieldName = "storedValues";
 constexpr std::string_view kConsistencyFieldName = "consistency";
 constexpr std::string_view kAnalyzerDefinitionsFieldName =
     "analyzerDefinitions";
+
+#ifdef USE_ENTERPRISE
+void gatherNestedNulls(std::string_view parent,
+                       arangodb::iresearch::MissingFieldsMap& map,
+                       arangodb::iresearch::InvertedIndexField const& field) {
+  std::string nestedObjectsPath(field.path());
+  std::string self;
+  arangodb::iresearch::kludge::mangleNested(self);
+  self += parent;
+  if (!parent.empty()) {
+    arangodb::iresearch::kludge::mangleNested(self);
+  }
+  map[self].emplace(field.path());
+  arangodb::iresearch::kludge::mangleNested(nestedObjectsPath);
+  for (auto const& sf : field._fields) {
+    if (!sf._fields.empty()) {
+      gatherNestedNulls(field.path(), map, sf);
+    }
+    map[nestedObjectsPath].emplace(sf.path());
+  }
+}
+#endif
+
+arangodb::iresearch::MissingFieldsMap gatherMissingFields(
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
+        field) {
+  arangodb::iresearch::MissingFieldsMap map;
+  for (auto const& f : field._meta->_fields) {
+    // always monitor on root level plain fields to track completely missing
+    // hierarchies. trackListPositions enabled arrays are excluded as we could
+    // never predict if array[12345] will exist so we do not emit such "nulls".
+    // It is not supported in general indexes anyway
+    if ((!field._trackListPositions || !field._meta->_hasExpansion) &&
+        f._fields.empty()) {
+      map[""].emplace(f._attribute.back().shouldExpand ? f.attributeString()
+                                                       : f.path());
+    }
+    // but for individual objects in array we always could track expected fields
+    // and emit "nulls"
+    if (f._hasExpansion && !f._attribute.back().shouldExpand) {
+      TRI_ASSERT(f._fields.empty());
+      // monitor array subobjects
+      map[f.attributeString()].emplace(f.path());
+    }
+#ifdef USE_ENTERPRISE
+    if (!f._fields.empty()) {
+      gatherNestedNulls("", map, f);
+    }
+#endif
+  }
+  return map;
+}
 }  // namespace
 
 namespace arangodb::iresearch {
@@ -78,6 +130,8 @@ const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
 IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
   _analyzers[0] = IResearchAnalyzerFeature::identity();
   _primitiveOffset = 1;
+  _indexingContext =
+      std::make_unique<IResearchInvertedIndexMetaIndexingContext>(this, false);
 }
 
 // FIXME(Dronplane): make all constexpr defines consistent
@@ -307,6 +361,10 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                               return !r._fields.empty();
                             }) != _fields.end();
 
+  _indexingContext =
+      std::make_unique<IResearchInvertedIndexMetaIndexingContext>(this, true);
+  // only root level need to have missing fields map
+  _indexingContext->_missingFieldsMap = gatherMissingFields(*_indexingContext);
   return true;
 }
 
@@ -938,6 +996,22 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
   return true;
 }
 
+IResearchInvertedIndexMetaIndexingContext::
+    IResearchInvertedIndexMetaIndexingContext(
+        IResearchInvertedIndexMeta const* field, bool add)
+    : _analyzers(&field->_analyzers),
+      _primitiveOffset(field->_primitiveOffset),
+      _meta(field),
+      _hasNested(field->_hasNested),
+      _includeAllFields(field->_includeAllFields),
+      _trackListPositions(field->_trackListPositions),
+      _sort(field->_sort),
+      _storedValues(field->_storedValues) {
+  if (add) {
+    addField(*field);
+  }
+}
+
 void IResearchInvertedIndexMetaIndexingContext::addField(
     InvertedIndexField const& field) {
   for (auto const& f : field._fields) {
@@ -945,7 +1019,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
     for (size_t i = 0; i < f._attribute.size(); ++i) {
       auto const& a = f._attribute[i];
       auto emplaceRes = current->_subFields.emplace(
-          a.name, IResearchInvertedIndexMetaIndexingContext{*_meta, false});
+          a.name, IResearchInvertedIndexMetaIndexingContext{_meta, false});
 
       if (!emplaceRes.second) {
         TRI_ASSERT(emplaceRes.first->second._isArray == a.shouldExpand);

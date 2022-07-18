@@ -335,6 +335,7 @@ class instance {
       'temp.path': this.tmpDir,
       'server.endpoint': this.endpoint,
       'database.directory': this.dataDir,
+      'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
     if (this.options.auditLoggingEnabled) {
@@ -509,24 +510,29 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   readAssertLogLines () {
-    const buf = fs.readBuffer(this.logFile);
-    let lineStart = 0;
-    let maxBuffer = buf.length;
+    try {
+      const buf = fs.readBuffer(this.logFile);
+      let lineStart = 0;
+      let maxBuffer = buf.length;
 
-    for (let j = 0; j < maxBuffer; j++) {
-      if (buf[j] === 10) { // \n
-        const line = buf.asciiSlice(lineStart, j);
-        lineStart = j + 1;
-        
-        // scan for asserts from the crash dumper
-        if (line.search('{crash}') !== -1) {
-          if (!IS_A_TTY) {
-            // else the server has already printed these:
-            print("ERROR: " + line);
+      for (let j = 0; j < maxBuffer; j++) {
+        if (buf[j] === 10) { // \n
+          const line = buf.asciiSlice(lineStart, j);
+          lineStart = j + 1;
+
+          // scan for asserts from the crash dumper
+          if (line.search('{crash}') !== -1) {
+            if (!IS_A_TTY) {
+              // else the server has already printed these:
+              print("ERROR: " + line);
+            }
+            this.assertLines.push(line);
           }
-          this.assertLines.push(line);
         }
       }
+    } catch (ex) {
+      print("failed to read " + this.logFile + " -> " + ex);
+      this.assertLines.push("failed to read " + this.logFile + " -> " + ex);
     }
   }
   terminateInstance() {
