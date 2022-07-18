@@ -432,7 +432,7 @@ bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
     auto* impl =
         reinterpret_cast<aql::Function const*>(node->getData())->implementation;
 
-    if (impl != &aql::Functions::GeoDistance) {
+    if (impl != &aql::functions::GeoDistance) {
       return false;
     }
 
