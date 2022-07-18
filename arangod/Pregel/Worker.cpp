@@ -30,6 +30,8 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Status/Status.h"
+#include "Pregel/Status/StatusMessage.h"
 #include "Pregel/VertexComputation.h"
 
 #include "Pregel/Status/Status.h"
@@ -59,6 +61,20 @@ using namespace arangodb::pregel;
 #define MY_WRITE_LOCKER(obj, lock) \
   WriteLocker<ReadWriteLock> obj(  \
       &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+
+template<typename V, typename E, typename M>
+std::function<void()> Worker<V, E, M>::_statusCallback() {
+  return [self = shared_from_this(), this] {
+    auto statusMessage =
+        StatusMessage{.senderId = ServerState::instance()->getId(),
+                      .executionNumer = _config.executionNumber(),
+                      .status = _observeStatus()};
+    VPackBuilder message;
+    serialize(message, statusMessage);
+
+    _callConductor(Utils::statusUpdatePath, message);
+  };
+}
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
@@ -175,45 +191,27 @@ void Worker<V, E, M>::setupWorker() {
     _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   };
 
-  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = observeStatus();
-      serialize(statusUpdateMsg, update);
-    }
-
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-  };
-
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW,
-                   [this, self = shared_from_this(),
-                    statusUpdateCallback = std::move(statusUpdateCallback),
-                    finishedCallback = std::move(finishedCallback)] {
-                     try {
-                       _graphStore->loadShards(&_config, statusUpdateCallback,
-                                               finishedCallback);
-                     } catch (std::exception const& ex) {
-                       LOG_PREGEL("a47c4", WARN)
-                           << "caught exception in loadShards: " << ex.what();
-                       throw;
-                     } catch (...) {
-                       LOG_PREGEL("e932d", WARN)
-                           << "caught unknown exception in loadShards";
-                       throw;
-                     }
-                   });
+  scheduler->queue(
+      RequestLane::INTERNAL_LOW,
+      [this, self = shared_from_this(),
+       statusCallback = std::move(_statusCallback()),
+       finishedCallback = std::move(finishedCallback)] {
+        try {
+          _graphStore->loadShards(&_config, statusCallback, finishedCallback);
+        } catch (std::exception const& ex) {
+          LOG_PREGEL("a47c4", WARN)
+              << "caught exception in loadShards: " << ex.what();
+          throw;
+        } catch (...) {
+          LOG_PREGEL("e932d", WARN) << "caught unknown exception in loadShards";
+          throw;
+        }
+      });
 }
 
 template<typename V, typename E, typename M>
@@ -256,7 +254,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   _config._globalSuperstep = gss;
   // write cache becomes the readable cache
   if (_config.asynchronousMode()) {
-    MY_WRITE_LOCKER(wguard, _cacheRWLock);  // by design shouldn't be necessary
+    MY_WRITE_LOCKER(wguard,
+                    _cacheRWLock);  // by design shouldn't be necessary
     TRI_ASSERT(_readCache->containedMessageCount() == 0);
     TRI_ASSERT(_writeCache->containedMessageCount() == 0);
     std::swap(_readCache, _writeCacheNextGSS);
@@ -480,24 +479,8 @@ bool Worker<V, E, M>::_processVertices(
     if (_currentGssObservables.verticesProcessed %
             Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
         0) {
-      std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                    this] {
-        VPackBuilder statusUpdateMsg;
-        {
-          auto ob = VPackObjectBuilder(&statusUpdateMsg);
-          statusUpdateMsg.add(Utils::senderKey,
-                              VPackValue(ServerState::instance()->getId()));
-          statusUpdateMsg.add(Utils::executionNumberKey,
-                              VPackValue(_config.executionNumber()));
-          statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-          auto update = observeStatus();
-          serialize(statusUpdateMsg, update);
-        }
-        _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-      };
-
       SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         statusUpdateCallback);
+                                         _statusCallback());
     }
   }
   // ==================== send messages to other shards ====================
@@ -569,23 +552,8 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     _allGssStatus.push(_currentGssObservables.observe());
     _currentGssObservables.zero();
-    std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                  this] {
-      VPackBuilder statusUpdateMsg;
-      {
-        auto ob = VPackObjectBuilder(&statusUpdateMsg);
-        statusUpdateMsg.add(Utils::senderKey,
-                            VPackValue(ServerState::instance()->getId()));
-        statusUpdateMsg.add(Utils::executionNumberKey,
-                            VPackValue(_config.executionNumber()));
-        statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-        auto update = observeStatus();
-        serialize(statusUpdateMsg, update);
-      }
-      _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-    };
     SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       statusUpdateCallback);
+                                       _statusCallback());
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -715,30 +683,12 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     cb();
   };
 
-  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = observeStatus();
-      serialize(statusUpdateMsg, update);
-    }
-
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-  };
-
   _state = WorkerState::DONE;
   if (doStore) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup),
-                              statusUpdateCallback);
+    _graphStore->storeResults(&_config, std::move(cleanup), _statusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";

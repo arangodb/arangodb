@@ -36,6 +36,7 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/Status/StatusMessage.h"
 #include "Pregel/Status/ConductorStatus.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -339,12 +340,11 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
 
-  auto update = deserialize<Status>(data.get(Utils::payloadKey));
-  auto sender = data.get(Utils::senderKey).copyString();
+  auto message = deserialize<StatusMessage>(data);
 
   LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
 
-  _status.updateWorkerStatus(sender, std::move(update));
+  _status.updateWorkerStatus(message.senderId, std::move(message.status));
 }
 
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {

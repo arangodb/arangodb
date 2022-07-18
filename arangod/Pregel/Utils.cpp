@@ -76,7 +76,6 @@ std::string const Utils::edgeCountKey = "edgeCount";
 std::string const Utils::shardIdKey = "shrdId";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
-std::string const Utils::payloadKey = "payload";
 std::string const Utils::recoveryMethodKey = "rmethod";
 std::string const Utils::storeResultsKey = "storeResults";
 std::string const Utils::aggregatorValuesKey = "aggregators";

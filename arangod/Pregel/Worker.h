@@ -154,7 +154,7 @@ class Worker : public IWorker {
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
-  Status observeStatus() const {
+  Status _observeStatus() const {
     auto currentGss = _currentGssObservables.observe();
     auto fullGssStatus = _allGssStatus;
     if (!currentGss.isDefault()) {
@@ -165,6 +165,8 @@ class Worker : public IWorker {
                                       ? std::optional{fullGssStatus}
                                       : std::nullopt};
   }
+
+  std::function<void()> _statusCallback();
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,

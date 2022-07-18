@@ -94,7 +94,6 @@ class Utils {
 
   /// sender cluster id
   static std::string const senderKey;
-  static std::string const payloadKey;
 
   /// Recovery method name
   static std::string const recoveryMethodKey;
