@@ -4917,7 +4917,7 @@ function transactionReplication2ReplicateOperationSuite() {
         let tc = trx.collection(cn);
 
         for (let cnt = 0; cnt < 100; ++cnt) {
-          tc.save({ _key: `foo${cnt}` })
+          tc.save({ _key: `foo${cnt}` });
         }
 
       } catch(err) {
