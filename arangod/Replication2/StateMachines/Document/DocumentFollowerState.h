@@ -25,7 +25,6 @@
 
 #include "DocumentCore.h"
 #include "DocumentStateMachine.h"
-#include "Transaction/Context.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -52,9 +51,6 @@ struct DocumentFollowerState
   };
 
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-
- public:
-  std::unordered_map<TransactionId, std::shared_ptr<transaction::Methods>>
-      activeMap;
 };
+
 }  // namespace arangodb::replication2::replicated_state::document

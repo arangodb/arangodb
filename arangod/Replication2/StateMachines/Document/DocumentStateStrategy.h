@@ -26,12 +26,9 @@
 
 #include "Futures/Future.h"
 #include "RestServer/arangod.h"
+#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/Options.h"
 #include "VocBase/Identifiers/TransactionId.h"
-
-#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "Transaction/ManagerFeature.h"
-#include "Transaction/Options.h"
 
 #include <string>
 #include <memory>
@@ -56,7 +53,7 @@ class LogId;
 namespace velocypack {
 class Builder;
 }
-};  // namespace arangodb
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
 

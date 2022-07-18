@@ -23,7 +23,6 @@
 
 #include "DocumentCore.h"
 #include "DocumentFollowerState.h"
-#include "Transaction/Manager.h"
 
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
@@ -31,7 +30,7 @@
 using namespace arangodb::replication2::replicated_state::document;
 
 DocumentFollowerState::DocumentFollowerState(std::unique_ptr<DocumentCore> core)
-    : _guardedData(std::move(core)){};
+    : _guardedData(std::move(core)) {}
 
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
