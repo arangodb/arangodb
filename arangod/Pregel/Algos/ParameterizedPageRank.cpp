@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ParameterizedPageRank.h"
+
+#include <cmath>
 #include "Pregel/Aggregator.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
@@ -37,18 +39,7 @@ static float EPS = 0.00001f;
 static std::string const kConvergence = "convergence";
 
 struct PRWorkerContext : public WorkerContext {
-  PRWorkerContext() {}
-
-  float commonProb = 0;
-  void preGlobalSuperstep(uint64_t gss) override {
-    if (vertexCount() > 0) {
-      if (gss == 0) {
-        commonProb = 1.0f / vertexCount();
-      } else {
-        commonProb = 0.15f / vertexCount();
-      }
-    }
-  }
+  PRWorkerContext() = default;
 };
 
 ParameterizedPageRank::ParameterizedPageRank(application_features::ApplicationServer& server,
@@ -73,30 +64,45 @@ GraphFormat<float, float>* ParameterizedPageRank::inputFormat() const {
 }
 
 struct PRComputation : public VertexComputation<float, float, float> {
-  PRComputation() {}
+
+  PRComputation() = default;
+
+  float computeNewValue(MessageIterator<float> const& messages,
+                           float* oldValue, PRWorkerContext const* ctx) {
+    float newValue = 0.0f;
+    float commonProb;
+    if (globalSuperstep() == 0) {
+      if (*oldValue < 0) {
+        // todo: compute it once
+        // fixme: assure that if no vertices, we never reach this
+        commonProb = 1.0f / static_cast<float>(ctx->vertexCount());
+        // initialize vertices to initial weight, unless there was a seed weight
+        return commonProb;
+      }
+    } else {
+      // todo: compute it once
+      commonProb = 0.15f / static_cast<float>(ctx->vertexCount());
+      for (const float* msg : messages) {
+        newValue += *msg;
+      }
+      newValue = 0.85f * newValue + commonProb;
+    }
+
+    return newValue;
+  }
+
   void compute(MessageIterator<float> const& messages) override {
-    PRWorkerContext const* ctx = static_cast<PRWorkerContext const*>(context());
+    auto const* ctx = dynamic_cast<PRWorkerContext const*>(context());
     float* ptr = mutableVertexData();
     float copy = *ptr;
 
-    // initialize vertices to initial weight, unless there was a seed weight
-    if (globalSuperstep() == 0) {
-      if (*ptr < 0) {
-        *ptr = ctx->commonProb;
-      }
-    } else {
-      float sum = 0.0f;
-      for (const float* msg : messages) {
-        sum += *msg;
-      }
-      *ptr = 0.85f * sum + ctx->commonProb;
-    }
-    float diff = fabs(copy - *ptr);
+    *ptr = computeNewValue(messages, &copy, ctx);
+    float diff = std::fabs(copy - *ptr);
     aggregate<float>(kConvergence, diff);
 
     size_t numEdges = getEdgeCount();
     if (numEdges > 0) {
-      float val = *ptr / numEdges;
+      float val = *ptr / static_cast<float>(numEdges);
       sendMessageToAllNeighbours(val);
     }
   }
@@ -124,7 +130,7 @@ struct PRMasterContext : public MasterContext {
   }
 
   bool postGlobalSuperstep() override {
-    float const* diff = getAggregatedValue<float>(kConvergence);
+    auto const* diff = getAggregatedValue<float>(kConvergence);
     return globalSuperstep() < 1 || *diff > _threshold;
   };
 };
