@@ -78,7 +78,6 @@ BenchFeature::BenchFeature(Server& server, int* result)
       _threadCount(NumberOfCores::getValue()),
       _operations(1000),
       _realOperations(0),
-      _batchSize(0),
       _duration(0),
       _collection("ArangoBenchmark"),
       _testCase("version"),
@@ -152,9 +151,9 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--requests", "total number of operations",
                      new UInt64Parameter(&_operations));
 
-  options->addOption("--batch-size",
-                     "number of operations in one batch (0 disables batching)",
-                     new UInt64Parameter(&_batchSize));
+  options->addObsoleteOption(
+      "--batch-size", "number of operations in one batch (0 disables batching)",
+      true);
 
   options->addOption("--keep-alive", "use HTTP keep-alive",
                      new BooleanParameter(&_keepAlive));
@@ -460,7 +459,7 @@ void BenchFeature::start() {
     for (uint64_t i = 0; i < _threadCount; ++i) {
       auto thread = std::make_unique<BenchmarkThread>(
           server(), benchmark.get(), &startCondition,
-          &BenchFeature::updateStartCounter, static_cast<int>(i), _batchSize,
+          &BenchFeature::updateStartCounter, static_cast<int>(i),
           &operationsCounter, client, _keepAlive, _async,
           _histogramIntervalSize, _histogramNumIntervals, _generateHistogram);
       thread->setOffset(i * realStep);
@@ -578,7 +577,6 @@ void BenchFeature::report(ClientFeature& client,
             << ", runs: " << _runs
             << ", keep alive: " << (_keepAlive ? "yes" : "no")
             << ", async: " << (_async ? "yes" : "no")
-            << ", batch size: " << _batchSize
             << ", replication factor: " << _replicationFactor
             << ", number of shards: " << _numberOfShards
             << ", wait for sync: " << (_waitForSync ? "true" : "false")
@@ -592,7 +590,6 @@ void BenchFeature::report(ClientFeature& client,
   builder.add("runs", VPackValue(_runs));
   builder.add("keepAlive", VPackValue(_keepAlive));
   builder.add("async", VPackValue(_async));
-  builder.add("batchSize", VPackValue(_batchSize));
   builder.add("replicationFactor", VPackValue(_replicationFactor));
   builder.add("numberOfShards", VPackValue(_numberOfShards));
   builder.add("waitForSync", VPackValue(_waitForSync));

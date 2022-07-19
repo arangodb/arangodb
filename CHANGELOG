@@ -1,6 +1,9 @@
 devel
 -----
 
+* Removed the deprecated Batch API (`/_api/batch`).
+  The arangobench `--batch-size` startup option is ignored now.
+
 * APM-84: Added option to spill intermediate AQL query results from RAM to
   disk when their size exceeds certain thresholds. Currently the only AQL
   operation that can make use of this is the SortExecutor (AQL SORT operation
