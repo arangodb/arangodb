@@ -33,6 +33,7 @@
 #include "Pregel/Algos/LineRank.h"
 #include "Pregel/Algos/PageRank.h"
 #include "Pregel/Algos/RecoveringPageRank.h"
+#include "Pregel/Algos/ParameterizedPageRank.h"
 #include "Pregel/Algos/SCC.h"
 #include "Pregel/Algos/SLPA.h"
 #include "Pregel/Algos/SSSP.h"
@@ -74,6 +75,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
+  } else if  (algorithm == "parameterizedpagerank") {
+    return new algos::ParameterizedPageRank(server, userParams);
   } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return new algos::accumulators::ProgrammablePregelAlgorithm(server,
                                                                 userParams);

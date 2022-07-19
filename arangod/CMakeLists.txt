@@ -282,6 +282,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/ShortestPath.cpp
   Pregel/Algos/WCC.cpp
+  Pregel/Algos/ParameterizedPageRank.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
