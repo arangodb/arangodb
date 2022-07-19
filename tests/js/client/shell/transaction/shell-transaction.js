@@ -4971,7 +4971,7 @@ function transactionReplication2ReplicateOperationSuite() {
       }
     },
 
-    testTransactionLeaderChangeBeforeCommit: function () {
+    DISABLED_testTransactionLeaderChangeBeforeCommit: function () {
       let obj = {
         collections: {
           write: [cn],
