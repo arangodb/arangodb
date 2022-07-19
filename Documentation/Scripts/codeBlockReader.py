@@ -70,6 +70,23 @@ def file_content(filepath, forceDocuBlockContent):
 
   return comments
 
+def replace_real_path_to_model(dirpath):
+  # This method will replace the path to the classification model
+  # with this one: path/to/model.bin 
+  new_content = []
+  with open(dirpath, "r") as file:
+    lines = file.readlines()
+    lines = [line.rstrip() for line in lines]
+
+    for line in lines:
+      line = re.sub("(model_location&quot;<\/span>: <span class=\"hljs-string\">&quot;)[^&;]+(&quot;<\/span>)", r"\1path/to/model.bin\2", line)
+      line = line.replace("tests/js/common/aql/iresearch/model_cooking.bin", "path/to/model.bin")
+      new_content.append(line)
+
+  with open(dirpath, "w") as file:
+    for new_line in new_content:
+      file.write(new_line)
+      file.write("\n")
 
 def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   """ Fetches an example file and inserts it using code
@@ -320,6 +337,11 @@ def fetch_comments(dirpath, forceDocuBlockContent):
                     print("failed to match file name in  %s while parsing %s " % (_text, filepath))
                     raise x
                   dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "Examples", _filename + ".generated"))
+
+                  # If we are working with such two analyzers, there is a need to replace a real path
+                  # to the classification model with more compact and readable one.  
+                  if _filename == "analyzerClassification" or _filename == "analyzerNearestNeighbors":
+                    replace_real_path_to_model(dirpath)
                   if os.path.isfile(dirpath):
                     example_content(dirpath, fh, _filename, blockType, filepath)
                   else:
