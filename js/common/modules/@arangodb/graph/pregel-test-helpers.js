@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertLessThanOrEqual, JSON */
+/*global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -191,13 +191,13 @@ const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
         FOR v in ${vColl}
         RETURN {"vertex": v._key, "result": v.result}
     `;
-        const result = runPregelInstance(algName, graphName, parameters, query);
+        runPregelInstance(algName, graphName, parameters, query);
         return;
     }
     const computedComponents = pregelRunSmallInstanceGetComponents(algName, graphName, parameters);
 
     assertEqual(computedComponents.length, expectedSizes.length,
-        `Expected ${expectedSizes.length} many elements, obtained ${computedComponents}`);
+        `Expected ${expectedSizes.length} many elements, obtained ${JSON.stringify(computedComponents)}`);
     for (let i = 0; i < computedComponents.length; ++i) {
         const computedComponent = computedComponents[i];
         const componentId = computedComponent.result;
@@ -1441,4 +1441,3 @@ exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;
 exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
-exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;

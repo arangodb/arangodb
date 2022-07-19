@@ -78,6 +78,7 @@
 #include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -186,6 +187,7 @@ static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
   server.addFeature<AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(false);
+  server.addFeature<TemporaryStorageFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
   {
