@@ -120,10 +120,11 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoJson) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
   }
 
@@ -638,10 +639,11 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointArray) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
   }
 
@@ -1143,10 +1145,11 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointObject) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
   }
 

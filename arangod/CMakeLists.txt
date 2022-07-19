@@ -84,6 +84,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchViewMeta.h
   IResearch/IResearchViewSort.h
   IResearch/IResearchViewStoredValues.h
+  IResearch/Search.h
   IResearch/VelocyPackHelper.h
   IResearch/ViewSnapshot.h
   RestHandler/RestAnalyzerHandler.h
@@ -128,6 +129,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchViewMeta.cpp
   IResearch/IResearchViewSort.cpp
   IResearch/IResearchViewStoredValues.cpp
+  IResearch/Search.cpp
   IResearch/VelocyPackHelper.cpp
   IResearch/ViewSnapshot.cpp
   RestHandler/RestAnalyzerHandler.cpp
