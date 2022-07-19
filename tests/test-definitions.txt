@@ -80,7 +80,7 @@ recovery_cluster weight=2000 cluster buckets=4 -- --test arangosearch
 # different number of buckets in cluster
 shell_server_aql weight=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client weight=500 cluster buckets=5 -- --dumpAgencyOnError true
-shell_client_transaction weight=500 cluster -- --dumpAgencyOnError true
+shell_client_transaction weight=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_server weight=500 cluster buckets=5 -- --dumpAgencyOnError true
 
 # Common Tests
