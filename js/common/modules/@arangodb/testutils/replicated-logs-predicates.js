@@ -179,7 +179,7 @@ const replicatedLogTargetVersion = function (database, logId, version) {
       return Error(`no version reported in current by supervision`);
     }
     if (current.supervision.targetVersion !== version) {
-      return Error(`found version ${current.supervison.targetVersion}, expected ${version}`);
+      return Error(`found version ${current.supervision.targetVersion}, expected ${version}`);
     }
     return true;
   };
