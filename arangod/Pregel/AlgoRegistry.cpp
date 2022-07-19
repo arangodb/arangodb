@@ -75,7 +75,7 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
-  } else if  (algorithm == "parameterizedpagerank") {
+    } else if  (algorithm == "parameterizedpagerank") {
     return new algos::ParameterizedPageRank(server, userParams);
   } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return new algos::accumulators::ProgrammablePregelAlgorithm(server,
@@ -119,6 +119,10 @@ template<typename V, typename E, typename M>
     return createWorker(vocbase,
                         new algos::RecoveringPageRank(server, userParams), body,
                         feature);
+  } else if (algorithm == "parameterizedpagerank") {
+    return createWorker(vocbase,
+                        new algos::ParameterizedPageRank(server, userParams),
+                        body, feature);
   } else if (algorithm == "shortestpath") {
     return createWorker(vocbase,
                         new algos::ShortestPathAlgorithm(server, userParams),
