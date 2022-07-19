@@ -1064,9 +1064,9 @@ void Supervision::updateDBServerMaintenance() {
       }
       return;
     }
-    auto target = snapshot().has(targetPath);
-    if (target) {
-      if (!current || target != current) {
+    auto target = snapshot().get(targetPath);
+    if (target.has_value()) {
+      if (!current || target.has_value() != current) {
         {
           VPackArrayBuilder ab(builder.get());
           {
@@ -1075,7 +1075,8 @@ void Supervision::updateDBServerMaintenance() {
             {
               VPackObjectBuilder ob2(builder.get());
               builder->add("op", "set");
-              builder->add("new", VPackSlice::emptyObjectSlice());
+              builder->add(VPackValue("new"));
+              target->get().toBuilder(*builder);
             }
           }
         }
