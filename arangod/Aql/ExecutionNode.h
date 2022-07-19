@@ -164,6 +164,7 @@ class ExecutionNode {
     ASYNC = 32,
     MUTEX = 33,
     WINDOW = 34,
+    OFFSET_INFO_MATERIALIZE = 35,
 
     MAX_NODE_TYPE_VALUE
   };

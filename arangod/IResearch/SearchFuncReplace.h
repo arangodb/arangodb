@@ -97,4 +97,8 @@ void replaceSearchFunc(aql::CalculationNode& node, DedupSearchFuncs& dedup,
 void extractSearchFunc(IResearchViewNode const& viewNode,
                        DedupSearchFuncs& dedup, std::vector<SearchFunc>& funcs);
 
+// checks a specified args to be deterministic
+// and retuns reference to a loop variable
+aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept;
+
 }  // namespace arangodb::iresearch

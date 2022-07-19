@@ -50,40 +50,6 @@ namespace {
 
 using namespace arangodb;
 
-aql::AstNode const EMPTY_ARGS(aql::NODE_TYPE_ARRAY);
-
-// checks a specified args to be deterministic
-// and retuns reference to a loop variable
-aql::Variable const* getScorerRef(aql::AstNode const* args) noexcept {
-  if (!args || aql::NODE_TYPE_ARRAY != args->type) {
-    return nullptr;
-  }
-
-  size_t const size = args->numMembers();
-
-  if (size < 1) {
-    return nullptr;  // invalid args
-  }
-
-  // 1st argument has to be reference to `ref`
-  auto const* arg0 = args->getMemberUnchecked(0);
-
-  if (!arg0 || aql::NODE_TYPE_REFERENCE != arg0->type) {
-    return nullptr;
-  }
-
-  for (size_t i = 1, size = args->numMembers(); i < size; ++i) {
-    auto const* arg = args->getMemberUnchecked(i);
-
-    if (!arg || !arg->isDeterministic()) {
-      // we don't support non-deterministic arguments for scorers
-      return nullptr;
-    }
-  }
-
-  return reinterpret_cast<aql::Variable const*>(arg0->getData());
-}
-
 bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
                 aql::AstNode const& args,
                 arangodb::iresearch::QueryContext const& ctx) {
@@ -96,20 +62,17 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
     case 1: {
       // ArangoDB, for API consistency, only supports scorers configurable via
       // jSON
-      scorer = irs::scorers::get(  // get scorer
-          name, irs::type<irs::text_format::json>::get(), irs::string_ref::NIL,
-          false  // args
-      );
+      scorer = irs::scorers::get(name, irs::type<irs::text_format::json>::get(),
+                                 irs::string_ref::NIL, false);
 
       if (!scorer) {
         // ArangoDB, for API consistency, only supports scorers configurable via
         // jSON
-        scorer =
-            irs::scorers::get(name, irs::type<irs::text_format::json>::get(),
-                              "[]", false);  // pass arg as json array
+        scorer = irs::scorers::get(
+            name, irs::type<irs::text_format::json>::get(), "[]", false);
       }
     } break;
-    default: {  // fall through
+    default: {
       velocypack::Builder builder;
       arangodb::iresearch::ScopedAqlValue arg;
 
@@ -136,10 +99,8 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
 
       // ArangoDB, for API consistency, only supports scorers configurable via
       // jSON
-      scorer = irs::scorers::get(  // get scorer
-          name, irs::type<irs::text_format::json>::get(), builder.toJson(),
-          false  // pass arg as json
-      );
+      scorer = irs::scorers::get(name, irs::type<irs::text_format::json>::get(),
+                                 builder.toJson(), false);
     }
   }
 
@@ -149,7 +110,7 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
 bool fromFCall(irs::sort::ptr* scorer, irs::string_ref scorerName,
                aql::AstNode const* args,
                arangodb::iresearch::QueryContext const& ctx) {
-  auto const* ref = getScorerRef(args);
+  auto const* ref = arangodb::iresearch::getSearchFuncRef(args);
 
   if (ref != ctx.ref) {
     // invalid arguments
@@ -229,7 +190,7 @@ aql::Variable const* refFromScorer(aql::AstNode const& node) {
     return nullptr;
   }
 
-  auto* ref = getScorerRef(node.getMember(0));
+  auto* ref = getSearchFuncRef(node.getMember(0));
 
   if (!ref) {
     // invalid arguments or reference

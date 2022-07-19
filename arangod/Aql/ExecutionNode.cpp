@@ -1399,7 +1399,7 @@ void ExecutionNode::setParent(ExecutionNode* p) {
   _parents.emplace_back(p);
 }
 
-void ExecutionNode::getVariablesUsedHere(VarSet& vars) const {
+void ExecutionNode::getVariablesUsedHere(VarSet&) const {
   // do nothing!
 }
 
@@ -1547,6 +1547,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SUBQUERY_START:
     case SUBQUERY_END:
     case MATERIALIZE:
+    case OFFSET_INFO_MATERIALIZE:
     case RETURN:
       return true;
     case CALCULATION:
@@ -1616,7 +1617,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 }
 
 /// @brief doToVelocyPack, for SingletonNode
-void SingletonNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void SingletonNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -1787,7 +1788,7 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
 
 /// @brief doToVelocyPack, for EnumerateListNode
 void EnumerateListNode::doToVelocyPack(VPackBuilder& nodes,
-                                       unsigned flags) const {
+                                       unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 
@@ -1939,7 +1940,7 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 }
 
 // @brief doToVelocyPack, for LimitNode
-void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add("offset", VPackValue(_offset));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("fullCount", VPackValue(_fullCount));
@@ -2322,8 +2323,8 @@ bool SubqueryNode::mayAccessCollections() {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+    ExecutionEngine&,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "cannot instantiate SubqueryExecutor");
@@ -2486,7 +2487,7 @@ FilterNode::FilterNode(ExecutionPlan* plan,
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief doToVelocyPack, for FilterNode
-void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 }
@@ -2563,7 +2564,7 @@ ReturnNode::ReturnNode(ExecutionPlan* plan,
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
 /// @brief doToVelocyPack, for ReturnNode
-void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
   nodes.add("count", VPackValue(_count));
@@ -2665,7 +2666,7 @@ Variable const* ReturnNode::inVariable() const { return _inVariable; }
 void ReturnNode::inVariable(Variable const* v) { _inVariable = v; }
 
 /// @brief doToVelocyPack, for NoResultsNode
-void NoResultsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void NoResultsNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -2775,7 +2776,7 @@ SortInformation::Match SortInformation::isCoveredBy(
 }
 
 /// @brief doToVelocyPack, for AsyncNode
-void AsyncNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void AsyncNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -2842,7 +2843,7 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
           plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
 
 void MaterializeNode::doToVelocyPack(arangodb::velocypack::Builder& nodes,
-                                     unsigned flags) const {
+                                     unsigned /*flags*/) const {
   nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_DOC_PARAM));
   _inNonMaterializedDocId->toVelocyPack(nodes);
 
