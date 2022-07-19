@@ -151,6 +151,7 @@ class GraphStore final {
   ReportManager* _reports;
 
  private:
+  auto buildEdge(std::string_view toValue) -> std::optional<Edge<E>>;
   void loadVertices(ShardID const& vertexShard,
                     std::vector<ShardID> const& edgeShards,
                     std::function<void()> const& statusUpdateCallback);

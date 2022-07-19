@@ -471,6 +471,27 @@ void GraphStore<V, E>::loadVertices(
 }
 
 template<typename V, typename E>
+auto GraphStore<V, E>::buildEdge(std::string_view toValue)
+    -> std::optional<Edge<E>> {
+  Edge<E> newEdge;
+
+  auto documentId = DocumentId::create(std::string_view(toValue));
+  if (documentId.fail()) {
+    LOG_PREGEL("fe72b", ERR) << documentId.errorMessage();
+    return std::nullopt;
+  }
+  newEdge.setToKey(documentId.get()._key);
+
+  auto shard = _shardResolver->getShard(documentId.get(), _config);
+  if (shard.fail()) {
+    LOG_PREGEL("ba803", ERR) << shard.errorMessage();
+    return std::nullopt;
+  }
+  newEdge.setTargetShard(shard.get());
+  return newEdge;
+}
+
+template<typename V, typename E>
 void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
                                  Vertex<V, E>& vertex, ShardID const& edgeShard,
                                  std::string const& documentID,
@@ -510,12 +531,11 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
               covering.at(info.coveringPosition()).stringView();
 
           auto newEdge = buildEdge(toValue);
-          if (newEdge.has_value()) {
-            vertex.addEdge(std::move(*newEdge));
-            return true;
-          } else {
+          if (!newEdge.has_value()) {
             return false;
           }
+          vertex.addEdge(std::move(*newEdge));
+          return true;
         },
         1000)) { /* continue loading */
       // Might overcount a bit;
@@ -529,15 +549,15 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
               transaction::helpers::extractToFromDocument(slice).stringView();
 
           auto newEdge = buildEdge(toValue);
-          if (newEdge.has_value()) {
-            vertex.addEdge(std::move(*newEdge));
-            _graphFormat->copyEdgeData(
-                *trx.transactionContext()->getVPackOptions(), slice,
-                newEdge->data_mut());
-            return true;
-          } else {
+          if (!newEdge.has_value()) {
             return false;
           }
+
+          vertex.addEdge(std::move(*newEdge));
+          _graphFormat->copyEdgeData(
+              *trx.transactionContext()->getVPackOptions(), slice,
+              newEdge->data_mut());
+          return true;
         },
         1000)) { /* continue loading */
       // Might overcount a bit;
