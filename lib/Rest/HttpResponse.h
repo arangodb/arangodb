@@ -33,10 +33,8 @@
 #include <string>
 
 namespace arangodb {
-class RestBatchHandler;
 
 class HttpResponse : public GeneralResponse {
-  friend class RestBatchHandler;  // TODO must be removed
 
  public:
   static bool HIDE_PRODUCT_HEADER;
