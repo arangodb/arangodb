@@ -43,4 +43,18 @@ auto inspect(Inspector& f, GraphLoadedMessage& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
+struct PrepareGssCommand {
+  uint64_t executionNumber;
+  uint64_t gss;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, PrepareGssCommand& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
+}
 }  // namespace arangodb::pregel

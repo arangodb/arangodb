@@ -26,7 +26,7 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/FinishedMessage.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
@@ -229,12 +229,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   }
   _state = WorkerState::PREPARING;  // stop any running step
   LOG_PREGEL("f16f2", DEBUG) << "Received prepare GSS: " << data.toJson();
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  if (!gssSlice.isInteger()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                  "Invalid gss in %s:%d", __FILE__, __LINE__);
-  }
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  auto const command = deserialize<PrepareGssCommand>(data);
+  const uint64_t gss = command.gss;
   if (_expectedGSS != gss) {
     THROW_ARANGO_EXCEPTION_FORMAT(
         TRI_ERROR_BAD_PARAMETER,
@@ -246,8 +242,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
     _workerContext->_readAggregators = _conductorAggregators.get();
     _workerContext->_writeAggregators = _workerAggregators.get();
-    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
+    _workerContext->_vertexCount = command.vertexCount;
+    _workerContext->_edgeCount = command.edgeCount;
     _workerContext->preApplication();
   }
 

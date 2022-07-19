@@ -31,7 +31,7 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/FinishedMessage.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
@@ -190,13 +190,13 @@ bool Conductor::_startGlobalStep() {
 
   _callbackMutex.assertLockedByCurrentThread();
   // send prepare GSS notice
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-  b.close();
+  auto prepareGssCommand =
+      PrepareGssCommand{.executionNumber = _executionNumber,
+                        .gss = _globalSuperstep,
+                        .vertexCount = _totalVerticesCount,
+                        .edgeCount = _totalEdgesCount};
+  VPackBuilder command;
+  serialize(command, prepareGssCommand);
 
   /// collect the aggregators
   _aggregators->resetValues();
@@ -211,7 +211,7 @@ bool Conductor::_startGlobalStep() {
     // we are explicitly expecting an response containing the aggregated
     // values as well as the count of active vertices
     auto res = _sendToAllDBServers(
-        Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+        Utils::prepareGSSPath, command, [&](VPackSlice const& payload) {
           _aggregators->aggregateValues(payload);
 
           messagesFromWorkers.add(
@@ -299,7 +299,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
   }
 
-  b.clear();
+  VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
