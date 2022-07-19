@@ -86,7 +86,7 @@ class IResearchViewExecutorInfos {
       iresearch::ViewSnapshotPtr reader, OutRegisters outRegister,
       std::vector<RegisterId> scoreRegisters, aql::QueryContext& query,
       std::vector<iresearch::Scorer> const& scorers,
-      std::pair<iresearch::IResearchViewSort const*, size_t> sort,
+      std::pair<iresearch::IResearchSortBase const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan, Variable const& outVariable,
       aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
@@ -126,7 +126,7 @@ class IResearchViewExecutorInfos {
 
   // first - sort
   // second - number of sort conditions to take into account
-  std::pair<iresearch::IResearchViewSort const*, size_t> const& sort()
+  std::pair<iresearch::IResearchSortBase const*, size_t> const& sort()
       const noexcept;
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
@@ -145,7 +145,7 @@ class IResearchViewExecutorInfos {
   iresearch::ViewSnapshotPtr const _reader;
   aql::QueryContext& _query;
   std::vector<iresearch::Scorer> const& _scorers;
-  std::pair<iresearch::IResearchViewSort const*, size_t> _sort;
+  std::pair<iresearch::IResearchSortBase const*, size_t> _sort;
   iresearch::IResearchViewStoredValues const& _storedValues;
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
@@ -634,7 +634,7 @@ class IResearchViewMergeExecutor
 
   class MinHeapContext {
    public:
-    MinHeapContext(iresearch::IResearchViewSort const& sort, size_t sortBuckets,
+    MinHeapContext(iresearch::IResearchSortBase const& sort, size_t sortBuckets,
                    std::vector<Segment>& segments) noexcept;
 
     // advance
@@ -643,7 +643,7 @@ class IResearchViewMergeExecutor
     // compare
     bool operator()(size_t lhs, size_t rhs) const;
 
-    iresearch::VPackComparer<iresearch::IResearchViewSort> _less;
+    iresearch::VPackComparer<iresearch::IResearchSortBase> _less;
     std::vector<Segment>* _segments;
   };
 

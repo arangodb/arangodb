@@ -325,7 +325,7 @@ class LogicalCollection : public LogicalDataSource {
   std::shared_ptr<Index> lookupIndex(IndexId) const;
 
   /// @brief Find index by name
-  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+  std::shared_ptr<Index> lookupIndex(std::string_view) const;
 
   bool dropIndex(IndexId iid);
 

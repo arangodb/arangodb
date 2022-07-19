@@ -4564,11 +4564,10 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                 auto collections = viewNode.collections();
                 auto const collCount = collections.size();
                 TRI_ASSERT(collCount > 0);
-                if (collCount > 1) {
-                  hasFoundMultipleShards = true;
-                } else if (1 == collCount) {
+                hasFoundMultipleShards = collCount > 0;
+                if (collCount == 1) {
                   hasFoundMultipleShards =
-                      collections.front().get().numberOfShards() > 1;
+                      collections.front().first.get().numberOfShards() > 1;
                 }
               } break;
               default:
@@ -5385,7 +5384,7 @@ class RemoveToEnumCollFinder final
             std::vector<std::string> shardKeys =
                 rn->collection()->shardKeys(false);
             if (shardKeys.size() != 1 ||
-                shardKeys[0] != StaticStrings::KeyString) {
+                shardKeys[0] != arangodb::StaticStrings::KeyString) {
               break;  // abort . . .
             }
 
@@ -5412,7 +5411,7 @@ class RemoveToEnumCollFinder final
             }
             // for REMOVE, we must also know the _key value, otherwise
             // REMOVE will not work
-            toFind.emplace(StaticStrings::KeyString);
+            toFind.emplace(arangodb::StaticStrings::KeyString);
 
             // go through the input object attribute by attribute
             // and look for our shard keys
@@ -5475,7 +5474,7 @@ class RemoveToEnumCollFinder final
 
         auto const& projections =
             dynamic_cast<DocumentProducingNode const*>(enumColl)->projections();
-        if (projections.isSingle(StaticStrings::KeyString)) {
+        if (projections.isSingle(arangodb::StaticStrings::KeyString)) {
           // cannot handle projections
           break;
         }
@@ -7198,7 +7197,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
         info.sorted) {
       // hack to pass on the sort-to-point info
       AstNodeType t = NODE_TYPE_OPERATOR_BINARY_LT;
-      std::string const& u = StaticStrings::Unlimited;
+      std::string const& u = arangodb::StaticStrings::Unlimited;
       AstNode* cc = ast->createNodeValueString(u.c_str(), u.length());
       cond->andCombine(ast->createNodeBinaryOperator(t, func, cc));
     }

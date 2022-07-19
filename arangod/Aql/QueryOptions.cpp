@@ -23,11 +23,9 @@
 
 #include "QueryOptions.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
-#include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -44,6 +42,8 @@ size_t QueryOptions::defaultMaxNodesPerCallstack = 150;
 #else
 size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
 #endif
+size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000;
+size_t QueryOptions::defaultSpillOverThresholdMemoryUsage = 128 * 1024 * 1024;
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning = false;
@@ -54,6 +54,9 @@ QueryOptions::QueryOptions()
       maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
       maxNodesPerCallstack(QueryOptions::defaultMaxNodesPerCallstack),
+      spillOverThresholdNumRows(QueryOptions::defaultSpillOverThresholdNumRows),
+      spillOverThresholdMemoryUsage(
+          QueryOptions::defaultSpillOverThresholdMemoryUsage),
       maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl),  // get global default ttl
@@ -139,6 +142,16 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   value = slice.get("maxNodesPerCallstack");
   if (value.isNumber()) {
     maxNodesPerCallstack = value.getNumber<size_t>();
+  }
+
+  value = slice.get("spillOverThresholdNumRows");
+  if (value.isNumber()) {
+    spillOverThresholdNumRows = value.getNumber<size_t>();
+  }
+
+  value = slice.get("spillOverThresholdMemoryUsage");
+  if (value.isNumber()) {
+    spillOverThresholdMemoryUsage = value.getNumber<size_t>();
   }
 
   value = slice.get("maxRuntime");
@@ -261,6 +274,10 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
   builder.add("maxNodesPerCallstack", VPackValue(maxNodesPerCallstack));
+  builder.add("spillOverThresholdNumRows",
+              VPackValue(spillOverThresholdNumRows));
+  builder.add("spillOverThresholdMemoryUsage",
+              VPackValue(spillOverThresholdMemoryUsage));
   builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
