@@ -79,14 +79,6 @@ auto DocumentFollowerState::applyEntries(
         case OperationType::kRemove:
         case OperationType::kTruncate:
           transactionHandler->ensureTransaction(doc);
-          if (auto res = transactionHandler->initTransaction(doc.tid);
-              res.fail()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
-          if (auto res = transactionHandler->startTransaction(doc.tid);
-              res.fail()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
           fut = transactionHandler->applyTransaction(doc.tid);
           break;
         case OperationType::kCommit:

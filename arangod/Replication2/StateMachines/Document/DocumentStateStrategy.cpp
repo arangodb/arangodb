@@ -200,10 +200,6 @@ auto DocumentStateTransaction::getLastEntry() const -> DocumentLogEntry {
   return _entries.back();
 }
 
-auto DocumentStateTransaction::getTrxCount() const -> std::size_t {
-  return _entries.size();
-}
-
 void DocumentStateTransaction::setMethods(
     std::shared_ptr<transaction::Methods> methods) {
   _methods = std::move(methods);
@@ -221,7 +217,14 @@ DocumentStateTransactionHandler::DocumentStateTransactionHandler(
     DatabaseFeature& databaseFeature)
     : _databaseFeature(databaseFeature), _vocbase(nullptr) {}
 
+DocumentStateTransactionHandler::~DocumentStateTransactionHandler() {
+  if (_vocbase) {
+    _vocbase->release();
+  }
+}
+
 void DocumentStateTransactionHandler::setDatabase(std::string const& database) {
+  TRI_ASSERT(_vocbase == nullptr);
   _vocbase = _databaseFeature.useDatabase(database);
   TRI_ASSERT(_vocbase != nullptr);
 }
@@ -238,49 +241,27 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
 auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
     -> std::shared_ptr<IDocumentStateTransaction> {
   auto tid = entry.tid;
-  if (auto trx = getTrx(tid); trx != nullptr) {
+  auto trx = getTrx(tid);
+  if (trx != nullptr) {
     trx->appendEntry(std::move(entry));
     return trx;
   }
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto trx =
-      std::make_shared<DocumentStateTransaction>(_vocbase, std::move(entry));
+  trx = std::make_shared<DocumentStateTransaction>(_vocbase, std::move(entry));
   _transactions.emplace(tid, trx);
-  return trx;
-}
 
-auto DocumentStateTransactionHandler::initTransaction(TransactionId tid)
-    -> Result {
-  if (auto trx = getTrx(tid); trx != nullptr) {
-    transaction::Hints hints;
-    hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-    auto state = trx->getState();
-    state->setWriteAccessType();
+  transaction::Hints hints;
+  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
+  auto state = trx->getState();
+  state->setWriteAccessType();
 
-    if (trx->getTrxCount() > 1) {
-      // Streaming transaction already started, don't start it again.
-      return Result{};
-    }
-    return state->beginTransaction(hints);
-  }
-  return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
-                fmt::format("Could not find transaction ID {}", tid.id())};
-}
-
-auto DocumentStateTransactionHandler::startTransaction(TransactionId tid)
-    -> Result {
-  auto trx = getTrx(tid);
-  if (trx == nullptr) {
-    return Result{TRI_ERROR_TRANSACTION_NOT_FOUND,
-                  fmt::format("Could not find transaction ID {}", tid.id())};
+  auto res = state->beginTransaction(hints);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
-  if (trx->getTrxCount() > 1) {
-    // Streaming transaction already started.
-    return Result{};
-  }
-
+  // TODO Use our own context class
   auto ctx = std::make_shared<transaction::ManagedContext>(tid, trx->getState(),
                                                            false, false, true);
 
@@ -293,9 +274,13 @@ auto DocumentStateTransactionHandler::startTransaction(TransactionId tid)
       ctx, readCollections, writeCollections, exclusiveCollections,
       trx->getOptions());
 
-  auto res = methods->begin();
+  res = methods->begin();
   trx->setMethods(std::move(methods));
-  return res;
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return trx;
 }
 
 auto DocumentStateTransactionHandler::applyTransaction(TransactionId tid)

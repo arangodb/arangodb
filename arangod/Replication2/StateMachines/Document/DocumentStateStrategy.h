@@ -129,7 +129,6 @@ class DocumentStateTransaction : public IDocumentStateTransaction {
   auto getMethods() const -> std::shared_ptr<transaction::Methods>;
   auto getResult() const -> OperationResult const&;
   auto getLastEntry() const -> DocumentLogEntry;
-  auto getTrxCount() const -> std::size_t;
 
   void setMethods(std::shared_ptr<transaction::Methods> methods);
   void appendResult(OperationResult result);
@@ -150,8 +149,6 @@ struct IDocumentStateTransactionHandler {
   virtual void setDatabase(std::string const& database) = 0;
   virtual auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
-  virtual auto initTransaction(TransactionId tid) -> Result = 0;
-  virtual auto startTransaction(TransactionId tid) -> Result = 0;
   virtual auto applyTransaction(TransactionId tid)
       -> futures::Future<Result> = 0;
   virtual auto finishTransaction(DocumentLogEntry entry)
@@ -162,12 +159,12 @@ class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
   explicit DocumentStateTransactionHandler(DatabaseFeature& databaseFeature);
+  ~DocumentStateTransactionHandler();
+
   void setDatabase(std::string const& database) override;
 
   auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> override;
-  auto initTransaction(TransactionId tid) -> Result override;
-  auto startTransaction(TransactionId tid) -> Result override;
   auto applyTransaction(TransactionId tid) -> futures::Future<Result> override;
   auto finishTransaction(DocumentLogEntry entry)
       -> futures::Future<Result> override;
