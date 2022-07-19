@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertLessThanOrEqual, JSON */
+/*global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -180,7 +180,7 @@ const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
     // sorting in the descending order is needed because pregelRunSmallInstanceGetComponents
     // sorts the results like this
     expectedSizes.sort(function (a, b) {return b - a;});
-    if (parameters.hasOwnProperty("test")) {
+    if (parameters.hasOwnProperty("test") && parameters.test) {
         delete parameters.test;
         const query = `
         FOR v in ${vColl}
@@ -192,7 +192,7 @@ const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
     const computedComponents = pregelRunSmallInstanceGetComponents(algName, graphName, parameters);
 
     assertEqual(computedComponents.length, expectedSizes.length,
-        `Expected ${expectedSizes.length} many elements, obtained ${computedComponents}`);
+        `Expected ${expectedSizes.length} many elements, obtained ${JSON.stringify(computedComponents)}`);
     for (let i = 0; i < computedComponents.length; ++i) {
         const computedComponent = computedComponents[i];
         const componentId = computedComponent.result;

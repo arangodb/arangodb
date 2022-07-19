@@ -110,6 +110,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/DateFunctionsTest.cpp
   Aql/FixedOutputExecutionBlockMock.cpp
   Aql/InRangeFunctionTest.cpp
+  Aql/MinHashFunctionsTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/DependencyProxyMock.cpp

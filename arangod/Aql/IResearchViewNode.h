@@ -30,16 +30,22 @@
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/SmallVector.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
+#include "VocBase/LogicalView.h"
+
 #include "types.h"
+
 #include "utils/bit_utils.hpp"
+
+#include <unordered_map>
 
 namespace arangodb {
 class LogicalView;
-
 namespace aql {
 struct Collection;
 class ExecutionNode;
@@ -50,10 +56,9 @@ struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct VarInfo;
 }  // namespace aql
-
 namespace iresearch {
 
-bool filterConditionIsEmpty(aql::AstNode const* filterCondition) noexcept;
+bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept;
 
 enum class MaterializeType {
   Undefined = 0,        // an undefined initial value
@@ -63,20 +68,31 @@ enum class MaterializeType {
   UseStoredValues = 8   // use stored or sort column values
 };
 
+ENABLE_BITMASK_ENUM(MaterializeType);
+
 enum class CountApproximate {
   Exact = 0,  // skipAll should return exact number of records
   Cost = 1,   // iterator cost could be used as skipAllCount
 };
 
-ENABLE_BITMASK_ENUM(MaterializeType);
-
 /// @brief class EnumerateViewNode
-class IResearchViewNode final : public arangodb::aql::ExecutionNode {
+class IResearchViewNode final : public aql::ExecutionNode {
  public:
   /// @brief node options
   struct Options {
     /// @brief a list of data source CIDs to restrict a query
     containers::FlatHashSet<DataSourceId> sources;
+
+    /// @brief condition optimization Auto - condition will be transformed to
+    /// DNF.
+    aql::ConditionOptimization conditionOptimization{
+        aql::ConditionOptimization::Auto};
+
+    /// @brief skipAll method for view
+    CountApproximate countApproximate{CountApproximate::Exact};
+
+    /// @brief iresearch filters optimization level
+    FilterOptimization filterOptimization{FilterOptimization::MAX};
 
     /// @brief use the list of sources to restrict a query
     bool restrictSources{false};
@@ -86,22 +102,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief try not to materialize documents
     bool noMaterialization{true};
-
-    /// @brief condition optimization Auto - condition will be transformed to
-    /// DNF.
-    arangodb::aql::ConditionOptimization conditionOptimization{
-        arangodb::aql::ConditionOptimization::Auto};
-
-    /// @brief skipAll method for view
-    CountApproximate countApproximate{CountApproximate::Exact};
-
-    /// @brief iresearch filters optimization level
-    FilterOptimization filterOptimization{FilterOptimization::MAX};
-  };  // Options
+  };
 
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id,
                     TRI_vocbase_t& vocbase,
-                    std::shared_ptr<const arangodb::LogicalView> const& view,
+                    std::shared_ptr<const LogicalView> view,
                     aql::Variable const& outVariable,
                     aql::AstNode* filterCondition, aql::AstNode* options,
                     std::vector<Scorer>&& scorers);
@@ -109,61 +114,46 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   IResearchViewNode(aql::ExecutionPlan&, velocypack::Slice base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }
+  NodeType getType() const final { return ENUMERATE_IRESEARCH_VIEW; }
 
   /// @brief clone ExecutionNode recursively
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
-                            bool withProperties) const override final;
+                            bool withProperties) const final;
 
+  using Collections =
+      std::vector<std::pair<std::reference_wrapper<aql::Collection const>,
+                            LogicalView::Indexes>>;
   /// @returns the list of the linked collections
-  std::vector<std::reference_wrapper<aql::Collection const>> collections()
-      const;
+  Collections collections() const;
 
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
 
   /// @brief the cost of an enumerate view node
-  aql::CostEstimate estimateCost() const override final;
+  aql::CostEstimate estimateCost() const final;
 
+  // TODO(MBkkt) Use containers::FlatHashMap
   void replaceVariables(
-      std::unordered_map<arangodb::aql::VariableId,
-                         arangodb::aql::Variable const*> const& replacements)
-      override;
+      std::unordered_map<aql::VariableId, aql::Variable const*> const&
+          replacements) final;
 
   /// @brief getVariablesSetHere
-  std::vector<arangodb::aql::Variable const*> getVariablesSetHere()
-      const override final;
+  std::vector<aql::Variable const*> getVariablesSetHere() const final;
 
   /// @brief return out variable
-  arangodb::aql::Variable const& outVariable() const noexcept {
-    return *_outVariable;
-  }
+  aql::Variable const& outVariable() const noexcept { return *_outVariable; }
 
   /// @brief return the database
   TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
   /// @brief return the view
-  std::shared_ptr<const arangodb::LogicalView> const& view() const noexcept {
-    return _view;
-  }
+  auto const& view() const noexcept { return _view; }
 
   /// @brief return the filter condition to pass to the view
-  arangodb::aql::AstNode const& filterCondition() const noexcept {
-    TRI_ASSERT(_filterCondition);
-    return *_filterCondition;
-  }
+  auto const& filterCondition() const noexcept { return *_filterCondition; }
 
   /// @brief set the filter condition to pass to the view
-  void filterCondition(aql::AstNode const* node) noexcept;
-
-  /// @brief return list of shards related to the view (cluster only)
-  auto const& shards() const noexcept { return _shards; }
-
-  /// @brief return list of shards related to the view (cluster only)
-  auto& shards() noexcept { return _shards; }
-
-  /// @brief return the scorers to pass to the view
-  std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
+  void setFilterCondition(aql::AstNode const* node) noexcept;
 
   // we could merge if it is allowed in general and there are no scores - as
   // changing filters will affect score and we will lose backward compatibility
@@ -174,34 +164,45 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     return _options.filterOptimization;
   }
 
+  /// @brief return list of shards related to the view (cluster only)
+  auto const& shards() const noexcept { return _shards; }
+
+  /// @brief return list of shards related to the view (cluster only)
+  auto& shards() noexcept { return _shards; }
+
+  /// @brief return the scorers to pass to the view
+  auto const& scorers() const noexcept { return _scorers; }
+
   /// @brief set the scorers to pass to the view
-  void scorers(std::vector<Scorer>&& scorers) noexcept {
+  void setScorers(std::vector<Scorer>&& scorers) noexcept {
     _scorers = std::move(scorers);
   }
 
   /// @return sort condition satisfied by a sorted index
-  std::pair<IResearchViewSort const*, size_t> const& sort() const noexcept {
-    return _sort;
+  std::pair<iresearch::IResearchSortBase const*, size_t> sort() const noexcept {
+    return {_sort.get(), _sortBuckets};
   }
 
   /// @brief set sort condition satisfied by a sorted index
-  void sort(IResearchViewSort const* sort, size_t size) noexcept {
-    _sort.first = sort;
-    _sort.second = sort ? std::min(size, sort->size()) : 0;
+  void setSort(IResearchSortBase const& sort, size_t buckets) noexcept {
+    _sortBuckets = std::min(buckets, sort.size());
+    _sort = std::shared_ptr<IResearchSortBase const>(
+        &sort, [](IResearchSortBase const*) noexcept {});
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(aql::VarSet& vars) const override final;
+  void getVariablesUsedHere(aql::VarSet& vars) const final;
 
   /// @brief returns IResearchViewNode options
   Options const& options() const noexcept { return _options; }
 
   /// @brief node volatility, determines how often query has
-  ///        to be rebuilt during the execution
-  /// @note first - node has nondeterministic/dependent (inside a loop)
-  ///       filter condition
-  ///       second - node has nondeterministic/dependent (inside a loop)
-  ///       sort condition
+  ///  to be rebuilt during the execution
+  /// @return pair:
+  ///  first - node has nondeterministic/dependent (inside a loop)
+  ///   filter condition
+  ///  second - node has nondeterministic/dependent (inside a loop)
+  ///   sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
   void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort,
@@ -217,10 +218,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 #endif
 
   /// @brief creates corresponding ExecutionBlock
+  // TODO(MBkkt) Use containers::FlatHashMap
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
       std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&)
-      const override;
+      const final;
 
   aql::RegIdSet calcInputRegs() const;
 
@@ -235,32 +237,32 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     _outNonMaterializedColPtr = &colPtrVariable;
   }
 
-  bool noMaterialization() const noexcept { return _noMaterialization; }
+  bool isNoMaterialization() const noexcept { return _noMaterialization; }
 
   void setNoMaterialization() noexcept { _noMaterialization = true; }
 
-  static constexpr ptrdiff_t SortColumnNumber{-1};
+  static constexpr ptrdiff_t kSortColumnNumber{-1};
 
   // A variable with a field number in a column
   struct ViewVariable {
-    size_t fieldNum;
-    aql::Variable const* var;
+    size_t fieldNum{0};
+    aql::Variable const* var{nullptr};
   };
 
   // A variable with column and field numbers
   struct ViewVariableWithColumn : ViewVariable {
-    ptrdiff_t columnNum;
+    ptrdiff_t columnNum{0};
   };
 
   using ViewValuesVars =
-      std::unordered_map<ptrdiff_t, std::vector<ViewVariable>>;
+      containers::FlatHashMap<ptrdiff_t, std::vector<ViewVariable>>;
 
   using ViewValuesRegisters =
       std::map<ptrdiff_t, std::map<size_t, aql::RegisterId>>;
 
   using ViewVarsInfo =
-      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*,
-                         ViewVariableWithColumn>;
+      containers::FlatHashMap<std::vector<basics::AttributeName> const*,
+                              ViewVariableWithColumn>;
 
   void setViewVariables(ViewVarsInfo const& viewVariables) {
     _outNonMaterializedViewVars.clear();
@@ -279,11 +281,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief calculation node with ast nodes that can be replaced by view
     /// values (e.g. primary sort)
-    std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced>
+    containers::FlatHashMap<aql::CalculationNode*, ViewVarsToBeReplaced>
         _nodesToChange;
 
     /// @brief is no document materialization possible
-    bool _noDocMaterStatus = true;
+    bool _noDocMaterStatus{true};
 
    public:
     void saveCalcNodesForViewVariables(
@@ -294,12 +296,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     ViewVarsInfo replaceViewVariables(
         std::vector<aql::CalculationNode*> const& calcNodes,
-        arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
+        containers::HashSet<ExecutionNode*>& toUnlink);
 
     ViewVarsInfo replaceAllViewVariables(
-        arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
-
-    void clearViewVariables() noexcept { _nodesToChange.clear(); }
+        containers::HashSet<ExecutionNode*>& toUnlink);
 
     bool isNoDocumentMaterializationPossible() const noexcept {
       return _noDocMaterStatus;
@@ -312,21 +312,19 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   OptimizationState& state() noexcept { return _optState; }
 
- protected:
-  /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&,
-                      unsigned) const override final;
-
  private:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(velocypack::Builder&, unsigned) const final;
+
   /// @brief the database
   TRI_vocbase_t& _vocbase;
 
   /// @brief view
   /// @note need shared_ptr to ensure view validity
-  std::shared_ptr<const LogicalView> _view;
+  std::shared_ptr<LogicalView const> _view;
 
   /// @brief output variable to write to
-  aql::Variable const* _outVariable;
+  aql::Variable const* _outVariable{nullptr};
 
   // Following two variables should be set in pairs.
   // Info is split between 2 registers to allow constructing
@@ -337,34 +335,32 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   // on same server (it is ensured by optimizer rule as network hop is
   // expensive!)
   /// @brief output variable to write only non-materialized document ids
-  aql::Variable const* _outNonMaterializedDocId;
+  aql::Variable const* _outNonMaterializedDocId{nullptr};
   /// @brief output variable to write only non-materialized collection ids
-  aql::Variable const* _outNonMaterializedColPtr;
+  aql::Variable const* _outNonMaterializedColPtr{nullptr};
 
   /// @brief output variables to non-materialized document view sort references
   ViewValuesVars _outNonMaterializedViewVars;
 
-  /// @brief is no materialization should be applied
-  bool _noMaterialization;
-
   OptimizationState _optState;
 
   /// @brief filter node to pass to the view
-  aql::AstNode const* _filterCondition;
+  aql::AstNode const* _filterCondition{nullptr};
 
   /// @brief sort condition covered by the view
-  /// first - sort condition
-  /// second - number of sort buckets to use
-  std::pair<IResearchViewSort const*, size_t> _sort{};
+  /// _sort - sort condition
+  /// _sortBuckets - number of sort buckets to use
+  std::shared_ptr<IResearchSortBase const> _sort;
+  size_t _sortBuckets{0};
+
+  /// @brief stored values covered by the view
+  std::shared_ptr<IResearchViewStoredValues const> _storedValues;
 
   /// @brief scorers related to the view
   std::vector<Scorer> _scorers;
 
   /// @brief list of shards involved, need this for the cluster
-  containers::FlatHashSet<std::string> _shards;
-
-  /// @brief volatility mask
-  mutable int _volatilityMask{-1};
+  containers::FlatHashMap<std::string, LogicalView::Indexes> _shards;
 
   /// @brief IResearchViewNode options
   Options _options;
@@ -372,7 +368,13 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief internal order for scorers
   std::vector<std::pair<size_t, bool>> _scorersSort;
   size_t _scorersSortLimit{0};
-};  // IResearchViewNode
+
+  /// @brief volatility mask
+  mutable int _volatilityMask{-1};
+
+  /// @brief is no materialization should be applied
+  bool _noMaterialization{false};
+};
 
 }  // namespace iresearch
 }  // namespace arangodb
