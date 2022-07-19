@@ -1325,15 +1325,15 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
         // The documentation says "length above 9007199254740991 (max safe integer)".)
         const infinity = 9223372036854776000n;
         for (let [ , vertex] of graph.vertices) {
-             vertex.value = infinity;
+            vertex.value = infinity;
         }
         graph.bfs(source, writeDistance, undefined);
         for (const element of result) {
             assertTrue(element.result === (graph.vertex(element._key)).value
                 || (element.result > 9007199254740991 && (graph.vertex(element._key)).value === infinity),
                 `Different distances. Pregel returned ${element.result}, ` +
-                    `test computed ${(graph.vertex(element._key)).value} for vertex ${element._key} ` +
-                    `where source is ${source}`);
+                `test computed ${(graph.vertex(element._key)).value} for vertex ${element._key} ` +
+                `where source is ${source}`);
         }
     };
 
@@ -1417,16 +1417,16 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
             testSSSP10StarMultipleEdges: function () {
                 const numberLeaves = 10;
 
-                    const {
-                        vertices,
-                        edges
-                    } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
-                    // insert each edge twice
-                    let edges2 = edges.slice();
-                    for (const e of edges) {
-                        edges2.push({... e});
-                    }
-                    testSSSPOnGraph(vertices, edges2, "v_0");
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                // insert each edge twice
+                let edges2 = edges.slice();
+                for (const e of edges) {
+                    edges2.push({... e});
+                }
+                testSSSPOnGraph(vertices, edges2, "v_0");
             }
 
 
@@ -1441,3 +1441,4 @@ exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;
 exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
+exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
