@@ -73,7 +73,7 @@ const AnalyzersReactView = () => {
   const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
   const { data: permData } = useSWR(
     `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
-    (path) => getApiRouteForCurrentDB().get(path)
+    path => getApiRouteForCurrentDB().get(path)
   );
 
   const [filterExpr, setFilterExpr] = useState('');
@@ -192,13 +192,13 @@ const AnalyzersReactView = () => {
               <tbody>
               {
                 filteredAnalyzers.length
-                  ? filteredAnalyzers.map((analyzer, idx) => (
+                  ? filteredAnalyzers.map(analyzer => (
                     <tr key={analyzer.name}>
                       <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
                       <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
                       <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>
                       <td className={'arango-table-td table-cell3'}>
-                        <Actions analyzer={analyzer} permission={permission} modalCidSuffix={idx}/>
+                        <Actions analyzer={analyzer} permission={permission} modalCidSuffix={analyzer.name}/>
                       </td>
                     </tr>
                   ))
