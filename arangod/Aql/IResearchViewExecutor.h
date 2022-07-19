@@ -51,7 +51,7 @@ namespace arangodb {
 class LogicalCollection;
 
 namespace iresearch {
-struct Scorer;
+struct SearchFunc;
 }
 
 namespace aql {
@@ -85,7 +85,7 @@ class IResearchViewExecutorInfos {
   IResearchViewExecutorInfos(
       iresearch::ViewSnapshotPtr reader, OutRegisters outRegister,
       std::vector<RegisterId> scoreRegisters, aql::QueryContext& query,
-      std::vector<iresearch::Scorer> const& scorers,
+      std::vector<iresearch::SearchFunc> const& scorers,
       std::pair<iresearch::IResearchSortBase const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan, Variable const& outVariable,
@@ -106,7 +106,7 @@ class IResearchViewExecutorInfos {
   getOutNonMaterializedViewRegs() const noexcept;
   iresearch::ViewSnapshotPtr getReader() const noexcept;
   aql::QueryContext& getQuery() noexcept;
-  std::vector<iresearch::Scorer> const& scorers() const noexcept;
+  std::vector<iresearch::SearchFunc> const& scorers() const noexcept;
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
   aql::AstNode const& filterCondition() const noexcept;
@@ -144,7 +144,7 @@ class IResearchViewExecutorInfos {
   size_t _scoreRegistersCount;
   iresearch::ViewSnapshotPtr const _reader;
   aql::QueryContext& _query;
-  std::vector<iresearch::Scorer> const& _scorers;
+  std::vector<iresearch::SearchFunc> const& _scorers;
   std::pair<iresearch::IResearchSortBase const*, size_t> _sort;
   iresearch::IResearchViewStoredValues const& _storedValues;
   ExecutionPlan const& _plan;

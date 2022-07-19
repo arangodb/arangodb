@@ -76,7 +76,7 @@ aql::AstNode const kAll{aql::AstNodeValue{true}};
 /// @brief helpers for std::vector<iresearch::IResearchSort>
 ////////////////////////////////////////////////////////////////////////////////
 void toVelocyPack(velocypack::Builder& builder,
-                  std::vector<Scorer> const& scorers, bool verbose) {
+                  std::vector<SearchFunc> const& scorers, bool verbose) {
   VPackArrayBuilder arrayScope(&builder);
   for (auto const& scorer : scorers) {
     VPackObjectBuilder objectScope(&builder);
@@ -87,8 +87,8 @@ void toVelocyPack(velocypack::Builder& builder,
   }
 }
 
-std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan,
-                                   velocypack::Slice slice) {
+std::vector<SearchFunc> fromVelocyPack(aql::ExecutionPlan& plan,
+                                       velocypack::Slice slice) {
   if (!slice.isArray()) {
     LOG_TOPIC("b50b2", ERR, iresearch::TOPIC)
         << "invalid json format detected while building IResearchViewNode "
@@ -101,7 +101,7 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan,
   auto const* vars = plan.getAst()->variables();
   TRI_ASSERT(vars);
   velocypack::ArrayIterator scorersArray{slice};
-  std::vector<Scorer> scorers;
+  std::vector<SearchFunc> scorers;
   scorers.reserve(scorersArray.size());
   size_t i = 0;
   for (auto const sortSlice : scorersArray) {
@@ -891,7 +891,7 @@ IResearchViewNode::IResearchViewNode(
     aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
     std::shared_ptr<const LogicalView> view, aql::Variable const& outVariable,
     aql::AstNode* filterCondition, aql::AstNode* options,
-    std::vector<Scorer>&& scorers)
+    std::vector<SearchFunc>&& scorers)
     : aql::ExecutionNode{&plan, id},
       _vocbase{vocbase},
       _view{std::move(view)},

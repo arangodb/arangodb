@@ -21,7 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
 
 #include "IResearchViewOptimizerRules.h"
 
@@ -41,6 +40,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/DownCast.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
@@ -49,6 +49,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/Search.h"
+#include "IResearch/SearchFuncReplace.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -294,7 +295,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       if (!astCalcNode ||
           astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
         // Not a reference?  Seems that it is not
-        // something produced by ScorerReplacer.
+        // something produced by during search function replace.
         // e.g. it is expected to be LET sortVar = scorerVar;
         // Definately not something we could handle.
         return false;
@@ -309,7 +310,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     auto s = std::find_if(scorers.begin(), scorers.end(),
-                          [sortVariable](Scorer const& t) {
+                          [sortVariable](SearchFunc const& t) {
                             return t.var->id == sortVariable->id;
                           });
     if (s == scorers.end()) {
@@ -852,12 +853,12 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   // replace scorers in all calculation nodes with references
   plan->findNodesOfType(calcNodes, ExecutionNode::CALCULATION, true);
 
-  ScorerReplacer scorerReplacer;
+  DedupSearchFuncs searchFuncs;
 
   for (auto* node : calcNodes) {
     TRI_ASSERT(node && ExecutionNode::CALCULATION == node->getType());
-
-    scorerReplacer.replace(*ExecutionNode::castTo<CalculationNode*>(node));
+    replaceSearchFunc(*ExecutionNode::castTo<CalculationNode*>(node),
+                      searchFuncs, &order_factory::refFromScorer);
   }
 
   // register replaced scorers to be evaluated by corresponding view nodes
@@ -867,7 +868,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   aql::QueryContext& query = plan->getAst()->query();
 
-  std::vector<Scorer> scorers;
+  std::vector<SearchFunc> scorers;
 
   for (auto* node : viewNodes) {
     TRI_ASSERT(node &&
@@ -882,7 +883,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     }
 
     // find scorers that have to be evaluated by a view
-    scorerReplacer.extract(viewNode, scorers);
+    extractSearchFunc(viewNode, searchFuncs, scorers);
     viewNode.setScorers(std::move(scorers));
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
@@ -892,14 +893,14 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     modified = true;
   }
   keepReplacementViewVariables(calcNodes, viewNodes);
-  arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::HashSet<ExecutionNode*> toUnlink;
   modified |= noDocumentMaterialization(viewNodes, toUnlink);
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
   }
 
   // ensure all replaced scorers are covered by corresponding view nodes
-  scorerReplacer.visit([](Scorer const& scorer) -> bool {
+  for (auto& [scorer, _] : searchFuncs) {
     TRI_ASSERT(scorer.node);
     auto const funcName = iresearch::getFuncName(*scorer.node);
 
@@ -907,7 +908,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
         "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
         scorer.var->name.c_str(), funcName.c_str());
-  });
+  }
 }
 
 void scatterViewInClusterRule(Optimizer* opt,
@@ -1025,7 +1026,3 @@ void scatterViewInClusterRule(Optimizer* opt,
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

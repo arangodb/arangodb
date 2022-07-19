@@ -187,7 +187,7 @@ class BufferHeapSortContext {
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ViewSnapshotPtr reader, OutRegisters outRegisters,
     std::vector<RegisterId> scoreRegisters, arangodb::aql::QueryContext& query,
-    std::vector<Scorer> const& scorers,
+    std::vector<SearchFunc> const& scorers,
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
@@ -248,7 +248,7 @@ aql::QueryContext& IResearchViewExecutorInfos::getQuery() noexcept {
   return _query;
 }
 
-const std::vector<arangodb::iresearch::Scorer>&
+const std::vector<arangodb::iresearch::SearchFunc>&
 IResearchViewExecutorInfos::scorers() const noexcept {
   return _scorers;
 }
@@ -749,7 +749,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
       for (irs::sort::ptr scorer; auto const& scorerNode : scorers) {
         TRI_ASSERT(scorerNode.node);
 
-        if (!OrderFactory::scorer(&scorer, *scorerNode.node, queryCtx)) {
+        if (!order_factory::scorer(&scorer, *scorerNode.node, queryCtx)) {
           // failed to append sort
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }

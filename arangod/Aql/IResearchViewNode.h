@@ -109,7 +109,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
                     std::shared_ptr<const LogicalView> view,
                     aql::Variable const& outVariable,
                     aql::AstNode* filterCondition, aql::AstNode* options,
-                    std::vector<Scorer>&& scorers);
+                    std::vector<SearchFunc>&& scorers);
 
   IResearchViewNode(aql::ExecutionPlan&, velocypack::Slice base);
 
@@ -174,7 +174,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
   auto const& scorers() const noexcept { return _scorers; }
 
   /// @brief set the scorers to pass to the view
-  void setScorers(std::vector<Scorer>&& scorers) noexcept {
+  void setScorers(std::vector<SearchFunc>&& scorers) noexcept {
     _scorers = std::move(scorers);
   }
 
@@ -357,7 +357,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
   std::shared_ptr<IResearchViewStoredValues const> _storedValues;
 
   /// @brief scorers related to the view
-  std::vector<Scorer> _scorers;
+  std::vector<SearchFunc> _scorers;
 
   /// @brief list of shards involved, need this for the cluster
   containers::FlatHashMap<std::string, LogicalView::Indexes> _shards;

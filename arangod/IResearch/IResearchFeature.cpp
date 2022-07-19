@@ -21,6 +21,9 @@
 /// @author Andrey Abramov
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "IResearchFeature.h"
+
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 
@@ -56,7 +59,6 @@
 #include "Containers/SmallVector.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -98,18 +100,19 @@ aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
   THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch function '%s' "
-      " is designed to be used only within a corresponding SEARCH statement "
-      "of ArangoSearch view."
-      " Please ensure function signature is correct.",
+      "ArangoSearch function '%s' is designed to be used only within a "
+      "corresponding SEARCH statement of ArangoSearch view. Please ensure "
+      "function signature is correct.",
       getFunctionName(node).data());
 }
 
-aql::FunctionImplementation getDummyFuncEE() {
+aql::AqlValue offsetInfoFunc(aql::ExpressionContext* ctx,
+                             aql::AstNode const& node,
+                             std::span<aql::AqlValue const> args) {
 #ifdef USE_ENTERPRISE
-  return &dummyFunc;
+  return dummyFunc(ctx, node, args);
 #else
-  return &aql::functions::NotImplementedEE;
+  return aql::functions::NotImplementedEE(ctx, node, args);
 #endif
 }
 
@@ -598,7 +601,7 @@ void registerSingleFactory(
 
 }  // namespace
 
-void registerExtractors(aql::AqlFunctionFeature& functions) {
+void registerFunctions(aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(
       functions,
       {"OFFSET_INFO", ".",
@@ -606,7 +609,7 @@ void registerExtractors(aql::AqlFunctionFeature& functions) {
                                 aql::Function::Flags::Cacheable,
                                 aql::Function::Flags::CanRunOnDBServerCluster,
                                 aql::Function::Flags::CanRunOnDBServerOneShard),
-       getDummyFuncEE()});
+       &offsetInfoFunc});
 }
 
 void registerIndexFactory(
@@ -860,6 +863,12 @@ bool isScorer(aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
 
+#ifdef USE_ENTERPRISE
+bool isOffsetInfo(aql::Function const& func) noexcept {
+  return func.implementation == &offsetInfoFunc;
+}
+#endif
+
 IResearchFeature::IResearchFeature(Server& server)
     : ArangodFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
@@ -988,7 +997,7 @@ void IResearchFeature::prepare() {
     auto& functions = server().getFeature<aql::AqlFunctionFeature>();
     registerFilters(functions);
     registerScorers(functions);
-    registerExtractors(functions);
+    registerFunctions(functions);
   } else {
     LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature 'AQLFunctions' while registering "
