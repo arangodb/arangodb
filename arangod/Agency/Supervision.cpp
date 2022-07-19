@@ -1035,7 +1035,10 @@ void Supervision::updateDBServerMaintenance() {
   //     if server not in _DBServersInMaintenance:
   //       remove entry
 
-  auto ensureDBServerInCurrent = [this](std::string const& serverId, bool yes) {
+  auto builder = std::make_shared<Builder>();
+  builder->openArray();
+
+  auto ensureDBServerInCurrent = [&](std::string const& serverId, bool yes) {
     // This closure will copy the entry
     // /Target/MaintenanceDBServers/<serverId>
     // to /Current/MaintenanceDBServers/<serverId> if they differ and `yes`
@@ -1047,14 +1050,35 @@ void Supervision::updateDBServerMaintenance() {
     auto current = snapshot().has(currentPath);
     if (yes == false) {
       if (current) {
-        // DELETE ENTRY IN CURRENT HERE
+        {
+          VPackArrayBuilder ab(builder.get());
+          {
+            VPackObjectBuilder ob(builder.get());
+            builder->add(VPackValue("/arango/" + currentPath));
+            {
+              VPackObjectBuilder ob2(builder.get());
+              builder->add("op", "delete");
+            }
+          }
+        }
       }
       return;
     }
     auto target = snapshot().has(targetPath);
     if (target) {
       if (!current || target != current) {
-        // COPY TARGET ENTRY TO CURRENT
+        {
+          VPackArrayBuilder ab(builder.get());
+          {
+            VPackObjectBuilder ob(builder.get());
+            builder->add(VPackValue("/arango/" + currentPath));
+            {
+              VPackObjectBuilder ob2(builder.get());
+              builder->add("op", "set");
+              builder->add("new", VPackSlice::emptyObjectSlice());
+            }
+          }
+        }
       }
     }
   };
@@ -1076,7 +1100,7 @@ void Supervision::updateDBServerMaintenance() {
           auto timeout = entry->hasAsString("Until");
           if (timeout) {
             auto const maintenanceExpires = stringToTimepoint(timeout.value());
-            if (maintenanceExpires >= std::chrono::system_clock::now()) {
+            if (maintenanceExpires < std::chrono::system_clock::now()) {
               // Need to switch off maintenance mode
               ensureDBServerInCurrent(serverId, false);
             } else {
@@ -1101,6 +1125,16 @@ void Supervision::updateDBServerMaintenance() {
     }
   }
   _DBServersInMaintenance.swap(newDBServersInMaintenance);
+
+  builder->close();
+  if (builder->slice().length() > 0) {
+    write_ret_t res = _agent->write(builder);
+    if (!res.successful()) {
+      LOG_TOPIC("2d6fa", WARN, Logger::SUPERVISION)
+          << "failed to update maintenance servers in agency. Will retry. "
+          << builder->toJson();
+    }
+  }
 }
 
 void Supervision::step() {
