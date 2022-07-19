@@ -511,7 +511,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
 
           auto newEdge = buildEdge(toValue);
           if (newEdge.has_value()) {
-            vertex.emplaceEdge(std::move(*newEdge));
+            vertex.addEdge(std::move(*newEdge));
             return true;
           } else {
             return false;
@@ -530,7 +530,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx,
 
           auto newEdge = buildEdge(toValue);
           if (newEdge.has_value()) {
-            vertex.emplaceEdge(std::move(*newEdge));
+            vertex.addEdge(std::move(*newEdge));
             _graphFormat->copyEdgeData(
                 *trx.transactionContext()->getVPackOptions(), slice,
                 newEdge->data_mut());
