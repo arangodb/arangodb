@@ -41,12 +41,8 @@ auto DocumentCoreParameters::toSharedSlice() -> velocypack::SharedSlice {
 }
 
 DocumentFactory::DocumentFactory(
-    std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler)
-    : _agencyReader(std::move(agencyReader)),
-      _shardHandler(std::move(shardHandler)),
-      _transactionHandlder(std::move(transactionHandler)){};
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
+    : _handlersFactory(std::move(handlersFactory)){};
 
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentFollowerState> {
@@ -68,23 +64,8 @@ auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
           .with<logContextKeyCollectionId>(coreParameters.collectionId)
           .with<logContextKeyLogId>(gid.id);
   return std::make_unique<DocumentCore>(
-      std::move(gid), std::move(coreParameters), getAgencyReader(),
-      getShardHandler(), getTransactionHandler(), std::move(logContext));
-}
-
-auto DocumentFactory::getAgencyReader()
-    -> std::shared_ptr<IDocumentStateAgencyHandler> {
-  return _agencyReader;
-};
-
-auto DocumentFactory::getShardHandler()
-    -> std::shared_ptr<IDocumentStateShardHandler> {
-  return _shardHandler;
-};
-
-auto DocumentFactory::getTransactionHandler()
-    -> std::shared_ptr<IDocumentStateTransactionHandler> {
-  return _transactionHandlder;
+      std::move(gid), std::move(coreParameters), _handlersFactory,
+      std::move(logContext));
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

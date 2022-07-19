@@ -22,24 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentCore.h"
-#include "DocumentFollowerState.h"
-#include "DocumentLeaderState.h"
 #include "DocumentStateMachine.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
 DocumentCore::DocumentCore(
     GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-    std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler,
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
     LoggerContext loggerContext)
     : loggerContext(std::move(loggerContext)),
       _gid(std::move(gid)),
       _params(std::move(coreParameters)),
-      _agencyHandler(std::move(agencyHandler)),
-      _shardHandler(std::move(shardHandler)),
-      _transactionHandler(std::move(transactionHandler)) {
+      _agencyHandler(handlersFactory->createAgencyHandler(_gid)),
+      _shardHandler(handlersFactory->createShardHandler(_gid)),
+      _transactionHandler(handlersFactory->createTransactionHandler(_gid)) {
   auto collectionProperties =
       _agencyHandler->getCollectionPlan(_gid.database, _params.collectionId);
 
@@ -51,8 +47,6 @@ DocumentCore::DocumentCore(
   auto commResult = _agencyHandler->reportShardInCurrent(
       _gid.database, _params.collectionId, _shardId, collectionProperties);
   TRI_ASSERT(shardResult.ok());
-
-  _transactionHandler->setDatabase(_gid.database);
 
   LOG_CTX("b7e0d", TRACE, this->loggerContext) << "Created shard " << _shardId;
 }

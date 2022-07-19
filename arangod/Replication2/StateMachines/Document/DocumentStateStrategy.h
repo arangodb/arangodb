@@ -113,13 +113,17 @@ struct IDocumentStateTransaction {
   virtual ~IDocumentStateTransaction() = default;
 
   virtual auto getTid() const -> TransactionId = 0;
+  virtual auto apply() -> futures::Future<Result> = 0;
 };
 
-class DocumentStateTransaction : public IDocumentStateTransaction {
+class DocumentStateTransaction
+    : public IDocumentStateTransaction,
+      public std::enable_shared_from_this<DocumentStateTransaction> {
  public:
   explicit DocumentStateTransaction(TRI_vocbase_t* vocbase,
                                     DocumentLogEntry const& entry);
   auto getTid() const -> TransactionId override;
+  auto apply() -> futures::Future<Result> override;
 
   auto getLastOperation() const -> OperationType;
   auto getShardId() const -> ShardID;
@@ -146,11 +150,8 @@ class DocumentStateTransaction : public IDocumentStateTransaction {
 
 struct IDocumentStateTransactionHandler {
   virtual ~IDocumentStateTransactionHandler() = default;
-  virtual void setDatabase(std::string const& database) = 0;
   virtual auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
-  virtual auto applyTransaction(TransactionId tid)
-      -> futures::Future<Result> = 0;
   virtual auto finishTransaction(DocumentLogEntry entry)
       -> futures::Future<Result> = 0;
 };
@@ -158,14 +159,12 @@ struct IDocumentStateTransactionHandler {
 class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
-  explicit DocumentStateTransactionHandler(DatabaseFeature& databaseFeature);
-  ~DocumentStateTransactionHandler();
-
-  void setDatabase(std::string const& database) override;
+  explicit DocumentStateTransactionHandler(GlobalLogIdentifier gid,
+                                           DatabaseFeature& databaseFeature);
+  ~DocumentStateTransactionHandler() override;
 
   auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> override;
-  auto applyTransaction(TransactionId tid) -> futures::Future<Result> override;
   auto finishTransaction(DocumentLogEntry entry)
       -> futures::Future<Result> override;
 
@@ -173,10 +172,39 @@ class DocumentStateTransactionHandler
   auto getTrx(TransactionId tid) -> std::shared_ptr<DocumentStateTransaction>;
 
  private:
-  DatabaseFeature& _databaseFeature;
+  GlobalLogIdentifier _gid;
   TRI_vocbase_t* _vocbase;
   std::unordered_map<TransactionId, std::shared_ptr<DocumentStateTransaction>>
       _transactions;
+};
+
+struct IDocumentStateHandlersFactory {
+  virtual ~IDocumentStateHandlersFactory() = default;
+  virtual auto createAgencyHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateAgencyHandler> = 0;
+  virtual auto createShardHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateShardHandler> = 0;
+  virtual auto createTransactionHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateTransactionHandler> = 0;
+};
+
+class DocumentStateHandlersFactory : public IDocumentStateHandlersFactory {
+ public:
+  DocumentStateHandlersFactory(ArangodServer& server, AgencyCache& agencyCache,
+                               MaintenanceFeature& maintenaceFeature,
+                               DatabaseFeature& databaseFeature);
+  auto createAgencyHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateAgencyHandler> override;
+  auto createShardHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateShardHandler> override;
+  auto createTransactionHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateTransactionHandler> override;
+
+ private:
+  ArangodServer& _server;
+  AgencyCache& _agencyCache;
+  MaintenanceFeature& _maintenanceFeature;
+  DatabaseFeature& _databaseFeature;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document
