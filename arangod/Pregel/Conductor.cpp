@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
+#include <string_view>
 #include <thread>
 
 #include <fmt/core.h>
@@ -357,14 +358,16 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
 
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _ensureUniqueResponse(data);
+
+  auto loadedMessage = deserialize<GraphLoadedMessage>(data);
+
+  _ensureUniqueResponse(loadedMessage.senderId);
   if (_state != ExecutionState::LOADING) {
     LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
   }
 
-  auto loadedMessage = deserialize<GraphLoadedMessage>(data);
   _totalVerticesCount += loadedMessage.vertexCount;
   _totalEdgesCount += loadedMessage.edgeCount;
 
@@ -415,7 +418,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   // in async mode this will wait until all messages were processed
   _statistics.accumulateMessageStats(data);
   if (_asyncMode == false) {  // in async mode we wait for all responded
-    _ensureUniqueResponse(data);
+    _ensureUniqueResponse(data.get(Utils::senderKey).copyString());
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
       return VPackBuilder();
@@ -467,14 +470,15 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
 
 void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _ensureUniqueResponse(data);
+
+  auto event = deserialize<RecoveryFinished>(data);
+
+  _ensureUniqueResponse(event.senderId);
   if (_state != ExecutionState::RECOVERING) {
     LOG_PREGEL("23d8b", WARN)
         << "We are not in a state where we expect a recovery response";
     return;
   }
-
-  auto event = deserialize<RecoveryFinished>(data);
 
   // the recovery mechanism might be gathering state information
   _aggregators = event.aggregators.aggregators;
@@ -859,7 +863,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     }
   }
 
-  _ensureUniqueResponse(data);
+  _ensureUniqueResponse(data.get(Utils::senderKey).copyString());
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
@@ -1099,11 +1103,10 @@ ErrorCode Conductor::_sendToAllDBServers(
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
-void Conductor::_ensureUniqueResponse(VPackSlice body) {
+void Conductor::_ensureUniqueResponse(std::string const& sender) {
   _callbackMutex.assertLockedByCurrentThread();
 
   // check if this the only time we received this
-  ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {
     LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);

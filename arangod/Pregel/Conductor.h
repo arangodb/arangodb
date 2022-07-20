@@ -131,7 +131,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ErrorCode _sendToAllDBServers(std::string const& path,
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
-  void _ensureUniqueResponse(VPackSlice body);
+  void _ensureUniqueResponse(std::string const& body);
   void _createStartGssCommand(VPackBuilder& b, bool activateAll);
 
   // === REST callbacks ===
