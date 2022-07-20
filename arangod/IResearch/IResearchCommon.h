@@ -94,6 +94,7 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 
 struct StaticStrings {
   static constexpr std::string_view ViewType = "arangosearch";
+  static constexpr std::string_view SearchType = "search";
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
