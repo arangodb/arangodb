@@ -35,6 +35,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/SearchDoc.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -655,6 +656,7 @@ template<typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
                                                    IResearchViewStats& stats) {
   auto& impl = static_cast<Impl&>(*this);
+  std::array<char, kSearchDocBufSize> buf;
 
   while (true) {
     if (_indexReadBuffer.empty()) {
@@ -671,12 +673,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
     IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
     if (auto reg = infos().searchDocIdRegId(); reg.isValid()) {
-      const size_t segmentOffs = 0;
-      const irs::doc_id_t docId = 1;
-
-      std::array<char, 12> buf;
-      std::memcpy(buf.data(), &segmentOffs, sizeof segmentOffs);
-      std::memcpy(buf.data() + sizeof segmentOffs, &docId, sizeof docId);
+      encodeSearchDoc(buf, 0, 1);
 
       AqlValue value{buf.data(), buf.size()};
       AqlValueGuard guard{value, true};
