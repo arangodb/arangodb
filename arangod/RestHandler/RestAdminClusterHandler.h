@@ -144,6 +144,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
                                      std::string const& reactivationTime,
                                      clock::time_point startTime);
 
+  FutureVoid waitForDBServerMaintenance(std::string const& serverId,
+                                        bool waitForMaintenance);
+
   struct RemoveServerContext {
     size_t tries;
     std::string server;

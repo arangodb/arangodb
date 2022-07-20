@@ -27,7 +27,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const arangodb = require('@arangodb');
 const internal = require("internal");
 
 const dbservers = (function() {
@@ -43,7 +42,7 @@ function clusterRebalanceSuite() {
       let result = arango.PUT(`/_admin/cluster/maintenance/${server}`, {mode: "maintenance"});
       assertTrue(!result.error);
       assertEqual(result.code, 200);
-      internal.sleep(4); // TODO
+
       result = arango.GET(`/_admin/cluster/maintenance/${server}`);
       assertTrue(!result.error);
       assertEqual(result.code, 200);
@@ -53,7 +52,6 @@ function clusterRebalanceSuite() {
       assertTrue(!result.error);
       assertEqual(result.code, 200);
 
-      internal.sleep(4); // TODO
       result = arango.GET(`/_admin/cluster/maintenance/${server}`);
       assertTrue(!result.error);
       assertEqual(result.code, 200);
@@ -76,7 +74,7 @@ function clusterRebalanceSuite() {
         internal.sleep(1);
       }
       assertNotEqual(i, 10);
-    }
+    },
   };
 }
 

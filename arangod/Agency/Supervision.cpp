@@ -409,10 +409,11 @@ void Supervision::upgradeBackupKey(VPackBuilder& builder) {
   }
 }
 
-void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
-                            HealthRecord& persisted, HealthRecord& transisted,
-                            std::string const& serverID, uint64_t const& jobId,
-                            std::shared_ptr<VPackBuilder>& envelope) {
+void handleOnStatusDBServer(
+    Agent* agent, Node const& snapshot, HealthRecord& persisted,
+    HealthRecord& transisted, std::string const& serverID,
+    uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
+    std::unordered_set<std::string> const& dbServersInMaintenance) {
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
@@ -438,11 +439,13 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
       persisted.status == Supervision::HEALTH_STATUS_BAD &&
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
-      envelope = std::make_shared<VPackBuilder>();
-      agent->supervision()._supervision_failed_server_counter.operator++();
-      FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
-                   serverID)
-          .create(envelope);
+      if (!dbServersInMaintenance.contains(serverID)) {
+        envelope = std::make_shared<VPackBuilder>();
+        agent->supervision()._supervision_failed_server_counter.operator++();
+        FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
+                     serverID)
+            .create(envelope);
+      }
     }
   }
 }
@@ -507,13 +510,14 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot,
   }
 }
 
-void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
-                    HealthRecord& transisted, std::string const& serverID,
-                    uint64_t const& jobId,
-                    std::shared_ptr<VPackBuilder>& envelope) {
+void handleOnStatus(
+    Agent* agent, Node const& snapshot, HealthRecord& persisted,
+    HealthRecord& transisted, std::string const& serverID,
+    uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
+    std::unordered_set<std::string> const& dbServersInMaintenance) {
   if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID,
-                           jobId, envelope);
+                           jobId, envelope, dbServersInMaintenance);
   } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
@@ -778,7 +782,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
         handleOnStatus(_agent, snapshot(), persist, transist, serverID, _jobId,
-                       envelope);
+                       envelope, _DBServersInMaintenance);
         persist =
             transist;  // Now copy Status, SyncStatus from transient to persited
       } else {

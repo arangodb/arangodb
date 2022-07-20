@@ -1560,6 +1560,56 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate,
           }));
 }
 
+RestAdminClusterHandler::FutureVoid
+RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
+                                                    bool waitForMaintenance) {
+  struct Context {
+    explicit Context(std::string serverId, bool waitForMaintenance)
+        : serverId(std::move(serverId)),
+          waitForMaintenance(waitForMaintenance) {}
+    futures::Promise<ResultT<consensus::index_t>> promise;
+    std::string serverId;
+    bool waitForMaintenance;
+  };
+
+  auto ctx = std::make_shared<Context>(serverId, waitForMaintenance);
+  auto f = ctx->promise.getFuture();
+
+  using namespace cluster::paths;
+  // register an agency callback and wait for the given version to appear in
+  // target (or bigger)
+  auto path = aliases::current()->maintenanceDBServers()->dbserver(serverId);
+  auto cb = std::make_shared<AgencyCallback>(
+      _vocbase.server(), path->str(SkipComponents(1)),
+      [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
+        if (ctx->waitForMaintenance) {
+          if (slice.isObject() &&
+              slice.get("Mode").isEqualString("maintenance")) {
+            ctx->promise.setValue(index);
+            return true;
+          }
+        } else {
+          if (slice.isNone()) {
+            ctx->promise.setValue(index);
+            return true;
+          }
+        }
+
+        return false;
+      },
+      true, true);
+  auto& cf = server().getFeature<ClusterFeature>();
+
+  if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb, true);
+      result.fail()) {
+    return {};
+  }
+
+  return std::move(f).then([&cf, cb](auto&& result) {
+    cf.agencyCallbackRegistry()->unregisterCallback(cb);
+  });
+}
+
 RestStatus RestAdminClusterHandler::setDBServerMaintenance(
     std::string const& serverId, std::string const& mode, uint64_t timeout) {
   auto maintenancePath = arangodb::cluster::paths::root()
@@ -1611,15 +1661,17 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
   };
 
   auto self(shared_from_this());
+  bool const isMaintenanceMode = mode == "maintenance";
 
   return waitForFuture(
       sendTransaction()
-          .thenValue([this, reactivationTime](AsyncAgencyCommResult&& result) {
+          .thenValue([this, reactivationTime, isMaintenanceMode,
+                      serverId](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == 200) {
               VPackBuilder builder;
               { VPackObjectBuilder obj(&builder); }
               generateOk(rest::ResponseCode::OK, builder);
-              return futures::makeFuture();
+              return waitForDBServerMaintenance(serverId, isMaintenanceMode);
             } else {
               generateError(result.asResult());
             }
