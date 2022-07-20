@@ -94,8 +94,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
-  _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
-  _workerAggregators = std::make_unique<AggregatorHandler>(algo);
+  _conductorAggregators = std::make_shared<AggregatorHandler>(algo);
+  _workerAggregators = std::make_shared<AggregatorHandler>(algo);
 
   auto shardResolver = ShardResolver::create(
       ServerState::instance()->isRunningInCluster(),
@@ -786,46 +786,45 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(),
-                                               this] {
-    if (_state != WorkerState::RECOVERING) {
-      LOG_PREGEL("554e2", WARN) << "Compensation aborted prematurely.";
-      return;
-    }
+  scheduler->queue(
+      RequestLane::INTERNAL_LOW, [self = shared_from_this(), this] {
+        if (_state != WorkerState::RECOVERING) {
+          LOG_PREGEL("554e2", WARN) << "Compensation aborted prematurely.";
+          return;
+        }
 
-    auto vertexIterator = _graphStore->vertexIterator();
-    std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
-        _algorithm->createCompensation(&_config));
-    _initializeVertexContext(vCompensate.get());
-    if (!vCompensate) {
-      _state = WorkerState::DONE;
-      LOG_PREGEL("938d2", WARN) << "Compensation aborted prematurely.";
-      return;
-    }
-    vCompensate->_writeAggregators = _workerAggregators.get();
+        auto vertexIterator = _graphStore->vertexIterator();
+        std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
+            _algorithm->createCompensation(&_config));
+        _initializeVertexContext(vCompensate.get());
+        if (!vCompensate) {
+          _state = WorkerState::DONE;
+          LOG_PREGEL("938d2", WARN) << "Compensation aborted prematurely.";
+          return;
+        }
+        vCompensate->_writeAggregators = _workerAggregators.get();
 
-    size_t i = 0;
-    for (; vertexIterator.hasMore(); ++vertexIterator) {
-      Vertex<V, E>* vertexEntry = *vertexIterator;
-      vCompensate->_vertexEntry = vertexEntry;
-      vCompensate->compensate(i > _preRecoveryTotal);
-      i++;
-      if (_state != WorkerState::RECOVERING) {
-        LOG_PREGEL("e9011", WARN) << "Execution aborted prematurely.";
-        break;
-      }
-    }
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(_config.globalSuperstep()));
-    _workerAggregators->serializeValues(package);
-    package.close();
-    _callConductor(Utils::finishedRecoveryPath, package);
-  });
+        size_t i = 0;
+        for (; vertexIterator.hasMore(); ++vertexIterator) {
+          Vertex<V, E>* vertexEntry = *vertexIterator;
+          vCompensate->_vertexEntry = vertexEntry;
+          vCompensate->compensate(i > _preRecoveryTotal);
+          i++;
+          if (_state != WorkerState::RECOVERING) {
+            LOG_PREGEL("e9011", WARN) << "Execution aborted prematurely.";
+            break;
+          }
+        }
+
+        auto recoveryFinished =
+            RecoveryFinished{.senderId = ServerState::instance()->getId(),
+                             .executionNumber = _config._executionNumber,
+                             .gss = _config._globalSuperstep,
+                             .aggregators = {_workerAggregators}};
+        VPackBuilder event;
+        serialize(event, recoveryFinished);
+        _callConductor(Utils::finishedRecoveryPath, event);
+      });
 }
 
 template<typename V, typename E, typename M>

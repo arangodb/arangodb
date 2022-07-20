@@ -112,7 +112,7 @@ class Worker : public IWorker {
   size_t _preRecoveryTotal = 0;
 
   std::shared_ptr<AggregatorHandler> _conductorAggregators;
-  std::unique_ptr<AggregatorHandler> _workerAggregators;
+  std::shared_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;

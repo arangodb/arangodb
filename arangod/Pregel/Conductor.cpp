@@ -474,8 +474,10 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     return;
   }
 
+  auto event = deserialize<RecoveryFinished>(data);
+
   // the recovery mechanism might be gathering state information
-  _aggregators->aggregateValues(data);
+  _aggregators = event.aggregators.aggregators;
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }

@@ -32,6 +32,20 @@
 
 namespace arangodb::pregel {
 
+struct AggregatorWrapper {
+  std::shared_ptr<AggregatorHandler> aggregators = nullptr;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, AggregatorWrapper& x) {
+  if constexpr (Inspector::isLoading) {
+    return arangodb::inspection::Status{};
+  } else {
+    x.aggregators->serializeValues(f.builder());
+    return arangodb::inspection::Status{};
+  }
+}
+
 struct GraphLoadedMessage {
   std::string senderId;
   uint64_t executionNumber;
@@ -45,6 +59,22 @@ auto inspect(Inspector& f, GraphLoadedMessage& x) {
       f.field(Utils::senderKey, x.senderId),
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
+}
+
+struct RecoveryFinished {
+  std::string senderId;
+  uint64_t executionNumber;
+  uint64_t gss;
+  AggregatorWrapper aggregators;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, RecoveryFinished& x) {
+  return f.object(x).fields(
+      f.field(Utils::senderKey, x.senderId),
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss),
+      f.field(Utils::aggregatorValuesKey, x.aggregators));
 }
 
 struct PrepareGssCommand {
@@ -86,20 +116,6 @@ auto inspect(Inspector& f, FinalizeExecutionCommand& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("withStoring", x.withStoring));
-}
-
-struct AggregatorWrapper {
-  std::shared_ptr<AggregatorHandler> aggregators = nullptr;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, AggregatorWrapper& x) {
-  if constexpr (Inspector::isLoading) {
-    return arangodb::inspection::Status{};
-  } else {
-    x.aggregators->serializeValues(f.builder());
-    return arangodb::inspection::Status{};
-  }
 }
 
 struct ContinueRecoveryCommand {
