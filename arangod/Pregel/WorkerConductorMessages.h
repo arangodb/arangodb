@@ -125,4 +125,16 @@ auto inspect(Inspector& f, FinalizeRecoveryCommand& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss));
 }
+
+struct CollectPregelResultsCommand {
+  uint64_t executionNumber;
+  bool withId;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, CollectPregelResultsCommand& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("withId", x.withId).fallback(false));
+}
 }  // namespace arangodb::pregel

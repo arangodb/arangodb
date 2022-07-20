@@ -936,16 +936,15 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
     return;
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add("withId", VPackValue(withId));
-  b.close();
+  auto collectPregelResultsCommand = CollectPregelResultsCommand{
+      .executionNumber = _executionNumber, .withId = withId};
+  VPackBuilder message;
+  serialize(message, collectPregelResultsCommand);
 
   // merge results from DBServers
   outBuilder.openArray();
   auto res = _sendToAllDBServers(
-      Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
+      Utils::aqlResultsPath, message, [&](VPackSlice const& payload) {
         if (payload.isArray()) {
           outBuilder.add(VPackArrayIterator(payload));
         }
