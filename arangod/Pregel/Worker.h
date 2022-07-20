@@ -111,7 +111,7 @@ class Worker : public IWorker {
   // where new vertices were inserted
   size_t _preRecoveryTotal = 0;
 
-  std::unique_ptr<AggregatorHandler> _conductorAggregators;
+  std::shared_ptr<AggregatorHandler> _conductorAggregators;
   std::unique_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;

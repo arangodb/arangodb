@@ -780,8 +780,9 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
 
+  auto command = deserialize<ContinueRecoveryCommand>(data);
   _workerAggregators->resetValues();
-  _conductorAggregators->setAggregatedValues(data);
+  _conductorAggregators = command.aggregators.aggregators;
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;

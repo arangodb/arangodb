@@ -52,6 +52,7 @@ class IAggregator {
   /// @brief Value from superstep S-1 supplied by the conductor
   virtual void setAggregatedValue(arangodb::velocypack::Slice const& slice) = 0;
 
+  virtual void serialize(arangodb::velocypack::Builder& builder) const = 0;
   virtual void serialize(std::string const& key,
                          arangodb::velocypack::Builder& builder) const = 0;
 
@@ -81,6 +82,9 @@ struct NumberAggregator : public IAggregator {
     _value = slice.getNumber<T>();
   }
 
+  void serialize(arangodb::velocypack::Builder& builder) const override {
+    builder.add(arangodb::velocypack::Value(_value));
+  };
   void serialize(std::string const& key,
                  arangodb::velocypack::Builder& builder) const override {
     builder.add(key, arangodb::velocypack::Value(_value));
@@ -168,6 +172,9 @@ struct BoolOrAggregator : public IAggregator {
     _value = slice.getBool();
   }
 
+  void serialize(arangodb::velocypack::Builder& builder) const override {
+    builder.add(arangodb::velocypack::Value(_value));
+  };
   void serialize(std::string const& key,
                  arangodb::velocypack::Builder& builder) const override {
     builder.add(key, arangodb::velocypack::Value(_value));

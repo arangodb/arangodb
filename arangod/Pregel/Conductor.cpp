@@ -28,6 +28,7 @@
 
 #include "Conductor.h"
 
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
@@ -118,7 +119,7 @@ Conductor::Conductor(
                                    "Algorithm not found");
   }
   _masterContext.reset(_algorithm->masterContext(config));
-  _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
+  _aggregators = std::make_shared<AggregatorHandler>(_algorithm.get());
 
   _maxSuperstep =
       VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
@@ -493,13 +494,12 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
       _masterContext->preCompensation();
     }
 
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    _aggregators->serializeValues(b);
-    b.close();
+    auto continueRecoveryCommand = ContinueRecoveryCommand{
+        .executionNumber = _executionNumber, .aggregators = {_aggregators}};
+    VPackBuilder command;
+    serialize(command, continueRecoveryCommand);
     // first allow all workers to run worker level operations
-    res = _sendToAllDBServers(Utils::continueRecoveryPath, b);
+    res = _sendToAllDBServers(Utils::continueRecoveryPath, command);
 
   } else {
     LOG_PREGEL("6ecf2", INFO) << "Recovery finished. Proceeding normally";

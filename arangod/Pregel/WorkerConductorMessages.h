@@ -22,8 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Pregel/Aggregator.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Utils.h"
+#include "velocypack/Slice.h"
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace arangodb::pregel {
@@ -84,4 +88,29 @@ auto inspect(Inspector& f, FinalizeExecutionCommand& x) {
       f.field("withStoring", x.withStoring));
 }
 
+struct AggregatorWrapper {
+  std::shared_ptr<AggregatorHandler> aggregators = nullptr;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, AggregatorWrapper& x) {
+  if constexpr (Inspector::isLoading) {
+    return arangodb::inspection::Status{};
+  } else {
+    x.aggregators->serializeValues(f.builder());
+    return arangodb::inspection::Status{};
+  }
+}
+
+struct ContinueRecoveryCommand {
+  uint64_t executionNumber;
+  AggregatorWrapper aggregators;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, ContinueRecoveryCommand& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::aggregatorValuesKey, x.aggregators));
+}
 }  // namespace arangodb::pregel
