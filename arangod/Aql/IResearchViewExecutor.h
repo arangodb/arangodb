@@ -33,6 +33,7 @@
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/SearchDoc.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -492,6 +493,9 @@ class IResearchViewExecutorBase {
   bool writeLocalDocumentId(ReadContext& ctx, LocalDocumentId const& documentId,
                             LogicalCollection const& collection);
 
+  void writeSearchDoc(ReadContext& ctx, size_t segmentId, irs::doc_id_t doc,
+                      RegisterId reg);
+
   void reset();
 
   bool writeStoredValue(
@@ -520,10 +524,10 @@ class IResearchViewExecutorBase {
   iresearch::ViewSnapshotPtr _reader;
   irs::filter::prepared::ptr _filter;
   irs::Order _order;
-  std::vector<ColumnIterator>
-      _storedValuesReaders;  // current stored values readers
+  std::vector<ColumnIterator> _storedValuesReaders;
+  std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized;
-};  // IResearchViewExecutorBase
+};
 
 template<bool copyStored, bool ordered,
          iresearch::MaterializeType materializeType>

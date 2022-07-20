@@ -33,11 +33,12 @@ namespace arangodb::iresearch {
 
 constexpr size_t kSearchDocBufSize = sizeof(size_t) + sizeof(irs::doc_id_t);
 
-inline void encodeSearchDoc(std::span<char, kSearchDocBufSize> buf,
-                            size_t segmentOffset,
-                            irs::doc_id_t docId) noexcept {
+inline std::string_view encodeSearchDoc(std::span<char, kSearchDocBufSize> buf,
+                                        size_t segmentOffset,
+                                        irs::doc_id_t docId) noexcept {
   std::memcpy(buf.data(), &segmentOffset, sizeof segmentOffset);
   std::memcpy(buf.data() + sizeof segmentOffset, &docId, sizeof docId);
+  return {buf.data(), buf.size()};
 }
 
 inline std::pair<size_t, irs::doc_id_t> decodeSearchDoc(

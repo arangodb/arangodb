@@ -35,7 +35,6 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/SearchDoc.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -656,7 +655,6 @@ template<typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
                                                    IResearchViewStats& stats) {
   auto& impl = static_cast<Impl&>(*this);
-  std::array<char, kSearchDocBufSize> buf;
 
   while (true) {
     if (_indexReadBuffer.empty()) {
@@ -672,12 +670,9 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
     }
     IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
+    // FIXME(gnusi): compile time
     if (auto reg = infos().searchDocIdRegId(); reg.isValid()) {
-      encodeSearchDoc(buf, 0, 1);
-
-      AqlValue value{buf.data(), buf.size()};
-      AqlValueGuard guard{value, true};
-      ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
+      writeSearchDoc(ctx, 0, 1, reg);
     }
 
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
@@ -771,6 +766,17 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 
     _isInitialized = true;
   }
+}
+
+template<typename Impl, typename Traits>
+void IResearchViewExecutorBase<Impl, Traits>::writeSearchDoc(ReadContext& ctx,
+                                                             size_t segmentId,
+                                                             irs::doc_id_t doc,
+                                                             RegisterId reg) {
+  TRI_ASSERT(irs::doc_limits::valid(doc));
+  AqlValue value{encodeSearchDoc(_buf, segmentId, doc)};
+  AqlValueGuard guard{value, true};
+  ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
 }
 
 template<typename Impl, typename Traits>
