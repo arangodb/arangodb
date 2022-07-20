@@ -224,6 +224,23 @@ auto DocumentStateTransaction::apply() -> futures::Future<Result> {
                   to_string(getLastOperation()), _tid.id())};
 }
 
+auto DocumentStateTransaction::finish() -> futures::Future<Result> {
+  auto methods = getMethods();
+
+  switch (getLastOperation()) {
+    case OperationType::kCommit:
+      // Try to commit the operation or abort in case it failed
+      return methods->finishAsync(getResult().result);
+    case OperationType::kAbort:
+      return methods->abortAsync();
+    default:
+      return Result{
+          TRI_ERROR_TRANSACTION_INTERNAL,
+          fmt::format("Transaction of type {} with ID {} could not be finished",
+                      to_string(getLastOperation()), getLastEntry().tid.id())};
+  }
+}
+
 auto DocumentStateTransaction::getLastOperation() const -> OperationType {
   return getLastEntry().operation;
 }
@@ -296,16 +313,16 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
   auto tid = entry.tid;
   auto trx = getTrx(tid);
 
-  if (entry.operation == kCommit || entry.operation == kAbort) {
-    // Commit and Abort transactions are being replicated to all participants,
-    // regardless whether they received any entries so far. In such cases it is
-    // ok to return a nullptr.
-    return trx;
-  }
-
   if (trx != nullptr) {
     trx->appendEntry(std::move(entry));
     return trx;
+  }
+
+  if (entry.operation == kCommit || entry.operation == kAbort) {
+    // Commit and Abort transactions are being replicated to all participants,
+    // regardless whether they received any entries so far. In such case it is
+    // ok to return a nullptr.
+    return nullptr;
   }
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -342,31 +359,6 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
   }
 
   return trx;
-}
-
-auto DocumentStateTransactionHandler::finishTransaction(DocumentLogEntry entry)
-    -> futures::Future<Result> {
-  auto trx = getTrx(entry.tid);
-  if (trx == nullptr) {
-    return Result{
-        TRI_ERROR_TRANSACTION_NOT_FOUND,
-        fmt::format("Could not find transaction ID {}", entry.tid.id())};
-  }
-
-  auto methods = trx->getMethods();
-
-  switch (entry.operation) {
-    case OperationType::kCommit:
-      // Try to commit the operation or abort in case it failed
-      return methods->finishAsync(trx->getResult().result);
-    case OperationType::kAbort:
-      return methods->abortAsync();
-    default:
-      return Result{
-          TRI_ERROR_TRANSACTION_INTERNAL,
-          fmt::format("Transaction of type {} with ID {} could not be finished",
-                      to_string(trx->getLastOperation()), entry.tid.id())};
-  }
 }
 
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(

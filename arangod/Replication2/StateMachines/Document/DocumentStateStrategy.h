@@ -114,6 +114,7 @@ struct IDocumentStateTransaction {
 
   virtual auto getTid() const -> TransactionId = 0;
   virtual auto apply() -> futures::Future<Result> = 0;
+  virtual auto finish() -> futures::Future<Result> = 0;
 };
 
 class DocumentStateTransaction
@@ -124,6 +125,7 @@ class DocumentStateTransaction
                                     DocumentLogEntry const& entry);
   auto getTid() const -> TransactionId override;
   auto apply() -> futures::Future<Result> override;
+  auto finish() -> futures::Future<Result> override;
 
   auto getLastOperation() const -> OperationType;
   auto getShardId() const -> ShardID;
@@ -152,8 +154,6 @@ struct IDocumentStateTransactionHandler {
   virtual ~IDocumentStateTransactionHandler() = default;
   virtual auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
-  virtual auto finishTransaction(DocumentLogEntry entry)
-      -> futures::Future<Result> = 0;
 };
 
 class DocumentStateTransactionHandler
@@ -165,8 +165,6 @@ class DocumentStateTransactionHandler
 
   auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> override;
-  auto finishTransaction(DocumentLogEntry entry)
-      -> futures::Future<Result> override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<DocumentStateTransaction>;

@@ -85,7 +85,7 @@ auto DocumentFollowerState::applyEntries(
         case OperationType::kCommit:
         case OperationType::kAbort:
           if (trx != nullptr) {
-            fut = transactionHandler->finishTransaction(doc);
+            fut = trx->finish();
           }
           break;
         default:
