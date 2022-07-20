@@ -534,7 +534,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     }
   }
 
-  VPackBuilder package;
+  VPackBuilder event;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
     _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
@@ -558,20 +558,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     // only set the state here, because _processVertices checks for it
     _state = WorkerState::IDLE;
 
-    package.openObject();
-    package.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(package);
-    _reports.clear();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(_config.globalSuperstep()));
-    _messageStats.serializeValues(package);
-    if (_config.asynchronousMode()) {
-      _workerAggregators->serializeValues(package, true);
-    }
-    package.close();
+    _createGssFinishedEvent(event);
 
     if (_config.asynchronousMode()) {
       // async adaptive message buffering
@@ -586,11 +573,11 @@ void Worker<V, E, M>::_finishedProcessing() {
   }
 
   if (_config.asynchronousMode()) {
-    LOG_PREGEL("56a27", DEBUG) << "Finished LSS: " << package.toJson();
+    LOG_PREGEL("56a27", DEBUG) << "Finished LSS: " << event.toJson();
 
     // if the conductor is unreachable or has send data (try to) proceed
     _callConductorWithResponse(
-        Utils::finishedWorkerStepPath, package, [this](VPackSlice response) {
+        Utils::finishedWorkerStepPath, event, [this](VPackSlice response) {
           if (response.isObject()) {
             _conductorAggregators->aggregateValues(
                 response);  // only aggregate values
@@ -603,8 +590,23 @@ void Worker<V, E, M>::_finishedProcessing() {
         });
 
   } else {  // no answer expected
-    _callConductor(Utils::finishedWorkerStepPath, package);
-    LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << package.toJson();
+    _callConductor(Utils::finishedWorkerStepPath, event);
+    LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();
+  }
+}
+
+template<typename V, typename E, typename M>
+void Worker<V, E, M>::_createGssFinishedEvent(VPackBuilder& b) {
+  VPackObjectBuilder o(&b);
+  b.add(VPackValue(Utils::reportsKey));
+  _reports.intoBuilder(b);
+  _reports.clear();
+  b.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+  b.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+  b.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
+  _messageStats.serializeValues(b);
+  if (_config.asynchronousMode()) {
+    _workerAggregators->serializeValues(b, true);
   }
 }
 
