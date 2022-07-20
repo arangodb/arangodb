@@ -32,7 +32,6 @@
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
-#include "Pregel/Status/StatusMessage.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker.h"
 
@@ -65,14 +64,14 @@ using namespace arangodb::pregel;
 template<typename V, typename E, typename M>
 std::function<void()> Worker<V, E, M>::_statusCallback() {
   return [self = shared_from_this(), this] {
-    auto statusMessage =
-        StatusMessage{.senderId = ServerState::instance()->getId(),
+    auto statusUpdatedEvent =
+        StatusUpdated{.senderId = ServerState::instance()->getId(),
                       .executionNumer = _config.executionNumber(),
                       .status = _observeStatus()};
-    VPackBuilder message;
-    serialize(message, statusMessage);
+    VPackBuilder event;
+    serialize(event, statusUpdatedEvent);
 
-    _callConductor(Utils::statusUpdatePath, message);
+    _callConductor(Utils::statusUpdatePath, event);
   };
 }
 
@@ -179,14 +178,14 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
   std::function<void()> graphLoadedCallback = [self = shared_from_this(),
                                                this] {
-    auto finishedMessage =
-        GraphLoadedMessage{.senderId = ServerState::instance()->getId(),
-                           .executionNumber = _config.executionNumber(),
-                           .vertexCount = _graphStore->localVertexCount(),
-                           .edgeCount = _graphStore->localEdgeCount()};
-    VPackBuilder message;
-    serialize(message, finishedMessage);
-    _callConductor(Utils::finishedStartupPath, message);
+    auto graphLoadedEvent =
+        GraphLoaded{.senderId = ServerState::instance()->getId(),
+                    .executionNumber = _config.executionNumber(),
+                    .vertexCount = _graphStore->localVertexCount(),
+                    .edgeCount = _graphStore->localEdgeCount()};
+    VPackBuilder event;
+    serialize(event, graphLoadedEvent);
+    _callConductor(Utils::finishedStartupPath, event);
 
     _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   };
@@ -229,7 +228,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   }
   _state = WorkerState::PREPARING;  // stop any running step
   LOG_PREGEL("f16f2", DEBUG) << "Received prepare GSS: " << data.toJson();
-  auto const command = deserialize<PrepareGssCommand>(data);
+  auto const command = deserialize<PrepareGss>(data);
   const uint64_t gss = command.gss;
   if (_expectedGSS != gss) {
     THROW_ARANGO_EXCEPTION_FORMAT(
@@ -663,7 +662,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
 
-  auto const command = deserialize<FinalizeExecutionCommand>(body);
+  auto const command = deserialize<FinalizeExecution>(body);
 
   auto const doStore = command.withStoring;
   auto cleanup = [self = shared_from_this(), this, doStore, cb] {
@@ -786,7 +785,7 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
 
-  auto command = deserialize<ContinueRecoveryCommand>(data);
+  auto command = deserialize<ContinueRecovery>(data);
   _workerAggregators->resetValues();
   _conductorAggregators = command.aggregators.aggregators;
 
@@ -841,7 +840,7 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
     return;
   }
 
-  auto command = deserialize<FinalizeRecoveryCommand>(data);
+  auto command = deserialize<FinalizeRecovery>(data);
   _expectedGSS = command.gss;
   _messageStats.resetTracking();
   _state = WorkerState::IDLE;

@@ -747,7 +747,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    auto command = deserialize<CollectPregelResultsCommand>(body);
+    auto command = deserialize<CollectPregelResults>(body);
     w->aqlResult(outBuilder, command.withId);
   }
 }

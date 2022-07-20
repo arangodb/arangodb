@@ -24,6 +24,7 @@
 
 #include "Pregel/Aggregator.h"
 #include "Pregel/AggregatorHandler.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "velocypack/Slice.h"
 #include <cstdint>
@@ -46,7 +47,9 @@ auto inspect(Inspector& f, AggregatorWrapper& x) {
   }
 }
 
-struct GraphLoadedMessage {
+// ------ events sent from worker to conductor -------
+
+struct GraphLoaded {
   std::string senderId;
   uint64_t executionNumber;
   uint64_t vertexCount;
@@ -54,7 +57,7 @@ struct GraphLoadedMessage {
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, GraphLoadedMessage& x) {
+auto inspect(Inspector& f, GraphLoaded& x) {
   return f.object(x).fields(
       f.field(Utils::senderKey, x.senderId),
       f.field(Utils::executionNumberKey, x.executionNumber),
@@ -77,7 +80,23 @@ auto inspect(Inspector& f, RecoveryFinished& x) {
       f.field(Utils::aggregatorValuesKey, x.aggregators));
 }
 
-struct PrepareGssCommand {
+struct StatusUpdated {
+  std::string senderId;
+  uint64_t executionNumer;
+  Status status;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, StatusUpdated& x) {
+  return f.object(x).fields(
+      f.field(Utils::senderKey, x.senderId),
+      f.field(Utils::executionNumberKey, x.executionNumer),
+      f.field("status", x.status));
+}
+
+// ------ commands sent from conductor to worker -------
+
+struct PrepareGss {
   uint64_t executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
@@ -85,70 +104,70 @@ struct PrepareGssCommand {
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, PrepareGssCommand& x) {
+auto inspect(Inspector& f, PrepareGss& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
-struct CancelGssCommand {
+struct CancelGss {
   uint64_t executionNumber;
   uint64_t gss;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, CancelGssCommand& x) {
+auto inspect(Inspector& f, CancelGss& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss));
 }
 
-struct FinalizeExecutionCommand {
+struct FinalizeExecution {
   uint64_t executionNumber;
   uint64_t gss;
   bool withStoring;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, FinalizeExecutionCommand& x) {
+auto inspect(Inspector& f, FinalizeExecution& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("withStoring", x.withStoring));
 }
 
-struct ContinueRecoveryCommand {
+struct ContinueRecovery {
   uint64_t executionNumber;
   AggregatorWrapper aggregators;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, ContinueRecoveryCommand& x) {
+auto inspect(Inspector& f, ContinueRecovery& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::aggregatorValuesKey, x.aggregators));
 }
 
-struct FinalizeRecoveryCommand {
+struct FinalizeRecovery {
   uint64_t executionNumber;
   uint64_t gss;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, FinalizeRecoveryCommand& x) {
+auto inspect(Inspector& f, FinalizeRecovery& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss));
 }
 
-struct CollectPregelResultsCommand {
+struct CollectPregelResults {
   uint64_t executionNumber;
   bool withId;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, CollectPregelResultsCommand& x) {
+auto inspect(Inspector& f, CollectPregelResults& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("withId", x.withId).fallback(false));

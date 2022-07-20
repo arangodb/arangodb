@@ -39,7 +39,6 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Status/Status.h"
-#include "Pregel/Status/StatusMessage.h"
 #include "Pregel/Status/ConductorStatus.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -192,11 +191,10 @@ bool Conductor::_startGlobalStep() {
 
   _callbackMutex.assertLockedByCurrentThread();
   // send prepare GSS notice
-  auto prepareGssCommand =
-      PrepareGssCommand{.executionNumber = _executionNumber,
-                        .gss = _globalSuperstep,
-                        .vertexCount = _totalVerticesCount,
-                        .edgeCount = _totalEdgesCount};
+  auto prepareGssCommand = PrepareGss{.executionNumber = _executionNumber,
+                                      .gss = _globalSuperstep,
+                                      .vertexCount = _totalVerticesCount,
+                                      .edgeCount = _totalEdgesCount};
   VPackBuilder command;
   serialize(command, prepareGssCommand);
 
@@ -349,27 +347,27 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
 
-  auto message = deserialize<StatusMessage>(data);
+  auto event = deserialize<StatusUpdated>(data);
 
   LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
 
-  _status.updateWorkerStatus(message.senderId, std::move(message.status));
+  _status.updateWorkerStatus(event.senderId, std::move(event.status));
 }
 
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
-  auto loadedMessage = deserialize<GraphLoadedMessage>(data);
+  auto loadedEvent = deserialize<GraphLoaded>(data);
 
-  _ensureUniqueResponse(loadedMessage.senderId);
+  _ensureUniqueResponse(loadedEvent.senderId);
   if (_state != ExecutionState::LOADING) {
     LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
   }
 
-  _totalVerticesCount += loadedMessage.vertexCount;
-  _totalEdgesCount += loadedMessage.edgeCount;
+  _totalVerticesCount += loadedEvent.vertexCount;
+  _totalEdgesCount += loadedEvent.edgeCount;
 
   if (_respondedServers.size() != _dbServers.size()) {
     return;
@@ -500,7 +498,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
       _masterContext->preCompensation();
     }
 
-    auto continueRecoveryCommand = ContinueRecoveryCommand{
+    auto continueRecoveryCommand = ContinueRecovery{
         .executionNumber = _executionNumber, .aggregators = {_aggregators}};
     VPackBuilder command;
     serialize(command, continueRecoveryCommand);
@@ -511,7 +509,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     LOG_PREGEL("6ecf2", INFO) << "Recovery finished. Proceeding normally";
 
     // build the message, works for all cases
-    auto finalizeRecoveryCommand = FinalizeRecoveryCommand{
+    auto finalizeRecoveryCommand = FinalizeRecovery{
         .executionNumber = _executionNumber, .gss = _globalSuperstep};
     VPackBuilder message;
     serialize(message, finalizeRecoveryCommand);
@@ -579,8 +577,8 @@ void Conductor::startRecovery() {
         }
         _dbServers = goodServers;
 
-        auto cancelGssCommand = CancelGssCommand{
-            .executionNumber = _executionNumber, .gss = _globalSuperstep};
+        auto cancelGssCommand = CancelGss{.executionNumber = _executionNumber,
+                                          .gss = _globalSuperstep};
         VPackBuilder command;
         serialize(command, cancelGssCommand);
         _sendToAllDBServers(Utils::cancelGSSPath, command);
@@ -844,10 +842,10 @@ ErrorCode Conductor::_finalizeWorkers() {
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
 
-  auto finalizeExecutionCommand = FinalizeExecutionCommand{
-      .executionNumber = _executionNumber,
-      .gss = _globalSuperstep,
-      .withStoring = _state == ExecutionState::STORING};
+  auto finalizeExecutionCommand =
+      FinalizeExecution{.executionNumber = _executionNumber,
+                        .gss = _globalSuperstep,
+                        .withStoring = _state == ExecutionState::STORING};
   VPackBuilder command;
   serialize(command, finalizeExecutionCommand);
 
@@ -942,7 +940,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
     return;
   }
 
-  auto collectPregelResultsCommand = CollectPregelResultsCommand{
+  auto collectPregelResultsCommand = CollectPregelResults{
       .executionNumber = _executionNumber, .withId = withId};
   VPackBuilder message;
   serialize(message, collectPregelResultsCommand);
