@@ -4564,11 +4564,10 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                 auto collections = viewNode.collections();
                 auto const collCount = collections.size();
                 TRI_ASSERT(collCount > 0);
-                if (collCount > 1) {
-                  hasFoundMultipleShards = true;
-                } else if (1 == collCount) {
+                hasFoundMultipleShards = collCount > 0;
+                if (collCount == 1) {
                   hasFoundMultipleShards =
-                      collections.front().get().numberOfShards() > 1;
+                      collections.front().first.get().numberOfShards() > 1;
                 }
               } break;
               default:
