@@ -3099,7 +3099,8 @@ void arangodb::consensus::enforceReplicationFunctional(
           size_t actualReplicationFactor =
               1 +
               Job::countGoodOrBadServersInList(snapshot, onlyFollowers.slice());
-          // leader plus GOOD or BAD followers (not FAILED)
+          // leader plus GOOD or BAD followers (not FAILED (expect maintenance
+          // servers))
           size_t apparentReplicationFactor = shard.slice().length();
 
           if (actualReplicationFactor != replicationFactor ||
