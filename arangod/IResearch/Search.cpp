@@ -377,7 +377,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
       for (auto& handle : handles) {
         if (auto index = handle->lock(); index) {
           if (ctx == Serialization::Properties) {
-            auto collectionName = resolver.getCollectionName(cid);
+            auto collectionName = resolver.getCollectionNameCluster(cid);
             // TODO(MBkkt) remove dynamic_cast
             auto* rawIndex = dynamic_cast<Index*>(index.get());
             if (collectionName.empty() || !rawIndex) {
