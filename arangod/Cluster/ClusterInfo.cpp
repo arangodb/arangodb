@@ -6996,14 +6996,10 @@ void ClusterInfo::SyncerThread::run() {
         _cv.wait_for(lk, 100ms);
 #endif
       }
-      news = _news;
+      news = std::exchange(_news, false);
     }
 
     if (news) {
-      {
-        std::unique_lock<std::mutex> lk(_m);
-        _news = false;
-      }
       try {
         _f();
       } catch (basics::Exception const& ex) {
