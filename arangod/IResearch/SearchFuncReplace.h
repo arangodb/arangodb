@@ -39,7 +39,7 @@ void replaceSearchFunc(aql::CalculationNode& node, DedupSearchFuncs& dedup,
   auto& expr = *node.expression();
   auto* ast = expr.ast();
 
-  if (!expr.ast()) {
+  if (!ast) {
     // ast is not set
     return;
   }
@@ -64,14 +64,10 @@ void replaceSearchFunc(aql::CalculationNode& node, DedupSearchFuncs& dedup,
 
     HashedSearchFunc const key{ref, node};
 
-    auto it = dedup.find(key);
-
-    if (it == dedup.end()) {
-      // create variable
+    auto const it = dedup.lazy_emplace(key, [&key, ast](auto const& ctor) {
       auto* var = ast->variables()->createTemporaryVariable();
-
-      it = dedup.try_emplace(key, var).first;
-    }
+      ctor(key, var);
+    });
 
     return ast->createNodeReference(it->second);
   };
