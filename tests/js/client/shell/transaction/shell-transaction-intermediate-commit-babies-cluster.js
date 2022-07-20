@@ -102,7 +102,7 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
     testAqlIntermediateCommitsWithFailurePoint: function () {
       let [shardId, leader, follower] = collectionInfo();
       // trigger a certain failure point on the leader
-      debugSetFailAt(leader, "insertLocal::fakeResult2");
+      debugSetFailAt(leader, "insertLocal::fakeResult1");
 
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
