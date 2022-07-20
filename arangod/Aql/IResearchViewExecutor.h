@@ -252,6 +252,11 @@ class IndexReadBuffer {
     return _keyBuffer[idx];
   }
 
+  arangodb::iresearch::SearchDoc const& getSearchDoc(size_t idx) noexcept {
+    TRI_ASSERT(_searchDocs.size() > idx);
+    return _searchDocs[idx];
+  }
+
   ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
 
   void setScoresSort(std::span<std::pair<size_t, bool> const> s) noexcept {
@@ -262,6 +267,10 @@ class IndexReadBuffer {
 
   template<typename... Args>
   void pushValue(Args&&... args);
+
+  void pushSearchDoc(size_t segmentOffset, irs::doc_id_t docId) {
+    _searchDocs.emplace_back(segmentOffset, docId);
+  }
 
   void pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
 
@@ -292,6 +301,7 @@ class IndexReadBuffer {
     auto res =
         maxSize * sizeof(typename decltype(_keyBuffer)::value_type) +
         maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
+        maxSize * sizeof(typename decltype(_searchDocs)::value_type) +
         maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
     if (!_scoresSort.empty()) {
       res += maxSize * sizeof(typename decltype(_rows)::value_type);
@@ -313,6 +323,7 @@ class IndexReadBuffer {
         }
       }
       _keyBuffer.reserve(atMost);
+      _searchDocs.reserve(atMost);
       _scoreBuffer.reserve(atMost * scores);
       _storedValuesBuffer.reserve(atMost * stored);
       if (!_scoresSort.empty()) {
@@ -357,19 +368,19 @@ class IndexReadBuffer {
   // .
 
   std::vector<ValueType> _keyBuffer;
+  // FIXME(gnusi): compile time
+  std::vector<arangodb::iresearch::SearchDoc> _searchDocs;
   std::vector<float_t> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
-
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
-
   std::span<std::pair<size_t, bool> const> _scoresSort;
   std::vector<size_t> _rows;
   size_t _maxSize;
   size_t _heapSizeLeft;
   size_t _storedValuesCount;
   ResourceUsageScope _memoryTracker;
-};  // IndexReadBuffer
+};
 
 template<typename Impl>
 struct IResearchViewExecutorTraits;
@@ -493,7 +504,8 @@ class IResearchViewExecutorBase {
   bool writeLocalDocumentId(ReadContext& ctx, LocalDocumentId const& documentId,
                             LogicalCollection const& collection);
 
-  void writeSearchDoc(ReadContext& ctx, size_t segmentId, irs::doc_id_t doc,
+  void writeSearchDoc(ReadContext& ctx,
+                      arangodb::iresearch::SearchDoc const& doc,
                       RegisterId reg);
 
   void reset();

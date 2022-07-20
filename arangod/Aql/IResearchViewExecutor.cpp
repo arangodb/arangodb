@@ -373,12 +373,14 @@ auto ScoreIterator::end() noexcept {
 template<typename ValueType, bool copyStored>
 IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
     size_t const numScoreRegisters, ResourceMonitor& monitor)
-    : _numScoreRegisters(numScoreRegisters),
-      _keyBaseIdx(0),
-      _maxSize(0),
-      _heapSizeLeft(0),
-      _storedValuesCount(0),
-      _memoryTracker(monitor) {}
+    : _numScoreRegisters{numScoreRegisters},
+      _keyBaseIdx{0},
+      _maxSize{0},
+      _heapSizeLeft{0},
+      _storedValuesCount{0},
+      _memoryTracker{monitor} {
+  // FIXME(gnusi): reserve memory for vectors?
+}
 
 template<typename ValueType, bool copyStored>
 ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
@@ -479,6 +481,7 @@ void IndexReadBuffer<ValueType, copyStored>::clear() noexcept {
   _heapSizeLeft = _maxSize;
   _keyBuffer.clear();
   _scoreBuffer.clear();
+  _searchDocs.clear();
   _storedValuesBuffer.clear();
   _rows.clear();
 }
@@ -668,11 +671,13 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
     if (_indexReadBuffer.empty()) {
       return false;
     }
-    IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
+    IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
 
     // FIXME(gnusi): compile time
-    if (auto reg = infos().searchDocIdRegId(); reg.isValid()) {
-      writeSearchDoc(ctx, 0, 1, reg);
+    if (auto reg = this->infos().searchDocIdRegId(); reg.isValid()) {
+      this->writeSearchDoc(
+          ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()),
+          reg);
     }
 
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
@@ -769,12 +774,10 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 }
 
 template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::writeSearchDoc(ReadContext& ctx,
-                                                             size_t segmentId,
-                                                             irs::doc_id_t doc,
-                                                             RegisterId reg) {
-  TRI_ASSERT(irs::doc_limits::valid(doc));
-  AqlValue value{encodeSearchDoc(_buf, segmentId, doc)};
+void IResearchViewExecutorBase<Impl, Traits>::writeSearchDoc(
+    ReadContext& ctx, SearchDoc const& doc, RegisterId reg) {
+  TRI_ASSERT(irs::doc_limits::valid(doc.second));
+  AqlValue value{encodeSearchDoc(_buf, doc)};
   AqlValueGuard guard{value, true};
   ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
 }
@@ -1365,6 +1368,11 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
     TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
 
     this->_indexReadBuffer.pushValue(documentId);
+
+    // FIXME(gnusi): compile time
+    if (this->infos().searchDocIdRegId().isValid()) {
+      this->_indexReadBuffer.pushSearchDoc(_readerOffset, _doc->value);
+    }
 
     // in the ordered case we have to write scores as well as a document
     if constexpr (ordered) {
