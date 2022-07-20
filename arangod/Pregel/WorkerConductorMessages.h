@@ -57,4 +57,17 @@ auto inspect(Inspector& f, PrepareGssCommand& x) {
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
+
+struct CancelGssCommand {
+  uint64_t executionNumber;
+  uint64_t gss;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, CancelGssCommand& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss));
+}
+
 }  // namespace arangodb::pregel

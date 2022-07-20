@@ -574,12 +574,11 @@ void Conductor::startRecovery() {
         }
         _dbServers = goodServers;
 
-        VPackBuilder b;
-        b.openObject();
-        b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-        b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-        b.close();
-        _sendToAllDBServers(Utils::cancelGSSPath, b);
+        auto cancelGssCommand = CancelGssCommand{
+            .executionNumber = _executionNumber, .gss = _globalSuperstep};
+        VPackBuilder command;
+        serialize(command, cancelGssCommand);
+        _sendToAllDBServers(Utils::cancelGSSPath, command);
         if (_state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
         }
@@ -596,7 +595,6 @@ void Conductor::startRecovery() {
         additionalKeys.openObject();
         additionalKeys.add(Utils::recoveryMethodKey,
                            VPackValue(Utils::compensate));
-        _aggregators->serializeValues(b);
         additionalKeys.close();
         _aggregators->resetValues();
 
