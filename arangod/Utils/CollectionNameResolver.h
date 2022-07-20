@@ -25,8 +25,11 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
+
+#include <shared_mutex>
 
 enum TRI_col_type_e : uint32_t;
 
@@ -76,14 +79,14 @@ class CollectionNameResolver {
   ///         the cluster collection on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalCollection> getCollection(
-      std::string const& nameOrId) const;
+      std::string_view nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name (local case),
   /// use this if you know you are on a single server or on a DBserver
   /// and need to look up a local collection name (or shard name).
   //////////////////////////////////////////////////////////////////////////////
-  DataSourceId getCollectionIdLocal(std::string const& name) const;
+  DataSourceId getCollectionIdLocal(std::string_view name) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a cluster collection id for a cluster collection name,
@@ -91,10 +94,10 @@ class CollectionNameResolver {
   /// cases the name is resolved as a cluster wide collection name and the
   /// cluster wide collection id is returned.
   //////////////////////////////////////////////////////////////////////////////
-  DataSourceId getCollectionIdCluster(std::string const& name) const;
+  DataSourceId getCollectionIdCluster(std::string_view name) const;
 
   std::shared_ptr<LogicalCollection> getCollectionStructCluster(
-      std::string const& name) const;
+      std::string_view name) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name, this is the
@@ -102,7 +105,7 @@ class CollectionNameResolver {
   /// single server or DBserver it will use the local lookup and on a
   /// coordinator it will use the cluster wide lookup.
   //////////////////////////////////////////////////////////////////////////////
-  DataSourceId getCollectionId(std::string const& name) const;
+  DataSourceId getCollectionId(std::string_view name) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection name for a collection id, this implements
@@ -122,7 +125,7 @@ class CollectionNameResolver {
   /// a string with the (numerical) collection id, this returns the cluster
   /// wide collection name in the DBserver case
   //////////////////////////////////////////////////////////////////////////////
-  std::string getCollectionName(std::string const& nameOrId) const;
+  std::string getCollectionName(std::string_view nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a data-source struct for a data-source id
@@ -138,7 +141,7 @@ class CollectionNameResolver {
   ///         the cluster data-source on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalDataSource> getDataSource(
-      std::string const& nameOrId) const;
+      std::string_view nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a view struct for a view id
@@ -153,7 +156,7 @@ class CollectionNameResolver {
   /// @return the local view on dbserver / standalone
   ///         the cluster view on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalView> getView(std::string const& nameOrId) const;
+  std::shared_ptr<LogicalView> getView(std::string_view nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the vocbase instance this resolver instance uses
@@ -177,14 +180,16 @@ class CollectionNameResolver {
   ServerState::RoleEnum const _serverRole;
 
   /// @brief lock protecting caches
-  mutable basics::ReadWriteLock _lock;
+  mutable std::shared_mutex _lock;
 
   /// @brief collection id => collection name map
-  mutable std::unordered_map<DataSourceId, std::string> _resolvedIds;
+  mutable containers::FlatHashMap<DataSourceId, std::string> _resolvedIds;
 
-  mutable std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>>
+  mutable containers::FlatHashMap<DataSourceId,
+                                  std::shared_ptr<LogicalDataSource>>
       _dataSourceById;  // cached data-source by id
-  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>>
+  mutable containers::FlatHashMap<std::string,
+                                  std::shared_ptr<LogicalDataSource>>
       _dataSourceByName;  // cached data-source by name
 };
 

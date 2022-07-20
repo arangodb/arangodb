@@ -237,6 +237,7 @@ Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     }
     // refresh view from Agency
     view = engine.getView(vocbase.name(), id);
+    TRI_ASSERT(view);
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView
