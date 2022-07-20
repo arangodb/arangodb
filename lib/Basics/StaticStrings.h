@@ -181,7 +181,6 @@ class StaticStrings {
   static std::string const Authorization;
   static std::string const BatchContentType;
   static std::string const CacheControl;
-  static std::string const CacheControlValue;
   static std::string const Close;
   static std::string const ClusterCommSource;
   static std::string const Code;
@@ -218,13 +217,9 @@ class StaticStrings {
   static std::string const XArangoFrontend;
   static std::string const XArangoQueueTimeSeconds;
   static std::string const ContentSecurityPolicy;
-  static std::string const ContentSecurityPolicyValue;
   static std::string const Pragma;
-  static std::string const PragmaValue;
   static std::string const Expires;
-  static std::string const ExpiresValue;
   static std::string const HSTS;
-  static std::string const HSTSValue;
 
   // mime types
   static std::string const MimeTypeDump;

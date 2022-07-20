@@ -378,13 +378,15 @@ void CommTask::finishExecution(GeneralResponse& res,
 
     // CSP Headers for security.
     res.setHeaderNCIfNotSet(StaticStrings::ContentSecurityPolicy,
-                            StaticStrings::ContentSecurityPolicyValue);
-    res.setHeaderNCIfNotSet(StaticStrings::CacheControl,
-                            StaticStrings::CacheControlValue);
-    res.setHeaderNCIfNotSet(StaticStrings::Pragma, StaticStrings::PragmaValue);
-    res.setHeaderNCIfNotSet(StaticStrings::Expires,
-                            StaticStrings::ExpiresValue);
-    res.setHeaderNCIfNotSet(StaticStrings::HSTS, StaticStrings::HSTSValue);
+                            "frame-ancestors 'self'; form-action 'self';");
+    res.setHeaderNCIfNotSet(
+        StaticStrings::CacheControl,
+        "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, "
+        "max-age=0, s-maxage=0");
+    res.setHeaderNCIfNotSet(StaticStrings::Pragma, "no-cache");
+    res.setHeaderNCIfNotSet(StaticStrings::Expires, "0");
+    res.setHeaderNCIfNotSet(StaticStrings::HSTS,
+                            "max-age=31536000 ; includeSubDomains");
   }
 
   // add "x-arango-queue-time-seconds" header
