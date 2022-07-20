@@ -113,4 +113,16 @@ auto inspect(Inspector& f, ContinueRecoveryCommand& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::aggregatorValuesKey, x.aggregators));
 }
+
+struct FinalizeRecoveryCommand {
+  uint64_t executionNumber;
+  uint64_t gss;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, FinalizeRecoveryCommand& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss));
+}
 }  // namespace arangodb::pregel

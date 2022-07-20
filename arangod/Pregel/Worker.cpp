@@ -836,7 +836,8 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
     return;
   }
 
-  _expectedGSS = data.get(Utils::globalSuperstepKey).getUInt();
+  auto command = deserialize<FinalizeRecoveryCommand>(data);
+  _expectedGSS = command.gss;
   _messageStats.resetTracking();
   _state = WorkerState::IDLE;
   LOG_PREGEL("17f3c", INFO) << "Recovery finished";

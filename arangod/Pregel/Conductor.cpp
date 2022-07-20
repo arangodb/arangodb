@@ -505,12 +505,11 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     LOG_PREGEL("6ecf2", INFO) << "Recovery finished. Proceeding normally";
 
     // build the message, works for all cases
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-    b.close();
-    res = _sendToAllDBServers(Utils::finalizeRecoveryPath, b);
+    auto finalizeRecoveryCommand = FinalizeRecoveryCommand{
+        .executionNumber = _executionNumber, .gss = _globalSuperstep};
+    VPackBuilder message;
+    serialize(message, finalizeRecoveryCommand);
+    res = _sendToAllDBServers(Utils::finalizeRecoveryPath, message);
     if (res == TRI_ERROR_NO_ERROR) {
       updateState(ExecutionState::RUNNING);
       _startGlobalStep();
