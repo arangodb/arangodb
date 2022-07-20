@@ -92,8 +92,7 @@ struct ReplicatedStateFeature {
    * This stunt is here to work around an internal compiler error that is
    * triggered when using GCC 11 on ARM, with LTO.
    */
-#if (defined(__GNUC__) && !defined(__clang__) && defined(__arm__) && \
-     __GNUC__ == 11)
+#if (defined(__GNUC__) && !defined(__clang__))
 #define ABD_CREATE_METRICS_OBJECT_NO_INLINE __attribute__((noinline))
 #else
 #define ABD_CREATE_METRICS_OBJECT_NO_INLINE
