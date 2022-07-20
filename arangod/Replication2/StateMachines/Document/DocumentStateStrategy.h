@@ -112,9 +112,8 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
 struct IDocumentStateTransaction {
   virtual ~IDocumentStateTransaction() = default;
 
-  virtual auto getTid() const -> TransactionId = 0;
-  virtual auto apply() -> futures::Future<Result> = 0;
-  virtual auto finish() -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto apply() -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto finish() -> futures::Future<Result> = 0;
 };
 
 class DocumentStateTransaction
@@ -123,7 +122,6 @@ class DocumentStateTransaction
  public:
   explicit DocumentStateTransaction(TRI_vocbase_t* vocbase,
                                     DocumentLogEntry const& entry);
-  auto getTid() const -> TransactionId override;
   auto apply() -> futures::Future<Result> override;
   auto finish() -> futures::Future<Result> override;
 

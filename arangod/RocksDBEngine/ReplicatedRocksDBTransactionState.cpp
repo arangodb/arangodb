@@ -90,13 +90,22 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   std::vector<futures::Future<Result>> commits;
   allCollections([&](TransactionCollection& tc) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
-    auto leader = rtc.leaderState();
-    commits.emplace_back(leader
-                             ->replicateOperation(velocypack::SharedSlice{},
-                                                  operation, id(), options)
-                             .thenValue([&rtc](auto&& res) -> Result {
-                               return rtc.commitTransaction();
-                             }));
+    if (rtc.hasOperations()) {
+      // For non-empty transactions we have to write to the log and wait for the
+      // log entry to be committed (in the log sense), before we can commit
+      // locally.
+      auto leader = rtc.leaderState();
+      commits.emplace_back(leader
+                               ->replicateOperation(velocypack::SharedSlice{},
+                                                    operation, id(), options)
+                               .thenValue([&rtc](auto&& res) -> Result {
+                                 return rtc.commitTransaction();
+                               }));
+    } else {
+      // For empty transactions the commit is a no-op, but we still have to call
+      // it to ensure cleanup.
+      rtc.commitTransaction();
+    }
     return true;
   });
 
@@ -140,9 +149,11 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   TRI_ASSERT(options.waitForCommit == false);
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
-    auto leader = rtc.leaderState();
-    leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
-                               options);
+    if (rtc.hasOperations()) {
+      auto leader = rtc.leaderState();
+      leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                                 options);
+    }
     auto r = rtc.abortTransaction();
     if (r.fail()) {
       return r;

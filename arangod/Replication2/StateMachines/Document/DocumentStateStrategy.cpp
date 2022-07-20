@@ -166,8 +166,6 @@ auto DocumentStateTransaction::getOptions() const -> transaction::Options {
   return _options;
 }
 
-auto DocumentStateTransaction::getTid() const -> TransactionId { return _tid; }
-
 auto DocumentStateTransaction::apply() -> futures::Future<Result> {
   auto methods = getMethods();
 
@@ -318,14 +316,9 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
     return trx;
   }
 
-  if (entry.operation == kCommit || entry.operation == kAbort) {
-    // Commit and Abort transactions are being replicated to all participants,
-    // regardless whether they received any entries so far. In such case it is
-    // ok to return a nullptr.
-    return nullptr;
-  }
-
+  TRI_ASSERT(entry.operation != kCommit && entry.operation != kAbort);
   TRI_ASSERT(_vocbase != nullptr);
+
   trx = std::make_shared<DocumentStateTransaction>(_vocbase, std::move(entry));
   _transactions.emplace(tid, trx);
 
