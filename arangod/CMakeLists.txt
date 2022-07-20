@@ -57,6 +57,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchCommon.h
   IResearch/IResearchCompression.h
   IResearch/IResearchDataStore.h
+  IResearch/IResearchDataStoreMeta.h
   IResearch/IResearchDocument.h
   IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.h
@@ -83,6 +84,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchViewMeta.h
   IResearch/IResearchViewSort.h
   IResearch/IResearchViewStoredValues.h
+  IResearch/Search.h
   IResearch/VelocyPackHelper.h
   IResearch/ViewSnapshot.h
   RestHandler/RestAnalyzerHandler.h
@@ -100,6 +102,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchCommon.cpp
   IResearch/IResearchCompression.cpp
   IResearch/IResearchDataStore.cpp
+  IResearch/IResearchDataStoreMeta.cpp
   IResearch/IResearchDocument.cpp
   IResearch/IResearchExpressionContext.cpp
   IResearch/IResearchFeature.cpp
@@ -126,6 +129,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchViewMeta.cpp
   IResearch/IResearchViewSort.cpp
   IResearch/IResearchViewStoredValues.cpp
+  IResearch/Search.cpp
   IResearch/VelocyPackHelper.cpp
   IResearch/ViewSnapshot.cpp
   RestHandler/RestAnalyzerHandler.cpp
@@ -210,7 +214,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
-  Graph/ShortestPathType.cpp
+  Graph/PathType.cpp
   Graph/SingleServerEdgeCursor.cpp
   Graph/TraverserCache.cpp # maybe remove
   Graph/TraverserCacheFactory.cpp
@@ -284,6 +288,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
+  Pregel/PregelMetrics.cpp
   Pregel/Recovery.cpp
   Pregel/Reports.cpp
   Pregel/Reports.h
@@ -304,7 +309,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlFunctionsInternalCache.cpp
   Aql/AqlItemBlock.cpp
-  Aql/AqlItemBlockInputMatrix.cpp
   Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
@@ -346,11 +350,13 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DocumentExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/EnumeratePathsNode.cpp
   Aql/ClusterQuery.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
   Aql/EnumerateListExecutor.cpp
+  Aql/EnumeratePathsExecutor.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionBlockImpl.cpp
   Aql/ExecutionEngine.cpp
@@ -379,8 +385,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/IndexNodeOptimizerRules.cpp
   Aql/InputAqlItemRow.cpp
   Aql/InsertModifier.cpp
-  Aql/KShortestPathsExecutor.cpp
-  Aql/KShortestPathsNode.cpp
   Aql/LateMaterializedExpressionContext.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
@@ -448,6 +452,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
   Aql/SortedCollectExecutor.cpp
+  Aql/SortedRowsStorageBackendMemory.cpp
+  Aql/SortedRowsStorageBackendStaged.cpp
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryEndExecutor.cpp
@@ -480,6 +486,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
+  VocBase/ComputedValues.cpp
   VocBase/Identifiers/DataSourceId.cpp
   VocBase/Identifiers/IndexId.cpp
   VocBase/Identifiers/LocalDocumentId.cpp
@@ -870,6 +877,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
+  RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -889,6 +897,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
+  Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
   Transaction/CountCache.cpp

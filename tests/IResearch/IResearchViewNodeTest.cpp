@@ -2135,8 +2135,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace("abc");
-    node.shards().emplace("def");
+    node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("def", arangodb::LogicalView::Indexes{});
 
     // clone without properties into the same plan
     {
@@ -2236,14 +2236,14 @@ TEST_F(IResearchViewNodeTest, clone) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no scorers
-    node.sort(&sort, 0);
+    node.setSort(sort, 0);
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace("abc");
-    node.shards().emplace("def");
+    node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("def", arangodb::LogicalView::Indexes{});
 
     // clone without properties into the same plan
     {
@@ -3139,7 +3139,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    node.sort(&viewImpl.primarySort(), 1);
+    node.setSort(viewImpl.primarySort(), 1);
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -3306,7 +3306,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
         {});      // no sort condition
     arangodb::aql::Variable const outNmColPtr("variable100", 1, false);
     arangodb::aql::Variable const outNmDocId("variable101", 2, false);
-    node.sort(&viewImpl.primarySort(), 1);
+    node.setSort(viewImpl.primarySort(), 1);
     node.setLateMaterialized(outNmColPtr, outNmDocId);
 
     node.setVarsUsedLater({arangodb::aql::VarSet{&outNmColPtr, &outNmDocId}});
@@ -3470,8 +3470,8 @@ TEST_F(IResearchViewNodeTest, collections) {
       std::to_string(collection0->id().id()),
       std::to_string(collection1->id().id())};
 
-  for (arangodb::aql::Collection const& collection : collections) {
-    EXPECT_EQ(1, expectedCollections.erase(collection.name()));
+  for (auto const& [collection, indexes] : collections) {
+    EXPECT_EQ(1, expectedCollections.erase(collection.get().name()));
   }
   EXPECT_TRUE(expectedCollections.empty());
 }
@@ -3506,15 +3506,14 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     std::vector<std::string> const EMPTY;
 
     arangodb::OperationOptions opt;
-    arangodb::ManagedDocumentResult mmdoc;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+        {collection0->name()}, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto const res = collection0->insert(&trx, json->slice(), mmdoc, opt);
+    auto res = trx.insert(collection0->name(), json->slice(), opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());
@@ -3809,37 +3808,29 @@ class IResearchViewVolatitlityTest
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
-        EMPTY_VECTOR, EMPTY_VECTOR, EMPTY_VECTOR,
-        arangodb::transaction::Options());
+        EMPTY_VECTOR,
+        std::vector<std::string>{collection0->name(), collection1->name()},
+        EMPTY_VECTOR, arangodb::transaction::Options());
 
     EXPECT_TRUE(trx->begin().ok());
     // in collection only one alive doc
     {
       auto aliveDoc0 = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
-      arangodb::ManagedDocumentResult insertResult;
       arangodb::OperationOptions options;
       EXPECT_TRUE(
-          collection0
-              ->insert(trx.get(), aliveDoc0->slice(), insertResult, options)
-              .ok());
+          trx->insert(collection0->name(), aliveDoc0->slice(), options).ok());
 
       auto aliveDoc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 2 }");
       arangodb::ManagedDocumentResult insertResult1;
       arangodb::OperationOptions options1;
       EXPECT_TRUE(
-          collection0
-              ->insert(trx.get(), aliveDoc1->slice(), insertResult1, options1)
-              .ok());
+          trx->insert(collection0->name(), aliveDoc1->slice(), options).ok());
     }
     {
       auto aliveDoc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
-      arangodb::ManagedDocumentResult insertResult;
       arangodb::OperationOptions options;
       EXPECT_TRUE(
-          collection1
-              ->insert(trx.get(), aliveDoc1->slice(), insertResult, options)
-              .ok());
-      arangodb::iresearch::IResearchLinkMeta meta;
+          trx->insert(collection1->name(), aliveDoc1->slice(), options).ok());
     }
     EXPECT_TRUE(trx->commit().ok());
     // force views sync
@@ -4208,8 +4199,8 @@ class IResearchViewBlockTest
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
-        EMPTY_VECTOR, EMPTY_VECTOR, EMPTY_VECTOR,
-        arangodb::transaction::Options());
+        EMPTY_VECTOR, std::vector<std::string>{collection0->name()},
+        EMPTY_VECTOR, arangodb::transaction::Options());
 
     EXPECT_TRUE(trx->begin().ok());
     // Fill dummy data in index only (to simulate some documents where already
@@ -4228,11 +4219,9 @@ class IResearchViewBlockTest
     }
     // in collection only one alive doc
     auto aliveDoc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
-    arangodb::ManagedDocumentResult insertResult;
     arangodb::OperationOptions options;
     EXPECT_TRUE(
-        collection0->insert(trx.get(), aliveDoc->slice(), insertResult, options)
-            .ok());
+        trx->insert(collection0->name(), aliveDoc->slice(), options).ok());
     EXPECT_TRUE(trx->commit().ok());
   }
 };

@@ -154,7 +154,7 @@ class ExecutionNode {
     TRAVERSAL = 22,
     INDEX = 23,
     SHORTEST_PATH = 24,
-    K_SHORTEST_PATHS = 25,
+    ENUMERATE_PATHS = 25,
     REMOTESINGLE = 26,
     ENUMERATE_IRESEARCH_VIEW = 27,
     DISTRIBUTE_CONSUMER = 28,
@@ -358,6 +358,8 @@ class ExecutionNode {
   bool walk(WalkerWorkerBase<ExecutionNode>& worker);
 
   bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
+
+  bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, bool onlyFlattenAsync);
 
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS = 1;
@@ -587,8 +589,11 @@ class ExecutionNode {
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
 
+  enum FlattenType { NONE, INLINE_ASYNC, INLINE_ALL };
+
  private:
-  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst);
+  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst,
+              FlattenType flattenType);
 };
 
 /// @brief class SingletonNode

@@ -31,7 +31,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 
@@ -126,15 +125,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
-  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
+  std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+      insertedDocs;
 
   // populate view with the data
   {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -154,10 +155,12 @@ TEST_P(IResearchQueryStringTermTest, test) {
           logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        insertedDocs.emplace_back();
-        auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto res = trx.insert(collections[i % 2]->name(), doc, opt);
         EXPECT_TRUE(res.ok());
+
+        res = trx.document(collections[i % 2]->name(), res.slice(), opt);
+        EXPECT_TRUE(res.ok());
+        insertedDocs.emplace_back(std::move(res.buffer));
         ++i;
       }
     }
@@ -178,7 +181,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
   // _rev attribute
   {
     auto rev = arangodb::transaction::helpers::extractRevSliceFromDocument(
-        VPackSlice(insertedDocs.front().vpack()));
+        VPackSlice(insertedDocs.front()->data()));
     auto const revRef = arangodb::iresearch::getStringRef(rev);
 
     std::string const query = "FOR d IN testView SEARCH d._rev == '" +
@@ -188,8 +191,9 @@ TEST_P(IResearchQueryStringTermTest, test) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -209,7 +213,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -219,7 +223,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
   // _key attribute
   {
     auto key = arangodb::transaction::helpers::extractKeyPart(
-        VPackSlice(insertedDocs.front().vpack())
+        VPackSlice(insertedDocs.front()->data())
             .get(arangodb::StaticStrings::KeyString));
 
     std::string const query = "FOR d IN testView SEARCH d._key == '" +
@@ -229,8 +233,9 @@ TEST_P(IResearchQueryStringTermTest, test) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -250,7 +255,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -264,7 +269,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
         EMPTY, arangodb::transaction::Options());
 
     auto const id =
-        trx.extractIdString(VPackSlice(insertedDocs.front().vpack()));
+        trx.extractIdString(VPackSlice(insertedDocs.front()->data()));
     std::string const query =
         "FOR d IN testView SEARCH d._id == '" + id + "' RETURN d";
 
@@ -272,8 +277,9 @@ TEST_P(IResearchQueryStringTermTest, test) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -293,7 +299,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -438,8 +444,9 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name == 'A', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase, "FOR d IN testView SEARCH d.name == 'A' RETURN d");
@@ -460,7 +467,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -469,12 +476,13 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.same == 'same', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
-      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -496,7 +504,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -505,12 +513,13 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.same == 'same', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
-      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -534,7 +543,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -543,10 +552,11 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.duplicated == 'abcd', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]},  {"E", &insertedDocs[4]},
-                     {"K", &insertedDocs[10]}, {"U", &insertedDocs[20]},
-                     {"~", &insertedDocs[26]}, {"$", &insertedDocs[30]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]},  {"E", insertedDocs[4]},
+                     {"K", insertedDocs[10]}, {"U", insertedDocs[20]},
+                     {"~", insertedDocs[26]}, {"$", insertedDocs[30]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase, "FOR d IN testView SEARCH d.duplicated == 'abcd' RETURN d");
@@ -567,7 +577,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -576,11 +586,12 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.duplicated == 'abcd', name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*,
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
              StringComparer>
-        expectedDocs{{"A", &insertedDocs[0]},  {"E", &insertedDocs[4]},
-                     {"K", &insertedDocs[10]}, {"U", &insertedDocs[20]},
-                     {"~", &insertedDocs[26]}, {"$", &insertedDocs[30]}};
+        expectedDocs{{"A", insertedDocs[0]},  {"E", insertedDocs[4]},
+                     {"K", insertedDocs[10]}, {"U", insertedDocs[20]},
+                     {"~", insertedDocs[26]}, {"$", insertedDocs[30]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -601,13 +612,13 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       std::string const actualName = resolved.get("name").toString();
       std::string const expectedName =
-          arangodb::velocypack::Slice(expectedDoc->second->vpack())
+          arangodb::velocypack::Slice(expectedDoc->second->data())
               .get("name")
               .toString();
 
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       actualDocs.next();
     }
@@ -616,11 +627,12 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.duplicated == 'abcd', TFIDF() ASC, name DESC
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*,
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
              StringComparer>
-        expectedDocs{{"A", &insertedDocs[0]},  {"E", &insertedDocs[4]},
-                     {"K", &insertedDocs[10]}, {"U", &insertedDocs[20]},
-                     {"~", &insertedDocs[26]}, {"$", &insertedDocs[30]}};
+        expectedDocs{{"A", insertedDocs[0]},  {"E", insertedDocs[4]},
+                     {"K", insertedDocs[10]}, {"U", insertedDocs[20]},
+                     {"~", insertedDocs[26]}, {"$", insertedDocs[30]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -641,7 +653,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       actualDocs.next();
     }
@@ -668,7 +680,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -720,10 +732,11 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // expression, d.duplicated == 'abcd', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]},  {"E", &insertedDocs[4]},
-                     {"K", &insertedDocs[10]}, {"U", &insertedDocs[20]},
-                     {"~", &insertedDocs[26]}, {"$", &insertedDocs[30]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]},  {"E", insertedDocs[4]},
+                     {"K", insertedDocs[10]}, {"U", insertedDocs[20]},
+                     {"~", insertedDocs[26]}, {"$", insertedDocs[30]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -746,7 +759,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -755,10 +768,11 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // expression+variable, d.duplicated == 'abcd', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]},  {"E", &insertedDocs[4]},
-                     {"K", &insertedDocs[10]}, {"U", &insertedDocs[20]},
-                     {"~", &insertedDocs[26]}, {"$", &insertedDocs[30]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]},  {"E", insertedDocs[4]},
+                     {"K", insertedDocs[10]}, {"U", insertedDocs[20]},
+                     {"~", insertedDocs[26]}, {"$", insertedDocs[30]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -781,7 +795,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -790,8 +804,9 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // expression+variable, d.duplicated == 'abcd', unordered, LIMIT 2
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]}, {"E", &insertedDocs[4]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]}, {"E", insertedDocs[4]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -815,7 +830,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -824,10 +839,11 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // expression, d.duplicated == 'abcd', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]},  {"E", &insertedDocs[4]},
-                     {"K", &insertedDocs[10]}, {"U", &insertedDocs[20]},
-                     {"~", &insertedDocs[26]}, {"$", &insertedDocs[30]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]},  {"E", insertedDocs[4]},
+                     {"K", insertedDocs[10]}, {"U", insertedDocs[20]},
+                     {"~", insertedDocs[26]}, {"$", insertedDocs[30]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -850,7 +866,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -860,8 +876,9 @@ TEST_P(IResearchQueryStringTermTest, test) {
   // subquery, d.name == (FOR i IN collection_1 SEARCH i.name == 'A' RETURN
   // i)[0].name), unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]}};
 
     auto queryResult =
         arangodb::tests::executeQuery(vocbase,
@@ -885,7 +902,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -906,8 +923,9 @@ TEST_P(IResearchQueryStringTermTest, test) {
   // subquery, d.name == (FOR i IN collection_1 SEARCH i.name == 'A' RETURN
   // i)[0].name), unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
-        expectedDocs{{"A", &insertedDocs[0]}};
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{{"A", insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -930,7 +948,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -954,12 +972,13 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // invalid type, unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
-      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -981,7 +1000,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -990,12 +1009,13 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // invalid type, unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
-      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1017,7 +1037,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1026,11 +1046,12 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // invalid type, d.seq DESC
   {
-    std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<ptrdiff_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), &doc);
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1050,7 +1071,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
     }
@@ -1059,12 +1080,13 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // missing term, unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
-      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1086,7 +1108,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1113,12 +1135,13 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // existing unique term, unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
-      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), doc);
     }
 
     expectedDocs.erase("C");
@@ -1142,7 +1165,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1151,11 +1174,12 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // existing unique term, unordered (not all documents contain field)
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
 
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const fieldSlice = docSlice.get("duplicated");
 
@@ -1164,7 +1188,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
         continue;
       }
 
-      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1185,7 +1209,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1212,7 +1236,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -1221,9 +1245,10 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // existing duplicated term, TFIDF() ASC, BM25() ASC, seq DESC
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const fieldSlice = docSlice.get("duplicated");
 
       if (!fieldSlice.isNone() &&
@@ -1232,7 +1257,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       }
 
       auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1252,7 +1277,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
     }
@@ -1261,12 +1286,13 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // expression: invalid type, unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
-      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1290,7 +1316,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1300,10 +1326,11 @@ TEST_P(IResearchQueryStringTermTest, test) {
   // expression: existing duplicated term, TFIDF() ASC, BM25() ASC, seq DESC
   // LIMIT 10
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     size_t limit = 5;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const fieldSlice = docSlice.get("duplicated");
 
       if (!fieldSlice.isNone() &&
@@ -1312,7 +1339,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       }
 
       auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
     }
 
     // limit results
@@ -1338,7 +1365,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
 
@@ -1410,16 +1437,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name < 'H', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       if (key >= "H") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1441,7 +1469,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1468,15 +1496,16 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name < '~' (less than max term), BM25() ASC, TFIDF() ASC seq DESC
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const nameSlice = docSlice.get("name");
       if (arangodb::iresearch::getStringRef(nameSlice) >= "~") {
         continue;
       }
       auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1496,7 +1525,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
     }
@@ -1563,16 +1592,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name <= 'H', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       if (key > "H") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1594,7 +1624,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1616,7 +1646,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
     auto const actualDoc = resultIt.value();
     auto const resolved = actualDoc.resolveExternals();
     EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                         arangodb::velocypack::Slice(insertedDocs[27].vpack()),
+                         arangodb::velocypack::Slice(insertedDocs[27]->data()),
                          resolved, true));
 
     resultIt.next();
@@ -1643,7 +1673,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -1710,16 +1740,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name > 'H', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       if (key <= "H") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1741,7 +1772,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1764,15 +1795,16 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name > '!' (greater than min term), BM25() ASC, TFIDF() ASC seq DESC
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const nameSlice = docSlice.get("name");
       if (arangodb::iresearch::getStringRef(nameSlice) <= "!") {
         continue;
       }
       auto const keySlice = docSlice.get("seq");
-      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1792,7 +1824,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
     }
@@ -1859,16 +1891,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name >= 'H', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       if (key < "H") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -1890,7 +1923,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -1912,7 +1945,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
     auto const actualDoc = resultIt.value();
     auto const resolved = actualDoc.resolveExternals();
     EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                         arangodb::velocypack::Slice(insertedDocs[26].vpack()),
+                         arangodb::velocypack::Slice(insertedDocs[26]->data()),
                          resolved, true));
 
     resultIt.next();
@@ -1940,7 +1973,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -2011,16 +2044,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name > 'H' AND d.name < 'S', unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       if (key <= "H" || key >= "S") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -2043,7 +2077,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -2082,9 +2116,10 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name > '!' AND d.name < '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("seq");
       auto const key = keySlice.getNumber<size_t>();
       auto const nameSlice = docSlice.get("name");
@@ -2092,7 +2127,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       if (name <= "!" || name >= "~") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -2113,7 +2148,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
     }
@@ -2184,16 +2219,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name >= 'H' AND d.name < 'S' , unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       if (key < "H" || key >= "S") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -2216,7 +2252,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -2255,9 +2291,10 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name >= '!' AND d.name < '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("seq");
       auto const key = keySlice.getNumber<size_t>();
       auto const nameSlice = docSlice.get("name");
@@ -2265,7 +2302,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       if (name < "!" || name >= "~") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult =
@@ -2286,7 +2323,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
     }
@@ -2357,16 +2394,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name >= 'H' AND d.name <= 'S' , unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       if (key <= "H" || key > "S") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -2389,7 +2427,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -2428,9 +2466,10 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name > '!' AND d.name <= '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("seq");
       auto const key = keySlice.getNumber<size_t>();
       auto const nameSlice = docSlice.get("name");
@@ -2438,7 +2477,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       if (name <= "!" || name > "~") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult =
@@ -2459,7 +2498,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
     }
@@ -2530,16 +2569,17 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name >= 'H' AND d.name <= 'S' , unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+    std::map<irs::string_ref,
+             std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
         expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("name");
       auto const key = arangodb::iresearch::getStringRef(keySlice);
       if (key < "H" || key > "S") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult = arangodb::tests::executeQuery(
@@ -2562,7 +2602,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       ASSERT_NE(expectedDoc, expectedDocs.end());
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       expectedDocs.erase(expectedDoc);
     }
@@ -2600,7 +2640,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
     auto const resolved = resultIt.value().resolveExternals();
     EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                         arangodb::velocypack::Slice(insertedDocs[7].vpack()),
+                         arangodb::velocypack::Slice(insertedDocs[7]->data()),
                          resolved, true));
 
     resultIt.next();
@@ -2609,9 +2649,10 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
   // d.name > '!' AND d.name <= '~' , TFIDF() ASC, BM25() ASC, d.sec DESC
   {
-    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    std::map<size_t, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice(doc.vpack());
+      arangodb::velocypack::Slice docSlice(doc->data());
       auto const keySlice = docSlice.get("seq");
       auto const key = keySlice.getNumber<size_t>();
       auto const nameSlice = docSlice.get("name");
@@ -2619,7 +2660,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       if (name < "!" || name > "~") {
         continue;
       }
-      expectedDocs.emplace(key, &doc);
+      expectedDocs.emplace(key, doc);
     }
 
     auto queryResult =
@@ -2640,7 +2681,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
       auto const resolved = actualDoc.resolveExternals();
       EXPECT_TRUE(0 ==
                   arangodb::basics::VelocyPackHelper::compare(
-                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      arangodb::velocypack::Slice(expectedDoc->second->data()),
                       resolved, true));
       ++expectedDoc;
     }
@@ -2683,7 +2724,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
     auto const resolved = resultIt.value().resolveExternals();
     EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                         arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+                         arangodb::velocypack::Slice(insertedDocs[0]->data()),
                          resolved, true));
 
     resultIt.next();
@@ -2721,7 +2762,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
     auto const resolved = resultIt.value().resolveExternals();
     EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                         arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+                         arangodb::velocypack::Slice(insertedDocs[0]->data()),
                          resolved, true));
 
     resultIt.next();
@@ -2760,7 +2801,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
 
     auto const resolved = resultIt.value().resolveExternals();
     EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                         arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+                         arangodb::velocypack::Slice(insertedDocs[0]->data()),
                          resolved, true));
 
     resultIt.next();

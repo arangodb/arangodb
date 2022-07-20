@@ -3,6 +3,101 @@ devel
 
 * Added CSP recommended headers to Aardvaark app for better security.
 
+* APM-84: Added option to spill intermediate AQL query results from RAM to
+  disk when their size exceeds certain thresholds. Currently the only AQL
+  operation that can make use of this is the SortExecutor (AQL SORT operation
+  without using a LIMIT). Further AQL executor types will be supported in
+  future releases.
+
+  Spilling over query results from RAM to disk is off by default and currently
+  in an experimental stage. In order to opt in to the feature, it is required
+  to set the following startup option `--temp.intermediate-results-path`.
+  The directory specified here must not be located underneath the instance's
+  database directory.
+  When this startup option is specified, ArangoDB assumes ownership of that
+  directory and will wipe its contents on startup and shutdown. The directory
+  can be placed on ephemeral storage, as the data stored inside it is there
+  only temporarily, while the instance is running. It does not need to be
+  persisted across instance restarts and does not need to be backed up.
+
+  When a directory is specified via the startup option, the following
+  additional configuration options can be used to control the threshold
+  values for spilling over data:
+
+  * `--temp.intermediate-results-capacity`: maximum on-disk size (in bytes)
+    for intermediate results. If set to 0, it means that the on-disk size
+    is not constrained. It can be set to a value other than 0 to restrict the
+    size of the temporary directory. Once the cumulated on-disk size of
+    intermediate results reaches the configured maximum capacity, the
+    query will be aborted with failure "disk capacity limit for intermediate
+    results exceeded".
+  * `--temp.intermediate-results-spillover-threshold-num-rows`: number of
+    result rows from which on a spillover from RAM to disk will happen.
+  * `--temp.intermediate-results-spillover-threshold-memory-usage`: memory
+    usage (in bytes) after which a spillover from RAM to disk will happen.
+  * `--temp.intermediate-results-encryption`: whether or not the on-disk
+    data should be encrypted. This option is only available in the Enterprise
+    Edition.
+  * `--temp.-intermediate-results-encryption-hardware-acceleration`: whether
+    or not to use hardware acceleration for the on-disk encryption. This
+    option is only available in the Enterprise Edition.
+
+  Please note that the feature is currently still experimental and may slightly
+  change in future releases. As mentioned, the only Executor that can make
+  use of spilling data to disk is the SortExecutor (SORT without LIMIT).
+  Also note that the query results will still be built up entirely in RAM
+  on coordinators and single servers for non-streaming queries. In order to
+  avoid the buildup of the entire query result in RAM, a streaming query
+  should be used.
+
+* Enterprise only: Added `MINHASH`, `MINHASH_MATCH`, `MINHASH_ERROR`,
+  `MINHASH_COUNT` AQL functions.
+
+* Enterprise only: Added `minhash` analyzer.
+
+* BugFix in Pregel's status: When loading the graph into memory,
+  Pregel's state is now 'loading' instead of 'running'. When loading is finished,
+  Pregel's state changes to the 'running' state.
+
+* arangoimport now supports an additional option "--overwrite-collection-prefix".
+  This option will only help while importing edge collections, and if it is used
+  together with "--to-collection-prefix" or "--from-collection-prefix". If there
+  are vertex collection prefixes in the file you want to import (e.g. you just
+  exported an edge collection from ArangoDB) you allow arangoimport to overwrite
+  those with the commandline prefixes. If the option is false (default value)
+  only _from and _to values without a prefix will be prefixed by the handed in
+  values.
+
+* Added startup option `--rocksdb.compaction-style` to configure the compaction
+  style which is used to pick the next file(s) to be compacted.
+
+* BugFix in Pregel's Label Propagation: the union of three undirected cliques
+  of size at least three connected by an undirected triangle now returns
+  three communities (each clique is a community) instead of two.
+
+* Pregel now reports correct and ongoing runtimes for loading, running, and
+  storing as well as runtimes for the separate global supersteps.
+
+* Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
+
+* Updated arangosync to v2.11.0.
+
+* Add log.time-format utc-datestring-micros to make debugging of concurrency
+  bugs easier.
+
+* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in
+  explain outputs for AQL queries.
+
+* Pregel SSSP now supports `resultField` as well as `_resultField` as
+  parameter name to specify the field into which results are stored.
+  The name `_resultField` will be deprecated in future.
+
+* Update Windows CI compiler to Visual Studio 2022.
+
+* Web UI: Fixes a GraphViewer issue related to display issues with node
+  and edge labels. Boolean node or edge values could not be used as label
+  values (ES-1084).
+
 * Made the SortExecutor receive its input incrementally, instead of receiving
   a whole matrix containing all input at once.
 
@@ -42,6 +137,12 @@ devel
   not-yet-officially committed data. Use at your own risk if performance
   is more important than correctness or if you know that data does not
   change.
+  The responses which can contain dirty reads will have set the HTTP header
+  "x-arango-potential-dirty-read" set to "true".
+  There are the following new metrics showing the use of this feature:
+    - `arangodb_dirty_read_transactions_total`
+    - `arangodb_potentially_dirty_document_reads_total`
+    - `arangodb_dirty_read_queries_total`
 
 * Changed HTTP response code for error number 1521 from 500 to 400.
 
@@ -253,6 +354,9 @@ devel
 * No good reason to fatal error in agency state, when local database entries
   lack local timestamp (legacy). In that situation, we will record epoch begin
   as local time.
+
+* Very verbose warning from failing to parse GEO JSON in search. Has lead to
+  billions of log lines on deployed services.
 
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
@@ -1888,7 +1992,7 @@ devel
   `--console` argument for upgrading a server.
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented
-  cases and numerically unstable behaviour. In particular, the case of
+  cases and numerically unstable behavior. In particular, the case of
   the intersection of two polygons in which one is an S2LngLatRect
   is fixed (BTS-475).
 

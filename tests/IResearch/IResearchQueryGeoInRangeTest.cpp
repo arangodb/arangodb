@@ -120,10 +120,11 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoJson) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
   }
 
@@ -202,7 +203,7 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoJson) {
     auto const columnName = mangleString("geometry", "mygeojson");
     auto* columnReader = segment.column(columnName);
     ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator(false);
+    auto it = columnReader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, it);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);
@@ -638,10 +639,11 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointArray) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
   }
 
@@ -720,7 +722,7 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointArray) {
     auto const columnName = mangleString("geometry.coordinates", "mygeopoint");
     auto* columnReader = segment.column(columnName);
     ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator(false);
+    auto it = columnReader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, it);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);
@@ -1143,10 +1145,11 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointObject) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
   }
 
@@ -1225,7 +1228,7 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointObject) {
     auto const columnName = mangleString("geometry", "mygeopoint");
     auto* columnReader = segment.column(columnName);
     ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator(false);
+    auto it = columnReader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, it);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);

@@ -101,10 +101,11 @@ TEST_P(IResearchQueryGeoIntersectsTest, test) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
   }
 
@@ -190,7 +191,7 @@ TEST_P(IResearchQueryGeoIntersectsTest, test) {
     auto const columnName = mangleString("geometry", "mygeojson");
     auto* columnReader = segment.column(columnName);
     ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator(false);
+    auto it = columnReader->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, it);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);

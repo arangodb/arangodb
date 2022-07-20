@@ -169,53 +169,57 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 
     if (nodeType == ExecutionNode::GATHER) {
       // we found a gather node
-      if (remoteNode == nullptr) {
-        return {TRI_ERROR_INTERNAL, "expecting a RemoteNode"};
-      }
+      if (en->getFirstDependency()->getType() == ExecutionNode::REMOTE) {
+        TRI_ASSERT(en->getFirstDependency() == remoteNode);
+        // now we'll create a remote node for each shard and add it to the
+        // gather node (eb->addDependency)
+        auto serversForRemote = queryIds.find(remoteNode->id());
+        // Planning gone terribly wrong. The RemoteNode does not have a
+        // counter-part to fetch data from.
+        TRI_ASSERT(serversForRemote != queryIds.end());
+        if (serversForRemote == queryIds.end()) {
+          return {TRI_ERROR_INTERNAL,
+                  "Did not find a DBServer to contact for RemoteNode"};
+        }
 
-      // now we'll create a remote node for each shard and add it to the
-      // gather node (eb->addDependency)
-      auto serversForRemote = queryIds.find(remoteNode->id());
-      // Planning gone terribly wrong. The RemoteNode does not have a
-      // counter-part to fetch data from.
-      TRI_ASSERT(serversForRemote != queryIds.end());
-      if (serversForRemote == queryIds.end()) {
-        return {TRI_ERROR_INTERNAL,
-                "Did not find a DBServer to contact for RemoteNode"};
-      }
-
-      // use "server:" instead of "shard:" to send query fragments to
-      // the correct servers, even after failover or when a follower drops
-      // the problem with using the previous shard-based approach was that
-      // responsibilities for shards may change at runtime.
-      // however, an AQL query must send all requests for the query to the
-      // initially used servers.
-      // if there is a failover while the query is executing, we must still
-      // send all following requests to the same servers, and not the newly
-      // responsible servers.
-      // otherwise we potentially would try to get data from a query from
-      // server B while the query was only instanciated on server A.
-      for (auto const& serverToSnippet : serversForRemote->second) {
-        std::string const& serverID = serverToSnippet.first;
-        for (std::string const& snippetId : serverToSnippet.second) {
-          remoteNode->queryId(snippetId);
-          remoteNode->server(serverID);
-          remoteNode->setDistributeId({""});
-          std::unique_ptr<ExecutionBlock> r =
-              remoteNode->createBlock(*this, {});
+        // use "server:" instead of "shard:" to send query fragments to
+        // the correct servers, even after failover or when a follower drops
+        // the problem with using the previous shard-based approach was that
+        // responsibilities for shards may change at runtime.
+        // however, an AQL query must send all requests for the query to the
+        // initially used servers.
+        // if there is a failover while the query is executing, we must still
+        // send all following requests to the same servers, and not the newly
+        // responsible servers.
+        // otherwise we potentially would try to get data from a query from
+        // server B while the query was only instanciated on server A.
+        for (auto const& serverToSnippet : serversForRemote->second) {
+          std::string const& serverID = serverToSnippet.first;
+          for (std::string const& snippetId : serverToSnippet.second) {
+            remoteNode->queryId(snippetId);
+            remoteNode->server(serverID);
+            remoteNode->setDistributeId({""});
+            std::unique_ptr<ExecutionBlock> r =
+                remoteNode->createBlock(*this, {});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto remoteBlock =
-              dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
-          TRI_ASSERT(remoteBlock->server() == serverID);
-          TRI_ASSERT(remoteBlock->distributeId() ==
-                     "");  // NOLINT(readability-container-size-empty)
-          TRI_ASSERT(remoteBlock->queryId() == snippetId);
+            auto remoteBlock =
+                dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
+            TRI_ASSERT(remoteBlock->server() == serverID);
+            TRI_ASSERT(remoteBlock->distributeId() ==
+                       "");  // NOLINT(readability-container-size-empty)
+            TRI_ASSERT(remoteBlock->queryId() == snippetId);
 #endif
 
-          TRI_ASSERT(r != nullptr);
-          eb->addDependency(r.get());
-          addBlock(std::move(r));
+            TRI_ASSERT(r != nullptr);
+            eb->addDependency(r.get());
+            addBlock(std::move(r));
+          }
         }
+      } else if (en->getFirstDependency()->getType() == ExecutionNode::ASYNC) {
+        // Nothing needs to be done here in this case. Dependencies are
+        // handled before.
+      } else {
+        return {TRI_ERROR_INTERNAL, "expecting a RemoteNode or a MutexNode"};
       }
     }
 
@@ -266,7 +270,7 @@ struct SingleServerQueryInstanciator final
   void after(ExecutionNode* en) override {
     if (en->getType() == ExecutionNode::TRAVERSAL ||
         en->getType() == ExecutionNode::SHORTEST_PATH ||
-        en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+        en->getType() == ExecutionNode::ENUMERATE_PATHS) {
       // We have to prepare the options before we build the block
       ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
     }
@@ -446,6 +450,12 @@ struct DistributedQueryInstanciator final
         case ExecutionNode::GATHER:
           _lastGatherNode = ExecutionNode::castTo<GatherNode const*>(en);
           break;
+        case ExecutionNode::ASYNC:
+          // We are in an GATHER/ASYNC case.
+          // We are not allowed to use this case node
+          // for our remote, so discard it.
+          _lastGatherNode = nullptr;
+          break;
         case ExecutionNode::REMOTE:
           // Flip over to DBServer
           _isCoordinator = false;
@@ -455,7 +465,7 @@ struct DistributedQueryInstanciator final
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
-        case ExecutionNode::K_SHORTEST_PATHS:
+        case ExecutionNode::ENUMERATE_PATHS:
           _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en),
                                       _pushToSingleServer);
           break;
@@ -741,11 +751,18 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
   aql::SnippetList& snippets = query.snippets();
   TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
 
+#ifdef USE_ENTERPRISE
+  std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
+  if (arangodb::ServerState::isSingleServerOrCoordinator(role)) {
+    ExecutionEngine::parallelizeTraversals(query, plan, aliases);
+  }
+#endif
+
   if (arangodb::ServerState::isCoordinator(role)) {
     // distributed query
     DistributedQueryInstanciator inst(query, plan.getNodesById(),
                                       pushToSingleServer);
-    plan.root()->walk(inst);
+    plan.root()->flatWalk(inst, true);
 
     Result res = inst.buildEngines();
     if (res.fail()) {
@@ -756,13 +773,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     TRI_ASSERT(snippets[0]->engineId() == 0);
     engine = snippets[0].get();
     root = snippets[0]->root();
-
   } else {
-#ifdef USE_ENTERPRISE
-    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
-    ExecutionEngine::parallelizeTraversals(query, plan, aliases);
-#endif
-
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;

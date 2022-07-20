@@ -146,39 +146,15 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   if (body.hasKey(
           StaticStrings::AnalyzerFeaturesField)) {  // optional parameter
     auto featuresSlice = body.get(StaticStrings::AnalyzerFeaturesField);
-
-    if (featuresSlice.isArray()) {
-      for (arangodb::velocypack::ArrayIterator itr(featuresSlice); itr.valid();
-           ++itr) {
-        auto value = *itr;
-
-        if (!value.isString()) {
-          generateError(arangodb::Result(
-              TRI_ERROR_BAD_PARAMETER,
-              "invalid value in 'features', expecting body to be of the form { "
-              "name: <string>, type: <string>[, properties: <object>[, "
-              "features: <string-array>]] }"));
-
-          return;
-        }
-
-        if (!features.add(value.stringView())) {
-          generateError(arangodb::Result(
-              TRI_ERROR_BAD_PARAMETER,
-              "unknown value in 'features', expecting body to be of the form { "
-              "name: <string>, type: <string>[, properties: <object>[, "
-              "features: <string-array>]] }"));
-
-          return;
-        }
-      }
-    } else {
+    auto featuresRes = features.fromVelocyPack(featuresSlice);
+    if (featuresRes.fail()) {
       generateError(arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
-          "invalid 'features', expecting body to be of the form { name: "
-          "<string>, type: <string>[, properties: <object>[, features: "
-          "<string-array>]] }"));
-
+          std::string("invalid value in 'features' ")
+                  .append(featuresRes.errorMessage()) +
+              " expecting body to be of the form{"
+              "name: <string>, type: <string>[, properties: <object>[, "
+              "features: <string-array>]] }"));
       return;
     }
   }
