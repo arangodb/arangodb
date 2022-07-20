@@ -227,6 +227,10 @@ std::string Job::randomIdleAvailableServer(
           std::end(exclude)) {
         continue;
       }
+      if (snap.has(maintenancePrefix + srv.first)) {
+        continue;  // ignore servers in maintenance mode
+      }
+
       // ignore servers not in availableServers above:
       if (std::find(std::begin(as), std::end(as), srv.first) == std::end(as)) {
         continue;
