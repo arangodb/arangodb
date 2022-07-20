@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include "IResearch/IResearchViewSort.h"
+
 #include <memory>
 #include <vector>
 #include <string>
@@ -110,9 +112,9 @@ struct ColumnVariant {
         postfix(std::move(postfix)) {}
 };
 
-template<bool postfixLen, typename Attrs, typename SortMeta>
+template<bool postfixLen, typename Attrs>
 bool attributesMatch(
-    SortMeta const& primarySort,
+    iresearch::IResearchSortBase const& primarySort,
     iresearch::IResearchViewStoredValues const& storedValues, Attrs& attrs,
     std::vector<std::vector<ColumnVariant<postfixLen>>>& usedColumnsCounter,
     size_t columnsCount);
