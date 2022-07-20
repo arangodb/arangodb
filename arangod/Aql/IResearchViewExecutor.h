@@ -252,7 +252,7 @@ class IndexReadBuffer {
     return _keyBuffer[idx];
   }
 
-  arangodb::iresearch::SearchDoc const& getSearchDoc(size_t idx) noexcept {
+  iresearch::SearchDoc const& getSearchDoc(size_t idx) noexcept {
     TRI_ASSERT(_searchDocs.size() > idx);
     return _searchDocs[idx];
   }
@@ -369,7 +369,7 @@ class IndexReadBuffer {
 
   std::vector<ValueType> _keyBuffer;
   // FIXME(gnusi): compile time
-  std::vector<arangodb::iresearch::SearchDoc> _searchDocs;
+  std::vector<iresearch::SearchDoc> _searchDocs;
   std::vector<float_t> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
   size_t _numScoreRegisters;
@@ -504,8 +504,7 @@ class IResearchViewExecutorBase {
   bool writeLocalDocumentId(ReadContext& ctx, LocalDocumentId const& documentId,
                             LogicalCollection const& collection);
 
-  void writeSearchDoc(ReadContext& ctx,
-                      arangodb::iresearch::SearchDoc const& doc,
+  void writeSearchDoc(ReadContext& ctx, iresearch::SearchDoc const& doc,
                       RegisterId reg);
 
   void reset();

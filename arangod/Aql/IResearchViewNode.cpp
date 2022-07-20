@@ -67,14 +67,10 @@
 namespace arangodb::iresearch {
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief surrogate root for all queries without a filter
-////////////////////////////////////////////////////////////////////////////////
+// Surrogate root for all queries without a filter
 aql::AstNode const kAll{aql::AstNodeValue{true}};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helpers for std::vector<iresearch::IResearchSort>
-////////////////////////////////////////////////////////////////////////////////
+// Helpers for std::vector<iresearch::IResearchSort>
 void toVelocyPack(velocypack::Builder& builder,
                   std::vector<SearchFunc> const& scorers, bool verbose) {
   VPackArrayBuilder arrayScope(&builder);
@@ -133,9 +129,7 @@ std::vector<SearchFunc> fromVelocyPack(aql::ExecutionPlan& plan,
   return scorers;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helpers for IResearchViewNode::Options
-////////////////////////////////////////////////////////////////////////////////
+// Helpers for IResearchViewNode::Options
 constexpr auto conditionOptimizationTypeMap =
     frozen::make_map<std::string_view, aql::ConditionOptimization>({
         {"auto", aql::ConditionOptimization::Auto},
@@ -477,9 +471,6 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief other helpers
-////////////////////////////////////////////////////////////////////////////////
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref, aql::VarSet& vars) {
@@ -576,30 +567,30 @@ int evaluateVolatility(IResearchViewNode const& node) {
 LogicalView::CollectionVisitor const sEmptyView{
     [](DataSourceId, LogicalView::Indexes*) noexcept { return false; }};
 
-/// @brief Since cluster is not transactional and each distributed
-///        part of a query starts it's own transaction associated
-///        with global query identifier, there is no single place
-///        to store a snapshot and we do the following:
-///
-///   1. Each query part on DB server gets the list of shards
-///      to be included into a query and starts its own transaction
-///
-///   2. Given the list of shards we take view snapshot according
-///      to the list of restricted data sources specified in options
-///      of corresponding IResearchViewNode
-///
-///   3. If waitForSync is specified, we refresh snapshot
-///      of each shard we need and finally put it to transaction
-///      associated to a part of the distributed query. We use
-///      default snapshot key if there are no restricted sources
-///      specified in options or IResearchViewNode address otherwise
-///
-///      Custom key is needed for the following query
-///      (assume 'view' is lined with 'c1' and 'c2' in the example below):
-///           FOR d IN view OPTIONS { collections : [ 'c1' ] }
-///           FOR x IN view OPTIONS { collections : [ 'c2' ] }
-///           RETURN {d, x}
-///
+// Since cluster is not transactional and each distributed
+//        part of a query starts it's own transaction associated
+//        with global query identifier, there is no single place
+//        to store a snapshot and we do the following:
+//
+//   1. Each query part on DB server gets the list of shards
+//      to be included into a query and starts its own transaction
+//
+//   2. Given the list of shards we take view snapshot according
+//      to the list of restricted data sources specified in options
+//      of corresponding IResearchViewNode
+//
+//   3. If waitForSync is specified, we refresh snapshot
+//      of each shard we need and finally put it to transaction
+//      associated to a part of the distributed query. We use
+//      default snapshot key if there are no restricted sources
+//      specified in options or IResearchViewNode address otherwise
+//
+//      Custom key is needed for the following query
+//      (assume 'view' is lined with 'c1' and 'c2' in the example below):
+//           FOR d IN view OPTIONS { collections : [ 'c1' ] }
+//           FOR x IN view OPTIONS { collections : [ 'c2' ] }
+//           RETURN {d, x}
+//
 ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
                                  transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
@@ -670,18 +661,18 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
                            view ? view->name() : "", std::move(links))};
 }
 
-/// @brief Since single-server is transactional we do the following:
-///
-///   1. When transaction starts we put index snapshot into it
-///
-///   2. If waitForSync is specified, we refresh snapshot
-///      taken in (1), object itself remains valid
-///
-///   3. If there are no restricted sources in a query, we reuse
-///      snapshot taken in (1),
-///      otherwise we reassemble restricted snapshot based on the
-///      original one taken in (1) and return it
-///
+// Since single-server is transactional we do the following:
+//
+//   1. When transaction starts we put index snapshot into it
+//
+//   2. If waitForSync is specified, we refresh snapshot
+//      taken in (1), object itself remains valid
+//
+//   3. If there are no restricted sources in a query, we reuse
+//      snapshot taken in (1),
+//      otherwise we reassemble restricted snapshot based on the
+//      original one taken in (1) and return it
+//
 ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
                                      transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isSingleServer());
@@ -1215,7 +1206,6 @@ std::pair<bool, bool> IResearchViewNode::volatility(
                         irs::check_bit<1>(_volatilityMask));  // sort
 }
 
-/// @brief doToVelocyPack, for EnumerateViewNode
 void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
                                        unsigned flags) const {
   // system info
@@ -1379,7 +1369,6 @@ IResearchViewNode::Collections IResearchViewNode::collections() const {
   return viewCollections;
 }
 
-/// @brief clone ExecutionNode recursively
 aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
                                              bool withDependencies,
                                              bool withProperties) const {
@@ -1446,7 +1435,6 @@ bool IResearchViewNode::empty() const noexcept {
   }
 }
 
-/// @brief the cost of an enumerate view node
 aql::CostEstimate IResearchViewNode::estimateCost() const {
   if (_dependencies.empty()) {
     return aql::CostEstimate::empty();
@@ -1483,8 +1471,8 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   return estimate;
 }
 
-/// @brief replaces variables in the internals of the execution node
-/// replacements are { old variable id => new variable }
+// Replaces variables in the internals of the execution node
+// replacements are { old variable id => new variable }.
 void IResearchViewNode::replaceVariables(
     std::unordered_map<aql::VariableId, aql::Variable const*> const&
         replacements) {
@@ -1513,7 +1501,6 @@ void IResearchViewNode::replaceVariables(
   }
 }
 
-/// @brief getVariablesUsedHere, modifying the set in-place
 void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
   auto const outVariableAlreadyInVarSet = vars.contains(_outVariable);
 
