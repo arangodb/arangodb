@@ -180,14 +180,10 @@ class BufferHeapSortContext {
 
 }  // namespace
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                       IResearchViewExecutorBase
-///////////////////////////////////////////////////////////////////////////////
-
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ViewSnapshotPtr reader, OutRegisters outRegisters,
-    std::vector<RegisterId> scoreRegisters, arangodb::aql::QueryContext& query,
-    std::vector<SearchFunc> const& scorers,
+    RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
+    arangodb::aql::QueryContext& query, std::vector<SearchFunc> const& scorers,
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
@@ -197,27 +193,28 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
     std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit)
-    : _scoreRegisters(std::move(scoreRegisters)),
+    : _searchDocOutReg{searchDocRegister},
+      _scoreRegisters{std::move(scoreRegisters)},
       _scoreRegistersCount{_scoreRegisters.size()},
-      _reader(std::move(reader)),
-      _query(query),
-      _scorers(scorers),
-      _sort(std::move(sort)),
-      _storedValues(storedValues),
-      _plan(plan),
-      _outVariable(outVariable),
-      _filterCondition(filterCondition),
-      _volatileSort(volatility.second),
+      _reader{std::move(reader)},
+      _query{query},
+      _scorers{scorers},
+      _sort{std::move(sort)},
+      _storedValues{storedValues},
+      _plan{plan},
+      _outVariable{outVariable},
+      _filterCondition{filterCondition},
+      _volatileSort{volatility.second},
       // `_volatileSort` implies `_volatileFilter`
-      _volatileFilter(_volatileSort || volatility.first),
-      _varInfoMap(varInfoMap),
-      _depth(depth),
-      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
-      _countApproximate(countApproximate),
-      _filterConditionIsEmpty(isFilterConditionEmpty(&_filterCondition)),
-      _filterOptimization(filterOptimization),
-      _scorersSort(std::move(scorersSort)),
-      _scorersSortLimit(scorersSortLimit) {
+      _volatileFilter{_volatileSort || volatility.first},
+      _varInfoMap{varInfoMap},
+      _depth{depth},
+      _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
+      _countApproximate{countApproximate},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
+      _filterOptimization{filterOptimization},
+      _scorersSort{std::move(scorersSort)},
+      _scorersSortLimit{scorersSortLimit} {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
@@ -318,10 +315,6 @@ ExecutionStats& aql::operator+=(
   executionStats.scannedIndex += iResearchViewStats.getScanned();
   return executionStats;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                       IResearchViewExecutorBase
-///////////////////////////////////////////////////////////////////////////////
 
 template<typename Impl, typename Traits>
 template<arangodb::iresearch::MaterializeType, typename>
@@ -677,6 +670,19 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
     }
     IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
+    if (auto reg = infos().searchDocIdRegId(); reg.isValid()) {
+      const size_t segmentOffs = 0;
+      const irs::doc_id_t docId = 1;
+
+      std::array<char, 12> buf;
+      std::memcpy(buf.data(), &segmentOffs, sizeof segmentOffs);
+      std::memcpy(buf.data() + sizeof segmentOffs, &docId, sizeof docId);
+
+      AqlValue value{buf.data(), buf.size()};
+      AqlValueGuard guard{value, true};
+      ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
+    }
+
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
       break;
     } else {
@@ -961,10 +967,6 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
   }
   return true;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                           IResearchViewExecutor
-///////////////////////////////////////////////////////////////////////////////
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 IResearchViewExecutor<copyStored, ordered,
@@ -1558,10 +1560,6 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::writeRow(
   return Base::writeRow(ctx, bufferEntry, val, *_collection);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                      IResearchViewMergeExecutor
-///////////////////////////////////////////////////////////////////////////////
-
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
     IResearchViewMergeExecutor(Fetcher& fetcher, Infos& infos)
@@ -1890,10 +1888,6 @@ bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::writeRow(
 
   return Base::writeRow(ctx, bufferEntry, documentId, *collection);
 }
-
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                 explicit template instantiation
-///////////////////////////////////////////////////////////////////////////////
 
 template class ::arangodb::aql::IResearchViewExecutor<
     false, false, MaterializeType::NotMaterialize>;

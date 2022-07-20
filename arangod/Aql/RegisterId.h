@@ -23,9 +23,10 @@
 
 #pragma once
 
-#include "Basics/debugging.h"
-
+#include <limits>
 #include <type_traits>
+
+#include "Basics/debugging.h"
 
 namespace arangodb::aql {
 
@@ -46,6 +47,10 @@ struct RegisterId {
   constexpr RegisterId(value_t v, Type type = Type::Regular)
       : _value(v), _type(type) {
     TRI_ASSERT(v <= maxRegisterId);
+  }
+
+  constexpr static RegisterId makeInvalid() noexcept {
+    return {std::numeric_limits<value_t>::max()};
   }
 
   constexpr static RegisterId makeConst(value_t value) noexcept {

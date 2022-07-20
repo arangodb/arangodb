@@ -84,7 +84,8 @@ class IResearchViewExecutorInfos {
 
   IResearchViewExecutorInfos(
       iresearch::ViewSnapshotPtr reader, OutRegisters outRegister,
-      std::vector<RegisterId> scoreRegisters, aql::QueryContext& query,
+      RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
+      aql::QueryContext& query,
       std::vector<iresearch::SearchFunc> const& scorers,
       std::pair<iresearch::IResearchSortBase const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues,
@@ -100,6 +101,7 @@ class IResearchViewExecutorInfos {
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
 
+  RegisterId searchDocIdRegId() const noexcept { return _searchDocOutReg; }
   std::vector<RegisterId> const& getScoreRegisters() const noexcept;
 
   iresearch::IResearchViewNode::ViewValuesRegisters const&
@@ -138,6 +140,7 @@ class IResearchViewExecutorInfos {
   size_t scoreRegistersCount() const noexcept { return _scoreRegistersCount; }
 
  private:
+  aql::RegisterId _searchDocOutReg;
   aql::RegisterId _documentOutReg;
   aql::RegisterId _collectionPointerReg;
   std::vector<RegisterId> _scoreRegisters;
@@ -160,7 +163,7 @@ class IResearchViewExecutorInfos {
   iresearch::FilterOptimization _filterOptimization;
   std::vector<std::pair<size_t, bool>> _scorersSort;
   size_t _scorersSortLimit;
-};  // IResearchViewExecutorInfos
+};
 
 class IResearchViewStats {
  public:

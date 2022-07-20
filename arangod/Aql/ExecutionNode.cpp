@@ -122,6 +122,8 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
+    {static_cast<int>(ExecutionNode::OFFSET_INFO_MATERIALIZE),
+     "OffsetMaterializeNode"},
 };
 
 }  // namespace

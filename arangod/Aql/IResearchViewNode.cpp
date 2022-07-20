@@ -750,6 +750,7 @@ const char* NODE_DATABASE_PARAM = "database";
 const char* NODE_VIEW_NAME_PARAM = "view";
 const char* NODE_VIEW_ID_PARAM = "viewId";
 const char* NODE_OUT_VARIABLE_PARAM = "outVariable";
+const char* NODE_OUT_SEARCH_DOC_PARAM = "outSearchDocId";
 const char* NODE_OUT_NM_DOC_PARAM = "outNmDocId";
 const char* NODE_OUT_NM_COL_PARAM = "outNmColPtr";
 const char* NODE_CONDITION_PARAM = "condition";
@@ -921,6 +922,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                                      velocypack::Slice base)
     : aql::ExecutionNode{&plan, base},
       _vocbase{plan.getAst()->query().vocbase()},
+      _outSearchDocId{aql::Variable::varFromVPack(
+          plan.getAst(), base, NODE_OUT_SEARCH_DOC_PARAM, true)},
       _outVariable{aql::Variable::varFromVPack(plan.getAst(), base,
                                                NODE_OUT_VARIABLE_PARAM)},
       _outNonMaterializedDocId{aql::Variable::varFromVPack(
@@ -1227,6 +1230,11 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   nodes.add(VPackValue(NODE_OUT_VARIABLE_PARAM));
   _outVariable->toVelocyPack(nodes);
 
+  if (_outSearchDocId != nullptr) {
+    nodes.add(VPackValue(NODE_OUT_SEARCH_DOC_PARAM));
+    _outSearchDocId->toVelocyPack(nodes);
+  }
+
   if (_outNonMaterializedDocId != nullptr) {
     nodes.add(VPackValue(NODE_OUT_NM_DOC_PARAM));
     _outNonMaterializedDocId->toVelocyPack(nodes);
@@ -1378,26 +1386,29 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
+  auto* outSearchDocId = _outSearchDocId;
   auto* outNonMaterializedDocId = _outNonMaterializedDocId;
   auto* outNonMaterializedColId = _outNonMaterializedColPtr;
   auto outNonMaterializedViewVars = _outNonMaterializedViewVars;
 
   if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    auto* vars = plan->getAst()->variables();
+    outVariable = vars->createVariable(outVariable);
+    if (outSearchDocId != nullptr) {
+      TRI_ASSERT(_outSearchDocId != nullptr);
+      outSearchDocId = vars->createVariable(outNonMaterializedDocId);
+    }
     if (outNonMaterializedDocId != nullptr) {
       TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
-      outNonMaterializedDocId =
-          plan->getAst()->variables()->createVariable(outNonMaterializedDocId);
+      outNonMaterializedDocId = vars->createVariable(outNonMaterializedDocId);
     }
     if (outNonMaterializedColId != nullptr) {
       TRI_ASSERT(_outNonMaterializedDocId != nullptr);
-      outNonMaterializedColId =
-          plan->getAst()->variables()->createVariable(outNonMaterializedColId);
+      outNonMaterializedColId = vars->createVariable(outNonMaterializedColId);
     }
     for (auto& columnFieldsVars : outNonMaterializedViewVars) {
       for (auto& fieldVar : columnFieldsVars.second) {
-        fieldVar.var =
-            plan->getAst()->variables()->createVariable(fieldVar.var);
+        fieldVar.var = vars->createVariable(fieldVar.var);
       }
     }
   }
@@ -1411,6 +1422,9 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_volatilityMask = _volatilityMask;
   node->_sort = _sort;
   node->_optState = _optState;
+  if (outSearchDocId != nullptr) {
+    node->setSearchDocIdVar(*outSearchDocId);
+  }
   if (outNonMaterializedColId != nullptr &&
       outNonMaterializedDocId != nullptr) {
     node->setLateMaterialized(*outNonMaterializedColId,
@@ -1525,7 +1539,10 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   if (isLateMaterialized()) {
     reserve += 2;
   } else if (!isNoMaterialization()) {
-    reserve += 1;
+    ++reserve;
+  }
+  if (searchDocIdVar()) {
+    ++reserve;
   }
   vars.reserve(reserve);
 
@@ -1543,6 +1560,9 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
     }
   } else {
     vars.emplace_back(_outVariable);
+  }
+  if (searchDocIdVar()) {
+    vars.emplace_back(_outSearchDocId);
   }
   return vars;
 }
@@ -1641,7 +1661,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         ViewSnapshotPtr reader) {
     // We could be asked to produce only document/collection ids for later
     // materialization or full document body at once
-    aql::RegisterCount numDocumentRegs = 0;
+    aql::RegisterCount numDocumentRegs = uint32_t{_outSearchDocId != nullptr};
     MaterializeType materializeType = MaterializeType::Undefined;
     if (isLateMaterialized()) {
       TRI_ASSERT(!isNoMaterialization());
@@ -1652,7 +1672,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       materializeType = MaterializeType::NotMaterialize;
     } else {
       materializeType = MaterializeType::Materialize;
-      numDocumentRegs += 1;
+      ++numDocumentRegs;
     }
 
     // We have one output register for documents, which is always the first
@@ -1674,9 +1694,15 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // the output register(s) for documents (one or two + vars, depending on
     // late materialization) These must of course fit in the available
     // registers. There may be unused registers reserved for later blocks.
-    auto writableOutputRegisters = aql::RegIdSet{};
+    aql::RegIdSet writableOutputRegisters;
     writableOutputRegisters.reserve(numDocumentRegs + numScoreRegisters +
                                     numViewVarsRegisters);
+
+    aql::RegisterId searchDocRegId{aql::RegisterPlan::MaxRegisterId};
+    if (_outSearchDocId != nullptr) {
+      searchDocRegId = variableToRegisterId(_outSearchDocId);
+      writableOutputRegisters.emplace(searchDocRegId);
+    }
 
     auto const outRegister =
         std::invoke([&]() -> aql::IResearchViewExecutorInfos::OutRegisters {
@@ -1708,8 +1734,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       scoreRegisters.emplace_back(registerId);
     });
 
-    auto const& varInfos =
-        getRegisterPlan()->varInfo;  // TODO remove if not needed
+    // TODO remove if not needed
+    auto const& varInfos = getRegisterPlan()->varInfo;
 
     ViewValuesRegisters outNonMaterializedViewRegs;
 
@@ -1731,7 +1757,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     TRI_ASSERT(_view || _storedValues);
     auto executorInfos = aql::IResearchViewExecutorInfos{
         std::move(reader),
-        outRegister,
+        std::move(outRegister),
+        searchDocRegId,
         std::move(scoreRegisters),
         engine.getQuery(),
         scorers(),
@@ -1751,6 +1778,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
   };
+
   if (ServerState::instance()->isCoordinator()) {
     // coordinator in a cluster: empty view case
     return createNoResultsExecutor(engine);
