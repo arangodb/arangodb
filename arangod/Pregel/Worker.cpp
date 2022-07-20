@@ -671,15 +671,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
 
-    VPackBuilder body;
-    body.openObject();
-    body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    body.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
-    body.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(body);
+    VPackBuilder executionFinished;
+    _createExecutionFinishedEvent(executionFinished);
+    _callConductor(Utils::finishedWorkerFinalizationPath, executionFinished);
     _reports.clear();
-    body.close();
-    _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
   };
 
@@ -694,6 +689,15 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
   }
+}
+
+template<typename V, typename E, typename M>
+void Worker<V, E, M>::_createExecutionFinishedEvent(VPackBuilder& b) {
+  VPackObjectBuilder o(&b);
+  b.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+  b.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+  b.add(VPackValue(Utils::reportsKey));
+  _reports.intoBuilder(b);
 }
 
 template<typename V, typename E, typename M>

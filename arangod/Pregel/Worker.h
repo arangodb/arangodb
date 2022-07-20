@@ -168,6 +168,7 @@ class Worker : public IWorker {
 
   std::function<void()> _statusCallback();
   void _createGssFinishedEvent(VPackBuilder& b);
+  void _createExecutionFinishedEvent(VPackBuilder& b);
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
