@@ -43,6 +43,7 @@
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/IResearchCommon.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -1281,7 +1282,12 @@ ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
             slice, StaticStrings::DataSourceDeleted, false)) {
       continue;
     }
-
+    if (ServerState::instance()->isDBServer() &&
+        arangodb::basics::VelocyPackHelper::getStringView(
+            slice, StaticStrings::DataSourceType, {}) !=
+            arangodb::iresearch::StaticStrings::ViewType) {
+      continue;
+    }
     result.add(slice);
   }
 
@@ -2592,50 +2598,58 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 
-  // scan the database path for views
-  try {
-    VPackBuilder builder;
-    auto res = getViews(*vocbase, builder);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    VPackSlice const slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (VPackSlice it : VPackArrayIterator(slice)) {
-      // we found a view that is still active
-
-      TRI_ASSERT(!it.get("id").isNone());
-
-      LogicalView::ptr view;
-      auto res = LogicalView::instantiate(view, *vocbase, it);
-
-      if (!res.ok()) {
-        THROW_ARANGO_EXCEPTION(res);
+  VPackBuilder builder;
+  auto scanViews = [&](std::string_view type) {
+    try {
+      if (builder.isEmpty()) {
+        auto r = getViews(*vocbase, builder);
+        if (r != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(r);
+        }
       }
 
-      if (!view) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(  // exception
-            TRI_ERROR_INTERNAL,          // code
-            std::string("failed to instantiate view in vocbase'") +
-                vocbase->name() + "' from definition: " + it.toString());
+      auto const slice = builder.slice();
+      TRI_ASSERT(slice.isArray());
+
+      for (VPackSlice it : VPackArrayIterator(slice)) {
+        if (it.get(StaticStrings::DataSourceType).stringView() != type) {
+          continue;
+        }
+        // we found a view that is still active
+
+        TRI_ASSERT(!it.get("id").isNone());
+
+        LogicalView::ptr view;
+        auto res = LogicalView::instantiate(view, *vocbase, it);
+
+        if (!res.ok()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+
+        if (!view) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              std::string("failed to instantiate view in vocbase'") +
+                  vocbase->name() + "' from definition: " + it.toString());
+        }
+
+        StorageEngine::registerView(*vocbase, view);
+
+        view->open();
       }
-
-      StorageEngine::registerView(*vocbase, view);
-
-      view->open();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_TOPIC("593fd", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: unknown exception";
+      throw;
     }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("593fd", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
-    throw;
-  }
+  };
+
+  // scan the database path for "arangosearch" views
+  scanViews(iresearch::StaticStrings::ViewType);
 
   // scan the database path for replicated logs
   try {
@@ -2702,8 +2716,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added document collection '" << collection->name() << "'";
     }
-
-    return vocbase;
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: " << ex.what();
@@ -2713,6 +2725,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         << "error while opening database: unknown exception";
     throw;
   }
+
+  // scan the database path for "search" views
+  if (ServerState::instance()->isSingleServer()) {
+    scanViews(iresearch::StaticStrings::SearchType);
+  }
+
+  return vocbase;
 }
 
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,

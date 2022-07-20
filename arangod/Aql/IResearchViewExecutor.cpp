@@ -188,7 +188,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ViewSnapshotPtr reader, OutRegisters outRegisters,
     std::vector<RegisterId> scoreRegisters, arangodb::aql::QueryContext& query,
     std::vector<Scorer> const& scorers,
-    std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
+    std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility,
@@ -214,7 +214,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
       _countApproximate(countApproximate),
-      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
+      _filterConditionIsEmpty(isFilterConditionEmpty(&_filterCondition)),
       _filterOptimization(filterOptimization),
       _scorersSort(std::move(scorersSort)),
       _scorersSortLimit(scorersSortLimit) {
@@ -286,7 +286,7 @@ bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
   return _volatileFilter;
 }
 
-const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>&
+const std::pair<const arangodb::iresearch::IResearchSortBase*, size_t>&
 IResearchViewExecutorInfos::sort() const noexcept {
   return _sort;
 }
@@ -925,7 +925,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
     auto index = storedValuesIndex * columnsFieldsRegs.size();
-    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+    if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
       auto sortReader = ::sortColumn(segmentReader);
       if (ADB_UNLIKELY(!sortReader)) {
         LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
@@ -941,7 +941,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
       auto const& columns = _infos.storedValues().columns();
       TRI_ASSERT(!columns.empty());
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-        TRI_ASSERT(IResearchViewNode::SortColumnNumber <
+        TRI_ASSERT(IResearchViewNode::kSortColumnNumber <
                    columnFieldsRegs->first);
         auto const storedColumnNumber =
             static_cast<size_t>(columnFieldsRegs->first);
@@ -1601,14 +1601,14 @@ IResearchViewMergeExecutor<copyStored, ordered, materializeType>::Segment::
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
-    MinHeapContext::MinHeapContext(const IResearchViewSort& sort,
+    MinHeapContext::MinHeapContext(IResearchSortBase const& sort,
                                    size_t sortBuckets,
                                    std::vector<Segment>& segments) noexcept
     : _less(sort, sortBuckets), _segments(&segments) {}
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
-    MinHeapContext::operator()(const size_t i) const {
+    MinHeapContext::operator()(size_t const i) const {
   assert(i < _segments->size());
   auto& segment = (*_segments)[i];
   while (segment.docs->next()) {
@@ -1625,7 +1625,7 @@ bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
-    MinHeapContext::operator()(const size_t lhs, const size_t rhs) const {
+    MinHeapContext::operator()(size_t const lhs, size_t const rhs) const {
   assert(lhs < _segments->size());
   assert(rhs < _segments->size());
   return _less((*_segments)[rhs].sortValue->value,
@@ -1645,7 +1645,7 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
   this->_storedValuesReaders.resize(size * storedValuesCount);
   auto isSortReaderUsedInStoredValues =
       storedValuesCount > 0 &&
-      IResearchViewNode::SortColumnNumber == columnsFieldsRegs.cbegin()->first;
+      IResearchViewNode::kSortColumnNumber == columnsFieldsRegs.cbegin()->first;
 
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
