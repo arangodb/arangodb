@@ -286,7 +286,6 @@ bool Conductor::_startGlobalStep() {
     return false;
   }
 
-  VPackBuilder toWorkerMessages;
   if (_masterContext) {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
@@ -296,30 +295,18 @@ bool Conductor::_startGlobalStep() {
       updateState(ExecutionState::FATAL_ERROR);
       return false;
     }
-    _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-  b.add(Utils::activateAllKey, VPackValue(activateAll));
+  VPackBuilder startGssCommand;
+  _createStartGssCommand(startGssCommand, activateAll);
 
-  if (!toWorkerMessages.slice().isNone()) {
-    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
-  }
-  _aggregators->serializeValues(b);
-
-  b.close();
-
-  LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
+  LOG_PREGEL("d98de", DEBUG) << startGssCommand.slice().toJson();
   _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
                                     ._finish = std::nullopt});
 
   // start vertex level operations, does not get a response
-  auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
+  auto res = _sendToAllDBServers(Utils::startGSSPath,
+                                 startGssCommand);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::IN_ERROR);
     LOG_PREGEL("f34bb", ERR)
@@ -330,6 +317,25 @@ bool Conductor::_startGlobalStep() {
         << "Conductor started new gss " << _globalSuperstep;
   }
   return res == TRI_ERROR_NO_ERROR;
+}
+
+void Conductor::_createStartGssCommand(VPackBuilder& b, bool activateAll) {
+  VPackObjectBuilder o(&b);
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
+  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
+  b.add(Utils::activateAllKey, VPackValue(activateAll));
+
+  VPackBuilder toWorkerMessages;
+  if (_masterContext) {
+    _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
+  }
+  if (!toWorkerMessages.slice().isNone()) {
+    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  }
+
+  _aggregators->serializeValues(b);
 }
 
 // ============ Conductor callbacks ===============

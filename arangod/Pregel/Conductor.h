@@ -35,6 +35,7 @@
 
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
+#include "velocypack/Builder.h"
 
 #include <chrono>
 
@@ -131,6 +132,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(VPackSlice body);
+  void _createStartGssCommand(VPackBuilder& b, bool activateAll);
 
   // === REST callbacks ===
   void workerStatusUpdate(VPackSlice const& data);
