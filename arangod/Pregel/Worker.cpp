@@ -661,8 +661,9 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
 
-  VPackSlice store = body.get(Utils::storeResultsKey);
-  auto const doStore = store.isBool() && store.getBool() == true;
+  auto const command = deserialize<FinalizeExecutionCommand>(body);
+
+  auto const doStore = command.withStoring;
   auto cleanup = [self = shared_from_this(), this, doStore, cb] {
     if (doStore) {
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);

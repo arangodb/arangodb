@@ -827,7 +827,6 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
 
-  bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
     _masterContext->postApplication();
   }
@@ -839,13 +838,15 @@ ErrorCode Conductor::_finalizeWorkers() {
   }
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::storeResultsKey, VPackValue(store));
-  b.close();
-  return _sendToAllDBServers(Utils::finalizeExecutionPath, b);
+
+  auto finalizeExecutionCommand = FinalizeExecutionCommand{
+      .executionNumber = _executionNumber,
+      .gss = _globalSuperstep,
+      .withStoring = _state == ExecutionState::STORING};
+  VPackBuilder command;
+  serialize(command, finalizeExecutionCommand);
+
+  return _sendToAllDBServers(Utils::finalizeExecutionPath, command);
 }
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {

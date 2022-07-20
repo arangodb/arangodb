@@ -70,4 +70,18 @@ auto inspect(Inspector& f, CancelGssCommand& x) {
       f.field(Utils::globalSuperstepKey, x.gss));
 }
 
+struct FinalizeExecutionCommand {
+  uint64_t executionNumber;
+  uint64_t gss;
+  bool withStoring;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, FinalizeExecutionCommand& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss),
+      f.field("withStoring", x.withStoring));
+}
+
 }  // namespace arangodb::pregel
