@@ -53,7 +53,6 @@ std::shared_ptr<LogicalCollection> getCollection(
   if (cidOrName.isString()) {
     return resolver.getCollection(cidOrName.stringView());
   } else if (cidOrName.isNumber<DataSourceId::BaseType>()) {
-    std::this_thread::sleep_for(std::chrono::seconds{10});
     auto const cid = cidOrName.getNumber<DataSourceId::BaseType>();
     absl::AlphaNum const cidStr{cid};  // TODO make resolve by id?
     return resolver.getCollection(cidStr.Piece());
