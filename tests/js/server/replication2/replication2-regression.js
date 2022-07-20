@@ -225,7 +225,7 @@ const replicatedLogRegressionSuite = function () {
 
       waitFor(function () {
         const {current} = helper.readReplicatedLogAgency(database, logId);
-        if (!current && !current.supervision && !current.supervision.StatusReport) {
+        if (!current || !current.supervision || !current.supervision.StatusReport) {
           return Error("Status report not yet set");
         }
 
