@@ -35,11 +35,11 @@
 #include <velocypack/Slice.h>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
+#include "Basics/Guarded.h"
+#include "Pregel/PregelMetrics.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
-#include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
@@ -137,8 +137,6 @@ class PregelFeature final : public ArangodFeature {
   // default "useMemoryMaps" value per Pregel job
   bool _useMemoryMaps;
 
-  mutable Mutex _mutex;
-
   std::unique_ptr<RecoveryManager> _recoveryManager;
   /// @brief _recoveryManagerPtr always points to the same object as
   /// _recoveryManager, but allows the pointer to be read atomically. This is
@@ -148,7 +146,7 @@ class PregelFeature final : public ArangodFeature {
   /// and lives until the owning PregelFeature instance is also destroyed.
   std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
 
-  Scheduler::WorkHandle _gcHandle;
+  Guarded<Scheduler::WorkHandle> _gcHandle;
 
   struct ConductorEntry {
     std::string user;
@@ -156,9 +154,13 @@ class PregelFeature final : public ArangodFeature {
     std::shared_ptr<Conductor> conductor;
   };
 
-  std::unordered_map<uint64_t, ConductorEntry> _conductors;
-  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
-      _workers;
+  using ConductorsMap = std::unordered_map<uint64_t, ConductorEntry>;
+  Guarded<ConductorsMap> _conductors;
+
+  using WorkersMap =
+      std::unordered_map<uint64_t,
+                         std::pair<std::string, std::shared_ptr<IWorker>>>;
+  Guarded<WorkersMap> _workers;
 
   std::atomic<bool> _softShutdownOngoing;
 

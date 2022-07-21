@@ -40,6 +40,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
@@ -53,7 +54,6 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -263,8 +263,8 @@ PregelFeature::PregelFeature(Server& server)
 }
 
 PregelFeature::~PregelFeature() {
-  TRI_ASSERT(_conductors.empty());
-  TRI_ASSERT(_workers.empty());
+  TRI_ASSERT(_conductors.getLockedGuard()->empty());
+  TRI_ASSERT(_workers.getLockedGuard()->empty());
 }
 
 void PregelFeature::scheduleGarbageCollection() {
@@ -277,16 +277,13 @@ void PregelFeature::scheduleGarbageCollection() {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  auto handle = scheduler->queueDelayed(RequestLane::INTERNAL_LOW, offset,
-                                        [this](bool canceled) {
-                                          if (!canceled) {
-                                            garbageCollectConductors();
-                                            scheduleGarbageCollection();
-                                          }
-                                        });
-
-  MUTEX_LOCKER(guard, _mutex);
-  _gcHandle = std::move(handle);
+  _gcHandle.assign(scheduler->queueDelayed(RequestLane::INTERNAL_LOW, offset,
+                                           [this](bool canceled) {
+                                             if (!canceled) {
+                                               garbageCollectConductors();
+                                               scheduleGarbageCollection();
+                                             }
+                                           }));
 }
 
 void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -479,25 +476,30 @@ void PregelFeature::start() {
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
 
-  MUTEX_LOCKER(guard, _mutex);
-  _gcHandle.reset();
+  _gcHandle.getLockedGuard()->reset();
 
   // cancel all conductors and workers
-  for (auto& it : _conductors) {
-    it.second.conductor->cancel();
-  }
-  for (auto it : _workers) {
-    it.second.second->cancelGlobalStep(VPackSlice());
-  }
+  _conductors.doUnderLock([](ConductorsMap& map) {
+    for (auto& [_, conductorEntry] : map) {
+      conductorEntry.conductor->cancel();
+    }
+  });
+
+  _workers.doUnderLock([](WorkersMap& map) {
+    for (auto& [_, worker] : map) {
+      worker.second->cancelGlobalStep(VPackSlice());
+    }
+  });
 }
 
 void PregelFeature::unprepare() {
   garbageCollectConductors();
 
-  MUTEX_LOCKER(guard, _mutex);
-  decltype(_conductors) cs = std::move(_conductors);
-  decltype(_workers) ws = std::move(_workers);
-  guard.unlock();
+  auto cs = _conductors.doUnderLock(
+      [](ConductorsMap& map) { return std::move(map); });
+
+  auto ws =
+      _workers.doUnderLock([](WorkersMap& map) { return std::move(map); });
 
   // all pending tasks should have been finished by now, and all references
   // to conductors and workers been dropped!
@@ -506,7 +508,7 @@ void PregelFeature::unprepare() {
     TRI_ASSERT(it.second.conductor.use_count() == 1);
   }
 
-  for (auto it : _workers) {
+  for (auto& it : ws) {
     TRI_ASSERT(it.second.second.use_count() == 1);
   }
 #endif
@@ -551,78 +553,76 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
   }
 
   std::string user = ExecContext::current().user();
-  MUTEX_LOCKER(guard, _mutex);
-  _conductors.try_emplace(
+  _conductors.getLockedGuard()->try_emplace(
       executionNumber,
       ConductorEntry{std::move(user), std::chrono::steady_clock::time_point{},
                      std::move(c)});
 }
 
 std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
-  MUTEX_LOCKER(guard, _mutex);
-  auto it = _conductors.find(executionNumber);
-  return (it != _conductors.end() && ::authorized(it->second.user))
-             ? it->second.conductor
-             : nullptr;
+  return _conductors.doUnderLock([executionNumber](ConductorsMap const& map) {
+    if (auto it = map.find(executionNumber); it != map.end()) {
+      auto const& [_, conductorEntry] = *it;
+
+      if (::authorized(conductorEntry.user)) {
+        return conductorEntry.conductor;
+      }
+    }
+    return std::shared_ptr<Conductor>{nullptr};
+  });
 }
 
 void PregelFeature::garbageCollectConductors() try {
   // iterate over all conductors and remove the ones which can be
   // garbage-collected
-  std::vector<std::shared_ptr<Conductor>> conductors;
-
   // copy out shared-ptrs of Conductors under the mutex
-  {
-    MUTEX_LOCKER(guard, _mutex);
-    for (auto const& it : _conductors) {
-      if (it.second.conductor->canBeGarbageCollected()) {
-        if (conductors.empty()) {
-          conductors.reserve(8);
-        }
-        conductors.emplace_back(it.second.conductor);
+  auto collectibleConductors = _conductors.doUnderLock([](ConductorsMap& map) {
+    std::vector<std::shared_ptr<Conductor>> conductors;
+    conductors.reserve(8);
+
+    for (auto const& [_, conductorEntry] : map) {
+      if (conductorEntry.conductor->canBeGarbageCollected()) {
+        conductors.emplace_back(conductorEntry.conductor);
       }
     }
-  }
+    return conductors;
+  });
 
-  // cancel and kill conductors without holding the mutex
-  // permanently
-  for (auto& c : conductors) {
-    c->cancel();
-  }
+  // cancel and kill conductors without holding the lock
+  for (auto& conductor : collectibleConductors) {
+    conductor->cancel();
 
-  MUTEX_LOCKER(guard, _mutex);
-  for (auto& c : conductors) {
-    uint64_t executionNumber = c->executionNumber();
-
-    _conductors.erase(executionNumber);
-    _workers.erase(executionNumber);
+    uint64_t executionNumber = conductor->executionNumber();
+    _conductors.getLockedGuard()->erase(executionNumber);
   }
 } catch (...) {
 }
 
-void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w,
+void PregelFeature::addWorker(std::shared_ptr<IWorker>&& worker,
                               uint64_t executionNumber) {
   if (isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   std::string user = ExecContext::current().user();
-  MUTEX_LOCKER(guard, _mutex);
-  _workers.try_emplace(executionNumber, std::move(user), std::move(w));
+  _workers.getLockedGuard()->try_emplace(executionNumber, std::move(user),
+                                         std::move(worker));
 }
 
 std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
-  MUTEX_LOCKER(guard, _mutex);
-  auto it = _workers.find(executionNumber);
-  return (it != _workers.end() && ::authorized(it->second.first))
-             ? it->second.second
-             : nullptr;
+  return _workers.doUnderLock([executionNumber](WorkersMap const& map) {
+    if (auto it = map.find(executionNumber); it != map.end()) {
+      auto const& [_, workerEntry] = *it;
+      if (::authorized(workerEntry.first)) {
+        return workerEntry.second;
+      }
+    }
+    return std::shared_ptr<IWorker>{nullptr};
+  });
 }
 
 void PregelFeature::cleanupConductor(uint64_t executionNumber) {
-  MUTEX_LOCKER(guard, _mutex);
-  _conductors.erase(executionNumber);
-  _workers.erase(executionNumber);
+  _conductors.getLockedGuard()->erase(executionNumber);
 }
 
 void PregelFeature::cleanupWorker(uint64_t executionNumber) {
@@ -630,8 +630,7 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
-    MUTEX_LOCKER(guard, _mutex);
-    _workers.erase(executionNumber);
+    _workers.getLockedGuard()->erase(executionNumber);
   });
 }
 
@@ -756,31 +755,31 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
 }
 
 uint64_t PregelFeature::numberOfActiveConductors() const {
-  MUTEX_LOCKER(guard, _mutex);
-  uint64_t nr{0};
-  for (auto const& p : _conductors) {
-    std::shared_ptr<Conductor> const& c = p.second.conductor;
-    if (c->_state == ExecutionState::DEFAULT ||
-        c->_state == ExecutionState::LOADING ||
-        c->_state == ExecutionState::RUNNING ||
-        c->_state == ExecutionState::STORING) {
-      ++nr;
+  return _conductors.doUnderLock([](ConductorsMap const& map) {
+    uint64_t nr{0};
+    for (auto const& p : map) {
+      std::shared_ptr<Conductor> const& c = p.second.conductor;
+      if (c->_state == ExecutionState::DEFAULT ||
+          c->_state == ExecutionState::LOADING ||
+          c->_state == ExecutionState::RUNNING ||
+          c->_state == ExecutionState::STORING) {
+        ++nr;
+      }
     }
-  }
-  return nr;
+    return nr;
+  });
 }
 
 Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
                                    arangodb::velocypack::Builder& result,
                                    bool allDatabases, bool fanout) const {
-  std::vector<std::shared_ptr<Conductor>> conductors;
+  // TODO: Why?
+  auto conductors = _conductors.doUnderLock([](ConductorsMap const& map) {
+    std::vector<std::shared_ptr<Conductor>> conductors;
 
-  // make a copy of all conductor shared-ptrs under the mutex
-  {
-    MUTEX_LOCKER(guard, _mutex);
-    conductors.reserve(_conductors.size());
+    conductors.reserve(map.size());
 
-    for (auto const& p : _conductors) {
+    for (auto const& p : map) {
       auto const& ce = p.second;
       if (!::authorized(ce.user)) {
         continue;
@@ -788,7 +787,8 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
 
       conductors.emplace_back(ce.conductor);
     }
-  }
+    return conductors;
+  });
 
   // release lock, and now velocypackify all conductors
   result.openArray();
