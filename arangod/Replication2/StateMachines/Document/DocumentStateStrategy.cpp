@@ -47,30 +47,28 @@
 
 using namespace arangodb::replication2::replicated_state::document;
 
-DocumentStateAgencyHandler::DocumentStateAgencyHandler(ArangodServer& server,
+DocumentStateAgencyHandler::DocumentStateAgencyHandler(GlobalLogIdentifier gid,
+                                                       ArangodServer& server,
                                                        AgencyCache& agencyCache)
-    : _server(server), _agencyCache(agencyCache) {}
+    : _gid(std::move(gid)), _server(server), _agencyCache(agencyCache) {}
 
 auto DocumentStateAgencyHandler::getCollectionPlan(
-    std::string const& database, std::string const& collectionId)
-    -> std::shared_ptr<VPackBuilder> {
+    std::string const& collectionId) -> std::shared_ptr<VPackBuilder> {
   auto builder = std::make_shared<VPackBuilder>();
   auto path = cluster::paths::aliases::plan()
                   ->collections()
-                  ->database(database)
+                  ->database(_gid.database)
                   ->collection(collectionId);
   _agencyCache.get(*builder, path);
 
-  // TODO better error handling
-  // Maybe check the cache again after some time or log additional information
-  TRI_ASSERT(!builder->isEmpty());
+  ADB_PROD_ASSERT(!builder->isEmpty())
+      << "Could not get collection from plan " << path->str();
 
   return builder;
 }
 
 auto DocumentStateAgencyHandler::reportShardInCurrent(
-    std::string const& database, std::string const& collectionId,
-    std::string const& shardId,
+    std::string const& collectionId, std::string const& shardId,
     std::shared_ptr<velocypack::Builder> const& properties) -> Result {
   auto participants = properties->slice().get(maintenance::SHARDS).get(shardId);
 
@@ -85,10 +83,10 @@ auto DocumentStateAgencyHandler::reportShardInCurrent(
     localShard.add(StaticStrings::FailoverCandidates, participants);
   }
 
-  AgencyOperation op(consensus::CURRENT_COLLECTIONS + database + "/" +
+  AgencyOperation op(consensus::CURRENT_COLLECTIONS + _gid.database + "/" +
                          collectionId + "/" + shardId,
                      AgencyValueOperationType::SET, localShard.slice());
-  AgencyPrecondition pr(consensus::PLAN_COLLECTIONS + database + "/" +
+  AgencyPrecondition pr(consensus::PLAN_COLLECTIONS + _gid.database + "/" +
                             collectionId + "/shards/" + shardId,
                         AgencyPrecondition::Type::VALUE, participants);
 
@@ -99,22 +97,25 @@ auto DocumentStateAgencyHandler::reportShardInCurrent(
 }
 
 DocumentStateShardHandler::DocumentStateShardHandler(
-    MaintenanceFeature& maintenanceFeature)
-    : _maintenanceFeature(maintenanceFeature) {}
+    GlobalLogIdentifier gid, MaintenanceFeature& maintenanceFeature)
+    : _gid(std::move(gid)), _maintenanceFeature(maintenanceFeature) {}
 
 auto DocumentStateShardHandler::stateIdToShardId(LogId logId) -> std::string {
   return fmt::format("s{}", logId);
 }
 
 auto DocumentStateShardHandler::createLocalShard(
-    GlobalLogIdentifier const& gid, std::string const& collectionId,
+    std::string const& collectionId,
     std::shared_ptr<velocypack::Builder> const& properties)
     -> ResultT<std::string> {
-  auto shardId = stateIdToShardId(gid.id);
+  auto shardId = stateIdToShardId(_gid.id);
 
   // For the moment, use the shard information to get the leader
   auto participants = properties->slice().get(maintenance::SHARDS).get(shardId);
-  TRI_ASSERT(participants.isArray());
+  TRI_ASSERT(participants.isArray())
+      << "List of shard " << shardId << " participants is not an array "
+      << participants.toString();
+
   auto leaderId = participants[0].toString();
   auto serverId = ServerState::instance()->getId();
   auto shouldBeLeading = leaderId == serverId;
@@ -124,7 +125,7 @@ auto DocumentStateShardHandler::createLocalShard(
           {maintenance::NAME, maintenance::CREATE_COLLECTION},
           {maintenance::COLLECTION, collectionId},
           {maintenance::SHARD, shardId},
-          {maintenance::DATABASE, gid.database},
+          {maintenance::DATABASE, _gid.database},
           {maintenance::SERVER_ID, std::move(serverId)},
           {maintenance::THE_LEADER,
            shouldBeLeading ? "" : std::move(leaderId)}},
@@ -281,12 +282,14 @@ DocumentStateHandlersFactory::DocumentStateHandlersFactory(
 
 auto DocumentStateHandlersFactory::createAgencyHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateAgencyHandler> {
-  return std::make_shared<DocumentStateAgencyHandler>(_server, _agencyCache);
+  return std::make_shared<DocumentStateAgencyHandler>(std::move(gid), _server,
+                                                      _agencyCache);
 }
 
 auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateShardHandler> {
-  return std::make_shared<DocumentStateShardHandler>(_maintenanceFeature);
+  return std::make_shared<DocumentStateShardHandler>(std::move(gid),
+                                                     _maintenanceFeature);
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(

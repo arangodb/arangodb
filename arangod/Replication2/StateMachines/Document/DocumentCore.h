@@ -35,7 +35,7 @@ namespace arangodb::replication2::replicated_state::document {
 struct DocumentCore {
   explicit DocumentCore(
       GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
       LoggerContext loggerContext);
 
   LoggerContext const loggerContext;

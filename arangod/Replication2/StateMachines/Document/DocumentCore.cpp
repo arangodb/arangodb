@@ -28,7 +28,7 @@ using namespace arangodb::replication2::replicated_state::document;
 
 DocumentCore::DocumentCore(
     GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
     LoggerContext loggerContext)
     : loggerContext(std::move(loggerContext)),
       _gid(std::move(gid)),
@@ -37,18 +37,21 @@ DocumentCore::DocumentCore(
       _shardHandler(handlersFactory->createShardHandler(_gid)),
       _transactionHandler(handlersFactory->createTransactionHandler(_gid)) {
   auto collectionProperties =
-      _agencyHandler->getCollectionPlan(_gid.database, _params.collectionId);
+      _agencyHandler->getCollectionPlan(_params.collectionId);
 
-  auto shardResult = _shardHandler->createLocalShard(_gid, _params.collectionId,
+  auto shardResult = _shardHandler->createLocalShard(_params.collectionId,
                                                      collectionProperties);
-  TRI_ASSERT(shardResult.ok());
+  TRI_ASSERT(shardResult.ok())
+      << "Shard creation failed for replicated state " << _gid;
   _shardId = shardResult.get();
 
   auto commResult = _agencyHandler->reportShardInCurrent(
-      _gid.database, _params.collectionId, _shardId, collectionProperties);
-  TRI_ASSERT(shardResult.ok());
+      _params.collectionId, _shardId, collectionProperties);
+  TRI_ASSERT(shardResult.ok())
+      << "Failed to report shard in current for replicated state " << _gid;
 
-  LOG_CTX("b7e0d", TRACE, this->loggerContext) << "Created shard " << _shardId;
+  LOG_CTX("b7e0d", TRACE, this->loggerContext)
+      << "Created shard " << _shardId << " for replicated state " << _gid;
 }
 
 auto DocumentCore::getShardId() -> std::string_view { return _shardId; }

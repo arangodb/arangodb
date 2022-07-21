@@ -61,29 +61,27 @@ struct DocumentLogEntry;
 
 struct IDocumentStateAgencyHandler {
   virtual ~IDocumentStateAgencyHandler() = default;
-  virtual auto getCollectionPlan(std::string const& database,
-                                 std::string const& collectionId)
+  virtual auto getCollectionPlan(std::string const& collectionId)
       -> std::shared_ptr<velocypack::Builder> = 0;
   virtual auto reportShardInCurrent(
-      std::string const& database, std::string const& collectionId,
-      std::string const& shardId,
+      std::string const& collectionId, std::string const& shardId,
       std::shared_ptr<velocypack::Builder> const& properties) -> Result = 0;
 };
 
 class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
  public:
-  explicit DocumentStateAgencyHandler(ArangodServer& server,
+  explicit DocumentStateAgencyHandler(GlobalLogIdentifier gid,
+                                      ArangodServer& server,
                                       AgencyCache& agencyCache);
-  auto getCollectionPlan(std::string const& database,
-                         std::string const& collectionId)
+  auto getCollectionPlan(std::string const& collectionId)
       -> std::shared_ptr<velocypack::Builder> override;
   auto reportShardInCurrent(
-      std::string const& database, std::string const& collectionId,
-      std::string const& shardId,
+      std::string const& collectionId, std::string const& shardId,
       std::shared_ptr<velocypack::Builder> const& properties)
       -> Result override;
 
  private:
+  GlobalLogIdentifier _gid;
   ArangodServer& _server;
   AgencyCache& _agencyCache;
 };
@@ -91,21 +89,22 @@ class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
   virtual auto createLocalShard(
-      GlobalLogIdentifier const& gid, std::string const& collectionId,
+      std::string const& collectionId,
       std::shared_ptr<velocypack::Builder> const& properties)
       -> ResultT<std::string> = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
  public:
-  explicit DocumentStateShardHandler(MaintenanceFeature& maintenanceFeature);
+  explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
+                                     MaintenanceFeature& maintenanceFeature);
   static auto stateIdToShardId(LogId logId) -> std::string;
-  auto createLocalShard(GlobalLogIdentifier const& gid,
-                        std::string const& collectionId,
+  auto createLocalShard(std::string const& collectionId,
                         std::shared_ptr<velocypack::Builder> const& properties)
       -> ResultT<std::string> override;
 
  private:
+  GlobalLogIdentifier _gid;
   MaintenanceFeature& _maintenanceFeature;
 };
 
