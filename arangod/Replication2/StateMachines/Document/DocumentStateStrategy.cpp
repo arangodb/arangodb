@@ -41,7 +41,7 @@
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Options.h"
-#include "Transaction/SmartContext.h"
+#include "Transaction/ManagedContext.h"
 
 #include <fmt/core.h>
 

@@ -899,6 +899,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/CountCache.cpp
   Transaction/Helpers.cpp
   Transaction/Manager.cpp
+  Transaction/ManagedContext.cpp
   Transaction/ManagerFeature.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
