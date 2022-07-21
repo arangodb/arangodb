@@ -34,6 +34,7 @@
 #include "Basics/debugging.h"
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
+#include "Futures/Try.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
@@ -171,4 +172,9 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
   LOG_TOPIC("fa7a1", FATAL, ::arangodb::Logger::CRASH) << what;
   TRI_ASSERT(false);
   FATAL_ERROR_ABORT();
+}
+
+auto ::arangodb::basics::tryToResult(futures::Try<Result>&& tryResult) noexcept
+    -> Result {
+  return catchToResult([&] { return std::move(tryResult).get(); });
 }

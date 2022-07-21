@@ -206,20 +206,20 @@ class Methods {
   Result begin();
 
   /// @deprecated use async variant
-  Result commit();
+  auto commit() noexcept -> Result;
   /// @brief commit / finish the transaction
-  Future<Result> commitAsync();
+  auto commitAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  Result abort();
+  auto abort() noexcept -> Result;
   /// @brief abort the transaction
-  Future<Result> abortAsync();
+  auto abortAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  Result finish(Result const& res);
+  auto finish(Result const& res) noexcept -> Result;
 
   /// @brief finish a transaction (commit or abort), based on the previous state
-  Future<Result> finishAsync(Result const& res);
+  auto finishAsync(Result const& res) noexcept -> Future<Result>;
 
   /// @brief return the transaction id
   TransactionId tid() const;
@@ -503,9 +503,10 @@ class Methods {
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
-  auto commitInternal(MethodsApi api) -> Future<Result>;
-  auto abortInternal(MethodsApi api) -> Future<Result>;
-  auto finishInternal(Result const& res, MethodsApi api) -> Future<Result>;
+  auto commitInternal(MethodsApi api) noexcept -> Future<Result>;
+  auto abortInternal(MethodsApi api) noexcept -> Future<Result>;
+  auto finishInternal(Result const& res, MethodsApi api) noexcept
+      -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
   ENTERPRISE_VIRT auto documentInternal(std::string const& collectionName,
                                         VPackSlice value,
