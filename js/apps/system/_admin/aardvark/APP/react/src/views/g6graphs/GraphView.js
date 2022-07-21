@@ -77,6 +77,7 @@ export class GraphView extends React.Component {
     });
 
     const container = ReactDOM.findDOMNode(this.ref.current);
+    const canvasElement = document.getElementsByClassName('graphview_graphContainer__3Ain3');
     this.graph = new G6.Graph({
       container: this.ref.current,
       width: 1200,
@@ -84,10 +85,11 @@ export class GraphView extends React.Component {
       plugins: [contextMenu],
       enabledStack: true,
       layout: {
-        type: 'force',
+        type: 'gForce',
         preventOverlap: true,
-        linkDistance: 150
-        //maxIteration: 500
+        linkDistance: 150,
+        maxIteration: 0,
+        center: [Math.floor(canvasElement[0].clientWidth/2), 400],
       },
       modes: {
         default: [
