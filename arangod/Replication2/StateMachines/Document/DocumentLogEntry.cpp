@@ -108,6 +108,13 @@ auto OperationStringTransformer::fromSerialized(std::string const& source,
   return {};
 }
 
+auto document::operator<<(std::ostream& os, DocumentLogEntry entry)
+    -> std::ostream& {
+  VPackBuilder b;
+  velocypack::serialize(b, entry);
+  return os << b.toJson();
+}
+
 auto EntryDeserializer<DocumentLogEntry>::operator()(
     streams::serializer_tag_t<DocumentLogEntry>, velocypack::Slice s) const
     -> DocumentLogEntry {

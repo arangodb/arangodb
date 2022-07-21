@@ -74,6 +74,8 @@ struct DocumentLogEntry {
         f.field("tid", p.tid));
   }
 };
+
+auto operator<<(std::ostream& os, DocumentLogEntry entry) -> std::ostream&;
 }  // namespace document
 
 template<>

@@ -145,58 +145,63 @@ auto DocumentStateShardHandler::createLocalShard(
 
 DocumentStateTransaction::DocumentStateTransaction(
     std::shared_ptr<transaction::Methods> methods)
-    : _entries{}, _methods(std::move(methods)), _results{} {}
+    : _methods(std::move(methods)), _result{} {}
+
+bool DocumentStateTransaction::shouldBeAborted() {
+  return _result.has_value() && _result->fail();
+}
 
 auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
     -> futures::Future<Result> {
-  // Save the entry for debugging purposes.
-  _entries.push_back(entry);
+  if (shouldBeAborted()) {
+    return _result->result;
+  }
 
   auto opOptions = OperationOptions();
+  auto fut =
+      futures::Future<OperationResult>{std::in_place, Result{}, opOptions};
+
   switch (entry.operation) {
     case kInsert:
-      return _methods->insertAsync(entry.shardId, entry.data.slice(), opOptions)
-          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
-            return self->appendResult(std::move(opRes));
-          });
+      fut = _methods->insertAsync(entry.shardId, entry.data.slice(), opOptions);
+      break;
     case kUpdate:
-      return _methods->updateAsync(entry.shardId, entry.data.slice(), opOptions)
-          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
-            return self->appendResult(std::move(opRes));
-          });
+      fut = _methods->updateAsync(entry.shardId, entry.data.slice(), opOptions);
+      break;
     case kReplace:
-      return _methods
-          ->replaceAsync(entry.shardId, entry.data.slice(), opOptions)
-          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
-            return self->appendResult(std::move(opRes));
-          });
+      fut =
+          _methods->replaceAsync(entry.shardId, entry.data.slice(), opOptions);
+      break;
     case kRemove:
-      return _methods->removeAsync(entry.shardId, entry.data.slice(), opOptions)
-          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
-            return self->appendResult(std::move(opRes));
-          });
+      fut = _methods->removeAsync(entry.shardId, entry.data.slice(), opOptions);
+      break;
     case kTruncate:
-      return _methods->truncateAsync(entry.shardId, opOptions)
-          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
-            return self->appendResult(std::move(opRes));
-          });
+      fut = _methods->truncateAsync(entry.shardId, opOptions);
+      break;
     default:
       return Result{
           TRI_ERROR_TRANSACTION_INTERNAL,
           fmt::format("Transaction of type {} with ID {} could not be applied",
                       to_string(entry.operation), entry.tid.id())};
   }
+
+  return std::move(fut).thenValue(
+      [self = shared_from_this()](OperationResult&& opRes) {
+        auto res = opRes.result;
+        self->_result = std::move(opRes);
+        return res;
+      });
 }
 
 auto DocumentStateTransaction::finish(DocumentLogEntry const& entry)
     -> futures::Future<Result> {
-  // Save the entry for debugging purposes.
-  _entries.push_back(entry);
+  if (shouldBeAborted()) {
+    return _methods->abortAsync();
+  }
 
   switch (entry.operation) {
     case OperationType::kCommit:
-      // Try to commit the operation or abort in case it failed.
-      return _methods->finishAsync(getOperationsResult().result);
+      return _methods->commitAsync();
     case OperationType::kAbort:
       return _methods->abortAsync();
     default:
@@ -205,23 +210,6 @@ auto DocumentStateTransaction::finish(DocumentLogEntry const& entry)
           fmt::format("Transaction of type {} with ID {} could not be finished",
                       to_string(entry.operation), entry.tid.id())};
   }
-}
-
-auto DocumentStateTransaction::getOperationsResult() const
-    -> OperationResult const& {
-  for (auto const& it : _results) {
-    if (it.fail()) {
-      return it;
-    }
-  }
-  return _results.back();
-}
-
-auto DocumentStateTransaction::appendResult(OperationResult&& result)
-    -> Result {
-  auto res = result.result;
-  _results.push_back(std::move(result));
-  return res;
 }
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(

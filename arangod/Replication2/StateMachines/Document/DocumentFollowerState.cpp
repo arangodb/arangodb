@@ -52,12 +52,7 @@ auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-
-    /* Leaving this here for debugging
-    VPackBuilder b;
-    velocypack::serialize(b, doc);
-    LOG_DEVEL << b.toJson();
-     */
+    // LOG_DEVEL << entry;
 
     auto transactionHandler = _guardedData.doUnderLock(
         [](auto& data) -> std::shared_ptr<IDocumentStateTransactionHandler> {

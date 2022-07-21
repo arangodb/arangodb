@@ -128,15 +128,12 @@ class DocumentStateTransaction
   auto finish(DocumentLogEntry const& entry)
       -> futures::Future<Result> override;
 
-  auto getOperationsResult() const -> OperationResult const&;
+ private:
+  bool shouldBeAborted();
 
  private:
-  auto appendResult(OperationResult&& result) -> Result;
-
- private:
-  std::vector<DocumentLogEntry> _entries;
   std::shared_ptr<transaction::Methods> _methods;
-  std::vector<OperationResult> _results;
+  std::optional<OperationResult> _result;
 };
 
 struct IDocumentStateTransactionHandler {
