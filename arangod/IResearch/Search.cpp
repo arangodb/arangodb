@@ -97,7 +97,8 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
   if (!definition.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER};
   }
-  if (!definition.hasKey("name") || !definition.hasKey("indexes")) {
+  auto const nameSlice = definition.get("name");
+  if (nameSlice.isNone()) {
     return {TRI_ERROR_BAD_PARAMETER};
   }
   if (ServerState::instance()->isCoordinator()) {
@@ -128,7 +129,7 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     LogicalView::ptr impl;
     auto r = storage_helper::construct(impl, vocbase, definition);
     if (!r.ok()) {
-      auto name = definition.get("name").copyString();  // TODO stringView()
+      auto name = nameSlice.copyString();  // TODO stringView()
       events::CreateView(vocbase.name(), name, r.errorNumber());
       return r;
     }
@@ -145,7 +146,14 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
              ServerState::instance()->isSingleServer());
   auto impl = std::make_shared<Search>(vocbase, definition);
   auto indexesSlice = definition.get("indexes");
-  auto it = velocypack::ArrayIterator{indexesSlice};
+  if (indexesSlice.isNone()) {
+    view = impl;
+    return {};
+  }
+  if (!indexesSlice.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER, "indexes field should be array"};
+  }
+  velocypack::ArrayIterator it{indexesSlice};
   CollectionNameResolver resolver{vocbase};
   for (; it.valid(); ++it) {
     auto value = *it;
@@ -171,7 +179,6 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
     TRI_ASSERT(indexes.back());
   }
   view = impl;
-  TRI_ASSERT(view);
   return {};
 }
 
@@ -269,10 +276,14 @@ ViewSnapshot::Links Search::getLinks() const {
 
 Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
                           bool partialUpdate) {
-  auto indexesSlice = definition.hasKey("indexes")
-                          ? definition.get("indexes")
-                          : velocypack::Slice::emptyArraySlice();
-  auto it = velocypack::ArrayIterator{indexesSlice};
+  auto indexesSlice = definition.get("indexes");
+  if (indexesSlice.isNone()) {
+    indexesSlice = velocypack::Slice::emptyArraySlice();
+  }
+  velocypack::ArrayIterator it{indexesSlice};
+  if (it.size() == 0 && partialUpdate) {
+    return {};
+  }
   CollectionNameResolver resolver{vocbase()};
   std::unique_lock lock{_mutex};
   if (!partialUpdate) {
