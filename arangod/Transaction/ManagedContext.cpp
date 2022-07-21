@@ -30,13 +30,11 @@
 namespace arangodb::transaction {
 ManagedContext::ManagedContext(TransactionId globalId,
                                std::shared_ptr<TransactionState> state,
-                               bool responsibleForCommit, bool cloned,
-                               bool disableLease)
+                               bool responsibleForCommit, bool cloned)
     : SmartContext(state->vocbase(), globalId, state),
       _responsibleForCommit(responsibleForCommit),
       _cloned(cloned),
-      _isSideUser(false),
-      _disableLease(disableLease) {}
+      _isSideUser(false) {}
 
 ManagedContext::ManagedContext(TransactionId globalId,
                                std::shared_ptr<TransactionState> state,
@@ -44,8 +42,7 @@ ManagedContext::ManagedContext(TransactionId globalId,
     : SmartContext(state->vocbase(), globalId, state),
       _responsibleForCommit(false),
       _cloned(true),
-      _isSideUser(true),
-      _disableLease(false) {}
+      _isSideUser(true) {}
 
 ManagedContext::~ManagedContext() {
   bool doReturn = false;
@@ -60,7 +57,7 @@ ManagedContext::~ManagedContext() {
     doReturn = true;
   }
 
-  if (doReturn && !_disableLease) {
+  if (doReturn) {
     // we are responsible for returning the lease for the managed transaction
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);

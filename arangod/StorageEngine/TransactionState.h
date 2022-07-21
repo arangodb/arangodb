@@ -225,9 +225,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief make a exclusive transaction, only valid before begin
   void setExclusiveAccessType();
 
-  /// @brief needed strictly for replication2
-  void setWriteAccessType();
-
   /// @brief whether or not a transaction is read-only
   [[nodiscard]] bool isReadOnlyTransaction() const noexcept {
     return _type == AccessMode::Type::READ;

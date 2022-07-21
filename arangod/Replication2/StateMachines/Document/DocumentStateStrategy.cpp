@@ -41,7 +41,7 @@
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Options.h"
-#include "Transaction/ManagedContext.h"
+#include "Transaction/ReplicatedContext.h"
 
 #include <fmt/core.h>
 
@@ -247,35 +247,20 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
   TRI_ASSERT(_vocbase != nullptr);
 
   auto options = transaction::Options();
-  options.isReplication2Transaction = true;
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
   auto state =
       std::make_shared<SimpleRocksDBTransactionState>(*_vocbase, tid, options);
-  state->setWriteAccessType();
 
-  // TODO why is GLOBAL_MANAGED necessary
-  transaction::Hints hints;
-  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  auto res = state->beginTransaction(hints);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // TODO Use our own context class
-  auto ctx = std::make_shared<transaction::ManagedContext>(tid, state, false,
-                                                           false, true);
-
-  std::vector<std::string> const readCollections{};
-  std::vector<std::string> const writeCollections = {
-      std::string(entry.shardId)};
-  std::vector<std::string> const exclusiveCollections{};
+  auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 
   auto methods = std::make_shared<transaction::Methods>(
-      ctx, readCollections, writeCollections, exclusiveCollections, options);
+      std::move(ctx), entry.shardId, AccessMode::Type::WRITE);
+  // TODO why is GLOBAL_MANAGED necessary
+  methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
-  res = methods->begin();
+  auto res = methods->begin();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

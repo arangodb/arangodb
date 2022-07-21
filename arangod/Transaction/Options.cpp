@@ -136,11 +136,6 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
       isFollowerTransaction = value.getBool();
     }
 
-    value = slice.get("isReplication2Transaction");
-    if (value.isBool()) {
-      isReplication2Transaction = value.getBool();
-    }
-
     // pick up the originating coordinator's id. note: this can be
     // empty if the originating coordinator is an ArangoDB 3.7.
     value = slice.get("origin");
@@ -183,8 +178,6 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   // serialize data for cluster-wide collections
   if (!ServerState::instance()->isSingleServer()) {
     builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
-    builder.add("isReplication2Transaction",
-                VPackValue(isReplication2Transaction));
 
     // serialize the server id/reboot id of the originating server (which must
     // be a coordinator id if set)

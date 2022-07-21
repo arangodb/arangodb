@@ -23,3 +23,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+#include "Transaction/SmartContext.h"
+
+namespace arangodb::transaction {
+
+struct ReplicatedContext final : public SmartContext {
+  ReplicatedContext(TransactionId globalId,
+                    std::shared_ptr<TransactionState> state);
+
+  /// @brief get transaction state, determine commit responsibility
+  std::shared_ptr<TransactionState> acquireState(
+      transaction::Options const& options, bool& responsibleForCommit) override;
+
+  /// @brief unregister the transaction
+  void unregisterTransaction() noexcept override;
+};
+
+}  // namespace arangodb::transaction

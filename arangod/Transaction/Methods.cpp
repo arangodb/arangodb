@@ -328,10 +328,7 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
     return;  // nothing to apply
   }
 
-  // hack needed for replication2 transactions on followers
-  auto passThroughReplication2 = state->options().isReplication2Transaction &&
-                                 state->options().isFollowerTransaction;
-  TRI_ASSERT(trx.isMainTransaction() || passThroughReplication2);
+  TRI_ASSERT(trx.isMainTransaction());
 
   auto* callbacks = getStatusChangeCallbacks(*state);
 
@@ -3119,10 +3116,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
 
   auto f = futures::makeFuture(Result());
 
-  // hack needed for replication2 transactions on followers
-  auto passThroughReplication2 = _state->options().isReplication2Transaction &&
-                                 _state->options().isFollowerTransaction;
-  if (!_mainTransaction && !passThroughReplication2) {
+  if (!_mainTransaction) {
     return f;
   }
 

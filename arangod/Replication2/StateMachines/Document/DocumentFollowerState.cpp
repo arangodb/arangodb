@@ -52,7 +52,6 @@ auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-    // LOG_DEVEL << entry;
 
     auto transactionHandler = _guardedData.doUnderLock(
         [](auto& data) -> std::shared_ptr<IDocumentStateTransactionHandler> {
@@ -88,9 +87,7 @@ auto DocumentFollowerState::applyEntries(
       fut.wait();
       fut.result().throwIfFailed();
     } catch (std::exception& e) {
-      VPackBuilder builder;
-      velocypack::serialize(builder, doc);
-      ADB_PROD_ASSERT(false) << e.what() << " " << builder.toJson();
+      ADB_PROD_ASSERT(false) << e.what() << " " << doc;
     }
   }
 

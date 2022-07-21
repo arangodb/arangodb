@@ -23,3 +23,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Transaction/ReplicatedContext.h"
+
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
+#include "StorageEngine/TransactionState.h"
+
+namespace arangodb::transaction {
+
+ReplicatedContext::ReplicatedContext(TransactionId globalId,
+                                     std::shared_ptr<TransactionState> state)
+    : SmartContext(state->vocbase(), globalId, std::move(state)){};
+
+std::shared_ptr<TransactionState> ReplicatedContext::acquireState(
+    Options const& options, bool& responsibleForCommit) {
+  TRI_ASSERT(_state);
+  responsibleForCommit = true;
+  return _state;
+}
+
+void ReplicatedContext::unregisterTransaction() noexcept { _state = nullptr; }
+
+}  // namespace arangodb::transaction

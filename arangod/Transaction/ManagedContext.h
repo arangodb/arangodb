@@ -31,8 +31,7 @@ namespace arangodb::transaction {
 struct ManagedContext final : public SmartContext {
   ManagedContext(TransactionId globalId,
                  std::shared_ptr<TransactionState> state,
-                 bool responsibleForCommit, bool cloned,
-                 bool disableLease = false);
+                 bool responsibleForCommit, bool cloned);
 
   ManagedContext(TransactionId globalId,
                  std::shared_ptr<TransactionState> state,
@@ -53,7 +52,6 @@ struct ManagedContext final : public SmartContext {
   bool const _responsibleForCommit;
   bool const _cloned;
   bool const _isSideUser;
-  bool const _disableLease;
 };
 
 }  // namespace arangodb::transaction
