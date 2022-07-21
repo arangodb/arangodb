@@ -109,7 +109,7 @@ var AqlHighlightRules = function() {
         "ltrim|rtrim|find_first|find_last|split|substitute|ipv4_to_number|ipv4_from_number|is_ipv4|md5|sha1|sha512|crc32|fnv64|hash|random_token|to_base64|" +
         "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|count_unique|" +
         "levenshtein_distance|levenshtein_match|regex_matches|regex_split|ngram_match|ngram_similarity|ngram_positional_similarity|uuid|" +
-        "tokens|exists|starts_with|phrase|min_match|bm25|tfidf|boost|boostscore|analyzer|" +
+        "tokens|exists|starts_with|phrase|min_match|bm25|tfidf|boost|analyzer|" +
         "cosine_similarity|decay_exp|decay_gauss|decay_linear|l1_distance|l2_distance|minhash|minhash_count|minhash_error|minhash_match|" +
         "geo_point|geo_multipoint|geo_polygon|geo_multipolygon|geo_linestring|geo_multilinestring|geo_contains|geo_intersects|" +
         "geo_equals|geo_distance|geo_area|geo_in_range"
