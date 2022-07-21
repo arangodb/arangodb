@@ -33,11 +33,7 @@ IResearchInvertedIndexMock::IResearchInvertedIndexMock(
     std::vector<std::vector<arangodb::basics::AttributeName>> const &attributes,
     bool unique, bool sparse)
     : Index(iid, collection, idxName, attributes, unique, sparse),
-      IResearchInvertedIndex(iid, collection) {
-  //  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  //  _unique = false; // cannot be unique since multiple fields are indexed
-  //  _sparse = true;  // always sparse
-}
+      IResearchInvertedIndex(iid, collection) {}
 
 void IResearchInvertedIndexMock::toVelocyPack(
     velocypack::Builder &builder,
@@ -63,35 +59,26 @@ Index::IndexType IResearchInvertedIndexMock::type() const {
   return Index::TRI_IDX_TYPE_INVERTED_INDEX;
 }
 
-// CHECK IT
 bool IResearchInvertedIndexMock::needsReversal() const {
-  // return Index::needsReversal();
   return true;
 }
 
-// Like in IResearchRocksDBInvertedIndex
 size_t IResearchInvertedIndexMock::memory() const {
   // FIXME return in memory size
   return stats().indexSize;
 }
 
-// Like in IResearchRocksDBInvertedIndex
 bool IResearchInvertedIndexMock::isHidden() const { return false; }
 
 char const *IResearchInvertedIndexMock::typeName() const { return "inverted"; }
 
-// Like in IResearchRocksDBInvertedIndex
 bool IResearchInvertedIndexMock::canBeDropped() const { return true; }
 
 bool IResearchInvertedIndexMock::isSorted() const {
   return IResearchInvertedIndex::isSorted();
 }
 
-// Like in IResearchRocksDBInvertedIndex
 bool IResearchInvertedIndexMock::hasSelectivityEstimate() const {
-  // return IResearchDataStore::hasSelectivityEstimate(); // Like in
-  // IResearchInvertedClusterIndex
-
   return false;
 }
 
@@ -104,23 +91,14 @@ bool IResearchInvertedIndexMock::covers(
   return IResearchInvertedIndex::covers(projections);
 }
 
-// Like in IResearchRocksDBInvertedIndex
 Result IResearchInvertedIndexMock::drop() { return deleteDataStore(); }
 
-// Like in IResearchRocksDBInvertedIndex
-void IResearchInvertedIndexMock::load() { return; }
+void IResearchInvertedIndexMock::load() { }
 
-// Like in IResearchRocksDBInvertedIndex
 void IResearchInvertedIndexMock::afterTruncate(TRI_voc_tick_t tick,
                                                transaction::Methods *trx) {
   return IResearchDataStore::afterTruncate(tick, trx);
 }
-
-//bool IResearchInvertedIndexMock::matchesDefinition(
-//    arangodb::velocypack::Slice const &other,
-//    LogicalCollection const& collection) const {
-//  return IResearchInvertedIndex::matchesFieldsDefinition(other, collection);
-//}
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndexMock::iteratorForCondition(
     transaction::Methods *trx, aql::AstNode const *node,
@@ -156,7 +134,6 @@ aql::AstNode *IResearchInvertedIndexMock::specializeCondition(
   return IResearchInvertedIndex::specializeCondition(node, reference);
 }
 
-// Like in IResearchRocksDBInvertedIndex
 Result IResearchInvertedIndexMock::insert(transaction::Methods &trx,
                                           LocalDocumentId documentId,
                                           velocypack::Slice doc) {

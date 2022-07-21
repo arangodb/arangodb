@@ -1575,6 +1575,10 @@ StorageEngineMock::buildInvertedIndexMock(
       name = sub.copyString();
     }
   }
+  if (name.empty()) {
+    // we couldn't extract name of index for some reason
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+  }
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errField;
