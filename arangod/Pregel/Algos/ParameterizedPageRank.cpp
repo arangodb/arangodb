@@ -64,45 +64,42 @@ GraphFormat<float, float>* ParameterizedPageRank::inputFormat() const {
 }
 
 struct PRComputation : public VertexComputation<float, float, float> {
+  PRComputation() {}
 
-  PRComputation() = default;
-
-  float computeNewValue(MessageIterator<float> const& messages,
-                           float* oldValue, PRWorkerContext const* ctx) {
-    float newValue = 0.0f;
-    float commonProb;
+  float computeNewValue(float oldValue,
+                        MessageIterator<float> const& messages,
+                        PRWorkerContext const* ctx) {
     if (globalSuperstep() == 0) {
-      if (*oldValue < 0) {
+      if (oldValue < 0) {
         // todo: compute it once
         // fixme: assure that if no vertices, we never reach this
-        commonProb = 1.0f / static_cast<float>(ctx->vertexCount());
         // initialize vertices to initial weight, unless there was a seed weight
-        return commonProb;
+        return 1.0f / ctx->vertexCount();
       }
+      return 0.0;
     } else {
-      // todo: compute it once
-      commonProb = 0.15f / static_cast<float>(ctx->vertexCount());
+      float sum = 0.0f;
       for (const float* msg : messages) {
-        newValue += *msg;
+        sum += *msg;
       }
-      newValue = 0.85f * newValue + commonProb;
+      // todo: compute it once
+      // fixme: assure that if no vertices, we never reach this
+      return 0.85f * sum + 0.15f / ctx->vertexCount();
     }
-
-    return newValue;
   }
 
   void compute(MessageIterator<float> const& messages) override {
-    auto const* ctx = dynamic_cast<PRWorkerContext const*>(context());
+    PRWorkerContext const* ctx = static_cast<PRWorkerContext const*>(context());
     float* ptr = mutableVertexData();
     float copy = *ptr;
 
-    *ptr = computeNewValue(messages, &copy, ctx);
-    float diff = std::fabs(copy - *ptr);
+    *ptr = computeNewValue(copy, messages, ctx);
+    float diff = fabs(copy - *ptr);
     aggregate<float>(kConvergence, diff);
 
     size_t numEdges = getEdgeCount();
     if (numEdges > 0) {
-      float val = *ptr / static_cast<float>(numEdges);
+      float val = *ptr / numEdges;
       sendMessageToAllNeighbours(val);
     }
   }
@@ -130,7 +127,7 @@ struct PRMasterContext : public MasterContext {
   }
 
   bool postGlobalSuperstep() override {
-    auto const* diff = getAggregatedValue<float>(kConvergence);
+    float const* diff = getAggregatedValue<float>(kConvergence);
     return globalSuperstep() < 1 || *diff > _threshold;
   };
 };
