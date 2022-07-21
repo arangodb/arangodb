@@ -34,12 +34,12 @@ namespace iresearch {
 
 class IResearchInvertedIndexMock final : public Index,
                                          public IResearchInvertedIndex {
-public:
+ public:
   IResearchInvertedIndexMock(
-      IndexId iid, arangodb::LogicalCollection &collection,
-      const std::string &idxName,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const
-          &attributes,
+      IndexId iid, arangodb::LogicalCollection& collection,
+      const std::string& idxName,
+      std::vector<std::vector<arangodb::basics::AttributeName>> const&
+          attributes,
       bool unique, bool sparse);
 
   virtual ~IResearchInvertedIndexMock(){};
@@ -51,7 +51,7 @@ public:
   }
 
   void toVelocyPack(
-      VPackBuilder &builder,
+      VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
   IndexType type() const override;
@@ -63,7 +63,7 @@ public:
 
   bool isHidden() const override;
 
-  char const *typeName() const override;
+  char const* typeName() const override;
 
   bool canBeDropped() const override;
 
@@ -73,57 +73,55 @@ public:
 
   bool inProgress() const override;
 
-  bool covers(arangodb::aql::Projections &projections) const override;
+  bool covers(arangodb::aql::Projections& projections) const override;
 
   Result drop() override;
 
   void load() override;
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods *trx) override;
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
 
-//  bool
-//  matchesDefinition(arangodb::velocypack::Slice const &other, LogicalCollection const& collection) const override;
+  //  bool
+  //  matchesDefinition(arangodb::velocypack::Slice const &other,
+  //  LogicalCollection const& collection) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods *trx, aql::AstNode const *node,
-      aql::Variable const *reference, IndexIteratorOptions const &opts,
+      transaction::Methods* trx, aql::AstNode const* node,
+      aql::Variable const* reference, IndexIteratorOptions const& opts,
       ReadOwnWrites readOwnWrites, int mutableConditionIdx) override;
 
-  Index::SortCosts
-  supportsSortCondition(aql::SortCondition const *sortCondition,
-                        aql::Variable const *reference,
-                        size_t itemsInIndex) const override;
+  Index::SortCosts supportsSortCondition(
+      aql::SortCondition const* sortCondition, aql::Variable const* reference,
+      size_t itemsInIndex) const override;
 
-  Index::FilterCosts
-  supportsFilterCondition(std::vector<std::shared_ptr<Index>> const &allIndexes,
-                          aql::AstNode const *node,
-                          aql::Variable const *reference,
-                          size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(
+      std::vector<std::shared_ptr<Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
+      size_t itemsInIndex) const override;
 
-  aql::AstNode *
-  specializeCondition(aql::AstNode *node,
-                      aql::Variable const *reference) const override;
+  aql::AstNode* specializeCondition(
+      aql::AstNode* node, aql::Variable const* reference) const override;
 
-  Result insert(transaction::Methods &trx, LocalDocumentId documentId,
+  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
                 velocypack::Slice doc);
 
-  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const &analyzer) const override;
+  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
 
-  void toVelocyPackFigures(velocypack::Builder &builder) const override;
+  void toVelocyPackFigures(velocypack::Builder& builder) const override;
 
   void unload() override;
 
-  void invalidateQueryCache(TRI_vocbase_t *vocbase) override;
+  void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
-  irs::comparer const *getComparator() const noexcept override;
+  irs::comparer const* getComparator() const noexcept override;
 
   static std::function<irs::directory_attributes()> InitCallback;
 };
 
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb

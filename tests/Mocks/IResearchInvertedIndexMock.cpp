@@ -28,15 +28,15 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchInvertedIndexMock::IResearchInvertedIndexMock(
-    IndexId iid, arangodb::LogicalCollection &collection,
-    const std::string &idxName,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const &attributes,
+    IndexId iid, arangodb::LogicalCollection& collection,
+    const std::string& idxName,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse)
     : Index(iid, collection, idxName, attributes, unique, sparse),
       IResearchInvertedIndex(iid, collection) {}
 
 void IResearchInvertedIndexMock::toVelocyPack(
-    velocypack::Builder &builder,
+    velocypack::Builder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
   auto const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
@@ -59,9 +59,7 @@ Index::IndexType IResearchInvertedIndexMock::type() const {
   return Index::TRI_IDX_TYPE_INVERTED_INDEX;
 }
 
-bool IResearchInvertedIndexMock::needsReversal() const {
-  return true;
-}
+bool IResearchInvertedIndexMock::needsReversal() const { return true; }
 
 size_t IResearchInvertedIndexMock::memory() const {
   // FIXME return in memory size
@@ -70,7 +68,7 @@ size_t IResearchInvertedIndexMock::memory() const {
 
 bool IResearchInvertedIndexMock::isHidden() const { return false; }
 
-char const *IResearchInvertedIndexMock::typeName() const { return "inverted"; }
+char const* IResearchInvertedIndexMock::typeName() const { return "inverted"; }
 
 bool IResearchInvertedIndexMock::canBeDropped() const { return true; }
 
@@ -87,86 +85,81 @@ bool IResearchInvertedIndexMock::inProgress() const {
 }
 
 bool IResearchInvertedIndexMock::covers(
-    arangodb::aql::Projections &projections) const {
+    arangodb::aql::Projections& projections) const {
   return IResearchInvertedIndex::covers(projections);
 }
 
 Result IResearchInvertedIndexMock::drop() { return deleteDataStore(); }
 
-void IResearchInvertedIndexMock::load() { }
+void IResearchInvertedIndexMock::load() {}
 
 void IResearchInvertedIndexMock::afterTruncate(TRI_voc_tick_t tick,
-                                               transaction::Methods *trx) {
+                                               transaction::Methods* trx) {
   return IResearchDataStore::afterTruncate(tick, trx);
 }
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndexMock::iteratorForCondition(
-    transaction::Methods *trx, aql::AstNode const *node,
-    aql::Variable const *reference, IndexIteratorOptions const &opts,
+    transaction::Methods* trx, aql::AstNode const* node,
+    aql::Variable const* reference, IndexIteratorOptions const& opts,
     ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
-
   return IResearchInvertedIndex::iteratorForCondition(
       &IResearchDataStore::collection(), trx, node, reference, opts,
       mutableConditionIdx);
 }
 
 Index::SortCosts IResearchInvertedIndexMock::supportsSortCondition(
-    aql::SortCondition const *sortCondition, aql::Variable const *reference,
+    aql::SortCondition const* sortCondition, aql::Variable const* reference,
     size_t itemsInIndex) const {
-
   return IResearchInvertedIndex::supportsSortCondition(sortCondition, reference,
                                                        itemsInIndex);
 }
 
 Index::FilterCosts IResearchInvertedIndexMock::supportsFilterCondition(
-    std::vector<std::shared_ptr<Index>> const &allIndexes,
-    aql::AstNode const *node, aql::Variable const *reference,
+    std::vector<std::shared_ptr<Index>> const& allIndexes,
+    aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
-
   return IResearchInvertedIndex::supportsFilterCondition(
       IResearchDataStore::id(), _fields, allIndexes, node, reference,
       itemsInIndex);
 }
 
-aql::AstNode *IResearchInvertedIndexMock::specializeCondition(
-    aql::AstNode *node, aql::Variable const *reference) const {
-
+aql::AstNode* IResearchInvertedIndexMock::specializeCondition(
+    aql::AstNode* node, aql::Variable const* reference) const {
   return IResearchInvertedIndex::specializeCondition(node, reference);
 }
 
-Result IResearchInvertedIndexMock::insert(transaction::Methods &trx,
+Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
                                           LocalDocumentId documentId,
                                           velocypack::Slice doc) {
-
-  IResearchInvertedIndexMetaIndexingContext ctx(this->meta());
-  return IResearchDataStore::insert< FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-                                    IResearchInvertedIndexMetaIndexingContext>(trx, documentId,
-                                                                doc, ctx);
+  IResearchInvertedIndexMetaIndexingContext ctx(&this->meta());
+  return IResearchDataStore::insert<
+      FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx);
 }
 
-AnalyzerPool::ptr
-IResearchInvertedIndexMock::findAnalyzer(AnalyzerPool const &analyzer) const {
+AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(
+    AnalyzerPool const& analyzer) const {
   return IResearchInvertedIndex::findAnalyzer(analyzer);
 }
 
- void IResearchInvertedIndexMock::toVelocyPackFigures(
-    velocypack::Builder &builder) const {
+void IResearchInvertedIndexMock::toVelocyPackFigures(
+    velocypack::Builder& builder) const {
   IResearchInvertedIndex::toVelocyPackStats(builder);
 }
 
 void IResearchInvertedIndexMock::unload() { shutdownDataStore(); }
 
-void IResearchInvertedIndexMock::invalidateQueryCache(TRI_vocbase_t *vocbase) {
+void IResearchInvertedIndexMock::invalidateQueryCache(TRI_vocbase_t* vocbase) {
   return IResearchInvertedIndex::invalidateQueryCache(vocbase);
 }
 
-irs::comparer const *
-IResearchInvertedIndexMock::getComparator() const noexcept {
+irs::comparer const* IResearchInvertedIndexMock::getComparator()
+    const noexcept {
   return IResearchInvertedIndex::getComparator();
 }
 
 std::function<irs::directory_attributes()>
     IResearchInvertedIndexMock::InitCallback;
 
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb
