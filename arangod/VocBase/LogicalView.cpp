@@ -262,7 +262,7 @@ Result drop(LogicalView const& view) noexcept {
   });
 }
 
-Result properties(LogicalView const& view) noexcept {
+Result properties(LogicalView const& view, bool safe) noexcept {
   auto& vocbase = view.vocbase();
   auto& server = vocbase.server();
   if (!server.hasFeature<ClusterFeature>()) {
@@ -274,7 +274,7 @@ Result properties(LogicalView const& view) noexcept {
     velocypack::Builder build;
     build.openObject();
     auto r = view.properties(
-        build, LogicalDataSource::Serialization::Persistence, false);
+        build, LogicalDataSource::Serialization::Persistence, safe);
     if (!r.ok()) {
       return r;
     }
