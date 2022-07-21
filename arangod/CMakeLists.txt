@@ -903,6 +903,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/ManagerFeature.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
+  Transaction/ReplicatedContext.cpp
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
