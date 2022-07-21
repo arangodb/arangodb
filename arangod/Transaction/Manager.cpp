@@ -1164,9 +1164,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     trx.state()->clearKnownServers();
   }
   if (status == transaction::Status::COMMITTED) {
-    res = basics::catchToResult([&] {
-        return trx.commit();
-    });
+    res = trx.commit();
 
     if (res.fail()) {  // set final status to aborted
       // Note that if the failure point TransactionCommitFail is used, then
