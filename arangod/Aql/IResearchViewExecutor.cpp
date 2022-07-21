@@ -712,19 +712,18 @@ template<typename Impl, typename Traits>
 void IResearchViewExecutorBase<Impl, Traits>::reset() {
   _ctx._inputRow = _inputRow;
 
-  ExecutionPlan const* plan = &infos().plan();
-  iresearch::QueryContext const queryCtx{
-      .trx = &_trx,
-      .ast = plan->getAst(),
-      .ctx = &_ctx,
-      .index = _reader.get(),
-      .ref = &infos().outVariable(),
-      .filterOptimization = infos().filterOptimization(),
-      .isSearchQuery = true};
-
   // `_volatileSort` implies `_volatileFilter`
   if (infos().volatileFilter() || !_isInitialized) {
     irs::Or root;
+
+    iresearch::QueryContext queryCtx{
+        .trx = &_trx,
+        .ast = infos().plan().getAst(),
+        .ctx = &_ctx,
+        .index = _reader.get(),
+        .ref = &infos().outVariable(),
+        .filterOptimization = infos().filterOptimization(),
+        .isSearchQuery = true};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
@@ -746,7 +745,8 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 
     if (infos().volatileSort() || !_isInitialized) {
       auto const& scorers = infos().scorers();
-      std::vector<irs::sort::ptr> order;
+
+      containers::SmallVector<irs::sort::ptr, 2> order;
       order.reserve(scorers.size());
 
       for (irs::sort::ptr scorer; auto const& scorerNode : scorers) {
