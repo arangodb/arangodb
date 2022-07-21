@@ -39,6 +39,9 @@ shell_api weight=500 single suffix=https -- $EncryptionAtRest --protocol ssl
 shell_client weight=500 single suffix=http -- $EncryptionAtRest
 shell_client weight=500 single suffix=http2 -- --http2 true
 shell_client weight=500 single suffix=vst -- --vst true
+shell_client_transaction weight=500 single suffix=http -- $EncryptionAtRest
+shell_client_transaction weight=500 single suffix=http2 -- --http2 true
+shell_client_transaction weight=500 single suffix=vst -- --vst true
 
 shell_client_aql weight=500 single suffix=http
 shell_client_aql weight=500 single suffix=http2 -- --http2 true
@@ -77,6 +80,7 @@ recovery_cluster weight=2000 cluster buckets=4 -- --test arangosearch
 # different number of buckets in cluster
 shell_server_aql weight=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client weight=500 cluster buckets=5 -- --dumpAgencyOnError true
+shell_client_transaction weight=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_server weight=500 cluster buckets=5 -- --dumpAgencyOnError true
 
 # Common Tests
