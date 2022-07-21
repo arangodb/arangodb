@@ -111,7 +111,6 @@ queryCacheAuthorization single full weight=500
 readOnly single full weight=500
 replication_aql weight=1000 single full
 replication_random weight=1000 single full
-upgrade single full weight=500
 
 # LDAP
 ldaprole !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
