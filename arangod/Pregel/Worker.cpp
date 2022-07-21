@@ -169,23 +169,6 @@ void Worker<V, E, M>::setupWorker() {
     _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   };
 
-  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = observeStatus();
-      serialize(statusUpdateMsg, update);
-    }
-
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-  };
-
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
@@ -193,7 +176,7 @@ void Worker<V, E, M>::setupWorker() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
                    [this, self = shared_from_this(),
-                    statusUpdateCallback = std::move(statusUpdateCallback),
+                    statusUpdateCallback = std::move(_statusCallback()),
                     finishedCallback = std::move(finishedCallback)] {
                      try {
                        _graphStore->loadShards(&_config, statusUpdateCallback,
@@ -473,24 +456,7 @@ bool Worker<V, E, M>::_processVertices(
     if (_currentGssObservables.verticesProcessed %
             Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
         0) {
-      std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                    this] {
-        VPackBuilder statusUpdateMsg;
-        {
-          auto ob = VPackObjectBuilder(&statusUpdateMsg);
-          statusUpdateMsg.add(Utils::senderKey,
-                              VPackValue(ServerState::instance()->getId()));
-          statusUpdateMsg.add(Utils::executionNumberKey,
-                              VPackValue(_config.executionNumber()));
-          statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-          auto update = observeStatus();
-          serialize(statusUpdateMsg, update);
-        }
-        _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-      };
-
-      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         statusUpdateCallback);
+      _statusCallback();
     }
   }
   // ==================== send messages to other shards ====================
@@ -564,22 +530,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       obj.push(this->_currentGssObservables.observe());
     });
     _currentGssObservables.zero();
-    std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                  this] {
-      VPackBuilder statusUpdateMsg;
-      {
-        auto ob = VPackObjectBuilder(&statusUpdateMsg);
-        statusUpdateMsg.add(Utils::senderKey,
-                            VPackValue(ServerState::instance()->getId()));
-        statusUpdateMsg.add(Utils::executionNumberKey,
-                            VPackValue(_config.executionNumber()));
-        statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-        auto update = observeStatus();
-        serialize(statusUpdateMsg, update);
-      }
-      _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-    };
-    statusUpdateCallback();
+    _statusCallback();
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -709,30 +660,12 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     cb();
   };
 
-  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = observeStatus();
-      serialize(statusUpdateMsg, update);
-    }
-
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-  };
-
   _state = WorkerState::DONE;
   if (doStore) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup),
-                              statusUpdateCallback);
+    _graphStore->storeResults(&_config, std::move(cleanup), _statusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
@@ -952,6 +885,38 @@ void Worker<V, E, M>::_callConductorWithResponse(
       handle(r.slice());
     }
   }
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::_observeStatus() -> Status const {
+  auto currentGss = _currentGssObservables.observe();
+  auto fullGssStatus = _allGssStatus.copy();
+
+  if (!currentGss.isDefault()) {
+    fullGssStatus.gss.emplace_back(currentGss);
+  }
+  return Status{.graphStoreStatus = _graphStore->status(),
+                .allGssStatus = fullGssStatus.gss.size() > 0
+                                    ? std::optional{fullGssStatus}
+                                    : std::nullopt};
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::_statusCallback() -> std::function<void()> {
+  return [self = shared_from_this(), this] {
+    VPackBuilder statusUpdateMsg;
+    {
+      auto ob = VPackObjectBuilder(&statusUpdateMsg);
+      statusUpdateMsg.add(Utils::senderKey,
+                          VPackValue(ServerState::instance()->getId()));
+      statusUpdateMsg.add(Utils::executionNumberKey,
+                          VPackValue(_config.executionNumber()));
+      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+      auto update = _observeStatus();
+      serialize(statusUpdateMsg, update);
+    }
+    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+  };
 }
 
 // template types to create
