@@ -4890,18 +4890,20 @@ function transactionReplication2ReplicateOperationSuite() {
       let shards = c.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
+      let allEntries = {};
+      let abortCount = 0;
       for (const log of logs) {
         let entries = log.head(1000);
-        let abortFound = false;
+        allEntries[log.id()] = entries;
         for (const entry of entries) {
           if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
-            abortFound = true;
+            ++abortCount;
             break;
           }
         }
-        assertTrue(abortFound, `Could not find Abort operation in log ${log.id()}!\n` +
-            `Log entries: ${JSON.stringify(entries)}`);
       }
+      assertEqual(abortCount, 1, `Wrong count of Abort operations in the replicated logs!\n` +
+        `Log entries: ${JSON.stringify(allEntries)}`);
     },
 
     testTransactionCommitLogEntry: function () {
@@ -4972,14 +4974,14 @@ function transactionReplication2ReplicateOperationSuite() {
             for (const [endpoint, res] of Object.entries(localValues)) {
               if (shard === shardId) {
                 assertTrue(res.code === undefined,
-                  `Error while reading key from ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+                  `Error while reading key ${key} from ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
                   `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
                 assertEqual(res._key, key,
                   `Wrong key returned by ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
                   `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
               } else {
               assertTrue(res.code === 404,
-                `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
+                `Expected 404 while reading key ${key} from ${endpoint}/${dbn}/${shards[0]}, ` +
                 `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
                 `\n${replication2Log}`);
               }

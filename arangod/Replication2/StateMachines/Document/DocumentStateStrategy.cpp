@@ -177,6 +177,7 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
       fut = _methods->removeAsync(entry.shardId, entry.data.slice(), opOptions);
       break;
     case kTruncate:
+      // TODO Think about correctness and efficiency.
       fut = _methods->truncateAsync(entry.shardId, opOptions);
       break;
     default:
@@ -258,7 +259,8 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
 
   auto methods = std::make_shared<transaction::Methods>(
       std::move(ctx), entry.shardId, AccessMode::Type::WRITE);
-  // TODO why is GLOBAL_MANAGED necessary
+
+  // TODO Why is GLOBAL_MANAGED necessary?
   methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   auto res = methods->begin();

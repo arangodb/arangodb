@@ -84,10 +84,15 @@ auto DocumentFollowerState::applyEntries(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
       }
 
+      // TODO parallelize?
       fut.wait();
-      fut.result().throwIfFailed();
+      if (fut.result()->fail()) {
+        return fut;
+      }
+    } catch (basics::Exception& e) {
+      return Result{e.code(), e.message()};
     } catch (std::exception& e) {
-      ADB_PROD_ASSERT(false) << e.what() << " " << doc;
+      return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
     }
   }
 
