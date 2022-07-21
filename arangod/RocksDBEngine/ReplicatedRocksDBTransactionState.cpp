@@ -140,14 +140,16 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   TRI_ASSERT(options.waitForCommit == false);
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
-    auto leader = rtc.leaderState();
-    leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
-                               options);
-    auto r = rtc.abortTransaction();
-    if (r.fail()) {
-      return r;
+    auto res = basics::catchToResult([&] {
+      auto leader = rtc.leaderState();
+      leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                                 options);
+      return rtc.abortTransaction();
+    });
+    if (res.fail()) {
+      return res;
     }
-  };
+  }
 
   return {};
 }
