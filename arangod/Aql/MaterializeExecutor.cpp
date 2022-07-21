@@ -83,6 +83,7 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
 
+    // FIXME(gnusi): move outside the loop?
     // some micro-optimization
     auto& callback = _readDocumentContext._callback;
     auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
@@ -117,6 +118,7 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
       }
     }
 
+    // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
     written =
         collection->getPhysical()
             ->read(&_trx,

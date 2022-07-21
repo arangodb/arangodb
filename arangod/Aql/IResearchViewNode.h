@@ -103,6 +103,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
     bool noMaterialization{true};
   };
 
+  static IResearchViewNode* getByVar(aql::ExecutionPlan const& plan,
+                                     aql::Variable const& var) noexcept;
+
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id,
                     TRI_vocbase_t& vocbase,
                     std::shared_ptr<const LogicalView> view,
@@ -171,6 +174,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
   // Return the scorers to pass to the view.
   auto const& scorers() const noexcept { return _scorers; }
+
+  // Return current snapshot key
+  void const* getSnapshotKey() const noexcept;
 
   // Set the scorers to pass to the view.
   void setScorers(std::vector<SearchFunc>&& scorers) noexcept {

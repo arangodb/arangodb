@@ -596,12 +596,7 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
   TRI_ASSERT(ServerState::instance()->isDBServer());
   auto const view = node.view();
   auto const& options = node.options();
-  // TODO We want transactional cluster, now it's not
-  // So we don't make sense to make ViewSnapshotView for restrictSources
-  // and we can use node address as key
-  void const* key = (options.restrictSources || view == nullptr)
-                        ? static_cast<void const*>(&node)
-                        : static_cast<void const*>(view.get());
+  auto* const key = node.getSnapshotKey();
   auto* snapshot = getViewSnapshot(trx, key);
   if (snapshot != nullptr) {
     if (options.forceSync) {
@@ -678,7 +673,7 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
   TRI_ASSERT(ServerState::instance()->isSingleServer());
   auto const& view = *node.view();
   auto const& options = node.options();
-  void const* key = static_cast<void const*>(&view);
+  auto* const key = node.getSnapshotKey();
   auto* snapshot = getViewSnapshot(trx, key);
   if (snapshot != nullptr) {
     if (options.forceSync) {
@@ -877,6 +872,19 @@ constexpr size_t getExecutorIndex(bool sorted, bool ordered, bool heapsort) {
 
 bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept {
   return filterCondition == &kAll;
+}
+
+IResearchViewNode* IResearchViewNode::getByVar(
+    aql::ExecutionPlan const& plan, aql::Variable const& var) noexcept {
+  auto* varOwner = plan.getVarSetBy(var.id);
+
+  if (!varOwner ||
+      aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW != varOwner->getType()) {
+    return nullptr;
+  }
+
+  return aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+      varOwner);
 }
 
 IResearchViewNode::IResearchViewNode(
@@ -1204,6 +1212,22 @@ std::pair<bool, bool> IResearchViewNode::volatility(
 
   return std::make_pair(irs::check_bit<0>(_volatilityMask),   // filter
                         irs::check_bit<1>(_volatilityMask));  // sort
+}
+
+void const* IResearchViewNode::getSnapshotKey() const noexcept {
+  if (ServerState::instance()->isDBServer()) {
+    // TODO We want transactional cluster, now it's not
+    // So we don't make sense to make ViewSnapshotView for restrictSources
+    // and we can use node address as key
+    return (_options.restrictSources || _view == nullptr)
+               ? static_cast<void const*>(this)
+               : static_cast<void const*>(_view.get());
+  } else if (ServerState::instance()->isSingleServer()) {
+    return _view.get();
+  }
+
+  TRI_ASSERT(false);
+  return nullptr;
 }
 
 void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
