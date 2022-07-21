@@ -361,47 +361,6 @@ std::string getDocumentId(irs::string_ref collection, VPackSlice document) {
   resolved.append(key.data(), key.size());
   return resolved;
 }
-
-arangodb::iresearch::MissingFieldsMap gatherMissingFields(
-    arangodb::iresearch::FieldMeta const&) {
-  return {};
-}
-
-#ifdef USE_ENTERPRISE
-void gatherNestedNulls(std::string_view parent,
-                       arangodb::iresearch::MissingFieldsMap& map,
-                       arangodb::iresearch::InvertedIndexField const& field);
-#endif
-
-arangodb::iresearch::MissingFieldsMap gatherMissingFields(
-    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
-        field) {
-  arangodb::iresearch::MissingFieldsMap map;
-  for (auto const& f : field._meta->_fields) {
-    // always monitor on root level plain fields to track completely missing
-    // hierarchies. trackListPositions enabled arrays are excluded as we could
-    // never predict if array[12345] will exist so we do not emit such "nulls".
-    // It is not supported in general indexes anyway
-    if ((!field._trackListPositions || !field._meta->_hasExpansion) &&
-        f._fields.empty()) {
-      map[""].emplace(f._attribute.back().shouldExpand ? f.attributeString()
-                                                       : f.path());
-    }
-    // but for individual objects in array we always could track expected fields
-    // and emit "nulls"
-    if (f._hasExpansion && !f._attribute.back().shouldExpand) {
-      TRI_ASSERT(f._fields.empty());
-      // monitor array subobjects
-      map[f.attributeString()].emplace(f.path());
-    }
-#ifdef USE_ENTERPRISE
-    if (!f._fields.empty()) {
-      gatherNestedNulls("", map, f);
-    }
-#endif
-  }
-  return map;
-}
 }  // namespace
 
 namespace arangodb {
@@ -453,7 +412,10 @@ void FieldIterator<IndexMetaStruct>::reset(VPackSlice doc,
   _disableFlush = false;
   // push the provided 'doc' on stack and initialize current value
   auto const filter = getFilter(doc, linkMeta);
-  _missingFieldsMap = gatherMissingFields(linkMeta);
+  if constexpr (std::is_same_v<IndexMetaStruct,
+                               IResearchInvertedIndexMetaIndexingContext>) {
+    _missingFieldsMap = linkMeta._missingFieldsMap;
+  }
 #ifdef USE_ENTERPRISE
   // this is set for root level as general mark.
   _hasNested = MetaTraits::hasNested(linkMeta);

@@ -137,6 +137,14 @@ class ImportHelper {
   void setTo(std::string const& to) { _toCollectionPrefix = to; }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief set if we want to overwrite existing collection prefixes
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setOverwritePrefix(bool overwrite) {
+    _overwriteCollectionPrefix = overwrite;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not backslashes can be used for escaping quotes
   //////////////////////////////////////////////////////////////////////////////
 
@@ -368,6 +376,7 @@ class ImportHelper {
   std::string _collectionName;
   std::string _fromCollectionPrefix;
   std::string _toCollectionPrefix;
+  bool _overwriteCollectionPrefix;
   arangodb::basics::StringBuffer _lineBuffer;
   arangodb::basics::StringBuffer _outputBuffer;
   std::string _firstLine;

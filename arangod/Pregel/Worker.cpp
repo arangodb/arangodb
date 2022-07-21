@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Worker.h"
+#include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
@@ -31,10 +32,12 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/VertexComputation.h"
 
-#include "Pregel/Status/WorkerStatus.h"
+#include "Pregel/Status/Status.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -80,6 +83,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _graphStore = std::make_unique<GraphStore<V, E>>(
       _feature, vocbase, _config.executionNumber(), _algorithm->inputFormat());
 
+  _feature.metrics()->pregelWorkersNumber->fetch_add(1);
+
   if (_config.asynchronousMode()) {
     _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
   } else {
@@ -104,6 +109,10 @@ Worker<V, E, M>::~Worker() {
     delete cache;
   }
   _writeCache = nullptr;
+
+  _feature.metrics()->pregelWorkersNumber->fetch_sub(1);
+  _feature.metrics()->pregelMemoryUsedForGraph->fetch_sub(
+      _graphStore->allocatedSize());
 }
 
 template<typename V, typename E, typename M>
@@ -157,6 +166,7 @@ void Worker<V, E, M>::setupWorker() {
     package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
     package.close();
     _callConductor(Utils::finishedStartupPath, package);
+    _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   };
 
   std::function<void()> statusUpdateCallback = [self = shared_from_this(),
@@ -169,7 +179,7 @@ void Worker<V, E, M>::setupWorker() {
       statusUpdateMsg.add(Utils::executionNumberKey,
                           VPackValue(_config.executionNumber()));
       statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = WorkerStatus{};
+      auto update = observeStatus();
       serialize(statusUpdateMsg, update);
     }
 
@@ -179,6 +189,7 @@ void Worker<V, E, M>::setupWorker() {
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
                    [this, self = shared_from_this(),
@@ -355,6 +366,7 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
+  _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
   _activeCount = 0;  // active count is only valid after the run
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
@@ -367,6 +379,7 @@ void Worker<V, E, M>::_startProcessing() {
   } else {
     _runningThreads = 1;
   }
+  _feature.metrics()->pregelNumberOfThreads->fetch_add(_runningThreads);
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());
   size_t numT = _runningThreads;
@@ -442,6 +455,9 @@ bool Worker<V, E, M>::_processVertices(
     Vertex<V, E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
+    _currentGssObservables.messagesReceived += messages.size();
+    _currentGssObservables.memoryBytesUsedForMessages +=
+        messages.size() * sizeof(M);
 
     if (messages.size() > 0 || vertexEntry->active()) {
       vertexComputation->_vertexEntry = vertexEntry;
@@ -452,6 +468,30 @@ bool Worker<V, E, M>::_processVertices(
     }
     if (_state != WorkerState::COMPUTING) {
       break;
+    }
+
+    ++_currentGssObservables.verticesProcessed;
+    if (_currentGssObservables.verticesProcessed %
+            Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+        0) {
+      std::function<void()> statusUpdateCallback = [self = shared_from_this(),
+                                                    this] {
+        VPackBuilder statusUpdateMsg;
+        {
+          auto ob = VPackObjectBuilder(&statusUpdateMsg);
+          statusUpdateMsg.add(Utils::senderKey,
+                              VPackValue(ServerState::instance()->getId()));
+          statusUpdateMsg.add(Utils::executionNumberKey,
+                              VPackValue(_config.executionNumber()));
+          statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+          auto update = observeStatus();
+          serialize(statusUpdateMsg, update);
+        }
+        _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+      };
+
+      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                         statusUpdateCallback);
     }
   }
   // ==================== send messages to other shards ====================
@@ -471,8 +511,12 @@ bool Worker<V, E, M>::_processVertices(
   // TODO ask how to implement message sending without waiting for a response
   // t = TRI_microtime() - t;
 
+  _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
+  _currentGssObservables.messagesSent += outCache->sendCount();
+  _currentGssObservables.memoryBytesUsedForMessages +=
+      outCache->sendCount() * sizeof(M);
   stats.superstepRuntimeSecs = TRI_microtime() - start;
   inCache->clear();
   outCache->clear();
@@ -486,6 +530,7 @@ bool Worker<V, E, M>::_processVertices(
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
+    _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
     _reports.append(std::move(vertexComputation->_reports));
     lastThread = _runningThreads == 0;  // should work like a join operation
   }
@@ -506,12 +551,35 @@ void Worker<V, E, M>::_finishedProcessing() {
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
+    _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
     if (_state != WorkerState::COMPUTING) {
       return;  // probably canceled
     }
 
     // count all received messages
     _messageStats.receivedCount = _readCache->containedMessageCount();
+    _feature.metrics()->pregelMessagesReceived->count(
+        _readCache->containedMessageCount());
+
+    _allGssStatus.push(_currentGssObservables.observe());
+    _currentGssObservables.zero();
+    std::function<void()> statusUpdateCallback = [self = shared_from_this(),
+                                                  this] {
+      VPackBuilder statusUpdateMsg;
+      {
+        auto ob = VPackObjectBuilder(&statusUpdateMsg);
+        statusUpdateMsg.add(Utils::senderKey,
+                            VPackValue(ServerState::instance()->getId()));
+        statusUpdateMsg.add(Utils::executionNumberKey,
+                            VPackValue(_config.executionNumber()));
+        statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+        auto update = observeStatus();
+        serialize(statusUpdateMsg, update);
+      }
+      _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+    };
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                       statusUpdateCallback);
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -622,7 +690,13 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
 
-  auto cleanup = [self = shared_from_this(), this, cb] {
+  VPackSlice store = body.get(Utils::storeResultsKey);
+  auto const doStore = store.isBool() && store.getBool() == true;
+  auto cleanup = [self = shared_from_this(), this, doStore, cb] {
+    if (doStore) {
+      _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+    }
+
     VPackBuilder body;
     body.openObject();
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -635,13 +709,31 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     cb();
   };
 
+  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
+                                                this] {
+    VPackBuilder statusUpdateMsg;
+    {
+      auto ob = VPackObjectBuilder(&statusUpdateMsg);
+      statusUpdateMsg.add(Utils::senderKey,
+                          VPackValue(ServerState::instance()->getId()));
+      statusUpdateMsg.add(Utils::executionNumberKey,
+                          VPackValue(_config.executionNumber()));
+      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+      auto update = observeStatus();
+      serialize(statusUpdateMsg, update);
+    }
+
+    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+  };
+
   _state = WorkerState::DONE;
-  VPackSlice store = body.get(Utils::storeResultsKey);
-  if (store.isBool() && store.getBool() == true) {
+  if (doStore) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup));
+    _graphStore->storeResults(&_config, std::move(cleanup),
+                              statusUpdateCallback);
+    _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();

@@ -1,7 +1,19 @@
 
   <ul id="graphTab" class="nav nav-tabs">
-    <li class="active"><a href="#createGraph" data-toggle="tab" id="tab-createGraph">Graph</a></li>
+    <%
+      let enterpriseGraphClass = '';
+      let graphClass = '';
+      if (frontendConfig.isEnterprise) {
+        // In case we do have an Enterprise intance up and running, EnterpriseGraphs will be our default ...
+        enterpriseGraphClass = "active"
+      } else {
+        // ... otherwise, general graphs will be.
+        graphClass = "active";
+      }
+    %>
+    <li class="<%=enterpriseGraphClass%>"><a href="#enterpriseGraph" data-toggle="tab" id="tab-enterpriseGraph">EnterpriseGraph</a></li>
     <li><a href="#smartGraph" data-toggle="tab" id="tab-smartGraph">SmartGraph</a></li>
+    <li class="<%=graphClass%>"><a href="#createGraph" data-toggle="tab" id="tab-createGraph">GeneralGraph</a></li>
     <li><a href="#satelliteGraph" data-toggle="tab" id="tab-satelliteGraph">SatelliteGraph</a></li>
     <li><a href="#exampleGraphs" data-toggle="tab" id="tab-exampleGraphs">Examples</a></li>
   </ul>
@@ -67,8 +79,17 @@
 
     <div class="active tab-pane" id="createGraph">
 
-    <div id="smartGraphInfo" class="infoMessage" style="display: none;">
-      <span>SmartGraph Info: Only use non-existent collection names (vertices/edges).</span>
+    <%
+      let smartGraphInfoStyle = "font-weight: 400;";
+      if (!frontendConfig.isEnterprise) {
+        // In case if we do not have an Enterprise instance, we must hide this by default.
+        smartGraphInfoStyle = "display: none;"
+      }
+    %>
+
+    <div id="smartGraphInfo" class="alert alert-info" style="<%=smartGraphInfoStyle%>">
+      <span><i class="fa fa-info-circle"></i></span>
+      <span>Only use non-existent collection names. They are automatically created during the graph setup.</span>
     </div>
 
     <div id="smartGraphInfoOneShard" class="infoMessage" style="display: none">
@@ -81,10 +102,19 @@
       if (row.mandatory) {
         mandatory = '*';
       }
+      var cssClass = '';
+      if (row.cssClass) {
+        cssClass = row.cssClass;
+      }
 
       %>
-        <tr class="tableRow" id="<%='row_' + row.id%>">
-          <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+        <tr class="tableRow <%=cssClass%>" id="<%='row_' + row.id%>">
+          <% if (row.removeColon) { %>
+          <th class="collectionTh"><%=row.label%><%=mandatory%></th>
+          <% } else { %>
+            <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+          <% } %>
+
           <th class="collectionTh">
             <%
               switch(row.type) {
@@ -96,6 +126,11 @@
               case "password":
             %>
             <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <%
+              break;
+            case 'spacer':
+            %>
+            <div class="modal-spacer" id="<%= row.id  %>"></div>
             <%
                 break;
               case "readonly":
@@ -133,10 +168,10 @@
             %>
             <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
             <% if (row.addAdd) {%>
-              <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add addAfter"></button>
+              <button id="<%='addAfter_' + row.id%>" class="button-success pull-right add addAfter graphViewer-icon-add-remove-button">Add relation</button>
             <% } %>
             <% if (row.addDelete) {%>
-              <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete addDelete"></button>
+              <button id="<%='remove_' + row.id%>" class="button-danger pull-right delete addDelete graphViewer-icon-add-remove-button">Remove relation</button>
             <% } %>
             <%
                 break;
@@ -149,8 +184,10 @@
             </span>
           </th>
         <%
-          }
+          } else {
         %>
+          <th class="collectionTh"></th>
+        <% } %>
         </tr>
       <%
     }//createTR

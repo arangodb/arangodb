@@ -209,10 +209,11 @@ TEST_P(IResearchQueryTraversalTest, test) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(2, cids.size());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
@@ -238,10 +239,11 @@ TEST_P(IResearchQueryTraversalTest, test) {
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,

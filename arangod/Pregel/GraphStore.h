@@ -28,6 +28,7 @@
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/Reports.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -72,6 +73,25 @@ class GraphStore final {
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
+  auto allocatedSize() -> size_t {
+    auto total = size_t{0};
+
+    for (auto&& vb : _vertices) {
+      total += vb->capacity();
+    }
+    for (auto&& vb : _vertexKeys) {
+      total += vb->capacity();
+    }
+    for (auto&& vb : _edges) {
+      total += vb->capacity();
+    }
+    for (auto&& vb : _edgeKeys) {
+      total += vb->capacity();
+    }
+    return total;
+  }
+
+  GraphStoreStatus status() const { return _observables.observe(); }
 
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
@@ -91,7 +111,8 @@ class GraphStore final {
   RangeIterator<Edge<E>> edgeIterator(Vertex<V, E> const* entry);
 
   /// Write results to database
-  void storeResults(WorkerConfig* config, std::function<void()>);
+  void storeResults(WorkerConfig* config, std::function<void()>,
+                    std::function<void()> const& statusUpdateCallback);
 
   ReportManager* _reports;
 
@@ -106,8 +127,8 @@ class GraphStore final {
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
 
   void storeVertices(std::vector<ShardID> const& globalShards,
-                     RangeIterator<Vertex<V, E>>& it, size_t threadNumber);
-
+                     RangeIterator<Vertex<V, E>>& it, size_t threadNumber,
+                     std::function<void()> const& statusUpdateCallback);
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
 
   constexpr size_t vertexSegmentSize() const {
@@ -134,6 +155,8 @@ class GraphStore final {
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
   std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
+
+  GraphStoreObservables _observables;
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
