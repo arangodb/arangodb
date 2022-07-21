@@ -399,21 +399,6 @@ export class GraphView extends React.Component {
     this.graph.removeItem(item);
   }
 
-  addEdge = () => {
-    const edgeModel = {
-      id: 'alicetodiana',
-      source: 'female/alice',
-      target: 'female/diana',
-      data: {
-        type: 'name1',
-        amount: '1000,00 元',
-        date: '2022-01-13'
-      }
-    };
-    this.graph.addItem('edge', edgeModel);
-    this.props.onAddSingleEdge(edgeModel);
-  }
-
   changeNodeStyle = (typeModel) => {
     this.graph.node((node) => {
       return {
