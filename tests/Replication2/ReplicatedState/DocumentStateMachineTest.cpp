@@ -38,16 +38,14 @@ using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
-struct MockDocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
-  auto getCollectionPlan(std::string const& database,
-                         std::string const& collectionId)
+struct MockDocumentStateAgencyHandler : IDocumentStateAgencyHandler {
+  auto getCollectionPlan(std::string const& collectionId)
       -> std::shared_ptr<velocypack::Builder> override {
     return std::make_shared<VPackBuilder>();
   }
 
   auto reportShardInCurrent(
-      std::string const& database, std::string const& collectionId,
-      std::string const& shardId,
+      std::string const& collectionId, std::string const& shardId,
       std::shared_ptr<velocypack::Builder> const& properties)
       -> Result override {
     shards.emplace_back(shardId, collectionId);
@@ -58,11 +56,10 @@ struct MockDocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
   std::vector<std::pair<std::string, std::string>> shards;
 };
 
-struct MockDocumentStateShardHandler : public IDocumentStateShardHandler {
+struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
   MockDocumentStateShardHandler() : shardId{0} {};
 
-  auto createLocalShard(GlobalLogIdentifier const& gid,
-                        std::string const& collectionId,
+  auto createLocalShard(std::string const& collectionId,
                         std::shared_ptr<velocypack::Builder> const& properties)
       -> ResultT<std::string> override {
     ++shardId;
@@ -72,79 +69,39 @@ struct MockDocumentStateShardHandler : public IDocumentStateShardHandler {
   int shardId;
 };
 
-struct MockDocumentStateTransaction : public IDocumentStateTransaction {
+struct MockDocumentStateTransaction : IDocumentStateTransaction {
   explicit MockDocumentStateTransaction(TransactionId tid) : tid(tid) {}
 
-  auto getTid() const -> TransactionId override { return tid; }
+  auto apply(DocumentLogEntry const& entry)
+      -> futures::Future<Result> override {
+    TRI_ASSERT(!applied);
+    applied = true;
+    return Result{};
+  }
+
+  auto finish(DocumentLogEntry const& entry)
+      -> futures::Future<Result> override {
+    TRI_ASSERT(!finished);
+    finished = true;
+    return Result{};
+  }
 
   TransactionId tid;
   bool ensured = false;
-  bool inited = false;
-  bool started = false;
   bool applied = false;
   bool finished = false;
 };
 
-struct MockDocumentStateTransactionHandler
-    : public IDocumentStateTransactionHandler {
-  void setDatabase(std::string const& database) override {
-    this->database = database;
-  }
-
+struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
   auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> override {
+    if (auto trx = getTransaction(entry.tid)) {
+      return trx;
+    }
     auto trx = std::make_shared<MockDocumentStateTransaction>(entry.tid);
     trx->ensured = true;
     transactions.emplace(entry.tid, trx);
     return trx;
-  }
-
-  auto initTransaction(TransactionId tid) -> Result override {
-    if (auto trx = transactions.find(tid); trx != transactions.end()) {
-      if (!trx->second->ensured) {
-        return {TRI_ERROR_TRANSACTION_INTERNAL};
-      }
-      trx->second->inited = true;
-      return Result{};
-    }
-    return {TRI_ERROR_TRANSACTION_NOT_FOUND};
-  }
-
-  auto startTransaction(TransactionId tid) -> Result override {
-    if (auto trx = transactions.find(tid); trx != transactions.end()) {
-      if (!trx->second->ensured || !trx->second->inited) {
-        return {TRI_ERROR_TRANSACTION_INTERNAL};
-      }
-      trx->second->started = true;
-      return Result{};
-    }
-    return {TRI_ERROR_TRANSACTION_NOT_FOUND};
-  }
-
-  auto applyTransaction(TransactionId tid) -> futures::Future<Result> override {
-    if (auto trx = transactions.find(tid); trx != transactions.end()) {
-      if (!trx->second->ensured || !trx->second->inited ||
-          !trx->second->started) {
-        return {TRI_ERROR_TRANSACTION_INTERNAL};
-      }
-      trx->second->applied = true;
-      return Result{};
-    }
-    return {TRI_ERROR_TRANSACTION_NOT_FOUND};
-  }
-
-  auto finishTransaction(DocumentLogEntry entry)
-      -> futures::Future<Result> override {
-    auto tid = entry.tid;
-    if (auto trx = transactions.find(tid); trx != transactions.end()) {
-      if (!trx->second->ensured || !trx->second->inited ||
-          !trx->second->started || !trx->second->applied) {
-        return {TRI_ERROR_TRANSACTION_INTERNAL};
-      }
-      trx->second->finished = true;
-      return Result{};
-    }
-    return {TRI_ERROR_TRANSACTION_NOT_FOUND};
   }
 
   auto getTransaction(TransactionId tid)
@@ -161,11 +118,39 @@ struct MockDocumentStateTransactionHandler
       transactions;
 };
 
+struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
+  MockDocumentStateHandlersFactory(
+      std::shared_ptr<IDocumentStateAgencyHandler> ah,
+      std::shared_ptr<IDocumentStateShardHandler> sh,
+      std::shared_ptr<IDocumentStateTransactionHandler> th)
+      : agencyHandler(std::move(ah)),
+        shardHandler(std::move(sh)),
+        transactionHandler(std::move(th)) {}
+
+  auto createAgencyHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateAgencyHandler> override {
+    return agencyHandler;
+  }
+
+  auto createShardHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateShardHandler> override {
+    return shardHandler;
+  }
+
+  auto createTransactionHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateTransactionHandler> override {
+    return transactionHandler;
+  }
+
+  std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler;
+  std::shared_ptr<IDocumentStateShardHandler> shardHandler;
+  std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
+};
+
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
   DocumentStateMachineTest() {
     feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
-                                              agencyHandler, shardHandler,
-                                              transactionHandler);
+                                              factory);
   }
 
   std::shared_ptr<ReplicatedStateFeature> feature =
@@ -176,6 +161,9 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockDocumentStateShardHandler>();
   std::shared_ptr<MockDocumentStateTransactionHandler> transactionHandler =
       std::make_shared<MockDocumentStateTransactionHandler>();
+  std::shared_ptr<IDocumentStateHandlersFactory> factory =
+      std::make_shared<MockDocumentStateHandlersFactory>(
+          agencyHandler, shardHandler, transactionHandler);
 };
 
 TEST_F(DocumentStateMachineTest, simple_operations) {
@@ -253,8 +241,6 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
     auto trx = transactionHandler->getTransaction(tid);
     ASSERT_NE(trx, nullptr);
     ASSERT_TRUE(trx->ensured);
-    ASSERT_TRUE(trx->inited);
-    ASSERT_TRUE(trx->started);
     ASSERT_TRUE(trx->applied);
     ASSERT_FALSE(trx->finished);
   }
