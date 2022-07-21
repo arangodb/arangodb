@@ -49,7 +49,7 @@ using namespace arangodb::replication2::replicated_state::document;
 
 DocumentStateAgencyHandler::DocumentStateAgencyHandler(ArangodServer& server,
                                                        AgencyCache& agencyCache)
-    : _server(server), _agencyCache(agencyCache){};
+    : _server(server), _agencyCache(agencyCache) {}
 
 auto DocumentStateAgencyHandler::getCollectionPlan(
     std::string const& database, std::string const& collectionId)
@@ -100,7 +100,7 @@ auto DocumentStateAgencyHandler::reportShardInCurrent(
 
 DocumentStateShardHandler::DocumentStateShardHandler(
     MaintenanceFeature& maintenanceFeature)
-    : _maintenanceFeature(maintenanceFeature){};
+    : _maintenanceFeature(maintenanceFeature) {}
 
 auto DocumentStateShardHandler::stateIdToShardId(LogId logId) -> std::string {
   return fmt::format("s{}", logId);
@@ -144,120 +144,71 @@ auto DocumentStateShardHandler::createLocalShard(
 }
 
 DocumentStateTransaction::DocumentStateTransaction(
-    TRI_vocbase_t* vocbase, DocumentLogEntry const& entry)
-    : _entries{1, entry},
-      _methods(nullptr),
-      _results{},
-      _shardId{entry.shardId},
-      _tid{entry.tid} {
-  _options = transaction::Options();
-  _options.isReplication2Transaction = true;
-  _options.isFollowerTransaction = true;
-  _options.allowImplicitCollectionsForWrite = true;
-  _state =
-      std::make_shared<SimpleRocksDBTransactionState>(*vocbase, _tid, _options);
-}
+    std::shared_ptr<transaction::Methods> methods)
+    : _entries{}, _methods(std::move(methods)), _results{} {}
 
-auto DocumentStateTransaction::getShardId() const -> ShardID {
-  return _shardId;
-}
+auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
+    -> futures::Future<Result> {
+  // Save the entry for debugging purposes.
+  _entries.push_back(entry);
 
-auto DocumentStateTransaction::getOptions() const -> transaction::Options {
-  return _options;
-}
-
-auto DocumentStateTransaction::apply() -> futures::Future<Result> {
-  auto methods = getMethods();
-
-  if (getLastOperation() == OperationType::kInsert) {
-    auto opOptions = OperationOptions();
-    return methods->insertAsync(getShardId(), getLastPayload(), opOptions)
-        .thenValue(
-            [opOptions, self = shared_from_this()](OperationResult&& opRes) {
-              auto res = opRes.result;
-              self->appendResult(std::move(opRes));
-              return res;
-            });
-  } else if (getLastOperation() == OperationType::kUpdate) {
-    auto opOptions = arangodb::OperationOptions();
-    return methods->updateAsync(getShardId(), getLastPayload(), opOptions)
-        .thenValue(
-            [opOptions, self = shared_from_this()](OperationResult&& opRes) {
-              auto res = opRes.result;
-              self->appendResult(std::move(opRes));
-              return res;
-            });
-  } else if (getLastOperation() == OperationType::kReplace) {
-    auto opOptions = arangodb::OperationOptions();
-    return methods->replaceAsync(getShardId(), getLastPayload(), opOptions)
-        .thenValue(
-            [opOptions, self = shared_from_this()](OperationResult&& opRes) {
-              auto res = opRes.result;
-              self->appendResult(std::move(opRes));
-              return res;
-            });
-  } else if (getLastOperation() == OperationType::kRemove) {
-    auto opOptions = arangodb::OperationOptions();
-    return methods->removeAsync(getShardId(), getLastPayload(), opOptions)
-        .thenValue(
-            [opOptions, self = shared_from_this()](OperationResult&& opRes) {
-              auto res = opRes.result;
-              self->appendResult(std::move(opRes));
-              return res;
-            });
-  } else if (getLastOperation() == OperationType::kTruncate) {
-    auto opOptions = arangodb::OperationOptions();
-    return methods->truncateAsync(getShardId(), opOptions)
-        .thenValue(
-            [opOptions, self = shared_from_this()](OperationResult&& opRes) {
-              auto res = opRes.result;
-              self->appendResult(std::move(opRes));
-              return res;
-            });
+  auto opOptions = OperationOptions();
+  switch (entry.operation) {
+    case kInsert:
+      return _methods->insertAsync(entry.shardId, entry.data.slice(), opOptions)
+          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
+            return self->appendResult(std::move(opRes));
+          });
+    case kUpdate:
+      return _methods->updateAsync(entry.shardId, entry.data.slice(), opOptions)
+          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
+            return self->appendResult(std::move(opRes));
+          });
+    case kReplace:
+      return _methods
+          ->replaceAsync(entry.shardId, entry.data.slice(), opOptions)
+          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
+            return self->appendResult(std::move(opRes));
+          });
+    case kRemove:
+      return _methods->removeAsync(entry.shardId, entry.data.slice(), opOptions)
+          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
+            return self->appendResult(std::move(opRes));
+          });
+    case kTruncate:
+      return _methods->truncateAsync(entry.shardId, opOptions)
+          .thenValue([self = shared_from_this()](OperationResult&& opRes) {
+            return self->appendResult(std::move(opRes));
+          });
+    default:
+      return Result{
+          TRI_ERROR_TRANSACTION_INTERNAL,
+          fmt::format("Transaction of type {} with ID {} could not be applied",
+                      to_string(entry.operation), entry.tid.id())};
   }
-
-  return Result{
-      TRI_ERROR_TRANSACTION_INTERNAL,
-      fmt::format("Transaction of type {} with ID {} could not be applied",
-                  to_string(getLastOperation()), _tid.id())};
 }
 
-auto DocumentStateTransaction::finish() -> futures::Future<Result> {
-  auto methods = getMethods();
+auto DocumentStateTransaction::finish(DocumentLogEntry const& entry)
+    -> futures::Future<Result> {
+  // Save the entry for debugging purposes.
+  _entries.push_back(entry);
 
-  switch (getLastOperation()) {
+  switch (entry.operation) {
     case OperationType::kCommit:
-      // Try to commit the operation or abort in case it failed
-      return methods->finishAsync(getResult().result);
+      // Try to commit the operation or abort in case it failed.
+      return _methods->finishAsync(getOperationsResult().result);
     case OperationType::kAbort:
-      return methods->abortAsync();
+      return _methods->abortAsync();
     default:
       return Result{
           TRI_ERROR_TRANSACTION_INTERNAL,
           fmt::format("Transaction of type {} with ID {} could not be finished",
-                      to_string(getLastOperation()), getLastEntry().tid.id())};
+                      to_string(entry.operation), entry.tid.id())};
   }
 }
 
-auto DocumentStateTransaction::getLastOperation() const -> OperationType {
-  return getLastEntry().operation;
-}
-
-auto DocumentStateTransaction::getState() const
-    -> std::shared_ptr<TransactionState> {
-  return _state;
-}
-
-auto DocumentStateTransaction::getLastPayload() const -> VPackSlice {
-  return getLastEntry().data.slice();
-}
-
-auto DocumentStateTransaction::getMethods() const
-    -> std::shared_ptr<transaction::Methods> {
-  return _methods;
-}
-
-auto DocumentStateTransaction::getResult() const -> OperationResult const& {
+auto DocumentStateTransaction::getOperationsResult() const
+    -> OperationResult const& {
   for (auto const& it : _results) {
     if (it.fail()) {
       return it;
@@ -266,22 +217,11 @@ auto DocumentStateTransaction::getResult() const -> OperationResult const& {
   return _results.back();
 }
 
-auto DocumentStateTransaction::getLastEntry() const -> DocumentLogEntry {
-  TRI_ASSERT(!_entries.empty());
-  return _entries.back();
-}
-
-void DocumentStateTransaction::setMethods(
-    std::shared_ptr<transaction::Methods> methods) {
-  _methods = std::move(methods);
-}
-
-void DocumentStateTransaction::appendResult(OperationResult result) {
+auto DocumentStateTransaction::appendResult(OperationResult&& result)
+    -> Result {
+  auto res = result.result;
   _results.push_back(std::move(result));
-}
-
-void DocumentStateTransaction::appendEntry(DocumentLogEntry entry) {
-  _entries.push_back(std::move(entry));
+  return res;
 }
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
@@ -312,44 +252,48 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
   auto trx = getTrx(tid);
 
   if (trx != nullptr) {
-    trx->appendEntry(std::move(entry));
     return trx;
   }
 
   TRI_ASSERT(entry.operation != kCommit && entry.operation != kAbort);
   TRI_ASSERT(_vocbase != nullptr);
 
-  trx = std::make_shared<DocumentStateTransaction>(_vocbase, std::move(entry));
-  _transactions.emplace(tid, trx);
+  auto options = transaction::Options();
+  options.isReplication2Transaction = true;
+  options.isFollowerTransaction = true;
+  options.allowImplicitCollectionsForWrite = true;
 
-  transaction::Hints hints;
-  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  auto state = trx->getState();
+  auto state =
+      std::make_shared<SimpleRocksDBTransactionState>(*_vocbase, tid, options);
   state->setWriteAccessType();
 
+  // TODO why is GLOBAL_MANAGED necessary
+  transaction::Hints hints;
+  hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
   auto res = state->beginTransaction(hints);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   // TODO Use our own context class
-  auto ctx = std::make_shared<transaction::ManagedContext>(tid, trx->getState(),
-                                                           false, false, true);
+  auto ctx = std::make_shared<transaction::ManagedContext>(tid, state, false,
+                                                           false, true);
 
   std::vector<std::string> const readCollections{};
   std::vector<std::string> const writeCollections = {
-      std::string(trx->getShardId())};
+      std::string(entry.shardId)};
   std::vector<std::string> const exclusiveCollections{};
 
   auto methods = std::make_shared<transaction::Methods>(
-      ctx, readCollections, writeCollections, exclusiveCollections,
-      trx->getOptions());
+      ctx, readCollections, writeCollections, exclusiveCollections, options);
 
   res = methods->begin();
-  trx->setMethods(std::move(methods));
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  trx = std::make_shared<DocumentStateTransaction>(std::move(methods));
+  _transactions.emplace(tid, trx);
 
   return trx;
 }

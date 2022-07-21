@@ -73,20 +73,18 @@ auto DocumentFollowerState::applyEntries(
     try {
       auto fut = futures::Future<Result>{Result{}};
       auto trx = transactionHandler->ensureTransaction(doc);
+      TRI_ASSERT(trx != nullptr);
       switch (doc.operation) {
         case OperationType::kInsert:
         case OperationType::kUpdate:
         case OperationType::kReplace:
         case OperationType::kRemove:
         case OperationType::kTruncate:
-          TRI_ASSERT(trx != nullptr);
-          fut = trx->apply();
+          fut = trx->apply(doc);
           break;
         case OperationType::kCommit:
         case OperationType::kAbort:
-          if (trx != nullptr) {
-            fut = trx->finish();
-          }
+          fut = trx->finish(doc);
           break;
         default:
           THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);

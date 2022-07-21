@@ -112,40 +112,31 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
 struct IDocumentStateTransaction {
   virtual ~IDocumentStateTransaction() = default;
 
-  [[nodiscard]] virtual auto apply() -> futures::Future<Result> = 0;
-  [[nodiscard]] virtual auto finish() -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto apply(DocumentLogEntry const& entry)
+      -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto finish(DocumentLogEntry const& entry)
+      -> futures::Future<Result> = 0;
 };
 
 class DocumentStateTransaction
     : public IDocumentStateTransaction,
       public std::enable_shared_from_this<DocumentStateTransaction> {
  public:
-  explicit DocumentStateTransaction(TRI_vocbase_t* vocbase,
-                                    DocumentLogEntry const& entry);
-  auto apply() -> futures::Future<Result> override;
-  auto finish() -> futures::Future<Result> override;
+  explicit DocumentStateTransaction(
+      std::shared_ptr<transaction::Methods> methods);
+  auto apply(DocumentLogEntry const& entry) -> futures::Future<Result> override;
+  auto finish(DocumentLogEntry const& entry)
+      -> futures::Future<Result> override;
 
-  auto getLastOperation() const -> OperationType;
-  auto getShardId() const -> ShardID;
-  auto getOptions() const -> transaction::Options;
-  auto getState() const -> std::shared_ptr<TransactionState>;
-  auto getLastPayload() const -> VPackSlice;
-  auto getMethods() const -> std::shared_ptr<transaction::Methods>;
-  auto getResult() const -> OperationResult const&;
-  auto getLastEntry() const -> DocumentLogEntry;
+  auto getOperationsResult() const -> OperationResult const&;
 
-  void setMethods(std::shared_ptr<transaction::Methods> methods);
-  void appendResult(OperationResult result);
-  void appendEntry(DocumentLogEntry entry);
+ private:
+  auto appendResult(OperationResult&& result) -> Result;
 
  private:
   std::vector<DocumentLogEntry> _entries;
   std::shared_ptr<transaction::Methods> _methods;
   std::vector<OperationResult> _results;
-  ShardID _shardId;
-  TransactionId _tid;
-  transaction::Options _options;
-  std::shared_ptr<TransactionState> _state;
 };
 
 struct IDocumentStateTransactionHandler {
