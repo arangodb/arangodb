@@ -167,7 +167,8 @@ function shellServerAql (options) {
     testCases = tu.splitBuckets(options, testCases);
 
     let opts = ensureServers(options, 3);
-    let rc = new tu.runOnArangodRunner(opts, name, {}).run(testCases);
+    // TODO remove BTS-903 workaround:
+    let rc = new tu.runOnArangodRunner(opts, name, {'log.level':'queries=ERROR'}).run(testCases);
     options.cleanup = options.cleanup && opts.cleanup;
     return rc;
   }

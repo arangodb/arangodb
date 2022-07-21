@@ -2552,12 +2552,26 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
     return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
   }
 
-  auto maybeLog = parseReplicatedLogAgency(snapshot, dbName, idString);
-
+  std::optional<replication2::agency::Log> maybeLog;
+  try {
+    maybeLog = parseReplicatedLogAgency(snapshot, dbName, idString);
+  } catch (std::exception const& err) {
+    LOG_TOPIC("fe14e", ERR, Logger::REPLICATION2)
+        << "Supervision caught exception while parsing replicated log" << dbName
+        << "/" << idString << ": " << err.what();
+    throw;
+  }
   if (maybeLog.has_value()) {
-    auto& log = *maybeLog;
-    return replication2::replicated_log::executeCheckReplicatedLog(
-        dbName, idString, std::move(log), health, std::move(envelope));
+    try {
+      auto& log = *maybeLog;
+      return replication2::replicated_log::executeCheckReplicatedLog(
+          dbName, idString, std::move(log), health, std::move(envelope));
+    } catch (std::exception const& err) {
+      LOG_TOPIC("b6d7d", ERR, Logger::REPLICATION2)
+          << "Supervision caught exception while handling replicated log"
+          << dbName << "/" << idString << ": " << err.what();
+      throw;
+    }
   } else {
     LOG_TOPIC("56a0c", ERR, Logger::REPLICATION2)
         << "Supervision could not parse Target node for replicated log "
@@ -2566,8 +2580,8 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
   }
 } catch (std::exception const& err) {
   LOG_TOPIC("9f7fb", ERR, Logger::REPLICATION2)
-      << "Supervision caught exception while parsing replicated log" << dbName
-      << "/" << idString << ": " << err.what();
+      << "Supervision caught exception while working with replicated log"
+      << dbName << "/" << idString << ": " << err.what();
   return envelope;
 }
 }  // namespace

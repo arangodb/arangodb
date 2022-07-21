@@ -1085,7 +1085,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
 }
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(
-    std::string const& idxName) const {
+    std::string_view idxName) const {
   return getPhysical()->lookupIndex(idxName);
 }
 

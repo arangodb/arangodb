@@ -37,6 +37,7 @@
 #include "Basics/system-functions.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -2578,17 +2579,19 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
     return res;
   }
 
-  // STEP 4: now that the collections exist create the views
+  // STEP 4: now that the collections exist create the "arangosearch" views
   // this should be faster than re-indexing afterwards
+  // We don't create "search" view because inverted indexes don't exist yet
   // ----------------------------------------------------------------------------------
 
   if (!_config.applier._skipCreateDrop &&
       _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
-    Result r = handleViewCreation(viewSlices);  // no requests to leader
+    auto r = handleViewCreation(viewSlices,
+                                arangodb::iresearch::StaticStrings::ViewType);
     if (r.fail()) {
       LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
-          << "Error during intial sync view creation: " << r.errorMessage();
+          << "Error during initial sync view creation: " << r.errorMessage();
       return r;
     }
   } else {
@@ -2597,9 +2600,16 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
 
   // STEP 5: sync collection data from leader and create initial indexes
   // ----------------------------------------------------------------------------------
-
   // now load the data into the collections
-  return iterateCollections(collections, incremental, PHASE_DUMP);
+  auto r = iterateCollections(collections, incremental, PHASE_DUMP);
+  if (r.fail()) {
+    return r;
+  }
+
+  // STEP 6 load "search" views
+  // ----------------------------------------------------------------------------------
+  return handleViewCreation(viewSlices,
+                            arangodb::iresearch::StaticStrings::SearchType);
 }
 
 /// @brief iterate over all collections from an array and apply an action
@@ -2626,8 +2636,29 @@ Result DatabaseInitialSyncer::iterateCollections(
 }
 
 /// @brief create non-existing views locally
-Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
+Result DatabaseInitialSyncer::handleViewCreation(VPackSlice views,
+                                                 std::string_view type) {
+  if (!views.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER};
+  }
+  auto check = [&](VPackSlice definition) noexcept {
+    // I want to cause fail in createView if definition is invalid
+    if (!definition.isObject()) {
+      return true;
+    }
+    if (!definition.hasKey(StaticStrings::DataSourceType)) {
+      return true;
+    }
+    auto sliceType = definition.get(StaticStrings::DataSourceType);
+    if (!sliceType.isString()) {
+      return true;
+    }
+    return sliceType.stringView() == type;
+  };
   for (VPackSlice slice : VPackArrayIterator(views)) {
+    if (check(slice)) {
+      continue;
+    }
     Result res = createView(vocbase(), slice);
     if (res.fail()) {
       return res;

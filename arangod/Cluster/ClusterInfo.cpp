@@ -55,6 +55,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -1160,11 +1161,16 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  // Ensure views are being created BEFORE collections to allow
-  // links find them
+  // Since we have few types of view requiring initialization we perform
+  // dedicated loop to ensure database involved are properly cleared
+  for (auto const& database : changeSet.dbs) {
+    // TODO Why database name can be emtpy
+    if (!database.first.empty()) {
+      _newPlannedViews.erase(database.first);
+    }
+  }
   // Immediate children of "Views" are database names, then ids
   // of views, then one JSON object with the description:
-
   // "Plan":{"Views": {
   //  "_system": {
   //    "654321": {
@@ -1176,100 +1182,110 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   //  }}
-
-  // Now the same for views: // TODO change
-  for (auto const& database : changeSet.dbs) {
-    if (database.first.empty()) {  // Rest of plan
-      continue;
-    }
-    auto const& databaseName = database.first;
-    _newPlannedViews.erase(databaseName);  // clear views for this database
-    std::initializer_list<std::string_view> const viewsPath{
-        AgencyCommHelper::path(), "Plan", "Views", databaseName};
-    auto viewsSlice = database.second->slice()[0];
-    if (!viewsSlice.hasKey(viewsPath)) {
-      continue;
-    }
-    viewsSlice = viewsSlice.get(viewsPath);
-
-    auto* vocbase = databaseFeature.lookupDatabase(databaseName);
-
-    if (!vocbase) {
-      // No database with this name found.
-      // We have an invalid state here.
-      LOG_TOPIC("f105f", WARN, Logger::AGENCY)
-          << "No database '" << databaseName << "' found,"
-          << " corresponding view will be ignored for now and the "
-          << "invalid information will be repaired. VelocyPack: "
-          << viewsSlice.toJson();
-      // cannot find vocbase for defined views (allow empty views for missing
-      // vocbase)
-      planValid &= !viewsSlice.length();
-      continue;
-    }
-
-    for (auto const& viewPairSlice :
-         velocypack::ObjectIterator(viewsSlice, true)) {
-      auto const& viewSlice = viewPairSlice.value;
-
-      if (!viewSlice.isObject()) {
-        LOG_TOPIC("2487b", INFO, Logger::AGENCY)
-            << "View entry is not a valid json object."
-            << " The view will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << viewSlice.toJson();
+  auto ensureViews = [&](std::string_view type) {
+    for (auto const& database : changeSet.dbs) {
+      // TODO Why database name can be emtpy
+      if (database.first.empty()) {  // Rest of plan
+        continue;
+      }
+      auto const& databaseName = database.first;
+      std::initializer_list<std::string_view> const viewsPath{
+          AgencyCommHelper::path(), "Plan", "Views", databaseName};
+      auto viewsSlice = database.second->slice()[0];
+      viewsSlice = viewsSlice.get(viewsPath);
+      if (viewsSlice.isNone()) {
         continue;
       }
 
-      auto const viewId = viewPairSlice.key.copyString();
+      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
-      try {
-        LogicalView::ptr view;
-        auto res =
-            LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
+      if (!vocbase) {
+        // No database with this name found.
+        // We have an invalid state here.
+        LOG_TOPIC("f105f", WARN, Logger::AGENCY)
+            << "No database '" << databaseName << "' found,"
+            << " corresponding view will be ignored for now and the "
+            << "invalid information will be repaired. VelocyPack: "
+            << viewsSlice.toJson();
+        // cannot find vocbase for defined views (allow empty views for missing
+        // vocbase)
+        planValid &= !viewsSlice.length();
+        continue;
+      }
 
-        if (!res.ok() || !view) {
-          LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
-              << "Failed to create view '" << viewId
-              << "'. The view will be ignored for now and the invalid "
+      for (auto const& viewPairSlice :
+           velocypack::ObjectIterator(viewsSlice, true)) {
+        auto const& viewSlice = viewPairSlice.value;
+
+        if (!viewSlice.isObject()) {
+          LOG_TOPIC("2487b", INFO, Logger::AGENCY)
+              << "View entry is not a valid json object."
+              << " The view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: "
               << viewSlice.toJson();
-          planValid = false;  // view creation failure
           continue;
         }
+        auto const typeSlice = viewSlice.get(StaticStrings::DataSourceType);
+        if (!typeSlice.isString() || typeSlice.stringView() != type) {
+          continue;
+        }
+        auto const viewId = viewPairSlice.key.copyString();
 
-        auto& views = _newPlannedViews[databaseName];
+        try {
+          LogicalView::ptr view;
+          auto res =
+              LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
 
-        // register with guid/id/name
-        views.reserve(views.size() + 3);
-        views[viewId] = view;
-        views[view->name()] = view;
-        views[view->guid()] = view;
+          if (!res.ok() || !view) {
+            LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
+                << "Failed to create view '" << viewId
+                << "'. The view will be ignored for now and the invalid "
+                << "information will be repaired. VelocyPack: "
+                << viewSlice.toJson();
+            planValid = false;  // view creation failure
+            continue;
+          }
 
-      } catch (std::exception const& ex) {
-        // The Plan contains invalid view information.
-        // This should not happen in healthy situations.
-        // If it happens in unhealthy situations the
-        // cluster should not fail.
-        LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
-            << "Failed to load information for view '" << viewId
-            << "': " << ex.what() << ". invalid information in Plan. The "
-            << "view will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << viewSlice.toJson();
-      } catch (...) {
-        // The Plan contains invalid view information.
-        // This should not happen in healthy situations.
-        // If it happens in unhealthy situations the
-        // cluster should not fail.
-        LOG_TOPIC("660bf", ERR, Logger::AGENCY)
-            << "Failed to load information for view '" << viewId
-            << ". invalid information in Plan. The view will "
-            << "be ignored for now and the invalid information will "
-            << "be repaired. VelocyPack: " << viewSlice.toJson();
+          auto& views = _newPlannedViews[databaseName];
+
+          // register with guid/id/name
+          // TODO Maybe assert view.id == view.planId == viewId?
+          // In that case we can use map<uint64_t, ...> for mapping id -> view
+          // and map<string_view, ...> for name/guid -> view
+          views.reserve(views.size() + 3);
+          views[viewId] = view;
+          views[view->name()] = view;
+          views[view->guid()] = view;
+        } catch (std::exception const& ex) {
+          // The Plan contains invalid view information.
+          // This should not happen in healthy situations.
+          // If it happens in unhealthy situations the
+          // cluster should not fail.
+          LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
+              << "Failed to load information for view '" << viewId
+              << "': " << ex.what() << ". invalid information in Plan. The "
+              << "view will be ignored for now and the invalid "
+              << "information will be repaired. VelocyPack: "
+              << viewSlice.toJson();
+        } catch (...) {
+          // The Plan contains invalid view information.
+          // This should not happen in healthy situations.
+          // If it happens in unhealthy situations the
+          // cluster should not fail.
+          LOG_TOPIC("660bf", ERR, Logger::AGENCY)
+              << "Failed to load information for view '" << viewId
+              << ". invalid information in Plan. The view will "
+              << "be ignored for now and the invalid information will "
+              << "be repaired. VelocyPack: " << viewSlice.toJson();
+        }
       }
     }
-  }
+  };
+
+  // Ensure "arangosearch" views are being created BEFORE collections
+  // to allow collection's links find them
+  ensureViews(iresearch::StaticStrings::ViewType);
+
   // "Plan":{"Analyzers": {
   //  "_system": {
   //    "Revision": 0,
@@ -1330,7 +1346,6 @@ void ClusterInfo::loadPlan() {
 
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
-
   // "Plan":{"Collections": {
   //  "_system": {
   //    "3010001": {
@@ -1619,6 +1634,12 @@ void ClusterInfo::loadPlan() {
     }
     newCollections.insert_or_assign(databaseName,
                                     std::move(databaseCollections));
+  }
+
+  // Ensure "search" views are being created AFTER collections
+  // to allow views find collection's inverted indexes
+  if (ServerState::instance()->isCoordinator()) {
+    ensureViews(iresearch::StaticStrings::SearchType);
   }
 
   // And now for replicated logs

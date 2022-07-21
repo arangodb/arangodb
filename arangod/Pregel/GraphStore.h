@@ -91,7 +91,7 @@ class GraphStore final {
     return total;
   }
 
-  Status status() const { return _observables.observe(); }
+  GraphStoreStatus status() const { return _observables.observe(); }
 
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
@@ -111,7 +111,8 @@ class GraphStore final {
   RangeIterator<Edge<E>> edgeIterator(Vertex<V, E> const* entry);
 
   /// Write results to database
-  void storeResults(WorkerConfig* config, std::function<void()>);
+  void storeResults(WorkerConfig* config, std::function<void()>,
+                    std::function<void()> const& statusUpdateCallback);
 
   ReportManager* _reports;
 
@@ -126,8 +127,8 @@ class GraphStore final {
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
 
   void storeVertices(std::vector<ShardID> const& globalShards,
-                     RangeIterator<Vertex<V, E>>& it, size_t threadNumber);
-
+                     RangeIterator<Vertex<V, E>>& it, size_t threadNumber,
+                     std::function<void()> const& statusUpdateCallback);
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
 
   constexpr size_t vertexSegmentSize() const {
@@ -155,7 +156,7 @@ class GraphStore final {
   std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
 
-  Observables _observables;
+  GraphStoreObservables _observables;
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;

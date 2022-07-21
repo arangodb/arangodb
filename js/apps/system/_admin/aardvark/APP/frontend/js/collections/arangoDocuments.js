@@ -17,6 +17,9 @@
     sortAttribute: '',
     smartJoinAttribute: null,
     smartGraphAttribute: null,
+    isSmart: false,
+    isEnterpriseEdge: false,
+    distributeShardsLike: '',
 
     url: arangoHelper.databaseUrl('/_api/documents'),
     model: window.arangoDocumentModel,
@@ -35,6 +38,30 @@
 
     getSmartGraphAttribute: function () {
       return this.smartGraphAttribute;
+    },
+
+    setIsSmart: function (booleanValue) {
+      this.isSmart = booleanValue;
+    },
+
+    getIsSmart: function () {
+      return this.isSmart;
+    },
+
+    setIsEnterpriseEdge: function (booleanValue) {
+      this.isEnterpriseEdge = booleanValue;
+    },
+
+    getIsEnterpriseEdge: function () {
+      return this.isEnterpriseEdge;
+    },
+
+    setDistributeShardsLike: function (stringValue) {
+      this.distributeShardsLike = stringValue;
+    },
+
+    getDistributeShardsLike: function () {
+      return this.distributeShardsLike;
     },
 
     loadCollectionConfig: function (callback) {
@@ -62,7 +89,53 @@
             self.setSmartGraphAttribute(null);
           }
 
-          callback(false);
+          if (data.isSmart) {
+            self.setIsSmart(true);
+          }
+
+          if (data.distributeShardsLike) {
+            self.setDistributeShardsLike(data.distributeShardsLike);
+          }
+
+          if (data.isSmart && data.type === 3) {
+            // In case we do have a Smart Edge Collection
+            // We are either in the context of a SmartGraph, or we are in the context of an EnterpriseGraph
+            // To be able to distinguish between them, we need to take a look at rather the target distributeShardsLike
+            // has a smartGraphAttribute set in its collection properties.
+            // We do have then two states:
+            // (1) If it is set, it is an edge in a SmartGraph environment
+            // (2) If it is NOT set, it is an edge in a EnterpriseGraph environment
+
+            // Unfortunately, as this is not a direct collection property, we need to make an additional call to
+            // identify in which case we are, it must be either (1) or (2).
+
+            const distributeShardsLikeCollectionId = self.getDistributeShardsLike();
+            if (distributeShardsLikeCollectionId.length === 0) {
+              // Means, it is empty and therefore not set properly before, as it has to be set in Smart context,
+              // for both EnterpriseGraph and SmartGraph cases.
+              // Means, we do have invalid state and cannot continue.
+              callback(true);
+            }
+
+            $.ajax({
+              cache: false,
+              type: 'GET',
+              url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(distributeShardsLikeCollectionId) + '/properties'),
+              contentType: 'application/json',
+              processData: false,
+              success: function (distributeDataCheck) {
+                if (!distributeDataCheck.smartGraphAttribute) {
+                  // We hit case (2), we must be in the context of an EnterpriseGraph
+                  self.setIsEnterpriseEdge(true);
+                }
+                callback(false);
+              }, error: function () {
+                callback(true);
+              }
+            });
+          } else {
+            callback(false);
+          }
         },
         error: function () {
           callback(true);

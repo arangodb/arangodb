@@ -1432,8 +1432,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
     resultBuilder.openArray();
 
     for (VPackSlice s : VPackArrayIterator(value)) {
-      TRI_IF_FAILURE("insertLocal::fakeResult1") { res.reset(TRI_ERROR_DEBUG); }
-      res = workForOneDocument(s, true);
+      TRI_IF_FAILURE("insertLocal::fakeResult1") {  //
+        // Set an error *instead* of calling `workForOneDocument`
+        res.reset(TRI_ERROR_DEBUG);
+      }
+      else {
+        res = workForOneDocument(s, true);
+      }
       if (res.fail()) {
         createBabiesError(replicationType == ReplicationType::FOLLOWER
                               ? nullptr

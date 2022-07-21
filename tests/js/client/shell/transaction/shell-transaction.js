@@ -1,5 +1,4 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -29,17 +28,29 @@
 // tests for streaming transactions
 
 const jsunity = require('jsunity');
+const {
+  fail,
+  assertTrue,
+  assertFalse,
+  assertEqual,
+  assertIdentical,
+  assertNotUndefined,
+} = jsunity.jsUnity.assertions;
 const internal = require('internal');
+const arango = internal.arango;
 const arangodb = require('@arangodb');
 const arangosh = require('@arangodb/arangosh');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').Helper;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const analyzers = require("@arangodb/analyzers");
+const analyzers = require('@arangodb/analyzers');
 const request = require('@arangodb/request');
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
+const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
+const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
 
 const compareStringIds = function (l, r) {
   'use strict';
@@ -4855,6 +4866,23 @@ function transactionReplication2ReplicateOperationSuite() {
   var cn = 'UnitTestsTransaction';
   var c = null;
 
+  const bumpTermOfLogsAndWaitForConfirmation = (col) => {
+    const shards = col.shards();
+    const stateMachineIds = shards.map(s => s.replace(/^s/, ''));
+
+    const terms = Object.fromEntries(
+      stateMachineIds.map(stateId => [stateId, replicatedLogsHelper.readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
+    );
+
+    const increaseTerm = ([stateId, term]) => replicatedLogsHelper.replicatedLogSetPlanTerm(dbn, stateId, term + 1);
+
+    Object.entries(terms).forEach(increaseTerm);
+
+    const leaderReady = ([stateId, term]) => replicatedLogsPredicates.replicatedLogLeaderEstablished(dbn, stateId, term, []);
+
+    Object.entries(terms).forEach(replicatedLogsHelper.waitFor(leaderReady));
+  };
+
   return {
     setUpAll: function () {
       db._createDatabase(dbn, {replicationVersion: "2"});
@@ -4989,6 +5017,37 @@ function transactionReplication2ReplicateOperationSuite() {
           }
         }
       }
+    },
+
+    DISABLED_testTransactionLeaderChangeBeforeCommit: function () {
+      let obj = {
+        collections: {
+          write: [cn],
+        },
+      };
+
+      const trx = db._createTransaction(obj);
+      const tc = trx.collection(cn);
+
+      tc.save({_key: 'foo'});
+      tc.save({_key: 'bar'});
+
+      bumpTermOfLogsAndWaitForConfirmation(c);
+
+      try {
+        trx.commit();
+        fail('Commit was expected to fail due to leader change, but reported success.');
+      } catch (ex) {
+        // TODO replace this with an assertion that `ex` is the right exception
+        console.error(`TODO caught: ` + ex);
+      }
+
+      const shards = c.shards();
+      const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+
+      const logsWithCommit = logs.filter(log => log.head(1000).exists(entry => entry.hasOwnProperty('payload') && entry.payload[1].operation === 'Commit'));
+
+      assertIdentical([], logsWithCommit, 'Found commit operation(s) in one or more log');
     },
   };
 }
@@ -5222,9 +5281,14 @@ if (isReplication2Enabled) {
     transactionTTLStreamSuiteV2,
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
-    transactionReplication2ReplicateOperationSuite,
-    transactionReplicationOnFollowersSuiteV2
   ];
+
+  if (internal.isCluster()) {
+    suites.push(
+      transactionReplication2ReplicateOperationSuite,
+      transactionReplicationOnFollowersSuiteV2,
+    );
+  }
 
   for (const suite of suites) {
     jsunity.run(suite);
