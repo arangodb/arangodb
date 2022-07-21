@@ -55,8 +55,13 @@ computed. The possible values are `"insert"`, `"update"`, and `"replace"`.
 The default is `["insert", "update", "replace"]`.
 
 @RESTSTRUCT{keepNull,post_api_collection_computed_field,boolean,optional,}
-Whether the result of the expression shall be stored if it evaluates to `null`.
-This can be used to skip the value computation if any pre-conditions are not met.
+Whether the target attribute shall be set if the expression evaluates to `null`.
+You can set the option to `false` to not set (or unset) the target attribute if
+the expression returns `null`. The default is `true`.
+
+@RESTSTRUCT{failOnWarning,post_api_collection_computed_field,boolean,optional,}
+Whether to let the write operation fail if the expression produces a warning.
+The default is `false`.
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then `keyOptions`

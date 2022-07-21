@@ -23,7 +23,7 @@ An array of strings that defines on which write operations the value is
 computed. The possible values are `"insert"`, `"update"`, and `"replace"`.
 
 @RESTSTRUCT{keepNull,computed_field,boolean,optional,}
-Whether the result of the expression is stored if it evaluates to `null`.
+Whether the target attribute is set if the expression evaluates to `null`.
 
 @RESTSTRUCT{failOnWarning,computed_field,boolean,optional,}
 Whether the write operation fails if the expression produces a warning.

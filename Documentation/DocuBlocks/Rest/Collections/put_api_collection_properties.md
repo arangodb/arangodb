@@ -63,6 +63,10 @@ The default is `["insert", "update", "replace"]`.
 Whether the result of the expression shall be stored if it evaluates to `null`.
 This can be used to skip the value computation if any pre-conditions are not met.
 
+@RESTSTRUCT{failOnWarning,put_api_collection_properties_computed_field,boolean,optional,}
+Whether to let the write operation fail if the expression produces a warning.
+The default is `false`.
+
 @RESTBODYPARAM{replicationFactor,integer,optional,int64}
 (The default is *1*): in a cluster, this attribute determines how many copies
 of each shard are kept on different DB-Servers. The value 1 means that only one
