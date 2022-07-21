@@ -406,7 +406,6 @@ void Worker<V, E, M>::_startProcessing() {
     });
   }
 
-  // TRI_ASSERT(_runningThreads == i);
   LOG_PREGEL("425c3", DEBUG)
       << "Starting processing using " << numT << " threads";
 }
@@ -561,7 +560,9 @@ void Worker<V, E, M>::_finishedProcessing() {
     _feature.metrics()->pregelMessagesReceived->count(
         _readCache->containedMessageCount());
 
-    _allGssStatus.push(_currentGssObservables.observe());
+    _allGssStatus.doUnderLock([this](AllGssStatus& obj) {
+      obj.push(this->_currentGssObservables.observe());
+    });
     _currentGssObservables.zero();
     std::function<void()> statusUpdateCallback = [self = shared_from_this(),
                                                   this] {
@@ -578,8 +579,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       }
       _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
     };
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       statusUpdateCallback);
+    statusUpdateCallback();
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;

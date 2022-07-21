@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
+#include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
@@ -129,7 +130,8 @@ class Worker : public IWorker {
   std::vector<OutCache<M>*> _outCaches;
 
   GssObservables _currentGssObservables;
-  AllGssStatus _allGssStatus;
+  Guarded<AllGssStatus> _allGssStatus;
+
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
   ReportManager _reports;
@@ -156,7 +158,8 @@ class Worker : public IWorker {
                                   std::function<void(VPackSlice slice)> handle);
   Status observeStatus() const {
     auto currentGss = _currentGssObservables.observe();
-    auto fullGssStatus = _allGssStatus;
+    auto fullGssStatus = _allGssStatus.copy();
+
     if (!currentGss.isDefault()) {
       fullGssStatus.gss.emplace_back(currentGss);
     }
