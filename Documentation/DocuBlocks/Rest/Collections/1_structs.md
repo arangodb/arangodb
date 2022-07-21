@@ -5,7 +5,7 @@ documents will wait until the data has been synchronized to disk.
 @RESTSTRUCT{schema,collection_info,object,optional,}
 The collection level schema for documents.
 
-@RESTBODYPARAM{computedFields,array,optional,computed_field}
+@RESTSTRUCT{computedFields,collection_info,array,optional,computed_field}
 A list of objects, each representing a computed value.
 
 @RESTSTRUCT{name,computed_field,string,required,}
