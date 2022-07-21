@@ -311,22 +311,19 @@ bool GraphManager::graphExists(std::string const& graphName) const {
 
   Result res = trx.begin();
 
-  if (!res.ok()) {
-    return false;
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   OperationOptions options;
-  try {
-    OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
-                                            checkDocument.slice(), options);
-    if (checkDoc.fail()) {
-      trx.finish(checkDoc.result);
-      return false;
-    }
-    trx.finish(checkDoc.result);
-  } catch (...) {
+  OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
+                                          checkDocument.slice(), options);
+  res = trx.finish(checkDoc.result);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-  return true;
+
+  return checkDoc.ok();
 }
 
 ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
@@ -448,7 +445,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
                                                  builder.slice(), options);
 
   if (!result.ok()) {
-    trx.finish(result.result);
+    std::ignore = trx.finish(result.result);
     return result;
   }
   res = trx.finish(result.result);

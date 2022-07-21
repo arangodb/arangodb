@@ -781,10 +781,16 @@ OperationResult GraphOperations::validateEdgeVertices(
 
   // actual result doesn't matter here
   if (!resultFrom.ok()) {
-    trx.finish(resultFrom.result);
+    auto res = trx.finish(resultFrom.result);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
   } else if (!resultTo.ok()) {
-    trx.finish(resultTo.result);
+    auto res = trx.finish(resultTo.result);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
   }
   return OperationResult(TRI_ERROR_NO_ERROR, options);

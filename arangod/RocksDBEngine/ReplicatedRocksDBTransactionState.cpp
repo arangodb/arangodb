@@ -140,6 +140,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   TRI_ASSERT(options.waitForCommit == false);
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
+    // TODO maybe it's better to do catchToResult at the caller, not here
     auto res = basics::catchToResult([&] {
       auto leader = rtc.leaderState();
       leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
