@@ -5212,7 +5212,7 @@ if (isReplication2Enabled) {
 
   if (internal.isCluster()) {
     suites.push(
-      transactionReplication2ReplicateOperation,
+      transactionReplication2ReplicateOperationSuite,
       /** Currently disabled integration tests - TDD
        * transactionReplicationOnFollowersSuiteV2,
        */
