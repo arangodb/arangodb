@@ -295,7 +295,7 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES})
+  ${ADDITIONAL_TEST_SOURCES} Cluster/ShardAutoRebalancerTest.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Helper/ModelChecker/Actors.cpp

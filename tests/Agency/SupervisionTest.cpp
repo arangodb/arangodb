@@ -386,6 +386,18 @@ TEST_F(SupervisionTestClass, schedule_addfollower_bad_server) {
                       "s2");
 }
 
+TEST_F(SupervisionTestClass, schedule_addfollower_bad_server_but_maintenance) {
+  _snapshot.getOrCreate("/Supervision/Health/follower1") =
+      createNode(R"=("FAILED")=");
+  _snapshot.getOrCreate("/Current/MaintenanceDBServers/follower1") =
+      createNode(R"=({"Mode":"maintenance"})=");
+
+  std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
+  VPackSlice todo = envelope->slice();
+  // we expect no job to be created
+  EXPECT_EQ(todo.length(), 0);
+}
+
 TEST_F(SupervisionTestClass, no_remove_follower_loop) {
   // This tests the case which used to have an unholy loop of scheduling
   // a removeFollower job and immediately terminating it and so on.
