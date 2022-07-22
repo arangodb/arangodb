@@ -1,6 +1,8 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-851: "Could not fetch the applier state of: undefined".
+
 * Updated arangosync to v2.11.0.
 
 * Changed default macOS CI compiler to LLVM clang-12.
