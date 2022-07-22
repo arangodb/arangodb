@@ -167,6 +167,7 @@ void FollowerStateManager<S>::run() noexcept {
             if (needsSnapshot()) {
               return FollowerInternalState::kTransferSnapshot;
             } else {
+              startService();
               return FollowerInternalState::kWaitForNewEntries;
             }
           }))
