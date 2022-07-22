@@ -3,6 +3,8 @@ devel
 
 * Added CSP recommended headers to Aardvaark app for better security.
 
+* Fixed BTS-851: "Could not fetch the applier state of: undefined".
+
 * Removed internal JavaScript dependencies "expect.js", "media-typer" and
   "underscore". We recommend always bundling your own copy of third-party
   modules as all previously included third-party modules are now considered
