@@ -1,6 +1,9 @@
 devel
 -----
 
+* arangoimport now supports the option --remove-attribute on type JSON as well.
+  Before it was restricted to TSV and CSV only.
+
 * Fixed BTS-851: "Could not fetch the applier state of: undefined".
 
 * Removed internal JavaScript dependencies "expect.js", "media-typer" and
