@@ -534,6 +534,7 @@ class IResearchViewExecutorBase {
   FilterCtx _filterCtx;  // filter context
   iresearch::ViewSnapshotPtr _reader;
   irs::filter::prepared::ptr _filter;
+  irs::Or* _filterCookie{};
   irs::Order _order;
   std::vector<ColumnIterator> _storedValuesReaders;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;

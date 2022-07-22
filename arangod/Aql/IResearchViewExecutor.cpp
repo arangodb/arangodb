@@ -533,7 +533,14 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _filterCtx(_ctx),  // arangodb::iresearch::ExpressionExecutionContext
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
-      _isInitialized(false) {}
+      _isInitialized(false) {
+  // FIXME(gnusi): compile time
+  if (infos.searchDocIdRegId().isValid()) {
+    auto filterCookie = std::make_unique<FilterCookie>();
+    _filterCookie = &filterCookie->filter;
+    _trx.state()->cookie(&infos.outVariable(), std::move(filterCookie));
+  }
+}
 
 template<typename Impl, typename Traits>
 std::tuple<ExecutorState,
@@ -726,12 +733,12 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
         .isSearchQuery = true};
 
     // The analyzer is referenced in the FilterContext and used during the
-    // following ::makeFilter() call, so may not be a temporary.
+    // following ::makeFilter() call, so can't be a temporary.
     FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
     FilterContext const filterCtx{.analyzer = analyzer};
 
-    auto rv = FilterFactory::filter(&root, queryCtx, filterCtx,
-                                    infos().filterCondition());
+    auto const rv = FilterFactory::filter(&root, queryCtx, filterCtx,
+                                          infos().filterCondition());
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;
@@ -753,11 +760,11 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
         TRI_ASSERT(scorerNode.node);
 
         if (!order_factory::scorer(&scorer, *scorerNode.node, queryCtx)) {
-          // failed to append sort
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "failed to build scorers while querying arangosearch view");
         }
 
-        // sorting order doesn't matter
         assert(scorer);
         order.emplace_back(std::move(scorer));
       }
@@ -768,6 +775,11 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 
     // compile filter
     _filter = root.prepare(*_reader, _order, irs::kNoBoost, &_filterCtx);
+
+    // FIXME(gnusi): compile time, refactor
+    if (_filterCookie) {
+      *_filterCookie = std::move(root);
+    }
 
     _isInitialized = true;
   }

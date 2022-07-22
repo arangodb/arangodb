@@ -27,6 +27,7 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 
 #include "index/index_reader.hpp"
+#include "search/boolean_filter.hpp"
 
 #include <vector>
 #include <string_view>
@@ -139,6 +140,13 @@ void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name);
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                bool sync, std::string_view name,
                                ViewSnapshot::Links&& links) noexcept;
+
+struct FilterCookie : TransactionState::Cookie {
+  irs::Or filter;
+};
+
+FilterCookie* getFilterCookie(transaction::Methods& trx,
+                              void const* key) noexcept;
 
 }  // namespace iresearch
 }  // namespace arangodb
