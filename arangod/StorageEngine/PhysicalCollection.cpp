@@ -157,7 +157,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(IndexId idxId) const {
 }
 
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(
-    std::string const& idxName) const {
+    std::string_view idxName) const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto const& idx : _indexes) {
     if (idx->name() == idxName) {
@@ -282,17 +282,16 @@ bool PhysicalCollection::IndexOrder::operator()(
         (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)));
   if (left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return true;
-  }
-  if (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+  } else if (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return false;
   }
 
   // edge indexes should go right after primary
   if (left->type() != right->type()) {
-    if (right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-      return false;
-    } else if (left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
       return true;
+    } else if (right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      return false;
     }
   }
 
@@ -302,12 +301,10 @@ bool PhysicalCollection::IndexOrder::operator()(
   // And this will make possible to deterministically trigger index reversals
   TRI_IF_FAILURE("HashIndexAlwaysLast") {
     if (left->type() != right->type()) {
-      if (right->type() ==
-          arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
-        return true;
-      } else if (left->type() ==
-                 arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+      if (left->type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
         return false;
+      } else if (right->type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+        return true;
       }
     }
   }

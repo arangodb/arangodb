@@ -51,13 +51,13 @@ class MultiAqlItemBlockInputRange {
    * @return AqlItemBlockInputRange& Modifyable reference to the input data
    * stream
    */
-  auto rangeForDependency(size_t const dependency) -> AqlItemBlockInputRange&;
+  auto rangeForDependency(size_t dependency) -> AqlItemBlockInputRange&;
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(
-      size_t const dependency) const;
+      size_t dependency) const;
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(
-      size_t const dependency);
-  auto skipAll(size_t const dependency) noexcept -> std::size_t;
+      size_t dependency);
+  auto skipAll(size_t dependency) noexcept -> std::size_t;
 
   [[nodiscard]] auto skippedInFlight(size_t dependency) const noexcept
       -> std::size_t;
@@ -88,9 +88,9 @@ class MultiAqlItemBlockInputRange {
   auto skipAllShadowRowsOfDepth(size_t depth) -> std::vector<size_t>;
 
   // Subtract up to count rows from the local _skipped state
-  auto skipForDependency(size_t const dependency, size_t count) -> size_t;
+  auto skipForDependency(size_t dependency, size_t count) -> size_t;
   // Skipp all that is available
-  auto skipAllForDependency(size_t const dependency) -> size_t;
+  auto skipAllForDependency(size_t dependency) -> size_t;
 
   auto numberDependencies() const noexcept -> size_t;
 
