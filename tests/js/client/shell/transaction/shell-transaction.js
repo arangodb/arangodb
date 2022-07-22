@@ -94,7 +94,7 @@ const getDBServers = function (db) {
 };
 
 const getLocalValue = function (endpoint, db, col, key) {
-  let res = request.get({
+  const res = request.get({
     url: `${endpoint}/_db/${db}/_api/document/${col}/${key}`,
     headers: {
       "X-Arango-Allow-Dirty-Read": true
@@ -104,6 +104,16 @@ const getLocalValue = function (endpoint, db, col, key) {
   return res.json;
 };
 
+const localKeyStatus = function (endpoint, db, col, key, available) {
+  const data = getLocalValue(endpoint, db, col, key);
+  if (available === false && data.code === 404) {
+    return true;
+  }
+  if (data._key === key) {
+    return true;
+  }
+  return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
+}
 
 function transactionRevisionsSuite (dbParams) {
   'use strict';
@@ -4949,7 +4959,6 @@ function transactionReplication2ReplicateOperationSuite() {
         for (let cnt = 0; cnt < 100; ++cnt) {
           tc.save({ _key: `foo${cnt}` });
         }
-
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
@@ -4957,7 +4966,6 @@ function transactionReplication2ReplicateOperationSuite() {
           trx.commit();
         }
       }
-      internal.sleep(3);
 
       let shards = c.shards();
       let dbServers = getDBServers(db);
@@ -4982,7 +4990,7 @@ function transactionReplication2ReplicateOperationSuite() {
           }
         }
 
-        // Check there is a commit entry and no duplicates.
+        // Verify that there is a commit entry and no duplicates.
         if (keysFound.length > 0) {
           assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}!\n` +
             `Log entries: ${JSON.stringify(entries)}`);
@@ -4997,19 +5005,22 @@ function transactionReplication2ReplicateOperationSuite() {
           for (const key in keysFound) {
             let localValues = {};
             for (const endpoint of Object.values(dbServers)) {
-              localValues[endpoint] = getLocalValue(endpoint, dbn, shards, key);
+              replicatedLogsHelper.waitFor(function () {
+                return localKeyStatus(endpoint, dbn, shard, key, shard === shardId)
+              }, 10);
+              localValues[endpoint] = getLocalValue(endpoint, dbn, shard, key);
             }
             for (const [endpoint, res] of Object.entries(localValues)) {
               if (shard === shardId) {
                 assertTrue(res.code === undefined,
-                  `Error while reading key ${key} from ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+                  `Error while reading key ${key} from ${endpoint}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
                   `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
                 assertEqual(res._key, key,
-                  `Wrong key returned by ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+                  `Wrong key returned by ${endpoint}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
                   `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
               } else {
               assertTrue(res.code === 404,
-                `Expected 404 while reading key ${key} from ${endpoint}/${dbn}/${shards[0]}, ` +
+                `Expected 404 while reading key ${key} from ${endpoint}/${dbn}/${shard}, ` +
                 `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
                 `\n${replication2Log}`);
               }
@@ -5098,11 +5109,13 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       tc.insert({ _key: "foo" });
       trx.abort();
 
-      internal.sleep(3);
       let shards = c.shards();
       let dbServers = getDBServers(db);
       let localValues = {};
       for (const endpoint of Object.values(dbServers)) {
+        replicatedLogsHelper.waitFor(function () {
+          return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
+        }, 10);
         localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 
@@ -5139,9 +5152,11 @@ function transactionReplicationOnFollowersSuite(dbParams) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (trx) {
-          internal.sleep(3);
           let localValues = {};
           for (const endpoint of Object.values(dbServers)) {
+            replicatedLogsHelper.waitFor(function () {
+              return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
+            }, 10);
             localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
           }
 
@@ -5164,9 +5179,11 @@ function transactionReplicationOnFollowersSuite(dbParams) {
         }
       }
 
-      internal.sleep(3);
       let localValues = {};
       for (const endpoint of Object.values(dbServers)) {
+        replicatedLogsHelper.waitFor(function () {
+          return localKeyStatus(endpoint, dbn, shards[0], "foo", true);
+        }, 10);
         localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 

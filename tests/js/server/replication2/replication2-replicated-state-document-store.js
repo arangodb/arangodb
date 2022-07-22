@@ -32,7 +32,6 @@ const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
-const {sleep} = require('internal');
 
 const database = "replication2_document_store_test_db";
 const collectionName = "testCollection";
@@ -74,6 +73,7 @@ const getLocalValue = function (endpoint, db, col, key) {
 const checkFollowersValue = function (endpoints, shardId, key, value, isReplication2) {
   let localValues = {};
   for (const endpoint of Object.values(endpoints)) {
+    lh.waitFor(function(){return localKeyStatus(endpoint, database, shardId, key, value !== null)}, 10);
     localValues[endpoint] = getLocalValue(endpoint, database, shardId, key);
   }
 
@@ -170,6 +170,17 @@ const getArrayElements = function(logs, opType, name) {
   }
   return entries.filter(entry => entry.name === name);
 };
+
+const localKeyStatus = function (endpoint, db, col, key, available) {
+  const data = getLocalValue(endpoint, db, col, key);
+  if (available === false && data.code === 404) {
+    return true;
+  }
+  if (data._key === key) {
+    return true;
+  }
+  return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
+}
 
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
   let previousDatabase, databaseExisted = true;
@@ -405,19 +416,15 @@ const replicatedStateFollowerSuite = function (dbParams) {
       let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
 
       let handle = collection.insert({_key: "foo", value: "bar"});
-      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
 
       handle = collection.update(handle, {value: "baz"});
-      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "baz", isReplication2);
 
       handle = collection.replace(handle, {_key: "foo", value: "bar"});
-      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
 
       collection.remove(handle);
-      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
     },
 
@@ -428,26 +435,22 @@ const replicatedStateFollowerSuite = function (dbParams) {
       let documents = [...Array(3).keys()].map(i => {return {_key: `foo${i}`, value: i};});
 
       let handles = collection.insert(documents);
-      sleep(3);
       for (let doc of documents) {
         checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
       }
 
       let updates = documents.map(doc => {return {value: doc.value * 2};});
       handles = collection.update(handles, updates);
-      sleep(3);
       for (let doc of documents) {
         checkFollowersValue(endpoints, shardId, doc._key, doc.value * 2, isReplication2);
       }
 
       handles = collection.replace(handles, documents);
-      sleep(3);
       for (let doc of documents) {
         checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
       }
 
       collection.remove(handles);
-      sleep(3);
       for (let doc of documents) {
         checkFollowersValue(endpoints, shardId, doc._key, null, isReplication2);
       }
@@ -460,25 +463,21 @@ const replicatedStateFollowerSuite = function (dbParams) {
       let documents = [...Array(3).keys()].map(i => {return {_key: `foo${i}`, value: i};});
 
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('foo', i), value: i} INTO ${collectionName}`);
-      sleep(3);
       for (let doc of documents) {
         checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, value: doc.value * 2} IN ${collectionName}`);
-      sleep(3);
       for (let doc of documents) {
         checkFollowersValue(endpoints, shardId, doc._key, doc.value * 2, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REPLACE {_key: doc._key, value: CONCAT(doc._key, "bar")} IN ${collectionName}`);
-      sleep(3);
       for (let doc of documents) {
         checkFollowersValue(endpoints, shardId, doc._key, doc._key + "bar", isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REMOVE doc IN ${collectionName}`);
-      sleep(3);
       for (let doc of documents) {
         checkFollowersValue(endpoints, shardId, doc._key, null, isReplication2);
       }
@@ -490,10 +489,8 @@ const replicatedStateFollowerSuite = function (dbParams) {
       let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
 
       collection.insert({_key: "foo", value: "bar"});
-      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
       collection.truncate();
-      sleep(3);
       checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
     }
   };
