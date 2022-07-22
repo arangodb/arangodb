@@ -844,7 +844,7 @@ bool IResearchInvertedIndex::covers(aql::Projections& projections) const {
     for (size_t i = 0; i < projections.size(); ++i) {
       auto const& nodeAttr = attrs[i];
       size_t index{0};
-      if (iresearch::IResearchViewNode::SortColumnNumber ==
+      if (iresearch::IResearchViewNode::kSortColumnNumber ==
           nodeAttr.afData.columnNumber) {  // found in the sort column
         index = nodeAttr.afData.fieldNumber;
       } else {

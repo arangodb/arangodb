@@ -30,36 +30,31 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-
 namespace velocypack {
-class Builder;
-}
 
+class Builder;
+
+}  // namespace velocypack
 namespace iresearch {
 
 // FIXME would be simpler to use instead:
 //   typedef std::pair<std::vector<basics::AttributeName>, bool> SortEntry;
 //   typedef std::vector<SortEntry> Sort;
 // but currently SortCondition API is not ready for that
-class IResearchViewSort {
+class IResearchSortBase {
  public:
-  IResearchViewSort() = default;
-  IResearchViewSort(const IResearchViewSort&) = default;
-  IResearchViewSort(IResearchViewSort&&) = default;
-  IResearchViewSort& operator=(const IResearchViewSort&) = default;
-  IResearchViewSort& operator=(IResearchViewSort&&) = default;
+  IResearchSortBase() = default;
+  IResearchSortBase(const IResearchSortBase&) = default;
+  IResearchSortBase(IResearchSortBase&&) = default;
+  IResearchSortBase& operator=(const IResearchSortBase&) = default;
+  IResearchSortBase& operator=(IResearchSortBase&&) = default;
 
-  bool operator==(IResearchViewSort const& rhs) const noexcept {
+  bool operator==(IResearchSortBase const& rhs) const noexcept {
     return _fields == rhs._fields && _directions == rhs._directions;
   }
 
-  bool operator!=(IResearchViewSort const& rhs) const noexcept {
+  bool operator!=(IResearchSortBase const& rhs) const noexcept {
     return !(*this == rhs);
-  }
-
-  void clear() noexcept {
-    _fields.clear();
-    _directions.clear();
   }
 
   size_t size() const noexcept {
@@ -89,32 +84,42 @@ class IResearchViewSort {
     return true;
   }
 
-  std::vector<std::vector<basics::AttributeName>> const& fields()
-      const noexcept {
-    return _fields;
-  }
+  auto const& fields() const noexcept { return _fields; }
 
   std::vector<basics::AttributeName> const& field(size_t i) const noexcept {
     TRI_ASSERT(i < this->size());
-
     return _fields[i];
   }
 
   bool direction(size_t i) const noexcept {
     TRI_ASSERT(i < this->size());
-
     return _directions[i];
   }
-
-  size_t memory() const noexcept;
 
   bool toVelocyPack(velocypack::Builder& builder) const;
   bool fromVelocyPack(velocypack::Slice, std::string& error);
 
+ protected:
+  void clear() noexcept {
+    _fields.clear();
+    _directions.clear();
+  }
+
+  size_t memory() const noexcept;
+
  private:
   std::vector<std::vector<basics::AttributeName>> _fields;
   std::vector<bool> _directions;
-};  // IResearchViewSort
+};
+
+class IResearchViewSort final : public IResearchSortBase {
+ public:
+  size_t memory() const noexcept {
+    return sizeof(*this) + IResearchSortBase::memory();
+  }
+
+  using IResearchSortBase::clear;
+};
 
 }  // namespace iresearch
 }  // namespace arangodb
