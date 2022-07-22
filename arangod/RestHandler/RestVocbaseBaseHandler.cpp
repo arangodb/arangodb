@@ -560,14 +560,15 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
   if (!found) {
+    auto opts = transaction::Options();
+    if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
+      opts.allowDirtyReads = true;
+    }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
-        transaction::StandaloneContext::Create(_vocbase), collectionName, type);
+        transaction::StandaloneContext::Create(_vocbase), collectionName, type, opts);
     if (!opOptions.isSynchronousReplicationFrom.empty() &&
         ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-    }
-    if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
-      tmp->state()->options().allowDirtyReads = true;
     }
     return tmp;
   }

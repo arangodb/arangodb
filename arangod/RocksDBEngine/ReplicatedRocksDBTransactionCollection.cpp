@@ -152,13 +152,11 @@ bool ReplicatedRocksDBTransactionCollection::ensureSnapshot() {
 
 auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
-  // return _leaderState;
-  return collection()->waitForDocumentStateLeader();
+  return _leaderState;
 }
 
 auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   auto res = RocksDBTransactionCollection::ensureCollection();
-  return res;
 
   if (res.fail()) {
     return res;
