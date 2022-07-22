@@ -30,35 +30,36 @@
 
 let internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
+const fs = require('fs');
+
+let instanceInfo = null;
+
+function getInstanceInfo() {
+  if (instanceInfo === null) {
+    instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    instanceInfo.arangods.forEach(arangod => {
+      arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
+    });
+  }
+  return instanceInfo;
+}
 
 exports.getServerById = function (id) {
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter((d) => (d.id === id))[0];
 };
 
 exports.getServersByType = function (type) {
   const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter(isType);
 };
 
 exports.getEndpointById = function (id) {
   const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter((d) => (d.id === id))
-                              .map(toEndpoint)
-                              .map(endpointToURL)[0];
+    .map(toEndpoint)[0];
 };
 
 exports.getEndpointsByType = function (type) {
@@ -75,7 +76,7 @@ exports.getEndpointsByType = function (type) {
     return 'http' + endpoint.substr(pos);
   };
 
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter(isType)
                               .map(toEndpoint)
                               .map(endpointToURL);
