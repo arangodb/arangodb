@@ -98,6 +98,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     if (!r.ok()) {
       return r;
     }
+    TRI_ASSERT(impl);
     // create links on a best-effort basis
     // link creation failure does not cause view creation failure
     try {
@@ -129,6 +130,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     }
     // refresh view from Agency
     view = ci.getView(vocbase.name(), std::to_string(impl->id().id()));
+    TRI_ASSERT(view);
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView
@@ -295,7 +297,7 @@ bool IResearchViewCoordinator::visitCollections(
     CollectionVisitor const& visitor) const {
   std::shared_lock lock{_mutex};
   for (auto& entry : _collections) {
-    if (!visitor(entry.first)) {
+    if (!visitor(entry.first, nullptr)) {
       return false;
     }
   }
@@ -354,7 +356,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
       IResearchViewMeta oldMeta{IResearchViewMeta::PartialTag{},
                                 std::move(_meta)};
       _meta.storePartial(std::move(meta));  // update meta for persistence
-      r = cluster_helper::properties(*this);
+      r = cluster_helper::properties(*this, false);
       _meta.storePartial(std::move(oldMeta));  // restore meta
       if (!r.ok()) {
         return r;
@@ -411,7 +413,7 @@ Result IResearchViewCoordinator::dropImpl() {
   auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   // drop links first
   std::unordered_set<DataSourceId> currentCids;
-  visitCollections([&currentCids](DataSourceId cid) {
+  visitCollections([&](DataSourceId cid, LogicalView::Indexes*) {
     currentCids.emplace(cid);
     return true;
   });

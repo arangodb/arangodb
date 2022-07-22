@@ -418,9 +418,12 @@ const sccTestSuite = pregelTestHelpers.makeSCCTestSuite(false, "", 4);
 
 const labelPropagationTestSuite = pregelTestHelpers.makeLabelPropagationTestSuite(false, "", 4);
 
+const pagerankTestSuite = pregelTestHelpers.makePagerankTestSuite(false, "", 4);
+
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
 jsunity.run(wccTestSuite);
 jsunity.run(sccTestSuite);
 jsunity.run(labelPropagationTestSuite);
+jsunity.run(pagerankTestSuite);
 return jsunity.done();

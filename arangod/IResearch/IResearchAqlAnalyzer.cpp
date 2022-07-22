@@ -362,7 +362,7 @@ bool AqlAnalyzer::next() {
                 aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
                                                 *_query,
                                                 _aqlFunctionsInternalCache);
-                _valueBuffer = aql::Functions::ToString(
+                _valueBuffer = aql::functions::ToString(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isString());
                 std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(
@@ -378,7 +378,7 @@ bool AqlAnalyzer::next() {
                 aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
                                                 *_query,
                                                 _aqlFunctionsInternalCache);
-                _valueBuffer = aql::Functions::ToNumber(
+                _valueBuffer = aql::functions::ToNumber(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isNumber());
                 std::get<3>(_attrs).value = _valueBuffer.slice();
@@ -393,7 +393,7 @@ bool AqlAnalyzer::next() {
                 aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
                                                 *_query,
                                                 _aqlFunctionsInternalCache);
-                _valueBuffer = aql::Functions::ToBool(
+                _valueBuffer = aql::functions::ToBool(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isBoolean());
                 std::get<3>(_attrs).value = _valueBuffer.slice();
