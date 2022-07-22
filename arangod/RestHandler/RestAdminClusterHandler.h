@@ -34,7 +34,9 @@
 #include <utility>
 
 namespace arangodb {
-
+namespace cluster::rebalance {
+struct AutoRebalanceProblem;
+}
 class RestAdminClusterHandler : public RestVocbaseBaseHandler {
  public:
   RestAdminClusterHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
@@ -62,6 +64,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const QueryJobStatus;
   static std::string const RemoveServer;
   static std::string const RebalanceShards;
+  static std::string const Rebalance;
   static std::string const ShardStatistics;
   static std::string const FailureOracle;
 
@@ -100,6 +103,10 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   RestStatus handleRemoveServer();
   RestStatus handleRebalanceShards();
+  RestStatus handleRebalance();
+  RestStatus handleRebalanceGet();
+  RestStatus handleRebalanceExecute();
+  RestStatus handleRebalancePlan();
 
   RestStatus handleFailureOracle();
 
@@ -184,6 +191,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
       std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);
 
   struct MoveShardDescription {
+    std::string database;
     std::string collection;
     std::string shard;
     std::string from;
@@ -193,10 +201,30 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   using ShardMap =
       std::map<std::string, std::unordered_set<CollectionShardPair>>;
-  using ReshardAlgorithm = std::function<void(
-      ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
+  using ReshardAlgorithm =
+      std::function<void(ShardMap&, std::vector<MoveShardDescription>&,
+                         std::uint32_t, std::string)>;
 
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
+
+  cluster::rebalance::AutoRebalanceProblem collectRebalanceInformation(
+      std::vector<std::string> const& excludedDatabases);
+
+  struct MoveShardCount {
+    std::size_t todo;
+    std::size_t pending;
+  };
+
+  MoveShardCount countAllMoveShardJobs();
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, RestAdminClusterHandler::MoveShardDescription& x) {
+  return f.object(x).fields(
+      f.field("collection", x.collection), f.field("database", x.database),
+      f.field("shard", x.shard), f.field("from", x.from), f.field("to", x.to),
+      f.field("isLeader", x.isLeader));
+}
+
 }  // namespace arangodb

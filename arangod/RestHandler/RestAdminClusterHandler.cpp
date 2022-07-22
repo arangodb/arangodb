@@ -37,6 +37,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
 #include "Basics/TimeString.h"
+#include "Cluster/AutoRebalance.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -56,6 +57,7 @@
 #include "Sharding/ShardDistributionReporter.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/Databases.h"
+#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -285,6 +287,7 @@ std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
 std::string const RestAdminClusterHandler::CancelJob = "cancelAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
+std::string const RestAdminClusterHandler::Rebalance = "rebalance";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
 std::string const RestAdminClusterHandler::FailureOracle = "failureOracle";
 
@@ -358,6 +361,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRemoveServer();
     } else if (command == RebalanceShards) {
       return handleRebalanceShards();
+    } else if (command == Rebalance) {
+      return handleRebalance();
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
     } else {
@@ -369,6 +374,8 @@ RestStatus RestAdminClusterHandler::execute() {
     std::string const& command = suffixes.at(0);
     if (command == FailureOracle) {
       return handleFailureOracle();
+    } else if (command == Rebalance) {
+      return handleRebalance();
     } else if (command == Maintenance) {
       return handleDBServerMaintenance(suffixes.at(1));
     } else {
@@ -433,8 +440,8 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
                 ctx->server, agency.get(rootPath->plan()->vec()),
                 agency.get(rootPath->current()->vec()));
 
-            // if the server is still in the list, it was neither in plan nor in
-            // current
+            // if the server is still in the list, it was neither in plan nor
+            // in current
             if (isResponsible) {
               auto planVersionPath = rootPath->plan()->version();
               // do a write transaction if server is no longer used
@@ -2063,8 +2070,9 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                             AsyncAgencyComm::RequestType::READ,
                             VPackBuffer<uint8_t>())
           .thenValue([self](AsyncAgencyCommResult&& result) {
-            // this lambda has to capture self since collect returns early on an
-            // exception and the RestHandler might be freed too early otherwise
+            // this lambda has to capture self since collect returns early on
+            // an exception and the RestHandler might be freed too early
+            // otherwise
 
             if (result.fail() || result.statusCode() != fuerte::StatusOK) {
               THROW_ARANGO_EXCEPTION(result.asResult());
@@ -2204,12 +2212,13 @@ using MoveShardDescription = RestAdminClusterHandler::MoveShardDescription;
 
 void theSimpleStupidOne(
     std::map<std::string, std::unordered_set<CollectionShardPair>>& shardMap,
-    std::vector<MoveShardDescription>& moves, std::uint32_t numMoveShards) {
+    std::vector<MoveShardDescription>& moves, std::uint32_t numMoveShards,
+    DatabaseID database) {
   // If you dislike this algorithm feel free to add a new one.
-  // shardMap is a map from dbserver to a set of shards located on that server.
-  // your algorithm has to fill `moves` with the move shard operations that it
-  // wants to execute. Please fill in all values of the `MoveShardDescription`
-  // struct.
+  // shardMap is a map from dbserver to a set of shards located on that
+  // server. your algorithm has to fill `moves` with the move shard operations
+  // that it wants to execute. Please fill in all values of the
+  // `MoveShardDescription` struct.
 
   std::unordered_set<std::string> movedShards;
   while (moves.size() < numMoveShards) {
@@ -2241,9 +2250,9 @@ void theSimpleStupidOne(
     }
 
     // move the shard
-    moves.push_back(MoveShardDescription{pair->collection, pair->shard,
-                                         fullest->first, emptiest->first,
-                                         pair->isLeader});
+    moves.push_back(MoveShardDescription{database, pair->collection,
+                                         pair->shard, fullest->first,
+                                         emptiest->first, pair->isLeader});
     movedShards.insert(pair->shard);
     emptiest->second.emplace(*pair);
     fullest->second.erase(pair);
@@ -2260,7 +2269,8 @@ RestAdminClusterHandler::handlePostRebalanceShards(
   getShardDistribution(shardMap);
 
   algorithm(shardMap, moves,
-            server().getFeature<ClusterFeature>().maxNumberOfMoveShards());
+            server().getFeature<ClusterFeature>().maxNumberOfMoveShards(),
+            _vocbase.name());
 
   VPackBuilder responseBuilder;
   responseBuilder.openObject();
@@ -2356,6 +2366,443 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
           }));
+}
+
+namespace {
+struct RebalanceOptions {
+  std::uint64_t version;
+  std::size_t maximumNumberOfMoves;
+  bool leaderChanges;
+  bool moveLeaders;
+  bool moveFollowers;
+  double piFactor;
+  std::vector<DatabaseID> databasesExcluded;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, RebalanceOptions& x) {
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("maximumNumberOfMoves", x.maximumNumberOfMoves)
+          .fallback(std::size_t{1000}),
+      f.field("leaderChanges", x.leaderChanges).fallback(true),
+      f.field("moveLeaders", x.moveLeaders).fallback(false),
+      f.field("moveFollowers", x.moveFollowers).fallback(false),
+      f.field("piFactor", x.piFactor).fallback(1.0),
+      f.field("databasesExcluded", x.databasesExcluded)
+          .fallback(std::vector<DatabaseID>{}));
+};
+
+}  // namespace
+
+RestAdminClusterHandler::MoveShardCount
+RestAdminClusterHandler::countAllMoveShardJobs() {
+  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+
+  auto const countMoveShardsInSlice = [](VPackSlice slice) -> std::size_t {
+    std::size_t count = 0;
+    for (auto const& [key, job] : VPackObjectIterator(slice)) {
+      if (job.get("type").isEqualString("moveShard")) {
+        count += 1;
+      }
+    }
+
+    return count;
+  };
+
+  auto const countMoveShardsAt = [&](std::string const& path) -> std::size_t {
+    auto [query, index] = cache.get(path);
+    return countMoveShardsInSlice(query->slice());
+  };
+  return MoveShardCount{
+      .todo = countMoveShardsAt("Target/ToDo"),
+      .pending = countMoveShardsAt("Target/Pending"),
+  };
+}
+
+RestStatus RestAdminClusterHandler::handleRebalanceGet() {
+  if (request()->suffixes().size() != 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_admin/cluster/rebalance");
+    return RestStatus::DONE;
+  }
+
+  auto [todo, pending] = countAllMoveShardJobs();
+
+  VPackBuilder builder;
+  auto p = collectRebalanceInformation({});
+  auto leader = p.computeLeaderImbalance();
+  auto shard = p.computeShardImbalance();
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add(VPackValue("leader"));
+    velocypack::serialize(builder, leader);
+    builder.add(VPackValue("shards"));
+    velocypack::serialize(builder, shard);
+    builder.add("pendingMoveShards", VPackValue(pending));
+    builder.add("todoMoveShards", VPackValue(todo));
+  }
+
+  generateOk(rest::ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
+}
+
+namespace {
+struct RebalanceExecuteOptions {
+  std::vector<MoveShardDescription> moves;
+  std::uint64_t version{0};
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, RebalanceExecuteOptions& x) {
+  return f.object(x).fields(f.field("moves", x.moves),
+                            f.field("version", x.version));
+}
+
+template<typename T, typename F>
+futures::Future<Result> executeMoveShardOperations(std::vector<T> const& batch,
+                                                   ClusterInfo& ci,
+                                                   F const& mapper) {
+  if (batch.empty()) {
+    return Result{};
+  }
+
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    auto write = arangodb::agency::envelope::into_builder(builder).write();
+
+    std::string timestamp = timepointToString(std::chrono::system_clock::now());
+    for (auto const& move : batch) {
+      auto const& mappedMove = mapper(move);
+      std::string jobId = std::to_string(ci.uniqid());
+      auto jobToDoPath =
+          arangodb::cluster::paths::root()->arango()->target()->toDo()->job(
+              jobId);
+      write = std::move(write).emplace(
+          jobToDoPath->str(), [&](VPackBuilder& builder) {
+            builder.add("type", VPackValue("moveShard"));
+            builder.add("database", VPackValue(mappedMove.database));
+            builder.add("collection", VPackValue(mappedMove.collection));
+            builder.add("jobId", VPackValue(jobId));
+            builder.add("shard", VPackValue(mappedMove.shard));
+            builder.add("fromServer", VPackValue(mappedMove.from));
+            builder.add("toServer", VPackValue(mappedMove.to));
+            builder.add("isLeader", VPackValue(mappedMove.isLeader));
+            builder.add("creator",
+                        VPackValue(ServerState::instance()->getId()));
+            builder.add("timeCreated", VPackValue(timestamp));
+          });
+    }
+    std::move(write).end().done();
+  }
+
+  return AsyncAgencyComm()
+      .sendWriteTransaction(20s, std::move(trx))
+      .thenValue([](AsyncAgencyCommResult&& result) {
+        if (result.ok() && result.statusCode() == 200) {
+          return Result{};
+        } else {
+          return result.asResult();
+        }
+      });
+}
+}  // namespace
+
+RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+  auto opts =
+      velocypack::deserialize<RebalanceExecuteOptions>(_request->payload());
+
+  if (opts.version != 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "unknown version provided");
+    return RestStatus::DONE;
+  }
+
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  auto const idMapper = [](MoveShardDescription const& desc) -> auto& {
+    return desc;
+  };
+
+  if (opts.moves.empty()) {
+    generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+    return RestStatus::DONE;
+  }
+
+  return waitForFuture(executeMoveShardOperations(opts.moves, ci, idMapper)
+                           .thenValue([this](auto&& result) {
+                             if (result.ok()) {
+                               generateOk(rest::ResponseCode::ACCEPTED,
+                                          VPackSlice::noneSlice());
+                             } else {
+                               generateError(result);
+                             }
+                           }));
+}
+
+RestStatus RestAdminClusterHandler::handleRebalancePlan() {
+  using namespace cluster::rebalance;
+
+  auto const readRebalanceOptions = [&]() -> std::optional<RebalanceOptions> {
+    auto opts = velocypack::deserialize<RebalanceOptions>(_request->payload());
+    if (opts.maximumNumberOfMoves > 5000) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "at most 5000 moves allowed");
+      return std::nullopt;
+    }
+
+    if (opts.version != 1) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "unknown version provided");
+      return std::nullopt;
+    }
+
+    return opts;
+  };
+
+  std::vector<MoveShardJob> moves;
+
+  auto options = readRebalanceOptions();
+  if (!options) {
+    return RestStatus::DONE;
+  }
+
+  auto p = collectRebalanceInformation(options->databasesExcluded);
+  auto const imbalanceLeaderBefore = p.computeLeaderImbalance();
+  auto const imbalanceShardsBefore = p.computeShardImbalance();
+
+  moves.reserve(options->maximumNumberOfMoves);
+  p.setPiFactor(options->piFactor);
+  p.optimize(options->leaderChanges, options->moveFollowers,
+             options->moveLeaders, options->maximumNumberOfMoves, moves);
+
+  for (auto const& move : moves) {
+    p.applyMoveShardJob(move, false, nullptr, nullptr);
+  }
+
+  auto const imbalanceLeaderAfter = p.computeLeaderImbalance();
+  auto const imbalanceShardsAfter = p.computeShardImbalance();
+
+  auto const buildResponse = [&](rest::ResponseCode responseCode) {
+    {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder ob1(&builder);
+        {
+          VPackObjectBuilder ob(&builder, "imbalanceBefore");
+          builder.add(VPackValue("leader"));
+          velocypack::serialize(builder, imbalanceLeaderBefore);
+          builder.add(VPackValue("shards"));
+          velocypack::serialize(builder, imbalanceShardsBefore);
+        }
+        {
+          VPackObjectBuilder ob(&builder, "imbalanceAfter");
+          builder.add(VPackValue("leader"));
+          velocypack::serialize(builder, imbalanceLeaderAfter);
+          builder.add(VPackValue("shards"));
+          velocypack::serialize(builder, imbalanceShardsAfter);
+        }
+        {
+          VPackArrayBuilder ab(&builder, "moves");
+          for (auto const& move : moves) {
+            auto const& shard = p.shards[move.shardId];
+            auto const& collection = p.collections[shard.collectionId];
+            VPackObjectBuilder ob(&builder);
+            builder.add("from", VPackValue(p.dbServers[move.from].id));
+            builder.add("to", VPackValue(p.dbServers[move.to].id));
+            builder.add("shard", VPackValue(shard.name));
+            builder.add("collection", VPackValue(collection.name));
+            builder.add("database",
+                        VPackValue(p.databases[collection.dbId].name));
+            builder.add("isLeader", VPackValue(move.isLeader));
+          }
+        }
+      }
+      generateOk(responseCode, builder.slice());
+    }
+  };
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  auto const moveShardConverter = [&](MoveShardJob const& job) {
+    auto& shard = p.shards[job.shardId];
+    auto& col = p.collections[shard.collectionId];
+
+    return MoveShardDescription{p.databases[col.dbId].name,
+                                col.name,
+                                shard.name,
+                                p.dbServers[job.from].id,
+                                p.dbServers[job.to].id,
+                                job.isLeader};
+  };
+
+  switch (request()->requestType()) {
+    case rest::RequestType::POST: {
+      buildResponse(rest::ResponseCode::OK);
+      return RestStatus::DONE;
+    }
+    case rest::RequestType::PUT: {
+      buildResponse(rest::ResponseCode::ACCEPTED);
+      return waitForFuture(
+          executeMoveShardOperations(moves, ci, moveShardConverter)
+              .thenValue([&](auto&& result) {
+                if (!result.ok()) {
+                  generateError(result);
+                }
+              }));
+    }
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      return RestStatus::DONE;
+  }
+
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleRebalance() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() == rest::RequestType::GET) {
+    return handleRebalanceGet();
+  }
+
+  bool parseSuccess = false;
+  std::ignore = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+
+  if (auto const& suff = request()->suffixes(); suff.size() == 2) {
+    if (suff[1] != "execute") {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expect /_admin/cluster/rebalance[/execute]");
+      return RestStatus::DONE;
+    }
+    return handleRebalanceExecute();
+  }
+
+  return handleRebalancePlan();
+}
+
+cluster::rebalance::AutoRebalanceProblem
+RestAdminClusterHandler::collectRebalanceInformation(
+    std::vector<std::string> const& excludedDatabases) {
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  cluster::rebalance::AutoRebalanceProblem p;
+  p.zones.emplace_back(cluster::rebalance::Zone{.id = "ZONE"});
+
+  std::unordered_map<ServerID, std::uint32_t> serverToIndex;
+
+  auto const getDBServerIndex =
+      [&](std::string const& server) -> std::uint32_t {
+    auto serverName = server;
+    if (serverName.starts_with("_")) {
+      serverName = serverName.substr(1);
+    }
+
+    if (auto iter = serverToIndex.find(serverName);
+        iter != std::end(serverToIndex)) {
+      return iter->second;
+    } else {
+      auto idx = serverToIndex[serverName] =
+          static_cast<std::uint32_t>(p.dbServers.size());
+      auto& ref = p.dbServers.emplace_back();
+      ref.id = serverName;
+      ref.zone = 0;
+      ref.volumeSize = 7000000000;
+      ref.freeDiskSize = 5000000000;
+      ref.CPUcapacity = 32;
+      return idx;
+    }
+  };
+
+  for (auto const& server : ci.getCurrentDBServers()) {
+    std::ignore = getDBServerIndex(server);
+  }
+
+  for (auto const& db : ci.databases()) {
+    if (std::find(excludedDatabases.begin(), excludedDatabases.end(), db) !=
+        excludedDatabases.end()) {
+      continue;
+    }
+
+    std::size_t dbIndex = p.databases.size();
+    auto& databaseRef = p.databases.emplace_back();
+    databaseRef.id = dbIndex;
+    databaseRef.name = db;
+
+    struct CollectionMetaData {
+      std::size_t index = 0;
+      std::size_t distributeShardsLikeCounter = 0;
+    };
+
+    std::unordered_map<std::string, CollectionMetaData>
+        distributeShardsLikeCounter;
+
+    for (auto const& collection : ci.getCollections(db)) {
+      if (auto const& like = collection->distributeShardsLike();
+          !like.empty()) {
+        distributeShardsLikeCounter[like].distributeShardsLikeCounter += 1;
+      } else {
+        std::size_t index = p.collections.size();
+        auto& collectionRef = p.collections.emplace_back();
+        collectionRef.id = index;
+        collectionRef.name = std::to_string(collection->id().id());
+        collectionRef.dbId = dbIndex;
+        collectionRef.weight = 1.0;
+        distributeShardsLikeCounter[collectionRef.name].index = index;
+
+        for (auto const& shard : *collection->shardIds()) {
+          auto shardIndex =
+              static_cast<decltype(collectionRef.shards)::value_type>(
+                  p.shards.size());
+          collectionRef.shards.push_back(shardIndex);
+          auto& shardRef = p.shards.emplace_back();
+          shardRef.name = shard.first;
+          shardRef.leader = getDBServerIndex(shard.second[0]);
+          shardRef.id = shardIndex;
+          shardRef.collectionId = index;
+          shardRef.replicationFactor =
+              static_cast<decltype(shardRef.replicationFactor)>(
+                  shard.second.size());
+          shardRef.weight = 1.;
+          shardRef.size = 1024 * 1024;  // size of data in that shard
+          bool first = true;
+          for (auto const& server : shard.second) {
+            if (first) {
+              first = false;
+              continue;
+            }
+            shardRef.followers.emplace_back(getDBServerIndex(server));
+          }
+        }
+      }
+    }
+
+    for (auto const& [id, count] : distributeShardsLikeCounter) {
+      for (auto const& shardId : p.collections[count.index].shards) {
+        p.shards[shardId].weight += count.distributeShardsLikeCounter;
+      }
+    }
+  }
+
+  return p;
 }
 
 RestStatus RestAdminClusterHandler::handleFailureOracle() {
