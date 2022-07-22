@@ -71,12 +71,17 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
   RestStatus handleMaintenance();
+  RestStatus handleDBServerMaintenance(std::string const& serverId);
 
   // timeout can be used to set an arbitrary timeout for the maintenance
   // duration. it will be ignored if "state" is not true.
   RestStatus setMaintenance(bool state, uint64_t timeout);
+  RestStatus setDBServerMaintenance(std::string const& serverId,
+                                    std::string const& mode, uint64_t timeout);
   RestStatus handlePutMaintenance();
   RestStatus handleGetMaintenance();
+  RestStatus handlePutDBServerMaintenance(std::string const& serverId);
+  RestStatus handleGetDBServerMaintenance(std::string const& serverId);
 
   RestStatus handleGetNumberOfServers();
   RestStatus handlePutNumberOfServers();
@@ -145,6 +150,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   FutureVoid waitForSupervisionState(bool state,
                                      std::string const& reactivationTime,
                                      clock::time_point startTime);
+
+  FutureVoid waitForDBServerMaintenance(std::string const& serverId,
+                                        bool waitForMaintenance);
 
   struct RemoveServerContext {
     size_t tries;

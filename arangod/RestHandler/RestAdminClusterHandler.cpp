@@ -376,6 +376,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleFailureOracle();
     } else if (command == Rebalance) {
       return handleRebalance();
+    } else if (command == Maintenance) {
+      return handleDBServerMaintenance(suffixes.at(1));
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
@@ -1433,6 +1435,39 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
           }));
 }
 
+RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
+    std::string const& serverId) {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on single server with active failover");
+    return RestStatus::DONE;
+  }
+
+  auto maintenancePath = arangodb::cluster::paths::root()
+                             ->arango()
+                             ->current()
+                             ->maintenanceDBServers()
+                             ->dbserver(serverId);
+
+  return waitForFuture(
+      AsyncAgencyComm()
+          .getValues(maintenancePath)
+          .thenValue([this](AgencyReadResult&& result) {
+            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+              generateOk(rest::ResponseCode::OK, result.value());
+            } else {
+              generateError(result.asResult());
+            }
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
+}
+
 RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::waitForSupervisionState(
     bool state, std::string const& reactivationTime,
@@ -1532,6 +1567,132 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate,
           }));
 }
 
+RestAdminClusterHandler::FutureVoid
+RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
+                                                    bool waitForMaintenance) {
+  struct Context {
+    explicit Context(std::string serverId, bool waitForMaintenance)
+        : serverId(std::move(serverId)),
+          waitForMaintenance(waitForMaintenance) {}
+    futures::Promise<ResultT<consensus::index_t>> promise;
+    std::string serverId;
+    bool waitForMaintenance;
+  };
+
+  auto ctx = std::make_shared<Context>(serverId, waitForMaintenance);
+  auto f = ctx->promise.getFuture();
+
+  using namespace cluster::paths;
+  // register an agency callback and wait for the given version to appear in
+  // target (or bigger)
+  auto path = aliases::current()->maintenanceDBServers()->dbserver(serverId);
+  auto cb = std::make_shared<AgencyCallback>(
+      _vocbase.server(), path->str(SkipComponents(1)),
+      [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
+        if (ctx->waitForMaintenance) {
+          if (slice.isObject() &&
+              slice.get("Mode").isEqualString("maintenance")) {
+            ctx->promise.setValue(index);
+            return true;
+          }
+        } else {
+          if (slice.isNone()) {
+            ctx->promise.setValue(index);
+            return true;
+          }
+        }
+
+        return false;
+      },
+      true, true);
+  auto& cf = server().getFeature<ClusterFeature>();
+
+  if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb, true);
+      result.fail()) {
+    return {};
+  }
+
+  return std::move(f).then([&cf, cb](auto&& result) {
+    cf.agencyCallbackRegistry()->unregisterCallback(cb);
+  });
+}
+
+RestStatus RestAdminClusterHandler::setDBServerMaintenance(
+    std::string const& serverId, std::string const& mode, uint64_t timeout) {
+  auto maintenancePath = arangodb::cluster::paths::root()
+                             ->arango()
+                             ->target()
+                             ->maintenanceDBServers()
+                             ->dbserver(serverId);
+  auto healthPath = arangodb::cluster::paths::root()
+                        ->arango()
+                        ->supervision()
+                        ->health()
+                        ->server(serverId)
+                        ->status();
+
+  // (stringified) timepoint at which maintenance will reactivate itself
+  std::string reactivationTime;
+  if (mode == "maintenance") {
+    reactivationTime = timepointToString(std::chrono::system_clock::now() +
+                                         std::chrono::seconds(timeout));
+  }
+
+  auto sendTransaction = [&] {
+    if (mode == "maintenance") {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder guard(&builder);
+        builder.add("Mode", VPackValue(mode));
+        builder.add("Until", VPackValue(reactivationTime));
+      }
+
+      std::vector<AgencyOperation> operations{AgencyOperation{
+          maintenancePath->str(cluster::paths::SkipComponents(1)),
+          AgencyValueOperationType::SET, builder.slice()}};
+      std::vector<AgencyPrecondition> preconds{AgencyPrecondition{
+          healthPath->str(cluster::paths::SkipComponents(1)),
+          AgencyPrecondition::Type::VALUE, VPackValue("GOOD")}};
+      AgencyWriteTransaction trx(operations, preconds);
+      return AsyncAgencyComm().sendTransaction(60s, trx);
+    } else {
+      std::vector<AgencyOperation> operations{AgencyOperation{
+          maintenancePath->str(cluster::paths::SkipComponents(1)),
+          AgencySimpleOperationType::DELETE_OP}};
+      std::vector<AgencyPrecondition> preconds{AgencyPrecondition{
+          healthPath->str(cluster::paths::SkipComponents(1)),
+          AgencyPrecondition::Type::VALUE, VPackValue("GOOD")}};
+      AgencyWriteTransaction trx(operations, preconds);
+      return AsyncAgencyComm().sendTransaction(60s, trx);
+    }
+  };
+
+  auto self(shared_from_this());
+  bool const isMaintenanceMode = mode == "maintenance";
+
+  return waitForFuture(
+      sendTransaction()
+          .thenValue([this, reactivationTime, isMaintenanceMode,
+                      serverId](AsyncAgencyCommResult&& result) {
+            if (result.ok() && result.statusCode() == 200) {
+              VPackBuilder builder;
+              { VPackObjectBuilder obj(&builder); }
+              generateOk(rest::ResponseCode::OK, builder);
+              return waitForDBServerMaintenance(serverId, isMaintenanceMode);
+            } else {
+              generateError(result.asResult());
+            }
+            return futures::makeFuture();
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
+}
+
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
@@ -1576,6 +1737,41 @@ RestStatus RestAdminClusterHandler::handlePutMaintenance() {
   return RestStatus::DONE;
 }
 
+RestStatus RestAdminClusterHandler::handlePutDBServerMaintenance(
+    std::string const& serverId) {
+  TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  if (body.isObject() && body.hasKey("mode")) {
+    std::string mode = body.get("mode").copyString();
+    if (mode == "maintenance" || mode == "normal") {
+      uint64_t timeout = 3600;  // 1 hour
+      if (body.hasKey("timeout")) {
+        VPackSlice timeoutSlice = body.get("timeout");
+        if (timeoutSlice.isInteger()) {
+          try {
+            timeout = timeoutSlice.getNumber<uint64_t>();
+          } catch (std::exception const&) {
+            // If the value is negative or a float, we simply keep 3600
+          }
+        }
+      }
+      return setDBServerMaintenance(serverId, mode, timeout);
+    }
+    // otherwise fall-through to error
+  }
+
+  generateError(
+      rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+      "object expected with attribute 'mode' and optional attribute 'timeout'");
+  return RestStatus::DONE;
+}
+
 RestStatus RestAdminClusterHandler::handleMaintenance() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -1600,6 +1796,33 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
       return handleGetMaintenance();
     case rest::RequestType::PUT:
       return handlePutMaintenance();
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      return RestStatus::DONE;
+  }
+}
+
+RestStatus RestAdminClusterHandler::handleDBServerMaintenance(
+    std::string const& serverId) {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
+
+  switch (request()->requestType()) {
+    case rest::RequestType::GET:
+      return handleGetDBServerMaintenance(serverId);
+    case rest::RequestType::PUT:
+      return handlePutDBServerMaintenance(serverId);
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
