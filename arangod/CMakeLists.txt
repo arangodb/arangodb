@@ -84,6 +84,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchViewMeta.h
   IResearch/IResearchViewSort.h
   IResearch/IResearchViewStoredValues.h
+  IResearch/Search.h
   IResearch/VelocyPackHelper.h
   IResearch/ViewSnapshot.h
   RestHandler/RestAnalyzerHandler.h
@@ -128,6 +129,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchViewMeta.cpp
   IResearch/IResearchViewSort.cpp
   IResearch/IResearchViewStoredValues.cpp
+  IResearch/Search.cpp
   IResearch/VelocyPackHelper.cpp
   IResearch/ViewSnapshot.cpp
   RestHandler/RestAnalyzerHandler.cpp
@@ -742,6 +744,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/AgencyCache.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
+  Cluster/AutoRebalance.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
@@ -756,13 +759,13 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/DropDatabase.cpp
   Cluster/DropIndex.cpp
   Cluster/EnsureIndex.cpp
+  Cluster/FailureOracleFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
-  Cluster/FailureOracleFeature.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
