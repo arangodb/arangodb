@@ -176,7 +176,7 @@ void Worker<V, E, M>::setupWorker() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
                    [this, self = shared_from_this(),
-                    statusUpdateCallback = std::move(_statusCallback()),
+                    statusUpdateCallback = std::move(_makeStatusCallback()),
                     finishedCallback = std::move(finishedCallback)] {
                      try {
                        _graphStore->loadShards(&_config, statusUpdateCallback,
@@ -456,7 +456,7 @@ bool Worker<V, E, M>::_processVertices(
     if (_currentGssObservables.verticesProcessed %
             Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
         0) {
-      _statusCallback();
+      _makeStatusCallback()();
     }
   }
   // ==================== send messages to other shards ====================
@@ -530,7 +530,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       obj.push(this->_currentGssObservables.observe());
     });
     _currentGssObservables.zero();
-    _statusCallback();
+    _makeStatusCallback()();
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -665,7 +665,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup), _statusCallback());
+    _graphStore->storeResults(&_config, std::move(cleanup),
+                              _makeStatusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
@@ -902,7 +903,7 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_statusCallback() -> std::function<void()> {
+auto Worker<V, E, M>::_makeStatusCallback() -> std::function<void()> {
   return [self = shared_from_this(), this] {
     VPackBuilder statusUpdateMsg;
     {

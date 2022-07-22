@@ -156,8 +156,8 @@ class Worker : public IWorker {
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
-  auto _observeStatus() -> Status const;
-  auto _statusCallback() -> std::function<void()>;
+  [[nodiscard]] auto _observeStatus() -> Status const;
+  [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
