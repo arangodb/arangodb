@@ -1,6 +1,11 @@
 devel
 -----
 
+* Removed internal JavaScript dependencies "expect.js", "media-typer" and
+  "underscore". We recommend always bundling your own copy of third-party
+  modules as all previously included third-party modules are now considered
+  deprecated and may be removed in future versions of ArangoD
+
 * Added CSP recommended headers to Aardvaark app for better security.
 
 * APM-84: Added option to spill intermediate AQL query results from RAM to
