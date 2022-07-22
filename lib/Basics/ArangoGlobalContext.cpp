@@ -78,7 +78,7 @@ static void ReopenLog(int) { LogAppender::reopen(); }
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
-ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
+ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
                                          char const* installDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
       _binaryPath(TRI_LocateBinaryPath(argv[0])),
@@ -97,6 +97,17 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
 #endif
 #endif
 #endif
+
+  for (int i = 0; i < argc; ++i) {
+    bool found{false};
+    if (std::string("--database.directory") == std::string(argv[i]) &&
+        i + 1 < argc) {
+      _databasePath = std::string(argv[i + 1]);
+    }
+    if (argc - 1 == i && !found) {
+      _databasePath = std::string(argv[i]);
+    }
+  }
 
   ADB_WindowsEntryFunction();
 
