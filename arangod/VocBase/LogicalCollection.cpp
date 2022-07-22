@@ -1297,56 +1297,6 @@ auto LogicalCollection::getDocumentState()
   return stateMachine;
 }
 
-auto LogicalCollection::waitForDocumentStateLeader() -> std::shared_ptr<
-    replication2::replicated_state::document::DocumentLeaderState> {
-  auto replicatedState = getDocumentState();
-  std::optional<replication2::replicated_state::StateStatus> status =
-      std::nullopt;
-  replication2::replicated_state::LeaderStatus const* leaderStatus = nullptr;
-
-  // TODO find a better way to wait for service availability
-  for (int counter{0}; counter < 30; ++counter) {
-    status = replicatedState->getStatus();
-    if (status) {
-      leaderStatus = status->asLeaderStatus();
-      if (leaderStatus != nullptr &&
-          leaderStatus->managerState.state ==
-              replication2::replicated_state::LeaderInternalState::
-                  kServiceAvailable) {
-        break;
-      }
-    }
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(1s);
-  }
-
-  if (leaderStatus == nullptr) {
-    if (status.has_value()) {
-      std::stringstream stream;
-      stream << "Could not get leader status, current status is " << *status;
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER, stream.str());
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-          "Could not get any status from replicated state");
-    }
-  }
-  if (leaderStatus->managerState.state !=
-      replication2::replicated_state::LeaderInternalState::kServiceAvailable) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-        "Leader state service is not available, the current status being: " +
-            std::string(to_string(leaderStatus->managerState.state)));
-  }
-
-  auto stateMachine = getDocumentState();
-  auto leader = stateMachine->getLeader();
-  ADB_PROD_ASSERT(leader != nullptr)
-      << "Cannot get DocumentLeaderState in shard " << name();
-  return leader;
-}
-
 auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
