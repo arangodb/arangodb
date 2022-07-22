@@ -227,9 +227,8 @@ struct GlobalLogIdentifier {
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, GlobalLogIdentifier& gid) {
-    return f.object(gid).fields(
-        f.field("database", gid.database),
-        f.field("id", gid.id));
+    return f.object(gid).fields(f.field("database", gid.database),
+                                f.field("id", gid.id));
   }
 };
 
