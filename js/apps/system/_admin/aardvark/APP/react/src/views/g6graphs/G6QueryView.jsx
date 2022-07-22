@@ -2,11 +2,11 @@
 
 import React from 'react';
 import 'antd/dist/antd.css';
-import G6JsGraph from './G6JsGraph';
+import G6JsQueryGraph from './G6JsQueryGraph';
 
-const G6QueryView = () => {
+const G6QueryView = (result) => {
   return <div>
-    <G6JsGraph />
+    <G6JsQueryGraph result={result} />
   </div>;
 };
 

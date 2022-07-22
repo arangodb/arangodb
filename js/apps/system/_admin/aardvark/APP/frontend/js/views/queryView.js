@@ -1926,26 +1926,35 @@
             $('#outputEditor' + counter).hide();
             success = true;
           } else if (result.defaultType === 'graph') {
-            console.log("DISPLAY THE GRAPH WITH G6");
-            console.log("result: ", result);
-            console.log("counter: ", counter);
-
-            /*
-            ReactDOM.render(
-              React.createElement(window.G6GraphReactView),
-              document.getElementById('content'));
-            */
-
-            //$('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
-            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="viking"></div>');
-            
-            ReactDOM.render(
-              React.createElement(window.G6GraphReactView),
-              document.getElementById('viking'));
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputG6Graph"></div>');
 
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(React.createElement(window.G6GraphReactView));
             $('#outputGraph' + counter).show();
             success = self.renderOutputGraph(result, counter);
+
+            const g6Result = [];
+            const g6Nodes = [];
+            result.modified.nodes.forEach(function(node) {
+                g6Nodes.push(_.pick(node, 'id', 'label'));
+            });
+            g6Result.nodes = g6Nodes;
+            result.g6Nodes = g6Nodes;
+
+            const g6Edges = [];
+            result.modified.edges.forEach(function(edge) {
+                console.log("edge: ", edge);
+                console.log("minimized edge: ", _.pick(edge, 'id', 'source', 'target'));
+                g6Edges.push(_.pick(edge, 'id', 'source', 'target'));
+            });
+            g6Result.edges = g6Edges;
+            result.g6Edges = g6Edges;
+            console.log("result with g6Nodes & g6Edges: ", result);
+
+            result.g6Result = g6Result;
+            ReactDOM.render(
+              React.createElement(window.G6QueryView, result),
+              document.getElementById('outputG6Graph'));
 
             if (success) {
               $('#outputEditor' + counter).hide();

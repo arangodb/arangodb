@@ -14,6 +14,7 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
 require('./views/g6graphs/G6GraphReactView');
+require('./views/g6graphs/G6QueryView');
 require('./views/views/ViewInfoReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewConsolidationReactView');
