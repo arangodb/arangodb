@@ -113,7 +113,7 @@ const localKeyStatus = function (endpoint, db, col, key, available) {
     return true;
   }
   return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
-}
+};
 
 function transactionRevisionsSuite (dbParams) {
   'use strict';
@@ -5006,7 +5006,7 @@ function transactionReplication2ReplicateOperationSuite() {
             let localValues = {};
             for (const endpoint of Object.values(dbServers)) {
               replicatedLogsHelper.waitFor(function () {
-                return localKeyStatus(endpoint, dbn, shard, key, shard === shardId)
+                return localKeyStatus(endpoint, dbn, shard, key, shard === shardId);
               }, 10);
               localValues[endpoint] = getLocalValue(endpoint, dbn, shard, key);
             }
