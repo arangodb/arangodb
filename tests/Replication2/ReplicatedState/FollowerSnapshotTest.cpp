@@ -110,7 +110,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   ASSERT_EQ(nullptr, manager->getFollowerState())
       << "follower state should not be available yet";
 
-  // furthermore the state should have access to the stream
+  // furthermore the state should not have access to the stream
   ASSERT_ANY_THROW({ std::ignore = state->getStream(); })
       << "stream must not be available";
 
