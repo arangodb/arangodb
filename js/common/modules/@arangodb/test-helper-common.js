@@ -64,6 +64,13 @@ exports.getEndpointById = function (id) {
     .map(toEndpoint)[0];
 };
 
+exports.getUrlById = function (id) {
+  const toUrl = (d) => (d.url);
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter((d) => (d.id === id))
+    .map(toUrl)[0];
+};
+
 exports.getEndpointsByType = function (type) {
   const isType = (d) => (d.instanceRole.toLowerCase() === type);
   const toEndpoint = (d) => (d.endpoint);
