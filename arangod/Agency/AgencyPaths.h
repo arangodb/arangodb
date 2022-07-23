@@ -1242,6 +1242,53 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return NewServers::make_shared(shared_from_this());
       }
 
+      class MaintenanceDBServers
+          : public StaticComponent<MaintenanceDBServers, Current> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "MaintenanceDBServers";
+        }
+
+        using BaseType::StaticComponent;
+
+        class DBServer : public DynamicComponent<DBServer, MaintenanceDBServers,
+                                                 std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+
+          class Mode : public StaticComponent<Mode, DBServer> {
+           public:
+            constexpr char const* component() const noexcept { return "Mode"; }
+
+            using BaseType::StaticComponent;
+          };
+          std::shared_ptr<Mode const> mode() const {
+            return Mode::make_shared(shared_from_this());
+          }
+
+          class Until : public StaticComponent<Until, DBServer> {
+           public:
+            constexpr char const* component() const noexcept { return "Until"; }
+
+            using BaseType::StaticComponent;
+          };
+          std::shared_ptr<Until const> dbserver() const {
+            return Until::make_shared(shared_from_this());
+          }
+        };
+
+        std::shared_ptr<DBServer const> dbserver(std::string dbserverId) const {
+          return DBServer::make_shared(shared_from_this(),
+                                       std::move(dbserverId));
+        }
+      };
+
+      std::shared_ptr<MaintenanceDBServers const> maintenanceDBServers() const {
+        return MaintenanceDBServers::make_shared(shared_from_this());
+      }
+
       class AsyncReplication
           : public StaticComponent<AsyncReplication, Current> {
        public:
@@ -2278,6 +2325,53 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
       std::shared_ptr<FailedServers const> failedServers() const {
         return FailedServers::make_shared(shared_from_this());
+      }
+
+      class MaintenanceDBServers
+          : public StaticComponent<MaintenanceDBServers, Target> {
+       public:
+        constexpr char const* component() const noexcept {
+          return "MaintenanceDBServers";
+        }
+
+        using BaseType::StaticComponent;
+
+        class DBServer : public DynamicComponent<DBServer, MaintenanceDBServers,
+                                                 std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+
+          class Mode : public StaticComponent<Mode, DBServer> {
+           public:
+            constexpr char const* component() const noexcept { return "Mode"; }
+
+            using BaseType::StaticComponent;
+          };
+          std::shared_ptr<Mode const> mode() const {
+            return Mode::make_shared(shared_from_this());
+          }
+
+          class Until : public StaticComponent<Until, DBServer> {
+           public:
+            constexpr char const* component() const noexcept { return "Until"; }
+
+            using BaseType::StaticComponent;
+          };
+          std::shared_ptr<Until const> dbserver() const {
+            return Until::make_shared(shared_from_this());
+          }
+        };
+
+        std::shared_ptr<DBServer const> dbserver(std::string dbserverId) const {
+          return DBServer::make_shared(shared_from_this(),
+                                       std::move(dbserverId));
+        }
+      };
+
+      std::shared_ptr<MaintenanceDBServers const> maintenanceDBServers() const {
+        return MaintenanceDBServers::make_shared(shared_from_this());
       }
 
       class NumberOfCoordinators

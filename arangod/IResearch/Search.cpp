@@ -269,10 +269,6 @@ ViewSnapshot::Links Search::getLinks() const {
 
 Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
                           bool partialUpdate) {
-  if (!ServerState::instance()->isSingleServer()) {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
-    return {};
-  }
   auto indexesSlice = definition.hasKey("indexes")
                           ? definition.get("indexes")
                           : velocypack::Slice::emptyArraySlice();
@@ -326,6 +322,10 @@ Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
       TRI_ASSERT(indexes.back());
     }
   }
+  if (ServerState::instance()->isCoordinator()) {
+    return cluster_helper::properties(*this, true /*means under lock*/);
+  }
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
 #ifdef USE_PLAN_CACHE
   aql::PlanCache::instance()->invalidate(&vocbase());
 #endif
