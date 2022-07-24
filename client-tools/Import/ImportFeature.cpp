@@ -165,7 +165,7 @@ void ImportFeature::collectOptions(
 
   options->addOption("--remove-attribute",
                      "remove an attribute before inserting documents"
-                     " into collection (for CSV and TSV only)",
+                     " into collection (for CSV, TSV and JSON only)",
                      new VectorParameter<StringParameter>(&_removeAttributes));
 
   std::unordered_set<std::string> types = {"document", "edge"};
@@ -614,7 +614,15 @@ void ImportFeature::start() {
                               arangodb::import::ImportHelper::TSV);
     } else if (_typeImport == "json" || _typeImport == "jsonl") {
       std::cout << "Starting JSON import..." << std::endl;
-      ok = ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
+      if (_removeAttributes.empty()) {
+        ok =
+            ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
+      } else {
+        // This variant does more parsing, on the client side
+        // and in general is considered slower, so only use it if necessary.
+        ok = ih.importJsonWithRewrite(_collectionName, _filename,
+                                      (_typeImport == "jsonl"));
+      }
     } else {
       LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME)
           << "Wrong type '" << _typeImport << "'.";
