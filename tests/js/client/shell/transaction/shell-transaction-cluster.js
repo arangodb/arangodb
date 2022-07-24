@@ -34,7 +34,7 @@ const { fail,
   assertNotUndefined,
 } = jsunity.jsUnity.assertions;
 
-const isCluster = internal.isCluster();
+const isCluster = require('internal').isCluster();
 
 if (!isCluster) {
   return jsunity.done();
