@@ -26,14 +26,19 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const {
-    fail,
-    assertTrue,
-    assertFalse,
-    assertEqual,
-    assertIdentical,
-    assertNotUndefined,
+const { fail,
+  assertTrue,
+  assertFalse,
+  assertEqual,
+  assertIdentical,
+  assertNotUndefined,
 } = jsunity.jsUnity.assertions;
+
+const isCluster = internal.isCluster();
+
+if (!isCluster) {
+  return jsunity.done();
+}
 
 const arangodb = require('@arangodb');
 const db = arangodb.db;
@@ -46,37 +51,37 @@ const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-pr
 const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
 
 const getDBServers = function (db) {
-    let requestResult = db._connection.GET("/_admin/cluster/health");
-    arangosh.checkRequestResult(requestResult);
-    let dbServers = {};
-    for (const [serverId, serverInfo] of Object.entries(requestResult.Health)) {
-        if (serverInfo.Role === "DBServer") {
-            dbServers[serverId] = serverInfo.Endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-        }
+  let requestResult = db._connection.GET("/_admin/cluster/health");
+  arangosh.checkRequestResult(requestResult);
+  let dbServers = {};
+  for (const [serverId, serverInfo] of Object.entries(requestResult.Health)) {
+    if (serverInfo.Role === "DBServer") {
+      dbServers[serverId] = serverInfo.Endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
     }
-    return dbServers;
+  }
+  return dbServers;
 };
 
 const getLocalValue = function (endpoint, db, col, key) {
-    const res = request.get({
-        url: `${endpoint}/_db/${db}/_api/document/${col}/${key}`,
-        headers: {
-            "X-Arango-Allow-Dirty-Read": true
-        },
-    });
-    arangosh.checkRequestResult(res);
-    return res.json;
+  const res = request.get({
+    url: `${endpoint}/_db/${db}/_api/document/${col}/${key}`,
+    headers: {
+      "X-Arango-Allow-Dirty-Read": true
+    },
+  });
+  arangosh.checkRequestResult(res);
+  return res.json;
 };
 
 const localKeyStatus = function (endpoint, db, col, key, available) {
-    const data = getLocalValue(endpoint, db, col, key);
-    if (available === false && data.code === 404) {
-        return true;
-    }
-    if (data._key === key) {
-        return true;
-    }
-    return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
+  const data = getLocalValue(endpoint, db, col, key);
+  if (available === false && data.code === 404) {
+    return true;
+  }
+  if (data._key === key) {
+    return true;
+  }
+  return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
 };
 
 /**
@@ -84,196 +89,196 @@ const localKeyStatus = function (endpoint, db, col, key, available) {
  * For the commit test, we additionally look at the follower contents.
  */
 function transactionReplication2ReplicateOperationSuite() {
-    'use strict';
-    const dbn = 'UnitTestsTransactionDatabase';
-    var cn = 'UnitTestsTransaction';
-    var c = null;
+  'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
+  var cn = 'UnitTestsTransaction';
+  var c = null;
 
-    const bumpTermOfLogsAndWaitForConfirmation = (col) => {
-        const shards = col.shards();
-        const stateMachineIds = shards.map(s => s.replace(/^s/, ''));
+  const bumpTermOfLogsAndWaitForConfirmation = (col) => {
+    const shards = col.shards();
+    const stateMachineIds = shards.map(s => s.replace(/^s/, ''));
 
-        const terms = Object.fromEntries(
-            stateMachineIds.map(stateId => [stateId, replicatedLogsHelper.readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
-        );
+    const terms = Object.fromEntries(
+      stateMachineIds.map(stateId => [stateId, replicatedLogsHelper.readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
+    );
 
-        const increaseTerm = ([stateId, term]) => replicatedLogsHelper.replicatedLogSetPlanTerm(dbn, stateId, term + 1);
+    const increaseTerm = ([stateId, term]) => replicatedLogsHelper.replicatedLogSetPlanTerm(dbn, stateId, term + 1);
 
-        Object.entries(terms).forEach(increaseTerm);
+    Object.entries(terms).forEach(increaseTerm);
 
-        const leaderReady = ([stateId, term]) => replicatedLogsPredicates.replicatedLogLeaderEstablished(dbn, stateId, term, []);
+    const leaderReady = ([stateId, term]) => replicatedLogsPredicates.replicatedLogLeaderEstablished(dbn, stateId, term, []);
 
-        Object.entries(terms).forEach(replicatedLogsHelper.waitFor(leaderReady));
-    };
+    Object.entries(terms).forEach(replicatedLogsHelper.waitFor(leaderReady));
+  };
 
-    return {
-        setUpAll: function () {
-            db._createDatabase(dbn, {replicationVersion: "2"});
-            db._useDatabase(dbn);
-        },
+  return {
+    setUpAll: function () {
+      db._createDatabase(dbn, {replicationVersion: "2"});
+      db._useDatabase(dbn);
+    },
 
-        tearDownAll: function () {
-            db._useDatabase("_system");
-            db._dropDatabase(dbn);
-        },
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
-        setUp: function () {
-            db._drop(cn);
-            c = db._create(cn, {numberOfShards: 4});
-        },
+    setUp: function () {
+      db._drop(cn);
+      c = db._create(cn, {numberOfShards: 4});
+    },
 
-        tearDown: function () {
-            if (c !== null) {
-                c.drop();
+    tearDown: function () {
+      if (c !== null) {
+        c.drop();
+      }
+
+      c = null;
+    },
+
+    testTransactionAbortLogEntry: function () {
+      let trx = db._createTransaction({
+        collections: {write: c.name()}
+      });
+      let tc = trx.collection(c.name());
+      tc.insert({_key: 'test2', value: 2});
+      trx.abort();
+
+      let shards = c.shards();
+      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+
+      let allEntries = {};
+      let abortCount = 0;
+      for (const log of logs) {
+        let entries = log.head(1000);
+        allEntries[log.id()] = entries;
+        for (const entry of entries) {
+          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
+            ++abortCount;
+            break;
+          }
+        }
+      }
+      assertEqual(abortCount, 1, `Wrong count of Abort operations in the replicated logs!\n` +
+        `Log entries: ${JSON.stringify(allEntries)}`);
+    },
+
+    testTransactionCommitLogEntry: function () {
+      let obj = {
+        collections: {
+          write: [cn]
+        }
+      };
+
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc = trx.collection(cn);
+
+        for (let cnt = 0; cnt < 100; ++cnt) {
+          tc.save({_key: `foo${cnt}`});
+        }
+      } catch (err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
+      let shards = c.shards();
+      let dbServers = getDBServers(db);
+      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+
+      for (const log of logs) {
+        let entries = log.head(1000);
+        let commitFound = false;
+        let keysFound = [];
+        const shardId = `s${log.id()}`;
+
+        // Gather all log entries and see if we have any inserts on this shard.
+        for (const entry of entries) {
+          if (entry.hasOwnProperty("payload")) {
+            let payload = entry.payload[1];
+            assertEqual(shardId, payload.shardId);
+            if (payload.operation === "Commit") {
+              commitFound = true;
+            } else if (payload.operation === "Insert") {
+              keysFound.push(payload.data[0]._key);
             }
+          }
+        }
 
-            c = null;
-        },
+        // Verify that there is a commit entry and no duplicates.
+        if (keysFound.length > 0) {
+          assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}!\n` +
+            `Log entries: ${JSON.stringify(entries)}`);
+          const keysSet = new Set(keysFound);
+          assertEqual(keysFound.length, keysSet.size, `Found duplicate keys in the replicated log${log.id()}!\n` +
+            `Log entries: ${JSON.stringify(entries)}`);
+        }
 
-        testTransactionAbortLogEntry: function () {
-            let trx = db._createTransaction({
-                collections: { write: c.name()  }
-            });
-            let tc = trx.collection(c.name());
-            tc.insert({ _key: 'test2', value: 2 });
-            trx.abort();
-
-            let shards = c.shards();
-            let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
-
-            let allEntries = {};
-            let abortCount = 0;
-            for (const log of logs) {
-                let entries = log.head(1000);
-                allEntries[log.id()] = entries;
-                for (const entry of entries) {
-                    if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
-                        ++abortCount;
-                        break;
-                    }
-                }
+        // Keys should be available on the current shard only.
+        let replication2Log = `Log entries: ${JSON.stringify(entries)}`;
+        for (const shard in shards) {
+          for (const key in keysFound) {
+            let localValues = {};
+            for (const endpoint of Object.values(dbServers)) {
+              replicatedLogsHelper.waitFor(function () {
+                return localKeyStatus(endpoint, dbn, shard, key, shard === shardId);
+              }, 10);
+              localValues[endpoint] = getLocalValue(endpoint, dbn, shard, key);
             }
-            assertEqual(abortCount, 1, `Wrong count of Abort operations in the replicated logs!\n` +
-                `Log entries: ${JSON.stringify(allEntries)}`);
-        },
-
-        testTransactionCommitLogEntry: function () {
-            let obj = {
-                collections: {
-                    write: [ cn ]
-                }
-            };
-
-            let trx;
-            try {
-                trx = db._createTransaction(obj);
-                let tc = trx.collection(cn);
-
-                for (let cnt = 0; cnt < 100; ++cnt) {
-                    tc.save({ _key: `foo${cnt}` });
-                }
-            } catch(err) {
-                fail("Transaction failed with: " + JSON.stringify(err));
-            } finally {
-                if (trx) {
-                    trx.commit();
-                }
+            for (const [endpoint, res] of Object.entries(localValues)) {
+              if (shard === shardId) {
+                assertTrue(res.code === undefined,
+                  `Error while reading key ${key} from ${endpoint}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
+                  `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
+                assertEqual(res._key, key,
+                  `Wrong key returned by ${endpoint}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
+                  `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
+              } else {
+                assertTrue(res.code === 404,
+                  `Expected 404 while reading key ${key} from ${endpoint}/${dbn}/${shard}, ` +
+                  `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
+                  `\n${replication2Log}`);
+              }
             }
+          }
+        }
+      }
+    },
 
-            let shards = c.shards();
-            let dbServers = getDBServers(db);
-            let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
-
-            for (const log of logs) {
-                let entries = log.head(1000);
-                let commitFound = false;
-                let keysFound = [];
-                const shardId = `s${log.id()}`;
-
-                // Gather all log entries and see if we have any inserts on this shard.
-                for (const entry of entries) {
-                    if (entry.hasOwnProperty("payload")) {
-                        let payload = entry.payload[1];
-                        assertEqual(shardId, payload.shardId);
-                        if (payload.operation === "Commit") {
-                            commitFound = true;
-                        } else if (payload.operation === "Insert") {
-                            keysFound.push(payload.data[0]._key);
-                        }
-                    }
-                }
-
-                // Verify that there is a commit entry and no duplicates.
-                if (keysFound.length > 0) {
-                    assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}!\n` +
-                        `Log entries: ${JSON.stringify(entries)}`);
-                    const keysSet = new Set(keysFound);
-                    assertEqual(keysFound.length, keysSet.size, `Found duplicate keys in the replicated log${log.id()}!\n` +
-                        `Log entries: ${JSON.stringify(entries)}`);
-                }
-
-                // Keys should be available on the current shard only.
-                let replication2Log = `Log entries: ${JSON.stringify(entries)}`;
-                for (const shard in shards) {
-                    for (const key in keysFound) {
-                        let localValues = {};
-                        for (const endpoint of Object.values(dbServers)) {
-                            replicatedLogsHelper.waitFor(function () {
-                                return localKeyStatus(endpoint, dbn, shard, key, shard === shardId);
-                            }, 10);
-                            localValues[endpoint] = getLocalValue(endpoint, dbn, shard, key);
-                        }
-                        for (const [endpoint, res] of Object.entries(localValues)) {
-                            if (shard === shardId) {
-                                assertTrue(res.code === undefined,
-                                    `Error while reading key ${key} from ${endpoint}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
-                                    `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
-                                assertEqual(res._key, key,
-                                    `Wrong key returned by ${endpoint}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
-                                    `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
-                            } else {
-                                assertTrue(res.code === 404,
-                                    `Expected 404 while reading key ${key} from ${endpoint}/${dbn}/${shard}, ` +
-                                    `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
-                                    `\n${replication2Log}`);
-                            }
-                        }
-                    }
-                }
-            }
+    DISABLED_testTransactionLeaderChangeBeforeCommit: function () {
+      let obj = {
+        collections: {
+          write: [cn],
         },
+      };
 
-        DISABLED_testTransactionLeaderChangeBeforeCommit: function () {
-            let obj = {
-                collections: {
-                    write: [cn],
-                },
-            };
+      const trx = db._createTransaction(obj);
+      const tc = trx.collection(cn);
 
-            const trx = db._createTransaction(obj);
-            const tc = trx.collection(cn);
+      tc.save({_key: 'foo'});
+      tc.save({_key: 'bar'});
 
-            tc.save({_key: 'foo'});
-            tc.save({_key: 'bar'});
+      bumpTermOfLogsAndWaitForConfirmation(c);
 
-            bumpTermOfLogsAndWaitForConfirmation(c);
+      try {
+        trx.commit();
+        fail('Commit was expected to fail due to leader change, but reported success.');
+      } catch (ex) {
+        // TODO replace this with an assertion that `ex` is the right exception
+        console.error(`TODO caught: ` + ex);
+      }
 
-            try {
-                trx.commit();
-                fail('Commit was expected to fail due to leader change, but reported success.');
-            } catch (ex) {
-                // TODO replace this with an assertion that `ex` is the right exception
-                console.error(`TODO caught: ` + ex);
-            }
+      const shards = c.shards();
+      const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
-            const shards = c.shards();
-            const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      const logsWithCommit = logs.filter(log => log.head(1000).exists(entry => entry.hasOwnProperty('payload') && entry.payload[1].operation === 'Commit'));
 
-            const logsWithCommit = logs.filter(log => log.head(1000).exists(entry => entry.hasOwnProperty('payload') && entry.payload[1].operation === 'Commit'));
-
-            assertIdentical([], logsWithCommit, 'Found commit operation(s) in one or more log');
-        },
-    };
+      assertIdentical([], logsWithCommit, 'Found commit operation(s) in one or more log');
+    },
+  };
 }
 
 /**
@@ -282,176 +287,181 @@ function transactionReplication2ReplicateOperationSuite() {
  * writeConcern must be equal to replicationFactor, so we replicate all documents on all followers.
  */
 function transactionReplicationOnFollowersSuite(dbParams) {
-    'use strict';
-    const dbn = 'UnitTestsTransactionDatabase';
-    const numberOfShards = 1;
-    var cn = 'UnitTestsTransaction';
-    var c = null;
-    var isReplication2 = dbParams.replicationVersion === "2";
+  'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
+  const numberOfShards = 1;
+  var cn = 'UnitTestsTransaction';
+  var c = null;
+  var isReplication2 = dbParams.replicationVersion === "2";
 
-    return {
-        setUpAll: function () {
-            db._createDatabase(dbn, dbParams);
-            db._useDatabase(dbn);
-        },
+  return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
 
-        tearDownAll: function () {
-            db._useDatabase("_system");
-            db._dropDatabase(dbn);
-        },
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
 
-        setUp: function () {
-            db._drop(cn);
-            let rc = Object.keys(getDBServers(db)).length;
-            c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": rc, "replicationFactor": rc});
-        },
+    setUp: function () {
+      db._drop(cn);
+      let rc = Object.keys(getDBServers(db)).length;
+      c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": rc, "replicationFactor": rc});
+    },
 
-        tearDown: function () {
-            if (c !== null) {
-                c.drop();
-            }
+    tearDown: function () {
+      if (c !== null) {
+        c.drop();
+      }
 
-            c = null;
-        },
+      c = null;
+    },
 
-        testFollowerAbort: function () {
-            let trx = db._createTransaction({
-                collections: { write: c.name()  }
-            });
-            let tc = trx.collection(c.name());
-            tc.insert({ _key: "foo" });
-            trx.abort();
+    testFollowerAbort: function () {
+      let trx = db._createTransaction({
+        collections: {write: c.name()}
+      });
+      let tc = trx.collection(c.name());
+      tc.insert({_key: "foo"});
+      trx.abort();
 
-            let shards = c.shards();
-            let dbServers = getDBServers(db);
-            let localValues = {};
-            for (const endpoint of Object.values(dbServers)) {
-                replicatedLogsHelper.waitFor(function () {
-                    return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
-                }, 10);
-                localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
-            }
+      let shards = c.shards();
+      let dbServers = getDBServers(db);
+      let localValues = {};
+      for (const endpoint of Object.values(dbServers)) {
+        replicatedLogsHelper.waitFor(function () {
+          return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
+        }, 10);
+        localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+      }
 
-            var replication2Log = '';
-            if (isReplication2) {
-                let log = db._replicatedLog(shards[0].slice(1));
-                let entries = log.head(1000);
-                replication2Log = `Log entries: ${JSON.stringify(entries)}`;
-            }
-            for (const [endpoint, res] of Object.entries(localValues)) {
-                assertTrue(res.code === 404,
-                    `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
-                    `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
-                    `\n${replication2Log}`);
-            }
-        },
+      var replication2Log = '';
+      if (isReplication2) {
+        let log = db._replicatedLog(shards[0].slice(1));
+        let entries = log.head(1000);
+        replication2Log = `Log entries: ${JSON.stringify(entries)}`;
+      }
+      for (const [endpoint, res] of Object.entries(localValues)) {
+        assertTrue(res.code === 404,
+          `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
+          `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
+          `\n${replication2Log}`);
+      }
+    },
 
-        testFollowerSaveAndCommit: function () {
-            let obj = {
-                collections: {
-                    write: [ cn ]
-                }
-            };
+    testFollowerSaveAndCommit: function () {
+      let obj = {
+        collections: {
+          write: [cn]
+        }
+      };
 
-            let shards = c.shards();
-            let dbServers = getDBServers(db);
+      let shards = c.shards();
+      let dbServers = getDBServers(db);
 
-            let trx;
-            try {
-                trx = db._createTransaction(obj);
-                let tc = trx.collection(cn);
-                tc.save({ _key: "foo" });
-            } catch(err) {
-                fail("Transaction failed with: " + JSON.stringify(err));
-            } finally {
-                if (trx) {
-                    let localValues = {};
-                    for (const endpoint of Object.values(dbServers)) {
-                        replicatedLogsHelper.waitFor(function () {
-                            return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
-                        }, 10);
-                        localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
-                    }
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc = trx.collection(cn);
+        tc.save({_key: "foo"});
+      } catch (err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (trx) {
+          let localValues = {};
+          for (const endpoint of Object.values(dbServers)) {
+            replicatedLogsHelper.waitFor(function () {
+              return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
+            }, 10);
+            localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+          }
 
-                    // Make sure nothing is committed just yet
-                    let replication2Log = '';
-                    if (isReplication2) {
-                        let log = db._replicatedLog(shards[0].slice(1));
-                        let entries = log.head(1000);
-                        replication2Log = `Log entries: ${JSON.stringify(entries)}`;
-                    }
+          // Make sure nothing is committed just yet
+          let replication2Log = '';
+          if (isReplication2) {
+            let log = db._replicatedLog(shards[0].slice(1));
+            let entries = log.head(1000);
+            replication2Log = `Log entries: ${JSON.stringify(entries)}`;
+          }
 
-                    for (const [endpoint, res] of Object.entries(localValues)) {
-                        assertTrue(res.code === 404,
-                            `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
-                            `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
-                            `\n${replication2Log}`);
-                    }
+          for (const [endpoint, res] of Object.entries(localValues)) {
+            assertTrue(res.code === 404,
+              `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
+              `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
+              `\n${replication2Log}`);
+          }
 
-                    trx.commit();
-                }
-            }
+          trx.commit();
+        }
+      }
 
-            let localValues = {};
-            for (const endpoint of Object.values(dbServers)) {
-                replicatedLogsHelper.waitFor(function () {
-                    return localKeyStatus(endpoint, dbn, shards[0], "foo", true);
-                }, 10);
-                localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
-            }
+      let localValues = {};
+      for (const endpoint of Object.values(dbServers)) {
+        replicatedLogsHelper.waitFor(function () {
+          return localKeyStatus(endpoint, dbn, shards[0], "foo", true);
+        }, 10);
+        localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+      }
 
-            let replication2Log = '';
-            if (isReplication2) {
-                let log = db._replicatedLog(shards[0].slice(1));
-                let entries = log.head(1000);
-                replication2Log = `Log entries: ${JSON.stringify(entries)}`;
-            }
+      let replication2Log = '';
+      if (isReplication2) {
+        let log = db._replicatedLog(shards[0].slice(1));
+        let entries = log.head(1000);
+        replication2Log = `Log entries: ${JSON.stringify(entries)}`;
+      }
 
-            for (const [endpoint, res] of Object.entries(localValues)) {
-                assertTrue(res.code === undefined,
-                    `Error while reading key from ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
-                    `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
-                assertEqual(res._key, "foo",
-                    `Wrong key returned by ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
-                    `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
-            }
+      for (const [endpoint, res] of Object.entries(localValues)) {
+        assertTrue(res.code === undefined,
+          `Error while reading key from ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+          `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
+        assertEqual(res._key, "foo",
+          `Wrong key returned by ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+          `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
+      }
 
-            // All ids and revisions should be equal
-            for (let idx = 1; idx < localValues.length; ++idx) {
-                assertEqual(localValues[idx - 1]._rev, localValues[idx]._rev, `_rev mismatch ${JSON.stringify(localValues)}` +
-                    `\n${replication2Log}`);
-                assertEqual(localValues[idx - 1]._id, localValues[idx]._id, `_id mismatch ${JSON.stringify(localValues)}` +
-                    `\n${replication2Log}`);
-            }
-        },
-    };
+      // All ids and revisions should be equal
+      for (let idx = 1; idx < localValues.length; ++idx) {
+        assertEqual(localValues[idx - 1]._rev, localValues[idx]._rev, `_rev mismatch ${JSON.stringify(localValues)}` +
+          `\n${replication2Log}`);
+        assertEqual(localValues[idx - 1]._id, localValues[idx]._id, `_id mismatch ${JSON.stringify(localValues)}` +
+          `\n${replication2Log}`);
+      }
+    },
+  };
 }
 
 function makeTestSuites(testSuite) {
-    let suiteV1 = {};
-    let suiteV2 = {};
-    deriveTestSuite(testSuite({}), suiteV1, "_V1");
-    // For databases with replicationVersion 2 we internally use a ReplicatedRocksDBTransactionState
-    // for the transaction. Since this class is currently not covered by unittests, these tests are
-    // parameterized to cover both cases.
-    deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
-    return [suiteV1, suiteV2];
+  let suiteV1 = {};
+  let suiteV2 = {};
+  deriveTestSuite(testSuite({}), suiteV1, "_V1");
+  // For databases with replicationVersion 2 we internally use a ReplicatedRocksDBTransactionState
+  // for the transaction. Since this class is currently not covered by unittests, these tests are
+  // parameterized to cover both cases.
+  deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
+  return [suiteV1, suiteV2];
 }
 
-function transactionReplicationOnFollowersSuiteV1() {return makeTestSuites(transactionReplicationOnFollowersSuite)[0];}
-function transactionReplicationOnFollowersSuiteV2() {return makeTestSuites(transactionReplicationOnFollowersSuite)[1];}
+function transactionReplicationOnFollowersSuiteV1() {
+  return makeTestSuites(transactionReplicationOnFollowersSuite)[0];
+}
+
+function transactionReplicationOnFollowersSuiteV2() {
+  return makeTestSuites(transactionReplicationOnFollowersSuite)[1];
+}
 
 jsunity.run(transactionReplicationOnFollowersSuiteV1);
 
 if (isReplication2Enabled) {
-    let suites = [
-        transactionReplication2ReplicateOperationSuite,
-        transactionReplicationOnFollowersSuiteV2,
-    ];
+  let suites = [
+    transactionReplication2ReplicateOperationSuite,
+    transactionReplicationOnFollowersSuiteV2,
+  ];
 
-    for (const suite of suites) {
-        jsunity.run(suite);
-    }
+  for (const suite of suites) {
+    jsunity.run(suite);
+  }
 }
 
 return jsunity.done();
