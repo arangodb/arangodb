@@ -1150,6 +1150,7 @@ target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
 target_link_libraries(arango_replication2 fmt)
 target_link_libraries(arango_replication2 arango_network)
+target_link_libraries(arango_replication2 arangoserver)
 
 target_link_libraries(arango_rocksdb rocksdb)
 target_link_libraries(arango_rocksdb arango_cache)
