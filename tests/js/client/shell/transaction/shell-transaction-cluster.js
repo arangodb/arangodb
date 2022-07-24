@@ -35,6 +35,8 @@ const {
     assertNotUndefined,
 } = jsunity.jsUnity.assertions;
 
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 const arangosh = require('@arangodb/arangosh');
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const request = require('@arangodb/request');
