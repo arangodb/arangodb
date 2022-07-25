@@ -32,7 +32,7 @@ namespace arangodb::transaction {
 
 ReplicatedContext::ReplicatedContext(TransactionId globalId,
                                      std::shared_ptr<TransactionState> state)
-    : SmartContext(state->vocbase(), globalId, std::move(state)){};
+    : SmartContext(state->vocbase(), globalId, state){};
 
 std::shared_ptr<TransactionState> ReplicatedContext::acquireState(
     Options const& options, bool& responsibleForCommit) {
