@@ -147,7 +147,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     if (r.fail()) {
       return r;
     }
-  };
+  }
 
   return {};
 }
