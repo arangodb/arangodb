@@ -45,7 +45,7 @@ or a shard key attribute.
 An AQL `RETURN` operation with an expression that computes the desired value.
 See [Computed Value Expressions](https://www.arangodb.com/docs/devel/data-modeling-documents-computed-values.html#computed-value-expressions) for details.
 
-@RESTSTRUCT{override,post_api_collection_computed_field,boolean,required,}
+@RESTSTRUCT{overwrite,post_api_collection_computed_field,boolean,required,}
 Whether the computed value shall take precedence over a user-provided or
 existing attribute.
 

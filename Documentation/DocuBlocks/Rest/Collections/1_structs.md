@@ -14,7 +14,7 @@ The name of the target attribute.
 @RESTSTRUCT{expression,computed_field,string,required,}
 An AQL `RETURN` operation with an expression that computes the desired value.
 
-@RESTSTRUCT{override,computed_field,boolean,required,}
+@RESTSTRUCT{overwrite,computed_field,boolean,required,}
 Whether the computed value takes precedence over a user-provided or
 existing attribute.
 
