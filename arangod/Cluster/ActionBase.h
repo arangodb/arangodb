@@ -112,6 +112,14 @@ class ActionBase {
   /// @brief finalize statistics
   void endStats();
 
+  /**
+   *  @brief    update progress by long running processes, while allowing to
+   *            abort the process by user.
+   *  @param  d percentage of work done
+   *  @return   abort if !ok(), true if ok(), with reason to abort.
+   */
+  virtual arangodb::Result setProgress(double d);
+
   /// @brief return progress statistic
   uint64_t getProgress() const { return _progress.load(); }
 

@@ -90,6 +90,11 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature,
 
 EnsureIndex::~EnsureIndex() = default;
 
+arangodb::Result EnsureIndex::setProgress(double d) {
+  LOG_DEVEL << d;
+  return arangodb::Result();
+}
+
 bool EnsureIndex::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
@@ -151,8 +156,8 @@ bool EnsureIndex::first() {
     }
 
     VPackBuilder index;
-    auto res =
-        methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
+    auto res = methods::Indexes::ensureIndex(col.get(), body.slice(), true,
+                                             index, [this] { setProgress() });
     result(res);
 
     if (res.ok()) {
