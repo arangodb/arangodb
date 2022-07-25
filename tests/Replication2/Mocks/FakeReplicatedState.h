@@ -191,6 +191,8 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
   AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
 
+  using replicated_state::IReplicatedFollowerState<S>::getStream;
+
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override {

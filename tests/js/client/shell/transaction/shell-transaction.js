@@ -5212,11 +5212,16 @@ if (isReplication2Enabled) {
     transactionTTLStreamSuiteV2,
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
-    transactionReplication2ReplicateOperationSuite,
-    /** Currently disabled integration tests - TDD
-     * transactionReplicationOnFollowersSuiteV2
-     */
   ];
+
+  if (internal.isCluster()) {
+    suites.push(
+      transactionReplication2ReplicateOperationSuite,
+      /** Currently disabled integration tests - TDD
+       * transactionReplicationOnFollowersSuiteV2,
+       */
+    );
+  }
 
   for (const suite of suites) {
     jsunity.run(suite);

@@ -179,7 +179,7 @@ const replicatedLogTargetVersion = function (database, logId, version) {
       return Error(`no version reported in current by supervision`);
     }
     if (current.supervision.targetVersion !== version) {
-      return Error(`found version ${current.supervison.targetVersion}, expected ${version}`);
+      return Error(`found version ${current.supervision.targetVersion}, expected ${version}`);
     }
     return true;
   };
@@ -209,15 +209,15 @@ const replicatedLogLeaderPlanIs = function (database, stateId, expectedLeader) {
 
 const replicatedLogLeaderPlanChanged = function (database, stateId, oldLeader) {
   return function () {
-      const leaderPlan = LH.getReplicatedLogLeaderPlan(database, stateId, true);
-      if (leaderPlan instanceof Error) {
-        return leaderPlan;
-      }
-      if (leaderPlan.leader !== oldLeader) {
-        return true;
-      } else {
-        return new Error(`Expected log leader to switch from ${oldLeader}, but is still the same`);
-      }
+    const leaderPlan = LH.getReplicatedLogLeaderPlan(database, stateId, true);
+    if (leaderPlan instanceof Error) {
+      return leaderPlan;
+    }
+    if (leaderPlan.leader !== oldLeader) {
+      return true;
+    } else {
+      return new Error(`Expected log leader to switch from ${oldLeader}, but is still the same`);
+    }
   };
 };
 
@@ -269,6 +269,30 @@ const replicatedLogParticipantGeneration = function (database, logId, generation
   };
 };
 
+const replicatedLogReplicationCompleted = function (database, logId) {
+  return function () {
+    const result = LH.getReplicatedLogLeaderPlan(database, logId, true);
+    if (result instanceof Error) {
+      return result;
+    }
+    const status = LH.getLocalStatus(database, logId, result.leader);
+    const local = status.local;
+
+    for (const [pid, follower] of Object.entries(status.follower)) {
+      if (follower.spearhead < local.spearhead || follower.commitIndex < local.commitIndex) {
+        return Error(`Replication to ${pid} not yet completed, spearhead = ${follower.spearhead}/${local.spearhead}, ` +
+            `commit-index = ${follower.commitIndex}/${local.commitIndex}`);
+      }
+
+      if (follower.state.state !== "up-to-date") {
+        return Error(`Replication to ${pid} not yet up-to-date`);
+      }
+    }
+
+    return true;
+  };
+};
+
 exports.allServersHealthy = allServersHealthy;
 exports.replicatedLogIsGone = replicatedLogIsGone;
 exports.replicatedLogIsReady = replicatedLogIsReady;
@@ -280,5 +304,6 @@ exports.replicatedLogLeaderPlanChanged = replicatedLogLeaderPlanChanged;
 exports.replicatedLogParticipantGeneration = replicatedLogParticipantGeneration;
 exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
 exports.replicatedLogTargetVersion = replicatedLogTargetVersion;
+exports.replicatedLogReplicationCompleted = replicatedLogReplicationCompleted;
 exports.serverFailed = serverFailed;
 exports.serverHealthy = serverHealthy;

@@ -53,7 +53,6 @@ std::shared_ptr<LogicalCollection> getCollection(
   if (cidOrName.isString()) {
     return resolver.getCollection(cidOrName.stringView());
   } else if (cidOrName.isNumber<DataSourceId::BaseType>()) {
-    std::this_thread::sleep_for(std::chrono::seconds{10});
     auto const cid = cidOrName.getNumber<DataSourceId::BaseType>();
     absl::AlphaNum const cidStr{cid};  // TODO make resolve by id?
     return resolver.getCollection(cidStr.Piece());
@@ -270,10 +269,6 @@ ViewSnapshot::Links Search::getLinks() const {
 
 Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
                           bool partialUpdate) {
-  if (!ServerState::instance()->isSingleServer()) {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
-    return {};
-  }
   auto indexesSlice = definition.hasKey("indexes")
                           ? definition.get("indexes")
                           : velocypack::Slice::emptyArraySlice();
@@ -327,6 +322,10 @@ Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
       TRI_ASSERT(indexes.back());
     }
   }
+  if (ServerState::instance()->isCoordinator()) {
+    return cluster_helper::properties(*this, true /*means under lock*/);
+  }
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
 #ifdef USE_PLAN_CACHE
   aql::PlanCache::instance()->invalidate(&vocbase());
 #endif
@@ -378,7 +377,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
       for (auto& handle : handles) {
         if (auto index = handle->lock(); index) {
           if (ctx == Serialization::Properties) {
-            auto collectionName = resolver.getCollectionName(cid);
+            auto collectionName = resolver.getCollectionNameCluster(cid);
             // TODO(MBkkt) remove dynamic_cast
             auto* rawIndex = dynamic_cast<Index*>(index.get());
             if (collectionName.empty() || !rawIndex) {
