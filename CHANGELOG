@@ -1,6 +1,9 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed a potential deadlock in RocksDB compaction.
+  For details see https://github.com/facebook/rocksdb/pull/10355
+
 * Updated arangosync to v2.11.0.
 
 * Changed default macOS CI compiler to LLVM clang-13.
