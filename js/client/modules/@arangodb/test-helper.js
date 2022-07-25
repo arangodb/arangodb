@@ -46,6 +46,7 @@ const jsunity = require('jsunity');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const fs = require('fs');
 
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
@@ -53,6 +54,20 @@ exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
 exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
+
+let instanceInfo = null;
+
+function getInstanceInfo() {
+  if (instanceInfo === null) {
+    instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    if (instanceInfo.arangods.length > 2) {
+      instanceInfo.arangods.forEach(arangod => {
+        arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
+      });
+    }
+  }
+  return instanceInfo;
+}
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
@@ -403,7 +418,7 @@ exports.getCtrlCoordinators = function() {
 };
 
 exports.getServers = function (role) {
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   let ret = instanceInfo.arangods.filter(inst => inst.instanceRole === role);
   if (ret.length === 0) {
     throw new Error("No instance matched the type " + role);
@@ -422,29 +437,36 @@ exports.getAgents = function () {
 };
 
 exports.getServerById = function (id) {
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.find((d) => (d.id === id));
 };
 
 exports.getServersByType = function (type) {
   const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter(isType);
 };
 
 exports.getEndpointById = function (id) {
   const toEndpoint = (d) => (d.endpoint);
 
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   const instance = instanceInfo.arangods.find(d => d.id === id);
   return endpointToURL(toEndpoint(instance));
+};
+
+exports.getUrlById = function (id) {
+  const toUrl = (d) => (d.url);
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter((d) => (d.id === id))
+    .map(toUrl)[0];
 };
 
 exports.getEndpointsByType = function (type) {
   const isType = (d) => (d.instanceRole.toLowerCase() === type);
   const toEndpoint = (d) => (d.endpoint);
 
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter(isType)
     .map(toEndpoint)
     .map(endpointToURL);
