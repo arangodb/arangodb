@@ -7,11 +7,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include "db/compaction/compaction_picker_level.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "db/compaction/compaction_picker_level.h"
 #include "logging/log_buffer.h"
 #include "test_util/sync_point.h"
 
@@ -438,9 +439,17 @@ bool LevelCompactionBuilder::PickFileToCompact() {
   const std::vector<FileMetaData*>& level_files =
       vstorage_->LevelFiles(start_level_);
 
-  unsigned int cmp_idx;
-  for (cmp_idx = vstorage_->NextCompactionIndex(start_level_);
-       cmp_idx < file_size.size(); cmp_idx++) {
+  unsigned int cmp_idx = vstorage_->NextCompactionIndex(start_level_);
+  for (std::size_t i = 0; i < file_size.size(); i++, cmp_idx++) {
+    if (cmp_idx >= file_size.size()) {
+      // we might be starting in the middle or even the end of the file list,
+      // but we might need to reconsider some of the files we have previously
+      // skipped, so we need to wraparound. See
+      // https://github.com/facebook/rocksdb/issues/10257#issuecomment-1180534048
+      // for details why this is necessary.
+      cmp_idx = 0;
+    }
+
     int index = file_size[cmp_idx];
     auto* f = level_files[index];
 
