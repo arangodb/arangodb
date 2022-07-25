@@ -271,6 +271,7 @@ class instanceManager {
     }
   }
   launchInstance() {
+    internal.env['INSTANCEINFO'] = JSON.stringify(this.getStructure());
     const startTime = time();
     try {
       this.arangods.forEach(arangod => arangod.startArango());
@@ -705,6 +706,12 @@ class instanceManager {
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
+    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    if (timeoutReached) {
+      print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
+      forceTerminate = true;
+    }
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
@@ -718,7 +725,7 @@ class instanceManager {
       }
     }
 
-    if (!this.checkInstanceAlive()) {
+    if (!forceTerminate && !this.checkInstanceAlive()) {
       print(Date() + ' Server already dead, doing nothing. This shouldn\'t happen?');
     }
 
@@ -911,7 +918,7 @@ class instanceManager {
       jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
       headers: {'content-type': 'application/json' }
     };
-    let count = 10;
+    let count = 20;
     while (count > 0) {
       let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 

@@ -42,6 +42,7 @@
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/Variable.h"
 #include "Basics/ResourceUsage.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -81,13 +82,19 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
   }
 
   auto makeExecutorInfos() -> SortExecutorInfos {
+    if (tempStorage == nullptr) {
+      tempStorage = std::make_unique<TemporaryStorageFeature>(
+          fakedQuery->vocbase().server());
+    }
     SortElement sl{&sortVar, true};
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
-    return SortExecutorInfos(1, 1, {}, std::move(sortRegisters),
-                             /*limit (ignored for default sort)*/ 0, manager(),
-                             vpackOptions, monitor, false);
+    return SortExecutorInfos(
+        1, 1, {}, std::move(sortRegisters),
+        /*limit (ignored for default sort)*/ 0, manager(), *tempStorage,
+        vpackOptions, monitor, /*spillOverThresholdNumRows*/ 1000,
+        /*spillOverThresholdMemoryUsage*/ 1024 * 1024, false);
   }
 
   auto makeSubqueryRegisterInfos(size_t nestingLevel) -> RegisterInfos {
@@ -127,6 +134,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
   }
 
  private:
+  std::unique_ptr<TemporaryStorageFeature> tempStorage;
   velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
   Variable sortVar{"mySortVar", 0, false};
 };
