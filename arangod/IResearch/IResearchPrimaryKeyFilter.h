@@ -54,16 +54,21 @@ class PrimaryKeyFilter final : public irs::filter,
         _pkSeen(false),
         _nested(nested) {}
 
-  virtual irs::doc_iterator::ptr execute(
+  irs::doc_iterator::ptr execute(
       irs::ExecutionContext const& ctx) const override;
 
-  virtual size_t hash() const noexcept override;
+  size_t hash() const noexcept override;
 
   using irs::filter::prepare;
-  virtual filter::prepared::ptr prepare(
+  filter::prepared::ptr prepare(
       irs::index_reader const& index, irs::Order const& /*ord*/,
       irs::score_t /*boost*/,
       irs::attribute_provider const* /*ctx*/) const override;
+
+  void visit(irs::sub_reader const&,
+             irs::PreparedStateVisitor&) const override {
+    // NOOP
+  }
 
  protected:
   bool equals(filter const& rhs) const noexcept override;

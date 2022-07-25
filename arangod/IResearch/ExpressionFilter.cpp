@@ -56,9 +56,6 @@ inline irs::filter::prepared::ptr compileQuery(
   return irs::memory::make_managed<type_t>(ctx, std::move(stats), boost);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class NondeterministicExpressionIterator
-///////////////////////////////////////////////////////////////////////////////
 class NondeterministicExpressionIterator final : public irs::doc_iterator {
  public:
   NondeterministicExpressionIterator(
@@ -133,11 +130,8 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator {
   arangodb::aql::AqlValue val_;
   arangodb::iresearch::ExpressionExecutionContext ctx_;
   bool destroy_{false};
-};  // NondeterministicExpressionIterator
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class NondeterministicExpressionQuery
-///////////////////////////////////////////////////////////////////////////////
 class NondeterministicExpressionQuery final : public irs::filter::prepared {
  public:
   explicit NondeterministicExpressionQuery(
@@ -169,10 +163,15 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
         *execCtx, boost());
   }
 
+  void visit(irs::sub_reader const&,
+             irs::PreparedStateVisitor&) const override {
+    // NOOP
+  }
+
  private:
   arangodb::iresearch::ExpressionCompilationContext _ctx;
   irs::bstring stats_;
-};  // NondeterministicExpressionQuery
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class DeterministicExpressionQuery
@@ -216,10 +215,15 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     return irs::doc_iterator::empty();
   }
 
+  void visit(irs::sub_reader const&,
+             irs::PreparedStateVisitor&) const override {
+    // NOOP
+  }
+
  private:
   arangodb::iresearch::ExpressionCompilationContext _ctx;
   irs::bstring stats_;
-};  // DeterministicExpressionQuery
+};
 
 }  // namespace
 
