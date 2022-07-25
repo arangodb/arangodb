@@ -318,10 +318,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
   OperationOptions options;
   OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
                                           checkDocument.slice(), options);
-  res = trx.finish(checkDoc.result);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  std::ignore = trx.finish(checkDoc.result);
 
   return checkDoc.ok();
 }
