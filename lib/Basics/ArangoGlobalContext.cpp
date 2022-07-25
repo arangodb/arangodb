@@ -98,16 +98,24 @@ ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
 #endif
 #endif
 
+  bool lastOptionName{false};
+  std::string dataDirOption{"--database.directory"};
   for (int i = 0; i < argc; ++i) {
-    bool found{false};
-    if (std::string("--database.directory") == std::string(argv[i]) &&
-        i + 1 < argc) {
+    auto arg = std::string(argv[i]);
+    bool optionName{false};
+    if (arg.starts_with("--")) {
+      optionName = true;
+    }
+    if (dataDirOption == arg && i + 1 < argc) {
       _databasePath = std::string(argv[i + 1]);
     }
-    if (argc - 1 == i && !found) {
-      _databasePath = std::string(argv[i]);
+    if (!lastOptionName && !optionName) {
+      _databasePath = arg;
     }
+    lastOptionName = optionName;
   }
+
+  LOG_DEVEL << __FILE__ << ":" << __LINE__ << " " << _databasePath;
 
   ADB_WindowsEntryFunction();
 
