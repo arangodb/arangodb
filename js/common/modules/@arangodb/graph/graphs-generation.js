@@ -345,6 +345,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
 
 
     return {
+        makeVertex,
         makeVertices,
         makeOneVertex,
         makeSingleVertexNoEdges,

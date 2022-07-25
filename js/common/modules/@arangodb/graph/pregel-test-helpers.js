@@ -109,6 +109,35 @@ const testPageRankOnGraph = function(vertices, edges, seeded = false) {
     }
 };
 
+const testHITSOnGraph = function(vertices, edges) {
+    db[vColl].save(vertices);
+    db[eColl].save(edges);
+    const query = `
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
+              `;
+    let parameters = {maxGSS:100, resultField: "hits"};
+
+    const result = runPregelInstance("hits", graphName, parameters, query);
+
+    const graph = new Graph(vertices, edges);
+    for (const v of result) {
+        graph.vertex(v._key).value = v.value;
+    }
+    const hits = new HITS();
+    for (const resultV of result) {
+        const resultVAfterStep = hits.doOneHITSStep(resultV._key, graph);
+        if (!amostEquals(resultV.value.hits_hub, resultVAfterStep.hits_hub, epsilon)) {
+            console.error(`The HITS algorithm did not find a fixed point: ` +
+                `it returned ${JSON.stringify(resultV.value.hits_hub)}, ` +
+                `but another test iteration returned ` + `${JSON.stringify(resultVAfterStep)} ` +
+                `for vertex ${JSON.stringify(resultV)}. The values returned by the algorithm ` +
+                `are ${JSON.stringify(result)}.`);
+            assertTrue(false);
+        }
+    }
+};
+
 /**
  * Run the given algorithm, collect buckets labeled with parameters.resultField with their sizes and returns
  * an array [{parameters.resultField: <label>, size: <size>} for all possible <label>s].
@@ -298,12 +327,25 @@ class Graph {
         return this.vertices.get(key);
     }
 
-    printVertices() {
-        let listVertices = [];
-        for (const [vKey, v] of this.vertices) {
-            listVertices.push([vKey, v.label, v.value, v.outNeighbors, v.inNeighbors]);
+    printVertices(onlyKeys = false) {
+        if (onlyKeys) {
+            let listVertices = [];
+            for (const [vKey, ] of this.vertices) {
+                listVertices.push(vKey);
+            }
+            console.warn(listVertices);
+        } else {
+            console.warn(`Vertices: `);
+            for (const [vKey, v] of this.vertices) {
+                console.warn(`  ${vKey} : `);
+                console.warn(`    label: ${v.label}`);
+                console.warn(`    value: ${v.value}$`);
+                console.warn(`    outNeighbs: ${JSON.stringify(v.outNeighbors)}`);
+                console.warn(`    inNeighbs:  ${JSON.stringify(v.inNeighbors)}`);
+            }
+            console.warn("End vertices");
         }
-        console.warn(listVertices);
+
     }
 
     /**
@@ -355,7 +397,8 @@ class Graph {
      *              that is being popped from the queue. The function must have one argument: the vertex being popped.
      */
     bfs (source, cbOnFindVertex, cbOnPopVertex) {
-        assertTrue(this.vertices.has(source), `bfs: the given source "${source}" is not a vertex`);
+        assertTrue(typeof (source) === `string`, `${source} is not a string`);
+        assertTrue(this.vertices.has(`${source}`), `bfs: the given source "${JSON.stringify(source)}" is not a vertex`);
         let visited = new Set();
         visited.add(source);
         if (cbOnFindVertex !== undefined) {
@@ -435,6 +478,57 @@ class PageRank {
         return this.dampingFactor * sum + this.commonProbability;
     }
 
+}
+
+class HITS {
+
+    computeAuthNorm (graph) {
+        let sum = 0.0;
+        for (const [, vertex] of graph.vertices) {
+            assertTrue(vertex.hasOwnProperty("value"));
+            sum += vertex.value.hits_auth * vertex.value.hits_auth;
+        }
+        return Math.sqrt(sum);
+    }
+
+    computeHubNorm (graph) {
+        let sum = 0.0;
+        for (const [, vertex] of graph.vertices) {
+            sum += vertex.value.hits_hub * vertex.value.hits_hub;
+        }
+        return Math.sqrt(sum);
+    }
+
+    /**
+     * Perform one step of the HITS algorithm and return the new value of the given vertex.
+     * @returns {*}
+     * @param vKey vertex key
+     * @param graph a graph containing a vertex with this key
+     */
+    doOneHITSStep(vKey, graph) {
+
+        const authNorm = this.computeAuthNorm(graph);
+        const hubNorm = this.computeHubNorm(graph);
+        const v = graph.vertex(vKey);
+
+        // auth
+        let sumAuth = 0.0;
+        for (const predKey of v.inNeighbors) {
+            const pred = graph.vertex(predKey);
+            assertTrue(pred.hasOwnProperty("value"));
+            sumAuth += pred.value.hits_hub;
+        }
+        sumAuth /=  authNorm;
+        // hub
+        let sumHub = 0.0;
+        for (const predKey of v.outNeighbors) {
+            const pred = graph.vertex(predKey);
+            assertTrue(pred.hasOwnProperty("value"));
+            sumHub += pred.value.hits_auth;
+        }
+        sumHub /=  hubNorm;
+        return {hits_hub: sumHub, hits_auth: sumAuth};
+    }
 }
 
 function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
@@ -1287,7 +1381,7 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
 function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
-    // const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
+    const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
 
 
 
@@ -1311,6 +1405,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
      * @param source
      */
     const testSSSPOnGraph = function(vertices, edges, source) {
+        assertEqual(typeof (source), 'string', `${source} is not a string`);
         db[vColl].save(vertices);
         db[eColl].save(edges);
         const query = `
@@ -1348,7 +1443,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             tearDown: makeTearDown(isSmart),
 
-            testDirectedCrystalGraphWithAdditionalEdge: function () {
+            testSSSPDirectedCrystalGraphWithAdditionalEdge: function () {
                 // directed crystal graph (vertical edges go down):
                 //   ->0 -> 3 -> 6 ->
                 //     |    |    |
@@ -1364,26 +1459,28 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const numberLayers = 3;
                 const thickness = 3;
 
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v"))
-                    .makeCrystal(numberLayers, thickness, "directed");
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
+                const {vertices, edges} = generator.makeCrystal(numberLayers, thickness, "directed");
                 // add an edge
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "7", "v"));
-                const source = 'v_0';
+                const source = generator.makeVertex("0")._key;
                 testSSSPOnGraph(vertices, edges, source);
 
             },
 
             testSSSPTwoEdges: function () {
-                const vertices = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeVertices(3);
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
+                const vertices = generator.makeVertices(3);
                 let edges = [];
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "1", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "1", "v"));
-
-                testSSSPOnGraph(vertices, edges, "v_0");
+                const source = generator.makeVertex("0")._key;
+                testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSPTwoEdgesWithSelfloops: function () {
-                const vertices = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeVertices(3);
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
+                const vertices = generator.makeVertices(3);
                 let edges = [];
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "1", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "1", "v"));
@@ -1391,44 +1488,124 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "0", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "1", "v", "1", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "2", "v"));
-
-                testSSSPOnGraph(vertices, edges, "v_0");
+                const source = generator.makeVertex("0")._key;
+                testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSPTwoDisjointDirectedCycles: function () {
 
                 const length = 3;
-                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
-                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
+                const generator0 = graphGenerator(verticesEdgesGenerator(vColl, "v0"));
+                const subgraph01 = generator0.makeDirectedCycle(length);
+                const generator1 = graphGenerator(verticesEdgesGenerator(vColl, "v1"));
+                const subgraph02 = generator1.makeDirectedCycle(length);
                 const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
-
-                testSSSPOnGraph(vertices, edges, "v0_0");
+                const source = generator0.makeVertex("0")._key;
+                testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSP10Star: function () {
                 const numberLeaves = 10;
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
                 const {
                     vertices,
                     edges
-                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
-                testSSSPOnGraph(vertices, edges, "v_0");
+                } = generator.makeStar(numberLeaves, "bidirected");
+                const source = generator.makeVertex("0")._key;
+                testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSP10StarMultipleEdges: function () {
                 const numberLeaves = 10;
-
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
                 const {
                     vertices,
                     edges
-                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                } = generator.makeStar(numberLeaves, "bidirected");
                 // insert each edge twice
                 let edges2 = edges.slice();
                 for (const e of edges) {
                     edges2.push({... e});
                 }
-                testSSSPOnGraph(vertices, edges2, "v_0");
+                const source = generator.makeVertex("0")._key;
+                testSSSPOnGraph(vertices, edges2, source);
             }
 
+
+        };
+    };
+}
+
+function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
+
+    const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+    const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
+
+    return function () {
+        'use strict';
+
+        const unionGraph = graphGeneration.unionGraph;
+
+        return {
+
+            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+
+            tearDown: makeTearDown(isSmart),
+
+            testHITSOneDirectedCycle: function () {
+                const length = 3;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeDirectedCycle(length);
+                testHITSOnGraph(vertices, edges);
+
+            },
+
+            testHITSTwoDisjointDirectedCycles: function () {
+                const length = 3;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
+                const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                testHITSOnGraph(vertices, edges);
+            },
+
+            testHITSTwoDirectedCyclesConnectedByDirectedEdge: function () {
+                const size = 5;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(size);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(size);
+                let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
+                testHITSOnGraph(vertices, edges);
+            },
+
+            testHITSTwo4CliquesConnectedByDirectedEdge: function () {
+                const size = 4;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeBidirectedClique(size);
+                let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
+                testHITSOnGraph(vertices, edges);
+            },
+            testHITSThree4_5_6CliquesConnectedByUndirectedTriangle: function () {
+                const sizes = [4, 5, 6];
+                let subgraphs = [];
+                for (let i = 0; i < 3; ++i) {
+                    subgraphs.push(graphGenerator(verticesEdgesGenerator(vColl, `v${i}`)).makeBidirectedClique(sizes[i]));
+                }
+                let {vertices, edges} = unionGraph(subgraphs);
+
+                for (let i = 0; i < 3; ++i){
+                    for (let j = i+1; j < 3; ++j){
+                        edges.push(makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`));
+                        edges.push(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
+                    }
+                }
+                testHITSOnGraph(vertices, edges);
+            },
+
+            testHITS10Star: function () {
+                const numberLeaves = 10;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                testHITSOnGraph(vertices, edges);
+            },
 
         };
     };
@@ -1441,4 +1618,4 @@ exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;
 exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
-exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
+exports.makeHITSTestSuite = makeHITSTestSuite;
