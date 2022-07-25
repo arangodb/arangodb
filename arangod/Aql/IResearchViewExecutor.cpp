@@ -778,7 +778,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 
     // FIXME(gnusi): compile time, refactor
     if (_filterCookie) {
-      *_filterCookie = std::move(root);
+      *_filterCookie = _filter.get();
     }
 
     _isInitialized = true;
