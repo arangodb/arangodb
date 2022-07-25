@@ -138,7 +138,7 @@ Result IResearchInvertedIndexMock::insert(transaction::Methods &trx,
                                           LocalDocumentId documentId,
                                           velocypack::Slice doc) {
 
-  IResearchInvertedIndexMetaIndexingContext ctx(this->meta());
+  IResearchInvertedIndexMetaIndexingContext ctx(&this->meta());
   return IResearchDataStore::insert< FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
                                     IResearchInvertedIndexMetaIndexingContext>(trx, documentId,
                                                                 doc, ctx);
