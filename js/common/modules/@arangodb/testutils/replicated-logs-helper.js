@@ -543,6 +543,15 @@ const sortedArrayEqualOrError = (left, right) => {
   }
 };
 
+const shardIdToLogId = function (shardId) {
+  return shardId.slice(1);
+};
+
+const dumpLog = function (shardId, limit=1000) {
+  let log = db._replicatedLog(shardIdToLogId(shardId));
+  return log.head(limit);
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
@@ -583,3 +592,5 @@ exports.updateReplicatedLogTarget = updateReplicatedLogTarget;
 exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
+exports.shardIdToLogId = shardIdToLogId;
+exports.dumpLog = dumpLog;

@@ -36,47 +36,12 @@ const { fail,
 
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-const arangosh = require('@arangodb/arangosh');
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const request = require('@arangodb/request');
 const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
 const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
 const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
+const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
 const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
-
-const getDBServers = function (db) {
-  let requestResult = db._connection.GET("/_admin/cluster/health");
-  arangosh.checkRequestResult(requestResult);
-  let dbServers = {};
-  for (const [serverId, serverInfo] of Object.entries(requestResult.Health)) {
-    if (serverInfo.Role === "DBServer") {
-      dbServers[serverId] = serverInfo.Endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-    }
-  }
-  return dbServers;
-};
-
-const getLocalValue = function (endpoint, db, col, key) {
-  const res = request.get({
-    url: `${endpoint}/_db/${db}/_api/document/${col}/${key}`,
-    headers: {
-      "X-Arango-Allow-Dirty-Read": true
-    },
-  });
-  arangosh.checkRequestResult(res);
-  return res.json;
-};
-
-const localKeyStatus = function (endpoint, db, col, key, available) {
-  const data = getLocalValue(endpoint, db, col, key);
-  if (available === false && data.code === 404) {
-    return true;
-  }
-  if (data._key === key) {
-    return true;
-  }
-  return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
-};
 
 /**
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
@@ -180,7 +145,8 @@ function transactionReplication2ReplicateOperationSuite() {
       }
 
       let shards = c.shards();
-      let dbServers = getDBServers(db);
+      let servers = Object.assign({}, ...replicatedLogsHelper.dbservers.map(
+        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       for (const log of logs) {
@@ -216,23 +182,22 @@ function transactionReplication2ReplicateOperationSuite() {
         for (const shard in shards) {
           for (const key in keysFound) {
             let localValues = {};
-            for (const endpoint of Object.values(dbServers)) {
-              replicatedLogsHelper.waitFor(function () {
-                return localKeyStatus(endpoint, dbn, shard, key, shard === shardId);
-              });
-              localValues[endpoint] = getLocalValue(endpoint, dbn, shard, key);
+            for (const [serverId, endpoint] of Object.entries(servers)) {
+              replicatedLogsHelper.waitFor(
+                replicatedStatePredicates.localKeyStatus(endpoint, dbn, shard, key, shard === shardId));
+              localValues[serverId] = replicatedStateHelper.getLocalValue(endpoint, dbn, shard, key);
             }
-            for (const [endpoint, res] of Object.entries(localValues)) {
+            for (const [serverId, res] of Object.entries(localValues)) {
               if (shard === shardId) {
                 assertTrue(res.code === undefined,
-                  `Error while reading key ${key} from ${endpoint}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
+                  `Error while reading key ${key} from ${serverId}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
                   `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
                 assertEqual(res._key, key,
-                  `Wrong key returned by ${endpoint}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
+                  `Wrong key returned by ${serverId}/${dbn}/${shard}, got: ${JSON.stringify(res)}. ` +
                   `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
               } else {
                 assertTrue(res.code === 404,
-                  `Expected 404 while reading key ${key} from ${endpoint}/${dbn}/${shard}, ` +
+                  `Expected 404 while reading key ${key} from ${serverId}/${dbn}/${shard}, ` +
                   `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
                   `\n${replication2Log}`);
               }
@@ -288,9 +253,9 @@ function transactionReplicationOnFollowersSuite(dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const numberOfShards = 1;
-  var cn = 'UnitTestsTransaction';
-  var c = null;
-  var isReplication2 = dbParams.replicationVersion === "2";
+  const cn = 'UnitTestsTransaction';
+  let c = null;
+  let isReplication2 = dbParams.replicationVersion === "2";
 
   return {
     setUpAll: function () {
@@ -305,7 +270,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
     setUp: function () {
       db._drop(cn);
-      let rc = Object.keys(getDBServers(db)).length;
+      let rc = Object.keys(replicatedLogsHelper.dbservers).length;
       c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": rc, "replicationFactor": rc});
     },
 
@@ -326,24 +291,24 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       trx.abort();
 
       let shards = c.shards();
-      let dbServers = getDBServers(db);
+      let servers = Object.assign({}, ...replicatedLogsHelper.dbservers.map(
+        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
       let localValues = {};
-      for (const endpoint of Object.values(dbServers)) {
-        replicatedLogsHelper.waitFor(function () {
-          return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
-        });
-        localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+      for (const [serverId, endpoint] of Object.entries(servers)) {
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shards[0], "foo", false));
+        localValues[serverId] = replicatedStateHelper.getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 
-      var replication2Log = '';
+      let replication2Log = '';
       if (isReplication2) {
         let log = db._replicatedLog(shards[0].slice(1));
         let entries = log.head(1000);
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
       }
-      for (const [endpoint, res] of Object.entries(localValues)) {
+      for (const [serverId, res] of Object.entries(localValues)) {
         assertTrue(res.code === 404,
-          `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
+          `Expected 404 while reading key from ${serverId}/${dbn}/${shards[0]}, ` +
           `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
           `\n${replication2Log}`);
       }
@@ -357,7 +322,8 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       };
 
       let shards = c.shards();
-      let dbServers = getDBServers(db);
+      let servers = Object.assign({}, ...replicatedLogsHelper.dbservers.map(
+        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
 
       let trx;
       try {
@@ -369,11 +335,10 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       } finally {
         if (trx) {
           let localValues = {};
-          for (const endpoint of Object.values(dbServers)) {
-            replicatedLogsHelper.waitFor(function () {
-              return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
-            });
-            localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+          for (const [serverId, endpoint] of Object.entries(servers)) {
+            replicatedLogsHelper.waitFor(
+              replicatedStatePredicates.localKeyStatus(endpoint, dbn, shards[0], "foo", false));
+            localValues[serverId] = replicatedStateHelper.getLocalValue(endpoint, dbn, shards[0], "foo");
           }
 
           // Make sure nothing is committed just yet
@@ -384,9 +349,9 @@ function transactionReplicationOnFollowersSuite(dbParams) {
             replication2Log = `Log entries: ${JSON.stringify(entries)}`;
           }
 
-          for (const [endpoint, res] of Object.entries(localValues)) {
+          for (const [serverId, res] of Object.entries(localValues)) {
             assertTrue(res.code === 404,
-              `Expected 404 while reading key from ${endpoint}/${dbn}/${shards[0]}, ` +
+              `Expected 404 while reading key from ${serverId}/${dbn}/${shards[0]}, ` +
               `but the response was ${JSON.stringify(res)}. All responses: ${JSON.stringify(localValues)}` +
               `\n${replication2Log}`);
           }
@@ -396,11 +361,10 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       }
 
       let localValues = {};
-      for (const endpoint of Object.values(dbServers)) {
-        replicatedLogsHelper.waitFor(function () {
-          return localKeyStatus(endpoint, dbn, shards[0], "foo", true);
-        });
-        localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
+      for (const [serverId, endpoint] of Object.entries(servers)) {
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shards[0], "foo", true));
+        localValues[serverId] = replicatedStateHelper.getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 
       let replication2Log = '';
@@ -410,22 +374,25 @@ function transactionReplicationOnFollowersSuite(dbParams) {
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
       }
 
-      for (const [endpoint, res] of Object.entries(localValues)) {
+      for (const [serverId, res] of Object.entries(localValues)) {
         assertTrue(res.code === undefined,
-          `Error while reading key from ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+          `Error while reading key from ${serverId}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
           `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
         assertEqual(res._key, "foo",
-          `Wrong key returned by ${endpoint}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
+          `Wrong key returned by ${serverId}/${dbn}/${shards[0]}, got: ${JSON.stringify(res)}. ` +
           `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`);
       }
 
       // All ids and revisions should be equal
-      for (let idx = 1; idx < localValues.length; ++idx) {
-        assertEqual(localValues[idx - 1]._rev, localValues[idx]._rev, `_rev mismatch ${JSON.stringify(localValues)}` +
-          `\n${replication2Log}`);
-        assertEqual(localValues[idx - 1]._id, localValues[idx]._id, `_id mismatch ${JSON.stringify(localValues)}` +
-          `\n${replication2Log}`);
-      }
+      /*
+      const revs = Object.values(localValues).map(value => value._rev);
+      assertTrue(revs.every((val, i, arr) => val === arr[0]), `_rev mismatch ${JSON.stringify(localValues)}` +
+        `\n${replication2Log}`);
+
+      const ids = Object.values(localValues).map(value => value._id);
+      assertTrue(ids.every((val, i, arr) => val === arr[0]), `_id mismatch ${JSON.stringify(localValues)}` +
+        `\n${replication2Log}`);
+      */
     },
   };
 }
