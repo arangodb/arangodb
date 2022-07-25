@@ -70,11 +70,11 @@ const getLocalValue = function (endpoint, db, col, key) {
 /**
  * Checks if a given key exists (or not) on all followers.
  */
-const checkFollowersValue = function (endpoints, shardId, key, value, isReplication2) {
+const checkFollowersValue = function (servers, shardId, key, value, isReplication2) {
   let localValues = {};
-  for (const endpoint of Object.values(endpoints)) {
+  for (const [serverId, endpoint] of Object.entries(servers)) {
     lh.waitFor(function(){return localKeyStatus(endpoint, database, shardId, key, value !== null);});
-    localValues[endpoint] = getLocalValue(endpoint, database, shardId, key);
+    localValues[serverId] = getLocalValue(endpoint, database, shardId, key);
   }
 
   var replication2Log = '';
@@ -83,17 +83,17 @@ const checkFollowersValue = function (endpoints, shardId, key, value, isReplicat
   }
   let extraErrorMessage = `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`;
 
-  for (const [endpoint, res] of Object.entries(localValues)) {
+  for (const [serverId, res] of Object.entries(localValues)) {
     if (value === null) {
       assertTrue(res.code === 404,
-          `Expected 404 while reading key from ${endpoint}/${database}/${shardId}, ` +
+          `Expected 404 while reading key from ${serverId}/${database}/${shardId}, ` +
           `but the response was ${JSON.stringify(res)}.\n` + extraErrorMessage);
     } else {
       assertTrue(res.code === undefined,
-          `Error while reading key from ${endpoint}/${database}/${shardId}, ` +
+          `Error while reading key from ${serverId}/${database}/${shardId}/${key}, ` +
           `got: ${JSON.stringify(res)}.\n` + extraErrorMessage);
       assertEqual(res.value, value,
-          `Wrong value returned by ${endpoint}/${database}/${shardId}, expected ${value} but ` +
+          `Wrong value returned by ${serverId}/${database}/${shardId}, expected ${value} but ` +
           `got: ${JSON.stringify(res)}. ` + extraErrorMessage);
     }
   }
@@ -176,7 +176,7 @@ const localKeyStatus = function (endpoint, db, col, key, available) {
   if (available === false && data.code === 404) {
     return true;
   }
-  if (data._key === key) {
+  if (available === true && data._key === key) {
     return true;
   }
   return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
@@ -413,85 +413,85 @@ const replicatedStateFollowerSuite = function (dbParams) {
     testFollowersSingleDocument: function() {
       let collection = db._collection(collectionName);
       let shardId = collection.shards()[0];
-      let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
+      let servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       let handle = collection.insert({_key: "foo", value: "bar"});
-      checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
+      checkFollowersValue(servers, shardId, "foo", "bar", isReplication2);
 
       handle = collection.update(handle, {value: "baz"});
-      checkFollowersValue(endpoints, shardId, "foo", "baz", isReplication2);
+      checkFollowersValue(servers, shardId, "foo", "baz", isReplication2);
 
       handle = collection.replace(handle, {_key: "foo", value: "bar"});
-      checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
+      checkFollowersValue(servers, shardId, "foo", "bar", isReplication2);
 
       collection.remove(handle);
-      checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
+      checkFollowersValue(servers, shardId, "foo", null, isReplication2);
     },
 
     testFollowersMultiDocuments: function() {
       let collection = db._collection(collectionName);
       let shardId = collection.shards()[0];
-      let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
+      let servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       let documents = [...Array(3).keys()].map(i => {return {_key: `foo${i}`, value: i};});
 
       let handles = collection.insert(documents);
       for (let doc of documents) {
-        checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
       }
 
       let updates = documents.map(doc => {return {value: doc.value * 2};});
       handles = collection.update(handles, updates);
       for (let doc of documents) {
-        checkFollowersValue(endpoints, shardId, doc._key, doc.value * 2, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, doc.value * 2, isReplication2);
       }
 
       handles = collection.replace(handles, documents);
       for (let doc of documents) {
-        checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
       }
 
       collection.remove(handles);
       for (let doc of documents) {
-        checkFollowersValue(endpoints, shardId, doc._key, null, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, null, isReplication2);
       }
     },
 
     testFollowersAql: function() {
       let collection = db._collection(collectionName);
       let shardId = collection.shards()[0];
-      let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
+      let servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       let documents = [...Array(3).keys()].map(i => {return {_key: `foo${i}`, value: i};});
 
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('foo', i), value: i} INTO ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(endpoints, shardId, doc._key, doc.value, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, value: doc.value * 2} IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(endpoints, shardId, doc._key, doc.value * 2, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, doc.value * 2, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REPLACE {_key: doc._key, value: CONCAT(doc._key, "bar")} IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(endpoints, shardId, doc._key, doc._key + "bar", isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, doc._key + "bar", isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REMOVE doc IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(endpoints, shardId, doc._key, null, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, null, isReplication2);
       }
     },
 
     testFollowersTruncate: function() {
       let collection = db._collection(collectionName);
       let shardId = collection.shards()[0];
-      let endpoints = lh.dbservers.map(serverId => lh.getServerUrl(serverId));
+      let servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       collection.insert({_key: "foo", value: "bar"});
-      checkFollowersValue(endpoints, shardId, "foo", "bar", isReplication2);
+      checkFollowersValue(servers, shardId, "foo", "bar", isReplication2);
       collection.truncate();
-      checkFollowersValue(endpoints, shardId, "foo", null, isReplication2);
+      checkFollowersValue(servers, shardId, "foo", null, isReplication2);
     }
   };
 };
