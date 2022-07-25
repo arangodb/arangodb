@@ -85,6 +85,9 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
    * state has been updated. The underlying stream is guaranteed to have been
    * initialized.
    */
+  // TODO If this throws it will cause a FATAL_ERROR_EXIT in the
+  //      LeaderStateManager.
+  //      It should probably be made noexcept to make that clear.
   virtual void onSnapshotCompleted(){};
 
   // TODO make private

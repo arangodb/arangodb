@@ -67,6 +67,8 @@ void FollowerStateManager<S>::applyEntries(
                 });
             // this action will resolve promises that wait for a given index to
             // be applied
+            // TODO Shouldn't this be scheduled, rather than us waiting on
+            //      arbitrary code here?
             outerAction.fire();
             self->handlePollResult(std::move(pollFuture));
             return;
@@ -88,7 +90,10 @@ void FollowerStateManager<S>::applyEntries(
         LOG_CTX("c89c8", DEBUG, self->loggerContext)
             << "trigger retry for polling";
         // TODO retry
-        std::abort();
+        LOG_CTX("f221d", FATAL, self->loggerContext)
+            << "Applying entries failed. Retrying polling is not yet "
+               "implemented.";
+        FATAL_ERROR_ABORT();
       });
 }
 
@@ -129,6 +134,8 @@ void FollowerStateManager<S>::handlePollResult(
                 << "LogFollower resigned, but Replicated State already gone";
           }
         } catch (basics::Exception const& e) {
+          // TODO This is a fatal log message, but no action happens afterwards.
+          //      Should it rethrow / abort?
           LOG_CTX("f2188", FATAL, self->loggerContext)
               << "waiting for leader ack failed with unexpected exception: "
               << e.message();
@@ -153,7 +160,7 @@ auto FollowerStateManager<S>::waitForApplied(LogIndex idx)
 template<typename S>
 void FollowerStateManager<S>::tryTransferSnapshot(
     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  auto& leader = logFollower->getLeader();
+  auto const& leader = logFollower->getLeader();
   TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
                                     "has to be a leader in the current term";
 
@@ -277,11 +284,14 @@ void FollowerStateManager<S>::startService(
 
 template<typename S>
 void FollowerStateManager<S>::ingestLogData() {
+  // TODO As no lock is held after we get the core here, calling resign before
+  //      `state` (IReplicatedFollowerState) is set in startService() will fail
+  //      to take out the core.
   auto core = _guardedData.doUnderLock([&](GuardedData& data) {
     data.updateInternalState(FollowerInternalState::kTransferSnapshot);
     auto demux = Demultiplexer::construct(logFollower);
     demux->listen();
-    data.stream = demux->template getStreamById<1>();
+    data.stream = demux->template getStreamById<1>();  // TODO fix stream id
     return std::move(data.core);
   });
 
@@ -289,7 +299,7 @@ void FollowerStateManager<S>::ingestLogData() {
   auto hiddenState = factory->constructFollower(std::move(core));
 
   LOG_CTX("ea777", TRACE, loggerContext) << "check if new snapshot is required";
-  checkSnapshot(hiddenState);
+  checkSnapshot(std::move(hiddenState));
 }
 
 template<typename S>
@@ -431,6 +441,11 @@ auto FollowerStateManager<S>::resign() && noexcept
       return std::move(guard->core);
     }
   });
+  // TODO The core can currently be nullptr if resign is called during startup:
+  //      Because the core will be moved into the newly created state, but the
+  //      state will only be visible (i.e. non-nullptr) after startService().
+  //      In between the snapshot transfer takes place, so this is a non-trivial
+  //      race.
   TRI_ASSERT(core != nullptr);
   TRI_ASSERT(guard->token != nullptr);
   TRI_ASSERT(!guard->_didResign);
