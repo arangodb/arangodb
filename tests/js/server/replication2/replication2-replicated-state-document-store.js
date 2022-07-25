@@ -73,7 +73,7 @@ const getLocalValue = function (endpoint, db, col, key) {
 const checkFollowersValue = function (endpoints, shardId, key, value, isReplication2) {
   let localValues = {};
   for (const endpoint of Object.values(endpoints)) {
-    lh.waitFor(function(){return localKeyStatus(endpoint, database, shardId, key, value !== null);}, 100);
+    lh.waitFor(function(){return localKeyStatus(endpoint, database, shardId, key, value !== null);});
     localValues[endpoint] = getLocalValue(endpoint, database, shardId, key);
   }
 

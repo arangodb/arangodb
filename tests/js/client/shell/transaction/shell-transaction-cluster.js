@@ -219,7 +219,7 @@ function transactionReplication2ReplicateOperationSuite() {
             for (const endpoint of Object.values(dbServers)) {
               replicatedLogsHelper.waitFor(function () {
                 return localKeyStatus(endpoint, dbn, shard, key, shard === shardId);
-              }, 10);
+              });
               localValues[endpoint] = getLocalValue(endpoint, dbn, shard, key);
             }
             for (const [endpoint, res] of Object.entries(localValues)) {
@@ -327,7 +327,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       for (const endpoint of Object.values(dbServers)) {
         replicatedLogsHelper.waitFor(function () {
           return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
-        }, 10);
+        });
         localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 
@@ -368,7 +368,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
           for (const endpoint of Object.values(dbServers)) {
             replicatedLogsHelper.waitFor(function () {
               return localKeyStatus(endpoint, dbn, shards[0], "foo", false);
-            }, 10);
+            });
             localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
           }
 
@@ -395,7 +395,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       for (const endpoint of Object.values(dbServers)) {
         replicatedLogsHelper.waitFor(function () {
           return localKeyStatus(endpoint, dbn, shards[0], "foo", true);
-        }, 10);
+        });
         localValues[endpoint] = getLocalValue(endpoint, dbn, shards[0], "foo");
       }
 
