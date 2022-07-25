@@ -34,12 +34,6 @@ const { fail,
   assertNotUndefined,
 } = jsunity.jsUnity.assertions;
 
-const isCluster = require('internal').isCluster();
-
-if (!isCluster) {
-  return jsunity.done();
-}
-
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const arangosh = require('@arangodb/arangosh');
