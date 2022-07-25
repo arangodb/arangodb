@@ -32,6 +32,7 @@ const internal = require('internal'); // OK: processCsvFile
 const { 
   getServerById,
   getServersByType,
+  getUrlById,
   getEndpointById,
   getEndpointsByType,
   Helper,
@@ -45,7 +46,8 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
-    
+
+exports.getUrlById = getUrlById;
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;
