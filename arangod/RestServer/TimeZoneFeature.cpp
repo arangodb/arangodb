@@ -95,7 +95,7 @@ void TimeZoneFeature::prepareTimeZoneData(
   try {
     auto const* zone = date::current_zone();
     gotTZ = zone != nullptr;
-  } catch (std::runtime_error const& ex) {
+  } catch (std::runtime_error const&) {
     gotTZ = false;
   }
 
