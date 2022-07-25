@@ -98,8 +98,9 @@ void TimeZoneFeature::prepareTimeZoneData(
   } catch (std::runtime_error const& ex) {
     gotTZ = false;
   }
+
   if (!gotTZ) {
-    LOG_TOPIC("67bdd", FATAL, arangodb::Logger::STARTUP)
+    LOG_TOPIC("67bde", FATAL, arangodb::Logger::STARTUP)
         << "Could not get current timezone from " << tz_path
         << ". please set the TZ_DATA environment variable to the "
         << "tzdata directory in case you are running an unusual setup";
