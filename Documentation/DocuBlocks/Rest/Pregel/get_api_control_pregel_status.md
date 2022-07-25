@@ -39,7 +39,9 @@ The TTL is used to calculate the expiration date for the job's results.
 
 @RESTREPLYBODY{state,string,required,string}
 State of the execution. The following values can be returned:
-- `"running"`: Algorithm is executing normally.
+- `"none"`: The Pregel run did not yet start.
+- `"loading"`: The graph is loaded from the database into memory before the execution of the algorithm.
+- `"running"`: The algorithm is executing normally.
 - `"storing"`: The algorithm finished, but the results are still being written
   back into the collections. Occurs only if the store parameter is set to true.
 - `"done"`: The execution is done. In version 3.7.1 and later, this means that
@@ -49,7 +51,7 @@ State of the execution. The following values can be returned:
 - `"canceled"`: The execution was permanently canceled, either by the user or by
   an error.
 - `"fatal error"`: The execution has failed and cannot recover.
-- `"in error"` (currently unused): The execution is in an error state. This can be
+- `"in error"`: The execution is in an error state. This can be
   caused by DB-Servers being not reachable or being non responsive. The execution
   might recover later, or switch to `"canceled"` if it was not able to recover
   successfully. 
@@ -65,15 +67,15 @@ Total runtime of the execution up to now (if the execution is still ongoing).
 @RESTREPLYBODY{startupTime,number,required,float}
 Startup runtime of the execution.
 The startup time includes the data loading time and can be substantial.
-The startup time will be reported as 0 if the startup is still ongoing.
 
 @RESTREPLYBODY{computationTime,number,required,float}
-Algorithm execution time. The computation time will be reported as 0 if the 
-computation still ongoing.
+Algorithm execution time. Is shown when the computation started. 
 
 @RESTREPLYBODY{storageTime,number,optional,float}
-Time for storing the results if the job includes results storage.
-The storage time be reported as 0 if storing the results is still ongoing.
+Time for storing the results if the job includes results storage. Is shown when the storing started.
+
+@RESTREPLYBODY{gssTimes,array,optional,float}
+Computation time of each global super step. Is shown when the computation started.
 
 @RESTREPLYBODY{reports,object,optional,get_api_control_pregel_reports}
 Statistics about the Pregel execution. The value will only be populated once
@@ -84,6 +86,44 @@ Total number of vertices processed.
 
 @RESTSTRUCT{edgeCount,get_api_control_pregel_reports,integer,optional,int64}
 Total number of edges processed.
+
+@RESTREPLYBODY{detail,object,required,get_api_contol_pregel_detail}
+Pregel run details. These details consist of the total `aggregatedStatus` and the `workerStatus`. The `workerStatus` shows the details for each DB Server individually, while the `aggregatedStatus` is an aggregate of all these DB Server details and therefore gives the details for the full Pregel run. 
+
+A status consists of a timeStamp, graphStoreStatus and allGssStatus has the following properties:
+
+@RESTSTRUCT{timeStamp,get_api_control_pregel_detail,time,required,time}
+The time at which the status was measured.
+
+@RESTREPLYBODY{graphStoreStatus,object,optional,get_api_control_pregel_detail_graphstorestatus}
+Status of the in memory graph.
+
+@RESTSTRUCT{verticesLoaded,get_api_control_pregel_detail_graphstorestatus,number,optional,int64}
+Number of vertices that are loaded from the database into memory.
+
+@RESTSTRUCT{edgesLoaded,get_api_control_pregel_detail_graphstorestatus,number,optional,int64}
+Number of edges that are loaded from the database into memory.
+
+@RESTSTRUCT{memoryBytesUsed,get_api_control_pregel_detail_graphstorestatus,number,optional,int64}
+Number of bytes used in-memory for the loaded graph.
+
+@RESTSTRUCT{verticesStored,get_api_control_pregel_detail_graphstorestatus,number,optional,int64}
+Number of vertices that are written back to the database after the Pregel computation finished. Only occurs if the store parameter is set to true.
+
+@RESTREPLYBODY{allGssStatus,object,optional,get_api_control_pregel_detail_allgssstatus}
+Details for each global superstep, `item` includes an array with
+
+@RESTSTRUCT{verticesProcessed,get_api_control_pregel_detail_allgssstatus,number,optional,int64}
+Number of vertices that have been processed in this step.
+
+@RESTSTRUCT{messagesSent,get_api_control_pregel_detail_allgssstatus,number,optional,int64}
+Number of messages sent in this step.
+
+@RESTSTRUCT{messagesReceived,get_api_control_pregel_detail_allgssstatus,number,optional,int64}
+Number of messages received in this step.
+
+@RESTSTRUCT{memoryBytesUsedForMessages,get_api_control_pregel_detail_allgssstatus,number,optional,int64}
+Number of bytes used in memory for the messages in this step.
 
 @RESTRETURNCODE{404}
 An HTTP 404 error is returned if no Pregel job with the specified execution number
