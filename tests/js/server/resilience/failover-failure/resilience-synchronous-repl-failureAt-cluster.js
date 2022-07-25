@@ -40,6 +40,8 @@ const {
   debugRemoveFailAt,
   debugSetFailAt,
   debugClearFailAt,
+  getEndpointById,
+  getServersByType,
 } = require('@arangodb/test-helper');
 
 

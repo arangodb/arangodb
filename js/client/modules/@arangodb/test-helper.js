@@ -46,7 +46,6 @@ const jsunity = require('jsunity');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
-const fs = require('fs');
 
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
