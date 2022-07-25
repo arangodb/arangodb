@@ -195,7 +195,7 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
   if (!logical) {
     return {};
   }
-  if (logical->type() != ViewType::kSearch) {
+  if (logical->type() != ViewType::kView) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             "error finding view: '" + _viewGuid + "' for link '" +
                 std::to_string(_id.id()) + "' : no such view"};

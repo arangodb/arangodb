@@ -152,7 +152,7 @@
         $('#nodes-leader-id').html(leader.endpoint);
         $('#nodes-followers-id').html('');
         _.each(followers, function (follower) {
-          $('#nodes-followers-id').append('<span data="' + self.parseEndpoint(follower.endpoint, true) + '">' + follower.endpoint + '</span>');
+          $('#nodes-followers-id').append('<span data="' + self.parseEndpoint(follower.endpoint) + '">' + follower.endpoint + '</span>');
         });
       } else {
         $('#nodes-leader-id').html('Error');
@@ -160,18 +160,15 @@
       }
     },
 
-    parseEndpoint: function (endpoint, url) {
+    parseEndpoint: function (endpoint) {
       var parsedEndpoint;
       if (endpoint.slice(6, 11) === '[::1]') {
-        parsedEndpoint = window.location.host.split(':')[0] + ':' + endpoint.split(':')[4];
+        parsedEndpoint = window.location.protocol + '//' + window.location.host.split(
+          ':')[0] + ':' + endpoint.split(':')[4];
       } else if (endpoint.slice(0, 6) === 'tcp://') {
         parsedEndpoint = 'http://' + endpoint.slice(6, endpoint.length);
       } else if (endpoint.slice(0, 6) === 'ssl://') {
         parsedEndpoint = 'https://' + endpoint.slice(6, endpoint.length);
-      }
-
-      if (url) {
-        parsedEndpoint = window.location.protocol + '//' + parsedEndpoint;
       }
 
       if (!parsedEndpoint) {

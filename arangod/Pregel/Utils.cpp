@@ -93,6 +93,7 @@ std::string const Utils::workerToMasterMessagesKey = "workerToMasterMessages";
 std::string const Utils::masterToWorkerMessagesKey = "masterToWorkerMessages";
 
 size_t const Utils::batchOfVerticesStoredBeforeUpdatingStatus = 1000;
+size_t const Utils::batchOfVerticesProcessedBeforeUpdatingStatus = 1000;
 
 std::string Utils::baseUrl(std::string const& prefix) {
   return Utils::apiPrefix + prefix + "/";

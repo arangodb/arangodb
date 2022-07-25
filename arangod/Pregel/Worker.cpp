@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Worker.h"
+#include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
@@ -168,23 +169,6 @@ void Worker<V, E, M>::setupWorker() {
     _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   };
 
-  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = _graphStore->status();
-      serialize(statusUpdateMsg, update);
-    }
-
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-  };
-
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
@@ -192,7 +176,7 @@ void Worker<V, E, M>::setupWorker() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
                    [this, self = shared_from_this(),
-                    statusUpdateCallback = std::move(statusUpdateCallback),
+                    statusUpdateCallback = std::move(_makeStatusCallback()),
                     finishedCallback = std::move(finishedCallback)] {
                      try {
                        _graphStore->loadShards(&_config, statusUpdateCallback,
@@ -378,7 +362,6 @@ void Worker<V, E, M>::_startProcessing() {
   } else {
     _runningThreads = 1;
   }
-  LOG_DEVEL << "threads? " << _runningThreads;
   _feature.metrics()->pregelNumberOfThreads->fetch_add(_runningThreads);
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());
@@ -406,7 +389,6 @@ void Worker<V, E, M>::_startProcessing() {
     });
   }
 
-  // TRI_ASSERT(_runningThreads == i);
   LOG_PREGEL("425c3", DEBUG)
       << "Starting processing using " << numT << " threads";
 }
@@ -455,6 +437,9 @@ bool Worker<V, E, M>::_processVertices(
     Vertex<V, E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
+    _currentGssObservables.messagesReceived += messages.size();
+    _currentGssObservables.memoryBytesUsedForMessages +=
+        messages.size() * sizeof(M);
 
     if (messages.size() > 0 || vertexEntry->active()) {
       vertexComputation->_vertexEntry = vertexEntry;
@@ -465,6 +450,13 @@ bool Worker<V, E, M>::_processVertices(
     }
     if (_state != WorkerState::COMPUTING) {
       break;
+    }
+
+    ++_currentGssObservables.verticesProcessed;
+    if (_currentGssObservables.verticesProcessed %
+            Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+        0) {
+      _makeStatusCallback()();
     }
   }
   // ==================== send messages to other shards ====================
@@ -487,6 +479,9 @@ bool Worker<V, E, M>::_processVertices(
   _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
   MessageStats stats;
   stats.sendCount = outCache->sendCount();
+  _currentGssObservables.messagesSent += outCache->sendCount();
+  _currentGssObservables.memoryBytesUsedForMessages +=
+      outCache->sendCount() * sizeof(M);
   stats.superstepRuntimeSecs = TRI_microtime() - start;
   inCache->clear();
   outCache->clear();
@@ -528,9 +523,14 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     // count all received messages
     _messageStats.receivedCount = _readCache->containedMessageCount();
-
     _feature.metrics()->pregelMessagesReceived->count(
         _readCache->containedMessageCount());
+
+    _allGssStatus.doUnderLock([this](AllGssStatus& obj) {
+      obj.push(this->_currentGssObservables.observe());
+    });
+    _currentGssObservables.zero();
+    _makeStatusCallback()();
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -660,30 +660,13 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     cb();
   };
 
-  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = _graphStore->status();
-      serialize(statusUpdateMsg, update);
-    }
-
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-  };
-
   _state = WorkerState::DONE;
   if (doStore) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
     _graphStore->storeResults(&_config, std::move(cleanup),
-                              statusUpdateCallback);
+                              _makeStatusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
@@ -903,6 +886,38 @@ void Worker<V, E, M>::_callConductorWithResponse(
       handle(r.slice());
     }
   }
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::_observeStatus() -> Status const {
+  auto currentGss = _currentGssObservables.observe();
+  auto fullGssStatus = _allGssStatus.copy();
+
+  if (!currentGss.isDefault()) {
+    fullGssStatus.gss.emplace_back(currentGss);
+  }
+  return Status{.graphStoreStatus = _graphStore->status(),
+                .allGssStatus = fullGssStatus.gss.size() > 0
+                                    ? std::optional{fullGssStatus}
+                                    : std::nullopt};
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::_makeStatusCallback() -> std::function<void()> {
+  return [self = shared_from_this(), this] {
+    VPackBuilder statusUpdateMsg;
+    {
+      auto ob = VPackObjectBuilder(&statusUpdateMsg);
+      statusUpdateMsg.add(Utils::senderKey,
+                          VPackValue(ServerState::instance()->getId()));
+      statusUpdateMsg.add(Utils::executionNumberKey,
+                          VPackValue(_config.executionNumber()));
+      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
+      auto update = _observeStatus();
+      serialize(statusUpdateMsg, update);
+    }
+    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+  };
 }
 
 // template types to create

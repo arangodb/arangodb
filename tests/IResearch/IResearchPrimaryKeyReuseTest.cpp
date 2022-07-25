@@ -89,10 +89,11 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
     EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
                                       vocbase,
@@ -216,10 +217,11 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
     EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
                                       vocbase,
@@ -377,10 +379,11 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
         "}}");
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
     EXPECT_EQ(TRI_ERROR_NO_ERROR, arangodb::tests::executeQuery(
                                       vocbase,

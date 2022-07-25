@@ -342,7 +342,8 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   auto update = deserialize<Status>(data.get(Utils::payloadKey));
   auto sender = data.get(Utils::senderKey).copyString();
 
-  LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
+  LOG_PREGEL("76632", DEBUG)
+      << fmt::format("Update received {}", data.toJson());
 
   _status.updateWorkerStatus(sender, std::move(update));
 }
