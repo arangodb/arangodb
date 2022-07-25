@@ -32,13 +32,14 @@
 namespace arangodb {
 namespace maintenance {
 
-class EnsureIndex : public ActionBase {
+class EnsureIndex : public ActionBase,
+                    public std::enable_shared_from_this<EnsureIndex> {
  public:
   EnsureIndex(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~EnsureIndex();
 
-  virtual arangodb::Result setProgress(double d) override final;
+  virtual arangodb::Result setProgress(uint64_t u) override final;
   virtual bool first() override final;
 };
 

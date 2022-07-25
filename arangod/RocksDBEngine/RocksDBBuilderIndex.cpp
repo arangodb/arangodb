@@ -334,7 +334,8 @@ static arangodb::Result fillIndex(
   return res;
 }
 
-arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
+arangodb::Result RocksDBBuilderIndex::fillIndexForeground(
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
@@ -674,7 +675,9 @@ void RocksDBBuilderIndex::Locker::unlock() {
 }
 
 // Background index filler task
-arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
+arangodb::Result RocksDBBuilderIndex::fillIndexBackground(
+    Locker& locker,
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
   TRI_ASSERT(locker.isLocked());
 
   arangodb::Result res;

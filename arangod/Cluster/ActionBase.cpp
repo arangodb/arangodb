@@ -277,6 +277,8 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
   _result.reset(errorNumber, errorString);
 }
 
+arangodb::Result ActionBase::setProgress(uint64_t) { return {}; }
+
 /**
  * progress() operation is an expected future feature.  Not supported in the
  *  original ActionBase derivatives

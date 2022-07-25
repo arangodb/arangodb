@@ -308,9 +308,10 @@ arangodb::Result Indexes::getAll(
 /// @brief ensures an index, locally
 ////////////////////////////////////////////////////////////////////////////////
 
-static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
-                               VPackSlice definition, bool create,
-                               VPackBuilder& output) {
+static Result EnsureIndexLocal(
+    arangodb::LogicalCollection* collection, VPackSlice definition, bool create,
+    VPackBuilder& output,
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
   TRI_ASSERT(collection != nullptr);
 
   return arangodb::basics::catchVoidToResult([&]() -> void {
@@ -355,9 +356,10 @@ Result Indexes::ensureIndexCoordinator(
       cluster.indexCreationTimeout());
 }
 
-Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
-                            bool create, VPackBuilder& output,
-                            std::shared_ptr<std::function<arangodb::Result(double)>> f) {
+Result Indexes::ensureIndex(
+    LogicalCollection* collection, VPackSlice input, bool create,
+    VPackBuilder& output,
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {
@@ -492,7 +494,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
       }
     }
   } else {
-    res = EnsureIndexLocal(collection, indexDef, create, output);
+    res = EnsureIndexLocal(collection, indexDef, create, output,
+                           std::move(progress));
   }
 
   ensureIndexResult = res.errorNumber();

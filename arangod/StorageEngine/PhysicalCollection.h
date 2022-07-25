@@ -134,8 +134,9 @@ class PhysicalCollection {
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
-  virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
-                                             bool restore, bool& created) = 0;
+  virtual std::shared_ptr<Index> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> = nullptr) = 0;
 
   virtual bool dropIndex(IndexId iid) = 0;
 

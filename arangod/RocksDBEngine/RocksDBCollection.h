@@ -77,8 +77,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   void prepareIndexes(velocypack::Slice indexesSlice) override;
 
-  std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
-                                     bool& created) override;
+  std::shared_ptr<Index> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> =
+          nullptr) override;
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;

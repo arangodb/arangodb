@@ -260,9 +260,9 @@ void ClusterCollection::prepareIndexes(
   TRI_ASSERT(!_indexes.empty());
 }
 
-std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
-                                                      bool restore,
-                                                      bool& created) {
+std::shared_ptr<Index> ClusterCollection::createIndex(
+    velocypack::Slice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   // prevent concurrent dropping

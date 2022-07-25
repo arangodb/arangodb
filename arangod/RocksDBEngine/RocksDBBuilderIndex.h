@@ -142,7 +142,8 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
   /// @brief assumes an exclusive lock on the collection
-  Result fillIndexForeground();
+  Result fillIndexForeground(
+      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> = nullptr);
 
   struct Locker {
     explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
@@ -158,7 +159,9 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// @brief fill the index, assume already locked exclusively
   /// @param locker locks and unlocks the collection
-  Result fillIndexBackground(Locker& locker);
+  Result fillIndexBackground(
+      Locker& locker,
+      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> = nullptr);
 
  private:
   static constexpr uint64_t kThreadBatchSize = 100000;

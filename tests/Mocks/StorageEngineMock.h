@@ -80,7 +80,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::LogicalCollection& collection) const override;
   virtual ErrorCode close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(
-      arangodb::velocypack::Slice info, bool restore, bool& created) override;
+      arangodb::velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> =
+          nullptr) override;
   virtual void deferDropCollection(
       std::function<bool(arangodb::LogicalCollection&)> const& callback)
       override;
