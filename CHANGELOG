@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a potential deadlock in RocksDB compaction.
+  For details see https://github.com/facebook/rocksdb/pull/10355
+
 * arangoimport now supports the option --remove-attribute on type JSON as well.
   Before it was restricted to TSV and CSV only.
 
