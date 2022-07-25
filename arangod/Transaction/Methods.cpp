@@ -540,15 +540,12 @@ transaction::Methods::~Methods() {
         // regular life cycle. we want now to properly clean up and count them.
         _state->updateStatus(transaction::Status::COMMITTED);
       } else {
-        try {
-          this->abort();
-          TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
-        } catch (std::exception const& ex) {
+        auto res = this->abort();
+        if (res.fail()) {
           LOG_TOPIC("6d20f", ERR, Logger::TRANSACTIONS)
-              << "Exception triggered while destroying transaction " << tid()
+              << "Abort failed while destroying transaction " << tid()
               << " on server " << ServerState::instance()->getId() << " "
-              << ex.what();
-          // must never throw because we are in a dtor
+              << res;
         }
       }
     }
@@ -683,29 +680,41 @@ Result transaction::Methods::begin() {
   return Result();
 }
 
-Result Methods::commit() {
-  return commitInternal(MethodsApi::Synchronous).get();
+auto Methods::commit() noexcept -> Result {
+  return commitInternal(MethodsApi::Synchronous)  //
+      .then(basics::tryToResult)
+      .get();
 }
 
 /// @brief commit / finish the transaction
-Future<Result> transaction::Methods::commitAsync() {
-  return commitInternal(MethodsApi::Asynchronous);
+auto transaction::Methods::commitAsync() noexcept -> Future<Result> {
+  return commitInternal(MethodsApi::Asynchronous)  //
+      .then(basics::tryToResult);
 }
 
-Result Methods::abort() { return abortInternal(MethodsApi::Synchronous).get(); }
+auto Methods::abort() noexcept -> Result {
+  return abortInternal(MethodsApi::Synchronous)  //
+      .then(basics::tryToResult)
+      .get();
+}
 
 /// @brief abort the transaction
-Future<Result> transaction::Methods::abortAsync() {
-  return abortInternal(MethodsApi::Asynchronous);
+auto transaction::Methods::abortAsync() noexcept -> Future<Result> {
+  return abortInternal(MethodsApi::Asynchronous)  //
+      .then(basics::tryToResult);
 }
 
-Result Methods::finish(Result const& res) {
-  return finishInternal(res, MethodsApi::Synchronous).get();
+auto Methods::finish(Result const& res) noexcept -> Result {
+  return finishInternal(res, MethodsApi::Synchronous)  //
+      .then(basics::tryToResult)
+      .get();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
-Future<Result> transaction::Methods::finishAsync(Result const& res) {
-  return finishInternal(res, MethodsApi::Asynchronous);
+auto transaction::Methods::finishAsync(Result const& res) noexcept
+    -> Future<Result> {
+  return finishInternal(res, MethodsApi::Asynchronous)  //
+      .then(basics::tryToResult);
 }
 
 /// @brief return the transaction id
@@ -3102,7 +3111,7 @@ Future<Result> Methods::replicateOperations(
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
-Future<Result> Methods::commitInternal(MethodsApi api) {
+Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
   TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
@@ -3150,9 +3159,15 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
         }
         return res;
       });
+} catch (basics::Exception const& ex) {
+  return Result(ex.code(), ex.message());
+} catch (std::exception const& ex) {
+  return Result(TRI_ERROR_INTERNAL, ex.what());
+} catch (...) {
+  return Result(TRI_ERROR_INTERNAL);
 }
 
-Future<Result> Methods::abortInternal(MethodsApi api) {
+Future<Result> Methods::abortInternal(MethodsApi api) noexcept try {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
     return Result(TRI_ERROR_TRANSACTION_INTERNAL,
@@ -3186,9 +3201,16 @@ Future<Result> Methods::abortInternal(MethodsApi api) {
 
     return res;
   });
+} catch (basics::Exception const& ex) {
+  return Result(ex.code(), ex.message());
+} catch (std::exception const& ex) {
+  return Result(TRI_ERROR_INTERNAL, ex.what());
+} catch (...) {
+  return Result(TRI_ERROR_INTERNAL);
 }
 
-Future<Result> Methods::finishInternal(Result const& res, MethodsApi api) {
+Future<Result> Methods::finishInternal(Result const& res,
+                                       MethodsApi api) noexcept try {
   if (res.ok()) {
     // there was no previous error, so we'll commit
     return this->commitInternal(api);
@@ -3198,6 +3220,12 @@ Future<Result> Methods::finishInternal(Result const& res, MethodsApi api) {
   return this->abortInternal(api).thenValue([res](Result const& ignore) {
     return res;  // return original error
   });
+} catch (basics::Exception const& ex) {
+  return Result(ex.code(), ex.message());
+} catch (std::exception const& ex) {
+  return Result(TRI_ERROR_INTERNAL, ex.what());
+} catch (...) {
+  return Result(TRI_ERROR_INTERNAL);
 }
 
 Future<OperationResult> Methods::documentInternal(

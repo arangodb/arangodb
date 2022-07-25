@@ -102,7 +102,7 @@ function transactionReplication2ReplicateOperationSuite() {
 
     const leaderReady = ([stateId, term]) => replicatedLogsPredicates.replicatedLogLeaderEstablished(dbn, stateId, term, []);
 
-    Object.entries(terms).forEach(replicatedLogsHelper.waitFor(leaderReady));
+    Object.entries(terms).forEach(x => replicatedLogsHelper.waitFor(leaderReady(x)));
   };
 
   return {
@@ -242,7 +242,7 @@ function transactionReplication2ReplicateOperationSuite() {
       }
     },
 
-    DISABLED_testTransactionLeaderChangeBeforeCommit: function () {
+    testTransactionLeaderChangeBeforeCommit: function () {
       let obj = {
         collections: {
           write: [cn],
@@ -257,20 +257,24 @@ function transactionReplication2ReplicateOperationSuite() {
 
       bumpTermOfLogsAndWaitForConfirmation(c);
 
+      let committed = false;
       try {
         trx.commit();
-        fail('Commit was expected to fail due to leader change, but reported success.');
+        committed = true;
+        fail('Abort was expected to fail due to leader change, but reported success.');
       } catch (ex) {
-        // TODO replace this with an assertion that `ex` is the right exception
-        console.error(`TODO caught: ` + ex);
+        // The actual error code is a little bit strange, but happens due to
+        // automatic retry of the commit request on the coordinator.
+        assertEqual(internal.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, ex.errorNum);
       }
+      assertFalse(committed);
 
       const shards = c.shards();
       const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
-      const logsWithCommit = logs.filter(log => log.head(1000).exists(entry => entry.hasOwnProperty('payload') && entry.payload[1].operation === 'Commit'));
+      const logsWithCommit = logs.filter(log => log.head(1000).some(entry => entry.hasOwnProperty('payload') && entry.payload[1].operation === 'Commit'));
 
-      assertIdentical([], logsWithCommit, 'Found commit operation(s) in one or more log');
+      assertEqual([], logsWithCommit, 'Found commit operation(s) in one or more log');
     },
   };
 }
