@@ -289,6 +289,22 @@ struct MockGraphDatabase {
     return fromCondition;
   }
 
+  arangodb::aql::AstNode* buildInboundCondition(
+      arangodb::aql::Query* query, arangodb::aql::Variable const* tmpVar) {
+    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
+    auto ast = plan->getAst();
+    auto toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
+    AstNode* tmpId2 = plan->getAst()->createNodeValueMutableString("", 0);
+
+    auto const* access =
+        ast->createNodeAttributeAccess(tmpId1, StaticStrings::ToString);
+    auto const* cond = ast->createNodeBinaryOperator(
+        NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
+    toCondition->addMember(cond);
+    return toCondition;
+  }
+
   arangodb::aql::Variable* generateTempVar(arangodb::aql::Query* query) {
     auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     return plan->getAst()->variables()->createTemporaryVariable();

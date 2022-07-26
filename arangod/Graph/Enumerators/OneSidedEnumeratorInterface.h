@@ -57,7 +57,7 @@ struct SmartGraphResponse;
 class PathResultInterface {
  public:
   PathResultInterface() {}
-  virtual ~PathResultInterface() {}
+  virtual ~PathResultInterface() = default;
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
   virtual auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder)

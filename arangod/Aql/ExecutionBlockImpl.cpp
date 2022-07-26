@@ -51,7 +51,6 @@
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
-#include "Aql/QueryOptions.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShadowAqlItemRow.h"
@@ -72,19 +71,12 @@
 #include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
-
-#include "Graph/Enumerators/TwoSidedEnumerator.h"
-#include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
-
-#include <velocypack/Dumper.h>
 
 #include <type_traits>
 
@@ -700,7 +692,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
-              EnumeratePathsExecutor<graph::KShortestPathsFinder>,
+              EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>,
               EnumeratePathsExecutor<KPathRefactored>,
               EnumeratePathsExecutor<KPathRefactoredTracer>,
               EnumeratePathsExecutor<KPathRefactoredCluster>,
@@ -2720,7 +2712,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<arangodb::graph::KShortestPathsFinder>>;
+    EnumeratePathsExecutor<arangodb::graph::KShortestPathsFinderInterface>>;
 
 /* SingleServer */
 template class ::arangodb::aql::ExecutionBlockImpl<

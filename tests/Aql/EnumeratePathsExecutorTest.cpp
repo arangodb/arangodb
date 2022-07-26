@@ -115,11 +115,18 @@ PathSequence const somePaths = {
 // is merely initialized with a set of "paths" and then outputs them, keeping a
 // record of which paths it produced. This record is used in the validation
 // whether the executor output the correct sequence of rows.
-class FakeKShortestPathsFinder : public KShortestPathsFinder {
+
+template<class ProviderType>
+class FakeKShortestPathsFinder : public KShortestPathsFinder<ProviderType> {
  public:
   FakeKShortestPathsFinder(ShortestPathOptions& options,
+                           SingleServerBaseProviderOptions&& forwardOpts,
+                           SingleServerBaseProviderOptions&& backwardOpts,
                            PathSequence const& kpaths)
-      : KShortestPathsFinder(options), _kpaths(kpaths), _traversalDone(true) {}
+      : KShortestPathsFinder<ProviderType>(options, std::move(forwardOpts),
+                                           std::move(backwardOpts)),
+        _kpaths(kpaths),
+        _traversalDone(true) {}
   ~FakeKShortestPathsFinder() = default;
 
   auto gotoNextPath() -> bool {
@@ -243,9 +250,33 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
   ShortestPathOptions options;
 
   RegisterInfos registerInfos;
-  EnumeratePathsExecutorInfos<KShortestPathsFinder> executorInfos;
 
-  FakeKShortestPathsFinder& finder;
+  /* Might need to be initialized later - begin - */
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  aql::Variable* _tmpVarForward{nullptr};
+  aql::Variable* _tmpVarBackward{nullptr};
+  aql::AstNode* _varNodeForward{nullptr};
+  aql::AstNode* _varNodeBackward{nullptr};
+  std::vector<IndexAccessor> forwardUsedIndexes{};
+  std::vector<IndexAccessor> backwardUsedIndexes{};
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext>
+      _expressionContextForward;
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext>
+      _expressionContextBackward;
+
+  std::unique_ptr<arangodb::transaction::Methods> _trx{};
+  aql::Projections _vertexProjections{};
+  aql::Projections _edgeProjections{};
+  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  /* Might need to be initialized later - end - */
+
+  SingleServerBaseProviderOptions forwardOpts;
+  SingleServerBaseProviderOptions backwardOpts;
+
+  EnumeratePathsExecutorInfos<KShortestPathsFinderInterface> executorInfos;
+
+  FakeKShortestPathsFinder<SingleServerProvider<SingleServerProviderStep>>&
+      finder;
 
   SharedAqlItemBlockPtr inputBlock;
   AqlItemBlockInputRange input;
@@ -253,7 +284,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
   std::shared_ptr<Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-  EnumeratePathsExecutor<KShortestPathsFinder> testee;
+  EnumeratePathsExecutor<KShortestPathsFinderInterface> testee;
   OutputAqlItemRow output;
 
   EnumeratePathsExecutorTest(KShortestPathsTestParameters parameters__)
@@ -264,12 +295,31 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
         options(*fakedQuery.get()),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 3, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
+        _tmpVarForward(),
+        forwardOpts(
+            _tmpVarForward,
+            std::make_pair(
+                std::move(forwardUsedIndexes),
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+            *_expressionContextForward.get(), {}, _emptyShardMap,
+            _vertexProjections, _edgeProjections),
+        backwardOpts(
+            _tmpVarBackward,
+            std::make_pair(
+                std::move(backwardUsedIndexes),
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+            *_expressionContextBackward.get(), {}, _emptyShardMap,
+            _vertexProjections, _edgeProjections),
         executorInfos(0, *fakedQuery.get(),
-                      std::make_unique<FakeKShortestPathsFinder>(
-                          options, parameters._paths),
+                      std::make_unique<FakeKShortestPathsFinder<
+                          SingleServerProvider<SingleServerProviderStep>>>(
+                          options, std::move(forwardOpts),
+                          std::move(backwardOpts), parameters._paths),
                       std::move(parameters._source),
                       std::move(parameters._target)),
-        finder(static_cast<FakeKShortestPathsFinder&>(executorInfos.finder())),
+        finder(static_cast<FakeKShortestPathsFinder<
+                   SingleServerProvider<SingleServerProviderStep>>&>(
+            executorInfos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager,
                                  std::move(parameters._inputMatrix))),
         input(AqlItemBlockInputRange(MainQueryState::DONE, 0, inputBlock, 0)),
@@ -382,7 +432,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
 
   void TestExecutor(
       RegisterInfos& registerInfos,
-      EnumeratePathsExecutorInfos<KShortestPathsFinder>& executorInfos,
+      EnumeratePathsExecutorInfos<KShortestPathsFinderInterface>& executorInfos,
       AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 

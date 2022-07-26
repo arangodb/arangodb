@@ -25,6 +25,9 @@
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Providers/ClusterProvider.h"
 #include <deque>
 
 namespace arangodb {
@@ -37,13 +40,17 @@ namespace graph {
 
 class AttributeWeightShortestPathFinder;
 class ConstantWeightShortestPathFinder;
+class KShortestPathsFinderInterface;
+template <class ProviderType>
 class KShortestPathsFinder;
 class TraverserCache;
 
 class ShortestPathResult {
   friend class arangodb::graph::AttributeWeightShortestPathFinder;
   friend class arangodb::graph::ConstantWeightShortestPathFinder;
-  friend class arangodb::graph::KShortestPathsFinder;
+  friend class arangodb::graph::KShortestPathsFinderInterface;
+  friend class arangodb::graph::KShortestPathsFinder<arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
+  friend class arangodb::graph::KShortestPathsFinder<arangodb::graph::ClusterProvider<ClusterProviderStep>>;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
