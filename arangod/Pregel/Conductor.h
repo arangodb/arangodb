@@ -37,6 +37,7 @@
 #include "Pregel/Status/ExecutionStatus.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/LoadingState.h"
+#include "Pregel/Conductor/StoringState.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
@@ -69,6 +70,7 @@ struct Error {
 class Conductor : public std::enable_shared_from_this<Conductor> {
   friend class PregelFeature;
   friend struct conductor::Loading;
+  friend struct conductor::Storing;
 
   ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;

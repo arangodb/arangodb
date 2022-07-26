@@ -34,7 +34,7 @@
 
 namespace arangodb::pregel {
 
-enum class MessageType { GraphLoaded };
+enum class MessageType { GraphLoaded, CleanupFinished };
 
 struct Message {
   virtual auto type() const -> MessageType = 0;
@@ -80,6 +80,12 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
+
+struct CleanupFinished : Message {
+  auto type() const -> MessageType override {
+    return MessageType::CleanupFinished;
+  }
+};
 
 struct RecoveryFinished {
   std::string senderId;

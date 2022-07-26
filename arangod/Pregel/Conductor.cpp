@@ -36,6 +36,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/LoadingState.h"
+#include "Pregel/Conductor/StoringState.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -261,10 +262,7 @@ bool Conductor::_startGlobalStep() {
     _timing.computation.finish();
     _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
     if (_storeResults) {
-      updateState(ExecutionState::STORING);
-      _feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
-      _timing.storing.start();
-      _finalizeWorkers();
+      changeState(conductor::StateType::Storing);
     } else {  // just stop the timer
       updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                                 : ExecutionState::DONE);
@@ -830,27 +828,18 @@ ErrorCode Conductor::_finalizeWorkers() {
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
+  _ensureUniqueResponse(data.get(Utils::senderKey).copyString());
   {
     auto reports = data.get(Utils::reportsKey);
     if (reports.isArray()) {
       _reports.appendFromSlice(reports);
     }
   }
-
-  _ensureUniqueResponse(data.get(Utils::senderKey).copyString());
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
+  receive(CleanupFinished{});
 
-  // do not swap an error state to done
-  bool didStore = false;
-  if (_state == ExecutionState::STORING) {
-    updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
-                              : ExecutionState::DONE);
-    didStore = true;
-    _timing.storing.finish();
-    _feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
-  }
   _timing.total.finish();
 
   VPackBuilder debugOut;
@@ -871,9 +860,9 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
               ? fmt::format(", computation time: {}s",
                             _timing.computation.elapsedSeconds().count())
               : "")
-      << (didStore ? fmt::format(", storage time: {}s",
-                                 _timing.storing.elapsedSeconds().count())
-                   : "")
+      << (_storeResults ? fmt::format(", storage time: {}s",
+                                      _timing.storing.elapsedSeconds().count())
+                        : "")
       << ", overall: " << _timing.total.elapsedSeconds().count() << "s"
       << ", stats: " << debugOut.slice().toJson();
 
@@ -1122,6 +1111,9 @@ auto Conductor::changeState(conductor::StateType name) -> void {
   switch (name) {
     case conductor::StateType::Loading:
       state = std::make_unique<conductor::Loading>(*this);
+      break;
+    case conductor::StateType::Storing:
+      state = std::make_unique<conductor::Storing>(*this);
       break;
     case conductor::StateType::Placeholder:
       state = std::make_unique<conductor::Placeholder>();
