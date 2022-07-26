@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a potential deadlock in RocksDB compaction.
+  For details see https://github.com/facebook/rocksdb/pull/10355
+
 * Added more specific process exit codes for arangod and all client tools,
   and changed the executables' exit code for the following situations:
   
