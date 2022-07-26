@@ -318,9 +318,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
   OperationOptions options;
   OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
                                           checkDocument.slice(), options);
-  std::ignore = trx.finish(checkDoc.result);
-
-  return checkDoc.ok();
+  return trx.finish(checkDoc.result).ok();
 }
 
 ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
