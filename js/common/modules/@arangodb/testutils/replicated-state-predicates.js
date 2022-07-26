@@ -201,7 +201,7 @@ const localKeyStatus = function (endpoint, db, col, key, available) {
       return true;
     }
     return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
-  }
+  };
 };
 
 exports.replicatedStateIsGone = replicatedStateIsGone;
