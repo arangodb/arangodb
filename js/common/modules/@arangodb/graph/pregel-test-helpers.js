@@ -57,11 +57,25 @@ const loadGraphGenerators = function (isSmart) {
     };
 };
 
-// This function does not assert the equality itself (this should be done
-// in the caller) to allow the caller to output information
-// on error in addition to expected and actual.
-const amostEquals = function(expected, actual, epsilon) {
-    return (Math.abs(expected - actual) < epsilon);
+/**
+ * Assert that expected and actual are equal up to the tolerance epsilon.
+ * @param expected the expected value, a number
+ * @param actual the actual value, a number
+ * @param epsilon the tolerance, a number
+ * @param msg the message to prepend th output of the values
+ * @param expectedDescription the description of expected
+ * @param actualDescription the description of actual
+ * @param context the context in that the test is performed, output after the values
+ */
+const assertAlmostEquals = function(expected, actual, epsilon, msg, expectedDescription, actualDescription, context) {
+    if (Math.abs(expected - actual) >= epsilon) {
+        console.error(msg + ":");
+        console.error("    " + expectedDescription + ":");
+        console.error("        " + expected);
+        console.error("    " + actualDescription + ":");
+        console.error("        " + actual);
+        console.error(context);
+    }
 };
 
 const runPregelInstance = function (algName, graphName, parameters, query, maxWaitTimeSecs = 120) {
@@ -99,17 +113,22 @@ const testPageRankOnGraph = function(vertices, edges, seeded = false) {
     }
     const pr = new PageRank(dampingFactor, vertices.length);
     for (const resultV of result) {
-        if (!amostEquals(resultV.value, pr.doOnePagerankStep(resultV._key, graph), epsilon)) {
-            console.error(`The Pagerank algorithm 
-            did not find a fixed point: it returned ' +
-                    '${resultV.value}, but another test iteration returned ' + 
-                    '${pr.doOnePagerankStep(resultV._key, graph)} for vertex ${JSON.stringify(resultV)}. ' +
-                    'The ranks returned by the algorithm are ${JSON.stringify(result)}.`);
-        }
+        assertAlmostEquals(resultV.value, pr.doOnePagerankStep(resultV._key, graph), epsilon,
+            "The Pagerank algorithm did not find a fixed point",
+            "it returned",
+            "but another test iteration returned",
+            `for vertex ${JSON.stringify(resultV)}. The ranks returned by the algorithm are ${JSON.stringify(result)}.`
+            );
     }
 };
 
-const testHITSOnGraph = function(vertices, edges) {
+/**
+ * Save vertices and edges, perform 100 steps HITS and 100 steps self-made algorithm. Test that the results are equal
+ * up to epsilon if compare is true. Test that the self-made result is a fixed point (up to epsilon in each vertex).
+ * @param vertices
+ * @param edges
+ */
+const testHITSOnGraph = function(vertices, edges, compare) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
     const query = `
@@ -117,24 +136,39 @@ const testHITSOnGraph = function(vertices, edges) {
                   RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
               `;
     let parameters = {maxGSS:100, resultField: "hits"};
-
     const result = runPregelInstance("hits", graphName, parameters, query);
-
-    const graph = new Graph(vertices, edges);
-    for (const v of result) {
-        graph.vertex(v._key).value = v.value;
-    }
     const hits = new HITS();
+    const graph = new Graph(vertices, edges);
+
+    const maxDiff = hits.computeFixedPoint(graph, 100, epsilon);
+
+    // check that the test algorithm reached a fixed point
+    // (in principle, it is possible that it reached the maximum number of steps, but it should converge)
+    assertTrue(maxDiff < epsilon,
+        `The maximum difference ${maxDiff} between two last iterations is bigger than ${epsilon}.`);
+
+    if (! compare) {
+        return;
+    }
+
     for (const resultV of result) {
-        const resultVAfterStep = hits.doOneHITSStep(resultV._key, graph);
-        if (!amostEquals(resultV.value.hits_hub, resultVAfterStep.hits_hub, epsilon)) {
-            console.error(`The HITS algorithm did not find a fixed point: ` +
-                `it returned ${JSON.stringify(resultV.value.hits_hub)}, ` +
-                `but another test iteration returned ` + `${JSON.stringify(resultVAfterStep)} ` +
-                `for vertex ${JSON.stringify(resultV)}. The values returned by the algorithm ` +
-                `are ${JSON.stringify(result)}.`);
-            assertTrue(false);
-        }
+        const vKey = resultV._key;
+        const v = graph.vertex(resultV._key);
+        // auth
+        assertAlmostEquals(v.value.hits_auth, resultV.value.hits_auth, epsilon,
+            `Different authority values for vertex ${vKey}.`,
+            "Pregel returned",
+            "test returned",
+            ""
+            );
+
+        // hub
+        assertAlmostEquals(v.value.hits_hub, resultV.value.hits_hub, epsilon,
+            `Different hub values for vertex ${vKey}.`,
+            "Pregel returned",
+            "test returned",
+            ""
+        );
     }
 };
 
@@ -359,7 +393,7 @@ class Graph {
             return v.substr(v.indexOf('/') + 1);
         };
 
-        this.vertices = new Map();
+        this.vertices = new Map(); // maps vertex key to the vertex object
         for (const v of vertices) {
             this.vertices.set(v._key, new Vertex(v._key, v.label));
         }
@@ -480,6 +514,7 @@ class PageRank {
 
 }
 
+// This class only accumulates functions that belong to the HITS algorithm, it has no data
 class HITS {
 
     computeAuthNorm (graph) {
@@ -498,6 +533,81 @@ class HITS {
         }
         return Math.sqrt(sum);
     }
+
+    computeFixedPoint (graph, numSteps, epsilon) {
+        for (let [, vertex] of graph.vertices) {
+            vertex.value = {hits_auth: 1.0, hits_hub: 1.0};
+        }
+        const computeAuth = function () {
+            let authNorm = 0.0;
+            let maxDiffAuth = 0.0;
+            for (let [, vertex] of graph.vertices) {
+                let sumAuth = 0.0;
+                for (const predKey of vertex.inNeighbors) {
+                    const pred = graph.vertex(predKey);
+                    assertTrue(pred.hasOwnProperty("value"));
+                    sumAuth += pred.value.hits_hub;
+                }
+                const diff = Math.abs(vertex.value.hits_auth - sumAuth);
+                maxDiffAuth = Math.max(maxDiffAuth, diff);
+
+                vertex.value.hits_auth = sumAuth;
+                authNorm += sumAuth * sumAuth;
+            }
+
+            authNorm = Math.sqrt(authNorm);
+
+            for (let [, vertex] of graph.vertices) {
+                vertex.value.hits_auth /= authNorm;
+            }
+            return maxDiff;
+        };
+
+        const computeHub = function () {
+            let hubNorm = 0.0;
+            let maxDiffHub =  0.0;
+            for (let [, vertex] of graph.vertices) {
+                let sumHub = 0.0;
+                for (const succKey of vertex.outNeighbors) {
+                    const succ = graph.vertex(succKey);
+                    assertTrue(succ.hasOwnProperty("value"));
+                    sumHub += succ.value.hits_auth;
+                }
+                const diff = Math.abs(vertex.value.hits_hub - sumHub);
+                maxDiffHub = Math.max(maxDiffHub, diff);
+                vertex.value.hits_hub = sumHub;
+                hubNorm += sumHub * sumHub;
+            }
+
+            hubNorm = Math.sqrt(hubNorm);
+
+            for (let [, vertex] of graph.vertices) {
+                vertex.value.hits_hub /= hubNorm;
+            }
+            return maxDiff;
+        };
+
+        assertTrue(epsilon > 0);
+        assertTrue(numSteps > 0);
+        // initialize
+        for (let [, vertex] of graph.vertices) {
+            vertex.value.hits_auth = 1.0;
+            vertex.value.hits_hub = 1.0;
+        }
+
+        let step = 0;
+        let maxDiff = 0.0;
+        do {
+            const diffAuth = computeAuth();
+            const diffHub = computeHub();
+            maxDiff = Math.max(maxDiff, diffAuth, diffHub);
+            ++step;
+        } while (step < numSteps && maxDiff > epsilon);
+
+        return maxDiff;
+    }
+
+
 
     /**
      * Perform one step of the HITS algorithm and return the new value of the given vertex.
@@ -1545,6 +1655,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
         'use strict';
 
         const unionGraph = graphGeneration.unionGraph;
+        const compare = false;
 
         return {
 
@@ -1555,7 +1666,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
             testHITSOneDirectedCycle: function () {
                 const length = 3;
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeDirectedCycle(length);
-                testHITSOnGraph(vertices, edges);
+                testHITSOnGraph(vertices, edges, compare);
 
             },
 
@@ -1564,7 +1675,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
                 const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
                 const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
-                testHITSOnGraph(vertices, edges);
+                testHITSOnGraph(vertices, edges, compare);
             },
 
             testHITSTwoDirectedCyclesConnectedByDirectedEdge: function () {
@@ -1573,7 +1684,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(size);
                 let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
                 edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
-                testHITSOnGraph(vertices, edges);
+                testHITSOnGraph(vertices, edges, compare);
             },
 
             testHITSTwo4CliquesConnectedByDirectedEdge: function () {
@@ -1582,7 +1693,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeBidirectedClique(size);
                 let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
                 edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
-                testHITSOnGraph(vertices, edges);
+                testHITSOnGraph(vertices, edges, compare);
             },
             testHITSThree4_5_6CliquesConnectedByUndirectedTriangle: function () {
                 const sizes = [4, 5, 6];
@@ -1598,13 +1709,13 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                         edges.push(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
                     }
                 }
-                testHITSOnGraph(vertices, edges);
+                testHITSOnGraph(vertices, edges, compare);
             },
 
             testHITS10Star: function () {
                 const numberLeaves = 10;
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
-                testHITSOnGraph(vertices, edges);
+                testHITSOnGraph(vertices, edges, compare);
             },
 
         };
