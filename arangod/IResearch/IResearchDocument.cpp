@@ -256,8 +256,7 @@ Filter const valueAcceptors[] = {
     // type == Array , nestListValues == true, includeAllValues == true
     &inArrayOrdered};
 
-Filter getFilter(VPackSlice value,
-                 arangodb::iresearch::FieldMeta const& meta,
+Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& meta,
                  bool nested) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
@@ -353,8 +352,8 @@ InvertedIndexFilter const valueAcceptorsInverted[] = {
 
 InvertedIndexFilter getFilter(
     VPackSlice value,
-    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
-        meta, bool) noexcept {
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const& meta,
+    bool) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
   return valueAcceptorsInverted[value.isArray() * 2 + meta._includeAllFields];
