@@ -82,6 +82,23 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return {vertices, edges};
     };
 
+
+    const makeUnDirectedCycle = function (length) {
+        if (length < 2) {
+            console.error(`createDirectedCycle: error: length must be at least 2, instead got ${length}`);
+            assertTrue(false);
+        }
+        let vertices = makeVertices(length);
+        let edges = [];
+        for (let i = 0; i < length - 1; ++i) {
+            edges.push(makeEdge(i, i + 1));
+            edges.push(makeEdge(i + 1, i));
+        }
+        edges.push(makeEdge(length - 1, 0));
+        edges.push(makeEdge(0, length - 1));
+        return {vertices, edges};
+    };
+
     // An alternating cycle is obtained from a directed cycle
     // by replacing every second edge (v,w) by (w,v).
     // Note that if length is odd,
@@ -350,6 +367,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
         makeOneVertex,
         makeSingleVertexNoEdges,
         makeDirectedCycle,
+        makeUnDirectedCycle,
         makeAlternatingCycle,
         makeFullBinaryTree,
         makeClique,
