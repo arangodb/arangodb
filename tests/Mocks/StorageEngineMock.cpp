@@ -1044,15 +1044,14 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
 
   std::shared_ptr<arangodb::Index> index;
 
-  if (0 == type.compare("edge")) {
+  if (type == "edge") {
     index = EdgeIndexMock::make(id, _logicalCollection, info);
-  } else if (0 == type.compare("hash")) {
+  } else if (type == "hash") {
     index = HashIndexMock::make(id, _logicalCollection, info);
-  } else if (0 == type.compare("inverted")) {
+  } else if (type == "inverted") {
     index =
         StorageEngineMock::buildInvertedIndexMock(id, _logicalCollection, info);
-  } else if (0 == type.compare(
-                      arangodb::iresearch::StaticStrings::ViewType.data())) {
+  } else if (type == arangodb::iresearch::StaticStrings::ViewType) {
     try {
       auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -1559,7 +1558,6 @@ StorageEngineMock::buildLinkMock(arangodb::IndexId id,
   }
   cleanup.cancel();
 
-//  std::cout << "pathExistsLink = " << pathExists << std::endl;
   return index;
 }
 
