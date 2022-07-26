@@ -54,18 +54,21 @@ inline auto GetLinkVersions() noexcept {
                          arangodb::iresearch::LinkVersion::MAX);
 }
 
+inline auto GetIndexVersions() noexcept {
+  return testing::Values(arangodb::iresearch::LinkVersion::MAX);
+}
+
 class IResearchQueryTest
     : public ::testing::TestWithParam<arangodb::iresearch::LinkVersion>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR> {
+ private:
+  TRI_vocbase_t* _vocbase{nullptr};
+
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
- private:
-  TRI_vocbase_t* _vocbase;
-
- protected:
-  IResearchQueryTest() : server(false) {
+  IResearchQueryTest() : server{false} {
     arangodb::tests::init(true);
 
     server.addFeature<arangodb::FlushFeature>(false);
@@ -76,9 +79,8 @@ class IResearchQueryTest
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.createDatabase(
-        testDBInfo(server.server()),
-        _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);
 
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
@@ -208,4 +210,8 @@ class IResearchQueryTest
   arangodb::iresearch::LinkVersion linkVersion() const noexcept {
     return GetParam();
   }
-};  // IResearchQueryTest
+
+  arangodb::iresearch::LinkVersion version() const noexcept {
+    return GetParam();
+  }
+};
