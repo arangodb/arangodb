@@ -431,7 +431,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
       using Provider = SingleServerProvider<SingleServerProviderStep>;
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
-        if (isKPaths) {  // TODO Anthony: Look for a cleaner approach
+        if (isKPaths) {
           return _makeExecutionBlockImpl<KPathEnumerator<Provider>, Provider,
                                          SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
@@ -448,8 +448,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
               targetInput, registerInfos);
         }
       } else {
-        if (isKPaths) {  // TODO Anthony: Look for a cleaner approach
-          // _makeExecutionBlockImpl with only Enumerator
+        if (isKPaths) {
           return _makeExecutionBlockImpl<TracedKPathEnumerator<Provider>,
                                          ProviderTracer<Provider>,
                                          SingleServerBaseProviderOptions>(
@@ -476,7 +475,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           cache, engines(), true, opts->produceVertices());
 
       using ClusterProvider = ClusterProvider<ClusterProviderStep>;
-      if (isKPaths) {  // TODO Anthony: Look for a cleaner approach
+      if (isKPaths) {
         return _makeExecutionBlockImpl<KPathEnumerator<ClusterProvider>,
                                        ClusterProvider,
                                        ClusterBaseProviderOptions>(

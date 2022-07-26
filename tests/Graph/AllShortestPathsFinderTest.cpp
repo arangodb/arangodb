@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -58,7 +58,6 @@ namespace graph {
 class AllShortestPathsFinderTest
     : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   using AllShortestPathsFinder = AllShortestPathsEnumerator<MockGraphProvider>;
-  // using AllShortestPathsFinder = TracedKPathEnumerator<MockGraphProvider>;
 
  protected:
   bool activateLogging{false};
@@ -96,8 +95,6 @@ class AllShortestPathsFinderTest
     mockGraph.addEdge(9, 10);
     mockGraph.addEdge(10, 11);
     mockGraph.addEdge(11, 6);
-    // TODO Anthony: Figure out how to set direction to ANY (looks like default
-    // is OUTBOUND)
     mockGraph.addEdge(6, 11);
 
     /* a balanced binary tree 12 -> [13, 14] -> [15, 16, 17, 18] */
@@ -107,9 +104,6 @@ class AllShortestPathsFinderTest
     mockGraph.addEdge(13, 16);
     mockGraph.addEdge(14, 17);
     mockGraph.addEdge(14, 18);
-
-    // TODO Anthony: Remove edges (15, 13) and (13, 12) when ANY direction can
-    // be specified
     mockGraph.addEdge(15, 13);
     mockGraph.addEdge(13, 12);
 
@@ -493,7 +487,7 @@ TEST_P(AllShortestPathsFinderTest, binary_trees_connected) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 7);  // TODO Anthony: Why is this 7?
+    EXPECT_EQ(stats.getScannedIndex(), 7);
   }
 }
 

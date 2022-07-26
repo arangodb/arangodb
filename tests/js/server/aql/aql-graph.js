@@ -1686,7 +1686,7 @@ function allShortestPathsTestSuite() {
     setUpAll: function () {
       gm._create(gn, [gm._relation(en, vn, vn)]);
 
-      ["s", "t", "a", "b", "c", "d", "e", "f", "g"].map((elem) => {
+      ["s", "t", "a", "b", "c", "d", "e", "f", "g", "x", "y", "z"].map((elem) => {
         db[vn].insert({_key: elem});
       });
 
@@ -1695,7 +1695,8 @@ function allShortestPathsTestSuite() {
         ["c", "d"], ["d", "t"],
         ["c", "e"], ["e", "t"],
         ["c", "f"], ["f", "t"],
-        ["c", "g"], ["g", "t"]
+        ["c", "g"], ["g", "t"],
+        ["s", "x"], ["y", "x"], ["y", "z"], ["z", "y"], ["z", "t"]
       ].map(([a, b]) => {
         db[en].insert({_from: `${vn}/${a}`, _to: `${vn}/${b}`});
       });
@@ -1715,7 +1716,6 @@ function allShortestPathsTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAllShortestPathsAnyUseEdgeTwice: function () {
-      // TODO Anthony: Clarify what "One of the edges is used in both directions" means in ASP context
       let outbound = db._query(`
         FOR p IN OUTBOUND ALL_SHORTEST_PATHS "${vn}/s" to "${vn}/t"
           GRAPH ${gn}
@@ -1729,7 +1729,7 @@ function allShortestPathsTestSuite() {
       `);
 
       assertEqual(outbound.toArray().length, 8);
-      assertEqual(any.toArray().length, 8);
+      assertEqual(any.toArray().length, 10); // two new paths: S -> X <- Y <-> Z -> T
     }
   };
 }

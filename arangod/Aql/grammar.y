@@ -734,7 +734,7 @@ k_paths_graph_info:
 
 all_shortest_paths_graph_info:
     graph_direction T_ALL_SHORTEST_PATHS expression T_STRING expression graph_subject options {
-      auto nodeStart = parser->ast()->createNodeValueInt(1);
+      auto nodeStart = parser->ast()->createNodeValueInt(0);
       auto nodeEnd = parser->ast()->createNodeValueInt(INT64_MAX-1);
       auto nodeRange = parser->ast()->createNodeRange(nodeStart, nodeEnd);
       $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, nodeRange), $3, $5, $6, $7, yyloc);

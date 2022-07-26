@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -105,8 +105,6 @@ const tearDownAll = () => {
 
 
 const createGraph = () => {
-  // TODO Anthony: Adjust Mock Graph to reflect ALL_SHORTEST_PATHS use cases/applications
-
   gm._create(graphName, [
       gm._relation(e1Name, vName, vName),
       gm._relation(e2Name, vName, vName)
@@ -352,6 +350,26 @@ function allConstantWeightShortestPathTestSuite() {
       for (let i = 0; i < 3; ++i) {
         isPathValid(result[i], 3, true);
       }
+    },
+
+    testPathDepth0: function() {
+      const query = `
+        WITH ${vName}
+        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${source}" ${e1Name}, INBOUND ${e2Name}
+          RETURN path
+      `;
+      const result = db._query(query).toArray();
+      assertEqual(result.length, 1);
+
+      // Unique assertions for depth 0
+      const path = result[0];
+      assertTrue(_.isObject(path));
+      assertTrue(path.hasOwnProperty("vertices"));
+      assertTrue(path.hasOwnProperty("edges"));
+      const {vertices, edges} = path;
+      assertEqual(edges.length, 0);
+      assertEqual(vertices.length, 1);
+      assertEqual(vertices[0]._id, source);
     }
 
   };
