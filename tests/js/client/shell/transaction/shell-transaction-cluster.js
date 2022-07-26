@@ -36,7 +36,7 @@ const { fail,
 
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-const internal = require('@internal');
+const internal = require('internal');
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
 const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
