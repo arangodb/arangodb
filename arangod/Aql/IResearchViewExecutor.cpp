@@ -788,8 +788,8 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 template<typename Impl, typename Traits>
 void IResearchViewExecutorBase<Impl, Traits>::writeSearchDoc(
     ReadContext& ctx, SearchDoc const& doc, RegisterId reg) {
-  TRI_ASSERT(irs::doc_limits::valid(doc.second));
-  AqlValue value{encodeSearchDoc(_buf, doc)};
+  TRI_ASSERT(doc.isValid());
+  AqlValue value{doc.encode(_buf)};
   AqlValueGuard guard{value, true};
   ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
 }
@@ -1383,7 +1383,8 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
 
     // FIXME(gnusi): compile time
     if (this->infos().searchDocIdRegId().isValid()) {
-      this->_indexReadBuffer.pushSearchDoc(_readerOffset, _doc->value);
+      this->_indexReadBuffer.pushSearchDoc((*this->_reader)[_readerOffset],
+                                           _doc->value);
     }
 
     // in the ordered case we have to write scores as well as a document

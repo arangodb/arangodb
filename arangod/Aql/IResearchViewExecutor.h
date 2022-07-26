@@ -268,8 +268,8 @@ class IndexReadBuffer {
   template<typename... Args>
   void pushValue(Args&&... args);
 
-  void pushSearchDoc(size_t segmentOffset, irs::doc_id_t docId) {
-    _searchDocs.emplace_back(segmentOffset, docId);
+  void pushSearchDoc(irs::sub_reader const& segment, irs::doc_id_t docId) {
+    _searchDocs.emplace_back(segment, docId);
   }
 
   void pushSortedValue(ValueType&& value, float_t const* scores, size_t count);

@@ -29,29 +29,54 @@
 #include "Aql/AqlValue.h"
 #include "utils/type_limits.hpp"
 
+namespace iresearch {
+
+struct sub_reader;
+
+}
+
 namespace arangodb::iresearch {
 
 constexpr size_t kSearchDocBufSize = sizeof(size_t) + sizeof(irs::doc_id_t);
 
-// segment offset + doc id
-using SearchDoc = std::pair<size_t, irs::doc_id_t>;
-
-inline std::string_view encodeSearchDoc(std::span<char, kSearchDocBufSize> buf,
-                                        SearchDoc const& doc) noexcept {
-  auto const& [segmentOffset, docId] = doc;
-  std::memcpy(buf.data(), &segmentOffset, sizeof segmentOffset);
-  std::memcpy(buf.data() + sizeof segmentOffset, &docId, sizeof docId);
-  return {buf.data(), buf.size()};
-}
-
-inline SearchDoc decodeSearchDoc(std::string_view buf) noexcept {
-  if (ADB_LIKELY(kSearchDocBufSize == buf.size())) {
-    std::pair<size_t, irs::doc_id_t> res;
-    std::memcpy(&res.first, buf.data(), sizeof res.first);
-    std::memcpy(&res.second, buf.data() + sizeof res.first, sizeof res.second);
-    return res;
+class SearchDoc {
+ public:
+  static SearchDoc decode(std::string_view buf) noexcept {
+    if (ADB_LIKELY(kSearchDocBufSize == buf.size())) {
+      SearchDoc res;
+      std::memcpy(&res._segment, buf.data(), sizeof res._segment);
+      std::memcpy(&res._doc, buf.data() + sizeof res._segment, sizeof res._doc);
+      return res;
+    }
+    return {};
   }
-  return {0, irs::doc_limits::invalid()};
-}
+
+  constexpr SearchDoc() = default;
+
+  SearchDoc(irs::sub_reader const& segment, irs::doc_id_t doc) noexcept
+      : _segment{&segment}, _doc{doc} {}
+
+  irs::sub_reader const* segment() const noexcept { return _segment; }
+
+  irs::doc_id_t doc() const noexcept { return _doc; }
+
+  bool isValid() const noexcept {
+    return _segment && irs::doc_limits::valid(_doc);
+  }
+
+  constexpr auto operator<=>(const SearchDoc&) const noexcept = default;
+
+  std::string_view encode(
+      std::span<char, kSearchDocBufSize> buf) const noexcept {
+    std::memcpy(buf.data(), static_cast<void const*>(_segment),
+                sizeof _segment);
+    std::memcpy(buf.data() + sizeof _segment, &_doc, sizeof _doc);
+    return {buf.data(), buf.size()};
+  }
+
+ private:
+  irs::sub_reader const* _segment{};
+  irs::doc_id_t _doc{irs::doc_limits::invalid()};
+};
 
 }  // namespace arangodb::iresearch
