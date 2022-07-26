@@ -385,7 +385,6 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       }
 
       // All ids and revisions should be equal
-      /*
       const revs = Object.values(localValues).map(value => value._rev);
       assertTrue(revs.every((val, i, arr) => val === arr[0]), `_rev mismatch ${JSON.stringify(localValues)}` +
         `\n${replication2Log}`);
@@ -393,7 +392,6 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       const ids = Object.values(localValues).map(value => value._id);
       assertTrue(ids.every((val, i, arr) => val === arr[0]), `_id mismatch ${JSON.stringify(localValues)}` +
         `\n${replication2Log}`);
-      */
     },
   };
 }

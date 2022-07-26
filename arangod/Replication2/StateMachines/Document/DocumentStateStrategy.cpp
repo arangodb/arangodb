@@ -158,10 +158,18 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
     return _result->result;
   }
 
+  // TODO revisit checkUniqueConstraintsInPreflight and waitForSync
   auto opOptions = OperationOptions();
+  opOptions.silent = true;
+  opOptions.ignoreRevs = true;
+  opOptions.isRestore = true;
+  // opOptions.checkUniqueConstraintsInPreflight = true;
+  opOptions.validate = false;
+  opOptions.waitForSync = false;
+  opOptions.indexOperationMode = IndexOperationMode::internal;
+
   auto fut =
       futures::Future<OperationResult>{std::in_place, Result{}, opOptions};
-
   switch (entry.operation) {
     case kInsert:
       fut = _methods->insertAsync(entry.shardId, entry.data.slice(), opOptions);
