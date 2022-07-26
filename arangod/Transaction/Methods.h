@@ -216,7 +216,7 @@ class Methods {
   [[nodiscard]] auto abortAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  [[nodiscard]] auto finish(Result const& res) noexcept -> Result;
+  [[nodiscard, deprecated("use async variant")]] auto finish(Result const& res) noexcept -> Result;
 
   /// @brief finish a transaction (commit or abort), based on the previous state
   [[nodiscard]] auto finishAsync(Result const& res) noexcept -> Future<Result>;
