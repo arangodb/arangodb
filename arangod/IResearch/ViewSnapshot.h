@@ -142,7 +142,7 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                ViewSnapshot::Links&& links) noexcept;
 
 struct FilterCookie : TransactionState::Cookie {
-  irs::filter::prepared const* filter;
+  irs::filter::prepared const* filter{};
 };
 
 FilterCookie* getFilterCookie(transaction::Methods& trx,
