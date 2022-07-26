@@ -206,7 +206,7 @@ class Methods {
   Result begin();
 
   /// @deprecated use async variant
-  [[nodiscard]] auto commit() noexcept -> Result;
+  [[nodiscard, deprecated("use async variant")]] auto commit() noexcept -> Result;
   /// @brief commit / finish the transaction
   [[nodiscard]] auto commitAsync() noexcept -> Future<Result>;
 
