@@ -1076,7 +1076,7 @@ static void JS_FiguresVocbaseCol(
   OperationOptions options(ExecContext::current());
   auto opRes = collection->figures(details, options).get();
 
-  if (trx.finish(opRes.res()).ok()) {
+  if (trx.finish(opRes.result).ok()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
   } else {
     TRI_V8_RETURN_NULL();
