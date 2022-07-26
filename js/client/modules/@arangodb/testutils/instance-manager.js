@@ -709,6 +709,7 @@ class instanceManager {
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     if (timeoutReached) {
       print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
       forceTerminate = true;
     }
     let shutdownSuccess = !forceTerminate;
