@@ -68,7 +68,7 @@ class SearchDoc {
 
   std::string_view encode(
       std::span<char, kSearchDocBufSize> buf) const noexcept {
-    std::memcpy(buf.data(), static_cast<void const*>(_segment),
+    std::memcpy(buf.data(), static_cast<void const*>(&_segment),
                 sizeof _segment);
     std::memcpy(buf.data() + sizeof _segment, &_doc, sizeof _doc);
     return {buf.data(), buf.size()};

@@ -158,7 +158,7 @@ class Features {
 
  private:
   bool hasFeatures(irs::IndexFeatures test) const noexcept {
-    return _indexFeatures == (_indexFeatures & test);
+    return (test == (_indexFeatures & test));
   }
 
   FieldFeatures _fieldFeatures{FieldFeatures::NONE};
