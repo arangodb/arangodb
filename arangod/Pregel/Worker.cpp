@@ -178,11 +178,9 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
   std::function<void()> graphLoadedCallback = [self = shared_from_this(),
                                                this] {
-    auto graphLoadedEvent =
-        GraphLoaded{.senderId = ServerState::instance()->getId(),
-                    .executionNumber = _config.executionNumber(),
-                    .vertexCount = _graphStore->localVertexCount(),
-                    .edgeCount = _graphStore->localEdgeCount()};
+    auto graphLoadedEvent = GraphLoaded{
+        ServerState::instance()->getId(), _config.executionNumber(),
+        _graphStore->localVertexCount(), _graphStore->localEdgeCount()};
     VPackBuilder event;
     serialize(event, graphLoadedEvent);
     _callConductor(Utils::finishedStartupPath, event);
