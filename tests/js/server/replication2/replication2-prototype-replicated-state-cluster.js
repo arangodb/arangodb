@@ -53,13 +53,13 @@ const compareExchange = function (url, stateId, payload) {
 };
 
 const getEntry = function (url, stateId, entry, allowDirtyRead,  waitForApplied) {
-  let params = `?allowDirtyRead=${allowDirtyRead}`
+  let params = `?allowDirtyRead=${allowDirtyRead}`;
   params += (waitForApplied === undefined ? '' : `&waitForApplied=${waitForApplied}`);
   return request.get({url:`${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}${params}`});
 };
 
 const getEntries = function (url, stateId, entries, allowDirtyRead, waitForApplied) {
-  let params = `?allowDirtyRead=${allowDirtyRead}`
+  let params = `?allowDirtyRead=${allowDirtyRead}`;
   params += (waitForApplied === undefined ? '' : `&waitForApplied=${waitForApplied}`);
   return request.post({
     url: `${url}/_db/${database}/_api/prototype-state/${stateId}/multi-get${params}`,
