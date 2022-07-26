@@ -1,4 +1,4 @@
-s////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
@@ -80,10 +80,6 @@ class IResearchInvertedIndexMock final : public Index,
   void load() override;
 
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
-
-  //  bool
-  //  matchesDefinition(arangodb::velocypack::Slice const &other,
-  //  LogicalCollection const& collection) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, aql::AstNode const* node,
