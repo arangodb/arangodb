@@ -412,10 +412,10 @@ const replicatedStateFollowerSuite = function (dbParams) {
         checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
       }
 
-      let updates = documents.map(doc => {return {value: doc.value * 2};});
+      let updates = documents.map(doc => {return {value: doc.value + 100};});
       handles = collection.update(handles, updates);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value * 2, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, doc.value + 100, isReplication2);
       }
 
       handles = collection.replace(handles, documents);
@@ -440,9 +440,9 @@ const replicatedStateFollowerSuite = function (dbParams) {
         checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
       }
 
-      db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, value: doc.value * 2} IN ${collectionName}`);
+      db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, value: doc.value + 100} IN ${collectionName}`);
       for (let doc of documents) {
-        checkFollowersValue(servers, shardId, doc._key, doc.value * 2, isReplication2);
+        checkFollowersValue(servers, shardId, doc._key, doc.value + 100, isReplication2);
       }
 
       db._query(`FOR doc IN ${collectionName} REPLACE {_key: doc._key, value: CONCAT(doc._key, "bar")} IN ${collectionName}`);
