@@ -206,17 +206,20 @@ class Methods {
   Result begin();
 
   /// @deprecated use async variant
-  [[nodiscard, deprecated("use async variant")]] auto commit() noexcept -> Result;
+  [[nodiscard, deprecated("use async variant")]] auto commit() noexcept
+      -> Result;
   /// @brief commit / finish the transaction
   [[nodiscard]] auto commitAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  [[nodiscard]] auto abort() noexcept -> Result;
+  [[nodiscard, deprecated("use async variant")]] auto abort() noexcept
+      -> Result;
   /// @brief abort the transaction
   [[nodiscard]] auto abortAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  [[nodiscard, deprecated("use async variant")]] auto finish(Result const& res) noexcept -> Result;
+  [[nodiscard, deprecated("use async variant")]] auto finish(
+      Result const& res) noexcept -> Result;
 
   /// @brief finish a transaction (commit or abort), based on the previous state
   [[nodiscard]] auto finishAsync(Result const& res) noexcept -> Future<Result>;

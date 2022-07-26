@@ -439,12 +439,8 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
                                     : trx.insert(StaticStrings::GraphCollection,
                                                  builder.slice(), options);
 
-  if (!result.ok()) {
-    std::ignore = trx.finish(result.result);
-    return result;
-  }
   res = trx.finish(result.result);
-  if (res.fail()) {
+  if (res.fail() && result.ok()) {
     return OperationResult{std::move(res), options};
   }
   return result;
