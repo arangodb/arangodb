@@ -24,13 +24,7 @@ Storing::~Storing() {
 auto Storing::run() -> void {
   conductor._callbackMutex.assertLockedByCurrentThread();
 
-  if (conductor._masterContext) {
-    conductor._masterContext->postApplication();
-  }
-  RecoveryManager* mngr = conductor._feature.recoveryManager();
-  if (mngr) {
-    mngr->stopMonitoring(&conductor);
-  }
+  conductor.cleanup();
 
   LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
 

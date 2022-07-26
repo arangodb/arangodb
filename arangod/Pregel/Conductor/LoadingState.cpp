@@ -27,8 +27,7 @@ auto Loading::run() -> void {
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_PREGEL_CONDUCTOR("30171", ERR)
         << "Not all DBServers started the execution";
-    // TODO change state to Canceled
-    conductor.changeState(StateType::Placeholder);
+    conductor.changeState(StateType::Canceled);
   }
 }
 

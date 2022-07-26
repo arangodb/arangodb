@@ -38,6 +38,7 @@
 #include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/LoadingState.h"
 #include "Pregel/Conductor/StoringState.h"
+#include "Pregel/Conductor/CanceledState.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
@@ -71,6 +72,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend class PregelFeature;
   friend struct conductor::Loading;
   friend struct conductor::Storing;
+  friend struct conductor::Canceled;
 
   ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;
@@ -130,7 +132,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   bool _startGlobalStep();
   ErrorCode _initializeWorkers(std::string const& suffix,
                                VPackSlice additional);
-  ErrorCode _finalizeWorkers();
   ErrorCode _sendToAllDBServers(std::string const& path,
                                 VPackBuilder const& message);
   ErrorCode _sendToAllDBServers(std::string const& path,
@@ -170,8 +171,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   uint64_t executionNumber() const { return _executionNumber; }
 
  private:
-  void cancelNoLock();
   void updateState(ExecutionState state);
+  void cleanup();
 
   std::unique_ptr<conductor::State> state;
   auto changeState(conductor::StateType name) -> void;

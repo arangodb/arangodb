@@ -37,6 +37,7 @@
 #include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/LoadingState.h"
 #include "Pregel/Conductor/StoringState.h"
+#include "Pregel/Conductor/CanceledState.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -428,10 +429,6 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
 
     if (_state == ExecutionState::RUNNING) {
       _startGlobalStep();  // trigger next superstep
-    } else if (_state == ExecutionState::CANCELED) {
-      LOG_PREGEL("dd721", WARN)
-          << "Execution was canceled, results will be discarded.";
-      _finalizeWorkers();  // tells workers to store / discard results
     } else {  // this prop shouldn't occur unless we are recovering or in error
       LOG_PREGEL("923db", WARN)
           << "No further action taken after receiving all responses";
@@ -494,27 +491,14 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     }
   }
   if (res != TRI_ERROR_NO_ERROR) {
-    cancelNoLock();
+    changeState(conductor::StateType::Canceled);
     LOG_PREGEL("7f97e", INFO) << "Recovery failed";
   }
 }
 
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  cancelNoLock();
-}
-
-void Conductor::cancelNoLock() {
-  _callbackMutex.assertLockedByCurrentThread();
-  updateState(ExecutionState::CANCELED);
-  bool ok = basics::function_utils::retryUntilTimeout(
-      [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
-      Logger::PREGEL, "cancel worker execution");
-  if (!ok) {
-    LOG_PREGEL("f8b3c", ERR)
-        << "Failed to cancel worker execution for five minutes, giving up.";
-  }
-  _workHandle.reset();
+  changeState(conductor::StateType::Canceled);
 }
 
 void Conductor::startRecovery() {
@@ -523,7 +507,7 @@ void Conductor::startRecovery() {
     return;  // maybe we are already in recovery mode
   } else if (_algorithm->supportsCompensation() == false) {
     LOG_PREGEL("12e0e", ERR) << "Algorithm does not support recovery";
-    cancelNoLock();
+    changeState(conductor::StateType::Canceled);
     return;
   }
 
@@ -546,7 +530,7 @@ void Conductor::startRecovery() {
                                                                  goodServers);
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_PREGEL("3d08b", ERR) << "Recovery proceedings failed";
-          cancelNoLock();
+          changeState(conductor::StateType::Canceled);
           return;
         }
         _dbServers = goodServers;
@@ -564,7 +548,7 @@ void Conductor::startRecovery() {
         if (_masterContext) {
           bool proceed = _masterContext->preCompensation();
           if (!proceed) {
-            cancelNoLock();
+            changeState(conductor::StateType::Canceled);
           }
         }
 
@@ -580,7 +564,7 @@ void Conductor::startRecovery() {
         res = _initializeWorkers(Utils::startRecoveryPath,
                                  additionalKeys.slice());
         if (res != TRI_ERROR_NO_ERROR) {
-          cancelNoLock();
+          changeState(conductor::StateType::Canceled);
           LOG_PREGEL("fefc6", ERR) << "Compensation failed";
         }
       });
@@ -801,7 +785,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
-ErrorCode Conductor::_finalizeWorkers() {
+void Conductor::cleanup() {
   _callbackMutex.assertLockedByCurrentThread();
 
   if (_masterContext) {
@@ -813,17 +797,6 @@ ErrorCode Conductor::_finalizeWorkers() {
   if (mngr) {
     mngr->stopMonitoring(this);
   }
-
-  LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
-
-  auto finalizeExecutionCommand =
-      FinalizeExecution{.executionNumber = _executionNumber,
-                        .gss = _globalSuperstep,
-                        .withStoring = _state == ExecutionState::STORING};
-  VPackBuilder command;
-  serialize(command, finalizeExecutionCommand);
-
-  return _sendToAllDBServers(Utils::finalizeExecutionPath, command);
 }
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
@@ -840,42 +813,33 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   }
   receive(CleanupFinished{});
 
-  _timing.total.finish();
+  if (_state != ExecutionState::CANCELED) {
+    _timing.total.finish();
 
-  VPackBuilder debugOut;
-  debugOut.openObject();
-  debugOut.add("stats", VPackValue(VPackValueType::Object));
-  _statistics.serializeValues(debugOut);
-  debugOut.close();
-  _aggregators->serializeValues(debugOut);
-  debugOut.close();
+    VPackBuilder debugOut;
+    debugOut.openObject();
+    debugOut.add("stats", VPackValue(VPackValueType::Object));
+    _statistics.serializeValues(debugOut);
+    debugOut.close();
+    _aggregators->serializeValues(debugOut);
+    debugOut.close();
 
-  LOG_PREGEL("063b5", INFO)
-      << "Done. We did " << _globalSuperstep << " rounds."
-      << (_timing.loading.hasStarted()
-              ? fmt::format("Startup time: {}s",
-                            _timing.loading.elapsedSeconds().count())
-              : "")
-      << (_timing.computation.hasStarted()
-              ? fmt::format(", computation time: {}s",
-                            _timing.computation.elapsedSeconds().count())
-              : "")
-      << (_storeResults ? fmt::format(", storage time: {}s",
-                                      _timing.storing.elapsedSeconds().count())
-                        : "")
-      << ", overall: " << _timing.total.elapsedSeconds().count() << "s"
-      << ", stats: " << debugOut.slice().toJson();
-
-  // always try to cleanup
-  if (_state == ExecutionState::CANCELED) {
-    auto* scheduler = SchedulerFeature::SCHEDULER;
-    if (scheduler) {
-      uint64_t exe = _executionNumber;
-      scheduler->queue(RequestLane::CLUSTER_AQL,
-                       [this, exe, self = shared_from_this()] {
-                         _feature.cleanupConductor(exe);
-                       });
-    }
+    LOG_PREGEL("063b5", INFO)
+        << "Done. We did " << _globalSuperstep << " rounds."
+        << (_timing.loading.hasStarted()
+                ? fmt::format("Startup time: {}s",
+                              _timing.loading.elapsedSeconds().count())
+                : "")
+        << (_timing.computation.hasStarted()
+                ? fmt::format(", computation time: {}s",
+                              _timing.computation.elapsedSeconds().count())
+                : "")
+        << (_storeResults
+                ? fmt::format(", storage time: {}s",
+                              _timing.storing.elapsedSeconds().count())
+                : "")
+        << ", overall: " << _timing.total.elapsedSeconds().count() << "s"
+        << ", stats: " << debugOut.slice().toJson();
   }
 }
 
@@ -1114,6 +1078,9 @@ auto Conductor::changeState(conductor::StateType name) -> void {
       break;
     case conductor::StateType::Storing:
       state = std::make_unique<conductor::Storing>(*this);
+      break;
+    case conductor::StateType::Canceled:
+      state = std::make_unique<conductor::Canceled>(*this);
       break;
     case conductor::StateType::Placeholder:
       state = std::make_unique<conductor::Placeholder>();
