@@ -33,8 +33,8 @@ const { getDBServers } = require('@arangodb/test-helper');
 const database = "cluster_rebalance_db";
 let prevDB = null;
 
-function cleanoutServer(server) {
-  let res = arango.POST_RAW("/_admin/cluster/cleanOutServer", { server });
+function resignServer(server) {
+  let res = arango.POST_RAW("/_admin/cluster/resignLeadership", { server });
   assertEqual(202, res.code);
   const id = res.parsedBody.id;
 
@@ -57,8 +57,8 @@ function clusterRebalanceSuite() {
       for (let i = 0; i < 10; i++) {
         db._create("col" + i);
       }
-      // cleanout one server
-      cleanoutServer(getDBServers()[0].id);
+      // resign one server
+      resignServer(getDBServers()[0].id);
     },
 
     tearDownAll: function () {
