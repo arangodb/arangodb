@@ -2135,8 +2135,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace("abc");
-    node.shards().emplace("def");
+    node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("def", arangodb::LogicalView::Indexes{});
 
     // clone without properties into the same plan
     {
@@ -2236,14 +2236,14 @@ TEST_F(IResearchViewNodeTest, clone) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no scorers
-    node.sort(&sort, 0);
+    node.setSort(sort, 0);
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace("abc");
-    node.shards().emplace("def");
+    node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("def", arangodb::LogicalView::Indexes{});
 
     // clone without properties into the same plan
     {
@@ -3139,7 +3139,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    node.sort(&viewImpl.primarySort(), 1);
+    node.setSort(viewImpl.primarySort(), 1);
 
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
@@ -3306,7 +3306,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
         {});      // no sort condition
     arangodb::aql::Variable const outNmColPtr("variable100", 1, false);
     arangodb::aql::Variable const outNmDocId("variable101", 2, false);
-    node.sort(&viewImpl.primarySort(), 1);
+    node.setSort(viewImpl.primarySort(), 1);
     node.setLateMaterialized(outNmColPtr, outNmDocId);
 
     node.setVarsUsedLater({arangodb::aql::VarSet{&outNmColPtr, &outNmDocId}});
@@ -3470,8 +3470,8 @@ TEST_F(IResearchViewNodeTest, collections) {
       std::to_string(collection0->id().id()),
       std::to_string(collection1->id().id())};
 
-  for (arangodb::aql::Collection const& collection : collections) {
-    EXPECT_EQ(1, expectedCollections.erase(collection.name()));
+  for (auto const& [collection, indexes] : collections) {
+    EXPECT_EQ(1, expectedCollections.erase(collection.get().name()));
   }
   EXPECT_TRUE(expectedCollections.empty());
 }
