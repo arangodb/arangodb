@@ -52,23 +52,21 @@
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
-auto IReplicatedLeaderState<S>::getStream() const
+auto IReplicatedLeaderState<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> const& {
-  if (_stream) {
-    return _stream;
-  }
+  ADB_PROD_ASSERT(_stream != nullptr)
+      << "Replicated leader state: stream accessed before service was started.";
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  return _stream;
 }
 
 template<typename S>
-auto IReplicatedFollowerState<S>::getStream() const
+auto IReplicatedFollowerState<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> const& {
-  if (_stream) {
-    return _stream;
-  }
+  ADB_PROD_ASSERT(_stream != nullptr) << "Replicated follower state: stream "
+                                         "accessed before service was started.";
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  return _stream;
 }
 
 template<typename S>

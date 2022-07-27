@@ -220,7 +220,7 @@ auto LeaderStateManager<S>::startService() -> Result {
         data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
         data.recoveryRange = std::nullopt;
         TRI_ASSERT(data.state != nullptr);
-        data.state->_stream = data.stream;
+        data.state->setStream(data.stream);
         return data.state;
       });
 
