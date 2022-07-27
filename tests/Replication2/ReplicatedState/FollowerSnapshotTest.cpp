@@ -26,6 +26,7 @@
 
 #include "Logger/LogMacros.h"
 #include "LogLevels.h"
+#include "Death_Test.h"
 
 #include "Replication2/Mocks/FakeFollower.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
@@ -60,7 +61,9 @@ struct FollowerSnapshotTest
       std::make_shared<ReplicatedStateMetricsMock>("foo");
 };
 
-TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
+using FollowerSnapshotDeathTest = FollowerSnapshotTest;
+
+TEST_F(FollowerSnapshotDeathTest, basic_follower_manager_test) {
   auto follower =
       std::make_shared<test::FakeFollower>("follower", "leader", LogTerm{1});
   follower->insertMultiplexedValue<State>(
@@ -111,8 +114,8 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
       << "follower state should not be available yet";
 
   // furthermore the state should not have access to the stream
-  ASSERT_ANY_THROW({ std::ignore = state->getStream(); })
-      << "stream must not be available";
+  ASSERT_DEATH_CORE_FREE(std::ignore = state->getStream(),
+                         "stream must not be available");
 
   // first trigger an error
   state->acquire.resolveWithAndReset(
