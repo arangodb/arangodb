@@ -535,8 +535,8 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
   }
-
-  if (!_nested.empty()) {  // fields are not inherited from parent
+#ifdef USE_ENTERPRISE
+  if (!_nested.empty()) {
     velocypack::Builder fieldsBuilder;
     Mask fieldMask(true);      // output all non-matching fields
     auto subDefaults = *this;  // make modifable copy
@@ -561,6 +561,7 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     fieldsBuilder.close();
     builder.add("nested", fieldsBuilder.slice());
   }
+#endif
 
   if ((!ignoreEqual || _includeAllFields != ignoreEqual->_includeAllFields) &&
       (!mask || mask->_includeAllFields)) {
