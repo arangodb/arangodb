@@ -77,15 +77,18 @@ auto DocumentFollowerState::applyEntries(
           fut = trx->apply(doc);
           break;
         case OperationType::kCommit:
+          fut = trx->commit();
+          transactionHandler->removeTransaction(doc.tid);
+          break;
         case OperationType::kAbort:
-          fut = trx->finish(doc);
+          fut = trx->abort();
+          transactionHandler->removeTransaction(doc.tid);
           break;
         default:
           THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
       }
 
-      // TODO parallelize?
-      fut.wait();
+      TRI_ASSERT(fut.isReady());
       if (fut.result()->fail()) {
         return fut;
       }
