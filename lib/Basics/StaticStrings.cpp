@@ -189,7 +189,7 @@ std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
 std::string const StaticStrings::BatchContentType(
     "application/x-arango-batchpart");
-std::string const StaticStrings::CacheControl("Cache-Control");
+std::string const StaticStrings::CacheControl("cache-control");
 std::string const StaticStrings::Close("Close");
 std::string const StaticStrings::ClusterCommSource("x-arango-source");
 std::string const StaticStrings::Code("code");
@@ -233,10 +233,10 @@ std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
 std::string const StaticStrings::ContentSecurityPolicy(
-    "Content-Security-Policy");
-std::string const StaticStrings::Pragma("Pragma");
-std::string const StaticStrings::Expires("Expires");
-std::string const StaticStrings::HSTS("Strict-Transport-Security");
+    "content-security-policy");
+std::string const StaticStrings::Pragma("pragma");
+std::string const StaticStrings::Expires("expires");
+std::string const StaticStrings::HSTS("strict-transport-security");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(
