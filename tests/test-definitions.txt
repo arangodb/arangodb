@@ -24,7 +24,7 @@ http_replication weight=500 wweight=2 single
 active_failover single
 agency weight=350 wweight=2 single -- --dumpAgencyOnError true
 agency-restart weight=250 single
-arangobench weight=1000 single
+arangobench wweight=2 weight=1000 single
 arangosh single
 authentication weight=1000 single
 endpoints single -- --skipEndpointsIpv6 true
