@@ -280,7 +280,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
 
         auto& analyzer = filterCtx.fieldAnalyzer(name);
         TRI_ASSERT(analyzer._pool);
-        kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+        kludge::mangleField(name, ctx.isOldMangling, analyzer);
         *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
         irs::assign(filter->mutable_options()->term,
@@ -464,7 +464,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 
         auto& analyzer = filterCtx.fieldAnalyzer(name);
         TRI_ASSERT(analyzer._pool);
-        kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+        kludge::mangleField(name, ctx.isOldMangling, analyzer);
         *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
 
@@ -630,7 +630,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
 
         auto& analyzer = filterCtx.fieldAnalyzer(name);
         TRI_ASSERT(analyzer._pool);
-        kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+        kludge::mangleField(name, ctx.isOldMangling, analyzer);
         *range->mutable_field() = std::move(name);
         range->boost(filterCtx.boost);
         auto* opts = range->mutable_options();
@@ -808,7 +808,7 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
         includeMax ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
 
     TRI_ASSERT(analyzer);
-    kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+    kludge::mangleField(name, ctx.isOldMangling, analyzer);
     *geo_filter.mutable_field() = std::move(name);
   }
 
@@ -936,7 +936,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
         return {TRI_ERROR_BAD_PARAMETER};
     }
 
-    kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+    kludge::mangleField(name, ctx.isOldMangling, analyzer);
     *geo_filter.mutable_field() = std::move(name);
   }
 
@@ -2030,7 +2030,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   }
 
   bool prefixMatch = true;
-  auto const isIndexFilter = ctx.isSearchQuery;
+  auto const isOldMangling = ctx.isOldMangling;
 
   std::string fieldName{filterCtx.namePrefix};
   if (!nameFromAttributeAccess(fieldName, *fieldArg, ctx, filter != nullptr,
@@ -2056,14 +2056,19 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
       basics::StringUtils::tolowerInPlace(strArg);  // normalize user input
       irs::string_ref const TypeAnalyzer("analyzer");
 
-      typedef bool (*TypeHandler)(std::string&, bool isIndexFilter,
+      typedef bool (*TypeHandler)(std::string&, bool isOldMangling,
                                   FieldMeta::Analyzer const&);
 
       static std::map<irs::string_ref, TypeHandler> const TypeHandlers{
           // any string
           {irs::string_ref("string"),
-           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
-             kludge::mangleAnalyzer(name);
+           [](std::string& name, bool isOldMangling,
+              FieldMeta::Analyzer const&) -> bool {
+             if (isOldMangling) {
+               kludge::mangleAnalyzer(name);
+             } else {
+               kludge::mangleString(name);
+             }
              return true;  // a prefix match
            }},
           // any non-string type
@@ -2074,9 +2079,9 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
            }},
           // concrete analyzer from the context
           {TypeAnalyzer,
-           [](std::string& name, bool isIndexFilter,
+           [](std::string& name, bool isOldMangling,
               FieldMeta::Analyzer const& analyzer) -> bool {
-             kludge::mangleField(name, isIndexFilter, analyzer);
+             kludge::mangleField(name, isOldMangling, analyzer);
              return false;  // not a prefix match
            }},
           {irs::string_ref("numeric"),
@@ -2138,7 +2143,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
         }
       }
 
-      prefixMatch = typeHandler->second(fieldName, isIndexFilter, analyzer);
+      prefixMatch = typeHandler->second(fieldName, isOldMangling, analyzer);
     }
   }
 
@@ -3200,7 +3205,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
                   .append("'")};
     }
 
-    kludge::mangleField(name, ctx.isSearchQuery, analyzerPool);
+    kludge::mangleField(name, ctx.isOldMangling, analyzerPool);
 
     phrase = &filter->add<irs::by_phrase>();
     *phrase->mutable_field() = std::move(name);
@@ -3360,7 +3365,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
                   .append("'")};
     }
 
-    kludge::mangleField(name, ctx.isSearchQuery, analyzerPool);
+    kludge::mangleField(name, ctx.isOldMangling, analyzerPool);
 
     auto& ngramFilter = filter->add<irs::by_ngram_similarity>();
     *ngramFilter.mutable_field() = std::move(name);
@@ -3514,7 +3519,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
-    kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+    kludge::mangleField(name, ctx.isOldMangling, analyzer);
 
     // Try to optimize us away
     if (!isMultiPrefix && !prefixes.empty() &&
@@ -3625,7 +3630,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
-    kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+    kludge::mangleField(name, ctx.isOldMangling, analyzer);
 
     auto& wildcardFilter = filter->add<irs::by_wildcard>();
     *wildcardFilter.mutable_field() = std::move(name);
@@ -3666,7 +3671,7 @@ Result fromFuncLevenshteinMatch(char const* funcName,
   if (filter) {
     auto& analyzer = filterCtx.fieldAnalyzer(name);
     TRI_ASSERT(analyzer);
-    kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+    kludge::mangleField(name, ctx.isOldMangling, analyzer);
 
     auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
     levenshtein_filter.boost(filterCtx.boost);
@@ -3789,7 +3794,7 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
                                              : GeoFilterType::IS_CONTAINED);
     options->shape = std::move(shape);
 
-    kludge::mangleField(name, ctx.isSearchQuery, analyzer);
+    kludge::mangleField(name, ctx.isOldMangling, analyzer);
     *geo_filter.mutable_field() = std::move(name);
   }
 

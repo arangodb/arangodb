@@ -191,7 +191,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility,
+    std::pair<bool, bool> volatility, bool isOldMangling,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
@@ -210,6 +210,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _volatileSort(volatility.second),
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter(_volatileSort || volatility.first),
+      _isOldMangling(isOldMangling),
       _varInfoMap(varInfoMap),
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
@@ -284,6 +285,10 @@ bool IResearchViewExecutorInfos::volatileSort() const noexcept {
 
 bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
   return _volatileFilter;
+}
+
+bool IResearchViewExecutorInfos::isOldMangling() const noexcept {
+  return _isOldMangling;
 }
 
 const std::pair<const arangodb::iresearch::IResearchSortBase*, size_t>&
@@ -717,7 +722,8 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
       .index = _reader.get(),
       .ref = &infos().outVariable(),
       .filterOptimization = infos().filterOptimization(),
-      .isSearchQuery = true};
+      .isSearchQuery = true,
+      .isOldMangling = infos().isOldMangling()};
 
   // `_volatileSort` implies `_volatileFilter`
   if (infos().volatileFilter() || !_isInitialized) {
