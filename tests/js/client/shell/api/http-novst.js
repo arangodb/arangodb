@@ -29,10 +29,24 @@
 'use strict';
 
 const internal = require('internal');
-const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const cacheControl = "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, max-age=0, s-maxage=0";
+const contentSecurityPolicy ="frame-ancestors 'self'; form-action 'self';";
+const pragma = "no-cache";
+const strictTransportSecurity = "max-age=31536000 ; includeSubDomains";
+const xContentTypeOptions = "nosniff";
 const jsunity = require("jsunity");
+
+function assertHeaders(doc, customContentType = contentType) {
+  assertEqual(doc.headers['content-type'], customContentType);
+  assertEqual(doc.headers['cache-control'], cacheControl);
+  assertEqual(doc.headers['content-security-policy'], contentSecurityPolicy);
+  assertEqual(doc.headers.expires, 0);
+  assertEqual(doc.headers.pragma, pragma);
+  assertEqual(doc.headers['strict-transport-security'], strictTransportSecurity);
+  assertEqual(doc.headers['x-content-type-options'], xContentTypeOptions);
+}
 
 
 
@@ -48,6 +62,7 @@ function head_requestsSuite () {
 
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc);
     },
 
     test_checks_whether_HEAD_returns_a_body_on_3xx: function() {
@@ -56,6 +71,7 @@ function head_requestsSuite () {
 
       assertEqual(doc.code, 405);
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc, "text/plain");
     },
 
     test_checks_whether_HEAD_returns_a_body_on_4xx_2: function() {
@@ -64,6 +80,7 @@ function head_requestsSuite () {
 
       assertEqual(doc.code, 405);
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc, "text/plain");
     },
 
     test_checks_whether_HEAD_returns_a_body_on_4xx: function() {
@@ -72,20 +89,21 @@ function head_requestsSuite () {
 
       assertEqual(doc.code, 404);
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc);
     },
 
     test_checks_whether_HEAD_returns_a_body_on_an_existing_document: function() {
       let cn = "UnitTestsCollectionHttp";
 
       // create collection with one document;
-      let cid = db._create(cn);
+      db._create(cn);
       try {
         let cmd = `/_api/document?collection=${cn}`;
         let body = { "Hello" : "World" };
         let doc = arango.POST_RAW(cmd, body);
 
-        let rev = doc.parsedBody['_rev'];
-        let did = doc.parsedBody['_id'];
+        let rev = doc.parsedBody._rev;
+        let did = doc.parsedBody._id;
         assertEqual(typeof did, 'string', doc);
 
         // run a HTTP HEAD query on the existing document;
@@ -100,6 +118,8 @@ function head_requestsSuite () {
 
         assertEqual(doc.code, 200, doc);
         assertFalse(doc.hasOwnProperty('parsedBody'));
+
+        assertHeaders(doc);
       } finally {
         db._drop(cn);
       }
@@ -118,8 +138,10 @@ function get_requestSuite () {
 
       assertEqual(doc.code, 404);
       assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.code, 404);
+
+      assertHeaders(doc);
     },
 
     test_checks_whether_GET_returns_a_body_1: function() {
@@ -127,10 +149,10 @@ function get_requestSuite () {
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 404);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 404);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.errorNum, 404);
+      assertEqual(doc.parsedBody.code, 404);
+      assertHeaders(doc);
     },
 
     test_checks_whether_GET_returns_a_body_2: function() {
@@ -138,10 +160,10 @@ function get_requestSuite () {
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 404);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], 404);
-      assertEqual(doc.parsedBody['code'], 404);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.errorNum, 404);
+      assertEqual(doc.parsedBody.code, 404);
+      assertHeaders(doc);
     }
   };
 }
@@ -156,19 +178,21 @@ function options_requestSuite () {
     test_checks_handling_of_an_OPTIONS_request__without_body: function() {
       let cmd = "/_api/version";
       let doc = arango.OPTIONS_RAW(cmd, "");
-      assertEqual(doc.headers['allow'], headers);
+      assertEqual(doc.headers.allow, headers);
 
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc, "text/plain");
     },
 
     test_checks_handling_of_an_OPTIONS_request__with_body: function() {
       let cmd = "/_api/version";
       let doc = arango.OPTIONS_RAW(cmd, "some stuff");
-      assertEqual(doc.headers['allow'], headers);
+      assertEqual(doc.headers.allow, headers);
 
       assertEqual(doc.code, 200);
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc, "text/plain");
     }
   };
 }
@@ -188,6 +212,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['access-control-allow-origin'], undefined);
       assertEqual(doc.headers['access-control-allow-methods'], undefined);
       assertEqual(doc.headers['access-control-allow-credentials'], undefined);
+      assertHeaders(doc);
     },
 
     test_checks_handling_of_a_CORS_GET_request__with_null_origin: function() {
@@ -200,6 +225,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['access-control-allow-headers'], undefined);
       assertEqual(doc.headers['access-control-allow-credentials'], "false", doc);
       assertEqual(doc.headers['access-control-max-age'], undefined);
+      assertHeaders(doc);
     },
 
     test_checks_handling_of_a_CORS_GET_request: function() {
@@ -212,6 +238,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['access-control-allow-headers'], undefined);
       assertEqual(doc.headers['access-control-allow-credentials'], "false");
       assertEqual(doc.headers['access-control-max-age'], undefined);
+      assertHeaders(doc);
     },
 
     test_checks_handling_of_a_CORS_GET_request_from_origin_that_is_trusted: function() {
@@ -224,6 +251,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['access-control-allow-headers'], undefined);
       assertEqual(doc.headers['access-control-allow-credentials'], "true");
       assertEqual(doc.headers['access-control-max-age'], undefined);
+      assertHeaders(doc);
     },
 
     test_checks_handling_of_a_CORS_POST_request: function() {
@@ -236,6 +264,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['access-control-allow-headers'], undefined);
       assertEqual(doc.headers['access-control-allow-credentials'], "false");
       assertEqual(doc.headers['access-control-max-age'], undefined);
+      assertHeaders(doc);
     },
 
     test_checks_handling_of_a_CORS_OPTIONS_preflight_request__no_headers: function() {
@@ -253,6 +282,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['allow'], headers);
       assertEqual(doc.headers['content-length'], "0");
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc, "text/plain");
     },
 
     test_checks_handling_of_a_CORS_OPTIONS_preflight_request__empty_headers: function() {
@@ -272,6 +302,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['allow'], headers);
       assertEqual(doc.headers['content-length'], "0");
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc, "text/plain");
     },
 
     test_checks_handling_of_a_CORS_OPTIONS_preflight_request__populated_headers: function() {
@@ -291,6 +322,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['allow'], headers);
       assertEqual(doc.headers['content-length'], "0");
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc, "text/plain");
     },
 
     test_checks_handling_of_a_CORS_OPTIONS_preflight_request: function() {
@@ -307,6 +339,7 @@ function CORS_requestSuite () {
       assertEqual(doc.headers['allow'], headers);
       assertEqual(doc.headers['content-length'], "0");
       assertEqual(doc.parsedBody, undefined);
+      assertHeaders(doc, "text/plain");
     }
   };
 }
