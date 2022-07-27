@@ -23,15 +23,19 @@
 
 #pragma once
 
-#include "DocumentCore.h"
-#include "DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
 #include "Basics/UnshackledMutex.h"
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IDocumentStateTransactionHandler;
+
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState> {
-  explicit DocumentFollowerState(std::unique_ptr<DocumentCore> core);
+  explicit DocumentFollowerState(
+      std::unique_ptr<DocumentCore> core,
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
 
  protected:
   [[nodiscard]] auto resign() && noexcept
@@ -50,6 +54,7 @@ struct DocumentFollowerState
     std::unique_ptr<DocumentCore> core;
   };
 
+  std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 };
 

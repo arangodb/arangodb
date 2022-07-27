@@ -46,7 +46,8 @@ DocumentFactory::DocumentFactory(
 
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentFollowerState> {
-  return std::make_shared<DocumentFollowerState>(std::move(core));
+  return std::make_shared<DocumentFollowerState>(std::move(core),
+                                                 _handlersFactory);
 }
 
 auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)

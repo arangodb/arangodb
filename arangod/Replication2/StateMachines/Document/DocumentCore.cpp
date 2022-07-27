@@ -34,8 +34,7 @@ DocumentCore::DocumentCore(
       _gid(std::move(gid)),
       _params(std::move(coreParameters)),
       _agencyHandler(handlersFactory->createAgencyHandler(_gid)),
-      _shardHandler(handlersFactory->createShardHandler(_gid)),
-      _transactionHandler(handlersFactory->createTransactionHandler(_gid)) {
+      _shardHandler(handlersFactory->createShardHandler(_gid)) {
   auto collectionProperties =
       _agencyHandler->getCollectionPlan(_params.collectionId);
 
@@ -55,8 +54,4 @@ DocumentCore::DocumentCore(
 }
 
 auto DocumentCore::getShardId() -> std::string_view { return _shardId; }
-
-auto DocumentCore::getTransactionHandler()
-    -> std::shared_ptr<IDocumentStateTransactionHandler> {
-  return _transactionHandler;
-}
+auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }

@@ -166,7 +166,7 @@ struct IDocumentStateHandlersFactory {
   virtual auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
   virtual auto createTransactionHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateTransactionHandler> = 0;
+      -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
 };
 
 class DocumentStateHandlersFactory : public IDocumentStateHandlersFactory {
@@ -179,7 +179,7 @@ class DocumentStateHandlersFactory : public IDocumentStateHandlersFactory {
   auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
   auto createTransactionHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateTransactionHandler> override;
+      -> std::unique_ptr<IDocumentStateTransactionHandler> override;
 
  private:
   ArangodServer& _server;

@@ -21,16 +21,22 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentCore.h"
-#include "DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+
+#include "Replication2/StateMachines/Document/DocumentCore.h"
+#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
-DocumentFollowerState::DocumentFollowerState(std::unique_ptr<DocumentCore> core)
-    : _guardedData(std::move(core)) {}
+DocumentFollowerState::DocumentFollowerState(
+    std::unique_ptr<DocumentCore> core,
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
+    : _transactionHandler(
+          handlersFactory->createTransactionHandler(core->getGid())),
+      _guardedData(std::move(core)) {}
 
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
@@ -53,20 +59,9 @@ auto DocumentFollowerState::applyEntries(
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
 
-    auto transactionHandler = _guardedData.doUnderLock(
-        [](auto& data) -> std::shared_ptr<IDocumentStateTransactionHandler> {
-          if (data.didResign()) {
-            return nullptr;
-          }
-          return data.core->getTransactionHandler();
-        });
-    if (transactionHandler == nullptr) {
-      return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
-    }
-
     try {
       auto fut = futures::Future<Result>{Result{}};
-      auto trx = transactionHandler->ensureTransaction(doc);
+      auto trx = _transactionHandler->ensureTransaction(doc);
       TRI_ASSERT(trx != nullptr);
       switch (doc.operation) {
         case OperationType::kInsert:
@@ -78,11 +73,11 @@ auto DocumentFollowerState::applyEntries(
           break;
         case OperationType::kCommit:
           fut = trx->commit();
-          transactionHandler->removeTransaction(doc.tid);
+          _transactionHandler->removeTransaction(doc.tid);
           break;
         case OperationType::kAbort:
           fut = trx->abort();
-          transactionHandler->removeTransaction(doc.tid);
+          _transactionHandler->removeTransaction(doc.tid);
           break;
         default:
           THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);

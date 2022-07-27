@@ -287,7 +287,7 @@ auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
 
 auto DocumentStateHandlersFactory::createTransactionHandler(
     GlobalLogIdentifier gid)
-    -> std::shared_ptr<IDocumentStateTransactionHandler> {
-  return std::make_shared<DocumentStateTransactionHandler>(std::move(gid),
+    -> std::unique_ptr<IDocumentStateTransactionHandler> {
+  return std::make_unique<DocumentStateTransactionHandler>(std::move(gid),
                                                            _databaseFeature);
 }
