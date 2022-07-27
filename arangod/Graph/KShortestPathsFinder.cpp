@@ -181,71 +181,32 @@ template<class ProviderType>
 void KShortestPathsFinder<ProviderType>::computeNeighbourhoodOfVertex(
     VertexRef vertex, Direction direction, std::vector<Step>& steps) {
   // Select proper provider (direction based)
-
   ProviderType* provider =
       direction == BACKWARD ? _backwardProvider.get() : _forwardProvider.get();
 
   // Create step to use
-  // TODO: Later we want to use HashedStringRefs rather then string_views
-  // (VertexRef)
   arangodb::velocypack::HashedStringRef vertexRef{
       vertex.data(), static_cast<uint32_t>(vertex.length())};
   typename ProviderType::Step step{vertexRef, 0};
+  if constexpr (std::is_same_v<typename ProviderType::Step,
+                               ClusterProviderStep>) {
+    std::vector<typename ProviderType::Step*> stepToFetch{&step};
+    futures::Future<std::vector<typename ProviderType::Step*>> futureEnds =
+        provider->fetch(stepToFetch);
+    futureEnds.wait();
+  }
 
   // Expand the step
   TRI_ASSERT(provider != nullptr);
-  LOG_DEVEL << "Using weight: " << std::boolalpha << _options.useWeight();
 
-  // Variant using Provider
-  // auto previous = _pathStore.append(step);
+  // Variant using provider
   size_t previous = 0;  // dummy value
-  provider->expand(
-      step, previous,
-      [&](auto n) -> void {  // (SingleServerProviderStep n) || BaseStep
-        // TODO: "steps" needs to be changed to our refactored step structure
-        // for now, just testing.
-        if (_options.useWeight()) {
-          if constexpr (std::is_same_v<
-                            ProviderType,
-                            SingleServerProvider<SingleServerProviderStep>>) {
-            auto edtCopy = n.getEdge().getID();
-            VertexRef id = _options.cache()->persistString(
-                n.getVertex().getID().toString());
-            steps.emplace_back(std::move(edtCopy), id, n.getWeight());
-          } else if (std::is_same_v<ProviderType,
-                                    ClusterProvider<ClusterProviderStep>>) {
-            VPackBuilder builder;
-            builder.openObject();
-            builder.add("_id", n.getEdge().getID().toString());
-            builder.close();
 
-            EdgeDocumentToken edtCopy{builder.slice()};
-            VertexRef id = _options.cache()->persistString(
-                n.getVertex().getID().toString());
-            steps.emplace_back(std::move(edtCopy), id, n.getWeight());
-          }
-        } else {
-          if constexpr (std::is_same_v<
-                            ProviderType,
-                            SingleServerProvider<SingleServerProviderStep>>) {
-            auto edtCopy = n.getEdge().getID();
-            VertexRef id = _options.cache()->persistString(
-                n.getVertex().getID().toString());
-            steps.emplace_back(std::move(edtCopy), id, 1);
-          } else if (std::is_same_v<ProviderType,
-                                    ClusterProvider<ClusterProviderStep>>) {
-            VPackBuilder builder;
-            builder.openObject();
-            builder.add("_id", n.getEdge().getID().toString());
-            builder.close();
-
-            EdgeDocumentToken edtCopy{builder.slice()};
-            VertexRef id = _options.cache()->persistString(
-                n.getVertex().getID().toString());
-            steps.emplace_back(std::move(edtCopy), id, n.getWeight());
-          }
-        }
-      });
+  provider->expand(step, previous, [&](auto n) -> void {
+    steps.emplace_back(provider->getEdgeDocumentToken(n.getEdge()),
+                       n.getVertex().getID().stringView(),
+                       (n.getWeight() - step.getWeight()));
+  });
 }
 
 template<class ProviderType>

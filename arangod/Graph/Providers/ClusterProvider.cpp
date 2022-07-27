@@ -515,6 +515,12 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
 }
 
 template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeDocumentToken(
+    typename Step::Edge const& edge) -> EdgeDocumentToken {
+  return EdgeDocumentToken{_opts.getCache()->getCachedEdge(edge.getID())};
+}
+
+template<class StepImpl>
 auto ClusterProvider<StepImpl>::addEdgeIDToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
     -> void {

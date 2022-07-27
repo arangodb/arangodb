@@ -63,8 +63,6 @@ class ClusterProviderStep
     explicit Edge(EdgeType tkn) : _edge(std::move(tkn)) {}
     Edge() : _edge() {}
 
-    void addToBuilder(ClusterProvider<ClusterProviderStep>& provider,
-                      arangodb::velocypack::Builder& builder) const;
     [[nodiscard]] EdgeType const& getID()
         const;  // TODO: Performance Test compare EdgeType
                 // <-> EdgeDocumentToken

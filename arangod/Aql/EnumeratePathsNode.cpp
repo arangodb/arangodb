@@ -462,36 +462,30 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     }
   } else {
     if (ServerState::instance()->isCoordinator()) {
-      // TODO [GraphRefactor]: Build cluster variant (else: SingleServer
-      // variant - Slice -> EdgeDocumentToken still missing)
-      LOG_DEVEL << "FixME";
-      std::pair<std::vector<IndexAccessor>,
-                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-          usedIndexes{};
-      usedIndexes.first = buildUsedIndexes();
+      auto traverserCacheForward =
+          std::make_shared<RefactoredClusterTraverserCache>(
+              opts->query().resourceMonitor());
+      auto traverserCacheBackward =
+          std::make_shared<RefactoredClusterTraverserCache>(
+              opts->query().resourceMonitor());
 
-      std::pair<std::vector<IndexAccessor>,
-                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-          reversedUsedIndexes{};
-      reversedUsedIndexes.first = buildReverseUsedIndexes();
+      std::unordered_set<uint64_t> availableDepthsSpecificConditionsForward;
+      std::unordered_set<uint64_t> availableDepthsSpecificConditionsBackward;
 
-      auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
-          opts->query().resourceMonitor());
-      std::unordered_set<uint64_t> availableDepthsSpecificConditions;
-      // availableDepthsSpecificConditions.reserve(opts->_depthLookupInfo.size());
-      // // TODO CHECK
       std::vector<std::pair<Variable const*, RegisterId>>
-          filterConditionVariables{};  // TODO CHECK;
+          filterConditionVariablesForward{};
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariablesBackward{};
 
       ClusterBaseProviderOptions forwardProviderOptions(
-          traverserCache, engines(), false, opts->produceVertices(),
-          &opts->getExpressionCtx(), filterConditionVariables,
-          std::move(availableDepthsSpecificConditions));
+          traverserCacheForward, engines(), false, opts->produceVertices(),
+          &opts->getExpressionCtx(), filterConditionVariablesForward,
+          std::move(availableDepthsSpecificConditionsForward));
 
       ClusterBaseProviderOptions backwardProviderOptions(
-          traverserCache, engines(), false, opts->produceVertices(),
-          &opts->getExpressionCtx(), filterConditionVariables,
-          std::move(availableDepthsSpecificConditions));
+          traverserCacheBackward, engines(), true, opts->produceVertices(),
+          &opts->getExpressionCtx(), filterConditionVariablesBackward,
+          std::move(availableDepthsSpecificConditionsBackward));
 
       // TODO [GraphRefactor]: Optimize useWeight section
       if (opts->useWeight()) {
