@@ -37,3 +37,23 @@ auto FatalError::getResults(bool withId, VPackBuilder& out) -> void {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
+
+auto FatalError::getResults(bool withId, VPackBuilder& out) -> void {
+  auto collectPregelResultsCommand = CollectPregelResults{
+      .executionNumber = conductor._executionNumber, .withId = withId};
+  VPackBuilder message;
+  serialize(message, collectPregelResultsCommand);
+
+  // merge results from DBServers
+  out.openArray();
+  auto res = conductor._sendToAllDBServers(
+      Utils::aqlResultsPath, message, [&](VPackSlice const& payload) {
+        if (payload.isArray()) {
+          out.add(VPackArrayIterator(payload));
+        }
+      });
+  out.close();
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
