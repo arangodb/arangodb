@@ -203,23 +203,15 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
       });
 }
 
-auto DocumentStateTransaction::finish(DocumentLogEntry const& entry)
-    -> futures::Future<Result> {
+auto DocumentStateTransaction::commit() -> futures::Future<Result> {
   if (shouldBeAborted()) {
-    return _methods->abortAsync();
+    return _result->result;
   }
+  return _methods->commitAsync();
+}
 
-  switch (entry.operation) {
-    case OperationType::kCommit:
-      return _methods->commitAsync();
-    case OperationType::kAbort:
-      return _methods->abortAsync();
-    default:
-      return Result{
-          TRI_ERROR_TRANSACTION_INTERNAL,
-          fmt::format("Transaction of type {} with ID {} could not be finished",
-                      to_string(entry.operation), entry.tid.id())};
-  }
+auto DocumentStateTransaction::abort() -> futures::Future<Result> {
+  return _methods->abortAsync();
 }
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(

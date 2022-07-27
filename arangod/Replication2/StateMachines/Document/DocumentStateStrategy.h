@@ -113,8 +113,8 @@ struct IDocumentStateTransaction {
 
   [[nodiscard]] virtual auto apply(DocumentLogEntry const& entry)
       -> futures::Future<Result> = 0;
-  [[nodiscard]] virtual auto finish(DocumentLogEntry const& entry)
-      -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto commit() -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto abort() -> futures::Future<Result> = 0;
 };
 
 class DocumentStateTransaction
@@ -124,8 +124,8 @@ class DocumentStateTransaction
   explicit DocumentStateTransaction(
       std::shared_ptr<transaction::Methods> methods);
   auto apply(DocumentLogEntry const& entry) -> futures::Future<Result> override;
-  auto finish(DocumentLogEntry const& entry)
-      -> futures::Future<Result> override;
+  auto commit() -> futures::Future<Result> override;
+  auto abort() -> futures::Future<Result> override;
 
  private:
   bool shouldBeAborted();
