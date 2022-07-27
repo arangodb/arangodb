@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertUndefined, fail */
+/*global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertNotNull, assertUndefined, fail */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
