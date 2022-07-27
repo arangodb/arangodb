@@ -28,11 +28,15 @@ The current data model is largely based on the types supported by VelocyPack.
 - objects
   User-defined types. An object has one or more fields. Fields have a name
   and may be optional. Further, fields may take on a fixed number of different
-  types.
+  types.  
 
-There is also support for `std::optional` and `std::variant`, as well as
-"unsafe" types like `std::string_view` and `velocypack::Slice`, which we will
-cover later.
+There is also support for `std::optional`, `std::unique_ptr`, `std::shared_ptr`,
+`velocypack::SharedSlice` and `std::variant`, as well as "unsafe" types like
+`std::string_view` and `velocypack::Slice`, which we will cover later.
+
+### Limitations
+
+At the moment all types used for deserialization must be default constructible.
 
 ## Inspecting Objects
 
@@ -103,7 +107,7 @@ inspector it looks as follows:
 
 Now, this type has little use on its own and only introduces unnecessary
 overhead. We do not need the additional object wrapper and could make it
-completely transparent to inspectors. This an be achieved by writing, the
+completely transparent to inspectors. This can be achieved by writing the
 `inspect` overload for `Identifier` as follows:
 
 ```cpp
@@ -112,6 +116,67 @@ completely transparent to inspectors. This an be achieved by writing, the
     return f.apply(x.id);
   }
 ```
+
+### Types with Getter and Setter Access
+
+This is currently not implemented. Please let me know in case you need support
+for this.
+
+### Fallbacks and Invariants
+
+For each field, we may provide a fallback value for optional fields or a
+predicate that checks invariants on the data (or both). For example, consider
+the following class and its implementation for `inspect`:
+```cpp
+struct LogTargetConfig {
+  std::size_t writeConcern = 1;
+  std::size_t softWriteConcern = 1;
+  bool waitForSync = false;
+};
+
+bool greaterZero(std::size_t v) { return v > 0; }
+
+template<class Inspector>
+auto inspect(Inspector& f, LogTargetConfig& x) {
+  return f.object(x)
+      .fields(f.field("writeConcern", x.writeConcern).invariant(greaterZero),
+              f.field("softWriteConcern", x.softWriteConcern)
+                  .fallback(std::ref(x.writeConcern)).invariant(greaterZero),
+              f.field("waitForSync", x.waitForSync).fallback(f.keep()))
+      .invariant([](LogTargetConfig& c) { return c.writeConcern >= c.softWriteConcern});
+}
+```
+
+By default all attributes specified in the description have to be present when
+loading. If an attribute is not present but has a fallback value defined, then
+the field is instead set to the fallback value. Fallback values are taken by
+value, but as the example shows we can use `std::ref` to capture references.
+The attributes are processed in the same order they are specified.
+`writeConcern` is a mandatory attribute while `softWriteConcern` is optional,
+but if `softWriteConcern` is not specified explicitly, we want it to default
+to the exact same value as `writeConcern`. Since `writeConcern` is specified
+first, it is also processed first. For `softWriteConcern` we capture a reference
+to `writeConcern` as fallback, so when we process `softWriteConcern` and cannot
+find it, we take the fallback value from the already processed `writeConcern`.
+Alternatively one can use `Inspector::keep()` to indicate that we simply want to
+keep the current value of that field (see the fallback call for "waitForSync" in
+the example).
+
+`writeConcern` and `softWriteConcern` must both be greater zero, which is
+verified by the provided invariant function. `invariant` takes some callable
+that receives an argument of the same type as the field and must either return
+a bool or `arangodb::inspection::Status` to indicated whether it was successful
+or not. The advantage of using the `Status` type is that one can provide a
+meaningful error message with more context.
+
+In addition, `softWriteConcern` must not be greater than `writeConcern`.
+Invariants like this can only be verified once all fields have been processed,
+which is why you can append another `invariant` call to the result of `fields`.
+This invariant function will then receive a reference to the fully initialized
+object.
+
+Invariants are only checked when `isLoading` is true (see "Splitting Save and
+Load").
 
 ### Specializing `Access`
 
@@ -159,64 +224,6 @@ struct Access {
       ApplyFallback&& applyFallback, Transformer& transformer);
 };
 ```
-
-### Types with Getter and Setter Access
-
-This is currently not implemented. Please let me know in case you need support
-for this.
-
-### Fallbacks and Invariants
-
-For each field, we may provide a fallback value for optional fields or a
-predicate that checks invariants on the data (or both). For example, consider
-the following class and its implementation for `inspect`:
-
-```cpp
-struct LogTargetConfig {
-  std::size_t writeConcern = 1;
-  std::size_t softWriteConcern = 1;
-  bool waitForSync = false;
-};
-
-bool greaterZero(std::size_t v) { return v > 0; }
-
-template<class Inspector>
-auto inspect(Inspector& f, LogTargetConfig& x) {
-  return f.object(x).fields(f.field("writeConcern", x.writeConcern).invariant(greaterZero),
-                            f.field("softWriteConcern", x.softWriteConcern)
-                                .fallback(std::ref(x.writeConcern)).invariant(greaterZero),
-                            f.field("waitForSync", x.waitForSync))
-                    .invariant([](LogTargetConfig& c) { return c.writeConcern >= c.softWriteConcern});
-}
-```
-
-By default all attributes specified in the description have to be present when
-loading. If an attribute is not present but has a fallback value defined, then
-the field is instead set to the fallback value. Fallback values are taken by
-value, but as the example shows we can use `std::ref` to capture references.
-The attributes are processed in the same order they are specified.
-`writeConcern` is a mandatory attribute while `softWriteConcern` is optional,
-but if `softWriteConcern` is not specified explicitly, we want it to default
-to the exact same value as `writeConcern`. Since `writeConcern` is specified
-first, it is also processed first. For `softWriteConcern` we capture a reference
-to `writeConcern` as fallback, so when we process `softWriteConcern` and cannot
-find it, we take the fallback value from the already processed `writeConcern`.
-
-`writeConcern` and `softWriteConcern` must both be greater zero, which is
-verified by the provided invariant function. `invariant` takes some callable
-that receives an argument of the same type as the field and must either return
-a bool or `arangodb::inspection::Status` to indicated whether it was successful
-or not. The advantage of using the `Status` type is that one can provide a
-meaningful error message with more context.
-
-In addition, `softWriteConcern` must not be greater than `writeConcern`.
-Invariants like this can only be verified once all fields have been processed,
-which is why you can append another `invariant` call to the result of `fields`.
-This invariant function will then receive a reference to the fully initialized
-object.
-
-Invariants are only checked when `isLoading` is true (see "Splitting Save and
-Load").
 
 ### Optionals
 
@@ -373,3 +380,12 @@ namespace arangodb::velocypack {
 ```
 These functions will throw in case anything goes wrong. It is recommended to use
 these functions instead of the according inspector types.
+
+By default deserialization is very strict - the given velocypack must contain
+_exactly_ those attributes specified in the object description. If an attribute
+of non-optional type is missing and has no fallback, then this results in a
+"missing required attribute "error. Likewise, any _additional_ attributes that
+exist in the velocypack but not in the object results in a "unexpected attribute"
+error. The `ParseOptions` provide a way to relax those checks and ignore unknown
+and/or missing attributes. In case missing attributes are ignored, the
+corresponding fields simply remain untouched and keep their original value.
