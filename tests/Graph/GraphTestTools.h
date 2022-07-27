@@ -83,13 +83,11 @@ struct GraphTestSetup
 };  // Setup
 
 struct MockIndexHelpers {
-  static std::shared_ptr<Index> getEdgeIndexHandle(TRI_vocbase_t& vocbase,
-                                                   std::string const& edgeCollectionName);
-  static IndexAccessor createEdgeIndexAccessor(TRI_vocbase_t& vocbase,
-                                               std::string const& edgeCollectionName,
-                                               aql::Variable* tmpVar,
-                                               aql::Query& query,
-                                               TRI_edge_direction_e direction);
+  static std::shared_ptr<Index> getEdgeIndexHandle(
+      TRI_vocbase_t& vocbase, std::string const& edgeCollectionName);
+  static IndexAccessor createEdgeIndexAccessor(
+      TRI_vocbase_t& vocbase, std::string const& edgeCollectionName,
+      aql::Variable* tmpVar, aql::Query& query, TRI_edge_direction_e direction);
 
   static arangodb::aql::AstNode* buildCondition(aql::Query& query,
                                                 aql::Variable const* tmpVar,

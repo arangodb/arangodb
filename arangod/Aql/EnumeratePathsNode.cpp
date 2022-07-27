@@ -462,9 +462,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     }
   } else {
     if (ServerState::instance()->isCoordinator()) {
-      auto traverserCache =
-          std::make_shared<RefactoredClusterTraverserCache>(
-              opts->query().resourceMonitor());
+      auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
+          opts->query().resourceMonitor());
 
       std::unordered_set<uint64_t> availableDepthsSpecificConditionsForward;
       std::unordered_set<uint64_t> availableDepthsSpecificConditionsBackward;
