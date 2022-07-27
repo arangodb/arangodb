@@ -525,7 +525,7 @@ Result IResearchView::properties(velocypack::Slice slice, bool isUserRequest,
   if (ServerState::instance()->isSingleServer()) {
     return storage_helper::properties(*this, false);
   } else {
-    return cluster_helper::properties(*this);
+    return cluster_helper::properties(*this, false);
   }
 }
 

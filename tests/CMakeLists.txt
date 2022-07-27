@@ -58,6 +58,7 @@ endif ()
 
 set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
@@ -295,7 +296,7 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES})
+  ${ADDITIONAL_TEST_SOURCES} Cluster/ShardAutoRebalancerTest.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Helper/ModelChecker/Actors.cpp

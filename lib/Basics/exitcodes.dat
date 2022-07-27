@@ -6,9 +6,10 @@
 EXIT_SUCCESS,0,"success","No error has occurred."
 EXIT_FAILED,1,"exit with error","Will be returned when a general error occurred."
 EXIT_CODE_RESOLVING_FAILED,2,"exit code resolving failed","unspecified exit code"
-
+EXIT_INVALID_OPTION_NAME,3,"invalid startup option name","invalid/unknown startup option name was used"
+EXIT_INVALID_OPTION_VALUE,4,"invalid startup option value","invalid startup option value was used"
 EXIT_BINARY_NOT_FOUND,5,"binary not found","Will be returned if a referenced binary was not found"
-EXIT_CONFIG_NOT_FOUND,6,"config not found","Will be returned if no valid configuration was found"
+EXIT_CONFIG_NOT_FOUND,6,"config not found or invalid","Will be returned if no valid configuration was found or its contents are structurally invalid"
 
 # internal
 EXIT_UPGRADE_FAILED,10,"upgrade failed","Will be returned when the database upgrade failed"
