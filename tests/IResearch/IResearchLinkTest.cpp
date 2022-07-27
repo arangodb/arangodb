@@ -2431,11 +2431,18 @@ TEST_F(IResearchLinkMetricsTest, TimeConsolidate) {
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_LT(0, commitTime2);
   }
-  {
-    std::this_thread::sleep_for(600ms);
-    auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-    EXPECT_LT(0, consolidationTime1);
-  }
+  auto start = std::chrono::steady_clock::now();
+  auto check = [&] {
+    while ((std::chrono::steady_clock::now() - start) < 10s) {
+      auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
+      if (consolidationTime1 > 0) {
+        return true;
+      }
+      std::this_thread::sleep_for(10ms);
+    }
+    return false;
+  };
+  EXPECT_TRUE(check());
 }
 
 TEST_F(IResearchLinkMetricsTest, CleanupWhenEmptyCommit) {
