@@ -145,7 +145,7 @@ auto DocumentStateShardHandler::createLocalShard(
 }
 
 DocumentStateTransaction::DocumentStateTransaction(
-    std::shared_ptr<transaction::Methods> methods)
+    std::unique_ptr<transaction::Methods> methods)
     : _methods(std::move(methods)) {}
 
 auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
@@ -244,7 +244,7 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
 
   auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 
-  auto methods = std::make_shared<transaction::Methods>(
+  auto methods = std::make_unique<transaction::Methods>(
       std::move(ctx), entry.shardId, AccessMode::Type::WRITE);
 
   // TODO Why is GLOBAL_MANAGED necessary?

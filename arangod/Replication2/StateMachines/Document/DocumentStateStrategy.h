@@ -122,13 +122,13 @@ class DocumentStateTransaction
       public std::enable_shared_from_this<DocumentStateTransaction> {
  public:
   explicit DocumentStateTransaction(
-      std::shared_ptr<transaction::Methods> methods);
+      std::unique_ptr<transaction::Methods> methods);
   auto apply(DocumentLogEntry const& entry) -> futures::Future<Result> override;
   auto commit() -> futures::Future<Result> override;
   auto abort() -> futures::Future<Result> override;
 
  private:
-  std::shared_ptr<transaction::Methods> _methods;
+  std::unique_ptr<transaction::Methods> _methods;
 };
 
 struct IDocumentStateTransactionHandler {
