@@ -79,17 +79,23 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
     return Result{};
   }
 
-  auto finish(DocumentLogEntry const& entry)
-      -> futures::Future<Result> override {
-    TRI_ASSERT(!finished);
-    finished = true;
+  auto commit() -> futures::Future<Result> override {
+    TRI_ASSERT(!committed);
+    committed = true;
+    return Result{};
+  }
+
+  auto abort() -> futures::Future<Result> override {
+    TRI_ASSERT(!aborted);
+    aborted = true;
     return Result{};
   }
 
   TransactionId tid;
   bool ensured = false;
   bool applied = false;
-  bool finished = false;
+  bool committed = false;
+  bool aborted = false;
 };
 
 struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
@@ -121,11 +127,8 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
 struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
   MockDocumentStateHandlersFactory(
       std::shared_ptr<IDocumentStateAgencyHandler> ah,
-      std::shared_ptr<IDocumentStateShardHandler> sh,
-      std::shared_ptr<IDocumentStateTransactionHandler> th)
-      : agencyHandler(std::move(ah)),
-        shardHandler(std::move(sh)),
-        transactionHandler(std::move(th)) {}
+      std::shared_ptr<IDocumentStateShardHandler> sh)
+      : agencyHandler(std::move(ah)), shardHandler(std::move(sh)) {}
 
   auto createAgencyHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateAgencyHandler> override {
@@ -138,13 +141,15 @@ struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
   }
 
   auto createTransactionHandler(GlobalLogIdentifier gid)
-      -> std::shared_ptr<IDocumentStateTransactionHandler> override {
-    return transactionHandler;
+      -> std::unique_ptr<IDocumentStateTransactionHandler> override {
+    auto th = std::make_unique<MockDocumentStateTransactionHandler>();
+    transactionHandler = th.get();
+    return std::move(th);
   }
 
   std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> shardHandler;
-  std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
+  MockDocumentStateTransactionHandler* transactionHandler;
 };
 
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
@@ -159,11 +164,9 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockDocumentStateAgencyHandler>();
   std::shared_ptr<MockDocumentStateShardHandler> shardHandler =
       std::make_shared<MockDocumentStateShardHandler>();
-  std::shared_ptr<MockDocumentStateTransactionHandler> transactionHandler =
-      std::make_shared<MockDocumentStateTransactionHandler>();
   std::shared_ptr<IDocumentStateHandlersFactory> factory =
-      std::make_shared<MockDocumentStateHandlersFactory>(
-          agencyHandler, shardHandler, transactionHandler);
+      std::make_shared<MockDocumentStateHandlersFactory>(agencyHandler,
+                                                         shardHandler);
 };
 
 TEST_F(DocumentStateMachineTest, simple_operations) {
