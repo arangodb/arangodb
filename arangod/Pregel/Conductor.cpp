@@ -41,6 +41,7 @@
 #include "Pregel/Conductor/DoneState.h"
 #include "Pregel/Conductor/InErrorState.h"
 #include "Pregel/Conductor/RecoveringState.h"
+#include "Pregel/Conductor/FatalErrorState.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -72,7 +73,7 @@
 #include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
 
-using namespace arangodb;
+    using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
@@ -267,18 +268,13 @@ bool Conductor::_startGlobalStep() {
     _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
     if (_storeResults) {
       changeState(conductor::StateType::Storing);
-    } else {
-      if (_inErrorAbort) {
-        updateState(ExecutionState::FATAL_ERROR);
-        // TODO change state to FatalError
-        changeState(conductor::StateType::Placeholder);
-      } else {
-        changeState(conductor::StateType::Done);
-      }
-      LOG_PREGEL("9e82c", INFO)
-          << "Done, execution took: " << _timing.total.elapsedSeconds().count()
-          << " s";
+      return false;
     }
+    if (_inErrorAbort) {
+      changeState(conductor::StateType::FatalError);
+      return false;
+    }
+    changeState(conductor::StateType::Done);
     return false;
   }
 
@@ -288,7 +284,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_edgeCount = _totalEdgesCount;
     _masterContext->_reports = &_reports;
     if (!_masterContext->preGlobalSuperstepWithResult()) {
-      updateState(ExecutionState::FATAL_ERROR);
+      changeState(conductor::StateType::FatalError);
       return false;
     }
   }
@@ -957,6 +953,9 @@ auto Conductor::changeState(conductor::StateType name) -> void {
       break;
     case conductor::StateType::Recovering:
       state = std::make_unique<conductor::Recovering>(*this);
+      break;
+    case conductor::StateType::FatalError:
+      state = std::make_unique<conductor::FatalError>(*this);
       break;
     case conductor::StateType::Placeholder:
       state = std::make_unique<conductor::Placeholder>();

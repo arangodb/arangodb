@@ -52,9 +52,7 @@ auto Canceled::receive(Message const& message) -> void {
     return;
   }
   if (conductor._inErrorAbort) {
-    conductor.updateState(ExecutionState::FATAL_ERROR);
-    // TODO change to FatalErrorState
-    conductor.changeState(StateType::Placeholder);
+    conductor.changeState(StateType::FatalError);
     return;
   }
 

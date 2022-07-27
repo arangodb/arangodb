@@ -40,16 +40,14 @@ auto Storing::run() -> void {
 
 auto Storing::receive(Message const& message) -> void {
   if (message.type() != MessageType::CleanupFinished) {
-    LOG_PREGEL_CONDUCTOR("14df4", WARN)
+    LOG_PREGEL_CONDUCTOR("1b831", WARN)
         << "When storing, we expect a CleanupFinished "
            "message, but we received message type "
         << static_cast<int>(message.type());
     return;
   }
   if (conductor._inErrorAbort) {
-    conductor.updateState(ExecutionState::FATAL_ERROR);
-    // TODO change to FatalErrorState
-    conductor.changeState(StateType::Placeholder);
+    conductor.changeState(StateType::FatalError);
     return;
   }
   conductor.changeState(StateType::Done);

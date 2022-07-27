@@ -42,6 +42,7 @@
 #include "Pregel/Conductor/DoneState.h"
 #include "Pregel/Conductor/InErrorState.h"
 #include "Pregel/Conductor/RecoveringState.h"
+#include "Pregel/Conductor/FatalErrorState.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
@@ -79,6 +80,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::Done;
   friend struct conductor::InError;
   friend struct conductor::Recovering;
+  friend struct conductor::FatalError;
 
   ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;

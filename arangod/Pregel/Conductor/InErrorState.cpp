@@ -10,7 +10,7 @@ InError::InError(Conductor& conductor) : conductor{conductor} {
 }
 
 auto InError::receive(Message const& message) -> void {
-  LOG_PREGEL_CONDUCTOR("14df4", WARN)
+  LOG_PREGEL_CONDUCTOR("563ac", WARN)
       << "When in error, we expect no messages, but received message type "
       << static_cast<int>(message.type());
 }

@@ -45,7 +45,7 @@ auto Done::run() -> void {
 }
 
 auto Done::receive(Message const& message) -> void {
-  LOG_PREGEL_CONDUCTOR("14df4", WARN)
+  LOG_PREGEL_CONDUCTOR("88f66", WARN)
       << "When done, we expect no messages, but received message type "
       << static_cast<int>(message.type());
 }

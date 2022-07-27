@@ -22,39 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <string>
+#include "Pregel/Conductor/State.h"
 
 namespace arangodb::pregel {
 
-struct Message;
+class Conductor;
 
 namespace conductor {
 
-#define LOG_PREGEL_CONDUCTOR(logId, level) \
-  LOG_TOPIC(logId, level, Logger::PREGEL)  \
-      << "[job " << conductor._executionNumber << "] "
-
-enum class StateType {
-  Loading,
-  Placeholder,
-  Storing,
-  Canceled,
-  Done,
-  InError,
-  Recovering,
-  FatalError
-};
-
-struct State {
-  virtual auto run() -> void = 0;
-  virtual auto receive(Message const& message) -> void = 0;
-  virtual auto recover() -> void = 0;
-  virtual ~State(){};
-};
-
-struct Placeholder : State {
+struct FatalError : State {
+  Conductor& conductor;
+  FatalError(Conductor& conductor);
+  ~FatalError(){};
   auto run() -> void override{};
-  auto receive(Message const& message) -> void override{};
+  auto receive(Message const& message) -> void override;
   auto recover() -> void override{};
 };
 

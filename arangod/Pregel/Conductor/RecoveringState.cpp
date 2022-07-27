@@ -87,7 +87,7 @@ auto Recovering::run() -> void {
 
 auto Recovering::receive(Message const& message) -> void {
   if (message.type() != MessageType::RecoveryFinished) {
-    LOG_PREGEL_CONDUCTOR("14df4", WARN)
+    LOG_PREGEL_CONDUCTOR("2c9ee", WARN)
         << "When recovering, we expect a RecoveryFinished "
            "message, but we received message type "
         << static_cast<int>(message.type());
