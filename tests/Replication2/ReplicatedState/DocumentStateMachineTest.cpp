@@ -95,6 +95,7 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
   bool ensured = false;
   bool applied = false;
   bool committed = false;
+  bool removed = false;
   bool aborted = false;
 };
 
@@ -108,6 +109,12 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
     trx->ensured = true;
     transactions.emplace(entry.tid, trx);
     return trx;
+  }
+
+  void removeTransaction(TransactionId tid) override {
+    auto trx = getTransaction(tid);
+    trx->removed = true;
+    transactions.erase(tid);
   }
 
   auto getTransaction(TransactionId tid)
@@ -127,8 +134,11 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
 struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
   MockDocumentStateHandlersFactory(
       std::shared_ptr<IDocumentStateAgencyHandler> ah,
-      std::shared_ptr<IDocumentStateShardHandler> sh)
-      : agencyHandler(std::move(ah)), shardHandler(std::move(sh)) {}
+      std::shared_ptr<IDocumentStateShardHandler> sh,
+      MockDocumentStateTransactionHandler*& transactionHandler)
+      : agencyHandler(std::move(ah)),
+        shardHandler(std::move(sh)),
+        transactionHandler(transactionHandler) {}
 
   auto createAgencyHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateAgencyHandler> override {
@@ -149,7 +159,7 @@ struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
 
   std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> shardHandler;
-  MockDocumentStateTransactionHandler* transactionHandler;
+  MockDocumentStateTransactionHandler*& transactionHandler;
 };
 
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
@@ -164,9 +174,10 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockDocumentStateAgencyHandler>();
   std::shared_ptr<MockDocumentStateShardHandler> shardHandler =
       std::make_shared<MockDocumentStateShardHandler>();
+  MockDocumentStateTransactionHandler* transactionHandler{nullptr};
   std::shared_ptr<IDocumentStateHandlersFactory> factory =
-      std::make_shared<MockDocumentStateHandlersFactory>(agencyHandler,
-                                                         shardHandler);
+      std::make_shared<MockDocumentStateHandlersFactory>(
+          agencyHandler, shardHandler, transactionHandler);
 };
 
 TEST_F(DocumentStateMachineTest, simple_operations) {
@@ -245,7 +256,9 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
     ASSERT_NE(trx, nullptr);
     ASSERT_TRUE(trx->ensured);
     ASSERT_TRUE(trx->applied);
-    ASSERT_FALSE(trx->finished);
+    ASSERT_FALSE(trx->committed);
+    ASSERT_FALSE(trx->aborted);
+    ASSERT_FALSE(trx->removed);
   }
 
   // commit operation
@@ -253,6 +266,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
     auto logIndex = LogIndex{3};
     auto operation = OperationType::kCommit;
     auto tid = TransactionId{1};
+    auto trx = transactionHandler->getTransaction(tid);
     auto res = leaderState->replicateOperation(
         velocypack::SharedSlice{}, operation, tid,
         ReplicationOptions{.waitForCommit = true});
@@ -272,8 +286,9 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
     ASSERT_EQ(docEntry.tid, tid);
     ASSERT_TRUE(docEntry.data.isNone());
 
-    auto trx = transactionHandler->getTransaction(tid);
     ASSERT_NE(trx, nullptr);
-    ASSERT_TRUE(trx->finished);
+    ASSERT_TRUE(trx->committed);
+    ASSERT_TRUE(trx->removed);
+    ASSERT_FALSE(trx->aborted);
   }
 }
