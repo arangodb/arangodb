@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* BTS-913: check for proper timezone setup of the system on startup.
+  This evades errors that else would only occur in AQL-Functions at runtime
+
 * arangoimport now supports the option --remove-attribute on type JSON as well.
   Before it was restricted to TSV and CSV only.
 

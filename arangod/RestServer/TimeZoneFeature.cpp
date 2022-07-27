@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
+#include <stdexcept>
 
 #include "TimeZoneFeature.h"
 
@@ -85,6 +86,22 @@ void TimeZoneFeature::prepareTimeZoneData(
   } else {
     LOG_TOPIC("67bdc", FATAL, arangodb::Logger::STARTUP)
         << "failed to locate timezone data " << tz_path
+        << ". please set the TZ_DATA environment variable to the "
+        << "tzdata directory in case you are running an unusual setup";
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
+  }
+
+  bool gotTZ = true;
+  try {
+    auto const* zone = date::current_zone();
+    gotTZ = zone != nullptr;
+  } catch (std::runtime_error const&) {
+    gotTZ = false;
+  }
+
+  if (!gotTZ) {
+    LOG_TOPIC("67bde", FATAL, arangodb::Logger::STARTUP)
+        << "Could not get current timezone from " << tz_path
         << ". please set the TZ_DATA environment variable to the "
         << "tzdata directory in case you are running an unusual setup";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
