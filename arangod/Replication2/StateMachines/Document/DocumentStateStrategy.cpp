@@ -274,6 +274,10 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
   return trx;
 }
 
+void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
+  _transactions.erase(tid);
+}
+
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
     ArangodServer& server, AgencyCache& agencyCache,
     MaintenanceFeature& maintenaceFeature, DatabaseFeature& databaseFeature)

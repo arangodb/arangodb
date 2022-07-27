@@ -139,6 +139,7 @@ struct IDocumentStateTransactionHandler {
   virtual ~IDocumentStateTransactionHandler() = default;
   virtual auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
+  virtual void removeTransaction(TransactionId tid) = 0;
 };
 
 class DocumentStateTransactionHandler
@@ -150,6 +151,7 @@ class DocumentStateTransactionHandler
 
   auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> override;
+  void removeTransaction(TransactionId tid) override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<DocumentStateTransaction>;
