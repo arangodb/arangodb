@@ -212,16 +212,6 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
       // Retain it.
       _opts.getCache()->datalake().add(std::move(payload));
     }
-
-    /* TODO: Needs to be taken care of as soon as we enable shortest paths for
-    ClusterProvider bool forShortestPath = true; if (!forShortestPath) {
-      // Fill everything we did not find with NULL
-      for (auto const& v : vertexIds) {
-        result.try_emplace(v, VPackSlice::nullSlice());
-      }
-    vertexIds.clear();
-    }
-    */
   }
 
   // Note: This disables the ScopeGuard
