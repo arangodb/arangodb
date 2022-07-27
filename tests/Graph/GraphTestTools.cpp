@@ -141,6 +141,51 @@ bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
   return res;
 }
 
+std::shared_ptr<Index> MockIndexHelpers::getEdgeIndexHandle(
+    TRI_vocbase_t& vocbase, std::string const& edgeCollectionName) {
+  std::shared_ptr<arangodb::LogicalCollection> coll =
+      vocbase.lookupCollection(edgeCollectionName);
+  TRI_ASSERT(coll != nullptr);    // no edge collection of this name
+  TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
+  for (auto const& idx : coll->getIndexes()) {
+    if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      return idx;
+    }
+  }
+  TRI_ASSERT(false);  // Index not found
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+IndexAccessor MockIndexHelpers::createEdgeIndexAccessor(
+    TRI_vocbase_t& vocbase, std::string const& edgeCollectionName,
+    aql::Variable* tmpVar, aql::Query& query, TRI_edge_direction_e direction) {
+  auto edgeIndexHandle = getEdgeIndexHandle(vocbase, edgeCollectionName);
+  auto indexCondition = buildCondition(query, tmpVar, direction);
+
+  return IndexAccessor{edgeIndexHandle, indexCondition, 0,
+                       nullptr,         std::nullopt,   0,
+                       TRI_EDGE_OUT};
+};
+
+arangodb::aql::AstNode* MockIndexHelpers::buildCondition(
+    aql::Query& query, aql::Variable const* tmpVar,
+    TRI_edge_direction_e direction) {
+  TRI_ASSERT(direction == TRI_EDGE_OUT || direction == TRI_EDGE_IN);
+  auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query.plan());
+  auto ast = plan->getAst();
+  auto condition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+  AstNode* tmpId1 = ast->createNodeReference(tmpVar);
+  AstNode* tmpId2 = ast->createNodeValueMutableString("", 0);
+
+  auto const* access = ast->createNodeAttributeAccess(
+      tmpId1, direction == TRI_EDGE_OUT ? StaticStrings::FromString
+                                        : StaticStrings::ToString);
+  auto const* cond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   access, tmpId2);
+  condition->addMember(cond);
+  return condition;
+}
+
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb

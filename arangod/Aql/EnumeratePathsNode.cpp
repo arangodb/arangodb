@@ -462,10 +462,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     }
   } else {
     if (ServerState::instance()->isCoordinator()) {
-      auto traverserCacheForward =
-          std::make_shared<RefactoredClusterTraverserCache>(
-              opts->query().resourceMonitor());
-      auto traverserCacheBackward =
+      auto traverserCache =
           std::make_shared<RefactoredClusterTraverserCache>(
               opts->query().resourceMonitor());
 
@@ -478,12 +475,12 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           filterConditionVariablesBackward{};
 
       ClusterBaseProviderOptions forwardProviderOptions(
-          traverserCacheForward, engines(), false, opts->produceVertices(),
+          traverserCache, engines(), false, opts->produceVertices(),
           &opts->getExpressionCtx(), filterConditionVariablesForward,
           std::move(availableDepthsSpecificConditionsForward));
 
       ClusterBaseProviderOptions backwardProviderOptions(
-          traverserCacheBackward, engines(), true, opts->produceVertices(),
+          traverserCache, engines(), true, opts->produceVertices(),
           &opts->getExpressionCtx(), filterConditionVariablesBackward,
           std::move(availableDepthsSpecificConditionsBackward));
 
