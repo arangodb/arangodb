@@ -116,7 +116,7 @@
 
     isEnterpriseOnlyGraphOrIsDefaultIsEnterprise: function () {
       const graphCreationType = this.getCurrentCreationGraphType();
-      if (graphCreationType === 'smart' || graphCreationType === 'enterprise' || graphCreationType === 'satellite') {
+      if (this.isEnterpriseOnlyGraph(graphCreationType)) {
         return true;
       }
 
@@ -609,7 +609,7 @@
       const getAllCurrentEdgeDefinitionNames = () => {
         let edgeDefNames = [];
         for (let i = 0; i <= this.counter; i++) {
-          let name = _.pluck($('#s2id_newEdgeDefinitions' + i).select2('data'), 'text')[0];
+          let name = _.get($('#s2id_newEdgeDefinitions' + i).select2('data'), [0, 'text']);
           if (name) {
             // might be undefined as we do not have the state of all real "counter" values
             edgeDefNames.push(name);
@@ -619,7 +619,12 @@
       };
 
       const toFindDuplicates = (arr) => {
-        return arr.filter((item, index) => arr.indexOf(item) !== index);
+        const itemCounts = arr.reduce((acc, item) => {
+          acc[item] = (acc[item] || 0) + 1;
+          return acc;
+        }, {});
+
+        return _.chain(arr).filter(item => itemCounts[item] > 1).uniq().value();
       };
 
       // This area checks whether new user defined EdgeDefinitions are being used twice - which is not valid.
@@ -629,12 +634,11 @@
         const duplicateEdgeDefinitions = toFindDuplicates(allAvailableEdgeDefinitionNames);
 
         if (duplicateEdgeDefinitions.indexOf(currentEdgeDefinitionName) !== -1) {
-          console.warn("Already added: " + JSON.stringify(e.added));
           id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
           $('input[id*="newEdgeDefinitions' + id + '"]').select2('val', null);
           arangoHelper.arangoError(
             "Graph Creation",
-            `The EdgeDefinition name "${e.added.id}" is already used being used. Please choose another name.`
+            `The EdgeDefinition name "${e.added.id}" is already being used. Please choose another name.`
           );
 
           // Please keep this line - we might need it later (during refactor)

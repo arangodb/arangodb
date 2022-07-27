@@ -180,7 +180,7 @@ Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
 
 Result drop(LogicalView const& view) noexcept;
 
-Result properties(LogicalView const& view) noexcept;
+Result properties(LogicalView const& view, bool safe) noexcept;
 
 }  // namespace cluster_helper
 
