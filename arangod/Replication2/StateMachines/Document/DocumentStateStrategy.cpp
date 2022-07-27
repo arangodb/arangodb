@@ -21,14 +21,12 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentStateStrategy.h"
-#include "DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include <velocypack/Builder.h>
 
 #include "Agency/AgencyStrings.h"
 #include "Basics/ResultT.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/CreateCollection.h"
@@ -203,16 +201,7 @@ auto DocumentStateTransaction::abort() -> futures::Future<Result> {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
     GlobalLogIdentifier gid, DatabaseFeature& databaseFeature)
-    : _gid(std::move(gid)),
-      _vocbase(databaseFeature.useDatabase(_gid.database)) {
-  ADB_PROD_ASSERT(_vocbase != nullptr) << _gid;
-}
-
-DocumentStateTransactionHandler::~DocumentStateTransactionHandler() {
-  if (_vocbase) {
-    _vocbase->release();
-  }
-}
+    : _gid(std::move(gid)), _db(databaseFeature, _gid.database) {}
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
     -> std::shared_ptr<DocumentStateTransaction> {
@@ -233,14 +222,13 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
   }
 
   TRI_ASSERT(entry.operation != kCommit && entry.operation != kAbort);
-  TRI_ASSERT(_vocbase != nullptr);
 
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state =
-      std::make_shared<SimpleRocksDBTransactionState>(*_vocbase, tid, options);
+  auto state = std::make_shared<SimpleRocksDBTransactionState>(_db.database(),
+                                                               tid, options);
 
   auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 

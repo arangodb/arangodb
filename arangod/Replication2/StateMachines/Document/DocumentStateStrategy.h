@@ -22,12 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 
 #include "Futures/Future.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/Options.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
@@ -56,8 +57,6 @@ class Builder;
 }  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
-
-struct DocumentLogEntry;
 
 struct IDocumentStateAgencyHandler {
   virtual ~IDocumentStateAgencyHandler() = default;
@@ -143,8 +142,6 @@ class DocumentStateTransactionHandler
  public:
   explicit DocumentStateTransactionHandler(GlobalLogIdentifier gid,
                                            DatabaseFeature& databaseFeature);
-  ~DocumentStateTransactionHandler() override;
-
   auto ensureTransaction(DocumentLogEntry entry)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;
@@ -154,7 +151,7 @@ class DocumentStateTransactionHandler
 
  private:
   GlobalLogIdentifier _gid;
-  TRI_vocbase_t* _vocbase;
+  DatabaseGuard _db;
   std::unordered_map<TransactionId, std::shared_ptr<DocumentStateTransaction>>
       _transactions;
 };

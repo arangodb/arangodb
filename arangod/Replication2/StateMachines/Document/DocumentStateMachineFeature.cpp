@@ -21,17 +21,17 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "RestServer/DatabaseFeature.h"
 
-#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-
-#include "DocumentStateMachineFeature.h"
-#include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 

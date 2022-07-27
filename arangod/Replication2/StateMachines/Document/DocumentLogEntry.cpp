@@ -21,7 +21,8 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+
 #include "Inspection/VPack.h"
 
 namespace {

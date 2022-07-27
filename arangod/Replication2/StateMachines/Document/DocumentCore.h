@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "DocumentLogEntry.h"
-#include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"

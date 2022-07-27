@@ -21,8 +21,9 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentCore.h"
-#include "DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentCore.h"
+
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -54,4 +55,5 @@ DocumentCore::DocumentCore(
 }
 
 auto DocumentCore::getShardId() -> std::string_view { return _shardId; }
+
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
