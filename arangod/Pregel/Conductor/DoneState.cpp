@@ -13,8 +13,6 @@ Done::Done(Conductor& conductor) : conductor{conductor} {
   }
 }
 
-Done::~Done() {}
-
 auto Done::run() -> void {
   VPackBuilder debugOut;
   debugOut.openObject();
@@ -48,4 +46,24 @@ auto Done::receive(Message const& message) -> void {
   LOG_PREGEL_CONDUCTOR("88f66", WARN)
       << "When done, we expect no messages, but received message type "
       << static_cast<int>(message.type());
+}
+
+auto Done::getResults(bool withId, VPackBuilder& out) -> void {
+  auto collectPregelResultsCommand = CollectPregelResults{
+      .executionNumber = conductor._executionNumber, .withId = withId};
+  VPackBuilder message;
+  serialize(message, collectPregelResultsCommand);
+
+  // merge results from DBServers
+  out.openArray();
+  auto res = conductor._sendToAllDBServers(
+      Utils::aqlResultsPath, message, [&](VPackSlice const& payload) {
+        if (payload.isArray()) {
+          out.add(VPackArrayIterator(payload));
+        }
+      });
+  out.close();
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }

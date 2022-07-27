@@ -14,8 +14,6 @@ Recovering::Recovering(Conductor& conductor) : conductor{conductor} {
   conductor.updateState(ExecutionState::RECOVERING);
 }
 
-Recovering::~Recovering() {}
-
 auto Recovering::run() -> void {
   if (conductor._algorithm->supportsCompensation() == false) {
     LOG_PREGEL_CONDUCTOR("12e0e", ERR) << "Algorithm does not support recovery";

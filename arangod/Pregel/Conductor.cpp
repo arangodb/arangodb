@@ -73,7 +73,7 @@
 #include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
 
-    using namespace arangodb;
+using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
@@ -727,28 +727,7 @@ bool Conductor::canBeGarbageCollected() const {
 
 void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   MUTEX_LOCKER(guard, _callbackMutex);
-
-  if (_state != ExecutionState::DONE && _state != ExecutionState::FATAL_ERROR) {
-    return;
-  }
-
-  auto collectPregelResultsCommand = CollectPregelResults{
-      .executionNumber = _executionNumber, .withId = withId};
-  VPackBuilder message;
-  serialize(message, collectPregelResultsCommand);
-
-  // merge results from DBServers
-  outBuilder.openArray();
-  auto res = _sendToAllDBServers(
-      Utils::aqlResultsPath, message, [&](VPackSlice const& payload) {
-        if (payload.isArray()) {
-          outBuilder.add(VPackArrayIterator(payload));
-        }
-      });
-  outBuilder.close();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  state->getResults(withId, outBuilder);
 }
 
 void Conductor::toVelocyPack(VPackBuilder& result) const {

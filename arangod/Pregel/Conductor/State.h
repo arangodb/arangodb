@@ -23,6 +23,7 @@
 #pragma once
 
 #include <string>
+#include "velocypack/Builder.h"
 
 namespace arangodb::pregel {
 
@@ -49,6 +50,7 @@ struct State {
   virtual auto run() -> void = 0;
   virtual auto receive(Message const& message) -> void = 0;
   virtual auto recover() -> void = 0;
+  virtual auto getResults(bool withId, VPackBuilder& out) -> void = 0;
   virtual ~State(){};
 };
 
@@ -56,6 +58,7 @@ struct Placeholder : State {
   auto run() -> void override{};
   auto receive(Message const& message) -> void override{};
   auto recover() -> void override{};
+  auto getResults(bool withId, VPackBuilder& out) -> void override{};
 };
 
 }  // namespace conductor

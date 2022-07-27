@@ -33,10 +33,11 @@ namespace conductor {
 struct Recovering : State {
   Conductor& conductor;
   Recovering(Conductor& conductor);
-  ~Recovering();
+  ~Recovering(){};
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
   auto recover() -> void override{};
+  auto getResults(bool withId, VPackBuilder& out) -> void override{};
 };
 
 }  // namespace conductor

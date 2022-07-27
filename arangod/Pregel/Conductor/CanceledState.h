@@ -33,10 +33,11 @@ namespace conductor {
 struct Canceled : State {
   Conductor& conductor;
   Canceled(Conductor& conductor);
-  ~Canceled();
+  ~Canceled() = default;
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
   auto recover() -> void override{};
+  auto getResults(bool withId, VPackBuilder& out) -> void override{};
 };
 
 }  // namespace conductor

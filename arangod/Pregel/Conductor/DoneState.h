@@ -33,10 +33,11 @@ namespace conductor {
 struct Done : State {
   Conductor& conductor;
   Done(Conductor& conductor);
-  ~Done();
+  ~Done() = default;
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
   auto recover() -> void override{};
+  auto getResults(bool withId, VPackBuilder& out) -> void override;
 };
 
 }  // namespace conductor

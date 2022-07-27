@@ -37,6 +37,7 @@ struct InError : State {
   auto run() -> void override{};
   auto receive(Message const& message) -> void override;
   auto recover() -> void override;
+  auto getResults(bool withId, VPackBuilder& out) -> void override{};
 };
 
 }  // namespace conductor

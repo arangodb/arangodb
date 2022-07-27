@@ -14,8 +14,6 @@ Canceled::Canceled(Conductor& conductor) : conductor{conductor} {
   }
 }
 
-Canceled::~Canceled() {}
-
 auto Canceled::run() -> void {
   conductor._callbackMutex.assertLockedByCurrentThread();
   LOG_PREGEL_CONDUCTOR("dd721", WARN)
