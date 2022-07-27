@@ -39,6 +39,7 @@
 #include "Pregel/Conductor/LoadingState.h"
 #include "Pregel/Conductor/StoringState.h"
 #include "Pregel/Conductor/CanceledState.h"
+#include "Pregel/Conductor/DoneState.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
@@ -73,6 +74,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::Loading;
   friend struct conductor::Storing;
   friend struct conductor::Canceled;
+  friend struct conductor::Done;
 
   ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;

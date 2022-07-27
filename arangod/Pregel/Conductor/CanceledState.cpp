@@ -48,7 +48,7 @@ auto Canceled::receive(Message const& message) -> void {
     LOG_PREGEL_CONDUCTOR("14df4", WARN)
         << "When canceled, we expect a CleanupFinished "
            "message, but we received message type "
-        << message.type();
+        << static_cast<int>(message.type());
     return;
   }
   if (conductor._inErrorAbort) {

@@ -43,7 +43,7 @@ auto Storing::receive(Message const& message) -> void {
     LOG_PREGEL_CONDUCTOR("14df4", WARN)
         << "When storing, we expect a CleanupFinished "
            "message, but we received message type "
-        << message.type();
+        << static_cast<int>(message.type());
     return;
   }
   if (conductor._inErrorAbort) {
@@ -52,7 +52,5 @@ auto Storing::receive(Message const& message) -> void {
     conductor.changeState(StateType::Placeholder);
     return;
   }
-  conductor.updateState(ExecutionState::DONE);
-  // TODO change to DoneState
-  conductor.changeState(StateType::Placeholder);
+  conductor.changeState(StateType::Done);
 }

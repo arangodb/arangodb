@@ -36,7 +36,7 @@ auto Loading::receive(Message const& message) -> void {
     LOG_PREGEL_CONDUCTOR("14df4", WARN)
         << "When loading, we expect a GraphLoaded "
            "message, but we received message type "
-        << message.type();
+        << static_cast<int>(message.type());
     return;
   }
   auto loadedMessage = static_cast<GraphLoaded const&>(message);
