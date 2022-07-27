@@ -712,6 +712,21 @@ class instanceManager {
       this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
       forceTerminate = true;
     }
+    try {
+      return this._shutdownInstance(forceTerminate);
+    }
+    catch (e) {
+      if (e instanceof ArangoError && e.errorNum === internal.errors.ERROR_DISABLED.code) {
+        let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+        if (timeoutReached) {
+          print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
+        }
+        return this._shutdownInstance(true);
+      }
+    }
+  }
+
+  _shutdownInstance (forceTerminate) {
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
