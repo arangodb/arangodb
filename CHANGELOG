@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-913: check for proper timezone setup of the system on startup.
+  This evades errors that else would only occur in AQL-Functions at runtime
+
 * Changed rocksdb default compression type from snappy to lz4.
 
 * Fixed a potential deadlock in RocksDB compaction.
