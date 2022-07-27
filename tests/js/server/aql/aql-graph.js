@@ -1491,6 +1491,32 @@ function ahuacatlQueryShortestPathTestSuite() {
 
       // re-add vertex to let environment stay as is has been before the test
       vertexCollection.save({_key: key, name: key});
+    },
+
+    testAllPathsConnectedButInnerVertexDeleted: function () {
+      // Find the path(s): A -> B -> F (which is valid)
+      // Case: B will be deleted before query execution.
+      // This is valid, but the query needs to report an error!
+      let key = 'B';
+      let item = `${vn}/${key}`;
+      vertexCollection.remove(item);
+
+      // Execute without fail and check
+      let query = `WITH ${vn} FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${vn}/A" TO "${vn}/F" ${en} RETURN path.vertices[* RETURN CURRENT._key]`;
+      let actual = getQueryResults(query);
+      assertEqual(1, actual.length);
+      assertEqual([['A', 'null', 'F']], actual);
+
+      // Now execute with fail on warnings
+      try {
+        db._query(query, null, {"failOnWarning": true});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+
+      // re-add vertex to let environment stay as is has been before the test
+      vertexCollection.save({_key: key, name: key});
     }
   };
 }
@@ -1646,6 +1672,68 @@ function kPathsTestSuite() {
   };
 }
 
+function allShortestPathsTestSuite() {
+  const gn = "UnitTestGraph";
+  const vn = "UnitTestV";
+  const en = "UnitTestE";
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUpAll: function () {
+      gm._create(gn, [gm._relation(en, vn, vn)]);
+
+      ["s", "t", "a", "b", "c", "d", "e", "f", "g", "x", "y", "z"].map((elem) => {
+        db[vn].insert({_key: elem});
+      });
+
+      [
+        ["s", "a"], ["s", "b"], ["a", "b"], ["a", "c"], ["b", "c"],
+        ["c", "d"], ["d", "t"],
+        ["c", "e"], ["e", "t"],
+        ["c", "f"], ["f", "t"],
+        ["c", "g"], ["g", "t"],
+        ["s", "x"], ["y", "x"], ["y", "z"], ["z", "y"], ["z", "t"]
+      ].map(([a, b]) => {
+        db[en].insert({_from: `${vn}/${a}`, _to: `${vn}/${b}`});
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDownAll: function () {
+      gm._drop(gn, true);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we are able to find all shortest paths when using ANY direction with ALL_SHORTEST_PATHS
+/// One of the edges is used in both directions.
+////////////////////////////////////////////////////////////////////////////////
+
+    testAllShortestPathsAnyUseEdgeTwice: function () {
+      let outbound = db._query(`
+        FOR p IN OUTBOUND ALL_SHORTEST_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices[*]._key
+      `);
+
+      let any = db._query(`
+        FOR p IN ANY ALL_SHORTEST_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices[*]._key
+      `);
+
+      assertEqual(outbound.toArray().length, 8);
+      assertEqual(any.toArray().length, 10); // two new paths: S -> X <- Y <-> Z -> T
+    }
+  };
+}
+
 function ShortestPathErrorTestSuite() {
 
   const graphName = "UnitTestGraph";
@@ -1756,6 +1844,7 @@ if (internal.debugCanUseFailAt() && !cluster.isCluster()) {
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 jsunity.run(kPathsTestSuite);
+jsunity.run(allShortestPathsTestSuite);
 jsunity.run(ShortestPathErrorTestSuite);
 
 return jsunity.done();
