@@ -421,6 +421,8 @@ class IResearchViewExecutorBase {
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
+  void initializeCursor();
+
  protected:
   template<auto type>
   using enabled_for_materialize_type_t =

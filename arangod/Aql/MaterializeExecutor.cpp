@@ -66,7 +66,7 @@ arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
 
 template<typename T>
 arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
-    MaterializeExecutor<T>::Fetcher& fetcher, Infos& infos)
+    MaterializeExecutor<T>::Fetcher& /*fetcher*/, Infos& infos)
     : _trx(infos.query().newTrxContext()),
       _readDocumentContext(infos),
       _infos(infos) {}

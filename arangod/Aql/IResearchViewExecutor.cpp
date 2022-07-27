@@ -538,8 +538,16 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
   if (infos.searchDocIdRegId().isValid()) {
     auto filterCookie = std::make_unique<FilterCookie>();
     _filterCookie = &filterCookie->filter;
-    _trx.state()->cookie(&infos.outVariable(), std::move(filterCookie));
+    auto const old =
+        _trx.state()->cookie(&infos.outVariable(), std::move(filterCookie));
+    TRI_ASSERT(!old);
   }
+}
+
+template<typename Impl, typename Traits>
+void IResearchViewExecutorBase<Impl, Traits>::initializeCursor() {
+  _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _isInitialized = false;
 }
 
 template<typename Impl, typename Traits>
@@ -990,14 +998,12 @@ template<bool copyStored, bool ordered, MaterializeType materializeType>
 IResearchViewExecutor<copyStored, ordered,
                       materializeType>::IResearchViewExecutor(Fetcher& fetcher,
                                                               Infos& infos)
-    : Base(fetcher, infos),
-      _pkReader(),
-      _itr(),
-      _readerOffset(0),
-      _currentSegmentPos(0),
-      _totalPos(0),
-      _scr(&irs::score::kNoScore),
-      _numScores(0) {
+    : Base{fetcher, infos},
+      _readerOffset{0},
+      _currentSegmentPos{0},
+      _totalPos{0},
+      _scr{&irs::score::kNoScore},
+      _numScores{0} {
   this->_storedValuesReaders.resize(
       this->_infos.getOutNonMaterializedViewRegs().size());
   TRI_ASSERT(infos.scoresSort().empty());
@@ -1038,7 +1044,7 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::readPK(
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::
     IResearchViewHeapSortExecutor(Fetcher& fetcher, Infos& infos)
-    : Base(fetcher, infos) {
+    : Base{fetcher, infos} {
   this->_indexReadBuffer.setScoresSort(this->_infos.scoresSort());
 }
 

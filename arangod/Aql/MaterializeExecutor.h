@@ -117,6 +117,11 @@ class MaterializeExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
+  void initializeCursor() noexcept {
+    // Does nothing but prevents the whole executor to be re-created.
+    _collection = nullptr;
+  }
+
  protected:
   class ReadContext {
    public:
