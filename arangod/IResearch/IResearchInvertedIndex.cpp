@@ -300,7 +300,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     QueryContext const queryCtx{.trx = _trx,
                                 .index = _reader,
                                 .ref = _variable,
-                                .isSearchQuery = false};
+                                .isSearchQuery = false,
+                                .isOldMangling = false};
 
     AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_index->meta());
 
