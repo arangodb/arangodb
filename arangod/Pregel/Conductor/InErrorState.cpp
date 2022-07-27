@@ -14,3 +14,6 @@ auto InError::receive(Message const& message) -> void {
       << "When in error, we expect no messages, but received message type "
       << static_cast<int>(message.type());
 }
+auto InError::recover() -> void {
+  conductor.changeState(StateType::Recovering);
+}

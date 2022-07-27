@@ -34,17 +34,27 @@ namespace conductor {
   LOG_TOPIC(logId, level, Logger::PREGEL)  \
       << "[job " << conductor._executionNumber << "] "
 
-enum class StateType { Loading, Placeholder, Storing, Canceled, Done, InError };
+enum class StateType {
+  Loading,
+  Placeholder,
+  Storing,
+  Canceled,
+  Done,
+  InError,
+  Recovering
+};
 
 struct State {
   virtual auto run() -> void = 0;
   virtual auto receive(Message const& message) -> void = 0;
+  virtual auto recover() -> void = 0;
   virtual ~State(){};
 };
 
 struct Placeholder : State {
   auto run() -> void override{};
   auto receive(Message const& message) -> void override{};
+  auto recover() -> void override{};
 };
 
 }  // namespace conductor

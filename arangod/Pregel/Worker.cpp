@@ -789,45 +789,44 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(
-      RequestLane::INTERNAL_LOW, [self = shared_from_this(), this] {
-        if (_state != WorkerState::RECOVERING) {
-          LOG_PREGEL("554e2", WARN) << "Compensation aborted prematurely.";
-          return;
-        }
+  scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(),
+                                               this] {
+    if (_state != WorkerState::RECOVERING) {
+      LOG_PREGEL("554e2", WARN) << "Compensation aborted prematurely.";
+      return;
+    }
 
-        auto vertexIterator = _graphStore->vertexIterator();
-        std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
-            _algorithm->createCompensation(&_config));
-        _initializeVertexContext(vCompensate.get());
-        if (!vCompensate) {
-          _state = WorkerState::DONE;
-          LOG_PREGEL("938d2", WARN) << "Compensation aborted prematurely.";
-          return;
-        }
-        vCompensate->_writeAggregators = _workerAggregators.get();
+    auto vertexIterator = _graphStore->vertexIterator();
+    std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
+        _algorithm->createCompensation(&_config));
+    _initializeVertexContext(vCompensate.get());
+    if (!vCompensate) {
+      _state = WorkerState::DONE;
+      LOG_PREGEL("938d2", WARN) << "Compensation aborted prematurely.";
+      return;
+    }
+    vCompensate->_writeAggregators = _workerAggregators.get();
 
-        size_t i = 0;
-        for (; vertexIterator.hasMore(); ++vertexIterator) {
-          Vertex<V, E>* vertexEntry = *vertexIterator;
-          vCompensate->_vertexEntry = vertexEntry;
-          vCompensate->compensate(i > _preRecoveryTotal);
-          i++;
-          if (_state != WorkerState::RECOVERING) {
-            LOG_PREGEL("e9011", WARN) << "Execution aborted prematurely.";
-            break;
-          }
-        }
+    size_t i = 0;
+    for (; vertexIterator.hasMore(); ++vertexIterator) {
+      Vertex<V, E>* vertexEntry = *vertexIterator;
+      vCompensate->_vertexEntry = vertexEntry;
+      vCompensate->compensate(i > _preRecoveryTotal);
+      i++;
+      if (_state != WorkerState::RECOVERING) {
+        LOG_PREGEL("e9011", WARN) << "Execution aborted prematurely.";
+        break;
+      }
+    }
 
-        auto recoveryFinished =
-            RecoveryFinished{.senderId = ServerState::instance()->getId(),
-                             .executionNumber = _config._executionNumber,
-                             .gss = _config._globalSuperstep,
-                             .aggregators = {_workerAggregators}};
-        VPackBuilder event;
-        serialize(event, recoveryFinished);
-        _callConductor(Utils::finishedRecoveryPath, event);
-      });
+    auto recoveryFinished = RecoveryFinished{ServerState::instance()->getId(),
+                                             _config._executionNumber,
+                                             _config._globalSuperstep,
+                                             {_workerAggregators}};
+    VPackBuilder event;
+    serialize(event, recoveryFinished);
+    _callConductor(Utils::finishedRecoveryPath, event);
+  });
 }
 
 template<typename V, typename E, typename M>

@@ -34,7 +34,7 @@
 
 namespace arangodb::pregel {
 
-enum class MessageType { GraphLoaded, CleanupFinished };
+enum class MessageType { GraphLoaded, CleanupFinished, RecoveryFinished };
 
 struct Message {
   virtual auto type() const -> MessageType = 0;
@@ -58,19 +58,18 @@ auto inspect(Inspector& f, AggregatorWrapper& x) {
 // ------ events sent from worker to conductor -------
 
 struct GraphLoaded : Message {
-  MessageType t = MessageType::GraphLoaded;
   std::string senderId;
   uint64_t executionNumber;
   uint64_t vertexCount;
   uint64_t edgeCount;
   GraphLoaded(){};
-  GraphLoaded(std::string senderId, uint64_t executionNumber,
+  GraphLoaded(std::string const& senderId, uint64_t executionNumber,
               uint64_t vertexCount, uint64_t edgeCount)
       : senderId{senderId},
         executionNumber{executionNumber},
         vertexCount{vertexCount},
         edgeCount{edgeCount} {}
-  auto type() const -> MessageType override { return t; }
+  auto type() const -> MessageType override { return MessageType::GraphLoaded; }
 };
 
 template<typename Inspector>
@@ -87,11 +86,21 @@ struct CleanupFinished : Message {
   }
 };
 
-struct RecoveryFinished {
+struct RecoveryFinished : Message {
   std::string senderId;
   uint64_t executionNumber;
   uint64_t gss;
   AggregatorWrapper aggregators;
+  RecoveryFinished(){};
+  RecoveryFinished(std::string const& senderId, uint64_t executionNumber,
+                   uint64_t gss, AggregatorWrapper const& aggregators)
+      : senderId{senderId},
+        executionNumber{executionNumber},
+        gss{gss},
+        aggregators{aggregators} {}
+  auto type() const -> MessageType override {
+    return MessageType::RecoveryFinished;
+  }
 };
 
 template<typename Inspector>

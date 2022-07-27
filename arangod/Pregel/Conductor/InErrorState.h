@@ -33,9 +33,10 @@ namespace conductor {
 struct InError : State {
   Conductor& conductor;
   InError(Conductor& conductor);
-  ~InError();
-  auto run() -> void override;
+  ~InError(){};
+  auto run() -> void override{};
   auto receive(Message const& message) -> void override;
+  auto recover() -> void override;
 };
 
 }  // namespace conductor

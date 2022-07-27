@@ -39,6 +39,8 @@
 #include "Pregel/Conductor/StoringState.h"
 #include "Pregel/Conductor/CanceledState.h"
 #include "Pregel/Conductor/DoneState.h"
+#include "Pregel/Conductor/InErrorState.h"
+#include "Pregel/Conductor/RecoveringState.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -448,58 +450,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
 
   auto event = deserialize<RecoveryFinished>(data);
 
-  _ensureUniqueResponse(event.senderId);
-  if (_state != ExecutionState::RECOVERING) {
-    LOG_PREGEL("23d8b", WARN)
-        << "We are not in a state where we expect a recovery response";
-    return;
-  }
-
-  // the recovery mechanism might be gathering state information
-  _aggregators = event.aggregators.aggregators;
-  if (_respondedServers.size() != _dbServers.size()) {
-    return;
-  }
-
-  // only compensations supported
-  bool proceed = false;
-  if (_masterContext) {
-    proceed = proceed || _masterContext->postCompensation();
-  }
-
-  auto res = TRI_ERROR_NO_ERROR;
-  if (proceed) {
-    // reset values which are calculated during the superstep
-    _aggregators->resetValues();
-    if (_masterContext) {
-      _masterContext->preCompensation();
-    }
-
-    auto continueRecoveryCommand = ContinueRecovery{
-        .executionNumber = _executionNumber, .aggregators = {_aggregators}};
-    VPackBuilder command;
-    serialize(command, continueRecoveryCommand);
-    // first allow all workers to run worker level operations
-    res = _sendToAllDBServers(Utils::continueRecoveryPath, command);
-
-  } else {
-    LOG_PREGEL("6ecf2", INFO) << "Recovery finished. Proceeding normally";
-
-    // build the message, works for all cases
-    auto finalizeRecoveryCommand = FinalizeRecovery{
-        .executionNumber = _executionNumber, .gss = _globalSuperstep};
-    VPackBuilder message;
-    serialize(message, finalizeRecoveryCommand);
-    res = _sendToAllDBServers(Utils::finalizeRecoveryPath, message);
-    if (res == TRI_ERROR_NO_ERROR) {
-      updateState(ExecutionState::RUNNING);
-      _startGlobalStep();
-    }
-  }
-  if (res != TRI_ERROR_NO_ERROR) {
-    changeState(conductor::StateType::Canceled);
-    LOG_PREGEL("7f97e", INFO) << "Recovery failed";
-  }
+  receive(event);
 }
 
 void Conductor::cancel() {
@@ -511,69 +462,8 @@ void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
     return;  // maybe we are already in recovery mode
-  } else if (_algorithm->supportsCompensation() == false) {
-    LOG_PREGEL("12e0e", ERR) << "Algorithm does not support recovery";
-    changeState(conductor::StateType::Canceled);
-    return;
   }
-
-  // we lost a DBServer, we need to reconfigure all remainging servers
-  // so they load the data for the lost machine
-  updateState(ExecutionState::RECOVERING);
-  _statistics.reset();
-
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-
-  // let's wait for a final state in the cluster
-  _workHandle = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::CLUSTER_AQL, std::chrono::seconds(2),
-      [this, self = shared_from_this()](bool cancelled) {
-        if (cancelled || _state != ExecutionState::RECOVERING) {
-          return;  // seems like we are canceled
-        }
-        std::vector<ServerID> goodServers;
-        auto res = _feature.recoveryManager()->filterGoodServers(_dbServers,
-                                                                 goodServers);
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_PREGEL("3d08b", ERR) << "Recovery proceedings failed";
-          changeState(conductor::StateType::Canceled);
-          return;
-        }
-        _dbServers = goodServers;
-
-        auto cancelGssCommand = CancelGss{.executionNumber = _executionNumber,
-                                          .gss = _globalSuperstep};
-        VPackBuilder command;
-        serialize(command, cancelGssCommand);
-        _sendToAllDBServers(Utils::cancelGSSPath, command);
-        if (_state != ExecutionState::RECOVERING) {
-          return;  // seems like we are canceled
-        }
-
-        // Let's try recovery
-        if (_masterContext) {
-          bool proceed = _masterContext->preCompensation();
-          if (!proceed) {
-            changeState(conductor::StateType::Canceled);
-          }
-        }
-
-        VPackBuilder additionalKeys;
-        additionalKeys.openObject();
-        additionalKeys.add(Utils::recoveryMethodKey,
-                           VPackValue(Utils::compensate));
-        additionalKeys.close();
-        _aggregators->resetValues();
-
-        // initialize workers will reconfigure the workers and set the
-        // _dbServers list to the new primary DBServers
-        res = _initializeWorkers(Utils::startRecoveryPath,
-                                 additionalKeys.slice());
-        if (res != TRI_ERROR_NO_ERROR) {
-          changeState(conductor::StateType::Canceled);
-          LOG_PREGEL("fefc6", ERR) << "Compensation failed";
-        }
-      });
+  state->recover();
 }
 
 // resolves into an ordered list of shards for each collection on each server
@@ -1061,6 +951,12 @@ auto Conductor::changeState(conductor::StateType name) -> void {
       break;
     case conductor::StateType::Done:
       state = std::make_unique<conductor::Done>(*this);
+      break;
+    case conductor::StateType::InError:
+      state = std::make_unique<conductor::InError>(*this);
+      break;
+    case conductor::StateType::Recovering:
+      state = std::make_unique<conductor::Recovering>(*this);
       break;
     case conductor::StateType::Placeholder:
       state = std::make_unique<conductor::Placeholder>();

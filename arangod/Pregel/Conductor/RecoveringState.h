@@ -30,10 +30,10 @@ class Conductor;
 
 namespace conductor {
 
-struct Storing : State {
+struct Recovering : State {
   Conductor& conductor;
-  Storing(Conductor& conductor);
-  ~Storing();
+  Recovering(Conductor& conductor);
+  ~Recovering();
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
   auto recover() -> void override{};

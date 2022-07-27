@@ -36,6 +36,7 @@ struct Done : State {
   ~Done();
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
+  auto recover() -> void override{};
 };
 
 }  // namespace conductor
