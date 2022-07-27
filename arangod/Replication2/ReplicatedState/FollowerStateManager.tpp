@@ -635,8 +635,8 @@ void FollowerStateManager<S>::waitForLogFollowerResign() {
           if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
             LOG_CTX("654fb", TRACE, self->loggerContext)
                 << "forcing rebuild because participant resigned";
-            static_assert(noexcept(parentPtr->forceRebuild(self.get())));
-            parentPtr->forceRebuild(self.get());
+            static_assert(noexcept(parentPtr->rebuildMe(self.get())));
+            parentPtr->rebuildMe(self.get());
           }
         }
       });

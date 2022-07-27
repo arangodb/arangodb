@@ -307,8 +307,8 @@ void LeaderStateManager<S>::beginWaitingForLogLeaderResigned() {
       [weak = this->weak_from_this()](auto&&) noexcept {
         if (auto self = weak.lock(); self != nullptr) {
           if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
-            static_assert(noexcept(parentPtr->forceRebuild(self.get())));
-            parentPtr->forceRebuild(self.get());
+            static_assert(noexcept(parentPtr->rebuildMe(self.get())));
+            parentPtr->rebuildMe(self.get());
           }
         }
       });

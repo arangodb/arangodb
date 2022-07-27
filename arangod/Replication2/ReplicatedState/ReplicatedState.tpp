@@ -150,22 +150,21 @@ auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
 }
 
 template<typename S>
-void ReplicatedState<S>::forceRebuild(
-    IStateManagerBase const* const caller) noexcept {
+void ReplicatedState<S>::rebuildMe(const IStateManagerBase* caller) noexcept {
   LOG_CTX("8041a", TRACE, loggerContext) << "Force rebuild of replicated state";
   static_assert(noexcept(
       // get type of `deferred` by repeating the right-hand-side
-      decltype(guardedData.getLockedGuard()->forceRebuild(caller))
+      decltype(guardedData.getLockedGuard()->rebuildMe(caller))
       // call its copy constructor
       (
           // right-hand-side value
           // note thate getLockedGuard() isn't noexcept, but we consciously
           // ignore locks throwing exceptions.
-          std::declval<decltype(guardedData.getLockedGuard())>()->forceRebuild(
+          std::declval<decltype(guardedData.getLockedGuard())>()->rebuildMe(
               caller)  //
           )            //
       ));
-  auto deferred = guardedData.getLockedGuard()->forceRebuild(caller);
+  auto deferred = guardedData.getLockedGuard()->rebuildMe(caller);
   static_assert(noexcept(deferred.fire()));
   // execute *after* the lock has been released
   deferred.fire();
@@ -337,8 +336,8 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
 }
 
 template<typename S>
-auto ReplicatedState<S>::GuardedData::forceRebuild(
-    IStateManagerBase const* const caller) noexcept -> DeferredAction try {
+auto ReplicatedState<S>::GuardedData::rebuildMe(
+    const IStateManagerBase* caller) noexcept -> DeferredAction try {
   if (caller != currentManager.get()) {
     // Do nothing if the manager changed: A manager may only rebuild itself.
     return {};

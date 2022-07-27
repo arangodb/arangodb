@@ -70,7 +70,7 @@ struct ReplicatedStateBase {
   virtual void start(
       std::unique_ptr<ReplicatedStateToken> token,
       std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
-  virtual void forceRebuild(IStateManagerBase const* caller) noexcept = 0;
+  virtual void rebuildMe(IStateManagerBase const* caller) noexcept = 0;
   [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
       -> std::shared_ptr<IReplicatedLeaderStateBase> {
@@ -126,9 +126,9 @@ struct ReplicatedState final
   [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
   /**
-   * Rebuilds the managers. Called when the managers participant is gone.
+   * Rebuilds the managers. Called by the manager when its participant is gone.
    */
-  void forceRebuild(IStateManagerBase const* caller) noexcept override;
+  void rebuildMe(IStateManagerBase const* caller) noexcept override;
 
   struct IStateManager : IStateManagerBase {
     virtual ~IStateManager() = default;
@@ -157,8 +157,7 @@ struct ReplicatedState final
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
 
   struct GuardedData {
-    auto forceRebuild(IStateManagerBase const* caller) noexcept
-        -> DeferredAction;
+    auto rebuildMe(IStateManagerBase const* caller) noexcept -> DeferredAction;
 
     auto runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
                    std::unique_ptr<CoreType>,

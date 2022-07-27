@@ -49,8 +49,8 @@ void UnconfiguredStateManager<S>::run() noexcept {
         if (result.hasValue()) {
           if (auto self = weak.lock(); self != nullptr) {
             if (auto parentPtr = self->_parent.lock(); parentPtr != nullptr) {
-              static_assert(noexcept(parentPtr->forceRebuild(self.get())));
-              parentPtr->forceRebuild(self.get());
+              static_assert(noexcept(parentPtr->rebuildMe(self.get())));
+              parentPtr->rebuildMe(self.get());
             }
           }
         } else if (result.hasException()) {
