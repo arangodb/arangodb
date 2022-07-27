@@ -106,10 +106,9 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
       let amountNullValues = 0;
       const docs = collection.toArray();
-      docs.forEach((doc, index) => {
+      docs.forEach(doc => {
         assertTrue(doc.hasOwnProperty("newValue"));
-        if (index >= 50) {
-          assertNull(doc["newValue"]);
+        if (doc["newValue"] === null) {
           amountNullValues++;
         }
       });
