@@ -146,18 +146,10 @@ auto DocumentStateShardHandler::createLocalShard(
 
 DocumentStateTransaction::DocumentStateTransaction(
     std::shared_ptr<transaction::Methods> methods)
-    : _methods(std::move(methods)), _result{} {}
-
-bool DocumentStateTransaction::shouldBeAborted() {
-  return _result.has_value() && _result->fail();
-}
+    : _methods(std::move(methods)) {}
 
 auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
     -> futures::Future<Result> {
-  if (shouldBeAborted()) {
-    return _result->result;
-  }
-
   // TODO revisit checkUniqueConstraintsInPreflight and waitForSync
   auto opOptions = OperationOptions();
   opOptions.silent = true;
@@ -197,16 +189,11 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
 
   return std::move(fut).thenValue(
       [self = shared_from_this()](OperationResult&& opRes) {
-        auto res = opRes.result;
-        self->_result = std::move(opRes);
-        return res;
+        return opRes.result;
       });
 }
 
 auto DocumentStateTransaction::commit() -> futures::Future<Result> {
-  if (shouldBeAborted()) {
-    return _result->result;
-  }
   return _methods->commitAsync();
 }
 

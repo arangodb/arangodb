@@ -128,11 +128,7 @@ class DocumentStateTransaction
   auto abort() -> futures::Future<Result> override;
 
  private:
-  bool shouldBeAborted();
-
- private:
   std::shared_ptr<transaction::Methods> _methods;
-  std::optional<OperationResult> _result;
 };
 
 struct IDocumentStateTransactionHandler {

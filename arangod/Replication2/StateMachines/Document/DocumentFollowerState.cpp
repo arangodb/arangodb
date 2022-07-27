@@ -88,7 +88,7 @@ auto DocumentFollowerState::applyEntries(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
       }
 
-      TRI_ASSERT(fut.isReady());
+      ADB_PROD_ASSERT(fut.isReady()) << doc;
       if (fut.result()->fail()) {
         return fut;
       }
