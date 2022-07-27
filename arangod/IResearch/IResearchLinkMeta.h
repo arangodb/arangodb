@@ -219,7 +219,6 @@ struct IResearchLinkMeta : public FieldMeta {
   // data is stored in iresearch (default == 0).
   uint32_t _version;
 
-
   // Linked collection name. Stored here for cluster deployment only.
   // For sigle server collection could be renamed so can`t store it here or
   // syncronisation will be needed. For cluster rename is not possible so

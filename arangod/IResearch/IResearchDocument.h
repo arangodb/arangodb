@@ -193,7 +193,7 @@ class FieldIterator {
     std::optional<MissingFieldsContainer> missingFields;
 #ifdef USE_ENTERPRISE
     bool nestingProcessed{false};
- #endif
+#endif
   };  // Level
 
   Level& top() noexcept {
