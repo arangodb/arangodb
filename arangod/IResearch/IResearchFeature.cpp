@@ -604,7 +604,7 @@ void registerSingleFactory(
 void registerFunctions(aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(
       functions,
-      {"OFFSET_INFO", ".",
+      {"OFFSET_INFO", ".,.",
        aql::Function::makeFlags(aql::Function::Flags::Deterministic,
                                 aql::Function::Flags::Cacheable,
                                 aql::Function::Flags::CanRunOnDBServerCluster,
