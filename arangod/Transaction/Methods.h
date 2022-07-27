@@ -206,20 +206,23 @@ class Methods {
   Result begin();
 
   /// @deprecated use async variant
-  auto commit() noexcept -> Result;
+  [[nodiscard, deprecated("use async variant")]] auto commit() noexcept
+      -> Result;
   /// @brief commit / finish the transaction
-  auto commitAsync() noexcept -> Future<Result>;
+  [[nodiscard]] auto commitAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  auto abort() noexcept -> Result;
+  [[nodiscard, deprecated("use async variant")]] auto abort() noexcept
+      -> Result;
   /// @brief abort the transaction
-  auto abortAsync() noexcept -> Future<Result>;
+  [[nodiscard]] auto abortAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  auto finish(Result const& res) noexcept -> Result;
+  [[nodiscard, deprecated("use async variant")]] auto finish(
+      Result const& res) noexcept -> Result;
 
   /// @brief finish a transaction (commit or abort), based on the previous state
-  auto finishAsync(Result const& res) noexcept -> Future<Result>;
+  [[nodiscard]] auto finishAsync(Result const& res) noexcept -> Future<Result>;
 
   /// @brief return the transaction id
   TransactionId tid() const;
@@ -503,9 +506,9 @@ class Methods {
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
-  auto commitInternal(MethodsApi api) noexcept -> Future<Result>;
-  auto abortInternal(MethodsApi api) noexcept -> Future<Result>;
-  auto finishInternal(Result const& res, MethodsApi api) noexcept
+  [[nodiscard]] auto commitInternal(MethodsApi api) noexcept -> Future<Result>;
+  [[nodiscard]] auto abortInternal(MethodsApi api) noexcept -> Future<Result>;
+  [[nodiscard]] auto finishInternal(Result const& res, MethodsApi api) noexcept
       -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
   ENTERPRISE_VIRT auto documentInternal(std::string const& collectionName,
