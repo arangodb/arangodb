@@ -80,7 +80,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             name: "newValue",
             expression: "RETURN IS_STRING(@doc.name.first) AND IS_STRING(@doc.name.last) ? " +
               "MERGE(@doc.name, { full: CONCAT_SEPARATOR(' ', @doc.name.first, @doc.name.last) }) : null",
-            override: true,
+            overwrite: true,
             keepNull: true
           }]
       });
@@ -155,7 +155,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             name: "newValue",
             expression: "RETURN IS_STRING(@doc.name.first) AND IS_STRING(@doc.name.last) ? " +
               "MERGE(@doc.name, { full: CONCAT_SEPARATOR(' ', @doc.name.first, @doc.name.last) }) : null",
-            override: true,
+            overwrite: true,
             keepNull: false
           }]
       });
