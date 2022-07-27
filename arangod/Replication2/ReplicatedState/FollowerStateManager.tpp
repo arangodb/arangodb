@@ -630,7 +630,8 @@ FollowerStateManager<S>::GuardedData::GuardedData(
 template<typename S>
 void FollowerStateManager<S>::waitForLogFollowerResign() {
   logFollower->waitForResign().thenFinal(
-      [weak = this->weak_from_this()](futures::Try<futures::Unit> const&) noexcept {
+      [weak = this->weak_from_this()](
+          futures::Try<futures::Unit> const&) noexcept {
         if (auto self = weak.lock(); self != nullptr) {
           if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
             LOG_CTX("654fb", TRACE, self->loggerContext)
