@@ -200,7 +200,7 @@ Manager::ManagedTrx::~ManagedTrx() {
                   opts);  // own state now
     TRI_ASSERT(trx.state()->status() == transaction::Status::RUNNING);
     TRI_ASSERT(trx.isMainTransaction());
-    trx.abort();
+    std::ignore = trx.abort();
   } catch (...) {
     // obviously it is not good to consume all exceptions here,
     // but we are in a destructor and must never throw from here
