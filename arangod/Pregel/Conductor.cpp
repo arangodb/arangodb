@@ -38,6 +38,7 @@
 #include "Pregel/Conductor/LoadingState.h"
 #include "Pregel/Conductor/StoringState.h"
 #include "Pregel/Conductor/CanceledState.h"
+#include "Pregel/Conductor/DoneState.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -264,9 +265,14 @@ bool Conductor::_startGlobalStep() {
     _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
     if (_storeResults) {
       changeState(conductor::StateType::Storing);
-    } else {  // just stop the timer
-      updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
-                                : ExecutionState::DONE);
+    } else {
+      if (_inErrorAbort) {
+        updateState(ExecutionState::FATAL_ERROR);
+        // TODO change state to FatalError
+        changeState(conductor::StateType::Placeholder);
+      } else {
+        changeState(conductor::StateType::Done);
+      }
       LOG_PREGEL("9e82c", INFO)
           << "Done, execution took: " << _timing.total.elapsedSeconds().count()
           << " s";
@@ -812,35 +818,6 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     return;
   }
   receive(CleanupFinished{});
-
-  if (_state != ExecutionState::CANCELED) {
-    _timing.total.finish();
-
-    VPackBuilder debugOut;
-    debugOut.openObject();
-    debugOut.add("stats", VPackValue(VPackValueType::Object));
-    _statistics.serializeValues(debugOut);
-    debugOut.close();
-    _aggregators->serializeValues(debugOut);
-    debugOut.close();
-
-    LOG_PREGEL("063b5", INFO)
-        << "Done. We did " << _globalSuperstep << " rounds."
-        << (_timing.loading.hasStarted()
-                ? fmt::format("Startup time: {}s",
-                              _timing.loading.elapsedSeconds().count())
-                : "")
-        << (_timing.computation.hasStarted()
-                ? fmt::format(", computation time: {}s",
-                              _timing.computation.elapsedSeconds().count())
-                : "")
-        << (_storeResults
-                ? fmt::format(", storage time: {}s",
-                              _timing.storing.elapsedSeconds().count())
-                : "")
-        << ", overall: " << _timing.total.elapsedSeconds().count() << "s"
-        << ", stats: " << debugOut.slice().toJson();
-  }
 }
 
 bool Conductor::canBeGarbageCollected() const {
@@ -1081,6 +1058,9 @@ auto Conductor::changeState(conductor::StateType name) -> void {
       break;
     case conductor::StateType::Canceled:
       state = std::make_unique<conductor::Canceled>(*this);
+      break;
+    case conductor::StateType::Done:
+      state = std::make_unique<conductor::Done>(*this);
       break;
     case conductor::StateType::Placeholder:
       state = std::make_unique<conductor::Placeholder>();

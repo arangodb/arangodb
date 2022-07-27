@@ -52,7 +52,5 @@ auto Storing::receive(Message const& message) -> void {
     conductor.changeState(StateType::Placeholder);
     return;
   }
-  conductor.updateState(ExecutionState::DONE);
-  // TODO change to DoneState
-  conductor.changeState(StateType::Placeholder);
+  conductor.changeState(StateType::Done);
 }

@@ -298,6 +298,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Conductor/LoadingState.cpp
   Pregel/Conductor/StoringState.cpp
   Pregel/Conductor/CanceledState.cpp
+  Pregel/Conductor/DoneState.cpp
   RestHandler/RestControlPregelHandler.cpp
   RestHandler/RestPregelHandler.cpp
 )
