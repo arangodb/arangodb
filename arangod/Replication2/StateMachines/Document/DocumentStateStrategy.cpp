@@ -185,10 +185,8 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
                       to_string(entry.operation), entry.tid.id())};
   }
 
-  return std::move(fut).thenValue(
-      [self = shared_from_this()](OperationResult&& opRes) {
-        return opRes.result;
-      });
+  TRI_ASSERT(fut.isReady()) << entry;
+  return std::move(fut).get().result;
 }
 
 auto DocumentStateTransaction::commit() -> futures::Future<Result> {
