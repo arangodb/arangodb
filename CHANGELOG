@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Added CSP recommended headers to Aardvaark app for better security.
+
 * Changed rocksdb default compression type from snappy to lz4.
 
 * arangoimport now supports the option --remove-attribute on type JSON as well.
