@@ -122,6 +122,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
+#include "Basics/FeatureFlags.h"
 #endif
 
 using namespace arangodb::rest;
@@ -642,7 +643,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData);
 
-  if (cluster.isEnabled()) {
+  if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
                        RestHandlerCreator<RestLogHandler>::createNoData);
     f.addPrefixHandler(

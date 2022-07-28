@@ -208,12 +208,9 @@ struct arangodb::VocBaseLogManager {
     });
 
     if (result.ok()) {
-      _server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogNumber->fetch_sub(1);
-      _server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogDeletionNumber->count();
+      auto& feature = _server.getFeature<ReplicatedLogFeature>();
+      feature.metrics()->replicatedLogNumber->fetch_sub(1);
+      feature.metrics()->replicatedLogDeletionNumber->count();
     }
     return result;
   }
