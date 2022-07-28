@@ -340,18 +340,6 @@ add_executable(
   main.cpp
 )
 
-set(USE_SEPARATE_REPLICATION2_TESTS_BINARY FALSE CACHE BOOL
-  "Write a separate binary 'arangodbtests_replication2', containing only the Replication 2.0 tests.")
-
-if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
-  add_executable(
-    arangodbtests_replication2
-    ${ARANGODB_TESTS_COMMON_SOURCES}
-    ${ARANGODB_REPLICATION2_TEST_SOURCES}
-    main.cpp
-  )
-endif()
-
 set(USE_SEPARATE_GRAPH_TESTS_BINARY FALSE CACHE BOOL
         "Write a separate binary 'arangodbtests_graph', containing only the graph tests.")
 
@@ -385,26 +373,12 @@ target_link_libraries(arangodbtests
   fmt
 )
 
-
-if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
-  target_link_libraries(arangodbtests_replication2
-    gtest
-    arango_agency
-    arango_v8server
-    arangoserver
-    arango_replication2
-    arango_iresearch
-    fmt
-  )
-endif()
-
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_link_libraries(arangodbtests_graph
           gtest
           arango_agency
           arango_v8server
           arangoserver
-          arango_replication2
           arango_iresearch
           )
 endif()
@@ -419,16 +393,6 @@ target_include_directories(arangodbtests PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
-
-if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
-  target_include_directories(arangodbtests_replication2 PRIVATE
-    ${PROJECT_SOURCE_DIR}/arangod
-    ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
-  )
-  target_link_libraries(arangodbtests_replication2 arango)
-endif()
 
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_include_directories(arangodbtests_graph PRIVATE
@@ -480,12 +444,6 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
 )
 
 target_link_libraries(arangodbtests v8_interface)
-
-if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
-  target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
-  )
-endif()
 
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_include_directories(arangodbtests_graph SYSTEM PRIVATE
