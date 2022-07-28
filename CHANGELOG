@@ -1,29 +1,31 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* Added more specific process exit codes for arangod and all client tools,
-  and changed the executables' exit code for the following situations:
-  
+* Added more specific process exit codes for arangod and all client tools, and
+  changed the executables' exit code for the following situations:
+
   - an unknown startup option name is used: previously the exit code was 1.
-    Now the exit code when using an invalid option is 3 (symbolic exit code 
-    name EXIT_INVALID_OPTION_NAME).
-  - an invalid value is used for a startup option (e.g. a number that is 
-    outside the allowed range for the option's underlying value type, or a 
-    string value is used for a numeric option): previously the exit code was
-    1. Now the exit code for these case is 4 (symbolic exit code name
+    Now the exit code when using an invalid option is 3 (symbolic exit code name
+    EXIT_INVALID_OPTION_NAME).
+  - an invalid value is used for a startup option (e.g. a number that is outside
+    the allowed range for the option's underlying value type, or a string value
+    is used for a numeric option): previously the exit code was 1. Now the exit
+    code for these case is 4 (symbolic exit code name
     EXIT_INVALID_OPTION_VALUE).
-  - a config file is specified that does not exist: previously the exit code
-    was either 1 or 6 (symbolic exit code name EXIT_CONFIG_NOT_FOUND). Now
-    the exit code in this case is always 6 (EXIT_CONFIG_NOT_FOUND).
-  - a structurally invalid config file is used, e.g. the config file contains
-    a line that cannot be parsed: previously the exit code in this situation
-    was 1. Now it is always 6 (symbolic exit code name EXIT_CONFIG_NOT_FOUND).
+  - a config file is specified that does not exist: previously the exit code was
+    either 1 or 6 (symbolic exit code name EXIT_CONFIG_NOT_FOUND). Now the exit
+    code in this case is always 6 (EXIT_CONFIG_NOT_FOUND).
+  - a structurally invalid config file is used, e.g. the config file contains a
+    line that cannot be parsed: previously the exit code in this situation was
+    1. Now it is always 6 (symbolic exit code name EXIT_CONFIG_NOT_FOUND).
 
   Note that this change can affect any custom scripts that check for startup
   failures using the specific exit code 1. These scripts should be adjusted so
   that they check for a non-zero exit code. They can opt in to more specific
   error handling using the additional exit codes mentioned above, in order to
   distinguish between different kinds of startup errors.
+
+* Changed rocksdb default compression type from snappy to lz4.
 
 * arangoimport now supports the option --remove-attribute on type JSON as well.
   Before it was restricted to TSV and CSV only.
