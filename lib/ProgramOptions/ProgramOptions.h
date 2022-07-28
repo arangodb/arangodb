@@ -28,15 +28,16 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
 
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <vector>
 
-namespace arangodb {
-namespace velocypack {
+namespace aragndob::velocypack {
 class Builder;
 }
-namespace options {
+
+namespace arangodb::options {
 
 // program options data structure
 // typically an application will have a single instance of this
@@ -45,8 +46,7 @@ class ProgramOptions {
   // struct containing the option processing result
   class ProcessingResult {
    public:
-    ProcessingResult()
-        : _positionals(), _touched(), _frozen(), _failed(false) {}
+    ProcessingResult() : _positionals(), _touched(), _frozen(), _exitCode(0) {}
     ~ProcessingResult() = default;
 
     // mark an option as being touched during options processing
@@ -68,10 +68,17 @@ class ProgramOptions {
     }
 
     // mark options processing as failed
-    void failed(bool value) { _failed = value; }
+    void fail(int exitCode) noexcept { _exitCode = exitCode; }
 
-    // whether or not options processing has failed
-    bool failed() const { return _failed; }
+    // return the registered exit code
+    int exitCode() const noexcept { return _exitCode; }
+
+    int exitCodeOrFailure() const noexcept {
+      if (_exitCode != 0) {
+        return _exitCode;
+      }
+      return EXIT_FAILURE;
+    }
 
     // values of all positional arguments found
     std::vector<std::string> _positionals;
@@ -84,8 +91,8 @@ class ProgramOptions {
     // this does not include options that are touched in the current pass
     std::unordered_set<std::string> _frozen;
 
-    // whether or not options processing failed
-    bool _failed;
+    // registered exit code (== 0 means ok, != 0 means error)
+    int _exitCode;
   };
 
   // function type for determining the similarity between two strings
@@ -264,12 +271,12 @@ class ProgramOptions {
   std::string getDescription(std::string const& name);
 
   // handle an unknown option
-  bool unknownOption(std::string const& name);
+  void unknownOption(std::string const& name);
 
   // report an error (callback from parser)
-  bool fail(std::string const& message);
+  void fail(int exitCode, std::string const& message);
 
-  void failNotice(std::string const& message);
+  void failNotice(int exitCode, std::string const& message);
 
   // add a positional argument (callback from parser)
   void addPositional(std::string const& value);
@@ -294,7 +301,6 @@ class ProgramOptions {
   std::vector<std::string> similar(std::string const& value, int cutOff,
                                    size_t maxResults);
 
- private:
   // name of binary (i.e. argv[0])
   std::string _progname;
   // usage hint, e.g. "usage: #progname# [<options>] ..."
@@ -328,5 +334,5 @@ class ProgramOptions {
   // directory of this binary
   char const* _binaryPath;
 };
-}  // namespace options
-}  // namespace arangodb
+
+}  // namespace arangodb::options
