@@ -210,16 +210,49 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
   return it->second;
 }
 
-auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
-    -> std::shared_ptr<IDocumentStateTransaction> {
-  auto tid = entry.tid;
-  auto trx = getTrx(tid);
+auto DocumentStateTransactionHandler::applyTransaction(DocumentLogEntry doc)
+    -> Result {
+  auto fut = futures::Future<Result>{Result{}};
+  try {
+    auto trx = ensureTransaction(doc);
+    TRI_ASSERT(trx != nullptr);
+    switch (doc.operation) {
+      case OperationType::kInsert:
+      case OperationType::kUpdate:
+      case OperationType::kReplace:
+      case OperationType::kRemove:
+      case OperationType::kTruncate:
+        fut = trx->apply(doc);
+        break;
+      case OperationType::kCommit:
+        fut = trx->commit();
+        removeTransaction(doc.tid);
+        break;
+      case OperationType::kAbort:
+        fut = trx->abort();
+        removeTransaction(doc.tid);
+        break;
+      default:
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+    }
+    ADB_PROD_ASSERT(fut.isReady()) << doc;
+    return fut.get();
+  } catch (basics::Exception& e) {
+    return Result{e.code(), e.message()};
+  } catch (std::exception& e) {
+    return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
+  }
+}
 
+auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry doc)
+    -> std::shared_ptr<IDocumentStateTransaction> {
+  auto tid = doc.tid;
+  auto trx = getTrx(tid);
   if (trx != nullptr) {
     return trx;
   }
 
-  TRI_ASSERT(entry.operation != kCommit && entry.operation != kAbort);
+  TRI_ASSERT(doc.operation != kCommit && doc.operation != kAbort);
 
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
@@ -231,7 +264,7 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry entry)
   auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
 
   auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), entry.shardId, AccessMode::Type::WRITE);
+      std::move(ctx), doc.shardId, AccessMode::Type::WRITE);
 
   // TODO Why is GLOBAL_MANAGED necessary?
   methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);

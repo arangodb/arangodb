@@ -100,14 +100,39 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
 };
 
 struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
-  auto ensureTransaction(DocumentLogEntry entry)
+  auto applyTransaction(DocumentLogEntry doc) -> Result override {
+    auto fut = futures::Future<Result>{Result{}};
+    auto trx = ensureTransaction(doc);
+    TRI_ASSERT(trx != nullptr);
+    switch (doc.operation) {
+      case OperationType::kInsert:
+      case OperationType::kUpdate:
+      case OperationType::kReplace:
+      case OperationType::kRemove:
+      case OperationType::kTruncate:
+        fut = trx->apply(doc);
+        break;
+      case OperationType::kCommit:
+        fut = trx->commit();
+        removeTransaction(doc.tid);
+        break;
+      case OperationType::kAbort:
+        fut = trx->abort();
+        removeTransaction(doc.tid);
+        break;
+    }
+    TRI_ASSERT(fut.isReady()) << doc;
+    return fut.get();
+  }
+
+  auto ensureTransaction(DocumentLogEntry doc)
       -> std::shared_ptr<IDocumentStateTransaction> override {
-    if (auto trx = getTransaction(entry.tid)) {
+    if (auto trx = getTransaction(doc.tid)) {
       return trx;
     }
-    auto trx = std::make_shared<MockDocumentStateTransaction>(entry.tid);
+    auto trx = std::make_shared<MockDocumentStateTransaction>(doc.tid);
     trx->ensured = true;
-    transactions.emplace(entry.tid, trx);
+    transactions.emplace(doc.tid, trx);
     return trx;
   }
 

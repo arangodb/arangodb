@@ -58,42 +58,11 @@ auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-
-    try {
-      auto fut = futures::Future<Result>{Result{}};
-      auto trx = _transactionHandler->ensureTransaction(doc);
-      TRI_ASSERT(trx != nullptr);
-      switch (doc.operation) {
-        case OperationType::kInsert:
-        case OperationType::kUpdate:
-        case OperationType::kReplace:
-        case OperationType::kRemove:
-        case OperationType::kTruncate:
-          fut = trx->apply(doc);
-          break;
-        case OperationType::kCommit:
-          fut = trx->commit();
-          _transactionHandler->removeTransaction(doc.tid);
-          break;
-        case OperationType::kAbort:
-          fut = trx->abort();
-          _transactionHandler->removeTransaction(doc.tid);
-          break;
-        default:
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
-      }
-
-      ADB_PROD_ASSERT(fut.isReady()) << doc;
-      if (fut.result()->fail()) {
-        return fut;
-      }
-    } catch (basics::Exception& e) {
-      return Result{e.code(), e.message()};
-    } catch (std::exception& e) {
-      return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
+    auto res = _transactionHandler->applyTransaction(doc);
+    if (res.fail()) {
+      return res;
     }
   }
-
   return {TRI_ERROR_NO_ERROR};
 }
 
