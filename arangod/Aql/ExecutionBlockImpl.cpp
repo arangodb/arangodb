@@ -199,9 +199,9 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
     : ExecutionBlock(engine, node),
       _registerInfos(std::move(registerInfos)),
       _dependencyProxy(_dependencies, _registerInfos.numberOfInputRegisters()),
-      _rowFetcher(_dependencyProxy),
+      _rowFetcher(std::in_place, _dependencyProxy),
       _executorInfos(std::move(executorInfos)),
-      _executor(_rowFetcher, _executorInfos),
+      _executor(std::in_place, *_rowFetcher, _executorInfos),
       _outputItemRow(),
       _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
@@ -272,8 +272,15 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
 }
 
 template<class Executor>
-Executor& ExecutionBlockImpl<Executor>::executor() {
-  return _executor;
+auto ExecutionBlockImpl<Executor>::executor() noexcept -> Executor& {
+  TRI_ASSERT(_executor.has_value());
+  return *_executor;
+}
+
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::fetcher() noexcept -> Fetcher& {
+  TRI_ASSERT(_rowFetcher.has_value());
+  return *_rowFetcher;
 }
 
 template<class Executor>
@@ -293,33 +300,6 @@ auto ExecutionBlockImpl<Executor>::registerInfos() const
   return _registerInfos;
 }
 
-namespace arangodb::aql {
-
-template<bool customInit>
-struct InitializeCursor {};
-
-template<>
-struct InitializeCursor<false> {
-  template<class Executor>
-  static void init(Executor& executor, typename Executor::Fetcher& rowFetcher,
-                   typename Executor::Infos& infos) {
-    // destroy and re-create the Executor
-    executor.~Executor();
-    new (&executor) Executor(rowFetcher, infos);
-  }
-};
-
-template<>
-struct InitializeCursor<true> {
-  template<class Executor>
-  static void init(Executor& executor, typename Executor::Fetcher&,
-                   typename Executor::Infos&) {
-    // re-initialize the Executor
-    executor.initializeCursor();
-  }
-};
-}  // namespace arangodb::aql
-
 template<class Executor>
 std::pair<ExecutionState, Result>
 ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
@@ -328,12 +308,11 @@ ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   _hasUsedDataRangeBlock = false;
   initOnce();
   // destroy and re-create the Fetcher
-  _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_dependencyProxy);
+  _rowFetcher.emplace(_dependencyProxy);
 
   if constexpr (isMultiDepExecutor<Executor>) {
     _lastRange.reset();
-    _rowFetcher.init();
+    fetcher().init();
   } else {
     _lastRange = DataRange(MainQueryState::HASMORE);
   }
@@ -489,8 +468,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
   _dependencyProxy.reset();
 
   // destroy and re-create the Fetcher
-  _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_dependencyProxy);
+  _rowFetcher.emplace(_dependencyProxy);
 
   TRI_ASSERT(_skipped.nothingSkipped());
 
@@ -509,7 +487,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
   _hasUsedDataRangeBlock = false;
   _upstreamState = ExecutionState::HASMORE;
 
-  _rowFetcher.injectBlock(std::move(block), std::move(skipped));
+  fetcher().injectBlock(std::move(block), std::move(skipped));
 
   resetExecutor();
 }
@@ -599,7 +577,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
       // returns HASMORE.
       if (_lastRange.finalState() == MainQueryState::DONE ||
           call.hasSoftLimit()) {
-        blockSize = _executor.expectedNumberOfRowsNew(_lastRange, call);
+        blockSize = executor().expectedNumberOfRowsNew(_lastRange, call);
         if (_lastRange.finalState() == MainQueryState::HASMORE) {
           // There might be more from above!
           blockSize = std::max(call.getLimit(), blockSize);
@@ -974,7 +952,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
     static_assert(std::is_same_v<AqlCallSet, std::decay_t<decltype(aqlCall)>>);
     TRI_ASSERT(_lastRange.numberDependencies() == _dependencies.size());
     auto const& [state, skipped, ranges] =
-        _rowFetcher.execute(ctx.stack, aqlCall);
+        fetcher().execute(ctx.stack, aqlCall);
     for (auto const& [dependency, range] : ranges) {
       _lastRange.setDependency(dependency, range);
     }
@@ -989,7 +967,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
     auto fetchAllStack = ctx.stack.createEquivalentFetchAllShadowRowsStack();
     fetchAllStack.pushCall(
         createUpstreamCall(aqlCall, ctx.clientCallList.hasMoreCalls()));
-    auto res = _rowFetcher.execute(fetchAllStack);
+    auto res = fetcher().execute(fetchAllStack);
     // Just make sure we did not Skip anything
     TRI_ASSERT(std::get<SkipResult>(res).nothingSkipped());
     return res;
@@ -1011,7 +989,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         _prefetchTask->waitFor();
         return _prefetchTask->stealResult();
       } else {
-        return _rowFetcher.execute(ctx.stack);
+        return fetcher().execute(ctx.stack);
       }
     });
 
@@ -1066,12 +1044,12 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> {
   if constexpr (isMultiDepExecutor<Executor>) {
     TRI_ASSERT(input.numberDependencies() == _dependencies.size());
-    return _executor.produceRows(input, output);
+    return executor().produceRows(input, output);
   } else if constexpr (executorCanReturnWaiting<Executor>) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
   } else {
-    return _executor.produceRows(input, output);
+    return executor().produceRows(input, output);
   }
 }
 
@@ -1088,7 +1066,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
       TRI_ASSERT(inputRange.numberDependencies() == _dependencies.size());
       // If the executor has a method skipRowsRange, to skip outputs.
       // Every non-passthrough executor needs to implement this.
-      auto res = _executor.skipRowsRange(inputRange, call);
+      auto res = executor().skipRowsRange(inputRange, call);
       _executorReturnedDone =
           std::get<ExecutorState>(res) == ExecutorState::DONE;
       return res;
@@ -1097,7 +1075,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     } else {
       auto [state, stats, skipped, localCall] =
-          _executor.skipRowsRange(inputRange, call);
+          executor().skipRowsRange(inputRange, call);
       _executorReturnedDone = state == ExecutorState::DONE;
       return {state, stats, skipped, localCall};
     }
@@ -1139,7 +1117,7 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
     // If we have a dataRow, the executor needs to write it's output.
     // If we get woken up by a dataRow during forwarding of ShadowRows
     // This will return false, and if so we need to call produce instead.
-    auto didWrite = _executor.produceShadowRow(_lastRange, *_outputItemRow);
+    auto didWrite = executor().produceShadowRow(_lastRange, *_outputItemRow);
     // Need to report that we have written a row in the call
 
     if (didWrite) {
@@ -1206,7 +1184,7 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
   TRI_ASSERT(shadowRow.isInitialized());
   if (shadowRow.isRelevant()) {
     // We need to consume the row, and write the Aggregate to it.
-    _executor.consumeShadowRow(shadowRow, *_outputItemRow);
+    executor().consumeShadowRow(shadowRow, *_outputItemRow);
     // we need to reset the ExecutorHasReturnedDone, it will
     // return done after every subquery is fully collected.
     _executorReturnedDone = false;
@@ -1368,7 +1346,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   //
   // but there are interactions between the two.
   if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-    _rowFetcher.resetDidReturnSubquerySkips(shadowRow.getDepth());
+    fetcher().resetDidReturnSubquerySkips(shadowRow.getDepth());
   }
 
   countShadowRowProduced(stack, shadowRow.getDepth());
@@ -1417,7 +1395,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
     typename Fetcher::DataRange& inputRange, AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t,
                   AqlCallType> {
-  auto type = fastForwardType(clientCall, _executor);
+  auto type = fastForwardType(clientCall, executor());
   switch (type) {
     case FastForwardVariant::FULLCOUNT: {
       LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
@@ -1587,7 +1565,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         if (shadowCall.needsFullCount()) {
           if constexpr (std::is_same_v<DataRange,
                                        MultiAqlItemBlockInputRange>) {
-            _rowFetcher.reportSubqueryFullCounts(depthToSkip, skipped);
+            fetcher().reportSubqueryFullCounts(depthToSkip, skipped);
             // We need to report exactly one of those values to the _skipped
             // container If we need help from upstream, they report it via
             // `execute` API.
@@ -1726,7 +1704,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
               [&]() noexcept { ctx.clientCall.resetSkipCount(); });
           ExecutionState executorState = ExecutionState::HASMORE;
           std::tie(executorState, stats, skippedLocal, call) =
-              _executor.skipRowsRange(_lastRange, ctx.clientCall);
+              executor().skipRowsRange(_lastRange, ctx.clientCall);
 
           if (executorState == ExecutionState::WAITING) {
             // We need to persist the old call before we return.
@@ -1817,7 +1795,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         if constexpr (executorCanReturnWaiting<Executor>) {
           ExecutionState executorState = ExecutionState::HASMORE;
           std::tie(executorState, stats, call) =
-              _executor.produceRows(_lastRange, *_outputItemRow);
+              executor().produceRows(_lastRange, *_outputItemRow);
 
           if (executorState == ExecutionState::WAITING) {
             // We need to persist the old stack before we return.
@@ -1892,7 +1870,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
           dummy.hardLimit = 0u;
           dummy.fullCount = true;
           std::tie(executorState, stats, skippedLocal, call) =
-              _executor.skipRowsRange(_lastRange, dummy);
+              executor().skipRowsRange(_lastRange, dummy);
           if (executorState == ExecutionState::WAITING) {
             // We need to persist the old stack before we return.
             // We might have some local accounting in this stack.
@@ -2239,7 +2217,16 @@ void ExecutionBlockImpl<Executor>::resetExecutor() {
       !std::is_same<Executor, DistinctCollectExecutor>::value || customInit,
       "DistinctCollectExecutor is expected to implement a custom "
       "initializeCursor method!");
-  InitializeCursor<customInit>::init(_executor, _rowFetcher, _executorInfos);
+
+  if constexpr (customInit) {
+    TRI_ASSERT(_executor.has_value());
+    // re-initialize the Executor
+    _executor->initializeCursor();
+  } else {
+    // destroy and re-create the Executor
+    _executor.emplace(fetcher(), _executorInfos);
+  }
+
   _executorReturnedDone = false;
 }
 
@@ -2280,7 +2267,7 @@ void ExecutionBlockImpl<Executor>::init() {
   TRI_ASSERT(!_initialized);
   if constexpr (isMultiDepExecutor<Executor>) {
     _lastRange.resizeOnce(MainQueryState::HASMORE, 0, _dependencies.size());
-    _rowFetcher.init();
+    fetcher().init();
   }
 }
 
@@ -2375,7 +2362,7 @@ auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range,
     initOnce();
     // Now we need to initialize the SkipCounts, to simulate that something
     // was skipped.
-    _rowFetcher.initialize(skipped.subqueryDepth());
+    fetcher().initialize(skipped.subqueryDepth());
   }
 }
 #endif
@@ -2462,7 +2449,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
   } else {
     TRI_ASSERT(_state.load() == State::InProgress);
     TRI_ASSERT(!_result);
-    _result = block._rowFetcher.execute(stack);
+    _result = block.fetcher().execute(stack);
 
     // (3) - this release-store synchronizes with the acquire-load (1, 2)
     _state.store(State::Finished, std::memory_order_release);
