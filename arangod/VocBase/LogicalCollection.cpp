@@ -35,6 +35,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
@@ -228,7 +229,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // computed values
   if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
       res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+    LOG_TOPIC("4c73f", WARN, Logger::FIXME)
+        << "collection '" << this->vocbase().name() << "/" << name() << ": "
+        << res.errorMessage()
+        << " - disabling computed values for this collection";
+    TRI_ASSERT(_computedValues == nullptr);
   }
 }
 
