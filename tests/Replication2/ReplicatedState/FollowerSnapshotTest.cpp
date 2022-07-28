@@ -114,8 +114,7 @@ TEST_F(FollowerSnapshotDeathTest, basic_follower_manager_test) {
       << "follower state should not be available yet";
 
   // furthermore the state should not have access to the stream
-  ASSERT_DEATH_CORE_FREE(std::ignore = state->getStream(),
-                         "stream must not be available");
+  ASSERT_DEATH_CORE_FREE(std::ignore = state->getStream(), "");
 
   // first trigger an error
   state->acquire.resolveWithAndReset(
