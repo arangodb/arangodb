@@ -523,7 +523,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 
 auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
-    ClusterCollectionCreationInfo const& info)
+    ClusterCollectionCreationInfo const& info, std::string const& databaseName)
     -> replication2::replicated_state::agency::Target {
   using namespace replication2::replicated_state;
 
@@ -532,7 +532,8 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters = document::DocumentCoreParameters{info.collectionID};
+  auto parameters =
+      document::DocumentCoreParameters{info.collectionID, databaseName};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
@@ -3299,7 +3300,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        auto spec = createDocumentStateSpec(shardId, serverIds, info);
+        auto spec =
+            createDocumentStateSpec(shardId, serverIds, info, databaseName);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);

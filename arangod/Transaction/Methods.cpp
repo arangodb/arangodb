@@ -322,13 +322,13 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
   //             (!trx.state()->isTopLevelTransaction() &&
   //              arangodb::transaction::Status::RUNNING ==
   //              trx.state()->status()));
-  TRI_ASSERT(trx.isMainTransaction());
 
   auto* state = trx.state();
-
   if (!state) {
     return;  // nothing to apply
   }
+
+  TRI_ASSERT(trx.isMainTransaction());
 
   auto* callbacks = getStatusChangeCallbacks(*state);
 
@@ -1142,6 +1142,7 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
     ReplicationType& replicationType,
     std::shared_ptr<std::vector<ServerID> const>& followers) {
   replicationType = ReplicationType::NONE;
+  auto replicationVersion = collection.replicationVersion();
   TRI_ASSERT(followers == nullptr);
 
   if (_state->isDBServer()) {
@@ -1167,7 +1168,6 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
 
       // This is just a trick to let the function continue for replication2
       // databases
-      auto replicationVersion = collection.replicationVersion();
       if (replicationVersion != replication::Version::TWO) {
         switch (followerInfo->allowedToWrite()) {
           case FollowerInfo::WriteState::FORBIDDEN:
@@ -1195,7 +1195,8 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
-      if (options.isSynchronousReplicationFrom.empty()) {
+      if (replicationVersion != replication::Version::TWO &&
+          options.isSynchronousReplicationFrom.empty()) {
         return {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
@@ -1212,7 +1213,7 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
                           std::string::npos);
         }
       }
-      if (sendRefusal) {
+      if (replicationVersion != replication::Version::TWO && sendRefusal) {
         return ::buildRefusalResult(collection, operationName, options,
                                     theLeader);
       }

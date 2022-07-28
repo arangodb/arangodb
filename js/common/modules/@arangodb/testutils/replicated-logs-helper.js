@@ -319,6 +319,15 @@ const checkRequestResult = function (requestResult, expectingError=false) {
     delete requestResult.error;
   }
 
+  if (requestResult.json === undefined) {
+    throw new ArangoError({
+      'error': true,
+      'code': 4,
+      'errorNum': arangodb.ERROR_INTERNAL,
+      'errorMessage': JSON.stringify(requestResult)
+    });
+  }
+
   if (requestResult.json.error && !expectingError) {
     throw new ArangoError({
       'error': true,
@@ -534,6 +543,15 @@ const sortedArrayEqualOrError = (left, right) => {
   }
 };
 
+const shardIdToLogId = function (shardId) {
+  return shardId.slice(1);
+};
+
+const dumpLog = function (shardId, limit=1000) {
+  let log = db._replicatedLog(shardIdToLogId(shardId));
+  return log.head(limit);
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
@@ -574,3 +592,5 @@ exports.updateReplicatedLogTarget = updateReplicatedLogTarget;
 exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
+exports.shardIdToLogId = shardIdToLogId;
+exports.dumpLog = dumpLog;

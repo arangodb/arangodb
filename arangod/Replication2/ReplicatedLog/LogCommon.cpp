@@ -517,3 +517,14 @@ void replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
 
 GlobalLogIdentifier::GlobalLogIdentifier(std::string database, LogId id)
     : database(std::move(database)), id(id) {}
+
+auto replication2::to_string(GlobalLogIdentifier const& gid) -> std::string {
+  VPackBuilder b;
+  velocypack::serialize(b, gid);
+  return b.toJson();
+}
+
+auto replication2::operator<<(std::ostream& os, GlobalLogIdentifier const& gid)
+    -> std::ostream& {
+  return os << to_string(gid);
+}

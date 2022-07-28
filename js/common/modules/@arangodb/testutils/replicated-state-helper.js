@@ -163,6 +163,20 @@ const getReplicatedStateLeaderTarget = function (database, logId) {
   return target.leader;
 };
 
+/**
+ * Returns the value of a key from a follower.
+ */
+const getLocalValue = function (endpoint, db, col, key) {
+  let res = request.get({
+    url: `${endpoint}/_db/${db}/_api/document/${col}/${key}`,
+    headers: {
+      "X-Arango-Allow-Dirty-Read": true
+    },
+  });
+  LH.checkRequestResult(res, true);
+  return res.json;
+};
+
 exports.createReplicatedStateTarget = createReplicatedStateTarget;
 exports.createReplicatedStateTargetWithServers = createReplicatedStateTargetWithServers;
 exports.getLocalStatus = getLocalStatus;
@@ -173,3 +187,4 @@ exports.replicatedStateDeletePlan = replicatedStateDeletePlan;
 exports.replicatedStateDeleteTarget = replicatedStateDeleteTarget;
 exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
 exports.updateReplicatedStateTarget = updateReplicatedStateTarget;
+exports.getLocalValue = getLocalValue;

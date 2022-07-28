@@ -1312,7 +1312,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
   auto const status = stateMachine->getStatus();
   if (status == std::nullopt) {
     throwUnavailable(ADB_HERE,
-                     "Replicated state {} is not available as leader, accessed "
+                     "Replicated state {} is not available, accessed "
                      "from {}/{}. No status available.",
                      shardIdToStateId(name()), vocbase().name(), name());
   }

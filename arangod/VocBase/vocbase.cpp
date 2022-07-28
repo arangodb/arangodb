@@ -145,6 +145,8 @@ struct arangodb::VocBaseLogManager {
                                   id.id());
   }
 
+  auto resignStates() { _guardedData.getLockedGuard()->states.clear(); }
+
   auto resignAll() {
     auto guard = _guardedData.getLockedGuard();
     for (auto&& [id, log] : guard->logs) {
@@ -923,6 +925,7 @@ void TRI_vocbase_t::stop() {
 void TRI_vocbase_t::shutdown() {
   this->stop();
 
+  _logManager->resignStates();
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   {
