@@ -69,6 +69,7 @@
 #include "Aql/UpsertModifier.h"
 #include "Aql/WindowExecutor.h"
 #include "Basics/system-functions.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -89,12 +90,26 @@ using KPathRefactored = arangodb::graph::KPathEnumerator<
 using KPathRefactoredTracer = arangodb::graph::TracedKPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
+using AllShortestPaths = arangodb::graph::AllShortestPathsEnumerator<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+using AllShortestPathsTracer =
+    arangodb::graph::TracedAllShortestPathsEnumerator<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
+
 /* ClusterProvider Section */
 using KPathRefactoredCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using KPathRefactoredClusterTracer = arangodb::graph::TracedKPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+using AllShortestPathsClusterTracer =
+    arangodb::graph::TracedAllShortestPathsEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -697,6 +712,11 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               EnumeratePathsExecutor<KPathRefactoredTracer>,
               EnumeratePathsExecutor<KPathRefactoredCluster>,
               EnumeratePathsExecutor<KPathRefactoredClusterTracer>,
+              EnumeratePathsExecutor<AllShortestPaths>,
+              EnumeratePathsExecutor<AllShortestPathsTracer>,
+              EnumeratePathsExecutor<AllShortestPathsCluster>,
+              EnumeratePathsExecutor<AllShortestPathsClusterTracer>,
+
               ParallelUnsortedGatherExecutor,
               IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
               IdExecutor<ConstFetcher>, HashedCollectExecutor,
@@ -2719,11 +2739,22 @@ template class ::arangodb::aql::ExecutionBlockImpl<
     EnumeratePathsExecutor<KPathRefactored>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
     EnumeratePathsExecutor<KPathRefactoredTracer>>;
+
+// template class ::arangodb::aql::ExecutionBlockImpl<
+//     EnumeratePathsExecutor<AllShortestPaths>>;
+// template class ::arangodb::aql::ExecutionBlockImpl<
+//     EnumeratePathsExecutor<AllShortestPathsTracer>>;
+
 /* Cluster */
 template class ::arangodb::aql::ExecutionBlockImpl<
     EnumeratePathsExecutor<KPathRefactoredCluster>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
     EnumeratePathsExecutor<KPathRefactoredClusterTracer>>;
+
+// template class ::arangodb::aql::ExecutionBlockImpl<
+//     EnumeratePathsExecutor<AllShortestPathsCluster>>;
+// template class ::arangodb::aql::ExecutionBlockImpl<
+//     EnumeratePathsExecutor<AllShortestPathsClusterTracer>>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
