@@ -229,6 +229,8 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_column_existence const&>(filter);
   } else if (type == irs::type<empty>::id()) {
     return os << static_cast<empty const&>(filter);
+  } else if (type == irs::type<arangodb::iresearch::ByExpression>::id()) {
+    return os << "ByExpression";
   } else {
     return os << "[Unknown filter]";
   }
@@ -950,7 +952,8 @@ void assertFilter(
     aql::ExpressionContext* exprCtx /*= nullptr*/,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& refName /*= "d"*/,
-    arangodb::iresearch::FilterOptimization filterOptimization) {
+    arangodb::iresearch::FilterOptimization filterOptimization /*= NONE*/,
+    bool searchQuery /*= true*/, bool oldMangling /*= true*/) {
   SCOPED_TRACE(testing::Message("assertFilter failed for query:<")
                << queryString << "> parseOk:" << parseOk
                << " execOk:" << execOk);
@@ -1006,7 +1009,7 @@ void assertFilter(
         .trx = &trx,
         .ref = ref,
         .filterOptimization = filterOptimization,
-        .isSearchQuery = true};
+        .isSearchQuery = searchQuery};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
@@ -1053,9 +1056,10 @@ void assertFilterSuccess(
     irs::filter const& expected, aql::ExpressionContext* exprCtx /*= nullptr*/,
     std::shared_ptr<velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& refName /*= "d"*/,
-    arangodb::iresearch::FilterOptimization filterOptimization) {
+    arangodb::iresearch::FilterOptimization filterOptimization /*= NONE*/,
+    bool searchQuery /*= true*/) {
   return assertFilter(vocbase, true, true, queryString, expected, exprCtx,
-                      bindVars, refName, filterOptimization);
+                      bindVars, refName, filterOptimization, searchQuery);
 }
 
 void assertFilterFail(
