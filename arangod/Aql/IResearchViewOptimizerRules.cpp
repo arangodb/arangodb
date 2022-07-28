@@ -219,7 +219,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
     FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-    FilterContext const filterCtx{.analyzer = analyzer};
+    FilterContext const filterCtx{.contextAnalyzer = analyzer};
 
     auto filterCreated =
         FilterFactory::filter(nullptr, ctx, filterCtx, *searchCondition.root());

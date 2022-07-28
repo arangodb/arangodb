@@ -732,7 +732,13 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
     FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-    FilterContext const filterCtx{.analyzer = analyzer};
+    // if (!infos().isOldMangling()) {
+    //   TODO(SEARCH-342)
+    //    map[field_path, full_analyzer_name] stored in Coordinator view
+    //    on DBServer create from it map[field_path, analyzer*]
+    //    and here crete local AnalyzerProvider functor
+    // }
+    FilterContext const filterCtx{.contextAnalyzer = analyzer};
 
     auto rv = FilterFactory::filter(&root, queryCtx, filterCtx,
                                     infos().filterCondition());

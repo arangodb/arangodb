@@ -54,17 +54,35 @@ struct QueryContext;
 using AnalyzerProvider =
     std::function<FieldMeta::Analyzer const&(std::string_view)>;
 
+inline FieldMeta::Analyzer const& emptyAnalyzer() noexcept {
+  static FieldMeta::Analyzer const empty{{}, {}};
+  return empty;
+}
+
 struct FilterContext {
-  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name) const {
-    if (analyzerProvider == nullptr) {
-      return analyzer;
+  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name,
+                                           Result& r) const noexcept {
+    if (ADB_UNLIKELY(!contextAnalyzer && !fieldAnalyzerProvider)) {
+      TRI_ASSERT(false);
+      r = {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    return (*analyzerProvider)(name);
+    if (!fieldAnalyzerProvider) {
+      return contextAnalyzer;
+    }
+
+    auto const& analyzer = (*fieldAnalyzerProvider)(name);
+    // TODO(SEARCH-342) we want to return error if analyzers don't match
+    // if (ADB_UNLIKELY(contextAnalyzer && contextAnalyzer._pool !=
+    // analyzer._pool)) {
+    //   r = {TRI_ERROR_BAD_PARAMETER,
+    //        "Context analyzer doesn't match field analyzer"};
+    // }
+    return analyzer;
   }
 
-  AnalyzerProvider const* analyzerProvider{};
+  AnalyzerProvider const* fieldAnalyzerProvider{};
   // need shared_ptr since pool could be deleted from the feature
-  FieldMeta::Analyzer const& analyzer;
+  FieldMeta::Analyzer const& contextAnalyzer;
   std::span<const InvertedIndexField> fields{};
   std::string_view namePrefix{};  // field name prefix
   irs::score_t boost{irs::kNoBoost};

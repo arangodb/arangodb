@@ -83,9 +83,9 @@ bool supportsFilterNode(
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
-  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-  FilterContext const filterCtx{
-      .analyzerProvider = provider, .analyzer = analyzer, .fields = metaFields};
+  FilterContext const filterCtx{.fieldAnalyzerProvider = provider,
+                                .contextAnalyzer = emptyAnalyzer(),
+                                .fields = metaFields};
 
   auto rv = FilterFactory::filter(nullptr, queryCtx, filterCtx, *node);
 
@@ -313,10 +313,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
         // The analyzer is referenced in the FilterContext and used during the
         // following FilterFactory::::filter() call, so may not be a temporary.
-        FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-        FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                      .analyzer = analyzer,
-                                      .fields = _index->meta()._fields};
+        FilterContext const filterCtx{
+            .fieldAnalyzerProvider = &analyzerProvider,
+            .contextAnalyzer = emptyAnalyzer(),
+            .fields = _index->meta()._fields};
         auto rv = FilterFactory::filter(&root, queryCtx, filterCtx, *condition);
 
         if (rv.fail()) {
@@ -353,10 +353,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           conditionJoiner = &root.add<irs::Or>();
         }
 
-        FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-        FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                      .analyzer = analyzer,
-                                      .fields = _index->meta()._fields};
+        FilterContext const filterCtx{
+            .fieldAnalyzerProvider = &analyzerProvider,
+            .contextAnalyzer = emptyAnalyzer(),
+            .fields = _index->meta()._fields};
 
         auto& mutable_root = conditionJoiner->add<irs::Or>();
         auto rv =
@@ -398,9 +398,9 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           // The analyzer is referenced in the FilterContext and used during the
           // following ::filter() call, so may not be a temporary.
-          FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-          FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                        .analyzer = analyzer};
+          FilterContext const filterCtx{
+              .fieldAnalyzerProvider = &analyzerProvider,
+              .contextAnalyzer = emptyAnalyzer()};
 
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
