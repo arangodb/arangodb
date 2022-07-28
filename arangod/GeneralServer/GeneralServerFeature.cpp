@@ -38,6 +38,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Basics/FeatureFlags.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceRestHandler.h"
@@ -122,7 +123,6 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
-#include "Basics/FeatureFlags.h"
 #endif
 
 using namespace arangodb::rest;
