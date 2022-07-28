@@ -38,7 +38,6 @@ if (isEnterprise) {
 let internal = require("internal");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
-const {makeEdgeBetweenVertices} = require("./graphs-generation");
 
 const graphGenerator = graphGeneration.graphGenerator;
 
@@ -1287,14 +1286,7 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
 function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
-    // const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
-
-
-
-    // only for debugging
-    const printVertexKey = function (vertex) {
-        console.warn(`printVertexKey: ${vertex._key}`);
-    };
+    const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
 
     const writeDistance = function (vertex, parent) {
         if (parent === undefined) {

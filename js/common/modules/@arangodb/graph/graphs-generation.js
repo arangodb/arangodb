@@ -261,7 +261,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
      * Layer i to Layer i+1. Edges between vertices of the same layer all go to the same direction and edges of two
      * layers go to the same direction. If parameter kind is "zigzag", edges within one layer go to the same direction,
      * but edges between neighbor layers go to the opposite directions. If parameter
-     * kind is "bidirected", the graph is undirected. The vertices are enumerated layer-wise: the first layer gets
+     * kind is "bidirected", the graph is bidirected. The vertices are enumerated layer-wise: the first layer gets
      * indexes 0, 1, ..., thickness - 1, the second one thickness, thickness + 1, 2*thickness -1 etc.
      * @param numberLayers the number of layers between source and target
      * @param thickness the number of vertices in each layer
@@ -323,7 +323,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
      * between vertices of the same layer all go to the same direction and edges of two layers go to the same direction.
      * If parameter kind is "zigzag", edges between source, the layers and target are as for "directed", edges within
      * one layer go to the same direction, but edges between neighbor layers go to the opposite directions. If parameter
-     * kind is "bidirected", the graph is undirected. The vertices are enumerated layer-wise: the first layer gets
+     * kind is "bidirected", the graph is bidirected. The vertices are enumerated layer-wise: the first layer gets
      * indexes 0, 1, ..., thickness - 1, the second one thickness, thickness + 1, 2*thickness -1 etc. Source gets index
      * numberLayers x thickness and target gets index numberLayers x thickness + 1.
      * @param numberLayers the number of layers between source and target
