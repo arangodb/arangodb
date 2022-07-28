@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added another test for computedValues attribute keepNull.
+
 * BTS-913: check for proper timezone setup of the system on startup.
   This evades errors that else would only occur in AQL-Functions at runtime
 
