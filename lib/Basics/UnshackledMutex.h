@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <semaphore>
+#include <absl/synchronization/mutex.h>
 
 namespace arangodb::basics {
 
@@ -33,12 +33,13 @@ namespace arangodb::basics {
 // This mutex lifts this requirement and can be unlocked from another thread.
 class UnshackledMutex {
  public:
-  void lock();
-  void unlock();
+  void lock() noexcept;
+  void unlock() noexcept;
   bool try_lock() noexcept;
 
  private:
-  std::binary_semaphore _sem{1};
+  absl::Mutex _mutex;
+  bool _locked{false};
 };
 
 }  // namespace arangodb::basics
