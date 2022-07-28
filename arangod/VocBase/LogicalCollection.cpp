@@ -229,10 +229,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // computed values
   if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
       res.fail()) {
-    LOG_TOPIC("4c73f", WARN, Logger::FIXME)
+    LOG_TOPIC("4c73f", ERR, Logger::FIXME)
         << "collection '" << this->vocbase().name() << "/" << name() << ": "
         << res.errorMessage()
-        << " - disabling computed values for this collection";
+        << " - disabling computed values for this collection. original value: "
+        << info.get(StaticStrings::ComputedValues).toJson();
     TRI_ASSERT(_computedValues == nullptr);
   }
 }
