@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Added ALL_SHORTEST_PATHS functionality to find all shortest paths between two
+  given documents.
+
 * Changed rocksdb default compression type from snappy to lz4.
 
 * arangoimport now supports the option --remove-attribute on type JSON as well.
