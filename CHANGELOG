@@ -3,6 +3,15 @@ v3.10.0 (XXXX-XX-XX)
 
 * Added CSP recommended headers to Aardvaark app for better security.
 
+* BTS-913: check for proper timezone setup of the system on startup.
+  This evades errors that else would only occur in AQL-Functions at runtime.
+
+* Added ALL_SHORTEST_PATHS functionality to find all shortest paths between two
+  given documents.
+
+* Fixed a potential deadlock in RocksDB compaction.
+  For details see https://github.com/facebook/rocksdb/pull/10355.
+
 * Changed rocksdb default compression type from snappy to lz4.
 
 * arangoimport now supports the option --remove-attribute on type JSON as well.
