@@ -187,7 +187,7 @@ void assertFilterSuccess(
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
         arangodb::iresearch::FilterOptimization::NONE,
-    bool searchQuery = true);
+    bool searchQuery = true, bool oldMangling = true);
 
 void assertFilterFail(
     TRI_vocbase_t& vocbase, std::string const& queryString,

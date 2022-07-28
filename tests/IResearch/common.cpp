@@ -1009,7 +1009,8 @@ void assertFilter(
         .trx = &trx,
         .ref = ref,
         .filterOptimization = filterOptimization,
-        .isSearchQuery = searchQuery};
+        .isSearchQuery = searchQuery,
+        .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
@@ -1036,7 +1037,8 @@ void assertFilter(
         .index = &irs::sub_reader::empty(),
         .ref = ref,
         .filterOptimization = filterOptimization,
-        .isSearchQuery = true};
+        .isSearchQuery = searchQuery,
+        .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
@@ -1057,9 +1059,10 @@ void assertFilterSuccess(
     std::shared_ptr<velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& refName /*= "d"*/,
     arangodb::iresearch::FilterOptimization filterOptimization /*= NONE*/,
-    bool searchQuery /*= true*/) {
+    bool searchQuery /*= true*/, bool oldMangling /*= true*/) {
   return assertFilter(vocbase, true, true, queryString, expected, exprCtx,
-                      bindVars, refName, filterOptimization, searchQuery);
+                      bindVars, refName, filterOptimization, searchQuery,
+                      oldMangling);
 }
 
 void assertFilterFail(
