@@ -32,8 +32,8 @@
 namespace arangodb {
 namespace maintenance {
 
-class EnsureIndex : public ActionBase,
-                    public std::enable_shared_from_this<EnsureIndex> {
+class EnsureIndex : public ActionBase {
+
  public:
   EnsureIndex(MaintenanceFeature&, ActionDescription const& d);
 

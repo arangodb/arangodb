@@ -67,7 +67,8 @@ Result fillIndexSingleThreaded(
     bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
     rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
     trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
-    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it);
+    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>>);
 
 class RocksDBCollection;
 

@@ -102,6 +102,7 @@ bool EnsureIndex::first() {
   auto const& shard = _description.get(SHARD);
   auto const& id = properties().get(ID).copyString();
 
+    LOG_DEVEL << __FILE__ << __LINE__;
   VPackBuilder body;
 
   try {  // now try to guard the database
@@ -156,14 +157,16 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
+    LOG_DEVEL << __FILE__ << __LINE__;
     auto lambda = std::make_shared<std::function<arangodb::Result(uint64_t u)>>(
-        [self = this->shared_from_this()](uint64_t u) {
-          return self->setProgress(u);
+        [this](uint64_t u) {
+          return setProgress(u);
         });
-
+    LOG_DEVEL << __FILE__ << __LINE__ << " " << lambda.get();
     VPackBuilder index;
     auto res = methods::Indexes::ensureIndex(col.get(), body.slice(), true,
-                                             index, std::move(lambda));
+                                             index, lambda);
+    LOG_DEVEL << res;
     result(res);
 
     if (res.ok()) {
