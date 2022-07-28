@@ -220,7 +220,7 @@ auto LeaderStateManager<S>::startService() -> Result {
         data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
         data.recoveryRange = std::nullopt;
         TRI_ASSERT(data.state != nullptr);
-        data.state->_stream = data.stream;
+        data.state->setStream(data.stream);
         return data.state;
       });
 
@@ -303,13 +303,15 @@ auto LeaderStateManager<S>::resign() && noexcept
 
 template<typename S>
 void LeaderStateManager<S>::beginWaitingForLogLeaderResigned() {
-  logLeader->waitForResign().thenFinal([weak = this->weak_from_this()](auto&&) {
-    if (auto self = weak.lock(); self != nullptr) {
-      if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
-        parentPtr->forceRebuild();
-      }
-    }
-  });
+  logLeader->waitForResign().thenFinal(
+      [weak = this->weak_from_this()](auto&&) noexcept {
+        if (auto self = weak.lock(); self != nullptr) {
+          if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
+            static_assert(noexcept(parentPtr->rebuildMe(self.get())));
+            parentPtr->rebuildMe(self.get());
+          }
+        }
+      });
 }
 
 template<typename S>
