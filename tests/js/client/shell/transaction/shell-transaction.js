@@ -4999,8 +4999,11 @@ if (isReplication2Enabled) {
     transactionTTLStreamSuiteV2,
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
-    transactionReplication2ReplicateOperation,
   ];
+
+  if (internal.isCluster()) {
+    suites.push(transactionReplication2ReplicateOperation);
+  }
 
   for (const suite of suites) {
     jsunity.run(suite);

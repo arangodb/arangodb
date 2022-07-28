@@ -356,7 +356,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
       IResearchViewMeta oldMeta{IResearchViewMeta::PartialTag{},
                                 std::move(_meta)};
       _meta.storePartial(std::move(meta));  // update meta for persistence
-      r = cluster_helper::properties(*this);
+      r = cluster_helper::properties(*this, false);
       _meta.storePartial(std::move(oldMeta));  // restore meta
       if (!r.ok()) {
         return r;
