@@ -33,7 +33,7 @@ Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
 rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/documents-schema-validation.html)
 
-@RESTBODYPARAM{computedFields,array,optional,post_api_collection_computed_field}
+@RESTBODYPARAM{computedValues,array,optional,post_api_collection_computed_field}
 An optional list of objects, each representing a computed value.
 
 @RESTSTRUCT{name,post_api_collection_computed_field,string,required,}

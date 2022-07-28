@@ -38,7 +38,7 @@ Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
 rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/data-modeling-documents-schema-validation.html)
 
-@RESTBODYPARAM{computedFields,array,optional,put_api_collection_properties_computed_field}
+@RESTBODYPARAM{computedValues,array,optional,put_api_collection_properties_computed_field}
 An optional list of objects, each representing a computed value.
 
 @RESTSTRUCT{name,put_api_collection_properties_computed_field,string,required,}
@@ -60,8 +60,9 @@ computed. The possible values are `"insert"`, `"update"`, and `"replace"`.
 The default is `["insert", "update", "replace"]`.
 
 @RESTSTRUCT{keepNull,put_api_collection_properties_computed_field,boolean,optional,}
-Whether the result of the expression shall be stored if it evaluates to `null`.
-This can be used to skip the value computation if any pre-conditions are not met.
+Whether the target attribute shall be set if the expression evaluates to `null`.
+You can set the option to `false` to not set (or unset) the target attribute if
+the expression returns `null`. The default is `true`.
 
 @RESTSTRUCT{failOnWarning,put_api_collection_properties_computed_field,boolean,optional,}
 Whether to let the write operation fail if the expression produces a warning.
