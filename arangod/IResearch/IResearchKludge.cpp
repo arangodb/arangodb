@@ -125,12 +125,19 @@ void mangleField(std::string& name, bool isSearchFilter,
   }
 }
 
+// FIXME(gnusi): handle nested?
 std::string_view demangle(std::string_view name) noexcept {
-  auto const pos = name.find_last_of(kAnalyzerDelimiter);
+  if (name.empty()) {
+    return {};
+  }
 
-  // FIXME(gnusi): handle analyzers && nested
-  if (pos != std::string_view::npos) {
-    return name.substr(0, name.size() - pos);
+  for (size_t i = name.size() - 1;; --i) {
+    if (name[i] <= kAnalyzerDelimiter) {
+      return {name.data(), i};
+    }
+    if (i == 0) {
+      break;
+    }
   }
 
   return name;
