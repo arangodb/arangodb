@@ -967,7 +967,24 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         "level": "moderate",
         "message": "Schema validation failed"
       };
-      const specialFunctions = ["COLLECTIONS", "CURRENT_DATABASE", "CURRENT_USER", "VERSION", `CALL("SUBSTRING", @doc.value1, 0, 2)`, `APPLY("SUBSTRING", [@doc.value1, 0, 2])`, `DOCUMENT(${cn}, "test")`, `V8(1 + 1)`, `SCHEMA_GET(${cn}`, `SCHEMA_VALIDATE(@doc, ${schemaTest}`, `COLLECTION_COUNT(${cn}`, `NEAR(${cn}, @doc.latitude, @doc.longitude)`, `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`, `PREGEL_RESULT("abc", true)`];
+      const specialFunctions = [
+        "COLLECTIONS", 
+        "CURRENT_DATABASE", 
+        "CURRENT_USER", 
+        "VERSION", 
+        `CALL("SUBSTRING", @doc.value1, 0, 2)`, 
+        `APPLY("SUBSTRING", [@doc.value1, 0, 2])`, 
+        `DOCUMENT(${cn}, "test")`, `V8(1 + 1)`, 
+        `SCHEMA_GET(${cn}`, 
+        `SCHEMA_VALIDATE(@doc, ${schemaTest}`, 
+        `COLLECTION_COUNT(${cn}`, 
+        `NEAR(${cn}, @doc.latitude, @doc.longitude)`, 
+        `TOKENS(@doc, 'text_en')`,
+        `TOKENS("foo bar", 'text_en')`,
+        `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, 
+        `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`, 
+        `PREGEL_RESULT("abc", true)`
+      ];
       specialFunctions.forEach((el) => {
         try {
           collection.properties({

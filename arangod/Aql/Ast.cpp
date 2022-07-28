@@ -3698,6 +3698,11 @@ AstNode* Ast::optimizeFunctionCall(
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
 
+  if (!options.optimizeFunctionCalls) {
+    // function call optimization not allowed
+    return node;
+  }
+
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
 

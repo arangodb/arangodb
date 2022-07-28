@@ -92,6 +92,8 @@ class Ast {
     // most use cases, but we cannot activate this for computed values, as
     // we need a freshly calculated value every time.
     bool optimizeNonCacheable = true;
+    // whether or not to optimize function calls
+    bool optimizeFunctionCalls = true;
   };
 
   // frees all data
