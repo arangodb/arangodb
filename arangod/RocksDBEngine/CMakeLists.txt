@@ -71,7 +71,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBOptionFeature.cpp
   RocksDBEngine/RocksDBOptionsProvider.cpp
-  RocksDBEngine/RocksDBPersistedLog.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBRecoveryManager.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
@@ -99,8 +98,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBWalAccess.cpp
   RocksDBEngine/RocksDBZkdIndex.cpp
-  RocksDBEngine/ReplicatedRocksDBTransactionCollection.cpp
-  RocksDBEngine/ReplicatedRocksDBTransactionState.cpp
   RocksDBEngine/SimpleRocksDBTransactionState.cpp
   RocksDBEngine/SortedRowsStorageBackendRocksDB.cpp
 )

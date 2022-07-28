@@ -591,67 +591,6 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   Replication/utilities.cpp
   )
 
-set(LIB_ARANGO_REPLICATION2_SOURCES
-  Replication2/AgencyCollectionSpecification.cpp
-  Replication2/AgencyMethods.cpp
-  Replication2/Exceptions/ParticipantResignedException.h
-  Replication2/Methods.cpp
-  Replication2/ReplicatedLog/AgencyLogSpecification.cpp
-  Replication2/ReplicatedLog/AgencySpecificationInspectors.cpp
-  Replication2/ReplicatedLog/Algorithms.cpp
-  Replication2/ReplicatedLog/ILogInterfaces.cpp
-  Replication2/ReplicatedLog/InMemoryLog.cpp
-  Replication2/ReplicatedLog/LogCommon.cpp
-  Replication2/ReplicatedLog/LogCore.cpp
-  Replication2/ReplicatedLog/LogEntries.cpp
-  Replication2/ReplicatedLog/LogFollower.cpp
-  Replication2/ReplicatedLog/LogLeader.cpp
-  Replication2/ReplicatedLog/LogStatus.cpp
-  Replication2/ReplicatedLog/LogUnconfiguredParticipant.cpp
-  Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
-  Replication2/ReplicatedLog/NetworkMessages.cpp
-  Replication2/ReplicatedLog/ReplicatedLog.cpp
-  Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
-  Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
-  Replication2/ReplicatedLog/Supervision.cpp
-  Replication2/ReplicatedLog/SupervisionAction.cpp
-  Replication2/ReplicatedLog/WaitForBag.cpp Replication2/ReplicatedLog/WaitForBag.h
-  Replication2/ReplicatedLog/types.cpp
-  Replication2/ReplicatedState/AgencySpecification.cpp
-  Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
-  Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
-  Replication2/ReplicatedState/UnconfiguredStateManager.tpp Replication2/ReplicatedState/UnconfiguredStateManager.h
-  Replication2/ReplicatedState/ReplicatedStateToken.cpp
-  Replication2/ReplicatedState/ReplicatedStateFeature.cpp
-  Replication2/ReplicatedState/ReplicatedStateMetrics.cpp
-  Replication2/ReplicatedState/StateCommon.cpp
-  Replication2/ReplicatedState/StateStatus.cpp
-  Replication2/ReplicatedState/Supervision.cpp
-  Replication2/ReplicatedState/SupervisionAction.cpp
-  Replication2/ReplicatedState/UpdateReplicatedState.cpp
-  Replication2/ReplicatedState/UpdateReplicatedState.h
-  Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
-  Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
-  Replication2/StateMachines/Document/DocumentCore.cpp
-  Replication2/StateMachines/Document/DocumentFollowerState.cpp
-  Replication2/StateMachines/Document/DocumentLeaderState.cpp
-  Replication2/StateMachines/Document/DocumentLogEntry.cpp
-  Replication2/StateMachines/Document/DocumentStateMachine.cpp
-  Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
-  Replication2/StateMachines/Document/DocumentStateStrategy.cpp
-  Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
-  Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
-  Replication2/StateMachines/Prototype/PrototypeCore.cpp
-  Replication2/StateMachines/Prototype/PrototypeFollowerState.cpp
-  Replication2/StateMachines/Prototype/PrototypeStateMachine.cpp
-  Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.cpp
-  Replication2/StateMachines/Prototype/PrototypeStateMethods.cpp
-  Replication2/Version.cpp
-  RestHandler/RestLogHandler.cpp
-  RestHandler/RestPrototypeStateHandler.cpp
-  RestHandler/RestLogInternalHandler.cpp
-)
-
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp
   Metrics/Counter.cpp
@@ -677,7 +616,6 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
-  Agency/Helpers.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
   Agency/JobContext.cpp
@@ -706,10 +644,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-collection.cpp
   V8Server/v8-dispatcher.cpp
   V8Server/v8-general-graph.cpp
-  V8Server/v8-prototype-states.cpp
   V8Server/v8-query.cpp
-  V8Server/v8-replicated-logs.cpp
-  V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
   V8Server/v8-ttl.cpp
   V8Server/v8-user-functions.cpp
@@ -776,8 +711,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/SynchronizeShard.cpp
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
-  Cluster/UpdateReplicatedLogAction.cpp
-  Cluster/UpdateReplicatedStateAction.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
@@ -832,8 +765,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestLicenseHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
-  RestHandler/RestReplicatedStateHandler.cpp
-  RestHandler/RestShutdownHandler.cpp
+        RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
@@ -1002,10 +934,6 @@ add_library(arango_replication STATIC
   ${LIB_ARANGO_REPLICATION_SOURCES}
 )
 
-add_library(arango_replication2 STATIC
-  ${LIB_ARANGO_REPLICATION2_SOURCES}
-)
-
 add_library(arango_metrics STATIC
   ${LIB_ARANGO_METRICS_SOURCES}
 )
@@ -1111,9 +1039,9 @@ target_link_libraries(arango_health arango)
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
 target_link_libraries(arango_indexes arango::validation)
-target_link_libraries(arango_indexes arango_replication2)
 target_link_libraries(arango_indexes immer)
 target_link_libraries(arango_indexes date_interface)
+target_link_libraries(arango_indexes arango_network)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
@@ -1121,17 +1049,18 @@ target_link_libraries(arango_iresearch arango_vocbase)
 
 target_link_libraries(arango_metrics arango)
 target_link_libraries(arango_metrics arango::validation)
-target_link_libraries(arango_metrics arango_replication2)
 target_link_libraries(arango_metrics immer)
 target_link_libraries(arango_metrics rocksdb_interface)
+target_link_libraries(arango_metrics arango_network)
 
-target_link_libraries(arango_network boost_boost)
-target_link_libraries(arango_network fuerte)
-target_link_libraries(arango_network llhttp)
-target_link_libraries(arango_network nghttp2)
-target_link_libraries(arango_network arango::validation)
-target_link_libraries(arango_network arango_replication2)
-target_link_libraries(arango_network immer)
+target_link_libraries(arango_network PUBLIC boost_boost)
+target_link_libraries(arango_network PUBLIC fuerte)
+target_link_libraries(arango_network PUBLIC llhttp)
+target_link_libraries(arango_network PUBLIC nghttp2)
+target_link_libraries(arango_network PUBLIC arango::validation)
+target_link_libraries(arango_network PUBLIC arango_replication2)
+target_link_libraries(arango_network PUBLIC immer)
+target_link_libraries(arango_network PUBLIC arango)
 
 target_link_libraries(arango_pregel arango)
 target_link_libraries(arango_pregel arango_agency)
@@ -1142,11 +1071,6 @@ target_link_libraries(arango_pregel boost_system)
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_replication arango_vocbase)
-
-target_link_libraries(arango_replication2 arango)
-target_link_libraries(arango_replication2 immer)
-target_link_libraries(arango_replication2 fmt)
-target_link_libraries(arango_replication2 arango_network)
 
 target_link_libraries(arango_rocksdb rocksdb)
 target_link_libraries(arango_rocksdb arango_cache)
@@ -1162,6 +1086,7 @@ target_link_libraries(arango_rocksdb arango_restart_action)
 target_link_libraries(arango_storage_engine_common arango::validation)
 target_link_libraries(arango_storage_engine_common arango_replication2)
 target_link_libraries(arango_storage_engine_common immer)
+target_link_libraries(arango_storage_engine_common arango)
 
 if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
@@ -1181,6 +1106,7 @@ target_link_libraries(arango_utils boost_boost)
 target_link_libraries(arango_utils arango::validation)
 target_link_libraries(arango_utils arango_replication2)
 target_link_libraries(arango_utils immer)
+target_link_libraries(arango_utils arango)
 
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_iresearch)
@@ -1293,7 +1219,6 @@ foreach(TARGET
   arango_network
   arango_pregel
   arango_replication
-  arango_replication2
   arango_rocksdb
   arango_storage_engine
   arango_storage_engine_common

@@ -27,7 +27,6 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/FailedFollower.h"
 #include "Agency/FailedLeader.h"
-#include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
@@ -152,9 +151,6 @@ bool FailedServer::start(bool& aborts) {
     {
       VPackObjectBuilder oper(transactions.get());
       // Add pending
-
-      auto const& databaseProperties =
-          _snapshot.hasAsChildren(planDBPrefix).value().get();
       auto const& databases =
           _snapshot.hasAsChildren(planColPrefix).value().get();
 
@@ -162,10 +158,6 @@ bool FailedServer::start(bool& aborts) {
 
       // FIXME: looks OK, but only the non-clone shards are put into the job
       for (auto const& database : databases) {
-        if (isReplicationTwoDB(databaseProperties, database.first)) {
-          continue;
-        }
-
         for (auto const& collptr : database.second->children()) {
           auto const& collection = *(collptr.second);
 

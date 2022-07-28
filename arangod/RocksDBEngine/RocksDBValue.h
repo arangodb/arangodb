@@ -32,7 +32,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -64,7 +63,6 @@ class RocksDBValue {
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
   static RocksDBValue S2Value(S2Point const& c);
-  static RocksDBValue LogEntry(replication2::PersistingLogEntry const& entry);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -116,18 +114,6 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   static S2Point centroid(rocksdb::Slice const&);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extract the term of a log index value
-  //////////////////////////////////////////////////////////////////////////////
-  // TODO replace with persistingLogEntry()
-  static replication2::LogTerm logTerm(rocksdb::Slice const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extract the payload
-  //////////////////////////////////////////////////////////////////////////////
-  // TODO replace with persistingLogEntry()
-  static replication2::LogPayload logPayload(rocksdb::Slice const&);
-
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
@@ -163,7 +149,6 @@ class RocksDBValue {
                VPackSlice data);
   RocksDBValue(RocksDBEntryType type, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, std::string_view data);
-  RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
   explicit RocksDBValue(S2Point const&);
 
   static RocksDBEntryType type(char const* data, size_t size);
