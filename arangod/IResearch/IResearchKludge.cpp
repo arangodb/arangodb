@@ -49,7 +49,7 @@ constexpr char kNestedDelimiter = '\2';
 std::string_view constexpr kNullSuffix{"\0_n", 3};
 std::string_view constexpr kBoolSuffix{"\0_b", 3};
 std::string_view constexpr kNumericSuffix{"\0_d", 3};
-std::string_view constexpr kStirngSuffix{"\0_s", 3};
+std::string_view constexpr kStringSuffix{"\0_s", 3};
 
 }  // namespace
 
@@ -99,7 +99,7 @@ void mangleNumeric(std::string& name) {
 
 void mangleString(std::string& name) {
   normalizeExpansion(name);
-  name.append(kStirngSuffix);
+  name.append(kStringSuffix);
 }
 
 #ifdef USE_ENTERPRISE
@@ -112,12 +112,28 @@ void mangleNested(std::string& name) {
 void mangleField(std::string& name, bool isSearchFilter,
                  iresearch::FieldMeta::Analyzer const& analyzer) {
   normalizeExpansion(name);
-  if (isSearchFilter || analyzer._pool->requireMangled()) {
+  if (isSearchFilter) {
     name += kAnalyzerDelimiter;
+
     name += analyzer._shortName;
   } else {
     mangleString(name);
+    if (analyzer->requireMangled()) {
+      name += kAnalyzerDelimiter;
+      name += analyzer._shortName;
+    }
   }
+}
+
+std::string_view demangle(std::string_view name) noexcept {
+  auto const pos = name.find_last_of(kAnalyzerDelimiter);
+
+  // FIXME(gnusi): handle analyzers && nested
+  if (pos != std::string_view::npos) {
+    return name.substr(0, name.size() - pos);
+  }
+
+  return name;
 }
 
 }  // namespace arangodb::iresearch::kludge

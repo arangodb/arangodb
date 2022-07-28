@@ -49,4 +49,6 @@ void mangleString(std::string& name);
 void mangleField(std::string& name, bool isSearchFilter,
                  iresearch::FieldMeta::Analyzer const& analyzer);
 
+std::string_view demangle(std::string_view name) noexcept;
+
 }  // namespace arangodb::iresearch::kludge
