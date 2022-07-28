@@ -116,15 +116,11 @@ PathSequence const somePaths = {
 // record of which paths it produced. This record is used in the validation
 // whether the executor output the correct sequence of rows.
 
-template<class ProviderType>
-class FakeKShortestPathsFinder : public KShortestPathsFinder<ProviderType> {
+class FakeKShortestPathsFinder : public KShortestPathsFinderInterface {
  public:
   FakeKShortestPathsFinder(ShortestPathOptions& options,
-                           SingleServerBaseProviderOptions&& forwardOpts,
-                           SingleServerBaseProviderOptions&& backwardOpts,
                            PathSequence const& kpaths)
-      : KShortestPathsFinder<ProviderType>(options, std::move(forwardOpts),
-                                           std::move(backwardOpts)),
+      : KShortestPathsFinderInterface(options),
         _kpaths(kpaths),
         _traversalDone(true) {}
   ~FakeKShortestPathsFinder() = default;
