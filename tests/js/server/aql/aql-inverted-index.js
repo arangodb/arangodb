@@ -45,12 +45,12 @@ function optimizerRuleInvertedIndexTestSuite() {
       analyzers.save("my_geo", "geojson",{type: 'point'}, ["frequency", "norm", "position"]);
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexUnsorted',
-                       fields: [{name:'data_field'},
+                       fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}]});
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexSorted',
-                       fields: [{name:'data_field'},
+                       fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}],
                         primarySort:{fields:[{field: "count", direction:"desc"}]}});
