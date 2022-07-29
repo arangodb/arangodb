@@ -10,7 +10,8 @@ devel
 * Added another test for computedValues attribute keepNull.
 
 * BTS-913: check for proper timezone setup of the system on startup.
-  This will then log errors that else would only occur in AQL-Functions at runtime
+  This will then log errors that else would only occur in AQL-Functions at
+  runtime.
 
 * Changed rocksdb default compression type from snappy to lz4.
 
