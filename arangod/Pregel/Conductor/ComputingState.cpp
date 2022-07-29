@@ -58,3 +58,7 @@ auto Computing::receive(Message const& message) -> void {
     }
   });
 }
+
+auto Computing::recover() -> void {
+  conductor.changeState(StateType::Recovering);
+}

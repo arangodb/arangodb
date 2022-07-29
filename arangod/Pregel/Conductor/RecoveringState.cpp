@@ -1,5 +1,7 @@
 #include "RecoveringState.h"
 
+#include <chrono>
+
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Conductor/State.h"
@@ -10,8 +12,10 @@
 
 using namespace arangodb::pregel::conductor;
 
-Recovering::Recovering(Conductor& conductor) : conductor{conductor} {
+Recovering::Recovering(Conductor& conductor, std::chrono::seconds const& ttl)
+    : conductor{conductor} {
   conductor.updateState(ExecutionState::RECOVERING);
+  expiration = std::chrono::system_clock::now() + ttl;
 }
 
 auto Recovering::run() -> void {

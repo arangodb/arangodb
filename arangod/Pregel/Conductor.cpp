@@ -81,10 +81,6 @@ using namespace arangodb::basics;
 #define LOG_PREGEL(logId, level) \
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
-const char* arangodb::pregel::ExecutionStateNames[9] = {
-    "none",     "loading",  "running",    "storing",    "done",
-    "canceled", "in error", "recovering", "fatal error"};
-
 Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t& vocbase,
     std::vector<CollectionID> const& vertexCollections,
@@ -175,7 +171,7 @@ Conductor::~Conductor() {
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
   _timing.total.start();
-  changeState(conductor::StateType::Loading);
+  state->run();
 }
 
 // only called by the conductor, is protected by the
@@ -218,10 +214,9 @@ bool Conductor::_startGlobalStep() {
         });
 
     if (res != TRI_ERROR_NO_ERROR) {
-      updateState(ExecutionState::IN_ERROR);
       LOG_PREGEL("04189", ERR)
           << "Seems there is at least one worker out of order";
-      // the recovery mechanisms should take care of this
+      changeState(conductor::StateType::InError);
       return false;
     }
   }
@@ -298,15 +293,14 @@ bool Conductor::_startGlobalStep() {
   auto res = _sendToAllDBServers(Utils::startGSSPath,
                                  startGssCommand);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
-    updateState(ExecutionState::IN_ERROR);
     LOG_PREGEL("f34bb", ERR)
         << "Conductor could not start GSS " << _globalSuperstep;
-    // the recovery mechanisms should take care od this
-  } else {
-    LOG_PREGEL("411a5", DEBUG)
-        << "Conductor started new gss " << _globalSuperstep;
+    changeState(conductor::StateType::InError);
+    return false;
   }
-  return res == TRI_ERROR_NO_ERROR;
+  LOG_PREGEL("411a5", DEBUG)
+      << "Conductor started new gss " << _globalSuperstep;
+  return true;
 }
 
 void Conductor::_createStartGssCommand(VPackBuilder& b, bool activateAll) {
@@ -423,9 +417,6 @@ void Conductor::cancel() {
 
 void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
-    return;  // maybe we are already in recovery mode
-  }
   state->recover();
 }
 
@@ -679,17 +670,13 @@ bool Conductor::canBeGarbageCollected() const {
   // garbage-collected. the same conductor will be probed later anyway, so we
   // should be fine
   TRY_MUTEX_LOCKER(guard, _callbackMutex);
-
-  if (guard.isLocked()) {
-    if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
-        _state == ExecutionState::IN_ERROR ||
-        _state == ExecutionState::FATAL_ERROR) {
-      return (_expires != std::chrono::system_clock::time_point{} &&
-              _expires <= std::chrono::system_clock::now());
-    }
+  if (!guard.isLocked()) {
+    return false;
   }
 
-  return false;
+  auto expiration = state->getExpiration();
+  return expiration.has_value() &&
+         expiration.value() <= std::chrono::system_clock::now();
 }
 
 void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
@@ -707,11 +694,11 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     result.add("algorithm", VPackValue(_algorithm->name()));
   }
   result.add("created", VPackValue(timepointToString(_created)));
-  if (_expires != std::chrono::system_clock::time_point{}) {
-    result.add("expires", VPackValue(timepointToString(_expires)));
+  if (auto expiration = state->getExpiration(); expiration.has_value()) {
+    result.add("expires", VPackValue(timepointToString(expiration.value())));
   }
   result.add("ttl", VPackValue(_ttl.count()));
-  result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
+  result.add("state", VPackValue(state->name()));
   result.add("gss", VPackValue(_globalSuperstep));
 
   if (_timing.total.hasStarted()) {
@@ -741,10 +728,8 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   _statistics.serializeValues(result);
   result.add(VPackValue("reports"));
   _reports.intoBuilder(result);
-  if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
-    result.add("vertexCount", VPackValue(_totalVerticesCount));
-    result.add("edgeCount", VPackValue(_totalEdgesCount));
-  }
+  result.add("vertexCount", VPackValue(_totalVerticesCount));
+  result.add("edgeCount", VPackValue(_totalEdgesCount));
   VPackSlice p = _userParams.slice().get(Utils::parallelismKey);
   if (!p.isNone()) {
     result.add("parallelism", p);
@@ -871,14 +856,7 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   return result;
 }
 
-void Conductor::updateState(ExecutionState state) {
-  _state = state;
-  if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
-      _state == ExecutionState::IN_ERROR ||
-      _state == ExecutionState::FATAL_ERROR) {
-    _expires = std::chrono::system_clock::now() + _ttl;
-  }
-}
+void Conductor::updateState(ExecutionState state) { _state = state; }
 
 auto Conductor::changeState(conductor::StateType name) -> void {
   switch (name) {
@@ -892,19 +870,19 @@ auto Conductor::changeState(conductor::StateType name) -> void {
       state = std::make_unique<conductor::Storing>(*this);
       break;
     case conductor::StateType::Canceled:
-      state = std::make_unique<conductor::Canceled>(*this);
+      state = std::make_unique<conductor::Canceled>(*this, _ttl);
       break;
     case conductor::StateType::Done:
-      state = std::make_unique<conductor::Done>(*this);
+      state = std::make_unique<conductor::Done>(*this, _ttl);
       break;
     case conductor::StateType::InError:
-      state = std::make_unique<conductor::InError>(*this);
+      state = std::make_unique<conductor::InError>(*this, _ttl);
       break;
     case conductor::StateType::Recovering:
-      state = std::make_unique<conductor::Recovering>(*this);
+      state = std::make_unique<conductor::Recovering>(*this, _ttl);
       break;
     case conductor::StateType::FatalError:
-      state = std::make_unique<conductor::FatalError>(*this);
+      state = std::make_unique<conductor::FatalError>(*this, _ttl);
       break;
   };
   run();

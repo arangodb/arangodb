@@ -22,7 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
+#include <optional>
 #include <string>
+#include <string_view>
 #include "velocypack/Builder.h"
 
 namespace arangodb::pregel {
@@ -51,6 +54,10 @@ struct State {
   virtual auto receive(Message const& message) -> void = 0;
   virtual auto recover() -> void = 0;
   virtual auto getResults(bool withId, VPackBuilder& out) -> void = 0;
+  virtual auto name() const -> std::string = 0;
+  virtual auto isRunning() const -> bool = 0;
+  virtual auto getExpiration() const
+      -> std::optional<std::chrono::system_clock::time_point> = 0;
   virtual ~State(){};
 };
 

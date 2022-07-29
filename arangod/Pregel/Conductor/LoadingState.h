@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <optional>
 #include "Pregel/Conductor/State.h"
 
 namespace arangodb::pregel {
@@ -38,6 +39,12 @@ struct Loading : State {
   auto receive(Message const& message) -> void override;
   auto recover() -> void override{};
   auto getResults(bool withId, VPackBuilder& out) -> void override{};
+  auto name() const -> std::string override { return "loading"; };
+  auto isRunning() const -> bool override { return true; }
+  auto getExpiration() const
+      -> std::optional<std::chrono::system_clock::time_point> override {
+    return std::nullopt;
+  }
 };
 
 }  // namespace conductor

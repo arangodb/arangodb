@@ -1,13 +1,16 @@
 #include "DoneState.h"
 
+#include <chrono>
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
 
 using namespace arangodb::pregel::conductor;
 
-Done::Done(Conductor& conductor) : conductor{conductor} {
+Done::Done(Conductor& conductor, std::chrono::seconds const& ttl)
+    : conductor{conductor} {
   conductor.updateState(ExecutionState::DONE);
+  expiration = std::chrono::system_clock::now() + ttl;
   if (!conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();
   }
@@ -46,26 +49,6 @@ auto Done::receive(Message const& message) -> void {
   LOG_PREGEL_CONDUCTOR("88f66", WARN)
       << "When done, we expect no messages, but received message type "
       << static_cast<int>(message.type());
-}
-
-auto Done::getResults(bool withId, VPackBuilder& out) -> void {
-  auto collectPregelResultsCommand = CollectPregelResults{
-      .executionNumber = conductor._executionNumber, .withId = withId};
-  VPackBuilder message;
-  serialize(message, collectPregelResultsCommand);
-
-  // merge results from DBServers
-  out.openArray();
-  auto res = conductor._sendToAllDBServers(
-      Utils::aqlResultsPath, message, [&](VPackSlice const& payload) {
-        if (payload.isArray()) {
-          out.add(VPackArrayIterator(payload));
-        }
-      });
-  out.close();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
 }
 
 auto Done::getResults(bool withId, VPackBuilder& out) -> void {

@@ -295,6 +295,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Utils.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
+  Pregel/Conductor/InitialState.cpp
   Pregel/Conductor/LoadingState.cpp
   Pregel/Conductor/ComputingState.cpp
   Pregel/Conductor/StoringState.cpp

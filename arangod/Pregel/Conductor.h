@@ -36,6 +36,7 @@
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
 #include "Pregel/Conductor/State.h"
+#include "Pregel/Conductor/InitialState.h"
 #include "Pregel/Conductor/LoadingState.h"
 #include "Pregel/Conductor/ComputingState.h"
 #include "Pregel/Conductor/StoringState.h"
@@ -47,6 +48,7 @@
 #include "velocypack/Builder.h"
 
 #include <chrono>
+#include <memory>
 
 namespace arangodb {
 namespace pregel {
@@ -75,6 +77,7 @@ struct Error {
 
 class Conductor : public std::enable_shared_from_this<Conductor> {
   friend class PregelFeature;
+  friend struct conductor::Initial;
   friend struct conductor::Loading;
   friend struct conductor::Computing;
   friend struct conductor::Storing;
@@ -87,7 +90,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;
   std::chrono::system_clock::time_point _created;
-  std::chrono::system_clock::time_point _expires;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
   const DatabaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
@@ -184,7 +186,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void updateState(ExecutionState state);
   void cleanup();
 
-  std::unique_ptr<conductor::State> state;
+  std::unique_ptr<conductor::State> state =
+      std::make_unique<conductor::Initial>(*this);
   auto changeState(conductor::StateType name) -> void;
   auto run() -> void { state->run(); }
   auto receive(Message const& message) -> void { state->receive(message); }

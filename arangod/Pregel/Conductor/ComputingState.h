@@ -36,8 +36,14 @@ struct Computing : State {
   ~Computing();
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
-  auto recover() -> void override{};
+  auto recover() -> void override;
   auto getResults(bool withId, VPackBuilder& out) -> void override{};
+  auto name() const -> std::string override { return "computing"; };
+  auto isRunning() const -> bool override { return true; }
+  auto getExpiration() const
+      -> std::optional<std::chrono::system_clock::time_point> override {
+    return std::nullopt;
+  }
 };
 
 }  // namespace conductor
