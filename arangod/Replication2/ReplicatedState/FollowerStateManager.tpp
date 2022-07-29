@@ -355,6 +355,7 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
     status.managerState.detail = std::nullopt;
     status.generation = data.token->generation;
     status.snapshot = data.token->snapshot;
+    status.lastAppliedIndex = data._nextWaitForIndex.saturatedDecrement();
 
     if (data.lastError.has_value()) {
       status.managerState.detail = basics::StringUtils::concatT(
