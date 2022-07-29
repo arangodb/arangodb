@@ -2,7 +2,8 @@ v3.10.0 (XXXX-XX-XX)
 --------------------
 
 * BTS-913: check for proper timezone setup of the system on startup.
-  This will then log errors that else would only occur in AQL-Functions at runtime
+  This will then log errors that else would only occur in AQL-Functions at
+  runtime.
 
 * Added ALL_SHORTEST_PATHS functionality to find all shortest paths between two
   given documents.
