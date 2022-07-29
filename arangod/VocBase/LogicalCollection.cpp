@@ -63,8 +63,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
 
-#include <span>
-
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
 
@@ -277,39 +275,15 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 }
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
-  if (!computedValues.isNone()) {
-    if (computedValues.isNull()) {
-      computedValues = VPackSlice::emptyArraySlice();
-    }
-    if (!computedValues.isArray()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Computed values description is not an array."};
-    }
+  auto result =
+      ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
 
-    TRI_ASSERT(computedValues.isArray());
-
-    std::shared_ptr<ComputedValues> newValue;
-
-    // computed values will be removed if empty array is given
-    if (!computedValues.isEmptyArray()) {
-      auto const& sk = shardKeys();
-      try {
-        newValue =
-            std::make_shared<ComputedValues>(vocbase()
-                                                 .server()
-                                                 .getFeature<DatabaseFeature>()
-                                                 .getCalculationVocbase(),
-                                             std::span(sk), computedValues);
-      } catch (std::exception const& ex) {
-        return {
-            TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("Error when validating computedValues: ", ex.what())};
-      }
-    }
-
-    std::atomic_store_explicit(&_computedValues, newValue,
-                               std::memory_order_release);
+  if (result.fail()) {
+    return result.result();
   }
+
+  std::atomic_store_explicit(&_computedValues, result.get(),
+                             std::memory_order_release);
 
   return {};
 }
