@@ -1160,8 +1160,10 @@ class MaterializeNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief return out variable
-  arangodb::aql::Variable const& outVariable() const noexcept {
-    return *_outVariable;
+  aql::Variable const& outVariable() const noexcept { return *_outVariable; }
+
+  aql::Variable const& docIdVariable() const noexcept {
+    return *_inNonMaterializedDocId;
   }
 
  protected:
