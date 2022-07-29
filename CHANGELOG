@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added ALL_SHORTEST_PATHS functionality to find all shortest paths between two
+  given documents.
+
 * Added another test for computedValues attribute keepNull.
 
 * BTS-913: check for proper timezone setup of the system on startup.
