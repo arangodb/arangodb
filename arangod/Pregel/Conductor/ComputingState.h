@@ -22,36 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <string>
-#include "velocypack/Builder.h"
+#include "Pregel/Conductor/State.h"
 
 namespace arangodb::pregel {
 
-struct Message;
+class Conductor;
 
 namespace conductor {
 
-#define LOG_PREGEL_CONDUCTOR(logId, level) \
-  LOG_TOPIC(logId, level, Logger::PREGEL)  \
-      << "[job " << conductor._executionNumber << "] "
-
-enum class StateType {
-  Loading,
-  Computing,
-  Storing,
-  Canceled,
-  Done,
-  InError,
-  Recovering,
-  FatalError
-};
-
-struct State {
-  virtual auto run() -> void = 0;
-  virtual auto receive(Message const& message) -> void = 0;
-  virtual auto recover() -> void = 0;
-  virtual auto getResults(bool withId, VPackBuilder& out) -> void = 0;
-  virtual ~State(){};
+struct Computing : State {
+  Conductor& conductor;
+  Computing(Conductor& conductor);
+  ~Computing();
+  auto run() -> void override;
+  auto receive(Message const& message) -> void override;
+  auto recover() -> void override{};
+  auto getResults(bool withId, VPackBuilder& out) -> void override{};
 };
 
 }  // namespace conductor

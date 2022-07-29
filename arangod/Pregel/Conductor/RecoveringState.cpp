@@ -122,10 +122,7 @@ auto Recovering::receive(Message const& message) -> void {
       conductor.changeState(conductor::StateType::Canceled);
       return;
     }
-    conductor.updateState(ExecutionState::RUNNING);
-    // TODO change state to Computing
-    conductor.changeState(StateType::Placeholder);
-    conductor._startGlobalStep();
+    conductor.changeState(StateType::Computing);
     return;
   }
 

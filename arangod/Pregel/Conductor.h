@@ -37,6 +37,7 @@
 #include "Pregel/Status/ExecutionStatus.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/LoadingState.h"
+#include "Pregel/Conductor/ComputingState.h"
 #include "Pregel/Conductor/StoringState.h"
 #include "Pregel/Conductor/CanceledState.h"
 #include "Pregel/Conductor/DoneState.h"
@@ -75,6 +76,7 @@ struct Error {
 class Conductor : public std::enable_shared_from_this<Conductor> {
   friend class PregelFeature;
   friend struct conductor::Loading;
+  friend struct conductor::Computing;
   friend struct conductor::Storing;
   friend struct conductor::Canceled;
   friend struct conductor::Done;

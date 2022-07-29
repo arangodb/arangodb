@@ -24,6 +24,7 @@
 #pragma once
 
 #include <velocypack/Slice.h>
+#include <cstdint>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Reports.h"
@@ -47,6 +48,15 @@ class MasterContext {
  public:
   MasterContext() {}
   virtual ~MasterContext() = default;
+
+  auto initialize(uint64_t vertexCount, uint64_t edgeCount,
+                  AggregatorHandler* aggregators) -> void {
+    _globalSuperstep = 0;
+    _vertexCount = vertexCount;
+    _edgeCount = edgeCount;
+    _aggregators = aggregators;
+    preApplication();
+  }
 
   inline uint64_t globalSuperstep() const { return _globalSuperstep; }
 

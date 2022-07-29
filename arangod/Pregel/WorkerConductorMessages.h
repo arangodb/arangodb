@@ -34,7 +34,12 @@
 
 namespace arangodb::pregel {
 
-enum class MessageType { GraphLoaded, CleanupFinished, RecoveryFinished };
+enum class MessageType {
+  GraphLoaded,
+  CleanupFinished,
+  RecoveryFinished,
+  GssFinished
+};
 
 struct Message {
   virtual auto type() const -> MessageType = 0;
@@ -84,6 +89,10 @@ struct CleanupFinished : Message {
   auto type() const -> MessageType override {
     return MessageType::CleanupFinished;
   }
+};
+
+struct GssFinished : Message {
+  auto type() const -> MessageType override { return MessageType::GssFinished; }
 };
 
 struct RecoveryFinished : Message {

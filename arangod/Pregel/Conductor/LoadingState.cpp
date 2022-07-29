@@ -4,6 +4,7 @@
 #include "Pregel/Conductor.h"
 #include "Metrics/Gauge.h"
 #include "Pregel/Conductor/State.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/WorkerConductorMessages.h"
 
@@ -50,7 +51,10 @@ auto Loading::receive(Message const& message) -> void {
       << "Running Pregel " << conductor._algorithm->name() << " with "
       << conductor._totalVerticesCount << " vertices, "
       << conductor._totalEdgesCount << " edges";
-  conductor.updateState(ExecutionState::RUNNING);
-  // TODO change to ComputingState
-  conductor.changeState(StateType::Placeholder);
+  if (conductor._masterContext) {
+    conductor._masterContext->initialize(conductor._totalVerticesCount,
+                                         conductor._totalEdgesCount,
+                                         conductor._aggregators.get());
+  }
+  conductor.changeState(StateType::Computing);
 }

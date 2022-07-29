@@ -36,6 +36,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/LoadingState.h"
+#include "Pregel/Conductor/ComputingState.h"
 #include "Pregel/Conductor/StoringState.h"
 #include "Pregel/Conductor/CanceledState.h"
 #include "Pregel/Conductor/DoneState.h"
@@ -203,7 +204,7 @@ bool Conductor::_startGlobalStep() {
 
   {
     VPackArrayBuilder guard(&messagesFromWorkers);
-    // we are explicitly expecting an response containing the aggregated
+    // we are explicitly expecting a response containing the aggregated
     // values as well as the count of active vertices
     auto res = _sendToAllDBServers(
         Utils::prepareGSSPath, command, [&](VPackSlice const& payload) {
@@ -263,9 +264,6 @@ bool Conductor::_startGlobalStep() {
 
   // TODO make maximum configurable
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
-    // tells workers to store / discard results
-    _timing.computation.finish();
-    _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
     if (_storeResults) {
       changeState(conductor::StateType::Storing);
       return false;
@@ -357,18 +355,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
-
-  if (_masterContext) {
-    _masterContext->_globalSuperstep = 0;
-    _masterContext->_vertexCount = _totalVerticesCount;
-    _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->_aggregators = _aggregators.get();
-    _masterContext->preApplication();
-  }
-
-  _timing.computation.start();
-  _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
-  _startGlobalStep();
+  state->receive(loadedEvent);
 }
 
 /// Will optionally send a response, to notify the worker of converging
@@ -416,28 +403,8 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  _timing.gss.back().finish();
-  LOG_PREGEL("39385", DEBUG)
-      << "Finished gss " << _globalSuperstep << " in "
-      << _timing.gss.back().elapsedSeconds().count() << "s";
-  //_statistics.debugOutput();
-  _globalSuperstep++;
+  state->receive(GssFinished{});
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  // don't block the response for workers waiting on this callback
-  // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestLane::INTERNAL_LOW, [this,
-                                               self = shared_from_this()] {
-    MUTEX_LOCKER(guard, _callbackMutex);
-
-    if (_state == ExecutionState::RUNNING) {
-      _startGlobalStep();  // trigger next superstep
-    } else {  // this prop shouldn't occur unless we are recovering or in error
-      LOG_PREGEL("923db", WARN)
-          << "No further action taken after receiving all responses";
-    }
-  });
   return VPackBuilder();
 }
 
@@ -918,6 +885,9 @@ auto Conductor::changeState(conductor::StateType name) -> void {
     case conductor::StateType::Loading:
       state = std::make_unique<conductor::Loading>(*this);
       break;
+    case conductor::StateType::Computing:
+      state = std::make_unique<conductor::Computing>(*this);
+      break;
     case conductor::StateType::Storing:
       state = std::make_unique<conductor::Storing>(*this);
       break;
@@ -935,9 +905,6 @@ auto Conductor::changeState(conductor::StateType name) -> void {
       break;
     case conductor::StateType::FatalError:
       state = std::make_unique<conductor::FatalError>(*this);
-      break;
-    case conductor::StateType::Placeholder:
-      state = std::make_unique<conductor::Placeholder>();
       break;
   };
   run();
