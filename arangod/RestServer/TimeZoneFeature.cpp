@@ -100,11 +100,9 @@ void TimeZoneFeature::prepareTimeZoneData(
   }
 
   if (!gotTZ) {
-    LOG_TOPIC("67bde", FATAL, arangodb::Logger::STARTUP)
+    LOG_TOPIC("67bde", ERR, arangodb::Logger::STARTUP)
         << "Could not get current timezone from " << tz_path
-        << ". please set the TZ_DATA environment variable to the "
-        << "tzdata directory in case you are running an unusual setup";
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
+        << ". Functionality using timezones may missbehave!";
   }
 }
 
