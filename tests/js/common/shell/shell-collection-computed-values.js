@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertUndefined, fail */
+/*global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertNotNull, assertUndefined, fail */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -32,7 +32,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "newValue",
               expression: "CONCAT(@doc.value1, '+')",
-              override: false
+              overwrite: false
             }
           ]
         });
@@ -48,7 +48,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: "RETURN @doc.foxx",
-            override: true,
+            overwrite: true,
             keepNull: true,
           }
         ]
@@ -72,6 +72,49 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       // computed value must be null
       assertNull(collection.toArray()[0].newValue);
     },
+
+    testKeepNullTrue2: function() {
+      collection.properties({
+        computedValues:
+          [{
+            name: "newValue",
+            expression: "RETURN IS_STRING(@doc.name.first) AND IS_STRING(@doc.name.last) ? " +
+              "MERGE(@doc.name, { full: CONCAT_SEPARATOR(' ', @doc.name.first, @doc.name.last) }) : null",
+            overwrite: true,
+            keepNull: true
+          }]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+      assertTrue(colProperties.computedValues[0].keepNull);
+
+      for (let i = 0; i < 50; ++i) {
+        collection.insert({name: {first: `a${i}`, last: `b${i}`}});
+      }
+      for (let i = 0; i < 50; ++i) {
+        collection.insert({name: {first: i, last: i}});
+      }
+      let amountNullValues = 0;
+      const docs = collection.toArray();
+      docs.forEach(doc => {
+        assertTrue(doc.hasOwnProperty("newValue"));
+        if (doc["newValue"] === null) {
+          amountNullValues++;
+        }
+      });
+      assertEqual(100, collection.count());
+      assertEqual(amountNullValues, 50);
+    },
     
     testKeepNullFalse: function() {
       collection.properties({
@@ -79,7 +122,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: "RETURN @doc.foxx",
-            override: true,
+            overwrite: true,
             keepNull: false,
           }
         ]
@@ -103,6 +146,50 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       // computed value must not be there
       assertUndefined(collection.toArray()[0].newValue);
     },
+
+    testKeepNullFalse2: function() {
+      collection.properties({
+        computedValues:
+          [{
+            name: "newValue",
+            expression: "RETURN IS_STRING(@doc.name.first) AND IS_STRING(@doc.name.last) ? " +
+              "MERGE(@doc.name, { full: CONCAT_SEPARATOR(' ', @doc.name.first, @doc.name.last) }) : null",
+            overwrite: true,
+            keepNull: false
+          }]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+      assertFalse(colProperties.computedValues[0].keepNull);
+
+      for (let i = 0; i < 50; ++i) {
+        collection.insert({name: {first: `a${i}`, last: `b${i}`}});
+      }
+      for (let i = 0; i < 50; ++i) {
+        collection.insert({name: {first: i, last: i}});
+      }
+      const docs = collection.toArray();
+      let amountValues = 0;
+      docs.forEach(doc => {
+        if (doc.hasOwnProperty("newValue")) {
+          assertNotNull(doc["newValue"]);
+        } else {
+          amountValues++;
+        }
+      });
+      assertEqual(100, collection.count());
+      assertEqual(amountValues, 50);
+    },
     
     testExpressionWithAssert: function() {
       // expression must not be executed immediately
@@ -111,7 +198,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "value",
             expression: "RETURN ASSERT(false, 'piff!')",
-            override: false,
+            overwrite: false,
           }
         ]
       });
@@ -146,7 +233,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: "RETURN 42 / @doc.value",
-            override: false,
+            overwrite: false,
             failOnWarning: false,
           }
         ]
@@ -176,7 +263,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: "RETURN 42 / @doc.value",
-            override: false,
+            overwrite: false,
             failOnWarning: true,
           }
         ]
@@ -212,7 +299,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "value",
             expression: "RETURN 'foo'",
-            override: false,
+            overwrite: false,
             // computeOn not set
           }
         ]
@@ -239,7 +326,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "value",
               expression: "RETURN 'foo'",
-              override: false,
+              overwrite: false,
               computeOn: "insert",
             }
           ]
@@ -256,7 +343,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "value",
             expression: "RETURN 'foo'",
-            override: false,
+            overwrite: false,
             computeOn: ["insert", "replace"],
           }
         ]
@@ -282,7 +369,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -330,7 +417,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: true,
+            overwrite: true,
             computeOn: ["insert"]
           }
         ]
@@ -378,7 +465,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: true,
+            overwrite: true,
             computeOn: ["update"]
           }
         ]
@@ -426,7 +513,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: true,
+            overwrite: true,
             computeOn: ["replace"]
           }
         ]
@@ -472,7 +559,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "value3",
             expression: "RETURN CONCAT(LEFT(@doc.value1, 3), RIGHT(@doc.value2.animal, 2))",
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -514,7 +601,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -558,7 +645,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "_rev",
               expression: "RETURN CONCAT(@doc.value1, '+')",
-              override: false
+              overwrite: false
             }
           ]
         });
@@ -575,7 +662,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "_key",
               expression: "RETURN CONCAT(@doc.value1, '+')",
-              override: false
+              overwrite: false
             }
           ]
         });
@@ -592,7 +679,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "_id",
               expression: "RETURN CONCAT(@doc.value1, '+')",
-              override: false
+              overwrite: false
             }
           ]
         });
@@ -609,7 +696,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "newValue",
               expression: "RETURN (RETURN CONCAT(@doc.value1, '+'))",
-              override: false
+              overwrite: false
             }
           ]
         });
@@ -626,7 +713,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "newValue",
               expression: "RETURN (FOR i IN 1..10 RETURN i)",
-              override: false
+              overwrite: false
             }
           ]
         });
@@ -643,7 +730,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "newValue",
               expression: "RETURN (LET temp1 = (RETURN 1))",
-              override: false
+              overwrite: false
             }
           ]
         });
@@ -653,7 +740,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testSchemaValidationWithComputedValuesOverride: function() {
+    testSchemaValidationWithComputedValuesoverwrite: function() {
       collection.properties({
         schema: {
           "rule": {
@@ -671,7 +758,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "value1",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: true
+            overwrite: true
           }
         ]
       });
@@ -704,7 +791,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(res.length, 0);
     },
 
-    testSchemaValidationWithComputedValuesNoOverride: function() {
+    testSchemaValidationWithComputedValuesNooverwrite: function() {
       collection.properties({
         schema: {
           "rule": {
@@ -725,7 +812,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "value1",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -759,17 +846,17 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
 
-    testRedefineComputedValueUpdateOverride: function() {
+    testRedefineComputedValueUpdateoverwrite: function() {
       collection.properties({
         computedValues: [
           {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: false
+            overwrite: false
           }, {
             name: "value3",
             expression: "return CONCAT(@doc.concatValues, ' ')",
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -807,12 +894,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
             computeOn: ["update"],
-            override: true
+            overwrite: true
           }, {
             name: "value3",
             expression: "return CONCAT(@doc.concatValues, '+', @doc.value1)",
             computeOn: ["update"],
-            override: true
+            overwrite: true
           }
         ]
       });
@@ -834,17 +921,17 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testRedefineComputedValueUpdateNoOverride: function() {
+    testRedefineComputedValueUpdateNooverwrite: function() {
       collection.properties({
         computedValues: [
           {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: false
+            overwrite: false
           }, {
             name: "value3",
             expression: "return CONCAT(@doc.concatValues, ' ')",
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -882,12 +969,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
             computeOn: ["update"],
-            override: false
+            overwrite: false
           }, {
             name: "value3",
             expression: "return CONCAT(@doc.concatValues, '+', @doc.value1)",
             computeOn: ["update"],
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -915,11 +1002,11 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-            override: false
+            overwrite: false
           }, {
             name: "value3",
             expression: "return CONCAT(@doc.concatValues, ' ')",
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -975,7 +1062,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
               {
                 name: "newValue",
                 expression: `RETURN ${el}`,
-                override: false,
+                overwrite: false,
                 computeOn: ["insert"]
               }
             ]
@@ -997,7 +1084,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
             {
               name: "newValue",
               expression: `RETURN UnitTests::cv(1)`,
-              override: false,
+              overwrite: false,
               computeOn: ["insert"]
             }
           ]
@@ -1016,7 +1103,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: `RETURN @doc.values[* RETURN CURRENT]`,
-            override: false,
+            overwrite: false,
             computeOn: ["insert"]
           }
         ]
@@ -1054,7 +1141,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: `RETURN @doc.values[* FILTER CURRENT % 2 == 0 LIMIT 0,1 RETURN CURRENT]`,
-            override: false,
+            overwrite: false,
             computeOn: ["insert"]
           }
         ]
@@ -1092,7 +1179,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: `RETURN @doc.values[* LIMIT 1,3 RETURN CURRENT]`,
-            override: false,
+            overwrite: false,
             computeOn: ["insert"]
           }
         ]
@@ -1137,7 +1224,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: `RETURN TO_STRING(RAND())`,
-            override: false,
+            overwrite: false,
             computeOn: ["insert"]
           }
         ]
@@ -1176,7 +1263,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           {
             name: "newValue",
             expression: `RETURN TO_STRING(DATE_NOW())`,
-            override: false,
+            overwrite: false,
             computeOn: ["insert"]
           }
         ]
@@ -1203,7 +1290,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
   };
 }
 
-function ComputedValuesOnCollectionCreationOverrideTestSuite() {
+function ComputedValuesOnCollectionCreationoverwriteTestSuite() {
   'use strict';
 
   let collection = null;
@@ -1216,7 +1303,7 @@ function ComputedValuesOnCollectionCreationOverrideTestSuite() {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
             computeOn: ["insert", "update", "replace"],
-            override: true
+            overwrite: true
           }
         ]
       });
@@ -1257,7 +1344,7 @@ function ComputedValuesOnCollectionCreationOverrideTestSuite() {
       });
     },
 
-    testOverrideOnAllOperations: function() {
+    testoverwriteOnAllOperations: function() {
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -1288,7 +1375,7 @@ function ComputedValuesOnCollectionCreationOverrideTestSuite() {
   };
 }
 
-function ComputedValuesOnCollectionCreationNoOverrideTestSuite() {
+function ComputedValuesOnCollectionCreationNooverwriteTestSuite() {
   'use strict';
 
   let collection = null;
@@ -1301,7 +1388,7 @@ function ComputedValuesOnCollectionCreationNoOverrideTestSuite() {
             name: "concatValues",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
             computeOn: ["insert", "update", "replace"],
-            override: false
+            overwrite: false
           }
         ]
       });
@@ -1342,7 +1429,7 @@ function ComputedValuesOnCollectionCreationNoOverrideTestSuite() {
       });
     },
 
-    testNoOverrideOnAllOperations: function() {
+    testNooverwriteOnAllOperations: function() {
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -1395,7 +1482,7 @@ function ComputedValuesClusterShardsTestSuite() {
             {
               name: "value1",
               expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-              override: false
+              overwrite: false
             }
           ]
         });
@@ -1407,8 +1494,8 @@ function ComputedValuesClusterShardsTestSuite() {
   };
 }
 
-jsunity.run(ComputedValuesOnCollectionCreationOverrideTestSuite);
-jsunity.run(ComputedValuesOnCollectionCreationNoOverrideTestSuite);
+jsunity.run(ComputedValuesOnCollectionCreationoverwriteTestSuite);
+jsunity.run(ComputedValuesOnCollectionCreationNooverwriteTestSuite);
 jsunity.run(ComputedValuesAfterCreateCollectionTestSuite);
 if (isCluster) {
   jsunity.run(ComputedValuesClusterShardsTestSuite);
