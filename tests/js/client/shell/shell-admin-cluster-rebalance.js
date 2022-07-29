@@ -29,7 +29,7 @@
 let jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-
+const { getDBServers } = require('@arangodb/test-helper');
 const database = "cluster_rebalance_db";
 let prevDB = null;
 
