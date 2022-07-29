@@ -2,7 +2,7 @@ v3.8.8 (XXXX-XX-XX)
 -------------------
 
 * BTS-913: check for proper timezone setup of the system on startup.
-  This evades errors that else would only occur in AQL-Functions at runtime
+  This will then log errors that else would only occur in AQL-Functions at runtime
 
 * Updated arangosync to v2.11.0.
 
