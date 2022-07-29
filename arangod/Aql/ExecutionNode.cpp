@@ -128,6 +128,18 @@ std::unordered_map<int, std::string const> const typeNames{
 
 }  // namespace
 
+namespace arangodb::aql {
+ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
+
+#ifndef USE_ENTERPRISE
+ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "Function 'OFFSET_INFO' is available in "
+                                 "ArangoDB Enterprise Edition only.")
+}
+#endif
+}  // namespace arangodb::aql
+
 /// @brief resolve nodeType to a string.
 std::string const& ExecutionNode::getTypeString(NodeType type) {
   auto it = ::typeNames.find(static_cast<int>(type));
@@ -355,6 +367,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
       return createMaterializeNode(plan, slice);
+    case OFFSET_INFO_MATERIALIZE:
+      return aql::createOffsetMaterializeNode(plan, slice);
     case ASYNC:
       return new AsyncNode(plan, slice);
     case MUTEX:
@@ -680,8 +694,8 @@ void ExecutionNode::invalidateCost() {
 CostEstimate ExecutionNode::getCost() const {
   if (!_costEstimate.isValid()) {
     // Use a walker to estimate cost of all direct and indirect dependencies.
-    // This is necessary to avoid deeply nested recursive calls in estimateCosts
-    // which could result in a stack overflow.
+    // This is necessary to avoid deeply nested recursive calls in
+    // estimateCosts which could result in a stack overflow.
     struct CostEstimator : WalkerWorkerBase<ExecutionNode> {
       void after(ExecutionNode* n) override {
         if (!n->_costEstimate.isValid()) {
@@ -732,8 +746,8 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
   nodes.emplace_back(const_cast<ExecutionNode*>(this), State::Pending);
 
   auto enqueDependencies = [&nodes](std::vector<ExecutionNode*>& deps) {
-    // we enqueue the dependencies in reversed order, because we always continue
-    // with the _last_ node in the list.
+    // we enqueue the dependencies in reversed order, because we always
+    // continue with the _last_ node in the list.
     for (auto it = deps.rbegin(); it != deps.rend(); ++it) {
       nodes.emplace_back(*it, State::Pending);
     }
@@ -1768,8 +1782,8 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   auto const estimatedNrItems =
       collection()->count(&trx, transaction::CountType::TryCache);
   if (!doCount()) {
-    // if "count" mode is active, the estimated number of items from above must
-    // not be multiplied with the number of items in this collection
+    // if "count" mode is active, the estimated number of items from above
+    // must not be multiplied with the number of items in this collection
     estimate.estimatedNrItems *= estimatedNrItems;
   }
   // We do a full collection scan for each incoming item.
@@ -2686,8 +2700,8 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
 CostEstimate NoResultsNode::estimateCost() const {
-  // we have trigger cost estimation for parent nodes because this node could be
-  // spliced into a subquery.
+  // we have trigger cost estimation for parent nodes because this node could
+  // be spliced into a subquery.
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems = 0;
   estimate.estimatedCost = 0.5;  // just to make it non-zero
