@@ -8611,7 +8611,7 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   if (ServerState::instance()->isCoordinator()) {
-    std::shared_ptr<pregel::Conductor> c = feature.conductor(execNr);
+    auto c = feature.conductor(execNr);
     if (!c) {
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
