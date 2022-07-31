@@ -163,8 +163,8 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
         *execCtx, boost());
   }
 
-  void visit(irs::sub_reader const&,
-             irs::PreparedStateVisitor&) const override {
+  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
+             irs::score_t) const override {
     // NOOP
   }
 
@@ -215,8 +215,8 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     return irs::doc_iterator::empty();
   }
 
-  void visit(irs::sub_reader const&,
-             irs::PreparedStateVisitor&) const override {
+  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
+             irs::score_t) const override {
     // NOOP
   }
 

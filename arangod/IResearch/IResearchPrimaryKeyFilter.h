@@ -65,8 +65,8 @@ class PrimaryKeyFilter final : public irs::filter,
       irs::score_t /*boost*/,
       irs::attribute_provider const* /*ctx*/) const override;
 
-  void visit(irs::sub_reader const&,
-             irs::PreparedStateVisitor&) const override {
+  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
+             irs::score_t) const override {
     // NOOP
   }
 

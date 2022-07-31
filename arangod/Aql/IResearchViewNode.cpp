@@ -1892,7 +1892,7 @@ void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(
 
 IResearchViewNode::ViewVarsInfo
 IResearchViewNode::OptimizationState::replaceViewVariables(
-    std::vector<aql::CalculationNode*> const& calcNodes,
+    std::span<aql::CalculationNode*> calcNodes,
     containers::HashSet<ExecutionNode*>& toUnlink) {
   TRI_ASSERT(!calcNodes.empty());
   ViewVarsInfo uniqueVariables;

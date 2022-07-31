@@ -205,6 +205,12 @@ struct OptimizerRule {
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
+#ifdef USE_ENTERPRISE
+    // FIXME(gnusi): when to execute?
+    // handle OFFSET_INFO functions calls
+    hanldeOffsetInfoFunc,
+#endif
+
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
 
@@ -346,11 +352,6 @@ struct OptimizerRule {
     // needs to take into account query distribution across cluster nodes
     // for index
     lateDocumentMaterializationRule,
-
-#ifdef USE_ENTERPRISE
-    // handle OFFSET_INFO functions calls
-    hanldeOffsetInfoFunc,
-#endif
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode

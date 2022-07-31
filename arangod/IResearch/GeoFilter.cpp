@@ -255,8 +255,8 @@ class GeoQuery final : public irs::filter::prepared {
                          _acceptor);
   }
 
-  void visit(irs::sub_reader const&,
-             irs::PreparedStateVisitor&) const override {
+  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
+             irs::score_t) const override {
     // NOOP
   }
 

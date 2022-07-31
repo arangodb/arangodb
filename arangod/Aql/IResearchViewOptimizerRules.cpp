@@ -620,6 +620,9 @@ void lateDocumentMaterializationArangoSearchRule(
     return;
   }
 
+  VarSet currentUsedVars;
+  // nodes variables can be replaced
+  containers::SmallVector<aql::CalculationNode*, 16> calcNodes;
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
@@ -639,8 +642,7 @@ void lateDocumentMaterializationArangoSearchRule(
       auto stopSearch = false;
       auto stickToSortNode = false;
       auto const& var = viewNode.outVariable();
-      std::vector<aql::CalculationNode*>
-          calcNodes;  // nodes variables can be replaced
+      calcNodes.clear();
       auto& viewNodeState = viewNode.state();
       while (current != loop) {
         auto const type = current->getType();
@@ -675,7 +677,7 @@ void lateDocumentMaterializationArangoSearchRule(
             break;
         }
         if (!stopSearch) {
-          VarSet currentUsedVars;
+          currentUsedVars.clear();
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&var) != currentUsedVars.end()) {
             // currently only calculation nodes expected to use a loop variable

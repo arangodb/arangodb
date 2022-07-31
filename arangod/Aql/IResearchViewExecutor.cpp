@@ -1301,6 +1301,12 @@ bool IResearchViewHeapSortExecutor<
         }
       }
 
+      // FIXME(gnusi): compile time
+      if (this->infos().searchDocIdRegId().isValid()) {
+        this->_indexReadBuffer.pushSearchDoc((*this->_reader)[segmentIdx],
+                                             irsDocId);
+      }
+
       this->_indexReadBuffer.assertSizeCoherence();
       ++orderIt;
     }
@@ -1840,6 +1846,12 @@ void IResearchViewMergeExecutor<copyStored, ordered,
                   MaterializeType::UseStoredValues) {
       TRI_ASSERT(segment.doc);
       this->pushStoredValues(*segment.doc, segment.segmentIndex);
+    }
+
+    // FIXME(gnusi): compile time
+    if (this->infos().searchDocIdRegId().isValid()) {
+      this->_indexReadBuffer.pushSearchDoc(
+          (*this->_reader)[segment.segmentIndex], segment.doc->value);
     }
 
     // doc and scores are both pushed, sizes must now be coherent
