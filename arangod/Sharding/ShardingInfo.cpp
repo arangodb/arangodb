@@ -58,7 +58,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
     _numberOfShards = 0;
   }
 
-  VPackSlice shardKeysSlice = info.get(StaticStrings::ShardKeys);
   if (ServerState::instance()->isCoordinator()) {
     if (_numberOfShards == 0 && !isSmart) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -104,40 +103,16 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
     }
   }
 
-  bool isASatellite = false;
-  auto replicationFactorSlice = info.get(StaticStrings::ReplicationFactor);
-  if (!replicationFactorSlice.isNone()) {
-    bool isError = true;
-    if (replicationFactorSlice.isNumber()) {
-      _replicationFactor = replicationFactorSlice.getNumber<size_t>();
-      // mop: only allow SatelliteCollections to be created explicitly
-      if (_replicationFactor > 0) {
-        isError = false;
-#ifdef USE_ENTERPRISE
-      } else if (_replicationFactor == 0) {
-        std::tie(isError, isASatellite) = makeSatellite();
-#endif
-      }
-    }
-#ifdef USE_ENTERPRISE
-    else if (replicationFactorSlice.isString() &&
-             replicationFactorSlice.copyString() == StaticStrings::Satellite) {
-      std::tie(isError, isASatellite) = makeSatellite();
-    }
-
-    if (isSmart && isASatellite) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "'isSmart' and replicationFactor 'satellite' cannot be combined");
-    }
-#endif
-    if (isError) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid replicationFactor");
-    }
+  size_t replicationFactor = _replicationFactor;
+  Result res = extractReplicationFactor(info, isSmart, replicationFactor);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
-
-  if (!isASatellite) {
+  _replicationFactor = replicationFactor;
+  if (_replicationFactor == 0) {
+    // satellite collection
+    makeSatellite();
+  } else {
     auto writeConcernSlice = info.get(StaticStrings::WriteConcern);
     if (writeConcernSlice
             .isNone()) {  // minReplicationFactor is deprecated in 3.6
@@ -165,53 +140,9 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
     }
   }
 
-  // replicationFactor == 0 -> SatelliteCollection
-  if (shardKeysSlice.isNone() || _replicationFactor == 0) {
-    // Use default.
-    _shardKeys.emplace_back(StaticStrings::KeyString);
-  } else {
-    if (shardKeysSlice.isArray()) {
-      for (VPackSlice sk : VPackArrayIterator(shardKeysSlice)) {
-        if (sk.isString()) {
-          std::string_view key = sk.stringView();
-          // remove : char at the beginning or end (for enterprise)
-          std::string_view stripped;
-          if (!key.empty()) {
-            if (key.front() == ':') {
-              stripped = key.substr(1);
-            } else if (key.back() == ':') {
-              stripped = key.substr(0, key.size() - 1);
-            } else {
-              stripped = key;
-            }
-          }
-          // system attributes are not allowed (except _key, _from and _to)
-          if (stripped == StaticStrings::IdString ||
-              stripped == StaticStrings::RevString) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_BAD_PARAMETER,
-                "_id or _rev cannot be used as shard keys");
-          }
-
-          if (!stripped.empty()) {
-            _shardKeys.emplace_back(std::string(key));
-          }
-        }
-      }
-      if (_shardKeys.empty()) {
-        // Compatibility. Old configs might store empty shard-keys locally.
-        // This is translated to ["_key"]. In cluster-case this always was
-        // forbidden.
-        // TODO: now we need to allow this, as we use cluster features for
-        // single servers in case of async failover
-        _shardKeys.emplace_back(StaticStrings::KeyString);
-      }
-    }
-  }
-
-  if (_shardKeys.empty() || _shardKeys.size() > 8) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER, "invalid number of shard keys for collection");
+  res = extractShardKeys(info, _replicationFactor, _shardKeys);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   auto shardsSlice = info.get("shards");
@@ -263,6 +194,106 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other,
 }
 
 ShardingInfo::~ShardingInfo() = default;
+
+Result ShardingInfo::extractReplicationFactor(velocypack::Slice info,
+                                              bool isSmart,
+                                              size_t& replicationFactor) {
+  bool isASatellite = false;
+  auto replicationFactorSlice = info.get(StaticStrings::ReplicationFactor);
+  if (!replicationFactorSlice.isNone()) {
+    bool isError = true;
+    if (replicationFactorSlice.isNumber()) {
+      replicationFactor = replicationFactorSlice.getNumber<size_t>();
+      // mop: only allow SatelliteCollections to be created explicitly
+      if (replicationFactor > 0) {
+        isError = false;
+#ifdef USE_ENTERPRISE
+      } else if (replicationFactor == 0) {
+        isError = false;
+        isASatellite = true;
+#endif
+      }
+    }
+#ifdef USE_ENTERPRISE
+    else if (replicationFactorSlice.isString() &&
+             replicationFactorSlice.stringView() == StaticStrings::Satellite) {
+      isError = false;
+      isASatellite = true;
+      replicationFactor = 0;
+    }
+
+    if (isSmart && isASatellite) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "'isSmart' and replicationFactor 'satellite' cannot be combined"};
+    }
+#endif
+    if (isError) {
+      return {TRI_ERROR_BAD_PARAMETER, "invalid replicationFactor"};
+    }
+  }
+
+  TRI_ASSERT(!isASatellite || replicationFactor == 0);
+
+  return {};
+}
+
+Result ShardingInfo::extractShardKeys(velocypack::Slice info,
+                                      size_t replicationFactor,
+                                      std::vector<std::string>& shardKeys) {
+  TRI_ASSERT(shardKeys.empty());
+
+  // replicationFactor == 0 -> SatelliteCollection
+  VPackSlice shardKeysSlice = info.get(StaticStrings::ShardKeys);
+  if (shardKeysSlice.isNone() || replicationFactor == 0) {
+    // Use default.
+    shardKeys.emplace_back(StaticStrings::KeyString);
+  } else {
+    if (shardKeysSlice.isArray()) {
+      for (VPackSlice sk : VPackArrayIterator(shardKeysSlice)) {
+        if (sk.isString()) {
+          std::string_view key = sk.stringView();
+          // remove : char at the beginning or end (for enterprise)
+          std::string_view stripped;
+          if (!key.empty()) {
+            if (key.front() == ':') {
+              stripped = key.substr(1);
+            } else if (key.back() == ':') {
+              stripped = key.substr(0, key.size() - 1);
+            } else {
+              stripped = key;
+            }
+          }
+          // system attributes are not allowed (except _key, _from and _to)
+          if (stripped == StaticStrings::IdString ||
+              stripped == StaticStrings::RevString) {
+            return {TRI_ERROR_BAD_PARAMETER,
+                    "_id or _rev cannot be used as shard keys"};
+          }
+
+          if (!stripped.empty()) {
+            shardKeys.emplace_back(std::string(key));
+          }
+        }
+      }
+      if (shardKeys.empty()) {
+        // Compatibility. Old configs might store empty shard-keys locally.
+        // This is translated to ["_key"]. In cluster-case this always was
+        // forbidden.
+        // TODO: now we need to allow this, as we use cluster features for
+        // single servers in case of async failover
+        shardKeys.emplace_back(StaticStrings::KeyString);
+      }
+    }
+  }
+
+  if (shardKeys.empty() || shardKeys.size() > 8) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "invalid number of shard keys for collection"};
+  }
+
+  TRI_ASSERT(!shardKeys.empty());
+  return {};
+}
 
 bool ShardingInfo::usesSameShardingStrategy(ShardingInfo const* other) const {
   return _shardingStrategy->isCompatible(other->_shardingStrategy.get());
@@ -443,13 +474,11 @@ bool ShardingInfo::isSatellite() const noexcept {
   return _replicationFactor == 0;
 }
 
-std::pair<bool, bool> ShardingInfo::makeSatellite() {
+void ShardingInfo::makeSatellite() {
   _replicationFactor = 0;
   _writeConcern = 0;
   _numberOfShards = 1;
   _avoidServers.clear();
-  // Return note booleans: (isError, isASatellite)
-  return std::make_pair(false, true);
 }
 
 size_t ShardingInfo::numberOfShards() const noexcept { return _numberOfShards; }

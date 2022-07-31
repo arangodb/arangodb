@@ -4,8 +4,8 @@ v3.10.0 (XXXX-XX-XX)
 * Added more specific process exit codes for arangod and all client tools, and
   changed the executables' exit code for the following situations:
 
-  - an unknown startup option name is used: previously the exit code was 1.
-    Now the exit code when using an invalid option is 3 (symbolic exit code name
+  - an unknown startup option name is used: previously the exit code was 1. Now
+    the exit code when using an invalid option is 3 (symbolic exit code name
     EXIT_INVALID_OPTION_NAME).
   - an invalid value is used for a startup option (e.g. a number that is outside
     the allowed range for the option's underlying value type, or a string value
@@ -24,6 +24,16 @@ v3.10.0 (XXXX-XX-XX)
   that they check for a non-zero exit code. They can opt in to more specific
   error handling using the additional exit codes mentioned above, in order to
   distinguish between different kinds of startup errors.
+
+* BTS-913: check for proper timezone setup of the system on startup.
+  This will then log errors that else would only occur in AQL-Functions at
+  runtime.
+
+* Added ALL_SHORTEST_PATHS functionality to find all shortest paths between two
+  given documents.
+
+* Fixed a potential deadlock in RocksDB compaction.
+  For details see https://github.com/facebook/rocksdb/pull/10355.
 
 * Changed rocksdb default compression type from snappy to lz4.
 
