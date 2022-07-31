@@ -618,9 +618,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       }
 
       RocksDBFilePurgePreventer walKeeper(&engine);
-      res = buildIdx->fillIndexBackground(locker, progress);
+      res = buildIdx->fillIndexBackground(locker, std::move(progress));
     } else {
-      res = buildIdx->fillIndexForeground(progress);
+      res = buildIdx->fillIndexForeground(std::move(progress));
     }
     if (res.fail()) {
       return res;

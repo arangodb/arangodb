@@ -91,7 +91,7 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature,
 EnsureIndex::~EnsureIndex() = default;
 
 arangodb::Result EnsureIndex::setProgress(uint64_t u) {
-  LOG_DEVEL << u;
+  LOG_DEVEL << __FILE__ << __LINE__ << " " << u;
   _progress = u;
   return arangodb::Result();
 }
@@ -102,7 +102,6 @@ bool EnsureIndex::first() {
   auto const& shard = _description.get(SHARD);
   auto const& id = properties().get(ID).copyString();
 
-    LOG_DEVEL << __FILE__ << __LINE__;
   VPackBuilder body;
 
   try {  // now try to guard the database
@@ -157,15 +156,13 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
-    LOG_DEVEL << __FILE__ << __LINE__;
     auto lambda = std::make_shared<std::function<arangodb::Result(uint64_t u)>>(
         [this](uint64_t u) {
           return setProgress(u);
         });
-    LOG_DEVEL << __FILE__ << __LINE__ << " " << lambda.get();
     VPackBuilder index;
     auto res = methods::Indexes::ensureIndex(col.get(), body.slice(), true,
-                                             index, lambda);
+                                             index, std::move(lambda));
     LOG_DEVEL << res;
     result(res);
 

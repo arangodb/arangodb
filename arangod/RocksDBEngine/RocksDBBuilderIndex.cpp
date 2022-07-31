@@ -124,8 +124,7 @@ Result fillIndexSingleThreaded(
     rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
     trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress,
-    uint64_t numDocsHint) {
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
   Result res;
   uint64_t numDocsWritten = 0;
 
@@ -133,6 +132,7 @@ Result fillIndexSingleThreaded(
 
   auto rcoll = static_cast<RocksDBCollection*>(ridx.collection().getPhysical());
   auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  auto count = ridx.collection().countCache().get();
   rocksdb::Slice upper(bounds.end());
 
   OperationOptions options;
@@ -150,11 +150,9 @@ Result fillIndexSingleThreaded(
     numDocsWritten++;
 
     if (numDocsWritten % 1024 == 0) {  // commit buffered writes
-
-          LOG_DEVEL << __FILE__ << __LINE__;
-    if (progress != nullptr) {
-      (*progress)(numDocsHint*100/docsProcessed);
-    }
+      if (progress != nullptr && count > 0) {
+        (*progress)(docsProcessed.load()*100/count);
+      }
 
       res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
                                       ridx, foreground);
@@ -170,19 +168,16 @@ Result fillIndexSingleThreaded(
     }
   }
 
-  LOG_DEVEL << __FILE__ << __LINE__ << " " << progress;
   if (!it->status().ok() && res.ok()) {
     res =
         rocksutils::convertStatus(it->status(), rocksutils::StatusHint::index);
   }
 
-  LOG_DEVEL << __FILE__ << __LINE__ << " " << progress;
   if (res.ok()) {
     res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed, ridx,
                                     foreground);
   }
 
-  LOG_DEVEL << __FILE__ << __LINE__ << " " << progress;
   if (res.ok()) {  // required so iresearch commits
     res = trx.commit();
 
@@ -191,7 +186,6 @@ Result fillIndexSingleThreaded(
     }
   }
 
-  LOG_DEVEL << __FILE__ << __LINE__ << " " << progress;
   // if an error occured drop() will be called
   LOG_TOPIC("dfa3b", DEBUG, Logger::ENGINES)
       << "snapshot captured " << numDocsWritten << " " << res.errorMessage();
@@ -340,13 +334,13 @@ static arangodb::Result fillIndex(
   LOG_DEVEL << __FILE__ << __LINE__ << " " << progress;
   IndexFiller indexFiller(isUnique, foreground, numThreads, batched,
                           threadBatchSize, dbOptions, batch, docsProcessed, trx,
-                          ridx, snap, rootDB, std::move(it), idxPath, progress);
+                          ridx, snap, rootDB, std::move(it), idxPath, std::move(progress));
   res = indexFiller.fillIndex();
 #else
   LOG_DEVEL << __FILE__ << __LINE__ << " " << progress;
   res = fillIndexSingleThreaded(foreground, batched, dbOptions, batch,
                                 docsProcessed, trx, ridx, snap, rootDB,
-                                std::move(it), progress);
+                                std::move(it), std::move(progress));
 #endif
   return res;
 }
@@ -385,7 +379,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground(
     res = ::fillIndex<true>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), false,
         _numThreads, this->kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), progress, _numDocsHint);
+        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), std::move(progress), _numDocsHint);
   }
 
   return res;
@@ -744,7 +738,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(
     res = ::fillIndex<false>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), false,
         _numThreads, kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), progress, _numDocsHint);
+        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), std::move(progress), _numDocsHint);
   }
 
   if (res.fail()) {

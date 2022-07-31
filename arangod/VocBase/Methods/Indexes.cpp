@@ -319,8 +319,7 @@ static Result EnsureIndexLocal(
     std::shared_ptr<arangodb::Index> idx;
 
     if (create) {
-      LOG_DEVEL << __FILE__ << __LINE__ << " " << progress.get();
-      idx = collection->createIndex(definition, created, progress);
+      idx = collection->createIndex(definition, created, std::move(progress));
       TRI_ASSERT(idx != nullptr);
     } else {
       idx = collection->lookupIndex(definition);
@@ -495,7 +494,7 @@ Result Indexes::ensureIndex(
       }
     }
   } else {
-    res = EnsureIndexLocal(collection, indexDef, create, output, progress);
+    res = EnsureIndexLocal(collection, indexDef, create, output, std::move(progress));
   }
 
   ensureIndexResult = res.errorNumber();
