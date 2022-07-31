@@ -242,13 +242,18 @@ function stopProcdump (options, instanceInfo, force = false) {
 function calculateMonitorValues(options, instanceInfo, pid, cmd) {
   
   if (platform.substr(0, 3) === 'win') {
-    if (process.env.hasOwnProperty('WORKSPACE') &&
+    if (process.env.hasOwnProperty('COREDIR')) {
+      instanceInfo.coreFilePattern = fs.join(process.env['COREDIR'],
+                                             'core_' + pid.toString() + '.dmp');
+      instanceInfo.coreDirectory = process.env['COREDIR'];
+    } else if (process.env.hasOwnProperty('WORKSPACE') &&
         fs.isDirectory(fs.join(process.env['WORKSPACE'], 'core'))) {
       let spcmd = fs.normalize(cmd).split(fs.pathSeparator);
       let executable = spcmd[spcmd.length - 1];
       instanceInfo.coreFilePattern = fs.join(process.env['WORKSPACE'],
                                              'core',
                                              executable + '.' + pid.toString() + '.dmp');
+      instanceInfo.coreDirectory = fs.join(process.env['WORKSPACE'], 'core');
     }
   }
 }
@@ -260,14 +265,25 @@ function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
   return false;
 }
 
+const core_rx = new RegExp('core_.*_.*.dmp');
 function analyzeCoreDumpWindows (instanceInfo) {
   let cdbOutputFile = fs.getTempFile();
 
   if (!fs.exists(instanceInfo.coreFilePattern)) {
-    print('core file ' + instanceInfo.coreFilePattern + ' not found?');
-    return;
+    const m = 'core file ' + instanceInfo.coreFilePattern + ' not found?';
+    instanceInfo.coreFilePattern = null;
+    // locate arangods crash handler self generated minidump files:
+    fs.list(instanceInfo.coreDirectory).forEach(file => {
+      if (file.match(core_rx) !== null) {
+        instanceInfo.coreFilePattern = fs.join(instanceInfo.coreDirectory, file);
+      }
+    });
+    if (instanceInfo.coreDirectory === null) {
+      print(m);
+      return;
+    }
   }
-
+  print('found minidump file: ' + instanceInfo.coreFilePattern);
 
   const dbgCmds = [
     '.logopen ' + cdbOutputFile,

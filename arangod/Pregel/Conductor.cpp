@@ -277,6 +277,7 @@ bool Conductor::_startGlobalStep() {
     } else {  // just stop the timer
       updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                                 : ExecutionState::DONE);
+      _timing.total.finish();
       LOG_PREGEL("9e82c", INFO)
           << "Done, execution took: " << _timing.total.elapsedSeconds().count()
           << " s";
@@ -342,7 +343,8 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   auto update = deserialize<Status>(data.get(Utils::payloadKey));
   auto sender = data.get(Utils::senderKey).copyString();
 
-  LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
+  LOG_PREGEL("76632", DEBUG)
+      << fmt::format("Update received {}", data.toJson());
 
   _status.updateWorkerStatus(sender, std::move(update));
 }
@@ -863,8 +865,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     didStore = true;
     _timing.storing.finish();
     _feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
+    _timing.total.finish();
   }
-  _timing.total.finish();
 
   VPackBuilder debugOut;
   debugOut.openObject();
@@ -926,6 +928,10 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   if (_state != ExecutionState::DONE && _state != ExecutionState::FATAL_ERROR) {
+    return;
+  }
+
+  if (_storeResults) {
     return;
   }
 
