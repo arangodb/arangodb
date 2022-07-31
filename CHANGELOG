@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Added CSP recommended headers to Aardvaark app for better security.
+
 * Added more specific process exit codes for arangod and all client tools, and
   changed the executables' exit code for the following situations:
 
