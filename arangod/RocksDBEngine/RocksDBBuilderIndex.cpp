@@ -124,11 +124,10 @@ Result fillIndexSingleThreaded(
     rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
     trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress,
+    uint64_t numDocsHint) {
   Result res;
   uint64_t numDocsWritten = 0;
-
-  LOG_DEVEL << __FILE__ << __LINE__ << " " << progress;
 
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
 
@@ -137,8 +136,6 @@ Result fillIndexSingleThreaded(
   rocksdb::Slice upper(bounds.end());
 
   OperationOptions options;
-
-    LOG_DEVEL << __FILE__ << __LINE__ << " " << progress;
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
@@ -151,9 +148,14 @@ Result fillIndexSingleThreaded(
       break;
     }
     numDocsWritten++;
-    LOG_DEVEL << numDocsWritten;
 
     if (numDocsWritten % 1024 == 0) {  // commit buffered writes
+
+          LOG_DEVEL << __FILE__ << __LINE__;
+    if (progress != nullptr) {
+      (*progress)(numDocsHint*100/docsProcessed);
+    }
+
       res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
                                       ridx, foreground);
       // cppcheck-suppress identicalConditionAfterEarlyExit
@@ -299,7 +301,8 @@ static arangodb::Result fillIndex(
     std::atomic<uint64_t>& docsProcessed, bool isUnique, size_t numThreads,
     uint64_t threadBatchSize, rocksdb::Options const& dbOptions,
     std::string const& idxPath,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress = nullptr,
+    uint64_t numDocsHint = 0) {
   // fillindex can be non transactional, we just need to clean up
   TRI_ASSERT(rootDB != nullptr);
 
@@ -371,7 +374,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground(
     res = ::fillIndex<true>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), true,
         _numThreads, this->kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), progress);
+        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath());
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap
@@ -382,7 +385,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground(
     res = ::fillIndex<true>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), false,
         _numThreads, this->kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), progress);
+        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), progress, _numDocsHint);
   }
 
   return res;
@@ -731,7 +734,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(
     res = ::fillIndex<false>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), true,
         _numThreads, kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), progress);
+        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath());
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap
@@ -741,19 +744,15 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(
     res = ::fillIndex<false>(
         db, *internal, methods, batch, snap, std::ref(_docsProcessed), false,
         _numThreads, kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), progress);
+        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath(), progress, _numDocsHint);
   }
 
   if (res.fail()) {
     return res;
   }
 
-  auto reportProgress = [&](uint64_t docsProcessed) {
+  auto reportProgress = [this](uint64_t docsProcessed) {
     _docsProcessed.fetch_add(docsProcessed, std::memory_order_relaxed);
-    LOG_DEVEL << __FILE__ << __LINE__;
-    if (progress != nullptr) {
-      (*progress)(_numDocsHint*100/_docsProcessed);
-    }
   };
 
   rocksdb::SequenceNumber scanFrom = snap->GetSequenceNumber();
