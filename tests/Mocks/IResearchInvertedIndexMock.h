@@ -81,10 +81,6 @@ class IResearchInvertedIndexMock final : public Index,
 
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
 
-  //  bool
-  //  matchesDefinition(arangodb::velocypack::Slice const &other,
-  //  LogicalCollection const& collection) const override;
-
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, aql::AstNode const* node,
       aql::Variable const* reference, IndexIteratorOptions const& opts,
