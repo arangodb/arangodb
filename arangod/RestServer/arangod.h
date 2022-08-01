@@ -235,7 +235,6 @@ using ArangodFeatures = TypeList<
     QueryRegistryFeature,
     RandomFeature,
     ReplicationFeature,
-    ReplicatedLogFeature,
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
@@ -289,11 +288,7 @@ using ArangodFeatures = TypeList<
     iresearch::IResearchFeature,
     ClusterEngine,
     RocksDBEngine,
-    cluster::FailureOracleFeature,
-    replication2::replicated_state::ReplicatedStateAppFeature,
-    replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    replication2::replicated_state::prototype::PrototypeStateMachineFeature,
-    replication2::replicated_state::document::DocumentStateMachineFeature
+    cluster::FailureOracleFeature
 >;  // clang-format on
 
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;

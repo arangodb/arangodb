@@ -269,16 +269,6 @@ class RocksDBEngine final : public StorageEngine {
   void compactRange(RocksDBKeyBounds bounds);
   void processCompactions();
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-  virtual auto dropReplicatedLog(
-      TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
-      -> Result override;
-
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 

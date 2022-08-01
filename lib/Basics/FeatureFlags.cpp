@@ -23,4 +23,4 @@
 
 #include "FeatureFlags.h"
 
-bool const ::arangodb::replication2::EnableReplication2 = true;
+bool const ::arangodb::replication2::EnableReplication2 = false;

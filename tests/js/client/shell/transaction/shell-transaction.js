@@ -37,25 +37,6 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const analyzers = require("@arangodb/analyzers");
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
-const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
-const _ = require('lodash');
-
-var compareStringIds = function (l, r) {
-  'use strict';
-  var i;
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
-  }
-
-  // length is equal
-  for (i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
-    }
-  }
-
-  return 0;
-};
 
 var sortedKeys = function (col) {
   'use strict';
@@ -4820,105 +4801,6 @@ function transactionDatabaseSuite() {
   };
 }
 
-/**
- * This test suite checks the correctness of replicated operations with respect to replicated log contents.
- */
-function transactionReplication2ReplicateOperation() {
-  'use strict';
-  const dbn = 'UnitTestsTransactionDatabase';
-  var cn = 'UnitTestsTransaction';
-  var c = null;
-
-  return {
-    setUpAll: function () {
-      db._createDatabase(dbn, {replicationVersion: "2"});
-      db._useDatabase(dbn);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(dbn);
-    },
-
-    setUp: function () {
-      db._drop(cn);
-      c = db._create(cn, {numberOfShards: 4});
-    },
-
-    tearDown: function () {
-      if (c !== null) {
-        c.drop();
-      }
-
-      c = null;
-    },
-
-    testTransactionAbortLogEntry: function () {
-      let trx = db._createTransaction({
-        collections: { write: c.name()  }
-      });
-      let tc = trx.collection(c.name());
-      tc.insert({ _key: 'test2', value: 2 });
-      trx.abort();
-
-      let shards = c.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
-
-      for (const log of logs) {
-        let entries = log.head(1000);
-        let abortFound = false;
-        for (const entry of entries) {
-          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
-            abortFound = true;
-            break;
-          }
-        }
-        assertTrue(abortFound, `Could not find Abort operation in log ${log.id()}! Log entries: ${entries}`);
-      }
-    },
-
-    testTransactionCommitLogEntry: function () {
-      let obj = {
-        collections: {
-          write: [ cn ]
-        }
-      };
-
-      let trx;
-      try {
-        trx = db._createTransaction(obj);
-        let tc = trx.collection(cn);
-
-        tc.save({ _key: 'foo' });
-        tc.save({ _key: 'bar' });
-
-      } catch(err) {
-        fail("Transaction failed with: " + JSON.stringify(err));
-      } finally {
-        if (trx) {
-          trx.commit();
-        }
-      }
-
-      let shards = c.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
-
-      for (const log of logs) {
-        let entries = log.head(1000);
-        let commitFound = false;
-        for (const entry of entries) {
-          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Commit") {
-            commitFound = true;
-            break;
-          }
-        }
-        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}! Log entries: ${entries}`);
-      }
-    },
-  };
-}
-
-
 function makeTestSuites(testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
@@ -4983,31 +4865,5 @@ jsunity.run(transactionTTLStreamSuiteV1);
 jsunity.run(transactionIteratorSuiteV1);
 jsunity.run(transactionOverlapSuiteV1);
 jsunity.run(transactionDatabaseSuite);
-
-if (isReplication2Enabled) {
-  let suites = [
-    transactionRevisionsSuiteV2,
-    transactionRollbackSuiteV2,
-    transactionInvocationSuiteV2,
-    transactionCollectionsSuiteV2,
-    transactionOperationsSuiteV2,
-    transactionBarriersSuiteV2,
-    transactionCountSuiteV2,
-    transactionCrossCollectionSuiteV2,
-    transactionTraversalSuiteV2,
-    transactionAQLStreamSuiteV2,
-    transactionTTLStreamSuiteV2,
-    transactionIteratorSuiteV2,
-    transactionOverlapSuiteV2,
-  ];
-
-  if (internal.isCluster()) {
-    suites.push(transactionReplication2ReplicateOperation);
-  }
-
-  for (const suite of suites) {
-    jsunity.run(suite);
-  }
-}
 
 return jsunity.done();

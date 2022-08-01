@@ -28,7 +28,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include "Transaction/Helpers.h"
@@ -100,11 +99,6 @@ RocksDBValue RocksDBValue::S2Value(S2Point const& p) { return RocksDBValue(p); }
 
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
-}
-
-RocksDBValue RocksDBValue::LogEntry(
-    replication2::PersistingLogEntry const& entry) {
-  return RocksDBValue(RocksDBEntryType::LogEntry, entry);
 }
 
 LocalDocumentId RocksDBValue::documentId(RocksDBValue const& value) {
@@ -181,19 +175,6 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
       intToDouble(uint64FromPersistent(s.data())),
       intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))),
       intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
-}
-
-replication2::LogTerm RocksDBValue::logTerm(rocksdb::Slice const& slice) {
-  TRI_ASSERT(slice.size() >= sizeof(uint64_t));
-  return replication2::LogTerm(uint64FromPersistent(slice.data()));
-}
-
-replication2::LogPayload RocksDBValue::logPayload(rocksdb::Slice const& slice) {
-  TRI_ASSERT(slice.size() >= sizeof(uint64_t));
-  auto data = slice.ToStringView();
-  data.remove_prefix(sizeof(uint64_t));
-  return replication2::LogPayload::createFromSlice(
-      VPackSlice(reinterpret_cast<uint8_t const*>(data.data())));
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
@@ -278,16 +259,6 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, std::string_view data)
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-}
-
-RocksDBValue::RocksDBValue(RocksDBEntryType type,
-                           replication2::PersistingLogEntry const& entry) {
-  TRI_ASSERT(type == RocksDBEntryType::LogEntry);
-  _type = type;
-  VPackBuilder builder;
-  entry.toVelocyPack(builder, replication2::PersistingLogEntry::omitLogIndex);
-  _buffer.reserve(builder.size());
-  _buffer.append(reinterpret_cast<const char*>(builder.data()), builder.size());
 }
 
 RocksDBValue::RocksDBValue(S2Point const& p)

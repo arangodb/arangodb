@@ -53,7 +53,6 @@
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
-#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -1155,20 +1154,15 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
         return {TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION};
       }
 
-      // This is just a trick to let the function continue for replication2
-      // databases
-      auto replicationVersion = collection.replicationVersion();
-      if (replicationVersion != replication::Version::TWO) {
-        switch (followerInfo->allowedToWrite()) {
-          case FollowerInfo::WriteState::FORBIDDEN:
-            // We cannot fulfill minimum replication Factor. Reject write.
-            return {TRI_ERROR_ARANGO_READ_ONLY};
-          case FollowerInfo::WriteState::UNAVAILABLE:
-          case FollowerInfo::WriteState::STARTUP:
-            return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
-          default:
-            break;
-        }
+      switch (followerInfo->allowedToWrite()) {
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return {TRI_ERROR_ARANGO_READ_ONLY};
+        case FollowerInfo::WriteState::UNAVAILABLE:
+        case FollowerInfo::WriteState::STARTUP:
+          return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1179,8 +1173,7 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty() ||
-          replicationVersion == replication::Version::TWO) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1252,9 +1245,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
       _state->isDBServer());
 
   bool excludeAllFromReplication =
-      replicationType != ReplicationType::LEADER ||
-      (followers->empty() &&
-       collection->replicationVersion() != replication::Version::TWO);
+      replicationType != ReplicationType::LEADER || (followers->empty());
 
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
@@ -1488,9 +1479,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 #endif
 
     if (!isMock && replicationType == ReplicationType::LEADER &&
-        (!followers->empty() ||
-         collection->replicationVersion() == replication::Version::TWO) &&
-        !replicationData->slice().isEmptyArray()) {
+        (!followers->empty()) && !replicationData->slice().isEmptyArray()) {
       TRI_ASSERT(collection != nullptr);
 
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1676,9 +1665,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
                           _state->isDBServer());
 
   bool excludeAllFromReplication =
-      replicationType != ReplicationType::LEADER ||
-      (followers->empty() &&
-       collection->replicationVersion() != replication::Version::TWO);
+      replicationType != ReplicationType::LEADER || (followers->empty());
 
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
@@ -1825,9 +1812,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
   auto resDocs = resultBuilder.steal();
   if (res.ok()) {
-    if (replicationType == ReplicationType::LEADER &&
-        (!followers->empty() ||
-         collection->replicationVersion() == replication::Version::TWO) &&
+    if (replicationType == ReplicationType::LEADER && (!followers->empty()) &&
         !replicationData->slice().isEmptyArray()) {
       // We still hold a lock here, because this is update/replace and we're
       // therefore not doing single document operations. But if we didn't hold
@@ -2028,9 +2013,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
   }
 
   bool excludeAllFromReplication =
-      replicationType != ReplicationType::LEADER ||
-      (followers->empty() &&
-       collection->replicationVersion() != replication::Version::TWO);
+      replicationType != ReplicationType::LEADER || (followers->empty());
 
   // total result that is going to be returned to the caller, append-only
   VPackBuilder resultBuilder;
@@ -2157,10 +2140,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
 
   auto resDocs = resultBuilder.steal();
   if (res.ok()) {
-    auto replicationVersion = collection->replicationVersion();
-    if (replicationType == ReplicationType::LEADER &&
-        (!followers->empty() ||
-         replicationVersion == replication::Version::TWO) &&
+    if (replicationType == ReplicationType::LEADER && (!followers->empty()) &&
         !replicationData->slice().isEmptyArray()) {
       TRI_ASSERT(collection != nullptr);
       // Now replicate the same operation on all followers:
@@ -2333,23 +2313,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(
 
   if (res.fail()) {
     return futures::makeFuture(OperationResult(res, options));
-  }
-
-  auto replicationVersion = collection->replicationVersion();
-  if (replicationType == ReplicationType::LEADER &&
-      replicationVersion == replication::Version::TWO) {
-    auto leaderState = collection->waitForDocumentStateLeader();
-    auto body = VPackBuilder();
-    {
-      VPackObjectBuilder ob(&body);
-      body.add("collection", collectionName);
-    }
-    leaderState->replicateOperation(
-        body.sharedSlice(),
-        replication2::replicated_state::document::OperationType::kTruncate,
-        state()->id(),
-        replication2::replicated_state::document::ReplicationOptions{});
-    return OperationResult{Result{}, options};
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2812,25 +2775,10 @@ Future<Result> Methods::replicateOperations(
     TRI_voc_document_operation_e operation) {
   TRI_ASSERT(followerList != nullptr);
 
-  // It is normal to have an empty followerList when using replication2
-  TRI_ASSERT(!followerList->empty() ||
-             collection->vocbase().replicationVersion() ==
-                 replication::Version::TWO);
+  TRI_ASSERT(!followerList->empty());
 
   TRI_ASSERT(replicationData.slice().isArray());
   TRI_ASSERT(!replicationData.slice().isEmptyArray());
-
-  // replication2 is handled here
-  if (collection->replicationVersion() == replication::Version::TWO) {
-    auto leaderState = collection->waitForDocumentStateLeader();
-    leaderState->replicateOperation(
-        replicationData.sharedSlice(),
-        replication2::replicated_state::document::fromDocumentOperation(
-            operation),
-        state()->id(),
-        replication2::replicated_state::document::ReplicationOptions{});
-    return Result{};
-  }
 
   // path and requestType are different for insert/remove/modify.
 
@@ -3115,9 +3063,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
     return f;
   }
 
-  if (_state->isRunningInCluster() &&
-      (_state->vocbase().replicationVersion() != replication::Version::TWO ||
-       tid().isCoordinatorTransactionId())) {
+  if (_state->isRunningInCluster()) {
     // In case we're using replication 2, let the coordinator notify the db
     // servers
     f = ClusterTrxMethods::commitTransaction(*this, api);
@@ -3155,9 +3101,7 @@ Future<Result> Methods::abortInternal(MethodsApi api) {
     return f;
   }
 
-  if (_state->isRunningInCluster() &&
-      (_state->vocbase().replicationVersion() != replication::Version::TWO ||
-       tid().isCoordinatorTransactionId())) {
+  if (_state->isRunningInCluster()) {
     // In case we're using replication 2, let the coordinator notify the db
     // servers
     f = ClusterTrxMethods::abortTransaction(*this, api);

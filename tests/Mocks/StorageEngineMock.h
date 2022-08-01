@@ -30,7 +30,6 @@
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/IResearchInvertedIndexMock.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -335,16 +334,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
   buildInvertedIndexMock(arangodb::IndexId id,
                          arangodb::LogicalCollection& collection,
                          VPackSlice const& info);
-
-  auto createReplicatedLog(TRI_vocbase_t& vocbase,
-                           arangodb::replication2::LogId id)
-      -> arangodb::ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-  auto dropReplicatedLog(
-      TRI_vocbase_t& vocbase,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const& ptr)
-      -> arangodb::Result override;
 
  private:
   TRI_voc_tick_t _releasedTick;

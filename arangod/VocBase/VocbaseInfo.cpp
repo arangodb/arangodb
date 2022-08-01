@@ -31,7 +31,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "Utilities/NameValidator.h"
@@ -140,8 +139,7 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder,
 
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer()) {
-    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern,
-                      _replicationVersion);
+    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
   }
 
   if (withUsers) {
@@ -247,7 +245,6 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
   _replicationFactor = vocopts.replicationFactor;
   _writeConcern = vocopts.writeConcern;
   _sharding = vocopts.sharding;
-  _replicationVersion = vocopts.replicationVersion;
 
   if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
@@ -280,19 +277,6 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
 Result CreateDatabaseInfo::checkOptions() {
   _validId = (_id != 0);
 
-  if (_replicationVersion == replication::Version::TWO &&
-      !replication2::EnableReplication2) {
-    LOG_TOPIC("8fdd7", ERR, Logger::REPLICATION2)
-        << "Replication version 2 is disabled in this binary, but loading a "
-           "version 2 database "
-        << "(named '" << _name << "'). "
-        << "Creating such databases is disabled. Loading a version 2 database "
-           "that was created with another binary will work, but it is strongly "
-           "discouraged to use it in production. Please dump the data, and "
-           "recreate the database with replication version 1 (the default), "
-           "and then restore the data.";
-  }
-
   bool isSystem = _name == StaticStrings::SystemDatabase;
   bool extendedNames =
       _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
@@ -318,7 +302,6 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
   vocbaseOptions.replicationFactor = 1;
   vocbaseOptions.writeConcern = 1;
   vocbaseOptions.sharding = "";
-  vocbaseOptions.replicationVersion = replication::Version::ONE;
 
   //  sanitize input for vocbase creation
   //  sharding -- must be "", "flexible" or "single"
@@ -389,33 +372,12 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
     }
   }
 
-  {
-    auto replicationVersionSlice =
-        options.get(StaticStrings::ReplicationVersion);
-    if (!replicationVersionSlice.isNone()) {
-      auto res = replication::parseVersion(replicationVersionSlice);
-      if (res.ok()) {
-        auto version = res.get();
-
-        vocbaseOptions.replicationVersion = version;
-      } else {
-        THROW_ARANGO_EXCEPTION(
-            std::move(res).result().withError([&](result::Error& err) {
-              err.resetErrorMessage(basics::StringUtils::concatT(
-                  "Error parsing ", StaticStrings::ReplicationVersion, ": ",
-                  err.errorMessage()));
-            }));
-      }
-    }
-  }
-
   return vocbaseOptions;
 }
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                        std::uint32_t replicationFactor,
-                       std::uint32_t writeConcern,
-                       replication::Version replicationVersion) {
+                       std::uint32_t writeConcern) {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::Sharding, VPackValue(sharding));
   if (replicationFactor) {
@@ -426,12 +388,10 @@ void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                 VPackValue(StaticStrings::Satellite));
   }
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
-  builder.add(StaticStrings::ReplicationVersion,
-              VPackValue(replication::versionToString(replicationVersion)));
 }
 
 void addClusterOptions(VPackBuilder& builder, VocbaseOptions const& opt) {
   addClusterOptions(builder, opt.sharding, opt.replicationFactor,
-                    opt.writeConcern, opt.replicationVersion);
+                    opt.writeConcern);
 }
 }  // namespace arangodb
