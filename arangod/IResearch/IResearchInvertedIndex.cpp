@@ -79,7 +79,8 @@ bool supportsFilterNode(
   // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a
   // variable from the upstream loop we may get here a field we don`t have in
   // the index.
-  QueryContext const queryCtx{.ref = reference, .isSearchQuery = false};
+  QueryContext const queryCtx{
+      .ref = reference, .isSearchQuery = false, .isOldMangling = false};
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
