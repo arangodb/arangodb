@@ -1,13 +1,17 @@
 devel
 -----
 
+* Removed unused log topics "CLUSTERCOMM", "COLLECTOR" and "PERFORMANCE" from
+  the code.
+
 * Added ALL_SHORTEST_PATHS functionality to find all shortest paths between two
   given documents.
 
 * Added another test for computedValues attribute keepNull.
 
 * BTS-913: check for proper timezone setup of the system on startup.
-  This evades errors that else would only occur in AQL-Functions at runtime
+  This will then log errors that else would only occur in AQL-Functions at
+  runtime.
 
 * Changed rocksdb default compression type from snappy to lz4.
 
