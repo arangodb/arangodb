@@ -239,21 +239,21 @@ using Filter = bool (*)(std::string& buffer,
                         arangodb::iresearch::IteratorValue const& value);
 
 Filter const valueAcceptors[] = {
-    // type == Object, nestListValues == false, includeAllValues == false
+    // type == Object, trackListPositions == false, includeAllValues == false
     &inObjectFiltered,
-    // type == Object, nestListValues == false, includeAllValues == true
+    // type == Object, trackListPositions == false, includeAllValues == true
     &inObject,
-    // type == Object, nestListValues == true , includeAllValues == false
+    // type == Object, trackListPositions == true , includeAllValues == false
     &inObjectFiltered,
-    // type == Object, nestListValues == true , includeAllValues == true
+    // type == Object, trackListPositions == true , includeAllValues == true
     &inObject,
-    // type == Array , nestListValues == flase, includeAllValues == false
+    // type == Array , trackListPositions == false, includeAllValues == false
     &inArray,
-    // type == Array , nestListValues == flase, includeAllValues == true
+    // type == Array , trackListPositions == false, includeAllValues == true
     &inArray,
-    // type == Array , nestListValues == true, includeAllValues == false
+    // type == Array , trackListPositions == true , includeAllValues == false
     &inArrayOrdered,
-    // type == Array , nestListValues == true, includeAllValues == true
+    // type == Array , trackListPositions == true , includeAllValues == true
     &inArrayOrdered};
 
 Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& meta,

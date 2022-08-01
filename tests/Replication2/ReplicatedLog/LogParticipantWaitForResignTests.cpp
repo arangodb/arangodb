@@ -105,7 +105,7 @@ TEST_F(WaitForResignTest, wait_for_resign_follower_become_follower) {
   participant->waitForResign().thenFinal(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
-  testLog->becomeFollower("follower", LogTerm{1}, "leader");
+  testLog->becomeFollower("follower", LogTerm{2}, "leader");
   ASSERT_TRUE(resigned);
 }
 
@@ -116,7 +116,7 @@ TEST_F(WaitForResignTest, wait_for_resign_follower_become_leader) {
   participant->waitForResign().thenFinal(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
-  testLog->becomeLeader("leader", LogTerm{1}, {}, 1);
+  testLog->becomeLeader("leader", LogTerm{2}, {}, 1);
   ASSERT_TRUE(resigned);
 }
 
@@ -150,7 +150,7 @@ TEST_F(WaitForResignTest, wait_for_resign_leader_become_follower) {
   participant->waitForResign().thenFinal(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
-  testLog->becomeFollower("follower", LogTerm{1}, "leader");
+  testLog->becomeFollower("follower", LogTerm{2}, "leader");
   ASSERT_TRUE(resigned);
 }
 
@@ -161,7 +161,7 @@ TEST_F(WaitForResignTest, wait_for_resign_leader_become_leader) {
   participant->waitForResign().thenFinal(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
-  testLog->becomeLeader("leader", LogTerm{1}, {}, 1);
+  testLog->becomeLeader("leader", LogTerm{2}, {}, 1);
   ASSERT_TRUE(resigned);
 }
 

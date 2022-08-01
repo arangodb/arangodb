@@ -28,9 +28,9 @@
 // / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-let internal = require('internal'); // OK: processCsvFile
+const internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
-let { 
+const {
   getServerById,
   getServersByType,
   getEndpointById,
@@ -41,7 +41,8 @@ let {
   typeName,
   isEqual,
   compareStringIds,
-    } = require('@arangodb/test-helper-common');
+  endpointToURL,
+} = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
 exports.getServerById = getServerById;
@@ -180,5 +181,23 @@ exports.waitForShardsInSync = function(cn, timeout) {
     internal.wait(1);
   }
   assertTrue(false, "Shards were not getting in sync in time, giving up!");
-  return;
 };
+
+exports.getEndpointById = function (id) {
+  return endpointToURL(global.ArangoClusterInfo.getServerEndpoint(id));
+};
+
+exports.getCoordinators = function () {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getCoordinators().map(id => ({id}));
+};
+
+exports.getDBServers = function() {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getDBServers().map(x => ({id: x.serverId}));
+};
+
+exports.uniqid = global.ArangoClusterInfo.uniqid;
+exports.agency = global.ArangoAgency;

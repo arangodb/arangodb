@@ -160,6 +160,11 @@ class Store {
   /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string const& str);
 
+  using AgencyTriggerCallback =
+      std::function<void(std::string_view path, VPackSlice trx)>;
+
+  void registerPrefixTrigger(std::string prefix, AgencyTriggerCallback);
+
 #if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
  private:
 #endif  // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
@@ -204,6 +209,16 @@ class Store {
 
   /// @brief Root node
   Node _node;
+
+  struct AgencyTrigger {
+    explicit AgencyTrigger(AgencyTriggerCallback callback)
+        : callback(std::move(callback)) {}
+    AgencyTriggerCallback callback;
+  };
+
+  void callTriggers(std::string_view key, std::string_view op, VPackSlice trx);
+  std::mutex _triggersMutex;
+  std::map<std::string, AgencyTrigger, std::less<>> _triggers;
 };
 
 inline std::ostream& operator<<(std::ostream& o, Store const& store) {

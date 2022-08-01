@@ -718,7 +718,8 @@ void assertFilterOptimized(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     &actualFilter, ctx, filterCtx, viewNode->filterCondition())
                     .ok());
@@ -781,7 +782,8 @@ void assertExpressionFilter(
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                      nullptr, ctx, filterCtx, *filterNode)
                      .ok()));
@@ -810,7 +812,8 @@ void assertExpressionFilter(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                      &actual, ctx, filterCtx, *filterNode)
                      .ok()));
@@ -912,7 +915,8 @@ void buildActualFilter(
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     nullptr, ctx, filterCtx, *filterNode)
                     .ok());
@@ -938,7 +942,8 @@ void buildActualFilter(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     dynamic_cast<irs::boolean_filter*>(&actual), ctx, filterCtx,
                     *filterNode)
@@ -1013,7 +1018,8 @@ void assertFilter(
         .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((parseOk == arangodb::iresearch::FilterFactory::filter(
                                 nullptr, ctx, filterCtx, *filterNode)
                                 .ok()));
@@ -1041,7 +1047,8 @@ void assertFilter(
         .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(
                           &actual, ctx, filterCtx, *filterNode)
                           .ok());

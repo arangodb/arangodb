@@ -387,6 +387,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_4) {
 
   log.setId(logId)
       .setTargetConfig(defaultConfig)
+      .setTargetVersion(2)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
       .setTargetParticipant("C", flagsSnapshotComplete)
@@ -395,7 +396,8 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_4) {
   log.setPlanParticipant("A", flagsSnapshotComplete)
       .setPlanParticipant("B", flagsSnapshotComplete)
       .setPlanParticipant("C", flagsSnapshotComplete)
-      .setPlanParticipant("D", flagsSnapshotIncomplete);
+      .setPlanParticipant("D", flagsSnapshotComplete);
+  log.setCurrentVersion(2);
 
   replicated_state::SupervisionContext ctx;
   ctx.enableErrorReporting();
