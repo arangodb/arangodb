@@ -426,11 +426,10 @@ bool FieldMeta::init(
           return false;
         }
 
-        auto name = key.copyString();
+        auto name = key.stringView();
 
         if (!value.isObject()) {
-          errorField = std::string{kFieldName} + "." + name;
-
+          errorField = absl::StrCat(kFieldName, ".", name);
           return false;
         }
 
@@ -440,8 +439,7 @@ bool FieldMeta::init(
                                  version, subDefaults, referencedAnalyzers,
                                  nullptr)) {
           errorField =
-              std::string{kFieldName} + "." + name + "." + childErrorField;
-
+              absl::StrCat(kFieldName, ".", name, ".", childErrorField);
           return false;
         }
       }
@@ -543,12 +541,10 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     fieldsBuilder.openObject();
 
     for (auto& entry : _nested) {
-      fieldMask._fields =
-          !entry.value()
-               ->_fields.empty();  // do not output empty fields on subobjects
-      fieldsBuilder.add(           // add sub-object
-          std::string_view(entry.key().c_str(),
-                           entry.key().size()),  // field name
+      // do not output empty fields on subobjects
+      fieldMask._fields = !entry.value()->_fields.empty();
+      fieldsBuilder.add(
+          std::string_view(entry.key().c_str(), entry.key().size()),
           VPackValue(velocypack::ValueType::Object));
 
       if (!entry.value()->json(server, fieldsBuilder, &subDefaults,

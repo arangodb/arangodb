@@ -185,7 +185,7 @@ struct FieldMeta {
   // offset).
   bool _trackListPositions{false};
 #ifdef USE_ENTERPRISE
-  bool _hasNested;
+  bool _hasNested{false};
 #endif
 };
 
