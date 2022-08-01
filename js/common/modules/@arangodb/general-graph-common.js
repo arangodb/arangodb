@@ -33,6 +33,7 @@ const ArangoError = arangodb.ArangoError;
 const db = arangodb.db;
 const users = require('@arangodb/users');
 const _ = require('lodash');
+const {edgeCollectionAPIWrapper} = require("@arangodb/graph/graph-api");
 
 let fixWeight = function (options) {
   if (!options.hasOwnProperty('weightAttribute') && options.hasOwnProperty('weight')) {
@@ -377,9 +378,10 @@ var removeEdge = function (graphs, edgeCollection, edgeId, self) {
 var bindEdgeCollections = function (self, edgeCollections) {
   _.each(edgeCollections, function (key) {
     var obj = db._collection(key);
-    var wrap = wrapCollection(obj);
+    var wrap = edgeCollectionAPIWrapper(self, obj);
     // save
     var oldSave = wrap.insert;
+    /*
     wrap.save = wrap.insert = function (from, to, data) {
       var options = {};
       if (typeof from === 'object' && to === undefined) {
@@ -427,6 +429,7 @@ var bindEdgeCollections = function (self, edgeCollections) {
       );
       return oldSave(data, options);
     };
+    */
 
     // remove
     wrap.remove = function (edgeId, options) {

@@ -30,6 +30,8 @@
 
 const internal = require('internal');
 const arangosh = require('@arangodb/arangosh');
+const {prepareEdgeRequestBody, applyInsertParameterToUrl} = require("@arangodb/arango-collection-helper");
+
 let engine = null;
 
 function getEngine(db) {
@@ -50,11 +52,11 @@ function getEngine(db) {
 // / @brief add options from arguments to index specification
 // //////////////////////////////////////////////////////////////////////////////
 
-function addIndexOptions (body, parameters) {
+function addIndexOptions(body, parameters) {
   body.fields = [];
 
   var setOption = function (k) {
-    if (! body.hasOwnProperty(k)) {
+    if (!body.hasOwnProperty(k)) {
       body[k] = parameters[i][k];
     }
   };
@@ -124,18 +126,6 @@ let appendSyncParameter = function (url, waitForSync) {
       url += '&';
     }
     url += 'waitForSync=true';
-  }
-  return url;
-};
-
-let appendOverwriteModeParameter = function (url, mode) {
-  if (mode) {
-    if (url.indexOf('?') === -1) {
-      url += '?';
-    }else {
-      url += '&';
-    }
-    url += 'overwriteMode=' + mode;
   }
   return url;
 };
@@ -895,72 +885,28 @@ ArangoCollection.prototype.save =
     if (type === ArangoCollection.TYPE_DOCUMENT || data === undefined) {
       data = from;
       options = to;
-    }
-    else if (type === ArangoCollection.TYPE_EDGE) {
-      if (typeof data === 'object' && Array.isArray(data)) {
-        throw new ArangoError({
-          errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-          errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
-        });
-      }
-      if (data === undefined || data === null || typeof data !== 'object') {
-        throw new ArangoError({
-          errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-          errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
-        });
-      }
-
-      if (typeof from === 'object' && from.hasOwnProperty('_id')) {
-        from = from._id;
-      }
-
-      if (typeof to === 'object' && to.hasOwnProperty('_id')) {
-        to = to._id;
-      }
-
-      data._from = from;
-      data._to = to;
+    } else if (type === ArangoCollection.TYPE_EDGE) {
+      data = prepareEdgeRequestBody(from, to, data);
     }
 
     url = this._dbPrefix + '/_api/document/' + encodeURIComponent(this.name());
-
-    if (options === undefined) {
-      options = {};
-    }
-
-    // the following parameters are optional, so we only append them if necessary
-    if (options.waitForSync) {
-      url = appendSyncParameter(url, options.waitForSync);
-    }
-
-    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
-      if (options[key]) {
-        url = appendBoolParameter(url, key, options[key]);
-      }
-    });
-
-    if (options.overwriteMode) {
-      url = appendOverwriteModeParameter(url, options.overwriteMode);
-
-      if (options.keepNull) {
-        url = appendBoolParameter(url, 'keepNull', options.keepNull);
-      }
-
-      if (options.mergeObjects !== undefined) {
-        url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects);
-      }
-    }
-
-    let headers = {};
-    if (options.transactionId) {
-      headers['x-arango-trx-id'] = options.transactionId;
-    }
 
     if (data === undefined || typeof data !== 'object') {
       throw new ArangoError({
         errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
         errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
       });
+    }
+
+    if (options === undefined) {
+      options = {};
+    }
+
+    url = applyInsertParameterToUrl(url, options);
+
+    let headers = {};
+    if (options.transactionId) {
+      headers['x-arango-trx-id'] = options.transactionId;
     }
 
     let requestResult = this._database._connection.POST(
@@ -970,7 +916,7 @@ ArangoCollection.prototype.save =
     arangosh.checkRequestResult(requestResult);
 
     return options.silent ? true : requestResult;
-};
+  };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief removes a document in the collection
