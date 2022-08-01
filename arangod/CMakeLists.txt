@@ -645,6 +645,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-dispatcher.cpp
   V8Server/v8-general-graph.cpp
   V8Server/v8-query.cpp
+  V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
   V8Server/v8-ttl.cpp
   V8Server/v8-user-functions.cpp
