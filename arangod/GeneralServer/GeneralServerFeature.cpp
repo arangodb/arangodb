@@ -509,7 +509,8 @@ void GeneralServerFeature::buildServers() {
     ssl.verifySslOptions();
   }
 
-  _servers.emplace_back(std::make_unique<GeneralServer>(*this, _numIoThreads));
+  _servers.emplace_back(std::make_unique<GeneralServer>(
+      *this, _numIoThreads, _allowEarlyConnections));
 }
 
 void GeneralServerFeature::startListening() {
