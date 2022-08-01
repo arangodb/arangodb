@@ -5,6 +5,29 @@ documents will wait until the data has been synchronized to disk.
 @RESTSTRUCT{schema,collection_info,object,optional,}
 The collection level schema for documents.
 
+@RESTSTRUCT{computedValues,collection_info,array,optional,computed_field}
+A list of objects, each representing a computed value.
+
+@RESTSTRUCT{name,computed_field,string,required,}
+The name of the target attribute.
+
+@RESTSTRUCT{expression,computed_field,string,required,}
+An AQL `RETURN` operation with an expression that computes the desired value.
+
+@RESTSTRUCT{overwrite,computed_field,boolean,required,}
+Whether the computed value takes precedence over a user-provided or
+existing attribute.
+
+@RESTSTRUCT{computeOn,computed_field,array,optional,string}
+An array of strings that defines on which write operations the value is
+computed. The possible values are `"insert"`, `"update"`, and `"replace"`.
+
+@RESTSTRUCT{keepNull,computed_field,boolean,optional,}
+Whether the target attribute is set if the expression evaluates to `null`.
+
+@RESTSTRUCT{failOnWarning,computed_field,boolean,optional,}
+Whether the write operation fails if the expression produces a warning.
+
 @RESTSTRUCT{keyOptions,collection_info,object,required,key_generator_type}
 A object which contains key generation options
 

@@ -31,7 +31,37 @@ collections in very special occasions, but normally a regular collection will do
 @RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
-rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/document-schema-validation.html)
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/documents-schema-validation.html)
+
+@RESTBODYPARAM{computedValues,array,optional,post_api_collection_computed_field}
+An optional list of objects, each representing a computed value.
+
+@RESTSTRUCT{name,post_api_collection_computed_field,string,required,}
+The name of the target attribute. Can only be a top-level attribute, but you
+may return a nested object. Cannot be `_key`, `_id`, `_rev`, `_from`, `_to`,
+or a shard key attribute.
+
+@RESTSTRUCT{expression,post_api_collection_computed_field,string,required,}
+An AQL `RETURN` operation with an expression that computes the desired value.
+See [Computed Value Expressions](https://www.arangodb.com/docs/devel/data-modeling-documents-computed-values.html#computed-value-expressions) for details.
+
+@RESTSTRUCT{overwrite,post_api_collection_computed_field,boolean,required,}
+Whether the computed value shall take precedence over a user-provided or
+existing attribute.
+
+@RESTSTRUCT{computeOn,post_api_collection_computed_field,array,optional,string}
+An array of strings to define on which write operations the value shall be
+computed. The possible values are `"insert"`, `"update"`, and `"replace"`.
+The default is `["insert", "update", "replace"]`.
+
+@RESTSTRUCT{keepNull,post_api_collection_computed_field,boolean,optional,}
+Whether the target attribute shall be set if the expression evaluates to `null`.
+You can set the option to `false` to not set (or unset) the target attribute if
+the expression returns `null`. The default is `true`.
+
+@RESTSTRUCT{failOnWarning,post_api_collection_computed_field,boolean,optional,}
+Whether to let the write operation fail if the expression produces a warning.
+The default is `false`.
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then `keyOptions`
