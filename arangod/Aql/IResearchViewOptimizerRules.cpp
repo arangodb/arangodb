@@ -209,14 +209,17 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
       pushFuncToBack(*searchCondition.root(), starts_with);
     }
 
-    arangodb::iresearch::QueryContext ctx{.trx = &query.trxForOptimization(),
-                                          .ref = &viewNode.outVariable(),
-                                          .isSearchQuery = true};
+    arangodb::iresearch::QueryContext ctx{
+        .trx = &query.trxForOptimization(),
+        .ref = &viewNode.outVariable(),
+        .isSearchQuery = true,
+        .isOldMangling =
+            (viewNode.view() && viewNode.view()->type() == ViewType::kView)};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
     FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-    FilterContext const filterCtx{.analyzer = analyzer};
+    FilterContext const filterCtx{.contextAnalyzer = analyzer};
 
     auto filterCreated =
         FilterFactory::filter(nullptr, ctx, filterCtx, *searchCondition.root());
