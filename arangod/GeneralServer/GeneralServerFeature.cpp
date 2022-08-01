@@ -82,14 +82,10 @@
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestLicenseHandler.h"
-#include "RestHandler/RestLogHandler.h"
-#include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
-#include "RestHandler/RestPrototypeStateHandler.h"
-#include "RestHandler/RestReplicatedStateHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -250,8 +246,8 @@ void GeneralServerFeature::collectOptions(
 
   options
       ->addOption("--http.return-queue-time-header",
-                  "if true, return the 'x-arango-queue-time-seconds' header in "
-                  "responses",
+                  "If true, return the `x-arango-queue-time-seconds` header in "
+                  "responses.",
                   new BooleanParameter(&_returnQueueTimeHeader))
       .setIntroducedIn(30900);
 
@@ -276,8 +272,8 @@ void GeneralServerFeature::collectOptions(
                         "web-interface.trusted-proxy");
 
   options->addOption("--web-interface.trusted-proxy",
-                     "list of proxies to trust (may be IP or network). Make "
-                     "sure --web-interface.proxy-request-check is enabled",
+                     "List of proxies to trust (can be IP or network). Make "
+                     "sure `--web-interface.proxy-request-check` is enabled.",
                      new VectorParameter<StringParameter>(&_trustedProxies),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
@@ -642,20 +638,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData);
-
-  if (cluster.isEnabled()) {
-    f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
-                       RestHandlerCreator<RestLogHandler>::createNoData);
-    f.addPrefixHandler(
-        std::string{StaticStrings::ApiLogInternal},
-        RestHandlerCreator<RestLogInternalHandler>::createNoData);
-    f.addPrefixHandler(
-        std::string{StaticStrings::ApiReplicatedStateExternal},
-        RestHandlerCreator<RestReplicatedStateHandler>::createNoData);
-    f.addPrefixHandler(
-        "/_api/prototype-state",
-        RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
-  }
 
   // This is the only handler were we need to inject
   // more than one data object. So we created the combinedRegistries

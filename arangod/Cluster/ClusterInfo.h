@@ -51,8 +51,6 @@
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "Replication2/AgencyCollectionSpecification.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -64,20 +62,6 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
-
-namespace replication2 {
-class LogId;
-}  // namespace replication2
-
-namespace replication2::agency {
-struct LogPlanSpecification;
-struct CollectionGroupId;
-struct CollectionGroup;
-}  // namespace replication2::agency
-
-namespace replication2::replicated_state::agency {
-struct Target;
-}  // namespace replication2::replicated_state::agency
 
 class ClusterInfo;
 class LogicalCollection;
@@ -709,8 +693,7 @@ class ClusterInfo final {
       bool waitForReplication, arangodb::velocypack::Slice json,
       double timeout,  // request timeout
       bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-      replication::Version replicationVersion = replication::Version::ONE);
+      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan.
@@ -727,8 +710,8 @@ class ClusterInfo final {
       std::string const& databaseName,
       std::vector<ClusterCollectionCreationInfo>&, double endTime,
       bool isNewDatabase,
-      std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
-      replication::Version replicationVersion);
+      std::shared_ptr<const LogicalCollection> const&
+          colToDistributeShardsLike);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -1053,18 +1036,6 @@ class ClusterInfo final {
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(std::string_view shardId);
 
-  auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
-
-  auto getReplicatedLogParticipants(replication2::LogId) const
-      -> ResultT<std::vector<ServerID>>;
-
-  auto getReplicatedLogPlanSpecification(replication2::LogId) const -> ResultT<
-      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
-
-  auto getReplicatedLogsParticipants(std::string_view database) const
-      -> ResultT<
-          std::unordered_map<replication2::LogId, std::vector<std::string>>>;
-
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -1163,32 +1134,6 @@ class ClusterInfo final {
   /// @brief triggers a new background thread to obtain the next batch of ids
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a replicated state is created for each shard, only when using
-  /// Replication2
-  //////////////////////////////////////////////////////////////////////////////
-  static auto createDocumentStateSpec(std::string const& shardId,
-                                      std::vector<std::string> const& serverIds,
-                                      ClusterCollectionCreationInfo const& info)
-      -> replication2::replicated_state::agency::Target;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns a future which can be used to wait for the successful
-  /// creation of replicated states
-  //////////////////////////////////////////////////////////////////////////////
-  auto waitForReplicatedStatesCreation(
-      std::string const& databaseName,
-      std::vector<replication2::replicated_state::agency::Target> const&
-          replicatedStates) -> futures::Future<Result>;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief deletes replicated states corresponding to shards
-  //////////////////////////////////////////////////////////////////////////////
-  auto deleteReplicatedStates(
-      std::string const& databaseName,
-      std::vector<replication2::LogId> const& replicatedStatesIds)
-      -> futures::Future<Result>;
 
   /// underlying application server
   ArangodServer& _server;
@@ -1357,19 +1302,6 @@ class ClusterInfo final {
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
   containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
       _shardIds;  // from Current/Collections/
-
-  struct NewStuffByDatabase;
-  containers::FlatHashMap<DatabaseID, std::shared_ptr<NewStuffByDatabase>>
-      _newStuffByDatabase;
-
-  using ReplicatedLogsMap = containers::FlatHashMap<
-      replication2::LogId,
-      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
-  ReplicatedLogsMap _replicatedLogs;
-
-  using CollectionGroupMap = containers::FlatHashMap<
-      replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence

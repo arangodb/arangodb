@@ -1753,9 +1753,9 @@ void RestoreFeature::collectOptions(
 
   options
       ->addOption("--enable-revision-trees",
-                  "enable revision trees for new collections if the collection "
-                  "attributes 'syncByRevision' and "
-                  "'usesRevisionsAsDocumentIds' are missing",
+                  "Enable revision trees for new collections if the collection "
+                  "attributes `syncByRevision` and "
+                  "`usesRevisionsAsDocumentIds` are missing.",
                   new BooleanParameter(&_options.enableRevisionTrees))
       .setIntroducedIn(30807);
 
