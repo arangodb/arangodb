@@ -205,12 +205,6 @@ struct OptimizerRule {
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
-#ifdef USE_ENTERPRISE
-    // FIXME(gnusi): when to execute?
-    // handle OFFSET_INFO functions calls
-    hanldeOffsetInfoFunc,
-#endif
-
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
 
@@ -346,6 +340,12 @@ struct OptimizerRule {
     // needs to take into account query distribution across cluster nodes
     // for arango search view
     lateDocumentMaterializationArangoSearchRule,
+
+#ifdef USE_ENTERPRISE
+    // FIXME(gnusi): when to execute?
+    // handle OFFSET_INFO functions calls
+    hanldeOffsetInfoFunc,
+#endif
 
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
