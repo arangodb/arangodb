@@ -1193,6 +1193,24 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
           replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
+
+      // TODO make it look nicer
+      if (replicationVersion == replication::Version::TWO) {
+        try {
+          std::ignore = collection.getDocumentStateLeader();
+        } catch (basics::Exception& e) {
+          // The leader is not ready, doing recovery. During recovery,
+          // transactions are applied as a follower.
+          if (e.code() ==
+              TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE) {
+            replicationType = ReplicationType::FOLLOWER;
+            options.silent = true;
+            followers = nullptr;
+          } else {
+            throw;
+          }
+        }
+      }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (replicationVersion != replication::Version::TWO &&

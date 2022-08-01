@@ -31,10 +31,14 @@
 
 using namespace arangodb::replication2::replicated_state::document;
 
-DocumentLeaderState::DocumentLeaderState(std::unique_ptr<DocumentCore> core)
+DocumentLeaderState::DocumentLeaderState(
+    std::unique_ptr<DocumentCore> core,
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
     : loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
       shardId(core->getShardId()),
+      gid(core->getGid()),
+      _handlersFactory(std::move(handlersFactory)),
       _guardedData(std::move(core)) {}
 
 auto DocumentLeaderState::resign() && noexcept
@@ -49,6 +53,24 @@ auto DocumentLeaderState::resign() && noexcept
 
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
+  auto transactionHandler = _handlersFactory->createTransactionHandler(gid);
+  // TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED
+
+  LOG_DEVEL << ptr->range();
+  while (auto entry = ptr->next()) {
+    auto doc = entry->second;
+    LOG_DEVEL << "leader " << doc;
+    auto res = transactionHandler->applyTransaction(doc);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  auto doc = DocumentLogEntry{
+      std::string(shardId), kAbortAllOngoingTrx, {}, TransactionId{0}};
+  auto stream = getStream();
+  stream->insert(doc);
+  // TODO abort entries to the log and add a tombstone to the TransactionManager
   return {TRI_ERROR_NO_ERROR};
 }
 

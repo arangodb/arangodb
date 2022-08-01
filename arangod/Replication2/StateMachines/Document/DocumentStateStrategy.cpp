@@ -68,7 +68,9 @@ auto DocumentStateAgencyHandler::getCollectionPlan(
 auto DocumentStateAgencyHandler::reportShardInCurrent(
     std::string const& collectionId, std::string const& shardId,
     std::shared_ptr<velocypack::Builder> const& properties) -> Result {
-  auto participants = properties->slice().get(maintenance::SHARDS).get(shardId);
+  // auto participants =
+  // properties->slice().get(maintenance::SHARDS).get(shardId);
+  auto participants = VPackSlice::emptyArraySlice();
 
   VPackBuilder localShard;
   {
@@ -125,8 +127,8 @@ auto DocumentStateShardHandler::createLocalShard(
           {maintenance::SHARD, shardId},
           {maintenance::DATABASE, _gid.database},
           {maintenance::SERVER_ID, std::move(serverId)},
-          {maintenance::THE_LEADER,
-           shouldBeLeading ? "" : std::move(leaderId)}},
+          {maintenance::THE_LEADER, "replication2"},
+      },
       shouldBeLeading ? maintenance::LEADER_PRIORITY
                       : maintenance::FOLLOWER_PRIORITY,
       false, properties);
@@ -213,6 +215,11 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
 auto DocumentStateTransactionHandler::applyTransaction(DocumentLogEntry doc)
     -> Result {
   auto fut = futures::Future<Result>{Result{}};
+  if (doc.operation == kAbortAllOngoingTrx) {
+    LOG_DEVEL << "Clearing all ongoing transactions";
+    _transactions.clear();
+    return Result{};
+  }
   try {
     auto trx = ensureTransaction(doc);
     TRI_ASSERT(trx != nullptr);
@@ -231,6 +238,9 @@ auto DocumentStateTransactionHandler::applyTransaction(DocumentLogEntry doc)
       case OperationType::kAbort:
         fut = trx->abort();
         removeTransaction(doc.tid);
+        break;
+      case OperationType::kAbortAllOngoingTrx:
+        LOG_DEVEL << "aborting all " << doc.tid;
         break;
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);

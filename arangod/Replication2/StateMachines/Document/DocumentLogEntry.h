@@ -44,6 +44,7 @@ enum OperationType {
   kTruncate,
   kCommit,
   kAbort,
+  kAbortAllOngoingTrx
 };
 
 auto to_string(OperationType) noexcept -> std::string_view;

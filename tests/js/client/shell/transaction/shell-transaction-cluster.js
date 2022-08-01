@@ -227,7 +227,7 @@ function transactionReplication2ReplicateOperationSuite() {
       try {
         trx.commit();
         committed = true;
-        fail('Abort was expected to fail due to leader change, but reported success.');
+        fail('Commit was expected to fail due to leader change, but reported success.');
       } catch (ex) {
         // The actual error code is a little bit strange, but happens due to
         // automatic retry of the commit request on the coordinator.
@@ -271,7 +271,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
     setUp: function () {
       db._drop(cn);
-      let rc = Object.keys(replicatedLogsHelper.dbservers).length;
+      let rc = replicatedLogsHelper.dbservers.length;
       c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": rc, "replicationFactor": rc});
     },
 
@@ -396,6 +396,108 @@ function transactionReplicationOnFollowersSuite(dbParams) {
   };
 }
 
+/**
+ * TODO
+ */
+function transactionReplication2LeaderRecovery() {
+  'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
+  var cn = 'UnitTestsTransaction';
+  var c = null;
+
+  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} =
+    (function () {
+      let stoppedServers = {};
+      return {
+        setUpAll: function () {
+          db._createDatabase(dbn, {replicationVersion: "2"});
+          db._useDatabase(dbn);
+        },
+        tearDownAll: function () {
+          db._useDatabase("_system");
+          db._dropDatabase(dbn);
+        },
+        stopServer: function (serverId) {
+          if (stoppedServers[serverId] !== undefined) {
+            throw Error(`${serverId} already stopped`);
+          }
+          replicatedLogsHelper.stopServer(serverId);
+          stoppedServers[serverId] = true;
+        },
+        continueServer: function (serverId) {
+          if (stoppedServers[serverId] === undefined) {
+            throw Error(`${serverId} not stopped`);
+          }
+          replicatedLogsHelper.continueServer(serverId);
+          delete stoppedServers[serverId];
+        },
+        resumeAll: function () {
+          Object.keys(stoppedServers).forEach(function (key) {
+            continueServer(key);
+          });
+        },
+      };
+    })();
+
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: function () {
+      db._drop(cn);
+
+      let rc = replicatedLogsHelper.dbservers.length;
+      assertTrue(rc >= 3);
+      c = db._create(cn, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": rc});
+    },
+    tearDown: function () {
+      resumeAll();
+      replicatedLogsHelper.waitFor(replicatedLogsPredicates.allServersHealthy());
+      if (c !== null) {
+        c.drop();
+      }
+      c = null;
+    },
+
+    testTransactionDuringFailover: function () {
+      const shards = c.shards();
+      assertEqual(shards.length, 1);
+
+      const shardId = shards[0]
+      const logId = shardId.slice(1);
+
+      // Start a transaction.
+      let trx = db._createTransaction({
+        collections: {write: c.name()}
+      });
+
+      let tc = trx.collection(c.name());
+      tc.insert({_key: 'test2', value: 1});
+      tc.insert({_key: 'test3', value: 2});
+
+      // Stop the leader. This triggers a failover.
+      require('internal').print('Before failover');
+      const {leader} = replicatedLogsHelper.getReplicatedLogLeaderPlan(dbn, logId);
+      let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
+      stopServer(leader);
+      replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
+        dbn, logId, term + 2, _.without(replicatedLogsHelper.dbservers, leader)));
+
+      require('internal').print('After failover');
+
+      let x = replicatedLogsHelper.dumpLog(shardId);
+      require('internal').print(x);
+
+      tc.insert({_key: 'test4', value: 2});
+      require('internal').print('Inserted test3');
+
+      trx.commit();
+      require('internal').print('Committed');
+    },
+  };
+}
+
+
 function makeTestSuites(testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
@@ -415,12 +517,14 @@ function transactionReplicationOnFollowersSuiteV2() {
   return makeTestSuites(transactionReplicationOnFollowersSuite)[1];
 }
 
-jsunity.run(transactionReplicationOnFollowersSuiteV1);
+//TODO uncomment
+//jsunity.run(transactionReplicationOnFollowersSuiteV1);
 
 if (isReplication2Enabled) {
   let suites = [
-    transactionReplication2ReplicateOperationSuite,
-    transactionReplicationOnFollowersSuiteV2,
+    transactionReplication2LeaderRecovery,
+    //transactionReplication2ReplicateOperationSuite,
+    //transactionReplicationOnFollowersSuiteV2,
   ];
 
   for (const suite of suites) {

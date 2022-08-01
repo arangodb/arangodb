@@ -33,7 +33,9 @@
 namespace arangodb::replication2::replicated_state::document {
 struct DocumentLeaderState
     : replicated_state::IReplicatedLeaderState<DocumentState> {
-  explicit DocumentLeaderState(std::unique_ptr<DocumentCore> core);
+  explicit DocumentLeaderState(
+      std::unique_ptr<DocumentCore> core,
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
 
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
@@ -47,6 +49,7 @@ struct DocumentLeaderState
 
   LoggerContext const loggerContext;
   std::string_view shardId;
+  GlobalLogIdentifier gid;
 
  private:
   struct GuardedData {
@@ -57,6 +60,7 @@ struct DocumentLeaderState
     std::unique_ptr<DocumentCore> core;
   };
 
+  std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 };
 }  // namespace arangodb::replication2::replicated_state::document

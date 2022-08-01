@@ -33,6 +33,7 @@ auto const String_Remove = std::string_view{"Remove"};
 auto const String_Truncate = std::string_view{"Truncate"};
 auto const String_Commit = std::string_view{"Commit"};
 auto const String_Abort = std::string_view{"Abort"};
+auto const String_AbortAllOngoingTrx = std::string_view{"AbortAllOngoingTrx"};
 }  // namespace
 
 using namespace arangodb::replication2::replicated_state;
@@ -72,6 +73,8 @@ auto document::to_string(OperationType op) noexcept -> std::string_view {
       return String_Commit;
     case kAbort:
       return String_Abort;
+    case kAbortAllOngoingTrx:
+      return String_AbortAllOngoingTrx;
     default:
       ADB_PROD_ASSERT(false) << "Unexpected operation " << op;
   }
@@ -103,6 +106,8 @@ auto OperationStringTransformer::fromSerialized(std::string const& source,
     target = OperationType::kCommit;
   } else if (source == String_Abort) {
     target = OperationType::kAbort;
+  } else if (source == String_AbortAllOngoingTrx) {
+    target = OperationType::kAbortAllOngoingTrx;
   } else {
     return inspection::Status{"Invalid operation " + std::string{source}};
   }
