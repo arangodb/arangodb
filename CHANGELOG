@@ -1,6 +1,10 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed handling of illegal edges in Enterprise Graphs. Adding an edge to a
+  SmartGraph vertex collection through document API caused incorrect sharding of
+  the edge. Now this edge is rejected as invalid. (BTS-906)
+
 * Added CSP recommended headers to Aardvaark app for better security.
 
 * Added more specific process exit codes for arangod and all client tools, and
