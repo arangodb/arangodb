@@ -29,9 +29,24 @@
 let jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-
+const { getDBServers } = require('@arangodb/test-helper');
 const database = "cluster_rebalance_db";
 let prevDB = null;
+
+function resignServer(server) {
+  let res = arango.POST_RAW("/_admin/cluster/resignLeadership", { server });
+  assertEqual(202, res.code);
+  const id = res.parsedBody.id;
+
+  let count = 10;
+  while (--count >= 0) {
+    require("internal").wait(5.0, false);
+    res = arango.GET_RAW("/_admin/cluster/queryAgencyJob?id=" + id);
+    if (res.code === 200) {
+      return;
+    }
+  }
+}
 
 function clusterRebalanceSuite() {
   return {
@@ -42,6 +57,8 @@ function clusterRebalanceSuite() {
       for (let i = 0; i < 10; i++) {
         db._create("col" + i);
       }
+      // resign one server
+      resignServer(getDBServers()[0].id);
     },
 
     tearDownAll: function () {
