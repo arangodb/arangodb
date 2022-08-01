@@ -58,8 +58,9 @@ void OptimizerRulesFeature::collectOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options) {
   options
       ->addOption("--query.optimizer-rules",
-                  "enable or disable specific optimizer rules (use rule name "
-                  "prefixed with '-' for disabling, '+' for enabling)",
+                  "Enable or disable specific optimizer rules by default. "
+                  "Specify the rule name prefixed with `-` for disabling, or "
+                  "`+` for enabling.",
                   new arangodb::options::VectorParameter<
                       arangodb::options::StringParameter>(&_optimizerRules),
                   arangodb::options::makeDefaultFlags(
