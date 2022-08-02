@@ -608,7 +608,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     // Step 4. fill index
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
-    LOG_DEVEL << __FILE__ << __LINE__ << " " << progress.get();
 
     if (inBackground) {
       // allow concurrent inserts into index
