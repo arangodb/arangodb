@@ -191,6 +191,25 @@ const replicatedStateIsGone = function (database, logId) {
   };
 };
 
+const localKeyStatus = function (endpoint, db, col, key, available, value) {
+  return function() {
+    const data = SH.getLocalValue(endpoint, db, col, key);
+    if (available === false && data.code === 404) {
+      return true;
+    }
+    if (available === true && data._key === key) {
+      if (value === undefined) {
+        // We are not interested in any value, just making sure the key exists.
+        return true;
+      }
+      if (data.value === value) {
+        return true;
+      }
+    }
+    return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
+  };
+};
+
 exports.replicatedStateIsGone = replicatedStateIsGone;
 exports.replicatedStateIsReady = replicatedStateIsReady;
 exports.replicatedStateServerIsGone = replicatedStateServerIsGone;
@@ -199,3 +218,4 @@ exports.replicatedStateSupervisionStatus = replicatedStateSupervisionStatus;
 exports.replicatedStateTargetLeaderIs = replicatedStateTargetLeaderIs;
 exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;
+exports.localKeyStatus = localKeyStatus;

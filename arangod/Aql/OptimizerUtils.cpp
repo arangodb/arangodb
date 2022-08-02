@@ -585,7 +585,7 @@ void captureFCallArgumentExpressions(
 
 void captureArrayFilterArgumentExpressions(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    AstNode const* filter, std::vector<size_t> selectedMembersFromRoot,
+    AstNode const* filter, std::vector<size_t> const& selectedMembersFromRoot,
     bool evaluateFCalls, Variable const* indexVariable,
     NonConstExpressionContainer& result) {
   for (size_t i = 0, size = filter->numMembers(); i != size; ++i) {
@@ -690,7 +690,8 @@ AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
 void extractNonConstPartsOfAndPart(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
     bool evaluateFCalls, bool sorted, AstNode const* andNode,
-    Variable const* indexVariable, std::vector<size_t> selectedMembersFromRoot,
+    Variable const* indexVariable,
+    std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
   // in case of a geo spatial index a might take the form
   // of a GEO_* function. We might need to evaluate fcall arguments

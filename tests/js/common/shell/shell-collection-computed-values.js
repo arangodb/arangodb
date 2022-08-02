@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertUndefined, fail */
+/*global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertNotNull, assertUndefined, fail */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -72,6 +72,49 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       // computed value must be null
       assertNull(collection.toArray()[0].newValue);
     },
+
+    testKeepNullTrue2: function() {
+      collection.properties({
+        computedValues:
+          [{
+            name: "newValue",
+            expression: "RETURN IS_STRING(@doc.name.first) AND IS_STRING(@doc.name.last) ? " +
+              "MERGE(@doc.name, { full: CONCAT_SEPARATOR(' ', @doc.name.first, @doc.name.last) }) : null",
+            overwrite: true,
+            keepNull: true
+          }]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+      assertTrue(colProperties.computedValues[0].keepNull);
+
+      for (let i = 0; i < 50; ++i) {
+        collection.insert({name: {first: `a${i}`, last: `b${i}`}});
+      }
+      for (let i = 0; i < 50; ++i) {
+        collection.insert({name: {first: i, last: i}});
+      }
+      let amountNullValues = 0;
+      const docs = collection.toArray();
+      docs.forEach(doc => {
+        assertTrue(doc.hasOwnProperty("newValue"));
+        if (doc["newValue"] === null) {
+          amountNullValues++;
+        }
+      });
+      assertEqual(100, collection.count());
+      assertEqual(amountNullValues, 50);
+    },
     
     testKeepNullFalse: function() {
       collection.properties({
@@ -102,6 +145,50 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(1, collection.count());
       // computed value must not be there
       assertUndefined(collection.toArray()[0].newValue);
+    },
+
+    testKeepNullFalse2: function() {
+      collection.properties({
+        computedValues:
+          [{
+            name: "newValue",
+            expression: "RETURN IS_STRING(@doc.name.first) AND IS_STRING(@doc.name.last) ? " +
+              "MERGE(@doc.name, { full: CONCAT_SEPARATOR(' ', @doc.name.first, @doc.name.last) }) : null",
+            overwrite: true,
+            keepNull: false
+          }]
+      });
+      if (isCluster) {
+        // unfortunately there is no way to test when the new properties
+        // have been applied on the DB servers. all we can do is sleep
+        // and hope the delay is long enough
+        internal.sleep(5);
+      }
+
+      const colProperties = collection.properties();
+      assertTrue(colProperties.hasOwnProperty("computedValues"));
+      assertEqual(colProperties.computedValues.length, 1);
+      assertTrue(colProperties.computedValues[0].hasOwnProperty("name"));
+      assertEqual(colProperties.computedValues[0].name, "newValue");
+      assertFalse(colProperties.computedValues[0].keepNull);
+
+      for (let i = 0; i < 50; ++i) {
+        collection.insert({name: {first: `a${i}`, last: `b${i}`}});
+      }
+      for (let i = 0; i < 50; ++i) {
+        collection.insert({name: {first: i, last: i}});
+      }
+      const docs = collection.toArray();
+      let amountValues = 0;
+      docs.forEach(doc => {
+        if (doc.hasOwnProperty("newValue")) {
+          assertNotNull(doc["newValue"]);
+        } else {
+          amountValues++;
+        }
+      });
+      assertEqual(100, collection.count());
+      assertEqual(amountValues, 50);
     },
     
     testExpressionWithAssert: function() {
@@ -967,7 +1054,24 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         "level": "moderate",
         "message": "Schema validation failed"
       };
-      const specialFunctions = ["COLLECTIONS", "CURRENT_DATABASE", "CURRENT_USER", "VERSION", `CALL("SUBSTRING", @doc.value1, 0, 2)`, `APPLY("SUBSTRING", [@doc.value1, 0, 2])`, `DOCUMENT(${cn}, "test")`, `V8(1 + 1)`, `SCHEMA_GET(${cn}`, `SCHEMA_VALIDATE(@doc, ${schemaTest}`, `COLLECTION_COUNT(${cn}`, `NEAR(${cn}, @doc.latitude, @doc.longitude)`, `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`, `PREGEL_RESULT("abc", true)`];
+      const specialFunctions = [
+        "COLLECTIONS", 
+        "CURRENT_DATABASE", 
+        "CURRENT_USER", 
+        "VERSION", 
+        `CALL("SUBSTRING", @doc.value1, 0, 2)`, 
+        `APPLY("SUBSTRING", [@doc.value1, 0, 2])`, 
+        `DOCUMENT(${cn}, "test")`, `V8(1 + 1)`, 
+        `SCHEMA_GET(${cn}`, 
+        `SCHEMA_VALIDATE(@doc, ${schemaTest}`, 
+        `COLLECTION_COUNT(${cn}`, 
+        `NEAR(${cn}, @doc.latitude, @doc.longitude)`, 
+        `TOKENS(@doc, 'text_en')`,
+        `TOKENS("foo bar", 'text_en')`,
+        `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, 
+        `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`, 
+        `PREGEL_RESULT("abc", true)`
+      ];
       specialFunctions.forEach((el) => {
         try {
           collection.properties({

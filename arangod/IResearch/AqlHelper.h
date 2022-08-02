@@ -247,6 +247,7 @@ struct QueryContext {
   FilterOptimization filterOptimization{FilterOptimization::MAX};
   // The flag is set when a query is dedicated to a search view
   bool isSearchQuery{true};
+  bool isOldMangling{true};
 };
 
 ////////////////////////////////////////////////////////////////////////////////

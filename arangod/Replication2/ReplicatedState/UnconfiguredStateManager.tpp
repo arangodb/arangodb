@@ -33,7 +33,8 @@ UnconfiguredStateManager<S>::UnconfiguredStateManager(
     std::shared_ptr<ReplicatedState<S>> const& parent,
     std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
         unconfiguredParticipant,
-    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    std::unique_ptr<CoreType> core,
+    std::unique_ptr<ReplicatedStateToken> token) noexcept
     : _parent(parent),
       _unconfiguredParticipant(std::move(unconfiguredParticipant)),
       _core(std::move(core)),
@@ -42,11 +43,15 @@ UnconfiguredStateManager<S>::UnconfiguredStateManager(
 template<typename S>
 void UnconfiguredStateManager<S>::run() noexcept {
   _unconfiguredParticipant->waitForResign().thenFinal(
-      [weak = _parent](futures::Try<futures::Unit>&& result) {
+      [weak = this->weak_from_this()](
+          futures::Try<futures::Unit>&& result) noexcept {
         TRI_ASSERT(result.valid());
         if (result.hasValue()) {
           if (auto self = weak.lock(); self != nullptr) {
-            self->forceRebuild();
+            if (auto parentPtr = self->_parent.lock(); parentPtr != nullptr) {
+              static_assert(noexcept(parentPtr->rebuildMe(self.get())));
+              parentPtr->rebuildMe(self.get());
+            }
           }
         } else if (result.hasException()) {
           // This can be a FutureException(ErrorCode::BrokenPromise), or

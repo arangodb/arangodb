@@ -40,9 +40,10 @@ const {
   checkRequestResult,
   replicatedLogDeleteTarget,
 } = helper;
+const preds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
   allServersHealthy,
-} = require("@arangodb/testutils/replicated-logs-predicates");
+} = preds;
 
 const database = "replication2_supervision_test_db";
 const IS_FAILED = true;
@@ -153,23 +154,23 @@ const replicatedLogRegressionSuite = function () {
       const {index: logIdx} = log.insert({foo: "baz"}, {dontWaitForCommit: true});
 
       waitFor(() => {
-          // As followers[0] is stopped and writeConcern=3, the log cannot currently commit.
-          const {participants: {[leader]: {response: status}}} = log.status();
-          if (status.lastCommitStatus.reason !== "QuorumSizeNotReached") {
-            return new Error(`Expected status to be QuorumSizeNotReached, but is ${status.lastCommitStatus.reason}. Full status is: ${JSON.stringify(status)}`);
+            // As followers[0] is stopped and writeConcern=3, the log cannot currently commit.
+            const {participants: {[leader]: {response: status}}} = log.status();
+            if (status.lastCommitStatus.reason !== "QuorumSizeNotReached") {
+              return new Error(`Expected status to be QuorumSizeNotReached, but is ${status.lastCommitStatus.reason}. Full status is: ${JSON.stringify(status)}`);
+            }
+            if (!(status.local.commitIndex < logIdx)) {
+              return new Error(`Commit index is ${status.local.commitIndex}, but should be lower than ${JSON.stringify(logIdx)}.`);
+            }
+            return true;
           }
-          if (!(status.local.commitIndex < logIdx)) {
-            return new Error(`Commit index is ${status.local.commitIndex}, but should be lower than ${JSON.stringify(logIdx)}.`);
-          }
-          return true;
-        }
       );
 
       // wait for followers[1] to have received the log entries, and the leader to take note of that
       waitFor(() => {
         const followerSpearhead = log.status().participants[leader].response.follower[followers[1]].spearhead.index;
         return logIdx === followerSpearhead
-          || new Error(`Expected spearhead of ${followers[1]} to be ${logIdx}, but is ${followerSpearhead}.`);
+            || new Error(`Expected spearhead of ${followers[1]} to be ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       // stop the other follower as well
@@ -184,7 +185,7 @@ const replicatedLogRegressionSuite = function () {
       waitFor(() => {
         const followerSpearhead = log.status().participants[leader].response.follower[followers[0]].spearhead.index;
         return logIdx === followerSpearhead
-          || new Error(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
+            || new Error(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       { // followers[1] got the log entry before it was stopped, and followers[0] just got it now, so it should be committed.
@@ -202,6 +203,83 @@ const replicatedLogRegressionSuite = function () {
       }
       replicatedLogDeleteTarget(database, logId);
     },
+
+    testWriteConcernBiggerThanReplicationFactorOnCreate: function () {
+      /*
+        This test creates a replicated log with writeConcern 5 but only three
+        participants. It then asserts that the supervision refuses with a
+        StatusReport containing `TargetNotEnoughParticipants`.
+        After that we modify the writeConcern in target.
+        Then we wait for a leader to be established.
+       */
+      const replicationFactor = 3;
+      const writeConcern = 5;
+      const logId = helper.nextUniqueLogId();
+      const servers = _.sampleSize(helper.dbservers, replicationFactor);
+      helper.replicatedLogSetTarget(database, logId, {
+        id: logId,
+        config: {writeConcern, waitForSync: false},
+        participants: helper.getParticipantsObjectForServers(servers),
+        supervision: {maxActionsTraceLength: 20},
+      });
+
+      waitFor(function () {
+        const {current} = helper.readReplicatedLogAgency(database, logId);
+        if (!current || !current.supervision || !current.supervision.StatusReport) {
+          return Error("Status report not yet set");
+        }
+
+        for (const report of current.supervision.StatusReport) {
+          if (report.type === "TargetNotEnoughParticipants") {
+            return true;
+          }
+        }
+
+        return Error("Missing status report for `TargetNotEnoughParticipants`");
+      });
+
+      helper.updateReplicatedLogTarget(database, logId, function (target) {
+        target.config.writeConcern = 2;
+      });
+      waitFor(preds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
+    },
+
+    testWriteConcernBiggerThanReplicationFactor: function () {
+      /*
+        This test creates a replicated log with writeConcern 2 and 3 participants.
+        Then we set the writeConcern to 5 and wait for the leader to fail
+        to commit. After that we revert to 3 and expect the leader to commit.
+       */
+      const replicationFactor = 3;
+      const writeConcern = 2;
+      const logId = helper.nextUniqueLogId();
+      const servers = _.sampleSize(helper.dbservers, replicationFactor);
+      helper.replicatedLogSetTarget(database, logId, {
+        id: logId,
+        config: {writeConcern, waitForSync: false},
+        participants: helper.getParticipantsObjectForServers(servers),
+        supervision: {maxActionsTraceLength: 20},
+        version: 1,
+      });
+      waitFor(preds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
+
+      helper.updateReplicatedLogTarget(database, logId, function (target) {
+        target.config.writeConcern = 5;
+        target.version += 1;
+      });
+
+      waitFor(preds.replicatedLogLeaderCommitFail(database, logId, "FewerParticipantsThanWriteConcern"));
+
+      let lastVersion;
+      helper.updateReplicatedLogTarget(database, logId, function (target) {
+        target.config.writeConcern = 2;
+        lastVersion = target.version += 1;
+      });
+
+      waitFor(preds.replicatedLogTargetVersion(database, logId, lastVersion));
+    },
+
+
   };
 };
 

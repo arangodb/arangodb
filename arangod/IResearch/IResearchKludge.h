@@ -46,7 +46,7 @@ void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
 void mangleString(std::string& name);
 
-void mangleField(std::string& name, bool isSearchFilter,
+void mangleField(std::string& name, bool isOldMangling,
                  iresearch::FieldMeta::Analyzer const& analyzer);
 
 }  // namespace arangodb::iresearch::kludge
