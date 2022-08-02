@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
+#include <memory>
 #include <string_view>
 #include <thread>
 
@@ -33,6 +34,8 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/Conductor/LoadingState.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -165,26 +168,12 @@ Conductor::~Conductor() {
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
   _timing.total.start();
-  _timing.loading.start();
-
-  _globalSuperstep = 0;
-
-  updateState(ExecutionState::LOADING);
-  _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
-
-  LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
-  auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
-  if (res != TRI_ERROR_NO_ERROR) {
-    updateState(ExecutionState::CANCELED);
-    _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
-    LOG_PREGEL("30171", ERR) << "Not all DBServers started the execution";
-  }
+  changeState(conductor::StateType::Loading);
 }
 
 // only called by the conductor, is protected by the
 // mutex locked in finishedGlobalStep
 bool Conductor::_startGlobalStep() {
-  updateState(ExecutionState::RUNNING);
   if (_feature.isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -359,23 +348,13 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
 
   auto loadedEvent = deserialize<GraphLoaded>(data);
 
-  _ensureUniqueResponse(loadedEvent.senderId);
-  if (_state != ExecutionState::LOADING) {
-    LOG_PREGEL("10f48", WARN)
-        << "We are not in a state where we expect a response";
-    return;
-  }
+  receive(loadedEvent);
 
-  _totalVerticesCount += loadedEvent.vertexCount;
-  _totalEdgesCount += loadedEvent.edgeCount;
-
+  // TODO remove when rest of function is moved to Computing state
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
 
-  LOG_PREGEL("76631", INFO)
-      << "Running Pregel " << _algorithm->name() << " with "
-      << _totalVerticesCount << " vertices, " << _totalEdgesCount << " edges";
   if (_masterContext) {
     _masterContext->_globalSuperstep = 0;
     _masterContext->_vertexCount = _totalVerticesCount;
@@ -384,10 +363,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     _masterContext->preApplication();
   }
 
-  _timing.loading.finish();
   _timing.computation.start();
-
-  _feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
   _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
   _startGlobalStep();
 }
@@ -1140,4 +1116,16 @@ void Conductor::updateState(ExecutionState state) {
       _state == ExecutionState::FATAL_ERROR) {
     _expires = std::chrono::system_clock::now() + _ttl;
   }
+}
+
+auto Conductor::changeState(conductor::StateType name) -> void {
+  switch (name) {
+    case conductor::StateType::Loading:
+      state = std::make_unique<conductor::Loading>(*this);
+      break;
+    case conductor::StateType::Placeholder:
+      state = std::make_unique<conductor::Placeholder>();
+      break;
+  };
+  run();
 }

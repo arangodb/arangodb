@@ -26,12 +26,20 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
+#include "VocBase/Methods/Tasks.h"
 #include "velocypack/Slice.h"
 #include <cstdint>
 #include <optional>
 #include <string>
 
 namespace arangodb::pregel {
+
+enum class MessageType { GraphLoaded };
+
+struct Message {
+  virtual auto type() const -> MessageType = 0;
+  virtual ~Message(){};
+};
 
 struct AggregatorWrapper {
   std::shared_ptr<AggregatorHandler> aggregators = nullptr;
@@ -49,11 +57,20 @@ auto inspect(Inspector& f, AggregatorWrapper& x) {
 
 // ------ events sent from worker to conductor -------
 
-struct GraphLoaded {
+struct GraphLoaded : Message {
+  MessageType t = MessageType::GraphLoaded;
   std::string senderId;
   uint64_t executionNumber;
   uint64_t vertexCount;
   uint64_t edgeCount;
+  GraphLoaded(){};
+  GraphLoaded(std::string senderId, uint64_t executionNumber,
+              uint64_t vertexCount, uint64_t edgeCount)
+      : senderId{senderId},
+        executionNumber{executionNumber},
+        vertexCount{vertexCount},
+        edgeCount{edgeCount} {}
+  auto type() const -> MessageType override { return t; }
 };
 
 template<typename Inspector>

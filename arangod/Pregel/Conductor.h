@@ -35,6 +35,8 @@
 
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/Conductor/LoadingState.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
@@ -66,6 +68,7 @@ struct Error {
 
 class Conductor : public std::enable_shared_from_this<Conductor> {
   friend class PregelFeature;
+  friend struct conductor::Loading;
 
   ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;
@@ -167,6 +170,11 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
  private:
   void cancelNoLock();
   void updateState(ExecutionState state);
+
+  std::unique_ptr<conductor::State> state;
+  auto changeState(conductor::StateType name) -> void;
+  auto run() -> void { state->run(); }
+  auto receive(Message const& message) -> void { state->receive(message); }
 };
 }  // namespace pregel
 }  // namespace arangodb
