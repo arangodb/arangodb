@@ -37,4 +37,8 @@ void BlackHoleStateMachineFeature::start() {
 }
 
 BlackHoleStateMachineFeature::BlackHoleStateMachineFeature(Server& server)
-    : ArangodFeature{server, *this} {}
+    : ArangodFeature{server, *this} {
+  startsAfter<ReplicatedStateAppFeature>();
+  onlyEnabledWith<ReplicatedStateAppFeature>();
+  setOptional(true);
+}

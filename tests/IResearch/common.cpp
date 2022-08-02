@@ -229,6 +229,8 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_column_existence const&>(filter);
   } else if (type == irs::type<empty>::id()) {
     return os << static_cast<empty const&>(filter);
+  } else if (type == irs::type<arangodb::iresearch::ByExpression>::id()) {
+    return os << "ByExpression";
   } else {
     return os << "[Unknown filter]";
   }
@@ -716,7 +718,8 @@ void assertFilterOptimized(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     &actualFilter, ctx, filterCtx, viewNode->filterCondition())
                     .ok());
@@ -779,7 +782,8 @@ void assertExpressionFilter(
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                      nullptr, ctx, filterCtx, *filterNode)
                      .ok()));
@@ -808,7 +812,8 @@ void assertExpressionFilter(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                      &actual, ctx, filterCtx, *filterNode)
                      .ok()));
@@ -910,7 +915,8 @@ void buildActualFilter(
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     nullptr, ctx, filterCtx, *filterNode)
                     .ok());
@@ -936,7 +942,8 @@ void buildActualFilter(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     dynamic_cast<irs::boolean_filter*>(&actual), ctx, filterCtx,
                     *filterNode)
@@ -950,7 +957,8 @@ void assertFilter(
     aql::ExpressionContext* exprCtx /*= nullptr*/,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& refName /*= "d"*/,
-    arangodb::iresearch::FilterOptimization filterOptimization) {
+    arangodb::iresearch::FilterOptimization filterOptimization /*= NONE*/,
+    bool searchQuery /*= true*/, bool oldMangling /*= true*/) {
   SCOPED_TRACE(testing::Message("assertFilter failed for query:<")
                << queryString << "> parseOk:" << parseOk
                << " execOk:" << execOk);
@@ -1006,10 +1014,12 @@ void assertFilter(
         .trx = &trx,
         .ref = ref,
         .filterOptimization = filterOptimization,
-        .isSearchQuery = true};
+        .isSearchQuery = searchQuery,
+        .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((parseOk == arangodb::iresearch::FilterFactory::filter(
                                 nullptr, ctx, filterCtx, *filterNode)
                                 .ok()));
@@ -1033,10 +1043,12 @@ void assertFilter(
         .index = &irs::sub_reader::empty(),
         .ref = ref,
         .filterOptimization = filterOptimization,
-        .isSearchQuery = true};
+        .isSearchQuery = searchQuery,
+        .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(
                           &actual, ctx, filterCtx, *filterNode)
                           .ok());
@@ -1053,9 +1065,11 @@ void assertFilterSuccess(
     irs::filter const& expected, aql::ExpressionContext* exprCtx /*= nullptr*/,
     std::shared_ptr<velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& refName /*= "d"*/,
-    arangodb::iresearch::FilterOptimization filterOptimization) {
+    arangodb::iresearch::FilterOptimization filterOptimization /*= NONE*/,
+    bool searchQuery /*= true*/, bool oldMangling /*= true*/) {
   return assertFilter(vocbase, true, true, queryString, expected, exprCtx,
-                      bindVars, refName, filterOptimization);
+                      bindVars, refName, filterOptimization, searchQuery,
+                      oldMangling);
 }
 
 void assertFilterFail(

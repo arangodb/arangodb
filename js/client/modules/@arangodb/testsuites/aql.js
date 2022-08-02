@@ -225,11 +225,9 @@ function shellClientTransaction(options) {
   opts = ensureCoordinators(opts, 2);
   opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
 
-  // We need a different supervision frequency for replication 2, because collection creation takes longer.
   let moreOptions = {
     "agency.supervision-ok-threshold": "15",
     "agency.supervision-grace-period": "30",
-    "agency.supervision-frequency": "0.1"
   };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_transaction', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;

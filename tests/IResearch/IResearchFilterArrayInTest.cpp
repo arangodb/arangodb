@@ -1758,7 +1758,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
 
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
@@ -1878,7 +1878,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                                                     .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          nullptr, ctx, filterCtx, *filterNode)
@@ -1904,7 +1904,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
 
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
@@ -2025,7 +2025,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                                                     .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          nullptr, ctx, filterCtx, *filterNode)
@@ -2051,7 +2051,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          &actual, ctx, filterCtx, *filterNode)
@@ -2171,7 +2171,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                                                     .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          nullptr, ctx, filterCtx, *filterNode)
@@ -2197,7 +2197,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          &actual, ctx, filterCtx, *filterNode)
@@ -3738,7 +3738,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
                                                     .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          nullptr, ctx, filterCtx, *filterNode)
@@ -3764,7 +3764,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          &actual, ctx, filterCtx, *filterNode)
@@ -3882,7 +3882,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
                                                     .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          nullptr, ctx, filterCtx, *filterNode)
@@ -3908,7 +3908,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          &actual, ctx, filterCtx, *filterNode)
@@ -4026,7 +4026,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
                                                     .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          nullptr, ctx, filterCtx, *filterNode)
@@ -4052,7 +4052,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
             .isSearchQuery = true};
         arangodb::iresearch::FieldMeta::Analyzer analyzer{
             arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-        arangodb::iresearch::FilterContext const filterCtx{.analyzer =
+        arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
                                                                analyzer};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                          &actual, ctx, filterCtx, *filterNode)

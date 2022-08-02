@@ -191,7 +191,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility,
+    std::pair<bool, bool> volatility, bool isOldMangling,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
@@ -210,6 +210,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _volatileSort(volatility.second),
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter(_volatileSort || volatility.first),
+      _isOldMangling(isOldMangling),
       _varInfoMap(varInfoMap),
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
@@ -284,6 +285,10 @@ bool IResearchViewExecutorInfos::volatileSort() const noexcept {
 
 bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
   return _volatileFilter;
+}
+
+bool IResearchViewExecutorInfos::isOldMangling() const noexcept {
+  return _isOldMangling;
 }
 
 const std::pair<const arangodb::iresearch::IResearchSortBase*, size_t>&
@@ -717,7 +722,8 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
       .index = _reader.get(),
       .ref = &infos().outVariable(),
       .filterOptimization = infos().filterOptimization(),
-      .isSearchQuery = true};
+      .isSearchQuery = true,
+      .isOldMangling = infos().isOldMangling()};
 
   // `_volatileSort` implies `_volatileFilter`
   if (infos().volatileFilter() || !_isInitialized) {
@@ -726,7 +732,13 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
     FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-    FilterContext const filterCtx{.analyzer = analyzer};
+    // if (!infos().isOldMangling()) {
+    //   TODO(SEARCH-342)
+    //    map[field_path, full_analyzer_name] stored in Coordinator view
+    //    on DBServer create from it map[field_path, analyzer*]
+    //    and here crete local AnalyzerProvider functor
+    // }
+    FilterContext const filterCtx{.contextAnalyzer = analyzer};
 
     auto rv = FilterFactory::filter(&root, queryCtx, filterCtx,
                                     infos().filterCondition());

@@ -650,6 +650,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   RestHandler/RestLogHandler.cpp
   RestHandler/RestPrototypeStateHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
+  Replication2/MetricsHelper.cpp
 )
 
 set (LIB_ARANGO_METRICS_SOURCES
@@ -904,9 +905,11 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/CountCache.cpp
   Transaction/Helpers.cpp
   Transaction/Manager.cpp
+  Transaction/ManagedContext.cpp
   Transaction/ManagerFeature.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
+  Transaction/ReplicatedContext.cpp
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
@@ -1147,6 +1150,7 @@ target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
 target_link_libraries(arango_replication2 fmt)
 target_link_libraries(arango_replication2 arango_network)
+target_link_libraries(arango_replication2 arangoserver)
 
 target_link_libraries(arango_rocksdb rocksdb)
 target_link_libraries(arango_rocksdb arango_cache)

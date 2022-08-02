@@ -523,7 +523,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 
 auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
-    ClusterCollectionCreationInfo const& info)
+    ClusterCollectionCreationInfo const& info, std::string const& databaseName)
     -> replication2::replicated_state::agency::Target {
   using namespace replication2::replicated_state;
 
@@ -532,7 +532,8 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters = document::DocumentCoreParameters{info.collectionID};
+  auto parameters =
+      document::DocumentCoreParameters{info.collectionID, databaseName};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
@@ -1993,7 +1994,7 @@ void ClusterInfo::loadCurrent() {
   _current.swap(newCurrent);
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
-  LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
       << "Updating current in ClusterInfo: version=" << changeSet.version
       << " index=" << _currentIndex;
 
@@ -3299,7 +3300,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        auto spec = createDocumentStateSpec(shardId, serverIds, info);
+        auto spec =
+            createDocumentStateSpec(shardId, serverIds, info, databaseName);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
@@ -7241,13 +7243,12 @@ void ClusterInfo::triggerWaiting(
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp =
-        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !_server.isStopping()) {
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp] { pp->setValue(Result()); });
+      scheduler->queue(
+          RequestLane::CLUSTER_INTERNAL,
+          [pp = std::move(pit->second)]() mutable { pp.setValue(Result()); });
     } else {
-      pp->setValue(Result(_syncerShutdownCode));
+      pit->second.setValue(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }
