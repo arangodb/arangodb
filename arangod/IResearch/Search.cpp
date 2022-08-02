@@ -53,7 +53,6 @@ std::shared_ptr<LogicalCollection> getCollection(
   if (cidOrName.isString()) {
     return resolver.getCollection(cidOrName.stringView());
   } else if (cidOrName.isNumber<DataSourceId::BaseType>()) {
-    std::this_thread::sleep_for(std::chrono::seconds{10});
     auto const cid = cidOrName.getNumber<DataSourceId::BaseType>();
     absl::AlphaNum const cidStr{cid};  // TODO make resolve by id?
     return resolver.getCollection(cidStr.Piece());
@@ -98,7 +97,8 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
   if (!definition.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER};
   }
-  if (!definition.hasKey("name") || !definition.hasKey("indexes")) {
+  auto const nameSlice = definition.get("name");
+  if (nameSlice.isNone()) {
     return {TRI_ERROR_BAD_PARAMETER};
   }
   if (ServerState::instance()->isCoordinator()) {
@@ -129,7 +129,7 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     LogicalView::ptr impl;
     auto r = storage_helper::construct(impl, vocbase, definition);
     if (!r.ok()) {
-      auto name = definition.get("name").copyString();  // TODO stringView()
+      auto name = nameSlice.copyString();  // TODO stringView()
       events::CreateView(vocbase.name(), name, r.errorNumber());
       return r;
     }
@@ -146,7 +146,14 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
              ServerState::instance()->isSingleServer());
   auto impl = std::make_shared<Search>(vocbase, definition);
   auto indexesSlice = definition.get("indexes");
-  auto it = velocypack::ArrayIterator{indexesSlice};
+  if (indexesSlice.isNone()) {
+    view = impl;
+    return {};
+  }
+  if (!indexesSlice.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER, "indexes field should be array"};
+  }
+  velocypack::ArrayIterator it{indexesSlice};
   CollectionNameResolver resolver{vocbase};
   for (; it.valid(); ++it) {
     auto value = *it;
@@ -172,7 +179,6 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
     TRI_ASSERT(indexes.back());
   }
   view = impl;
-  TRI_ASSERT(view);
   return {};
 }
 
@@ -270,14 +276,14 @@ ViewSnapshot::Links Search::getLinks() const {
 
 Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
                           bool partialUpdate) {
-  if (!ServerState::instance()->isSingleServer()) {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
+  auto indexesSlice = definition.get("indexes");
+  if (indexesSlice.isNone()) {
+    indexesSlice = velocypack::Slice::emptyArraySlice();
+  }
+  velocypack::ArrayIterator it{indexesSlice};
+  if (it.size() == 0 && partialUpdate) {
     return {};
   }
-  auto indexesSlice = definition.hasKey("indexes")
-                          ? definition.get("indexes")
-                          : velocypack::Slice::emptyArraySlice();
-  auto it = velocypack::ArrayIterator{indexesSlice};
   CollectionNameResolver resolver{vocbase()};
   std::unique_lock lock{_mutex};
   if (!partialUpdate) {
@@ -327,6 +333,10 @@ Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
       TRI_ASSERT(indexes.back());
     }
   }
+  if (ServerState::instance()->isCoordinator()) {
+    return cluster_helper::properties(*this, true /*means under lock*/);
+  }
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
 #ifdef USE_PLAN_CACHE
   aql::PlanCache::instance()->invalidate(&vocbase());
 #endif
@@ -378,7 +388,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
       for (auto& handle : handles) {
         if (auto index = handle->lock(); index) {
           if (ctx == Serialization::Properties) {
-            auto collectionName = resolver.getCollectionName(cid);
+            auto collectionName = resolver.getCollectionNameCluster(cid);
             // TODO(MBkkt) remove dynamic_cast
             auto* rawIndex = dynamic_cast<Index*>(index.get());
             if (collectionName.empty() || !rawIndex) {

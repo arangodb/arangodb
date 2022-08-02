@@ -1779,13 +1779,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                   concatT("unable to start transaction: ", res.errorMessage()));
   }
   auto guard = scopeGuard([trx = trx.get()]() noexcept {
-    try {
+    auto res = basics::catchToResult([&]() -> Result {
       if (trx->status() == transaction::Status::RUNNING) {
-        trx->abort();
+        return trx->abort();
       }
-    } catch (std::exception const& ex) {
+      return {};
+    });
+    if (res.fail()) {
       LOG_TOPIC("1a537", ERR, Logger::REPLICATION)
-          << "Failed to abort transaction: " << ex.what();
+          << "Failed to abort transaction: " << res;
     }
   });
 

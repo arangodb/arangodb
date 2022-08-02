@@ -333,7 +333,8 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
 
   auto event = deserialize<StatusUpdated>(data);
 
-  LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
+  LOG_PREGEL("76632", DEBUG)
+      << fmt::format("Update received {}", data.toJson());
 
   _status.updateWorkerStatus(event.senderId, std::move(event.status));
 }

@@ -135,7 +135,6 @@ function OptionsTestSuite () {
         if (db.UnitTestsExclusiveCollection2.exists(k)) {
           let doc = db.UnitTestsExclusiveCollection2.document(k);
           assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, doc.errorNum);
-          assertEqual(409, doc.code); // conflict
           assertMatch( // it is possible to get two different errors messages here (two different internal states can appear)
             /(precondition failed|timeout waiting to lock key.*Operation timed out)/, doc.errorMessage);
           assertMatch(/XXX/, doc.errorMessage);

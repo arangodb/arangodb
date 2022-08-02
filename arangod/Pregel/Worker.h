@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
+#include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
@@ -129,7 +130,8 @@ class Worker : public IWorker {
   std::vector<OutCache<M>*> _outCaches;
 
   GssObservables _currentGssObservables;
-  AllGssStatus _allGssStatus;
+  Guarded<AllGssStatus> _allGssStatus;
+
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
   ReportManager _reports;
@@ -154,17 +156,8 @@ class Worker : public IWorker {
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
-  Status _observeStatus() const {
-    auto currentGss = _currentGssObservables.observe();
-    auto fullGssStatus = _allGssStatus;
-    if (!currentGss.isDefault()) {
-      fullGssStatus.gss.emplace_back(currentGss);
-    }
-    return Status{.graphStoreStatus = _graphStore->status(),
-                  .allGssStatus = fullGssStatus.gss.size() > 0
-                                      ? std::optional{fullGssStatus}
-                                      : std::nullopt};
-  }
+  [[nodiscard]] auto _observeStatus() -> Status const;
+  [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
   std::function<void()> _statusCallback();
   void _createGssFinishedEvent(VPackBuilder& b);

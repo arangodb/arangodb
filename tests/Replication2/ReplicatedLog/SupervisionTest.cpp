@@ -32,6 +32,7 @@
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/Helper/AgencyLogBuilder.h"
 
 #include "velocypack/Parser.h"
 #include "Inspection/VPack.h"
@@ -40,6 +41,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::test;
 
 struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
@@ -210,7 +212,12 @@ TEST_F(SupervisionLogTest, test_log_not_created) {
   EXPECT_TRUE(std::holds_alternative<NoActionPossibleAction>(r));
 }
 
-struct LogSupervisionTest : ::testing::Test {};
+struct LogSupervisionTest : ::testing::Test {
+  LogId const logId = LogId{12};
+  ParticipantFlags const defaultFlags{};
+  LogTargetConfig const defaultConfig{2, 2, true};
+  LogPlanConfig const defaultPlanConfig{2, true};
+};
 
 TEST_F(LogSupervisionTest, test_leader_not_failed) {
   // Leader is not failed and the reboot id is as expected
@@ -308,6 +315,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
                          .commitStatus = std::nullopt};
 
   current.supervision.emplace(LogCurrentSupervision{});
+  current.supervision->assumedWriteConcern = 3;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -453,6 +461,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
+  current.supervision->assumedWriteConcern = 3;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -642,4 +651,45 @@ TEST_F(
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
   ASSERT_EQ(effectiveWriteConcern, 2);
+}
+
+TEST_F(LogSupervisionTest, test_convergence_no_leader_established) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(defaultConfig)
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags)
+      .setTargetVersion(5);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags);
+  log.setPlanLeader("A").setPlanConfig(defaultPlanConfig);
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  {
+    SupervisionContext ctx;
+    checkReplicatedLog(ctx, log.get(), health);
+    EXPECT_FALSE(ctx.hasAction());
+  }
+  log.establishLeadership();
+  {
+    SupervisionContext ctx;
+    checkReplicatedLog(ctx, log.get(), health);
+    EXPECT_TRUE(ctx.hasAction());
+    auto const& r = ctx.getAction();
+    EXPECT_TRUE(std::holds_alternative<ConvergedToTargetAction>(r));
+  }
 }

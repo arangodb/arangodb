@@ -23,8 +23,6 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 
-#include <stdlib.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -41,6 +39,8 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Translator.h"
+
+#include <cstdlib>
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -114,7 +114,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
           << "loading override '" << local << "'";
 
       if (!parser.parse(local, true)) {
-        FATAL_ERROR_EXIT();
+        FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
       }
     }
 
@@ -122,7 +122,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
         << "using user supplied config file '" << _file << "'";
 
     if (!parser.parse(_file, true)) {
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
     }
 
     return;
@@ -148,6 +148,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   }
 
   std::vector<std::string> locations;
+  locations.reserve(4);
 
   std::string current = FileUtils::currentDirectory().result();
   // ./etc/relative/ is always first choice, if it exists
@@ -184,7 +185,9 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
           << "found config file '" << name << "'";
       filename = name;
       break;
-    } else if (checkArangoImp) {
+    }
+
+    if (checkArangoImp) {
       name = FileUtils::buildFilename(location, "arangoimp.conf");
       LOG_TOPIC("b629e", TRACE, Logger::CONFIG)
           << "checking config file '" << name << "'";
@@ -212,7 +215,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
         << "loading override '" << local << "'";
 
     if (!parser.parse(local, true)) {
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
     }
   } else {
     LOG_TOPIC("d601e", TRACE, Logger::CONFIG) << "no override file found";
@@ -231,15 +234,16 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
         locationMsg += "'" + FileUtils::buildFilename(it, basename) + "'";
       }
       locationMsg += ")";
-      options->failNotice("cannot find configuration file\n\n" + locationMsg);
-      exit(EXIT_FAILURE);
+      options->failNotice(TRI_EXIT_CONFIG_NOT_FOUND,
+                          "cannot find configuration file\n\n" + locationMsg);
+      FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
     } else {
       return;
     }
   }
 
   if (!parser.parse(filename, true)) {
-    exit(EXIT_FAILURE);
+    FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
   }
 }
 

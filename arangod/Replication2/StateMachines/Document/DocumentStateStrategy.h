@@ -22,7 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+
+#include "Futures/Future.h"
 #include "RestServer/arangod.h"
+#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
+#include "Transaction/Options.h"
+#include "Utils/DatabaseGuard.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
 #include <memory>
@@ -32,7 +39,9 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class AgencyCache;
+class DatabaseFeature;
 class MaintenanceFeature;
+class TransactionState;
 
 template<typename T>
 class ResultT;
@@ -45,34 +54,33 @@ class LogId;
 namespace velocypack {
 class Builder;
 }
-};  // namespace arangodb
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
+
 struct IDocumentStateAgencyHandler {
   virtual ~IDocumentStateAgencyHandler() = default;
-  virtual auto getCollectionPlan(std::string const& database,
-                                 std::string const& collectionId)
+  virtual auto getCollectionPlan(std::string const& collectionId)
       -> std::shared_ptr<velocypack::Builder> = 0;
   virtual auto reportShardInCurrent(
-      std::string const& database, std::string const& collectionId,
-      std::string const& shardId,
+      std::string const& collectionId, std::string const& shardId,
       std::shared_ptr<velocypack::Builder> const& properties) -> Result = 0;
 };
 
 class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
  public:
-  explicit DocumentStateAgencyHandler(ArangodServer& server,
+  explicit DocumentStateAgencyHandler(GlobalLogIdentifier gid,
+                                      ArangodServer& server,
                                       AgencyCache& agencyCache);
-  auto getCollectionPlan(std::string const& database,
-                         std::string const& collectionId)
+  auto getCollectionPlan(std::string const& collectionId)
       -> std::shared_ptr<velocypack::Builder> override;
   auto reportShardInCurrent(
-      std::string const& database, std::string const& collectionId,
-      std::string const& shardId,
+      std::string const& collectionId, std::string const& shardId,
       std::shared_ptr<velocypack::Builder> const& properties)
       -> Result override;
 
  private:
+  GlobalLogIdentifier _gid;
   ArangodServer& _server;
   AgencyCache& _agencyCache;
 };
@@ -80,22 +88,101 @@ class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
   virtual auto createLocalShard(
-      GlobalLogIdentifier const& gid, std::string const& collectionId,
+      std::string const& collectionId,
       std::shared_ptr<velocypack::Builder> const& properties)
       -> ResultT<std::string> = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
  public:
-  explicit DocumentStateShardHandler(MaintenanceFeature& maintenanceFeature);
+  explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
+                                     MaintenanceFeature& maintenanceFeature);
   static auto stateIdToShardId(LogId logId) -> std::string;
-  auto createLocalShard(GlobalLogIdentifier const& gid,
-                        std::string const& collectionId,
+  auto createLocalShard(std::string const& collectionId,
                         std::shared_ptr<velocypack::Builder> const& properties)
       -> ResultT<std::string> override;
 
  private:
+  GlobalLogIdentifier _gid;
   MaintenanceFeature& _maintenanceFeature;
+};
+
+struct IDocumentStateTransaction {
+  virtual ~IDocumentStateTransaction() = default;
+
+  [[nodiscard]] virtual auto apply(DocumentLogEntry const& entry)
+      -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto commit() -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto abort() -> futures::Future<Result> = 0;
+};
+
+class DocumentStateTransaction
+    : public IDocumentStateTransaction,
+      public std::enable_shared_from_this<DocumentStateTransaction> {
+ public:
+  explicit DocumentStateTransaction(
+      std::unique_ptr<transaction::Methods> methods);
+  auto apply(DocumentLogEntry const& entry) -> futures::Future<Result> override;
+  auto commit() -> futures::Future<Result> override;
+  auto abort() -> futures::Future<Result> override;
+
+ private:
+  std::unique_ptr<transaction::Methods> _methods;
+};
+
+struct IDocumentStateTransactionHandler {
+  virtual ~IDocumentStateTransactionHandler() = default;
+  virtual auto ensureTransaction(DocumentLogEntry entry)
+      -> std::shared_ptr<IDocumentStateTransaction> = 0;
+  virtual void removeTransaction(TransactionId tid) = 0;
+};
+
+class DocumentStateTransactionHandler
+    : public IDocumentStateTransactionHandler {
+ public:
+  explicit DocumentStateTransactionHandler(GlobalLogIdentifier gid,
+                                           DatabaseFeature& databaseFeature);
+  auto ensureTransaction(DocumentLogEntry entry)
+      -> std::shared_ptr<IDocumentStateTransaction> override;
+  void removeTransaction(TransactionId tid) override;
+
+ private:
+  auto getTrx(TransactionId tid) -> std::shared_ptr<DocumentStateTransaction>;
+
+ private:
+  GlobalLogIdentifier _gid;
+  DatabaseGuard _db;
+  std::unordered_map<TransactionId, std::shared_ptr<DocumentStateTransaction>>
+      _transactions;
+};
+
+struct IDocumentStateHandlersFactory {
+  virtual ~IDocumentStateHandlersFactory() = default;
+  virtual auto createAgencyHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateAgencyHandler> = 0;
+  virtual auto createShardHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateShardHandler> = 0;
+  virtual auto createTransactionHandler(GlobalLogIdentifier gid)
+      -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
+};
+
+class DocumentStateHandlersFactory : public IDocumentStateHandlersFactory {
+ public:
+  DocumentStateHandlersFactory(ArangodServer& server, AgencyCache& agencyCache,
+                               MaintenanceFeature& maintenaceFeature,
+                               DatabaseFeature& databaseFeature);
+  auto createAgencyHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateAgencyHandler> override;
+  auto createShardHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateShardHandler> override;
+  auto createTransactionHandler(GlobalLogIdentifier gid)
+      -> std::unique_ptr<IDocumentStateTransactionHandler> override;
+
+ private:
+  ArangodServer& _server;
+  AgencyCache& _agencyCache;
+  MaintenanceFeature& _maintenanceFeature;
+  DatabaseFeature& _databaseFeature;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document
