@@ -137,6 +137,8 @@ Result fillIndexSingleThreaded(
 
   OperationOptions options;
 
+  LOG_DEVEL << __FILE__ << __LINE__ << " " << count;
+
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
 
@@ -151,7 +153,11 @@ Result fillIndexSingleThreaded(
 
     if (numDocsWritten % 1024 == 0) {  // commit buffered writes
       if (progress != nullptr && count > 0) {
-        (*progress)(docsProcessed.load()*100/count);
+        auto pres = (*progress)(docsProcessed.load(std::memory_order_relaxed)*100/count);
+        if (!pres.ok()) {
+          res.reset(TRI_ERROR_TRANSACTION_ABORTED, pres.errorMessage());
+          break;
+        }
       }
 
       res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,

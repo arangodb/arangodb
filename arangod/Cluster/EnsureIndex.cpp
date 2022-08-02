@@ -91,7 +91,6 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature,
 EnsureIndex::~EnsureIndex() = default;
 
 arangodb::Result EnsureIndex::setProgress(uint64_t u) {
-  LOG_DEVEL << __FILE__ << __LINE__ << " " << u;
   _progress = u;
   return arangodb::Result();
 }
@@ -163,7 +162,6 @@ bool EnsureIndex::first() {
     VPackBuilder index;
     auto res = methods::Indexes::ensureIndex(col.get(), body.slice(), true,
                                              index, std::move(lambda));
-    LOG_DEVEL << res;
     result(res);
 
     if (res.ok()) {
