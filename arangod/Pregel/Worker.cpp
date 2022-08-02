@@ -62,7 +62,7 @@ using namespace arangodb::pregel;
       &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 template<typename V, typename E, typename M>
-std::function<void()> Worker<V, E, M>::_statusCallback() {
+std::function<void()> Worker<V, E, M>::_makeStatusCallback() {
   return [self = shared_from_this(), this] {
     auto statusUpdatedEvent =
         StatusUpdated{.senderId = ServerState::instance()->getId(),
@@ -195,7 +195,7 @@ void Worker<V, E, M>::setupWorker() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
                    [this, self = shared_from_this(),
-                    statusCallback = std::move(_statusCallback()),
+                    statusCallback = std::move(_makeStatusCallback()),
                     graphLoadedCallback = std::move(graphLoadedCallback)] {
                      try {
                        _graphStore->loadShards(&_config, statusCallback,
@@ -405,7 +405,6 @@ void Worker<V, E, M>::_startProcessing() {
     });
   }
 
-  // TRI_ASSERT(_runningThreads == i);
   LOG_PREGEL("425c3", DEBUG)
       << "Starting processing using " << numT << " threads";
 }
@@ -473,8 +472,7 @@ bool Worker<V, E, M>::_processVertices(
     if (_currentGssObservables.verticesProcessed %
             Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
         0) {
-      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         _statusCallback());
+      _makeStatusCallback()();
     }
   }
   // ==================== send messages to other shards ====================
@@ -544,10 +542,11 @@ void Worker<V, E, M>::_finishedProcessing() {
     _feature.metrics()->pregelMessagesReceived->count(
         _readCache->containedMessageCount());
 
-    _allGssStatus.push(_currentGssObservables.observe());
+    _allGssStatus.doUnderLock([this](AllGssStatus& obj) {
+      obj.push(this->_currentGssObservables.observe());
+    });
     _currentGssObservables.zero();
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       _statusCallback());
+    _makeStatusCallback()();
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -680,7 +679,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup), _statusCallback());
+    _graphStore->storeResults(&_config, std::move(cleanup),
+                              _makeStatusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
@@ -909,6 +909,20 @@ void Worker<V, E, M>::_callConductorWithResponse(
       handle(r.slice());
     }
   }
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::_observeStatus() -> Status const {
+  auto currentGss = _currentGssObservables.observe();
+  auto fullGssStatus = _allGssStatus.copy();
+
+  if (!currentGss.isDefault()) {
+    fullGssStatus.gss.emplace_back(currentGss);
+  }
+  return Status{.graphStoreStatus = _graphStore->status(),
+                .allGssStatus = fullGssStatus.gss.size() > 0
+                                    ? std::optional{fullGssStatus}
+                                    : std::nullopt};
 }
 
 // template types to create

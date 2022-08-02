@@ -2578,7 +2578,7 @@ const executeParallelQuery = (makeQuery, expectedTotalNumberOfNodes = -1) => {
 
   // By this time the expected results contains all allowed results, each with an assigend counter of 0.
   // The target is to assert later, that only those allowed results are seen, and each is seen exactly ${numberOfStartNodes} many times.
-  const res = db._query(query, {}, {profile: 3});
+  const res = db._query(query);
 
   while (res.hasNext()) {
     const actual = res.next();
@@ -2627,7 +2627,7 @@ const testParallelism = (testGraph, mode) => {
     debugSetFailAt("MutexExecutor::distributeBlock");
     if (isEnterprise()) {
       try {
-        db._query(query, {}, {profile: 3});
+        db._query(query);
         fail();
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_DEBUG.code);

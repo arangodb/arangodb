@@ -29,57 +29,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let internal = require('internal'); // OK: processCsvFile
-const request = require('@arangodb/request');
-
-exports.getServerById = function (id) {
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))[0];
-};
-
-exports.getServersByType = function (type) {
-  const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType);
-};
-
-exports.getEndpointById = function (id) {
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-                              .map(toEndpoint)
-                              .map(endpointToURL)[0];
-};
-
-exports.getEndpointsByType = function (type) {
-  const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
-};
 
 exports.Helper = {
   process: function (file, processor) {
@@ -301,4 +250,20 @@ exports.compareStringIds = function (l, r) {
     return l < r ? -1 : 1;
   }
   return 0;
+};
+
+exports.endpointToURL = (endpoint) => {
+  let protocol = endpoint.split('://')[0];
+  switch(protocol) {
+    case 'ssl':
+      return 'https://' + endpoint.substr(6);
+    case 'tcp':
+      return 'http://' + endpoint.substr(6);
+    default:
+      var pos = endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + endpoint;
+      }
+      return 'http' + endpoint.substr(pos);
+  }
 };

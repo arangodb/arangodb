@@ -340,12 +340,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       }
     }
   }
-  // for index there is no recursive struct and fields array is mandatory
-  auto field = slice.get(kFieldsFieldName);
-  if (!field.isArray() || field.isEmptyArray()) {
-    errorField = kFieldsFieldName;
-    return false;
-  }
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
   if (!InvertedIndexField::init(slice, _analyzerDefinitions, _version,
@@ -353,7 +347,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                 true, errorField)) {
     return false;
   }
-
   _hasNested = std::find_if(_fields.begin(), _fields.end(),
                             [](InvertedIndexField const& r) {
                               return !r._fields.empty();
@@ -818,6 +811,10 @@ bool InvertedIndexField::init(
         return false;
       }
     }
+  }
+  if (rootMode && _fields.empty() && !_includeAllFields) {
+    errorField = kFieldsFieldName;
+    return false;
   }
   return true;
 }

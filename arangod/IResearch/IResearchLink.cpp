@@ -521,6 +521,14 @@ std::string IResearchLink::getCollectionName() const {
   return _meta._collectionName;
 }
 
+bool IResearchLink::hasNested() const noexcept {
+#ifdef USE_ENTERPRISE
+  return _meta._hasNested;
+#else
+  return false;
+#endif
+}
+
 void IResearchLink::insertMetrics() {
   auto& metric =
       _collection.vocbase().server().getFeature<metrics::MetricsFeature>();

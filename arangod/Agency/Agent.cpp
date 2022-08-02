@@ -140,6 +140,24 @@ Agent::Agent(ArangodServer& server, config_t const& config)
   } else {
     _leaderSince = 0;
   }
+
+  auto const notifySupervision = [this](std::string_view, VPackSlice) {
+    _supervision->notify();
+  };
+
+  _spearhead.registerPrefixTrigger("/arango/Target/ReplicatedLogs",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Plan/ReplicatedLogs",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedLogs",
+                                   notifySupervision);
+
+  _spearhead.registerPrefixTrigger("/arango/Target/ReplicatedStates",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Plan/ReplicatedStates",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedStates",
+                                   notifySupervision);
 }
 
 /// This agent's id

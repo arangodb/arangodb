@@ -21,16 +21,17 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "RestServer/DatabaseFeature.h"
 
-#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-
-#include "DocumentStateMachineFeature.h"
-#include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -44,12 +45,13 @@ void DocumentStateMachineFeature::start() {
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
   auto& clusterFeature = s.getFeature<ClusterFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
+  auto& databaseFeature = s.getFeature<DatabaseFeature>();
 
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
-      std::make_shared<DocumentStateAgencyHandler>(
-          s, clusterFeature.agencyCache()),
-      std::make_shared<DocumentStateShardHandler>(maintenanceFeature));
+      std::make_shared<DocumentStateHandlersFactory>(
+          s, clusterFeature.agencyCache(), maintenanceFeature,
+          databaseFeature));
 }
 
 DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)

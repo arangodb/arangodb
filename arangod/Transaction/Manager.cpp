@@ -200,7 +200,7 @@ Manager::ManagedTrx::~ManagedTrx() {
                   opts);  // own state now
     TRI_ASSERT(trx.state()->status() == transaction::Status::RUNNING);
     TRI_ASSERT(trx.isMainTransaction());
-    trx.abort();
+    std::ignore = trx.abort();
   } catch (...) {
     // obviously it is not good to consume all exceptions here,
     // but we are in a destructor and must never throw from here
@@ -1165,12 +1165,13 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
   }
   if (status == transaction::Status::COMMITTED) {
     res = trx.commit();
+
     if (res.fail()) {  // set final status to aborted
       // Note that if the failure point TransactionCommitFail is used, then
       // the trx can still be running here.
       if (trx.state()->isRunning()) {
         // ignore return code here
-        trx.abort();
+        std::ignore = trx.abort();
       }
       abortTombstone();
     }
