@@ -197,6 +197,12 @@ bool inObjectFiltered(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
+#ifdef USE_ENTERPRISE
+bool inNestedObjectFiltered(std::string& buffer,
+                            arangodb::iresearch::FieldMeta const*& context,
+                            arangodb::iresearch::IteratorValue const& value);
+#endif
+
 bool inObject(std::string& buffer,
               arangodb::iresearch::FieldMeta const*& context,
               arangodb::iresearch::IteratorValue const& value) {
@@ -250,9 +256,15 @@ Filter const valueAcceptors[] = {
     // type == Array , trackListPositions == true , includeAllValues == true
     &inArrayOrdered};
 
-Filter getFilter(VPackSlice value,
-                 arangodb::iresearch::FieldMeta const& meta) noexcept {
+Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& meta,
+                 bool nested) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
+
+#ifdef USE_ENTERPRISE
+  if (nested) {
+    return &inNestedObjectFiltered;
+  }
+#endif
 
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions +
                         meta._includeAllFields];
@@ -340,8 +352,8 @@ InvertedIndexFilter const valueAcceptorsInverted[] = {
 
 InvertedIndexFilter getFilter(
     VPackSlice value,
-    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
-        meta) noexcept {
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const& meta,
+    bool) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
   return valueAcceptorsInverted[value.isArray() * 2 + meta._includeAllFields];
@@ -411,7 +423,7 @@ void FieldIterator<IndexMetaStruct>::reset(VPackSlice doc,
   _nameBuffer.clear();
   _disableFlush = false;
   // push the provided 'doc' on stack and initialize current value
-  auto const filter = getFilter(doc, linkMeta);
+  auto const filter = getFilter(doc, linkMeta, false);
   if constexpr (std::is_same_v<IndexMetaStruct,
                                IResearchInvertedIndexMetaIndexingContext>) {
     _missingFieldsMap = linkMeta._missingFieldsMap;
@@ -777,7 +789,8 @@ void FieldIterator<IndexMetaStruct>::next() {
 #endif
           [[fallthrough]];
         case VPackValueType::Object: {
-          auto filter = getFilter(valueSlice, *context);
+          auto filter = getFilter(valueSlice, *context,
+                                  level.type == LevelType::kNestedObjects);
           bool setAnalyzers = pushLevel(valueSlice, *context, filter);
           if (setAnalyzers) {
             // FIXME(Dronplane): use traits
