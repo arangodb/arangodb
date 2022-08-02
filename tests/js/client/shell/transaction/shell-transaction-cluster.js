@@ -30,19 +30,46 @@ const { fail,
   assertTrue,
   assertFalse,
   assertEqual,
-  assertIdentical,
-  assertNotUndefined,
 } = jsunity.jsUnity.assertions;
 
 const arangodb = require('@arangodb');
 const db = arangodb.db;
+const helper = require('@arangodb/test-helper');
 const internal = require('internal');
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
 const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
 const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
+const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
 const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+
+/*
+ * TODO this function is here temporarily and is will be removed once we have a better solution.
+ */
+const syncShardsWithLogs = function(dbn) {
+  const coordinator = replicatedLogsHelper.coordinators[0];
+  let logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
+  let collections = replicatedLogsHelper.readAgencyValueAt(`Plan/Collections/${dbn}`);
+  for (const [colId, colInfo] of Object.entries(collections)) {
+    for (const shardId of Object.keys(colInfo.shards)) {
+      const logId = shardId.slice(1);
+      if (logId in logs) {
+        helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
+      }
+    }
+  }
+  helper.agency.increaseVersion(`Plan/Version`);
+
+  const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
+  replicatedLogsHelper.waitFor(function() {
+    const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
+    if (currentVersion > waitForCurrent) {
+      return true;
+    }
+    return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
+  });
+};
+
 
 /**
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
@@ -397,103 +424,190 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 }
 
 /**
- * TODO
+ * In this test suite we check if the DocumentState can survive modifications to the cluster participants
+ * during transactions.
  */
-function transactionReplication2LeaderRecovery() {
+function transactionReplication2Recovery() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
-  var cn = 'UnitTestsTransaction';
+  const cn = 'UnitTestsTransaction';
   var c = null;
 
-  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} =
-    (function () {
-      let stoppedServers = {};
-      return {
-        setUpAll: function () {
-          db._createDatabase(dbn, {replicationVersion: "2"});
-          db._useDatabase(dbn);
-        },
-        tearDownAll: function () {
-          db._useDatabase("_system");
-          db._dropDatabase(dbn);
-        },
-        stopServer: function (serverId) {
-          if (stoppedServers[serverId] !== undefined) {
-            throw Error(`${serverId} already stopped`);
-          }
-          replicatedLogsHelper.stopServer(serverId);
-          stoppedServers[serverId] = true;
-        },
-        continueServer: function (serverId) {
-          if (stoppedServers[serverId] === undefined) {
-            throw Error(`${serverId} not stopped`);
-          }
-          replicatedLogsHelper.continueServer(serverId);
-          delete stoppedServers[serverId];
-        },
-        resumeAll: function () {
-          Object.keys(stoppedServers).forEach(function (key) {
-            continueServer(key);
-          });
-        },
-      };
-    })();
-
+  const {setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd} =
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
 
   return {
     setUpAll,
     tearDownAll,
-    setUp: function () {
-      db._drop(cn);
-
+    setUp: setUpAnd(() => {
       let rc = replicatedLogsHelper.dbservers.length;
       assertTrue(rc >= 3);
-      c = db._create(cn, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": rc});
-    },
-    tearDown: function () {
-      resumeAll();
-      replicatedLogsHelper.waitFor(replicatedLogsPredicates.allServersHealthy());
+      c = db._create(cn, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+    }),
+    tearDown: tearDownAnd(() => {
       if (c !== null) {
         c.drop();
       }
       c = null;
-    },
+    }),
 
-    testTransactionDuringFailover: function () {
+    testFailoverDuringTransaction: function () {
       const shards = c.shards();
       assertEqual(shards.length, 1);
-
       const shardId = shards[0]
       const logId = shardId.slice(1);
+      const coordinator = replicatedLogsHelper.coordinators[0];
 
       // Start a transaction.
       let trx = db._createTransaction({
         collections: {write: c.name()}
       });
-
       let tc = trx.collection(c.name());
-      tc.insert({_key: 'test2', value: 1});
-      tc.insert({_key: 'test3', value: 2});
+      tc.insert({_key: 'test1', value: 1});
+      tc.insert({_key: 'test2', value: 2});
 
       // Stop the leader. This triggers a failover.
-      require('internal').print('Before failover');
-      const {leader} = replicatedLogsHelper.getReplicatedLogLeaderPlan(dbn, logId);
+      const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
+      const participants = logs[logId];
+      assertTrue(participants !== undefined);
+      const leader = participants[0];
+      const followers = participants.slice(1);
       let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
-      stopServer(leader);
+      let newTerm = term + 2;
+      stopServerWait(leader);
       replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
-        dbn, logId, term + 2, _.without(replicatedLogsHelper.dbservers, leader)));
+        dbn, logId, newTerm, followers));
 
-      require('internal').print('After failover');
+      // Check if the universal abort command appears in the log during the current term.
+      let logContents = replicatedLogsHelper.dumpLog(shardId);
+      let abortAllEntryFound = _.some(logContents, entry => {
+        if (entry.logTerm !== newTerm || entry.payload === undefined) {
+          return false;
+        }
+        return entry.payload[1].operation === "AbortAllOngoingTrx";
+      });
+      assertTrue(abortAllEntryFound);
 
-      let x = replicatedLogsHelper.dumpLog(shardId);
-      require('internal').print(x);
+      // Expect further transaction operations to fail.
+      try {
+        tc.insert({_key: 'test3', value: 3});
+        fail('Insert was expected to fail due to transaction abort.');
+      } catch (ex) {
+        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum);
+      }
 
-      tc.insert({_key: 'test4', value: 2});
-      require('internal').print('Inserted test3');
+      syncShardsWithLogs(dbn);
 
-      trx.commit();
-      require('internal').print('Committed');
+      // Try a new transaction, this time expecting it to work.
+      try {
+        trx = db._createTransaction({
+          collections: {write: c.name()}
+        });
+        tc = trx.collection(c.name());
+        tc.insert({_key: "foo"});
+        trx.commit();
+      } catch (err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      }
+
+      let servers = Object.assign({}, ...followers.map(
+        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
+      for (const [_, endpoint] of Object.entries(servers)) {
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "foo", true));
+      }
+
+      // Resume the dead server. Expect to read "foo" from it.
+      continueServerWait(leader);
+      replicatedLogsHelper.waitFor(replicatedLogsPredicates.allServersHealthy());
+      syncShardsWithLogs(dbn);
+      replicatedLogsHelper.waitFor(
+        replicatedStatePredicates.localKeyStatus(
+          replicatedLogsHelper.getServerUrl(leader), dbn, shardId, "foo", true));
+
+      // Try another transaction. This time expect it to work on all servers.
+      try {
+        trx = db._createTransaction({
+          collections: {write: c.name()}
+        });
+        tc = trx.collection(c.name());
+        tc.insert({_key: "bar"});
+        trx.commit();
+      } catch (err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      }
+
+      servers = Object.assign({}, ...participants.map(
+        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
+      for (const [_, endpoint] of Object.entries(servers)) {
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "bar", true));
+      }
     },
+
+    /*
+    testTransactionDuringFollowerReplace: function () {
+      const shards = c.shards();
+      assertEqual(shards.length, 1);
+      const shardId = shards[0]
+      const logId = shardId.slice(1);
+      const coordinator = replicatedLogsHelper.coordinators[0];
+
+      // Prepare the grounds for replacing a follower.
+      const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
+      const participants = logs[logId];
+      assertTrue(participants !== undefined);
+      const followers = participants.slice(1);
+      const oldParticipant = _.sample(followers);
+      const nonParticipants = _.without(replicatedLogsHelper.dbservers, ...participants);
+      const newParticipant = _.sample(nonParticipants);
+      const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
+
+      // Start a transaction.
+      let trx = db._createTransaction({
+        collections: {write: c.name()}
+      });
+      let tc = trx.collection(c.name());
+      tc.insert({_key: 'test1', value: 1});
+      tc.insert({_key: 'test2', value: 2});
+
+      // Replace the follower.
+      const result = replicatedStateHelper.replaceParticipant(dbn, logId, oldParticipant, newParticipant);
+      assertEqual({}, result);
+      replicatedLogsHelper.waitFor(() => {
+        const stateAgencyContent = replicatedStateHelper.readReplicatedStateAgency(dbn, logId);
+        return replicatedLogsHelper.sortedArrayEqualOrError(
+          newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+      });
+
+      syncShardsWithLogs(dbn);
+
+      // Continue the transaction and expect it to succeed.
+      try {
+        tc.insert({_key: "test3", value: 3});
+      } catch (ex) {
+        fail("Transaction failed with: " + JSON.stringify(ex));
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+      }
+
+      // Expect to find the values on current participants, but not on the old participant.
+      let servers = Object.assign({}, ...newParticipants.map(
+        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
+      const oldEndpoint = replicatedLogsHelper.getServerUrl(oldParticipant);
+      for (let cnt = 1; cnt < 4; ++cnt) {
+        for (const [_, endpoint] of Object.entries(servers)) {
+          replicatedLogsHelper.waitFor(
+            replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, `test${cnt}`, true, cnt));
+        }
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(oldEndpoint, dbn, shardId, `test${cnt}`, false));
+      }
+    },
+
+     */
   };
 }
 
@@ -501,11 +615,11 @@ function transactionReplication2LeaderRecovery() {
 function makeTestSuites(testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
-  deriveTestSuite(testSuite({}), suiteV1, "_V1");
+  helper.deriveTestSuite(testSuite({}), suiteV1, "_V1");
   // For databases with replicationVersion 2 we internally use a ReplicatedRocksDBTransactionState
   // for the transaction. Since this class is currently not covered by unittests, these tests are
   // parameterized to cover both cases.
-  deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
+  helper.deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
   return [suiteV1, suiteV2];
 }
 
@@ -522,7 +636,7 @@ function transactionReplicationOnFollowersSuiteV2() {
 
 if (isReplication2Enabled) {
   let suites = [
-    transactionReplication2LeaderRecovery,
+    transactionReplication2Recovery,
     //transactionReplication2ReplicateOperationSuite,
     //transactionReplicationOnFollowersSuiteV2,
   ];

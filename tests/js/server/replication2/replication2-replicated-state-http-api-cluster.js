@@ -37,16 +37,6 @@ const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "replication2_replicated_state_http_api_db";
 
-const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
-  const url = lh.getServerUrl(_.sample(lh.coordinators));
-  const res = request.post(
-      `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
-  );
-  lh.checkRequestResult(res);
-  const {json: {result}} = res;
-  return result;
-};
-
 const setLeader = (database, logId, newLeader) => {
   const url = lh.getServerUrl(_.sample(lh.coordinators));
   const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
@@ -136,7 +126,7 @@ const replicatedStateSuite = function (stateType) {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+      const result = sh.replaceParticipant(database, stateId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -171,7 +161,7 @@ const replicatedStateSuite = function (stateType) {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+      const result = sh.replaceParticipant(database, stateId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -217,7 +207,7 @@ const replicatedStateSuite = function (stateType) {
       const newLeader = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldLeader), [newLeader]).sort();
 
-      const result = replaceParticipant(database, stateId, oldLeader, newLeader);
+      const result = sh.replaceParticipant(database, stateId, oldLeader, newLeader);
       assertEqual({}, result);
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -253,7 +243,7 @@ const replicatedStateSuite = function (stateType) {
       const [oldParticipant, newParticipant] = _.sampleSize(nonParticipants, 2);
 
       try {
-        const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+        const result = sh.replaceParticipant(database, stateId, oldParticipant, newParticipant);
         // noinspection ExceptionCaughtLocallyJS
         throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
       } catch (e) {
@@ -274,7 +264,7 @@ const replicatedStateSuite = function (stateType) {
       const [oldParticipant, newParticipant] = _.sampleSize(participants, 2);
 
       try {
-        const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+        const result = sh.replaceParticipant(database, stateId, oldParticipant, newParticipant);
         // noinspection ExceptionCaughtLocallyJS
         throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
       } catch (e) {

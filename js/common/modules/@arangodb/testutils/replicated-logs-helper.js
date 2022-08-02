@@ -70,7 +70,6 @@ const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
 
-
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
     a[v] = {allowedInQuorum: true, allowedAsLeader: true, forced: false};
@@ -413,7 +412,7 @@ const createReplicatedLog = function (database, targetConfig, replicationFactor)
 };
 
 
-const testHelperFunctions = function (database) {
+const testHelperFunctions = function (database, databaseOptions = {}) {
   let previousDatabase, databaseExisted = true;
   let stoppedServers = {};
 
@@ -453,7 +452,7 @@ const testHelperFunctions = function (database) {
   const createTestDatabase = function () {
     previousDatabase = db._name();
     if (!_.includes(db._databases(), database)) {
-      db._createDatabase(database);
+      db._createDatabase(database, databaseOptions);
       databaseExisted = false;
     }
     db._useDatabase(database);

@@ -221,13 +221,16 @@ function shellClientTransaction(options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  var opts = ensureServers(options, 3);
+  var opts = ensureServers(options, 5);
   opts = ensureCoordinators(opts, 2);
   opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
 
   let moreOptions = {
-    "agency.supervision-ok-threshold": "15",
-    "agency.supervision-grace-period": "30",
+    'javascript.allow-external-process-control': 'true',
+    'javascript.allow-admin-execute': 'true',
+    'javascript.allow-port-testing': 'true',
+    "agency.supervision-ok-threshold": "1.5",
+    "agency.supervision-grace-period": "3.0",
   };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_transaction', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
