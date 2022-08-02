@@ -172,6 +172,11 @@ struct FieldMeta {
   size_t _primitiveOffset{0};
   // Explicit list of fields to be indexed with optional overrides.
   Fields _fields;
+
+#ifdef USE_ENTERPRISE
+  // List of nested fields to be indexed with optional overrides.
+  Fields _nested;
+#endif
   // How values should be stored inside the view.
   ValueStorage _storeValues{ValueStorage::NONE};
   // Include all fields or only fields listed in '_fields'.
@@ -179,6 +184,9 @@ struct FieldMeta {
   // Append relative offset in list to attribute name (as opposed to without
   // offset).
   bool _trackListPositions{false};
+#ifdef USE_ENTERPRISE
+  bool _hasNested{false};
+#endif
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -176,7 +176,8 @@ void assertFilter(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
-        arangodb::iresearch::FilterOptimization::NONE);
+        arangodb::iresearch::FilterOptimization::NONE,
+    bool searchQuery = true, bool oldMangling = true);
 
 void assertFilterSuccess(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -185,7 +186,8 @@ void assertFilterSuccess(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
-        arangodb::iresearch::FilterOptimization::NONE);
+        arangodb::iresearch::FilterOptimization::NONE,
+    bool searchQuery = true, bool oldMangling = true);
 
 void assertFilterFail(
     TRI_vocbase_t& vocbase, std::string const& queryString,
