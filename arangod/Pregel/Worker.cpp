@@ -21,18 +21,19 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Worker.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/VertexComputation.h"
-
 #include "Pregel/Status/Status.h"
+#include "Pregel/VertexComputation.h"
+#include "Pregel/Worker.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
@@ -61,6 +62,20 @@ using namespace arangodb::pregel;
       &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 template<typename V, typename E, typename M>
+std::function<void()> Worker<V, E, M>::_statusCallback() {
+  return [self = shared_from_this(), this] {
+    auto statusUpdatedEvent =
+        StatusUpdated{.senderId = ServerState::instance()->getId(),
+                      .executionNumer = _config.executionNumber(),
+                      .status = _observeStatus()};
+    VPackBuilder event;
+    serialize(event, statusUpdatedEvent);
+
+    _callConductor(Utils::statusUpdatePath, event);
+  };
+}
+
+template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig, PregelFeature& feature)
     : _feature(feature),
@@ -78,8 +93,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
-  _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
-  _workerAggregators = std::make_unique<AggregatorHandler>(algo);
+  _conductorAggregators = std::make_shared<AggregatorHandler>(algo);
+  _workerAggregators = std::make_shared<AggregatorHandler>(algo);
 
   auto shardResolver = ShardResolver::create(
       ServerState::instance()->isRunningInCluster(),
@@ -161,35 +176,18 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  std::function<void()> finishedCallback = [self = shared_from_this(), this] {
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::vertexCountKey,
-                VPackValue(_graphStore->localVertexCount()));
-    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
-    package.close();
-    _callConductor(Utils::finishedStartupPath, package);
+  std::function<void()> graphLoadedCallback = [self = shared_from_this(),
+                                               this] {
+    auto graphLoadedEvent =
+        GraphLoaded{.senderId = ServerState::instance()->getId(),
+                    .executionNumber = _config.executionNumber(),
+                    .vertexCount = _graphStore->localVertexCount(),
+                    .edgeCount = _graphStore->localEdgeCount()};
+    VPackBuilder event;
+    serialize(event, graphLoadedEvent);
+    _callConductor(Utils::finishedStartupPath, event);
+
     _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
-  };
-
-  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = observeStatus();
-      serialize(statusUpdateMsg, update);
-    }
-
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
   };
 
   // initialization of the graphstore might take an undefined amount
@@ -199,11 +197,11 @@ void Worker<V, E, M>::setupWorker() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
                    [this, self = shared_from_this(),
-                    statusUpdateCallback = std::move(statusUpdateCallback),
-                    finishedCallback = std::move(finishedCallback)] {
+                    statusCallback = std::move(_statusCallback()),
+                    graphLoadedCallback = std::move(graphLoadedCallback)] {
                      try {
-                       _graphStore->loadShards(&_config, statusUpdateCallback,
-                                               finishedCallback);
+                       _graphStore->loadShards(&_config, statusCallback,
+                                               graphLoadedCallback);
                      } catch (std::exception const& ex) {
                        LOG_PREGEL("a47c4", WARN)
                            << "caught exception in loadShards: " << ex.what();
@@ -230,12 +228,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   }
   _state = WorkerState::PREPARING;  // stop any running step
   LOG_PREGEL("f16f2", DEBUG) << "Received prepare GSS: " << data.toJson();
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  if (!gssSlice.isInteger()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                  "Invalid gss in %s:%d", __FILE__, __LINE__);
-  }
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  auto const command = deserialize<PrepareGss>(data);
+  const uint64_t gss = command.gss;
   if (_expectedGSS != gss) {
     THROW_ARANGO_EXCEPTION_FORMAT(
         TRI_ERROR_BAD_PARAMETER,
@@ -247,8 +241,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
     _workerContext->_readAggregators = _conductorAggregators.get();
     _workerContext->_writeAggregators = _workerAggregators.get();
-    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
+    _workerContext->_vertexCount = command.vertexCount;
+    _workerContext->_edgeCount = command.edgeCount;
     _workerContext->preApplication();
   }
 
@@ -256,7 +250,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   _config._globalSuperstep = gss;
   // write cache becomes the readable cache
   if (_config.asynchronousMode()) {
-    MY_WRITE_LOCKER(wguard, _cacheRWLock);  // by design shouldn't be necessary
+    MY_WRITE_LOCKER(wguard,
+                    _cacheRWLock);  // by design shouldn't be necessary
     TRI_ASSERT(_readCache->containedMessageCount() == 0);
     TRI_ASSERT(_writeCache->containedMessageCount() == 0);
     std::swap(_readCache, _writeCacheNextGSS);
@@ -480,24 +475,8 @@ bool Worker<V, E, M>::_processVertices(
     if (_currentGssObservables.verticesProcessed %
             Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
         0) {
-      std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                    this] {
-        VPackBuilder statusUpdateMsg;
-        {
-          auto ob = VPackObjectBuilder(&statusUpdateMsg);
-          statusUpdateMsg.add(Utils::senderKey,
-                              VPackValue(ServerState::instance()->getId()));
-          statusUpdateMsg.add(Utils::executionNumberKey,
-                              VPackValue(_config.executionNumber()));
-          statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-          auto update = observeStatus();
-          serialize(statusUpdateMsg, update);
-        }
-        _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-      };
-
       SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         statusUpdateCallback);
+                                         _statusCallback());
     }
   }
   // ==================== send messages to other shards ====================
@@ -554,7 +533,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     }
   }
 
-  VPackBuilder package;
+  VPackBuilder event;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
     _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
@@ -569,23 +548,8 @@ void Worker<V, E, M>::_finishedProcessing() {
 
     _allGssStatus.push(_currentGssObservables.observe());
     _currentGssObservables.zero();
-    std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                  this] {
-      VPackBuilder statusUpdateMsg;
-      {
-        auto ob = VPackObjectBuilder(&statusUpdateMsg);
-        statusUpdateMsg.add(Utils::senderKey,
-                            VPackValue(ServerState::instance()->getId()));
-        statusUpdateMsg.add(Utils::executionNumberKey,
-                            VPackValue(_config.executionNumber()));
-        statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-        auto update = observeStatus();
-        serialize(statusUpdateMsg, update);
-      }
-      _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
-    };
     SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       statusUpdateCallback);
+                                       _statusCallback());
 
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -593,20 +557,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     // only set the state here, because _processVertices checks for it
     _state = WorkerState::IDLE;
 
-    package.openObject();
-    package.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(package);
-    _reports.clear();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(_config.globalSuperstep()));
-    _messageStats.serializeValues(package);
-    if (_config.asynchronousMode()) {
-      _workerAggregators->serializeValues(package, true);
-    }
-    package.close();
+    _createGssFinishedEvent(event);
 
     if (_config.asynchronousMode()) {
       // async adaptive message buffering
@@ -621,11 +572,11 @@ void Worker<V, E, M>::_finishedProcessing() {
   }
 
   if (_config.asynchronousMode()) {
-    LOG_PREGEL("56a27", DEBUG) << "Finished LSS: " << package.toJson();
+    LOG_PREGEL("56a27", DEBUG) << "Finished LSS: " << event.toJson();
 
     // if the conductor is unreachable or has send data (try to) proceed
     _callConductorWithResponse(
-        Utils::finishedWorkerStepPath, package, [this](VPackSlice response) {
+        Utils::finishedWorkerStepPath, event, [this](VPackSlice response) {
           if (response.isObject()) {
             _conductorAggregators->aggregateValues(
                 response);  // only aggregate values
@@ -638,8 +589,23 @@ void Worker<V, E, M>::_finishedProcessing() {
         });
 
   } else {  // no answer expected
-    _callConductor(Utils::finishedWorkerStepPath, package);
-    LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << package.toJson();
+    _callConductor(Utils::finishedWorkerStepPath, event);
+    LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();
+  }
+}
+
+template<typename V, typename E, typename M>
+void Worker<V, E, M>::_createGssFinishedEvent(VPackBuilder& b) {
+  VPackObjectBuilder o(&b);
+  b.add(VPackValue(Utils::reportsKey));
+  _reports.intoBuilder(b);
+  _reports.clear();
+  b.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+  b.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+  b.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
+  _messageStats.serializeValues(b);
+  if (_config.asynchronousMode()) {
+    _workerAggregators->serializeValues(b, true);
   }
 }
 
@@ -696,40 +662,19 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
 
-  VPackSlice store = body.get(Utils::storeResultsKey);
-  auto const doStore = store.isBool() && store.getBool() == true;
+  auto const command = deserialize<FinalizeExecution>(body);
+
+  auto const doStore = command.withStoring;
   auto cleanup = [self = shared_from_this(), this, doStore, cb] {
     if (doStore) {
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
 
-    VPackBuilder body;
-    body.openObject();
-    body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    body.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
-    body.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(body);
+    VPackBuilder executionFinished;
+    _createExecutionFinishedEvent(executionFinished);
+    _callConductor(Utils::finishedWorkerFinalizationPath, executionFinished);
     _reports.clear();
-    body.close();
-    _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
-  };
-
-  std::function<void()> statusUpdateCallback = [self = shared_from_this(),
-                                                this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = observeStatus();
-      serialize(statusUpdateMsg, update);
-    }
-
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
   };
 
   _state = WorkerState::DONE;
@@ -737,13 +682,21 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup),
-                              statusUpdateCallback);
+    _graphStore->storeResults(&_config, std::move(cleanup), _statusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
   }
+}
+
+template<typename V, typename E, typename M>
+void Worker<V, E, M>::_createExecutionFinishedEvent(VPackBuilder& b) {
+  VPackObjectBuilder o(&b);
+  b.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+  b.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+  b.add(VPackValue(Utils::reportsKey));
+  _reports.intoBuilder(b);
 }
 
 template<typename V, typename E, typename M>
@@ -832,51 +785,51 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
 
+  auto command = deserialize<ContinueRecovery>(data);
   _workerAggregators->resetValues();
-  _conductorAggregators->setAggregatedValues(data);
+  _conductorAggregators = command.aggregators.aggregators;
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(),
-                                               this] {
-    if (_state != WorkerState::RECOVERING) {
-      LOG_PREGEL("554e2", WARN) << "Compensation aborted prematurely.";
-      return;
-    }
+  scheduler->queue(
+      RequestLane::INTERNAL_LOW, [self = shared_from_this(), this] {
+        if (_state != WorkerState::RECOVERING) {
+          LOG_PREGEL("554e2", WARN) << "Compensation aborted prematurely.";
+          return;
+        }
 
-    auto vertexIterator = _graphStore->vertexIterator();
-    std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
-        _algorithm->createCompensation(&_config));
-    _initializeVertexContext(vCompensate.get());
-    if (!vCompensate) {
-      _state = WorkerState::DONE;
-      LOG_PREGEL("938d2", WARN) << "Compensation aborted prematurely.";
-      return;
-    }
-    vCompensate->_writeAggregators = _workerAggregators.get();
+        auto vertexIterator = _graphStore->vertexIterator();
+        std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
+            _algorithm->createCompensation(&_config));
+        _initializeVertexContext(vCompensate.get());
+        if (!vCompensate) {
+          _state = WorkerState::DONE;
+          LOG_PREGEL("938d2", WARN) << "Compensation aborted prematurely.";
+          return;
+        }
+        vCompensate->_writeAggregators = _workerAggregators.get();
 
-    size_t i = 0;
-    for (; vertexIterator.hasMore(); ++vertexIterator) {
-      Vertex<V, E>* vertexEntry = *vertexIterator;
-      vCompensate->_vertexEntry = vertexEntry;
-      vCompensate->compensate(i > _preRecoveryTotal);
-      i++;
-      if (_state != WorkerState::RECOVERING) {
-        LOG_PREGEL("e9011", WARN) << "Execution aborted prematurely.";
-        break;
-      }
-    }
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(_config.globalSuperstep()));
-    _workerAggregators->serializeValues(package);
-    package.close();
-    _callConductor(Utils::finishedRecoveryPath, package);
-  });
+        size_t i = 0;
+        for (; vertexIterator.hasMore(); ++vertexIterator) {
+          Vertex<V, E>* vertexEntry = *vertexIterator;
+          vCompensate->_vertexEntry = vertexEntry;
+          vCompensate->compensate(i > _preRecoveryTotal);
+          i++;
+          if (_state != WorkerState::RECOVERING) {
+            LOG_PREGEL("e9011", WARN) << "Execution aborted prematurely.";
+            break;
+          }
+        }
+
+        auto recoveryFinished =
+            RecoveryFinished{.senderId = ServerState::instance()->getId(),
+                             .executionNumber = _config._executionNumber,
+                             .gss = _config._globalSuperstep,
+                             .aggregators = {_workerAggregators}};
+        VPackBuilder event;
+        serialize(event, recoveryFinished);
+        _callConductor(Utils::finishedRecoveryPath, event);
+      });
 }
 
 template<typename V, typename E, typename M>
@@ -887,7 +840,8 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
     return;
   }
 
-  _expectedGSS = data.get(Utils::globalSuperstepKey).getUInt();
+  auto command = deserialize<FinalizeRecovery>(data);
+  _expectedGSS = command.gss;
   _messageStats.resetTracking();
   _state = WorkerState::IDLE;
   LOG_PREGEL("17f3c", INFO) << "Recovery finished";

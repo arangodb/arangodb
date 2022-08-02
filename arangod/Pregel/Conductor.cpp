@@ -22,15 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
+#include <string_view>
 #include <thread>
 
 #include <fmt/core.h>
 
 #include "Conductor.h"
 
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
@@ -116,7 +119,7 @@ Conductor::Conductor(
                                    "Algorithm not found");
   }
   _masterContext.reset(_algorithm->masterContext(config));
-  _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
+  _aggregators = std::make_shared<AggregatorHandler>(_algorithm.get());
 
   _maxSuperstep =
       VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
@@ -188,13 +191,12 @@ bool Conductor::_startGlobalStep() {
 
   _callbackMutex.assertLockedByCurrentThread();
   // send prepare GSS notice
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-  b.close();
+  auto prepareGssCommand = PrepareGss{.executionNumber = _executionNumber,
+                                      .gss = _globalSuperstep,
+                                      .vertexCount = _totalVerticesCount,
+                                      .edgeCount = _totalEdgesCount};
+  VPackBuilder command;
+  serialize(command, prepareGssCommand);
 
   /// collect the aggregators
   _aggregators->resetValues();
@@ -209,7 +211,7 @@ bool Conductor::_startGlobalStep() {
     // we are explicitly expecting an response containing the aggregated
     // values as well as the count of active vertices
     auto res = _sendToAllDBServers(
-        Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+        Utils::prepareGSSPath, command, [&](VPackSlice const& payload) {
           _aggregators->aggregateValues(payload);
 
           messagesFromWorkers.add(
@@ -284,7 +286,6 @@ bool Conductor::_startGlobalStep() {
     return false;
   }
 
-  VPackBuilder toWorkerMessages;
   if (_masterContext) {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
@@ -294,30 +295,18 @@ bool Conductor::_startGlobalStep() {
       updateState(ExecutionState::FATAL_ERROR);
       return false;
     }
-    _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
   }
 
-  b.clear();
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-  b.add(Utils::activateAllKey, VPackValue(activateAll));
+  VPackBuilder startGssCommand;
+  _createStartGssCommand(startGssCommand, activateAll);
 
-  if (!toWorkerMessages.slice().isNone()) {
-    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
-  }
-  _aggregators->serializeValues(b);
-
-  b.close();
-
-  LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
+  LOG_PREGEL("d98de", DEBUG) << startGssCommand.slice().toJson();
   _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
                                     ._finish = std::nullopt});
 
   // start vertex level operations, does not get a response
-  auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
+  auto res = _sendToAllDBServers(Utils::startGSSPath,
+                                 startGssCommand);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::IN_ERROR);
     LOG_PREGEL("f34bb", ERR)
@@ -330,6 +319,25 @@ bool Conductor::_startGlobalStep() {
   return res == TRI_ERROR_NO_ERROR;
 }
 
+void Conductor::_createStartGssCommand(VPackBuilder& b, bool activateAll) {
+  VPackObjectBuilder o(&b);
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
+  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
+  b.add(Utils::activateAllKey, VPackValue(activateAll));
+
+  VPackBuilder toWorkerMessages;
+  if (_masterContext) {
+    _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
+  }
+  if (!toWorkerMessages.slice().isNone()) {
+    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  }
+
+  _aggregators->serializeValues(b);
+}
+
 // ============ Conductor callbacks ===============
 
 // The worker can (and should) periodically call back
@@ -339,25 +347,28 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
 
-  auto update = deserialize<Status>(data.get(Utils::payloadKey));
-  auto sender = data.get(Utils::senderKey).copyString();
+  auto event = deserialize<StatusUpdated>(data);
 
   LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
 
-  _status.updateWorkerStatus(sender, std::move(update));
+  _status.updateWorkerStatus(event.senderId, std::move(event.status));
 }
 
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _ensureUniqueResponse(data);
+
+  auto loadedEvent = deserialize<GraphLoaded>(data);
+
+  _ensureUniqueResponse(loadedEvent.senderId);
   if (_state != ExecutionState::LOADING) {
     LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
   }
 
-  _totalVerticesCount += data.get(Utils::vertexCountKey).getUInt();
-  _totalEdgesCount += data.get(Utils::edgeCountKey).getUInt();
+  _totalVerticesCount += loadedEvent.vertexCount;
+  _totalEdgesCount += loadedEvent.edgeCount;
+
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
@@ -405,7 +416,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   // in async mode this will wait until all messages were processed
   _statistics.accumulateMessageStats(data);
   if (_asyncMode == false) {  // in async mode we wait for all responded
-    _ensureUniqueResponse(data);
+    _ensureUniqueResponse(data.get(Utils::senderKey).copyString());
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
       return VPackBuilder();
@@ -457,7 +468,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
 
 void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _ensureUniqueResponse(data);
+
+  auto event = deserialize<RecoveryFinished>(data);
+
+  _ensureUniqueResponse(event.senderId);
   if (_state != ExecutionState::RECOVERING) {
     LOG_PREGEL("23d8b", WARN)
         << "We are not in a state where we expect a recovery response";
@@ -465,7 +479,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   }
 
   // the recovery mechanism might be gathering state information
-  _aggregators->aggregateValues(data);
+  _aggregators = event.aggregators.aggregators;
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
@@ -484,24 +498,22 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
       _masterContext->preCompensation();
     }
 
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    _aggregators->serializeValues(b);
-    b.close();
+    auto continueRecoveryCommand = ContinueRecovery{
+        .executionNumber = _executionNumber, .aggregators = {_aggregators}};
+    VPackBuilder command;
+    serialize(command, continueRecoveryCommand);
     // first allow all workers to run worker level operations
-    res = _sendToAllDBServers(Utils::continueRecoveryPath, b);
+    res = _sendToAllDBServers(Utils::continueRecoveryPath, command);
 
   } else {
     LOG_PREGEL("6ecf2", INFO) << "Recovery finished. Proceeding normally";
 
     // build the message, works for all cases
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-    b.close();
-    res = _sendToAllDBServers(Utils::finalizeRecoveryPath, b);
+    auto finalizeRecoveryCommand = FinalizeRecovery{
+        .executionNumber = _executionNumber, .gss = _globalSuperstep};
+    VPackBuilder message;
+    serialize(message, finalizeRecoveryCommand);
+    res = _sendToAllDBServers(Utils::finalizeRecoveryPath, message);
     if (res == TRI_ERROR_NO_ERROR) {
       updateState(ExecutionState::RUNNING);
       _startGlobalStep();
@@ -565,12 +577,11 @@ void Conductor::startRecovery() {
         }
         _dbServers = goodServers;
 
-        VPackBuilder b;
-        b.openObject();
-        b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-        b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-        b.close();
-        _sendToAllDBServers(Utils::cancelGSSPath, b);
+        auto cancelGssCommand = CancelGss{.executionNumber = _executionNumber,
+                                          .gss = _globalSuperstep};
+        VPackBuilder command;
+        serialize(command, cancelGssCommand);
+        _sendToAllDBServers(Utils::cancelGSSPath, command);
         if (_state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
         }
@@ -587,7 +598,6 @@ void Conductor::startRecovery() {
         additionalKeys.openObject();
         additionalKeys.add(Utils::recoveryMethodKey,
                            VPackValue(Utils::compensate));
-        _aggregators->serializeValues(b);
         additionalKeys.close();
         _aggregators->resetValues();
 
@@ -820,7 +830,6 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
 
-  bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
     _masterContext->postApplication();
   }
@@ -832,13 +841,15 @@ ErrorCode Conductor::_finalizeWorkers() {
   }
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::storeResultsKey, VPackValue(store));
-  b.close();
-  return _sendToAllDBServers(Utils::finalizeExecutionPath, b);
+
+  auto finalizeExecutionCommand =
+      FinalizeExecution{.executionNumber = _executionNumber,
+                        .gss = _globalSuperstep,
+                        .withStoring = _state == ExecutionState::STORING};
+  VPackBuilder command;
+  serialize(command, finalizeExecutionCommand);
+
+  return _sendToAllDBServers(Utils::finalizeExecutionPath, command);
 }
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
@@ -850,7 +861,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     }
   }
 
-  _ensureUniqueResponse(data);
+  _ensureUniqueResponse(data.get(Utils::senderKey).copyString());
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
@@ -929,16 +940,15 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
     return;
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add("withId", VPackValue(withId));
-  b.close();
+  auto collectPregelResultsCommand = CollectPregelResults{
+      .executionNumber = _executionNumber, .withId = withId};
+  VPackBuilder message;
+  serialize(message, collectPregelResultsCommand);
 
   // merge results from DBServers
   outBuilder.openArray();
   auto res = _sendToAllDBServers(
-      Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
+      Utils::aqlResultsPath, message, [&](VPackSlice const& payload) {
         if (payload.isArray()) {
           outBuilder.add(VPackArrayIterator(payload));
         }
@@ -1091,11 +1101,10 @@ ErrorCode Conductor::_sendToAllDBServers(
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
-void Conductor::_ensureUniqueResponse(VPackSlice body) {
+void Conductor::_ensureUniqueResponse(std::string const& sender) {
   _callbackMutex.assertLockedByCurrentThread();
 
   // check if this the only time we received this
-  ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {
     LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);

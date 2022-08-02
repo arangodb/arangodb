@@ -111,8 +111,8 @@ class Worker : public IWorker {
   // where new vertices were inserted
   size_t _preRecoveryTotal = 0;
 
-  std::unique_ptr<AggregatorHandler> _conductorAggregators;
-  std::unique_ptr<AggregatorHandler> _workerAggregators;
+  std::shared_ptr<AggregatorHandler> _conductorAggregators;
+  std::shared_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
@@ -154,7 +154,7 @@ class Worker : public IWorker {
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
-  Status observeStatus() const {
+  Status _observeStatus() const {
     auto currentGss = _currentGssObservables.observe();
     auto fullGssStatus = _allGssStatus;
     if (!currentGss.isDefault()) {
@@ -165,6 +165,10 @@ class Worker : public IWorker {
                                       ? std::optional{fullGssStatus}
                                       : std::nullopt};
   }
+
+  std::function<void()> _statusCallback();
+  void _createGssFinishedEvent(VPackBuilder& b);
+  void _createExecutionFinishedEvent(VPackBuilder& b);
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,

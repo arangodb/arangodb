@@ -35,6 +35,7 @@
 
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
+#include "velocypack/Builder.h"
 
 #include <chrono>
 
@@ -90,7 +91,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
       _edgeCollectionRestrictions;
 
   // initialized on startup
-  std::unique_ptr<AggregatorHandler> _aggregators;
+  std::shared_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
   /// an unique response, not necessarily during the async mode
@@ -130,7 +131,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ErrorCode _sendToAllDBServers(std::string const& path,
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
-  void _ensureUniqueResponse(VPackSlice body);
+  void _ensureUniqueResponse(std::string const& body);
+  void _createStartGssCommand(VPackBuilder& b, bool activateAll);
 
   // === REST callbacks ===
   void workerStatusUpdate(VPackSlice const& data);

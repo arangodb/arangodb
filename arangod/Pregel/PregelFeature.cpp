@@ -47,6 +47,7 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -746,12 +747,8 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    bool withId = false;
-    if (body.isObject()) {
-      VPackSlice slice = body.get("withId");
-      withId = slice.isBoolean() && slice.getBool();
-    }
-    w->aqlResult(outBuilder, withId);
+    auto command = deserialize<CollectPregelResults>(body);
+    w->aqlResult(outBuilder, command.withId);
   }
 }
 

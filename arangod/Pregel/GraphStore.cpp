@@ -148,7 +148,7 @@ static const char* shardError =
 template<typename V, typename E>
 void GraphStore<V, E>::loadShards(
     WorkerConfig* config, std::function<void()> const& statusUpdateCallback,
-    std::function<void()> const& finishedLoadingCallback) {
+    std::function<void()> const& graphLoadedCallback) {
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
 
@@ -262,7 +262,7 @@ void GraphStore<V, E>::loadShards(
                                      statusUpdateCallback);
 
   SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                     finishedLoadingCallback);
+                                     graphLoadedCallback);
 }
 
 template<typename V, typename E>
