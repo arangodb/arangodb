@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.12.0-preview-2.
+
 * Fixed handling of illegal edges in Enterprise Graphs. Adding an edge to a
   SmartGraph vertex collection through document API caused incorrect sharding of
   the edge. Now this edge is rejected as invalid. (BTS-906)
