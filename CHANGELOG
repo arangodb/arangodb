@@ -1,5 +1,9 @@
 devel
 -----
+
+* ArangoSearch nested search feature. (Enterprise Edition): Added ability to index
+  and search nested documents with ArangoSearch views.
+
 * Fixed handling of illegal edges in Enterprise Graphs. Adding an edge to a SmartGraph
   vertex collection through document API caused incorrect sharding of the edge. Now
   this edge is rejected as invalid. (BTS-906)
