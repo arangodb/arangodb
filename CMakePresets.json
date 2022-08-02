@@ -1,0 +1,39 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default Config",
+      "binaryDir": "${sourceDir}/build/default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "USE_ENTERPRISE": "Off",
+        "USE_JEMALLOC": "On",
+        "USE_MAINTAINER_MODE": "Off",
+        "USE_FAILURE_TESTS": "Off",
+        "USE_FAIL_ON_WARNINGS": "Off",
+        "USE_IPO": "Off"
+      },
+      "environment": {
+
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    }
+  ]
+}
