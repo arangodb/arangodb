@@ -145,7 +145,7 @@ const testHITSOnGraph = function (vertices, edges, compare, variant = "Graetzer"
     let maxDiff = 0;
     switch (variant) {
         case "Kleinberg":
-            maxDiff = hits.computeFixedPointPaper(graph, numberIterations, epsilon);
+            maxDiff = hits.computeFixedPointKleinberg(graph, numberIterations, epsilon);
             break;
         case "Wiki":
             maxDiff = hits.computeFixedPointWiki(graph, numberIterations, epsilon);
@@ -167,7 +167,6 @@ const testHITSOnGraph = function (vertices, edges, compare, variant = "Graetzer"
     for (const resultV of result) {
         const vKey = resultV._key;
         const v = graph.vertex(resultV._key);
-        console.warn(`PREGEL: vertex: ${resultV._key}, hits: ${resultV.value.hits_auth}`);
         // auth
         assertAlmostEquals(resultV.value.hits_auth, v.value.hits_auth, epsilon,
             `Different authority values for vertex ${vKey}`,
@@ -392,7 +391,7 @@ class Graph {
             for (const [vKey, v] of this.vertices) {
                 console.warn(`  ${vKey} : `);
                 console.warn(`    label: ${v.label}`);
-                console.warn(`    value: ${v.value}$`);
+                console.warn(`    value: ${JSON.stringify(v.value)}$`);
                 console.warn(`    outNeighbs: ${JSON.stringify(v.outNeighbors)}`);
                 console.warn(`    inNeighbs:  ${JSON.stringify(v.inNeighbors)}`);
             }
@@ -553,7 +552,7 @@ class HITS {
         return Math.sqrt(sum);
     }
 
-    computeFixedPointPaper(graph, numSteps, epsilon) {
+    computeFixedPointKleinberg(graph, numSteps, epsilon) {
         for (let [, vertex] of graph.vertices) {
             vertex.value = {hits_auth: 1.0, hits_hub: 1.0, old_hits_auth: 1.0, old_hits_hub: 1.0};
         }
@@ -602,8 +601,7 @@ class HITS {
         assertTrue(numSteps > 0);
         // initialize
         for (let [, vertex] of graph.vertices) {
-            vertex.value.hits_auth = 1.0;
-            vertex.value.hits_hub = 1.0;
+            vertex.value = {hits_auth: 1.0, hits_hub: 1.0};
         }
 
         let step = 0;
@@ -611,6 +609,7 @@ class HITS {
         do {
             maxDiff = 0.0;
             const {authNorm} = computeAuth();
+            // based on values computed in computeAuth()
             const {hubNorm} = computeHub();
             for (let [, vertex] of graph.vertices) {
                 vertex.value.hits_auth /= authNorm;
