@@ -1,5 +1,6 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
+* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
 
 * Fixed handling of illegal edges in Enterprise Graphs. Adding an edge to a
   SmartGraph vertex collection through document API caused incorrect sharding of
