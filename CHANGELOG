@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Updated Rclone to v1.59.0.
+
 * ArangoSearch nested search feature (Enterprise Edition): Added ability to
   index and search nested documents with ArangoSearch views.
 
