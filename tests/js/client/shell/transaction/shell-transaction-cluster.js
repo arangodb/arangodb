@@ -41,10 +41,11 @@ const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper
 const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
 const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
-const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
 
-/*
+/**
  * TODO this function is here temporarily and is will be removed once we have a better solution.
+ * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
  */
 const syncShardsWithLogs = function(dbn) {
   const coordinator = replicatedLogsHelper.coordinators[0];
@@ -425,7 +426,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
 /**
  * In this test suite we check if the DocumentState can survive modifications to the cluster participants
- * during transactions.
+ * during transactions. We check for failover and moveshard.
  */
 function transactionReplication2Recovery() {
   'use strict';
@@ -440,8 +441,6 @@ function transactionReplication2Recovery() {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      let rc = replicatedLogsHelper.dbservers.length;
-      assertTrue(rc >= 3);
       c = db._create(cn, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
     }),
     tearDown: tearDownAnd(() => {
@@ -545,8 +544,13 @@ function transactionReplication2Recovery() {
       }
     },
 
-    /*
-    testTransactionDuringFollowerReplace: function () {
+    /**
+     * This test is disabled because currently we can't properly stop the maintenance from deleting the shard
+     * on the newly added follower. When the core is constructed, the follower tries to create the new shard locally,
+     * but because the server is not listed as a participant for that shard in Plan/Collections, the maintenance figures
+     * the shard shouldn't exist locally.
+     */
+    DISABLED_testFollowerReplaceDuringTransaction: function () {
       const shards = c.shards();
       assertEqual(shards.length, 1);
       const shardId = shards[0]
@@ -606,8 +610,6 @@ function transactionReplication2Recovery() {
           replicatedStatePredicates.localKeyStatus(oldEndpoint, dbn, shardId, `test${cnt}`, false));
       }
     },
-
-     */
   };
 }
 
@@ -631,14 +633,13 @@ function transactionReplicationOnFollowersSuiteV2() {
   return makeTestSuites(transactionReplicationOnFollowersSuite)[1];
 }
 
-//TODO uncomment
-//jsunity.run(transactionReplicationOnFollowersSuiteV1);
+jsunity.run(transactionReplicationOnFollowersSuiteV1);
 
 if (isReplication2Enabled) {
   let suites = [
     transactionReplication2Recovery,
-    //transactionReplication2ReplicateOperationSuite,
-    //transactionReplicationOnFollowersSuiteV2,
+    transactionReplication2ReplicateOperationSuite,
+    transactionReplicationOnFollowersSuiteV2,
   ];
 
   for (const suite of suites) {

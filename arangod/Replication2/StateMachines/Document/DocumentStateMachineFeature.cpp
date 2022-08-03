@@ -50,8 +50,7 @@ void DocumentStateMachineFeature::start() {
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
       std::make_shared<DocumentStateHandlersFactory>(
-          s, clusterFeature.agencyCache(), maintenanceFeature,
-          databaseFeature));
+          s, clusterFeature, maintenanceFeature, databaseFeature));
 }
 
 DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)

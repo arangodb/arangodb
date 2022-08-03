@@ -54,12 +54,11 @@ auto DocumentLeaderState::resign() && noexcept
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
   auto transactionHandler = _handlersFactory->createTransactionHandler(gid);
-  // TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED
 
-  LOG_DEVEL << ptr->range();
+  // TODO TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED
+
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-    LOG_DEVEL << "leader " << doc;
     auto res = transactionHandler->applyTransaction(doc);
     if (res.fail()) {
       return res;
@@ -70,6 +69,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       std::string(shardId), kAbortAllOngoingTrx, {}, TransactionId{0}};
   auto stream = getStream();
   stream->insert(doc);
+
   // TODO abort entries to the log and add a tombstone to the TransactionManager
   return {TRI_ERROR_NO_ERROR};
 }

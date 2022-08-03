@@ -38,7 +38,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class AgencyCache;
+class ClusterFeature;
 class DatabaseFeature;
 class MaintenanceFeature;
 class TransactionState;
@@ -71,7 +71,7 @@ class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
  public:
   explicit DocumentStateAgencyHandler(GlobalLogIdentifier gid,
                                       ArangodServer& server,
-                                      AgencyCache& agencyCache);
+                                      ClusterFeature& clusterFeature);
   auto getCollectionPlan(std::string const& collectionId)
       -> std::shared_ptr<velocypack::Builder> override;
   auto reportShardInCurrent(
@@ -82,7 +82,7 @@ class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
  private:
   GlobalLogIdentifier _gid;
   ArangodServer& _server;
-  AgencyCache& _agencyCache;
+  ClusterFeature& _clusterFeature;
 };
 
 struct IDocumentStateShardHandler {
@@ -170,7 +170,8 @@ struct IDocumentStateHandlersFactory {
 
 class DocumentStateHandlersFactory : public IDocumentStateHandlersFactory {
  public:
-  DocumentStateHandlersFactory(ArangodServer& server, AgencyCache& agencyCache,
+  DocumentStateHandlersFactory(ArangodServer& server,
+                               ClusterFeature& clusterFeature,
                                MaintenanceFeature& maintenaceFeature,
                                DatabaseFeature& databaseFeature);
   auto createAgencyHandler(GlobalLogIdentifier gid)
@@ -182,7 +183,7 @@ class DocumentStateHandlersFactory : public IDocumentStateHandlersFactory {
 
  private:
   ArangodServer& _server;
-  AgencyCache& _agencyCache;
+  ClusterFeature& _clusterFeature;
   MaintenanceFeature& _maintenanceFeature;
   DatabaseFeature& _databaseFeature;
 };

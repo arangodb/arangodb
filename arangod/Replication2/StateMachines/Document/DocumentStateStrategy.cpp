@@ -45,10 +45,10 @@
 
 using namespace arangodb::replication2::replicated_state::document;
 
-DocumentStateAgencyHandler::DocumentStateAgencyHandler(GlobalLogIdentifier gid,
-                                                       ArangodServer& server,
-                                                       AgencyCache& agencyCache)
-    : _gid(std::move(gid)), _server(server), _agencyCache(agencyCache) {}
+DocumentStateAgencyHandler::DocumentStateAgencyHandler(
+    GlobalLogIdentifier gid, ArangodServer& server,
+    ClusterFeature& clusterFeature)
+    : _gid(std::move(gid)), _server(server), _clusterFeature(clusterFeature) {}
 
 auto DocumentStateAgencyHandler::getCollectionPlan(
     std::string const& collectionId) -> std::shared_ptr<VPackBuilder> {
@@ -57,7 +57,7 @@ auto DocumentStateAgencyHandler::getCollectionPlan(
                   ->collections()
                   ->database(_gid.database)
                   ->collection(collectionId);
-  _agencyCache.get(*builder, path);
+  _clusterFeature.agencyCache().get(*builder, path);
 
   ADB_PROD_ASSERT(!builder->isEmpty())
       << "Could not get collection from plan " << path->str();
@@ -68,10 +68,6 @@ auto DocumentStateAgencyHandler::getCollectionPlan(
 auto DocumentStateAgencyHandler::reportShardInCurrent(
     std::string const& collectionId, std::string const& shardId,
     std::shared_ptr<velocypack::Builder> const& properties) -> Result {
-  // auto participants =
-  // properties->slice().get(maintenance::SHARDS).get(shardId);
-  auto participants = VPackSlice::emptyArraySlice();
-
   VPackBuilder localShard;
   {
     VPackObjectBuilder ob(&localShard);
@@ -79,8 +75,9 @@ auto DocumentStateAgencyHandler::reportShardInCurrent(
     localShard.add(StaticStrings::Error, VPackValue(false));
     localShard.add(StaticStrings::ErrorMessage, VPackValue(std::string()));
     localShard.add(StaticStrings::ErrorNum, VPackValue(0));
-    localShard.add(maintenance::SERVERS, participants);
-    localShard.add(StaticStrings::FailoverCandidates, participants);
+    localShard.add(maintenance::SERVERS, VPackSlice::emptyArraySlice());
+    localShard.add(StaticStrings::FailoverCandidates,
+                   VPackSlice::emptyArraySlice());
   }
 
   AgencyOperation op(consensus::CURRENT_COLLECTIONS + _gid.database + "/" +
@@ -88,7 +85,8 @@ auto DocumentStateAgencyHandler::reportShardInCurrent(
                      AgencyValueOperationType::SET, localShard.slice());
   AgencyPrecondition pr(consensus::PLAN_COLLECTIONS + _gid.database + "/" +
                             collectionId + "/shards/" + shardId,
-                        AgencyPrecondition::Type::VALUE, participants);
+                        AgencyPrecondition::Type::VALUE,
+                        VPackSlice::emptyArraySlice());
 
   AgencyComm comm(_server);
   AgencyWriteTransaction currentTransaction(op, pr);
@@ -109,18 +107,9 @@ auto DocumentStateShardHandler::createLocalShard(
     std::shared_ptr<velocypack::Builder> const& properties)
     -> ResultT<std::string> {
   auto shardId = stateIdToShardId(_gid.id);
-
-  // For the moment, use the shard information to get the leader
-  auto participants = properties->slice().get(maintenance::SHARDS).get(shardId);
-  TRI_ASSERT(participants.isArray())
-      << "List of shard " << shardId << " participants is not an array "
-      << participants.toString();
-
-  auto leaderId = participants[0].toString();
   auto serverId = ServerState::instance()->getId();
-  auto shouldBeLeading = leaderId == serverId;
 
-  maintenance::ActionDescription actionDescriptions(
+  maintenance::ActionDescription actionDescription(
       std::map<std::string, std::string>{
           {maintenance::NAME, maintenance::CREATE_COLLECTION},
           {maintenance::COLLECTION, collectionId},
@@ -129,12 +118,10 @@ auto DocumentStateShardHandler::createLocalShard(
           {maintenance::SERVER_ID, std::move(serverId)},
           {maintenance::THE_LEADER, "replication2"},
       },
-      shouldBeLeading ? maintenance::LEADER_PRIORITY
-                      : maintenance::FOLLOWER_PRIORITY,
-      false, properties);
+      maintenance::HIGHER_PRIORITY, false, properties);
 
   maintenance::CreateCollection collectionCreator(_maintenanceFeature,
-                                                  actionDescriptions);
+                                                  actionDescription);
   bool work = collectionCreator.first();
   if (work) {
     return ResultT<std::string>::error(
@@ -216,7 +203,6 @@ auto DocumentStateTransactionHandler::applyTransaction(DocumentLogEntry doc)
     -> Result {
   auto fut = futures::Future<Result>{Result{}};
   if (doc.operation == kAbortAllOngoingTrx) {
-    LOG_DEVEL << "Clearing all ongoing transactions";
     _transactions.clear();
     return Result{};
   }
@@ -295,17 +281,17 @@ void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
 }
 
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
-    ArangodServer& server, AgencyCache& agencyCache,
+    ArangodServer& server, ClusterFeature& clusterFeature,
     MaintenanceFeature& maintenaceFeature, DatabaseFeature& databaseFeature)
     : _server(server),
-      _agencyCache(agencyCache),
+      _clusterFeature(clusterFeature),
       _maintenanceFeature(maintenaceFeature),
       _databaseFeature(databaseFeature) {}
 
 auto DocumentStateHandlersFactory::createAgencyHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateAgencyHandler> {
   return std::make_shared<DocumentStateAgencyHandler>(std::move(gid), _server,
-                                                      _agencyCache);
+                                                      _clusterFeature);
 }
 
 auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
