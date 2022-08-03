@@ -109,15 +109,15 @@ void mangleNested(std::string& name) {
 }
 #endif
 
-void mangleField(std::string& name, bool isSearchFilter,
+void mangleField(std::string& name, bool isOldMangling,
                  iresearch::FieldMeta::Analyzer const& analyzer) {
   normalizeExpansion(name);
-  if (isSearchFilter) {
+  if (isOldMangling || analyzer._pool->requireMangled()) {
     name += kAnalyzerDelimiter;
 
     name += analyzer._shortName;
   } else {
-    mangleString(name);
+    name.append(kStirngSuffix);
     if (analyzer->requireMangled()) {
       name += kAnalyzerDelimiter;
       name += analyzer._shortName;

@@ -1779,6 +1779,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         outVariable(),
         filterCondition(),
         volatility(),
+        (_view && _view->type() == ViewType::kView),
         getRegisterPlan()->varInfo,  // ??? do we need this?
         getDepth(),
         std::move(outNonMaterializedViewRegs),

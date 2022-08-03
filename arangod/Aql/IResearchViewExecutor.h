@@ -92,7 +92,7 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan, Variable const& outVariable,
       aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
-      VarInfoMap const& varInfoMap, int depth,
+      bool isOldMangling, VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
@@ -120,6 +120,7 @@ class IResearchViewExecutorInfos {
   int getDepth() const noexcept;
   bool volatileSort() const noexcept;
   bool volatileFilter() const noexcept;
+  bool isOldMangling() const noexcept;
   iresearch::CountApproximate countApproximate() const noexcept {
     return _countApproximate;
   }
@@ -156,6 +157,7 @@ class IResearchViewExecutorInfos {
   aql::AstNode const& _filterCondition;
   bool const _volatileSort;
   bool const _volatileFilter;
+  bool const _isOldMangling;
   VarInfoMap const& _varInfoMap;
   int const _depth;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;

@@ -2520,7 +2520,7 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref name,
                            builder.slice(), options);
 
   if (!result.ok()) {
-    trx.abort();
+    std::ignore = trx.abort();
 
     return result.result;
   }
@@ -2695,7 +2695,7 @@ Result IResearchAnalyzerFeature::remove(irs::string_ref const& name,
                                builder.slice(), options);
 
       if (!result.ok()) {
-        trx.abort();
+        std::ignore = trx.abort();
 
         return result.result;
       }
@@ -2862,7 +2862,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
                              builder.slice(), options);
 
     if (!result.ok()) {
-      trx.abort();
+      std::ignore = trx.abort();
 
       return result.result;
     }
@@ -2888,7 +2888,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     res = trx.commit();
 
     if (!res.ok()) {
-      trx.abort();
+      std::ignore = trx.abort();
 
       return res;
     }
