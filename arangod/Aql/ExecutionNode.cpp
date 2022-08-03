@@ -135,7 +135,7 @@ ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
 ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                  "Function 'OFFSET_INFO' is available in "
-                                 "ArangoDB Enterprise Edition only.")
+                                 "ArangoDB Enterprise Edition only.");
 }
 #endif
 }  // namespace arangodb::aql
