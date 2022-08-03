@@ -125,8 +125,7 @@ void mangleField(std::string& name, bool isOldMangling,
   }
 }
 
-// FIXME(gnusi): handle nested?
-std::string_view demangle(std::string_view name) noexcept {
+std::string_view demangleType(std::string_view name) noexcept {
   if (name.empty()) {
     return {};
   }
@@ -141,6 +140,28 @@ std::string_view demangle(std::string_view name) noexcept {
   }
 
   return name;
+}
+
+std::string_view demangleNested(std::string_view name, std::string& buf) {
+  auto const end = std::end(name);
+  if (end == std::find(std::begin(name), end, kNestedDelimiter)) {
+    return name;
+  }
+
+  auto prev = std::begin(name);
+  auto cur = prev;
+
+  buf.clear();
+
+  for (auto end = std::end(name); cur != end; ++cur) {
+    if (kNestedDelimiter == *cur) {
+      buf.append(prev, cur);
+      prev = cur + 1;
+    }
+  }
+  buf.append(prev, cur);
+
+  return buf;
 }
 
 }  // namespace arangodb::iresearch::kludge

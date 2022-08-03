@@ -49,6 +49,12 @@ void mangleString(std::string& name);
 void mangleField(std::string& name, bool isOldMangling,
                  iresearch::FieldMeta::Analyzer const& analyzer);
 
-std::string_view demangle(std::string_view name) noexcept;
+std::string_view demangleType(std::string_view name) noexcept;
+[[maybe_unused]] std::string_view demangleNested(std::string_view name,
+                                                 std::string& buf);
+[[maybe_unused]] inline std::string_view demangle(std::string_view name,
+                                                  std::string& buf) {
+  return demangleNested(demangleType(name), buf);
+}
 
 }  // namespace arangodb::iresearch::kludge
