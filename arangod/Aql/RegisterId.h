@@ -49,9 +49,7 @@ struct RegisterId {
     TRI_ASSERT(v <= maxRegisterId);
   }
 
-  constexpr static RegisterId makeInvalid() noexcept {
-    return {std::numeric_limits<value_t>::max()};
-  }
+  constexpr static RegisterId makeInvalid() noexcept { return {maxRegisterId}; }
 
   constexpr static RegisterId makeConst(value_t value) noexcept {
     return RegisterId(value, Type::Const);
