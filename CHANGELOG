@@ -1,6 +1,10 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
+
+* Updated arangosync to v2.12.0-preview-2.
+
 * ArangoSearch nested search feature. (Enterprise Edition): Added ability to index
   and search nested documents with ArangoSearch views.
 
