@@ -86,6 +86,7 @@ class MaterializeExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
+    // FIXME(gnusi): enable?
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
     // TODO this could be set to true!
