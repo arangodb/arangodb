@@ -264,10 +264,16 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
     auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
+    auto effectiveWriteConcern = computeEffectiveWriteConcern(
+        log.target.config, plan.participantsConfig.participants, health);
+
     if (newLeaderRebootId.has_value()) {
       ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
       ctx.createAction<LeaderElectionAction>(
           LogPlanTermSpecification::Leader(newLeader, *newLeaderRebootId),
+          effectiveWriteConcern,
+          std::min(current.supervision->assumedWriteConcern,
+                   effectiveWriteConcern),
           election);
       return;
     } else {
