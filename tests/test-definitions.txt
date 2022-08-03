@@ -90,8 +90,8 @@ importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase wweight.
-server_parameters weight=1000 wweight=*2 -- --dumpAgencyOnError true
-server_permissions weight=1000 wweight=*2 -- --dumpAgencyOnError true
+server_parameters weight=1000 -- --dumpAgencyOnError true
+server_permissions weight=1000 -- --dumpAgencyOnError true
 server_secrets weight=500 -- --dumpAgencyOnError true
 
 # Dump Tests
