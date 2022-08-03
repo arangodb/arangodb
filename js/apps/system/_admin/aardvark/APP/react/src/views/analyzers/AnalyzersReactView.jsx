@@ -111,7 +111,7 @@ const AnalyzersReactView = () => {
         <div className="search-field">
           <input type={'text'} id={'filterInput'} className={'search-input'} value={filterExpr}
                  onChange={getChangeHandler(setFilterExpr)} placeholder={'Filter...'}/>
-          <i id="searchSubmit" className="fa fa-search"/>
+          <i className="fa fa-search" style={{ cursor: 'default' }}/>
         </div>
         <div className="headerButtonBar">
           <ul className="headerButtonList">
@@ -175,7 +175,8 @@ const AnalyzersReactView = () => {
                       <ArangoTD seq={1}>{analyzer.name}</ArangoTD>
                       <ArangoTD seq={2}>{typeNameMap[analyzer.type]}</ArangoTD>
                       <ArangoTD seq={3}>
-                        <Actions analyzer={analyzer} permission={permissions} modalCidSuffix={analyzer.name}/>
+                        <Actions analyzer={analyzer} permission={permissions}
+                                 modalCidSuffix={analyzer.name}/>
                       </ArangoTD>
                     </tr>
                   ))
