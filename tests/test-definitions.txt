@@ -24,7 +24,7 @@ http_replication weight=500 wweight=2 single
 active_failover single
 agency weight=350 wweight=2 single -- --dumpAgencyOnError true
 agency-restart weight=250 single
-arangobench weight=1000 single
+arangobench wweight=2 weight=1000 single
 arangosh single
 authentication weight=1000 single
 endpoints single -- --skipEndpointsIpv6 true
@@ -89,7 +89,7 @@ export -- --dumpAgencyOnError true
 importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
-
+# frequent restarts impose more threats to the SUT, increase wweight.
 server_parameters weight=1000 -- --dumpAgencyOnError true
 server_permissions weight=1000 -- --dumpAgencyOnError true
 server_secrets weight=500 -- --dumpAgencyOnError true
@@ -102,7 +102,8 @@ dump_jwt -- --dumpAgencyOnError true
 dump_maskings -- --dumpAgencyOnError true
 dump_multiple -- --dumpAgencyOnError true
 dump_no_envelope -- --dumpAgencyOnError true
-dump_with_crashes -- --dumpAgencyOnError true
+# takes long, needs to go first. However, doesn't utilize the SUT hard.
+dump_with_crashes wweight=1 weight=2000 -- --dumpAgencyOnError true 
 
 # Audit Tests
 audit_client -- --dumpAgencyOnError true
