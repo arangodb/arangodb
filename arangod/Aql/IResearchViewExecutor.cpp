@@ -743,8 +743,8 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
         .index = _reader.get(),
         .ref = &infos().outVariable(),
         .filterOptimization = infos().filterOptimization(),
-      .isSearchQuery = true,
-      .isOldMangling = infos().isOldMangling()};
+        .isSearchQuery = true,
+        .isOldMangling = infos().isOldMangling()};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
