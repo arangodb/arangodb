@@ -26,10 +26,12 @@
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const _ = require('lodash');
 const db = arangodb.db;
+const helper = require('@arangodb/test-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+const lp = require("@arangodb/testutils/replicated-logs-predicates");
+const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
 const sh = require("@arangodb/testutils/replicated-state-helper");
 const sp = require("@arangodb/testutils/replicated-state-predicates");
 
@@ -39,10 +41,39 @@ const collectionName = "testCollection";
 function makeTestSuites(testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
-  deriveTestSuite(testSuite({}), suiteV1, "_V1");
-  deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
+  helper.deriveTestSuite(testSuite({}), suiteV1, "_V1");
+  helper.deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
   return [suiteV1, suiteV2];
 }
+
+/**
+ * TODO this function is here temporarily and is will be removed once we have a better solution.
+ * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
+ * This is needed because we're using the list of participants from two places.
+ */
+const syncShardsWithLogs = function(dbn) {
+  const coordinator = lh.coordinators[0];
+  let logs = lhttp.listLogs(coordinator, dbn).result;
+  let collections = lh.readAgencyValueAt(`Plan/Collections/${dbn}`);
+  for (const [colId, colInfo] of Object.entries(collections)) {
+    for (const shardId of Object.keys(colInfo.shards)) {
+      const logId = shardId.slice(1);
+      if (logId in logs) {
+        helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
+      }
+    }
+  }
+  helper.agency.increaseVersion(`Plan/Version`);
+
+  const waitForCurrent  = lh.readAgencyValueAt("Current/Version");
+  lh.waitFor(function() {
+    const currentVersion  = lh.readAgencyValueAt("Current/Version");
+    if (currentVersion > waitForCurrent) {
+      return true;
+    }
+    return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
+  });
+};
 
 /**
  * Checks if a given key exists (or not) on all followers.
@@ -503,6 +534,90 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
   };
 };
 
+/**
+ * This test suite checks that the cluster is still usable after we alter the state of some participants.
+ * For example, after a failover.
+ */
+const replicatedStateRecoverySuite = function () {
+  var col = null;
+
+  const {setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd} =
+    lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      col = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+    }),
+    tearDown: tearDownAnd(() => {
+      if (col !== null) {
+        col.drop();
+      }
+      col = null;
+    }),
+
+    testRecoveryFromFailover: function (testName) {
+      let collection = db._collection(collectionName);
+      const shards = collection.shards();
+      assertEqual(shards.length, 1);
+      const shardId = shards[0]
+      const logId = shardId.slice(1);
+      const coordinator = lh.coordinators[0];
+      const logs = lhttp.listLogs(coordinator, database).result;
+      const participants = logs[logId];
+      assertTrue(participants !== undefined);
+      let servers = Object.assign({}, ...participants.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+
+      let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
+      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, true);
+
+      // Stop the leader. This triggers a failover.
+      let leader = participants[0];
+      let followers = participants.slice(1);
+      let term = lh.readReplicatedLogAgency(database, logId).plan.currentTerm.term;
+      let newTerm = term + 2;
+      stopServerWait(leader);
+      lh.waitFor(lp.replicatedLogLeaderEstablished(database, logId, newTerm, followers));
+
+      syncShardsWithLogs(database);
+
+      // Check if the universal abort command appears in the log during the current term.
+      let logContents = lh.dumpLog(shardId);
+      let abortAllEntryFound = _.some(logContents, entry => {
+        if (entry.logTerm !== newTerm || entry.payload === undefined) {
+          return false;
+        }
+        return entry.payload[1].operation === "AbortAllOngoingTrx";
+      });
+      assertTrue(abortAllEntryFound);
+
+      // Try a new transaction.
+      servers = Object.assign({}, ...followers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+      handle = collection.update(handle, {value: `${testName}-baz`});
+      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-baz`, true);
+
+      // Try an AQL query.
+      let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-${i}`, value: i};});
+      db._query(`FOR i in 0..10 INSERT {_key: CONCAT('${testName}-', i), value: i} INTO ${collectionName}`);
+      for (let doc of documents) {
+        checkFollowersValue(servers, shardId, doc._key, doc.value, true);
+      }
+
+      // Resume the dead server.
+      continueServerWait(leader);
+      syncShardsWithLogs(database);
+
+      // Expect to find all values on the awakened server.
+      servers = {[leader]: lh.getServerUrl(leader)};
+      checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-baz`, true);
+      for (let doc of documents) {
+        checkFollowersValue(servers, shardId, doc._key, doc.value, true);
+      }
+    },
+  };
+};
+
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
   let previousDatabase, databaseExisted = true;
   return {
@@ -542,5 +657,6 @@ jsunity.run(replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteReplication1);
 jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
+jsunity.run(replicatedStateRecoverySuite);
 
 return jsunity.done();

@@ -46,6 +46,7 @@ const isReplication2Enabled = internal.db._version(true).details['replication2-e
 /**
  * TODO this function is here temporarily and is will be removed once we have a better solution.
  * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
+ * This is needed because we're using the list of participants from two places.
  */
 const syncShardsWithLogs = function(dbn) {
   const coordinator = replicatedLogsHelper.coordinators[0];
@@ -70,7 +71,6 @@ const syncShardsWithLogs = function(dbn) {
     return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
   });
 };
-
 
 /**
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
@@ -518,7 +518,6 @@ function transactionReplication2Recovery() {
 
       // Resume the dead server. Expect to read "foo" from it.
       continueServerWait(leader);
-      replicatedLogsHelper.waitFor(replicatedLogsPredicates.allServersHealthy());
       syncShardsWithLogs(dbn);
       replicatedLogsHelper.waitFor(
         replicatedStatePredicates.localKeyStatus(
