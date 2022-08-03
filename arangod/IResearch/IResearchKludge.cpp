@@ -118,10 +118,6 @@ void mangleField(std::string& name, bool isOldMangling,
     name += analyzer._shortName;
   } else {
     name.append(kStringSuffix);
-    if (analyzer->requireMangled()) {
-      name += kAnalyzerDelimiter;
-      name += analyzer._shortName;
-    }
   }
 }
 
