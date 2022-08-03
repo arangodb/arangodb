@@ -1,5 +1,6 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
+* Fixed BTS-902 (clicking on the search icon in the analyzers filter input used to take the user to the collections view).
 
 * Updated arangosync to v2.11.0.
 
