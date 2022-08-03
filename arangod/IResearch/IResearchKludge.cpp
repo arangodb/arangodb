@@ -137,6 +137,7 @@ std::string_view demangleType(std::string_view name) noexcept {
   return name;
 }
 
+#ifdef USE_ENTERPRISE
 std::string_view demangleNested(std::string_view name, std::string& buf) {
   auto const end = std::end(name);
   if (end == std::find(std::begin(name), end, kNestedDelimiter)) {
@@ -158,5 +159,6 @@ std::string_view demangleNested(std::string_view name, std::string& buf) {
 
   return buf;
 }
+#endif
 
 }  // namespace arangodb::iresearch::kludge
