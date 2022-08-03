@@ -1137,6 +1137,9 @@ authRouter.get('/g6graph/:name', function (req, res) {
   if (config.limit !== undefined) {
     if (config.limit.length > 0 && config.limit !== '0') {
       limit = parseInt(config.limit);
+      if(limit >= 2) {
+        limit--;
+      }
     }
   }
 
