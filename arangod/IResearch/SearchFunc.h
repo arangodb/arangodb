@@ -21,14 +21,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Containers/FlatHashMap.h"
 #include "IResearch/AqlHelper.h"
-
-#pragma once
 
 namespace arangodb::iresearch {
 
@@ -44,16 +44,12 @@ struct SearchFunc {
     return var == rhs.var && node == rhs.node;
   }
 
-  constexpr bool operator!=(SearchFunc const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   aql::Variable const* var{};  // scorer variable
   aql::AstNode const* node{};  // scorer node
 };
 
 struct HashedSearchFunc : SearchFunc {
-  HashedSearchFunc(aql::Variable const* var, aql::AstNode const* node)
+  HashedSearchFunc(aql::Variable const* var, aql::AstNode const* node) noexcept
       : SearchFunc{var, node}, hash{arangodb::iresearch::hash(node)} {}
 
   size_t hash;

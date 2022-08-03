@@ -66,6 +66,10 @@ class SearchDoc {
 
   constexpr auto operator<=>(const SearchDoc&) const noexcept = default;
 
+  constexpr bool operator==(const SearchDoc& rhs) const noexcept {
+    return _segment == rhs._segment && _doc == rhs._doc;
+  }
+
   std::string_view encode(
       std::span<char, kSearchDocBufSize> buf) const noexcept {
     std::memcpy(buf.data(), static_cast<void const*>(&_segment),
