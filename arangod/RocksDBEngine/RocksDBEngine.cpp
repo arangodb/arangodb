@@ -1061,8 +1061,8 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     transaction::Options const& options) {
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
-      ServerState::instance()->isRunningInCluster()) {
-    // TODO handle follower
+      ServerState::instance()->isRunningInCluster() &&
+      !options.allowDirtyReads) {
     return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid,
                                                                options);
   }

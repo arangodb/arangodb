@@ -287,6 +287,7 @@ class Supervision : public arangodb::Thread {
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;
+  bool _shouldRunAgain = false;
 
   bool _haveAborts; /**< @brief We have accumulated pending aborts in a round */
 

@@ -29,9 +29,12 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <atomic>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <atomic>
+#include <vector>
 
 namespace arangodb {
 class LogicalCollection;
@@ -75,8 +78,6 @@ class ShardingInfo {
   void setWriteConcernAndReplicationFactor(size_t writeConcern,
                                            size_t replicationFactor);
 
-  std::pair<bool, bool>
-  makeSatellite();  // Return note booleans: (isError, isASatellite)
   bool isSatellite() const noexcept;
 
   size_t numberOfShards() const noexcept;
@@ -114,7 +115,16 @@ class ShardingInfo {
 
   static void sortShardNamesNumerically(std::vector<ShardID>& list);
 
+  static Result extractReplicationFactor(velocypack::Slice info, bool isSmart,
+                                         size_t& replicationFactor);
+
+  static Result extractShardKeys(velocypack::Slice info,
+                                 size_t replicationFactor,
+                                 std::vector<std::string>& shardKeys);
+
  private:
+  void makeSatellite();
+
   // @brief the logical collection we are working for
   LogicalCollection* _collection;
 
