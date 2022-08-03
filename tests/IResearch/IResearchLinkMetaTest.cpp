@@ -3699,3 +3699,219 @@ TEST_F(IResearchLinkMetaTest, test_collectioNameComparison) {
   ASSERT_EQ(meta, meta1);
   ASSERT_FALSE(meta != meta1);
 }
+
+#ifdef USE_ENTERPRISE
+TEST_F(IResearchLinkMetaTest, test_withNested) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  arangodb::iresearch::IResearchLinkMeta meta;
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({ 
+    "analyzerDefinitions": [ 
+      { "name": "empty", "type": "empty",
+        "properties": {"args":"ru"}, "features": [ "frequency" ] } ],
+    "includeAllFields" : false,
+    "trackListPositions" : false,
+    "fields" : { 
+      "abc": {},
+      "foo" : {
+        "nested": { "bar":{}, 
+                    "bas":{
+                      "nested":{
+                        "a":{"analyzers":["empty"]}, "b":{}, "c":{}
+                       }
+                    },
+                    "kas":{
+                      "nested": { 
+                        "skas":{
+                          "analyzers":["empty"],
+                          "includeAllFields":true
+                         }
+                       }
+                    }
+                  } 
+      },
+      "bar" : {
+        "nested": { "c":{}, "d":{}} 
+      } 
+    },
+    "analyzers": [ "identity" ]
+  })");
+
+  std::string errorField;
+  ASSERT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+
+  ASSERT_EQ(3, meta._fields.size());
+  ASSERT_TRUE(meta._hasNested);
+
+  {
+    auto const abc = meta._fields.findPtr("abc");
+    ASSERT_NE(nullptr, abc);
+    ASSERT_FALSE((*abc)->_hasNested);
+    ASSERT_FALSE((*abc)->_includeAllFields);
+    ASSERT_FALSE((*abc)->_trackListPositions);
+    ASSERT_EQ(1, (*abc)->_analyzers.size());
+    ASSERT_TRUE((*abc)->_nested.empty());
+    ASSERT_TRUE((*abc)->_fields.empty());
+  }
+  {
+    auto const foo = meta._fields.findPtr("foo");
+    ASSERT_NE(nullptr, foo);
+    ASSERT_TRUE((*foo)->_hasNested);
+    ASSERT_FALSE((*foo)->_includeAllFields);
+    ASSERT_FALSE((*foo)->_trackListPositions);
+    ASSERT_EQ(1, (*foo)->_analyzers.size());
+    ASSERT_EQ(3, (*foo)->_nested.size());
+    {
+      auto const bar = (*foo)->_nested.findPtr("bar");
+      ASSERT_NE(nullptr, bar);
+      ASSERT_FALSE((*bar)->_hasNested);
+      ASSERT_FALSE((*bar)->_includeAllFields);
+      ASSERT_FALSE((*bar)->_trackListPositions);
+      ASSERT_EQ(1, (*bar)->_analyzers.size());
+      ASSERT_TRUE((*bar)->_nested.empty());
+      ASSERT_TRUE((*bar)->_fields.empty());
+    }
+    {
+      auto const bas = (*foo)->_nested.findPtr("bas");
+      ASSERT_NE(nullptr, bas);
+      ASSERT_TRUE((*bas)->_hasNested);
+      ASSERT_FALSE((*bas)->_includeAllFields);
+      ASSERT_FALSE((*bas)->_trackListPositions);
+      ASSERT_EQ(1, (*bas)->_analyzers.size());
+      ASSERT_EQ(3, (*bas)->_nested.size());
+      {
+        auto const a = (*bas)->_nested.findPtr("a");
+        ASSERT_FALSE((*a)->_hasNested);
+        ASSERT_EQ(1, (*a)->_analyzers.size());
+        auto analyzer = (*a)->_analyzers[0];
+        ASSERT_EQ("empty", analyzer._shortName);
+      }
+      {
+        auto const a = (*bas)->_nested.findPtr("b");
+        ASSERT_FALSE((*a)->_hasNested);
+        ASSERT_EQ(1, (*a)->_analyzers.size());
+        auto analyzer = (*a)->_analyzers[0];
+        ASSERT_EQ("identity", analyzer._shortName);
+      }
+      {
+        auto const a = (*bas)->_nested.findPtr("c");
+        ASSERT_FALSE((*a)->_hasNested);
+        ASSERT_EQ(1, (*a)->_analyzers.size());
+        auto analyzer = (*a)->_analyzers[0];
+        ASSERT_EQ("identity", analyzer._shortName);
+      }
+      ASSERT_TRUE((*bas)->_fields.empty());
+    }
+    {
+      auto const kas = (*foo)->_nested.findPtr("kas");
+      ASSERT_NE(nullptr, kas);
+      ASSERT_TRUE((*kas)->_hasNested);
+      ASSERT_FALSE((*kas)->_includeAllFields);
+      ASSERT_FALSE((*kas)->_trackListPositions);
+      ASSERT_EQ(1, (*kas)->_analyzers.size());
+      auto analyzer = (*kas)->_analyzers[0];
+      ASSERT_EQ("identity", analyzer._shortName);
+      ASSERT_EQ(1, (*kas)->_nested.size());
+      {
+        auto const skas = (*kas)->_nested.findPtr("skas");
+        ASSERT_NE(nullptr, skas);
+        ASSERT_FALSE((*skas)->_hasNested);
+        ASSERT_TRUE((*skas)->_includeAllFields);
+        ASSERT_FALSE((*skas)->_trackListPositions);
+        ASSERT_EQ(1, (*skas)->_analyzers.size());
+        auto analyzer = (*skas)->_analyzers[0];
+        ASSERT_EQ("empty", analyzer._shortName);
+        ASSERT_EQ(0, (*skas)->_fields.size());
+        ASSERT_EQ(0, (*skas)->_nested.size());
+      }
+      ASSERT_TRUE((*kas)->_fields.empty());
+    }
+    ASSERT_TRUE((*foo)->_fields.empty());
+  }
+  {
+    auto const bar = meta._fields.findPtr("bar");
+    ASSERT_NE(nullptr, bar);
+    ASSERT_TRUE((*bar)->_hasNested);
+    ASSERT_FALSE((*bar)->_includeAllFields);
+    ASSERT_FALSE((*bar)->_trackListPositions);
+    ASSERT_EQ(1, (*bar)->_analyzers.size());
+    ASSERT_EQ(2, (*bar)->_nested.size());
+    ASSERT_TRUE((*bar)->_fields.empty());
+    {
+      auto const nestedD = (*bar)->_nested.findPtr("d");
+      ASSERT_NE(nullptr, nestedD);
+      ASSERT_FALSE((*nestedD)->_hasNested);
+      ASSERT_FALSE((*nestedD)->_includeAllFields);
+      ASSERT_FALSE((*nestedD)->_trackListPositions);
+      ASSERT_EQ(1, (*nestedD)->_analyzers.size());
+      ASSERT_TRUE((*nestedD)->_nested.empty());
+      ASSERT_TRUE((*nestedD)->_fields.empty());
+    }
+    {
+      auto const nestedC = (*bar)->_nested.findPtr("c");
+      ASSERT_NE(nullptr, nestedC);
+      ASSERT_FALSE((*nestedC)->_hasNested);
+      ASSERT_FALSE((*nestedC)->_includeAllFields);
+      ASSERT_FALSE((*nestedC)->_trackListPositions);
+      ASSERT_EQ(1, (*nestedC)->_analyzers.size());
+      ASSERT_TRUE((*nestedC)->_nested.empty());
+      ASSERT_TRUE((*nestedC)->_fields.empty());
+    }
+  }
+  VPackBuilder serialized;
+  {
+    VPackObjectBuilder ob(&serialized);
+    ASSERT_TRUE(meta.json(server.server(), serialized, false));
+  }
+  auto slice = serialized.slice();
+  ASSERT_TRUE(slice.isObject());
+  auto tmpSlice = slice.get("includeAllFields");
+  ASSERT_FALSE(tmpSlice.getBool());
+  tmpSlice = slice.get("trackListPositions");
+  ASSERT_FALSE(tmpSlice.getBool());
+  auto fieldsSlice = slice.get("fields");
+  ASSERT_TRUE(fieldsSlice.isObject());
+  auto abcSlice = fieldsSlice.get("abc");
+  ASSERT_TRUE(abcSlice.isObject());
+  ASSERT_FALSE(abcSlice.hasKey("fields"));
+  ASSERT_FALSE(abcSlice.hasKey("nested"));
+  auto fooSlice = fieldsSlice.get("foo");
+  ASSERT_TRUE(fooSlice.isObject());
+  ASSERT_FALSE(fooSlice.hasKey("fields"));
+  ASSERT_TRUE(fooSlice.hasKey("nested"));
+  {
+    auto fooNested = fooSlice.get("nested");
+    ASSERT_TRUE(fooNested.isObject());
+    auto fooBar = fooNested.get("bar");
+    ASSERT_TRUE(fooBar.isEmptyObject());
+
+    auto fooBas = fooNested.get("bas");
+    ASSERT_TRUE(fooBas.isObject());
+    ASSERT_TRUE(fooBas.hasKey("nested"));
+    ASSERT_FALSE(fooBas.hasKey("fields"));
+    auto fooBasNested = fooBas.get("nested");
+    ASSERT_TRUE(fooBasNested.isObject());
+    auto aSlice = fooBasNested.get("a");
+    ASSERT_TRUE(aSlice.isObject());
+    ASSERT_TRUE(aSlice.hasKey("analyzers"));
+    auto bSlice = fooBasNested.get("b");
+    ASSERT_TRUE(bSlice.isEmptyObject());
+    auto cSlice = fooBasNested.get("c");
+    ASSERT_TRUE(cSlice.isEmptyObject());
+
+    auto fooKas = fooNested.get("kas");
+    ASSERT_TRUE(fooKas.isObject());
+    ASSERT_TRUE(fooKas.hasKey("nested"));
+    ASSERT_FALSE(fooKas.hasKey("fields"));
+    auto skas = fooKas.get("nested").get("skas");
+    ASSERT_TRUE(skas.isObject());
+    tmpSlice = skas.get("includeAllFields");
+    ASSERT_TRUE(tmpSlice.getBool());
+    auto analyzersSlice = skas.get("analyzers");
+    ASSERT_TRUE(analyzersSlice.isArray());
+    ASSERT_EQ(1, analyzersSlice.length());
+  }
+}
+#endif
