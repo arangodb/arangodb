@@ -308,7 +308,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
     bool canVariablesBeReplaced(aql::CalculationNode* calculationNode) const;
 
     ViewVarsInfo replaceViewVariables(
-        std::span<aql::CalculationNode*> calcNodes,
+        std::span<aql::CalculationNode* const> calcNodes,
         containers::HashSet<ExecutionNode*>& toUnlink);
 
     ViewVarsInfo replaceAllViewVariables(
