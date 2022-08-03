@@ -26,37 +26,52 @@
 #include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
 /// ParameterizedPageRank
-struct ParameterizedPageRank : public SimpleAlgorithm<float, float, float> {
-  explicit ParameterizedPageRank(application_features::ApplicationServer& server,
-                    arangodb::velocypack::Slice const& params);
 
-  GraphFormat<float, float>* inputFormat() const override;
+struct PPRVertexData {
+  PPRVertexData() : value(0.0) {}
+  explicit PPRVertexData(float val) : value(val) {}
+  float value;
+};
+struct PPREdgeData {};
+struct PPRMessageData {
+  float value;
+};
 
-  MessageFormat<float>* messageFormat() const override {
-    return new NumberMessageFormat<float>();
+struct ParameterizedPageRank
+    : public SimpleAlgorithm<PPRVertexData, PPREdgeData, PPRMessageData> {
+  explicit ParameterizedPageRank(
+      application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& params);
+
+  [[nodiscard]] GraphFormat<PPRVertexData, PPREdgeData>* inputFormat()
+      const override;
+
+  // todo implement
+  [[nodiscard]] MessageFormat<PPRMessageData>* messageFormat() const override {
+    return nullptr;
   }
 
-  MessageCombiner<float>* messageCombiner() const override {
-    return new SumCombiner<float>();
+  // todo implement
+  [[nodiscard]] MessageCombiner<PPRMessageData>* messageCombiner()
+      const override {
+    return nullptr;
   }
 
-  VertexComputation<float, float, float>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<PPRVertexData, PPREdgeData, PPRMessageData>*
+  createComputation(WorkerConfig const*) const override;
 
-  WorkerContext* workerContext(VPackSlice userParams) const override;
+  [[nodiscard]] WorkerContext* workerContext(
+      VPackSlice userParams) const override;
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] MasterContext* masterContext(
+      VPackSlice userParams) const override;
 
-  IAggregator* aggregator(std::string const& name) const override;
+  [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 
  private:
   bool const _useSource;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos

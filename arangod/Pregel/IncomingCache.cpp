@@ -24,6 +24,7 @@
 #include "IncomingCache.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/Algos/AIR/AIR.h"
+#include <Pregel/Algos/ParameterizedPageRank.h>
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 
@@ -370,6 +371,11 @@ template class arangodb::pregel::CombiningInCache<SenderMessage<double>>;
 template class arangodb::pregel::InCache<DMIDMessage>;
 template class arangodb::pregel::ArrayInCache<DMIDMessage>;
 template class arangodb::pregel::CombiningInCache<DMIDMessage>;
+
+template class arangodb::pregel::InCache<pregel::algos::PPRMessageData>;
+template class arangodb::pregel::ArrayInCache<pregel::algos::PPRMessageData>;
+template class arangodb::pregel::CombiningInCache<
+    pregel::algos::PPRMessageData>;
 
 template class arangodb::pregel::InCache<HLLCounter>;
 template class arangodb::pregel::ArrayInCache<HLLCounter>;

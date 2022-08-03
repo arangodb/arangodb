@@ -33,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "Pregel/Algos/AIR/AIR.h"
+#include <Pregel/Algos/ParameterizedPageRank.h>
 #include "Metrics/Gauge.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
@@ -816,6 +817,9 @@ template class arangodb::pregel::GraphStore<HITSValue, int8_t>;
 template class arangodb::pregel::GraphStore<DMIDValue, float>;
 template class arangodb::pregel::GraphStore<LPValue, int8_t>;
 template class arangodb::pregel::GraphStore<SLPAValue, int8_t>;
+template class arangodb::pregel::GraphStore<
+    arangodb::pregel::algos::PPRVertexData,
+    arangodb::pregel::algos::PPREdgeData>;
 
 using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::GraphStore<VertexData, EdgeData>;

@@ -36,81 +36,96 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 static float EPS = 0.00001f;
-static std::string const kConvergence = "convergence";
+// todo change to
+//  constexpr std::string_view kConvergence{"convergence"};
+static std::string const kConvergence{"convergence"};
 
 struct PRWorkerContext : public WorkerContext {
   PRWorkerContext() = default;
 };
 
-ParameterizedPageRank::ParameterizedPageRank(application_features::ApplicationServer& server,
-                   VPackSlice const& params)
+ParameterizedPageRank::ParameterizedPageRank(
+    application_features::ApplicationServer& server, VPackSlice const& params)
     : SimpleAlgorithm(server, "ParameterizedPageRank", params),
       _useSource(params.hasKey("sourceField")) {}
 
 /// will use a seed value for ParameterizedPageRank if available
-struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
-  SeededPRGraphFormat(application_features::ApplicationServer& server,
-                      std::string const& source, std::string const& result,
-                      float vertexNull)
-      : NumberGraphFormat(server, source, result, vertexNull, 0.0f) {}
+struct PPRGraphFormat final : public GraphFormat<PPRVertexData, PPREdgeData> {
+  explicit PPRGraphFormat(application_features::ApplicationServer& server)
+      : GraphFormat(server) {}
+
+  // todo: complete
+  // reads document which contains the complete document from the vertex
+  // and saves it
+  void copyVertexData(arangodb::velocypack::Options const& vpackOptions,
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice document,
+                      PPRVertexData& targetPtr,
+                      uint64_t& vertexIdRange) override {}
+  // todo complete
+  // prepare builder to be written into document
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                           PPRVertexData const* targetPtr) const override {
+    return true;
+  }
 };
 
-GraphFormat<float, float>* ParameterizedPageRank::inputFormat() const {
-  if (_useSource && !_sourceField.empty()) {
-    return new SeededPRGraphFormat(_server, _sourceField, _resultField, -1.0);
+GraphFormat<PPRVertexData, PPREdgeData>* ParameterizedPageRank::inputFormat()
+    const {
+  return new PPRGraphFormat(_server);
+}
+
+PPRVertexData computeNewValue(PPRVertexData oldValue,
+                              MessageIterator<PPRMessageData> const& messages,
+                              PRWorkerContext const* ctx, size_t gss) {
+  if (gss == 0) {
+    if (oldValue.value < 0) {
+      // todo: compute it once
+      // fixme: assure that if no vertices, we never reach this
+      // initialize vertices to initial weight, unless there was a seed weight
+      return PPRVertexData{1.0f / static_cast<float>(ctx->vertexCount())};
+    }
+    return PPRVertexData{0.0};
   } else {
-    return new VertexGraphFormat<float, float>(_server, _resultField, -1.0);
+    float sum = 0.0f;
+    for (const PPRMessageData* msg : messages) {
+      sum += msg->value;
+    }
+    // todo: compute it once
+    // fixme: assure that if no vertices, we never reach this
+    return PPRVertexData{0.85f * sum +
+                         0.15f / static_cast<float>(ctx->vertexCount())};
   }
 }
 
-struct PRComputation : public VertexComputation<float, float, float> {
-  PRComputation() {}
+struct PPRComputation
+    : public VertexComputation<PPRVertexData, PPREdgeData, PPRMessageData> {
+  PPRComputation() = default;
 
-  float computeNewValue(float oldValue,
-                        MessageIterator<float> const& messages,
-                        PRWorkerContext const* ctx) {
-    if (globalSuperstep() == 0) {
-      if (oldValue < 0) {
-        // todo: compute it once
-        // fixme: assure that if no vertices, we never reach this
-        // initialize vertices to initial weight, unless there was a seed weight
-        return 1.0f / ctx->vertexCount();
-      }
-      return 0.0;
-    } else {
-      float sum = 0.0f;
-      for (const float* msg : messages) {
-        sum += *msg;
-      }
-      // todo: compute it once
-      // fixme: assure that if no vertices, we never reach this
-      return 0.85f * sum + 0.15f / ctx->vertexCount();
-    }
-  }
+  void compute(MessageIterator<PPRMessageData> const& messages) override {
+    auto const* ctx = dynamic_cast<PRWorkerContext const*>(context());
+    PPRVertexData* ptr = mutableVertexData();
+    PPRVertexData copy = *ptr;
 
-  void compute(MessageIterator<float> const& messages) override {
-    PRWorkerContext const* ctx = static_cast<PRWorkerContext const*>(context());
-    float* ptr = mutableVertexData();
-    float copy = *ptr;
-
-    *ptr = computeNewValue(copy, messages, ctx);
-    float diff = fabs(copy - *ptr);
+    *ptr = computeNewValue(copy, messages, ctx, globalSuperstep());
+    float diff = fabs(copy.value - ptr->value);
     aggregate<float>(kConvergence, diff);
 
     size_t numEdges = getEdgeCount();
     if (numEdges > 0) {
-      float val = *ptr / numEdges;
-      sendMessageToAllNeighbours(val);
+      float val = ptr->value / numEdges;
+      sendMessageToAllNeighbours(PPRMessageData{val});
     }
   }
 };
 
-VertexComputation<float, float, float>* ParameterizedPageRank::createComputation(
-    WorkerConfig const* config) const {
-  return new PRComputation();
+VertexComputation<PPRVertexData, PPREdgeData, PPRMessageData>*
+ParameterizedPageRank::createComputation(WorkerConfig const* config) const {
+  return new PPRComputation();
 }
 
-WorkerContext* ParameterizedPageRank::workerContext(VPackSlice userParams) const {
+WorkerContext* ParameterizedPageRank::workerContext(
+    VPackSlice userParams) const {
   return new PRWorkerContext();
 }
 
@@ -127,12 +142,14 @@ struct PRMasterContext : public MasterContext {
   }
 
   bool postGlobalSuperstep() override {
-    float const* diff = getAggregatedValue<float>(kConvergence);
-    return globalSuperstep() < 1 || *diff > _threshold;
+    auto const diff =
+        PPRVertexData{*getAggregatedValue<PPRVertexData>(kConvergence)};
+    return globalSuperstep() < 1 || diff.value > _threshold;
   };
 };
 
-MasterContext* ParameterizedPageRank::masterContext(VPackSlice userParams) const {
+MasterContext* ParameterizedPageRank::masterContext(
+    VPackSlice userParams) const {
   return new PRMasterContext(userParams);
 }
 

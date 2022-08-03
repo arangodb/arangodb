@@ -23,6 +23,7 @@
 
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/Algos/AIR/AIR.h"
+#include <Pregel/Algos/ParameterizedPageRank.h>
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
@@ -296,6 +297,11 @@ template class arangodb::pregel::CombiningOutCache<DMIDMessage>;
 template class arangodb::pregel::OutCache<HLLCounter>;
 template class arangodb::pregel::ArrayOutCache<HLLCounter>;
 template class arangodb::pregel::CombiningOutCache<HLLCounter>;
+
+template class arangodb::pregel::OutCache<pregel::algos::PPRMessageData>;
+template class arangodb::pregel::ArrayOutCache<pregel::algos::PPRMessageData>;
+template class arangodb::pregel::CombiningOutCache<
+    pregel::algos::PPRMessageData>;
 
 using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::OutCache<MessageData>;
