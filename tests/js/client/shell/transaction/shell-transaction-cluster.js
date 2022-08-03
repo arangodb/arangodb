@@ -33,6 +33,7 @@ const { fail,
 } = jsunity.jsUnity.assertions;
 
 const arangodb = require('@arangodb');
+const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
 const internal = require('internal');
@@ -431,7 +432,7 @@ function transactionReplication2Recovery() {
     setUp: setUpAnd(() => {
       c = db._create(cn, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
       shards = c.shards();
-      shardId = shards[0]
+      shardId = shards[0];
       logId = shardId.slice(1);
     }),
     tearDown: tearDownAnd(() => {

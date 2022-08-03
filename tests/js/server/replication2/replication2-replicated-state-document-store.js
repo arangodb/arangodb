@@ -506,7 +506,7 @@ const replicatedStateRecoverySuite = function () {
     setUp: setUpAnd(() => {
       collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
       shards = collection.shards();
-      shardId = shards[0]
+      shardId = shards[0];
       logId = shardId.slice(1);
     }),
     tearDown: tearDownAnd(() => {
