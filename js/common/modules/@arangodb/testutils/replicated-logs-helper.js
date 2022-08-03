@@ -546,7 +546,7 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const dumpLog = function (shardId, limit=1000) {
+const dumpShardLog = function (shardId, limit=1000) {
   let log = db._replicatedLog(shardIdToLogId(shardId));
   return log.head(limit);
 };
@@ -592,4 +592,4 @@ exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
 exports.shardIdToLogId = shardIdToLogId;
-exports.dumpLog = dumpLog;
+exports.dumpShardLog = dumpShardLog;

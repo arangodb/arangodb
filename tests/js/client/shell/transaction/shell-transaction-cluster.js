@@ -478,7 +478,7 @@ function transactionReplication2Recovery() {
         dbn, logId, newTerm, followers));
 
       // Check if the universal abort command appears in the log during the current term.
-      let logContents = replicatedLogsHelper.dumpLog(shardId);
+      let logContents = replicatedLogsHelper.dumpShardLog(shardId);
       let abortAllEntryFound = _.some(logContents, entry => {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;

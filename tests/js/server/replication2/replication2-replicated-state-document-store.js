@@ -93,7 +93,7 @@ const checkFollowersValue = function (servers, shardId, key, value, isReplicatio
 
   let replication2Log = '';
   if (isReplication2) {
-    replication2Log = `Log entries: ${JSON.stringify(lh.dumpLog(shardId))}`;
+    replication2Log = `Log entries: ${JSON.stringify(lh.dumpShardLog(shardId))}`;
   }
   let extraErrorMessage = `All responses: ${JSON.stringify(localValues)}` + `\n${replication2Log}`;
 
@@ -583,7 +583,7 @@ const replicatedStateRecoverySuite = function () {
       syncShardsWithLogs(database);
 
       // Check if the universal abort command appears in the log during the current term.
-      let logContents = lh.dumpLog(shardId);
+      let logContents = lh.dumpShardLog(shardId);
       let abortAllEntryFound = _.some(logContents, entry => {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
@@ -594,7 +594,7 @@ const replicatedStateRecoverySuite = function () {
 
       // Try a new transaction.
       servers = Object.assign({}, ...followers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
-      handle = collection.update(handle, {value: `${testName}-baz`});
+      collection.update(handle, {value: `${testName}-baz`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-baz`, true);
 
       // Try an AQL query.
