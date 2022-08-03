@@ -120,6 +120,9 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
         fut = trx->abort();
         removeTransaction(doc.tid);
         break;
+      case OperationType::kAbortAllOngoingTrx:
+        // do nothing
+        break;
     }
     TRI_ASSERT(fut.isReady()) << doc;
     return fut.get();
@@ -258,7 +261,8 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
     builder.add("testfoo", "testbar");
     ob->close();
 
-    auto logIndex = LogIndex{2};
+    // starting from index 3 because the 2nd is an AbortAllOngoingTrx
+    auto logIndex = LogIndex{3};
     auto operation = OperationType::kInsert;
     auto tid = TransactionId{1};
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
@@ -288,7 +292,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
 
   // commit operation
   {
-    auto logIndex = LogIndex{3};
+    auto logIndex = LogIndex{4};
     auto operation = OperationType::kCommit;
     auto tid = TransactionId{1};
     auto trx = transactionHandler->getTransaction(tid);
