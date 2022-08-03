@@ -276,8 +276,8 @@ function transactionReplicationOnFollowersSuite(dbParams) {
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
   const rc = replicatedLogsHelper.dbservers.length;
+  const isReplication2 = dbParams.replicationVersion === "2";
   let c = null;
-  let isReplication2 = dbParams.replicationVersion === "2";
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
     replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
@@ -416,7 +416,11 @@ function transactionReplication2Recovery() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  var c = null;
+  const coordinator = replicatedLogsHelper.coordinators[0];
+  let c = null;
+  let shards = null;
+  let shardId = null;
+  let logId = null;
 
   const {setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd} =
     replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
@@ -426,6 +430,9 @@ function transactionReplication2Recovery() {
     tearDownAll,
     setUp: setUpAnd(() => {
       c = db._create(cn, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      shards = c.shards();
+      shardId = shards[0]
+      logId = shardId.slice(1);
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
@@ -435,12 +442,6 @@ function transactionReplication2Recovery() {
     }),
 
     testFailoverDuringTransaction: function () {
-      const shards = c.shards();
-      assertEqual(shards.length, 1);
-      const shardId = shards[0]
-      const logId = shardId.slice(1);
-      const coordinator = replicatedLogsHelper.coordinators[0];
-
       // Start a transaction.
       let trx = db._createTransaction({
         collections: {write: c.name()}
@@ -534,12 +535,6 @@ function transactionReplication2Recovery() {
      * the shard shouldn't exist locally.
      */
     DISABLED_testFollowerReplaceDuringTransaction: function () {
-      const shards = c.shards();
-      assertEqual(shards.length, 1);
-      const shardId = shards[0]
-      const logId = shardId.slice(1);
-      const coordinator = replicatedLogsHelper.coordinators[0];
-
       // Prepare the grounds for replacing a follower.
       const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
       const participants = logs[logId];

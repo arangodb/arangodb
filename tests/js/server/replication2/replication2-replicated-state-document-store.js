@@ -187,36 +187,29 @@ const getArrayElements = function(logs, opType, name) {
 };
 
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
-  let previousDatabase, databaseExisted = true;
-  return {
-    setUpAll: function () {
-      previousDatabase = db._name();
-      if (!_.includes(db._databases(), database)) {
-        db._createDatabase(database, {"replicationVersion": "2"});
-        databaseExisted = false;
-      }
-      db._useDatabase(database);
-    },
+  let collection = null;
+  let shards = null;
+  let logs = null;
 
-    tearDownAll: function () {
-      db._useDatabase(previousDatabase);
-      if (!databaseExisted) {
-        db._dropDatabase(database);
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      shards = collection.shards();
+      logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+    }),
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        collection.drop();
       }
-    },
-    setUp: function (testName) {
-      lh.registerAgencyTestBegin(testName);
-      db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
-    },
-    tearDown: function (testName) {
-      if (db._collection(collectionName) !== null) {
-        db._drop(collectionName);
-      }
-      lh.registerAgencyTestEnd(testName);
-    },
+      collection = null;
+    }),
 
     testCreateReplicatedStateForEachShard: function() {
-      let collection = db._collection(collectionName);
       let colPlan = lh.readAgencyValueAt(`Plan/Collections/${database}/${collection._id}`);
       let colCurrent = lh.readAgencyValueAt(`Current/Collections/${database}/${collection._id}`);
 
@@ -239,9 +232,8 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     },
 
     testDropCollection: function() {
-      let collection = db._collection(collectionName);
-      let shards = collection.shards();
       db._drop(collectionName);
+      collection = null;
       for (const shard of shards) {
         let {plan} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
         assertEqual(plan, undefined);
@@ -250,10 +242,6 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 
     testReplicateOperationsCommit: function() {
       const opType = "Commit";
-      let collection = db._collection(collectionName);
-
-      let shards = collection.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       collection.insert({_key: "abcd"});
       let commitEntries = getDocumentEntries(mergeLogs(logs), opType);
@@ -268,9 +256,6 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 
     testReplicateOperationsInsert: function() {
       const opType = "Insert";
-      let collection = db._collection(collectionName);
-      let shards = collection.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       // Insert single document
       let documents = [{_key: "foo"}, {_key: "bar"}];
@@ -296,9 +281,6 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 
     testReplicateOperationsModify: function() {
       const opType = "Update";
-      let collection = db._collection(collectionName);
-      let shards = collection.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       // Update single document
       let documents = [{_key: `test${_.random(1000)}`}, {_key: `test${_.random(1000)}`}];
@@ -332,9 +314,6 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 
     testReplicateOperationsRemove: function() {
       const opType = "Remove";
-      let collection = db._collection(collectionName);
-      let shards = collection.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       // Remove single document
       let doc = {_key: `test${_.random(1000)}`};
@@ -356,9 +335,6 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 
     testReplicateOperationsTruncate: function() {
       const opType = "Truncate";
-      let collection = db._collection(collectionName);
-      let shards = collection.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
       collection.truncate();
 
       let found = [];
@@ -381,44 +357,30 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
  * writeConcern must be equal to replicationFactor, so we replicate all documents on all followers.
  */
 const replicatedStateFollowerSuite = function (dbParams) {
-  let previousDatabase, databaseExisted = true;
-  let isReplication2 = dbParams.replicationVersion === "2";
+  const rc = lh.dbservers.length;
+  const isReplication2 = dbParams.replicationVersion === "2";
+  const servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+  let collection = null;
+  let shardId = null;
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    lh.testHelperFunctions(database, {replicationVersion: "2"});
 
   return {
-    setUpAll: function () {
-      previousDatabase = db._name();
-      if (!_.includes(db._databases(), database)) {
-        db._createDatabase(database, dbParams);
-        databaseExisted = false;
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
+      shardId = collection.shards()[0];
+    }),
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        collection.drop();
       }
-      db._useDatabase(database);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase(previousDatabase);
-      if (!databaseExisted) {
-        db._dropDatabase(database);
-      }
-    },
-
-    setUp: function (testName) {
-      lh.registerAgencyTestBegin(testName);
-      let rc = lh.dbservers.length;
-      db._create(collectionName, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
-    },
-
-    tearDown: function (testName) {
-      if (db._collection(collectionName) !== null) {
-        db._drop(collectionName);
-      }
-      lh.registerAgencyTestEnd(testName);
-    },
+      collection = null;
+    }),
 
     testFollowersSingleDocument: function(testName) {
-      let collection = db._collection(collectionName);
-      let shardId = collection.shards()[0];
-      let servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
-
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, isReplication2);
 
@@ -433,9 +395,6 @@ const replicatedStateFollowerSuite = function (dbParams) {
     },
 
     testFollowersMultiDocuments: function(testName) {
-      let collection = db._collection(collectionName);
-      let shardId = collection.shards()[0];
-      let servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-foo${i}`, value: i};});
 
       let handles = collection.insert(documents);
@@ -461,9 +420,6 @@ const replicatedStateFollowerSuite = function (dbParams) {
     },
 
     testFollowersAql: function(testName) {
-      let collection = db._collection(collectionName);
-      let shardId = collection.shards()[0];
-      let servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-foo${i}`, value: i};});
 
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('${testName}-foo', i), value: i} INTO ${collectionName}`);
@@ -488,10 +444,6 @@ const replicatedStateFollowerSuite = function (dbParams) {
     },
 
     testFollowersTruncate: function(testName) {
-      let collection = db._collection(collectionName);
-      let shardId = collection.shards()[0];
-      let servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
-
       collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, isReplication2);
       collection.truncate();
@@ -539,7 +491,11 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
  * For example, after a failover.
  */
 const replicatedStateRecoverySuite = function () {
-  var col = null;
+  const coordinator = lh.coordinators[0];
+  let collection = null;
+  let shards = null;
+  let shardId = null;
+  let logId = null;
 
   const {setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd} =
     lh.testHelperFunctions(database, {replicationVersion: "2"});
@@ -548,24 +504,20 @@ const replicatedStateRecoverySuite = function () {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      col = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      shards = collection.shards();
+      shardId = shards[0]
+      logId = shardId.slice(1);
     }),
     tearDown: tearDownAnd(() => {
-      if (col !== null) {
-        col.drop();
+      if (collection !== null) {
+        collection.drop();
       }
-      col = null;
+      collection = null;
     }),
 
     testRecoveryFromFailover: function (testName) {
-      let collection = db._collection(collectionName);
-      const shards = collection.shards();
-      assertEqual(shards.length, 1);
-      const shardId = shards[0]
-      const logId = shardId.slice(1);
-      const coordinator = lh.coordinators[0];
-      const logs = lhttp.listLogs(coordinator, database).result;
-      const participants = logs[logId];
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
       assertTrue(participants !== undefined);
       let servers = Object.assign({}, ...participants.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
@@ -619,25 +571,14 @@ const replicatedStateRecoverySuite = function () {
 };
 
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
-  let previousDatabase, databaseExisted = true;
-  return {
-    setUpAll: function () {
-      previousDatabase = db._name();
-      if (!_.includes(db._databases(), database)) {
-        db._createDatabase(database, {"replicationVersion": "1"});
-        databaseExisted = false;
-      }
-      db._useDatabase(database);
-    },
+  const {setUpAll, tearDownAll, setUp, tearDown} =
+    lh.testHelperFunctions(database, {replicationVersion: "1"});
 
-    tearDownAll: function () {
-      db._useDatabase(previousDatabase);
-      if (!databaseExisted) {
-        db._dropDatabase(database);
-      }
-    },
-    setUp: lh.registerAgencyTestBegin,
-    tearDown: lh.registerAgencyTestEnd,
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp,
+    tearDown,
 
     testDoesNotCreateReplicatedStateForEachShard: function() {
       let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
