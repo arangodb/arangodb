@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added startup option `--rocksdb.verify-sst` to validate sst files already 
+  present in the database directory on startup. Default: false.
+
 * Updated arangosync to v2.12.0-preview-2.
 
 * ArangoSearch nested search feature. (Enterprise Edition): Added ability to index

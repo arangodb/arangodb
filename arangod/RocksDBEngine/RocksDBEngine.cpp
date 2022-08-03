@@ -108,6 +108,7 @@
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
+#include <rocksdb/sst_file_reader.h>
 #include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
 #include <rocksdb/transaction_log.h>
@@ -242,6 +243,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _useReleasedTick(false),
       _debugLogging(false),
       _useEdgeCache(true),
+      _verifySst(false),
 #ifdef USE_ENTERPRISE
       _createShaFiles(true),
 #else
@@ -568,6 +570,17 @@ void RocksDBEngine::collectOptions(
       .setIntroducedIn(30604)
       .setDeprecatedIn(31000);
 
+  options
+      ->addOption("--rocksdb.verify-sst",
+                  "verify validity of sst files present in rocksdb directory",
+                  new BooleanParameter(&_verifySst),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31000);
+
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
       "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
@@ -648,6 +661,35 @@ void RocksDBEngine::prepare() {
 #ifdef USE_ENTERPRISE
   prepareEnterprise();
 #endif
+}
+
+void RocksDBEngine::verifySstFiles() const {
+  rocksdb::Options options;
+  options.env = _dbOptions.env;
+  rocksdb::SstFileReader sstReader(options);
+
+  for (auto const& fileName : TRI_FullTreeDirectory(dataPath().data())) {
+    LOG_DEVEL << "file name " << fileName;
+    if (!fileName.ends_with(".sst")) {
+      continue;
+    }
+    rocksdb::Status res =
+        sstReader.Open(basics::FileUtils::buildFilename(dataPath(), fileName));
+    auto result = rocksutils::convertStatus(res);
+    if (!result.ok()) {
+      LOG_TOPIC("40edd", FATAL, arangodb::Logger::STARTUP)
+          << "Error when accessing file " << fileName << " might be invalid "
+          << result.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+    res = sstReader.VerifyChecksum();
+    if (!result.ok()) {
+      LOG_TOPIC("2943c", FATAL, arangodb::Logger::STARTUP)
+          << "Error in file " << fileName << " checksum verification "
+          << result.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 void RocksDBEngine::start() {
@@ -812,6 +854,11 @@ void RocksDBEngine::start() {
   bool dbExisted = checkExistingDB(cfFamilies);
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
+
+  if (_verifySst) {
+    verifySstFiles();
+  }
+
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _dbOptions, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
 
