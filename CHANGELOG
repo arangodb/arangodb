@@ -1,8 +1,10 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* ArangoSearch nested search feature. (Enterprise Edition): Added ability to index
-  and search nested documents with ArangoSearch views.
+* ArangoSearch nested search feature (Enterprise Edition): Added ability to
+  index and search nested documents with ArangoSearch views.
+
+* Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 
 * Updated arangosync to v2.12.0-preview-2.
 
@@ -174,8 +176,6 @@ v3.10.0 (XXXX-XX-XX)
 
       `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
       `RETURN [1,2,3] AT LEAST (2) IN [1,2,3,4,5]`
-
-* Updated arangosync to v2.11.0.
 
 * Changed default macOS CI compiler to LLVM clang-14.
 
