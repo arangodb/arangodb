@@ -669,7 +669,6 @@ void RocksDBEngine::verifySstFiles() const {
   rocksdb::SstFileReader sstReader(options);
 
   for (auto const& fileName : TRI_FullTreeDirectory(dataPath().data())) {
-    LOG_DEVEL << "file name " << fileName;
     if (!fileName.ends_with(".sst")) {
       continue;
     }
