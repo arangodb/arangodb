@@ -79,7 +79,8 @@ const syncShardsWithLogs = function(dbn) {
 function transactionReplication2ReplicateOperationSuite() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
-  var cn = 'UnitTestsTransaction';
+  const cn = 'UnitTestsTransaction';
+  const rc = replicatedLogsHelper.dbservers.length;
   var c = null;
 
   const bumpTermOfLogsAndWaitForConfirmation = (col) => {
@@ -99,29 +100,21 @@ function transactionReplication2ReplicateOperationSuite() {
     Object.entries(terms).forEach(x => replicatedLogsHelper.waitFor(leaderReady(x)));
   };
 
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
+
   return {
-    setUpAll: function () {
-      db._createDatabase(dbn, {replicationVersion: "2"});
-      db._useDatabase(dbn);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(dbn);
-    },
-
-    setUp: function () {
-      db._drop(cn);
-      c = db._create(cn, {numberOfShards: 4});
-    },
-
-    tearDown: function () {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      c = db._create(cn, {"numberOfShards": 4, "writeConcern": rc, "replicationFactor": rc});
+    }),
+    tearDown: tearDownAnd(() => {
       if (c !== null) {
         c.drop();
       }
-
       c = null;
-    },
+    }),
 
     testTransactionAbortLogEntry: function () {
       let trx = db._createTransaction({
@@ -281,35 +274,26 @@ function transactionReplication2ReplicateOperationSuite() {
 function transactionReplicationOnFollowersSuite(dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
-  const numberOfShards = 1;
   const cn = 'UnitTestsTransaction';
+  const rc = replicatedLogsHelper.dbservers.length;
   let c = null;
   let isReplication2 = dbParams.replicationVersion === "2";
 
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
+
   return {
-    setUpAll: function () {
-      db._createDatabase(dbn, dbParams);
-      db._useDatabase(dbn);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(dbn);
-    },
-
-    setUp: function () {
-      db._drop(cn);
-      let rc = replicatedLogsHelper.dbservers.length;
-      c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": rc, "replicationFactor": rc});
-    },
-
-    tearDown: function () {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      c = db._create(cn, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
+    }),
+    tearDown: tearDownAnd(() => {
       if (c !== null) {
         c.drop();
       }
-
       c = null;
-    },
+    }),
 
     testFollowerAbort: function () {
       let trx = db._createTransaction({
