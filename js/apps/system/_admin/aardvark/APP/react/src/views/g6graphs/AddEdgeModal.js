@@ -28,7 +28,7 @@ const StyledButton = styled.button`
   color: white !important;
 `;
 
-export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onRequestClose, edge, edgeCollections, edgeData, editorContent, children, edgeKey, edgeCollection, onEdgeCreation, graphName, graphData, nodeFrom, nodeTo }) => {
+export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onRequestClose, edge, edgeCollections, edgeData, editorContent, children, edgeKey, edgeCollection, onEdgeCreation, graphName, graphData, nodeFrom, nodeTo, onEdgeCreationCancellation }) => {
 
   const { Option } = Select;
   const keyInputRef = useRef();
@@ -70,6 +70,11 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
         arangoHelper.arangoError('Graph', 'Could not create edge.');
       }
     });
+  }
+
+  const cancelEdge = (updateEdgeId) => {
+    onEdgeCreationCancellation(edgeModelToAdd);
+    onRequestClose();
   }
 
   const handleChange = (value) => {
@@ -126,7 +131,7 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
           }
         </div>
         <div style={{ 'marginTop': '38px', 'textAlign': 'right' }}>
-          <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
+          <StyledButton className="button-close" onClick={() => cancelEdge(edge)}>Cancel</StyledButton>
           <StyledButton className="button-success" onClick={() => { addEdge(edge) }}>Create</StyledButton>
         </div>
       </ModalBody>

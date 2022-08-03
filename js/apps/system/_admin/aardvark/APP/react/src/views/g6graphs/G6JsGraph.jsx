@@ -188,6 +188,40 @@ const G6JsGraph = () => {
     setGraphData(newGraphData);
   }
 
+  const removeDrawnEdge = (newEdge) => {
+    // Add edge first to register it in graphData
+    const currentNodes = graphData.nodes;
+    const newGraphData = {
+      nodes: [
+        ...currentNodes,
+      ],
+      edges: [
+        ...graphData.edges,
+        newEdge
+      ]
+    };
+    setGraphData(newGraphData);
+
+    // Remove edge first to register it in graphData
+    const edgesWithoutRemovedEdge = graphData.edges.filter(edges => edges.id !== newEdge);
+    const currentNodes2 = graphData.nodes;
+    const currentSettings = graphData.settings;
+
+    const newGraphData2 = {
+      nodes: [
+        ...currentNodes2
+      ],
+      edges: [
+        ...edgesWithoutRemovedEdge
+      ],
+      settings: [
+        currentSettings
+      ]
+    };
+
+    setGraphData(newGraphData2);
+  }
+
   const updateGraphDataNodes = (newNodes) => {
     const currentEdges = graphData.edges;
     const newGraphData = {
@@ -541,6 +575,9 @@ const G6JsGraph = () => {
           edgeData={{}}
           graphName={graphName}
           graphData={graphData}
+          onEdgeCreationCancellation={(newEdge) => {
+            removeDrawnEdge(newEdge);
+          }}
         >
           <strong>Add edge</strong>
         </AddEdgeModal>
