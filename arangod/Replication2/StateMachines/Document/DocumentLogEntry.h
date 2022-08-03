@@ -36,7 +36,7 @@
 namespace arangodb::replication2::replicated_state {
 namespace document {
 
-enum OperationType {
+enum class OperationType {
   kInsert,
   kUpdate,
   kReplace,

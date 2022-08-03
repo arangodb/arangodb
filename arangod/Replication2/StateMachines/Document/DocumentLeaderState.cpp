@@ -65,12 +65,14 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     }
   }
 
-  auto doc = DocumentLogEntry{
-      std::string(shardId), kAbortAllOngoingTrx, {}, TransactionId{0}};
+  auto doc = DocumentLogEntry{std::string(shardId),
+                              OperationType::kAbortAllOngoingTrx,
+                              {},
+                              TransactionId{0}};
   auto stream = getStream();
   stream->insert(doc);
 
-  // TODO abort entries to the log and add a tombstone to the TransactionManager
+  // TODO Add a tombstone to the TransactionManager
   return {TRI_ERROR_NO_ERROR};
 }
 

@@ -150,20 +150,20 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
   auto fut =
       futures::Future<OperationResult>{std::in_place, Result{}, opOptions};
   switch (entry.operation) {
-    case kInsert:
+    case OperationType::kInsert:
       fut = _methods->insertAsync(entry.shardId, entry.data.slice(), opOptions);
       break;
-    case kUpdate:
+    case OperationType::kUpdate:
       fut = _methods->updateAsync(entry.shardId, entry.data.slice(), opOptions);
       break;
-    case kReplace:
+    case OperationType::kReplace:
       fut =
           _methods->replaceAsync(entry.shardId, entry.data.slice(), opOptions);
       break;
-    case kRemove:
+    case OperationType::kRemove:
       fut = _methods->removeAsync(entry.shardId, entry.data.slice(), opOptions);
       break;
-    case kTruncate:
+    case OperationType::kTruncate:
       // TODO Think about correctness and efficiency.
       fut = _methods->truncateAsync(entry.shardId, opOptions);
       break;
@@ -202,10 +202,12 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
 auto DocumentStateTransactionHandler::applyTransaction(DocumentLogEntry doc)
     -> Result {
   auto fut = futures::Future<Result>{Result{}};
-  if (doc.operation == kAbortAllOngoingTrx) {
+
+  if (doc.operation == OperationType::kAbortAllOngoingTrx) {
     _transactions.clear();
     return Result{};
   }
+
   try {
     auto trx = ensureTransaction(doc);
     TRI_ASSERT(trx != nullptr);
@@ -248,7 +250,8 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry doc)
     return trx;
   }
 
-  TRI_ASSERT(doc.operation != kCommit && doc.operation != kAbort);
+  TRI_ASSERT(doc.operation != OperationType::kCommit &&
+             doc.operation != OperationType::kAbort);
 
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
