@@ -112,6 +112,7 @@ const replicatedStateSuite = function (stateType) {
         assertEqual(status.snapshot.status, "Completed");
         assertTrue(status.snapshot.timestamp !== undefined);
         assertEqual(status.generation, 1);
+        assertTrue(status.lastAppliedIndex !== undefined);
       }
     },
 

@@ -2125,7 +2125,7 @@ function transactionOperationsSuite (dbParams) {
       assertEqual(0, c1.count());
       assertEqual([ ], sortedKeys(c1));
     },
-
+    
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with truncate operation
     // //////////////////////////////////////////////////////////////////////////////
@@ -2230,7 +2230,43 @@ function transactionOperationsSuite (dbParams) {
       assertEqual(1, c1.count());
       let doc = c1.document("1");
       assertEqual(doc.updated, 1);
-    }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx with truncate operation
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testTruncateAbort: function () {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
+
+      for (let i = 0; i < 100; ++i) {
+        c1.save({ a: i });
+      }
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+      
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.truncate({ compact: false });
+
+      } catch(err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (trx) {
+          trx.abort();
+        }
+      }
+
+      assertEqual(100, c1.count());
+    },
+
 
   };
 }
