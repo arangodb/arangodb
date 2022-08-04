@@ -1044,10 +1044,41 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
 
 std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
     irs::boolean_filter*& filter, aql::AstNodeType arrayComparison,
-    const aql::AstNode* quantifierNode, size_t arraySize) {
+    const aql::AstNode* quantifierNode, size_t arraySize,
+    QueryContext const& ctx) {
   TRI_ASSERT(quantifierNode);
   auto quantifierType =
       static_cast<aql::Quantifier::Type>(quantifierNode->getIntValue(true));
+
+  int64_t atLeastCount{0};
+  if (quantifierType == aql::Quantifier::Type::kAtLeast) {
+    constexpr std::string_view kFuncName = "AT LEAST";
+    if (quantifierNode->numMembers() != 1) {
+      return {Result(TRI_ERROR_INTERNAL, "Malformed AT LEAST node"),
+              aql::AstNodeType::NODE_TYPE_ROOT};
+    }
+    auto number = quantifierNode->getMemberUnchecked(0);
+    ScopedAqlValue atLeastCountValue;
+    auto rv = evaluateArg<decltype(atLeastCount), true>(
+        atLeastCount, atLeastCountValue, kFuncName.data(), *quantifierNode, 0,
+        filter != nullptr, ctx);
+
+    if (rv.fail()) {
+      return {rv, aql::AstNodeType::NODE_TYPE_ROOT};
+    }
+
+    if (atLeastCount < 0) {
+      return {error::negativeNumber(kFuncName.data(), 0),
+              aql::AstNodeType::NODE_TYPE_ROOT};
+    }
+
+    if (atLeastCount == 1) {
+      quantifierType = aql::Quantifier::Type::kAny;
+    } else if (atLeastCount == arraySize) {
+      quantifierType = aql::Quantifier::Type::kAll;
+    }
+  }
+
   aql::AstNodeType expansionNodeType = aql::NODE_TYPE_ROOT;
   if (0 == arraySize) {
     expansionNodeType = aql::NODE_TYPE_ROOT;  // no subfilters expansion needed
@@ -1064,9 +1095,14 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
         }
         break;
       case aql::Quantifier::Type::kAtLeast:
-        // TODO: handle at least!!
-        TRI_ASSERT(false);
-
+        if (filter) {
+          if (atLeastCount > 0) {
+            filter->add<irs::empty>();
+          } else {
+            filter->add<irs::all>();
+          }
+        }
+        break;
       default:
         TRI_ASSERT(false);  // new qualifier added ?
         return std::make_pair(
@@ -1221,9 +1257,72 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
         break;
       }
       case aql::Quantifier::Type::kAtLeast:
-        // TODO: handle at least!!
-        TRI_ASSERT(false);
-
+        if (arraySize < atLeastCount) {
+          if (filter) {
+            filter->add<irs::empty>();
+          }
+          expansionNodeType = aql::NODE_TYPE_ROOT;
+          break;
+        }
+        switch (arrayComparison) {
+          case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+          case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(
+                  &filter->add<irs::Or>().min_match_count(
+                      static_cast<size_t>(atLeastCount)));
+              expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+            }
+            break;
+          case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+          case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(
+                  &filter->add<irs::Or>().min_match_count(
+                      static_cast<size_t>(atLeastCount)));
+            }
+            expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_NE;
+            break;
+          case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(
+                  &filter->add<irs::Or>().min_match_count(
+                      static_cast<size_t>(atLeastCount)));
+            }
+            expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LT;
+            break;
+          case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(
+                  &filter->add<irs::Or>().min_match_count(
+                      static_cast<size_t>(atLeastCount)));
+            }
+            expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LE;
+            break;
+          case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(
+                  &filter->add<irs::Or>().min_match_count(
+                      static_cast<size_t>(atLeastCount)));
+            }
+            expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GT;
+            break;
+          case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(
+                  &filter->add<irs::Or>().min_match_count(
+                      static_cast<size_t>(atLeastCount)));
+            }
+            expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GE;
+            break;
+          default:
+            TRI_ASSERT(false);  // new array comparison operator?
+            return std::make_pair(
+                Result(TRI_ERROR_NOT_IMPLEMENTED,
+                       "Unknown Array ANY comparison operator"),
+                aql::AstNodeType::NODE_TYPE_ROOT);
+        }
+        break;
       default:
         TRI_ASSERT(false);  // new qualifier added ?
         return std::make_pair(
@@ -1241,10 +1340,15 @@ class ByTermSubFilterFactory {
                                 NormalizedCmpNode const& node,
                                 QueryContext const& ctx,
                                 FilterContext const& filterCtx) {
-    TRI_ASSERT(aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.cmp);
+    TRI_ASSERT(aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.cmp ||
+               aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp);
     irs::by_term* termFilter = nullptr;
     if (filter) {
-      termFilter = &filter->add<irs::by_term>();
+      if (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp) {
+        termFilter = &filter->add<irs::Not>().filter<irs::by_term>();
+      } else {
+        termFilter = &filter->add<irs::by_term>();
+      }
     }
     return byTerm(termFilter, node, ctx, filterCtx);
   }
@@ -1255,10 +1359,15 @@ class ByTermSubFilterFactory {
                                  aql::AstNodeType arrayExpansionNodeType,
                                  QueryContext const& ctx,
                                  FilterContext const& filterCtx) {
-    TRI_ASSERT(aql::NODE_TYPE_OPERATOR_BINARY_EQ == arrayExpansionNodeType);
+    TRI_ASSERT(aql::NODE_TYPE_OPERATOR_BINARY_EQ == arrayExpansionNodeType ||
+               aql::NODE_TYPE_OPERATOR_BINARY_NE == arrayExpansionNodeType);
     irs::by_term* termFilter = nullptr;
     if (filter) {
-      termFilter = &filter->add<irs::by_term>();
+      if (aql::NODE_TYPE_OPERATOR_BINARY_NE == arrayExpansionNodeType) {
+        termFilter = &filter->add<irs::Not>().filter<irs::by_term>();
+      } else {
+        termFilter = &filter->add<irs::by_term>();
+      }
     }
     return byTerm(termFilter, std::move(fieldName), value, ctx, filterCtx);
   }
@@ -1362,7 +1471,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     aql::AstNodeType arrayExpansionNodeType;
     std::tie(buildRes, arrayExpansionNodeType) =
         buildBinaryArrayComparisonPreFilter(filter, node.type, quantifierNode,
-                                            n);
+                                            n, ctx);
     if (!buildRes.ok()) {
       return buildRes;
     }
@@ -1459,7 +1568,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       aql::AstNodeType arrayExpansionNodeType;
       std::tie(buildRes, arrayExpansionNodeType) =
           buildBinaryArrayComparisonPreFilter(filter, node.type, quantifierNode,
-                                              n);
+                                              n, ctx);
       if (!buildRes.ok()) {
         return buildRes;
       }
