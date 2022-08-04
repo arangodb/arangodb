@@ -49,7 +49,7 @@ constexpr char kNestedDelimiter = '\2';
 std::string_view constexpr kNullSuffix{"\0_n", 3};
 std::string_view constexpr kBoolSuffix{"\0_b", 3};
 std::string_view constexpr kNumericSuffix{"\0_d", 3};
-std::string_view constexpr kStirngSuffix{"\0_s", 3};
+std::string_view constexpr kStringSuffix{"\0_s", 3};
 
 }  // namespace
 
@@ -99,7 +99,7 @@ void mangleNumeric(std::string& name) {
 
 void mangleString(std::string& name) {
   normalizeExpansion(name);
-  name.append(kStirngSuffix);
+  name.append(kStringSuffix);
 }
 
 #ifdef USE_ENTERPRISE
@@ -116,8 +116,49 @@ void mangleField(std::string& name, bool isOldMangling,
     name += kAnalyzerDelimiter;
     name += analyzer._shortName;
   } else {
-    name.append(kStirngSuffix);
+    name.append(kStringSuffix);
   }
 }
+
+std::string_view demangleType(std::string_view name) noexcept {
+  if (name.empty()) {
+    return {};
+  }
+
+  for (size_t i = name.size() - 1;; --i) {
+    if (name[i] <= kAnalyzerDelimiter) {
+      return {name.data(), i};
+    }
+    if (i == 0) {
+      break;
+    }
+  }
+
+  return name;
+}
+
+#ifdef USE_ENTERPRISE
+std::string_view demangleNested(std::string_view name, std::string& buf) {
+  auto const end = std::end(name);
+  if (end == std::find(std::begin(name), end, kNestedDelimiter)) {
+    return name;
+  }
+
+  auto prev = std::begin(name);
+  auto cur = prev;
+
+  buf.clear();
+
+  for (auto end = std::end(name); cur != end; ++cur) {
+    if (kNestedDelimiter == *cur) {
+      buf.append(prev, cur);
+      prev = cur + 1;
+    }
+  }
+  buf.append(prev, cur);
+
+  return buf;
+}
+#endif
 
 }  // namespace arangodb::iresearch::kludge
