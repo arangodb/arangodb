@@ -1072,12 +1072,12 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
               aql::AstNodeType::NODE_TYPE_ROOT};
     }
 
-    if (arraySize < atLeastCount) {
+    if (arraySize < static_cast<size_t>(atLeastCount)) {
       if (filter) {
         filter->add<irs::empty>();
       }
       return {Result(), aql::NODE_TYPE_ROOT};
-    } else if (atLeastCount == arraySize) {
+    } else if (static_cast<size_t>(atLeastCount) == arraySize) {
       quantifierType = aql::Quantifier::Type::kAll;
     } else if (arrayComparison != aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN &&
                arrayComparison != aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE) {
