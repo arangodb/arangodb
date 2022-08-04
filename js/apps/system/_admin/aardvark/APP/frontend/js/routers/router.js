@@ -118,7 +118,7 @@
         }
 
         $('#modal-dialog').on('hide', function () {
-          if (goBack) {
+          if (goBack && replaceUrlFirst === '#view') {
             window.history.back();
           }
         });
@@ -805,7 +805,7 @@
         });
       });
     },
-    
+
     cComputedValues: function (colname) {
       const self = this;
 
