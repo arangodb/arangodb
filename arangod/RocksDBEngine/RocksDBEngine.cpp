@@ -37,6 +37,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/build.h"
+#include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
@@ -674,19 +675,18 @@ void RocksDBEngine::verifySstFiles() const {
     }
     rocksdb::Status res =
         sstReader.Open(basics::FileUtils::buildFilename(dataPath(), fileName));
-    auto result = rocksutils::convertStatus(res);
-    if (!result.ok()) {
+    if (!res.ok()) {
+      auto result = rocksutils::convertStatus(res);
       LOG_TOPIC("40edd", FATAL, arangodb::Logger::STARTUP)
-          << "Error when accessing file " << fileName << " might be invalid "
           << result.errorMessage();
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_OPEN);
     }
     res = sstReader.VerifyChecksum();
-    if (!result.ok()) {
+    if (!res.ok()) {
+      auto result = rocksutils::convertStatus(res);
       LOG_TOPIC("2943c", FATAL, arangodb::Logger::STARTUP)
-          << "Error in file " << fileName << " checksum verification "
           << result.errorMessage();
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_CHECKSUM);
     }
   }
 }
