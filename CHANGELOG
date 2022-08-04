@@ -3,6 +3,12 @@ v3.10.0 (XXXX-XX-XX)
 
 * Updated Rclone to v1.59.0.
 
+* Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
+  to take the user to the collections view).
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
+
 * ArangoSearch nested search feature (Enterprise Edition): Added ability to
   index and search nested documents with ArangoSearch views.
 
