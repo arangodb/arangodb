@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-918 (incorrectly navigating back 1 level in history when a
+  modal-dialog element is present).
+
 * Added OFFSET_INFO function (Enterprise Edition only) to support search results
   highliting.
 
