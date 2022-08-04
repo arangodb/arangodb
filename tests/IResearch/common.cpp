@@ -137,7 +137,11 @@ std::ostream& operator<<(std::ostream& os, And const& filter) {
 }
 
 std::ostream& operator<<(std::ostream& os, Or const& filter) {
-  os << "OR[";
+  os << "OR";
+  if (filter.min_match_count() != 1) {
+    os << "(" << filter.min_match_count() << ")";
+  }
+  os << "[";
   for (auto it = filter.begin(); it != filter.end(); ++it) {
     if (it != filter.begin()) {
       os << " || ";
@@ -851,7 +855,7 @@ void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
 
   if (expectedNegationFilter) {
     auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
-    ASSERT_NE(nullptr, expectedNegationFilter);
+    ASSERT_NE(nullptr, actualNegationFilter);
 
     assertFilterBoost(*expectedNegationFilter->filter(),
                       *actualNegationFilter->filter());

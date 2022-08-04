@@ -1309,7 +1309,8 @@ class ByTermSubFilterFactory {
     irs::by_term* termFilter = nullptr;
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp) {
-        termFilter = &filter->add<irs::Not>().filter<irs::by_term>();
+        termFilter =
+            &filter->add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       } else {
         termFilter = &filter->add<irs::by_term>();
       }

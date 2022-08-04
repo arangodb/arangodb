@@ -4285,6 +4285,51 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "boolVal, numVal+1, nullVal] NONE != d.a.b.c.e.f, 2.5) RETURN d",
         expected, &ctx);
   }
+  // AT LEAST
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Or>().min_match_count(3);
+    {
+      auto& filter =
+          root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter =
+          root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter =
+          root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
+    {
+      auto& filter =
+          root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("4"));
+    }
+    {
+      auto& filter =
+          root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("5"));
+    }
+
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER ['1','2','3', '4', '5'] AT "
+                        "LEAST(3) NOT IN d.a RETURN d",
+                        expected);
+  }
 
   // no reference provided
   assertFilterExecutionFail(
