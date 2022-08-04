@@ -27,3 +27,7 @@ race:AllowImplicitCollectionsSwitcher
 
 # Known false-positive, see https://github.com/google/sanitizers/issues/953
 race:absl/synchronization/internal/waiter.cc
+
+# TODO Fix known thread leaks
+thread:ClusterFeature::startHeartbeatThread
+thread:CacheManagerFeature::start
