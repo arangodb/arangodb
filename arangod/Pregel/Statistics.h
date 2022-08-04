@@ -89,6 +89,7 @@ struct StatsManager {
   }
 
   void accumulateMessageStats(std::string const& senderId, VPackSlice data) {
+    // inserts senderId into map if it does not exist
     _serverStats[senderId].accumulate(data);
   }
 

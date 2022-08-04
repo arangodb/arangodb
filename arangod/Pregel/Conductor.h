@@ -111,7 +111,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
       _edgeCollectionRestrictions;
 
   // initialized on startup
-  std::shared_ptr<AggregatorHandler> _aggregators;
+  std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
   /// an unique response, not necessarily during the async mode

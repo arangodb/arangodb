@@ -125,7 +125,7 @@ Conductor::Conductor(
                                    "Algorithm not found");
   }
   _masterContext.reset(_algorithm->masterContext(config));
-  _aggregators = std::make_shared<AggregatorHandler>(_algorithm.get());
+  _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
 
   _maxSuperstep =
       VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);

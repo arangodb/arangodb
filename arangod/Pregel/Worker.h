@@ -113,8 +113,8 @@ class Worker : public IWorker {
   // where new vertices were inserted
   size_t _preRecoveryTotal = 0;
 
-  std::shared_ptr<AggregatorHandler> _conductorAggregators;
-  std::shared_ptr<AggregatorHandler> _workerAggregators;
+  std::unique_ptr<AggregatorHandler> _conductorAggregators;
+  std::unique_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
@@ -162,6 +162,7 @@ class Worker : public IWorker {
 
   auto _gssFinishedEvent() const -> GssFinished;
   auto _cleanupFinishedEvent() const -> CleanupFinished;
+  auto _recoveryFinishedEvent() const -> RecoveryFinished;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,

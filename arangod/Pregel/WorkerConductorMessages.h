@@ -47,20 +47,6 @@ struct Message {
   virtual ~Message(){};
 };
 
-struct AggregatorWrapper {
-  std::shared_ptr<AggregatorHandler> aggregators = nullptr;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, AggregatorWrapper& x) {
-  if constexpr (Inspector::isLoading) {
-    return arangodb::inspection::Status{};
-  } else {
-    x.aggregators->serializeValues(f.builder());
-    return arangodb::inspection::Status{};
-  }
-}
-
 // ------ events sent from worker to conductor -------
 
 struct GraphLoaded : Message {
@@ -142,14 +128,14 @@ struct RecoveryFinished : Message {
   std::string senderId;
   uint64_t executionNumber;
   uint64_t gss;
-  AggregatorWrapper aggregators;
+  VPackBuilder aggregators;
   RecoveryFinished(){};
   RecoveryFinished(std::string const& senderId, uint64_t executionNumber,
-                   uint64_t gss, AggregatorWrapper const& aggregators)
+                   uint64_t gss, VPackBuilder aggregators)
       : senderId{senderId},
         executionNumber{executionNumber},
         gss{gss},
-        aggregators{aggregators} {}
+        aggregators{std::move(aggregators)} {}
   auto type() const -> MessageType override {
     return MessageType::RecoveryFinished;
   }
@@ -161,7 +147,7 @@ auto inspect(Inspector& f, RecoveryFinished& x) {
       f.field(Utils::senderKey, x.senderId),
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
-      f.field(Utils::aggregatorValuesKey, x.aggregators));
+      f.field("aggregators", x.aggregators));
 }
 
 struct StatusUpdated {
@@ -244,14 +230,14 @@ auto inspect(Inspector& f, FinalizeExecution& x) {
 
 struct ContinueRecovery {
   uint64_t executionNumber;
-  AggregatorWrapper aggregators;
+  VPackBuilder aggregators;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, ContinueRecovery& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field(Utils::aggregatorValuesKey, x.aggregators));
+      f.field("aggregators", x.aggregators));
 }
 
 struct FinalizeRecovery {
