@@ -480,7 +480,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
     ASSERT_TRUE(std::regex_search(
         std::string(queryResult.errorMessage()),
-        std::regex("variable '.' is used in scorer function.*CUSTOMSCORER")));
+        std::regex("variable '.' is used in search function.*CUSTOMSCORER")));
 
     // need to turn off certain optimizations so that the independent subquery
     // is not moved out of the FOR loop
