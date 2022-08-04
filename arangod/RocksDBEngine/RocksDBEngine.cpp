@@ -576,7 +576,9 @@ void RocksDBEngine::collectOptions(
                   "verify validity of sst files present in rocksdb directory",
                   new BooleanParameter(&_verifySst),
                   arangodb::options::makeFlags(
+                      arangodb::options::Flags::Command,
                       arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
@@ -664,11 +666,8 @@ void RocksDBEngine::prepare() {
 #endif
 }
 
-void RocksDBEngine::verifySstFiles() const {
-  rocksdb::Options options;
-  options.env = _dbOptions.env;
+void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   rocksdb::SstFileReader sstReader(options);
-
   for (auto const& fileName : TRI_FullTreeDirectory(dataPath().data())) {
     if (!fileName.ends_with(".sst")) {
       continue;
@@ -679,15 +678,16 @@ void RocksDBEngine::verifySstFiles() const {
       auto result = rocksutils::convertStatus(res);
       LOG_TOPIC("40edd", FATAL, arangodb::Logger::STARTUP)
           << result.errorMessage();
-      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_OPEN);
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
     }
     res = sstReader.VerifyChecksum();
     if (!res.ok()) {
       auto result = rocksutils::convertStatus(res);
       LOG_TOPIC("2943c", FATAL, arangodb::Logger::STARTUP)
           << result.errorMessage();
-      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_CHECKSUM);
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
     }
+    exit(EXIT_SUCCESS);
   }
 }
 
@@ -771,6 +771,17 @@ void RocksDBEngine::start() {
       << "initializing RocksDB, path: '" << _path << "', WAL directory '"
       << _dbOptions.wal_dir << "'";
 
+  if (_verifySst) {
+    rocksdb::Options options;
+#ifdef USE_ENTERPRISE
+    configureEnterpriseRocksDBOptions(_dbOptions, createdEngineDir);
+#else
+    _dbOptions.env = rocksdb::Env::Default();
+#endif
+    options.env = _dbOptions.env;
+    verifySstFiles(options);
+  }
+
   if (_createShaFiles) {
     _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
     _dbOptions.env = _checksumEnv.get();
@@ -853,10 +864,6 @@ void RocksDBEngine::start() {
   bool dbExisted = checkExistingDB(cfFamilies);
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
-
-  if (_verifySst) {
-    verifySstFiles();
-  }
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _dbOptions, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
