@@ -580,7 +580,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31100);
 
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
