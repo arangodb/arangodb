@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global print, fail */
+/*global print, fail, AQL_EXPLAIN */
 
 "use strict";
 
@@ -35,6 +35,7 @@ const {aql, errors} = require("@arangodb");
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
 const {getCompactStatsNodes, TraversalBlock} = require("@arangodb/testutils/aql-profiler-test-helper");
+const {findExecutionNodes} = require("@arangodb/aql-helper");
 
 
 /*
@@ -2927,6 +2928,80 @@ function testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsGen(tes
 
     checkResIsValidKShortestPathListWeights(allowedPaths, actualPath, limit);
   });
+}
+
+function testSmallCircleFilterOptimization(testGraph) {
+  // Which Graph is used here does not matter, enough to test with one of the graphs
+  // we picked the smallCircle graph at random
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+
+  const optimizableConditions = [
+    `v.color == "blue"`,
+    `e.color == "blue"`,
+    `p.edges[1].color == "blue"`,
+    `p.vertices[1].color == "blue"`,
+    `p.edges[*].color ALL == "blue"`,
+    `p.vertices[*].color ALL == "blue"`,
+    `DATE_MONTH(v.timestamp) == 11`,
+    `DATE_DAY(e.timestamp) == 25`,
+    `DATE_YEAR(p.vertices[1].timestamp) == 2021`
+  ];
+
+  // Optimize a single condition
+  const filtersToTest = optimizableConditions.map(f => `FILTER ${f}`);
+  // More complex test.
+  for (let first = 0; first < optimizableConditions.length; ++first) {
+    for (let second = first + 1; second < optimizableConditions.length; ++second) {
+      // Optimize two filter nodes, and erase the filter nodes
+      filtersToTest.push(`FILTER ${optimizableConditions[first]} FILTER ${optimizableConditions[second]}`);
+      // Optimize a single more complex condition
+      // TODO: Reactivate this!!
+      // filtersToTest.push(`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`);
+    }
+  }
+
+  for (const filterCondition of filtersToTest) {
+    const query = `
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH ${testGraph.name()}
+        ${filterCondition}
+        return v
+    `;
+    db._explain(query);
+    const plan = AQL_EXPLAIN(query, {});
+
+
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Still has FilterNode");
+  }
+
+  // Non optimizable filters
+  const nonOptimizableFilters = [
+    `DOCUMENT(v.docId).color == "blue"`,
+    `DOCUMENT(e.docId).color == "blue"`
+  ];
+
+  // This is a pair of FilterCondition and LeftOver non-optimized condition.
+  // The FILTER node needs to stay, and needs to cover the non-optimized condition
+  const nonOptFiltersToTest = nonOptimizableFilters.map(f => [`FILTER ${f}`, `${f}`]);
+
+  for (const [filterCondition, _] of nonOptFiltersToTest) {
+    const query = `
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH ${testGraph.name()}
+        ${filterCondition}
+        return v
+    `;
+    require("internal").print(query);
+    db._explain(query);
+    const plan = AQL_EXPLAIN(query, {});
+
+    const filters = findExecutionNodes(plan, "FilterNode");
+
+    assertEqual(filters.length, 1, query + " Optimized out the FilterNode");
+    const filterCalc = findExecutionNodes(plan, "CalculationNode").find(n => n.id === filters[0].dependencies[0]);
+    assertNotEqual(filterCalc, undefined);
+    // TODO it would be nice to analyse that calculation matches the leftOver condition
+    // but this would require to reverse-implement node structure.
+  }
+
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
@@ -6429,7 +6504,8 @@ const testsByGraph = {
     testSmallCircleKShortestPathWithMultipleLimitsWT,
     testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits,
     testSmallCircleKShortestPathEnabledWeightCheckIndexedWithMultipleLimits,
-    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT
+    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT,
+    testSmallCircleFilterOptimization
   },
   completeGraph: {
     testCompleteGraphDfsUniqueVerticesPathD1,
