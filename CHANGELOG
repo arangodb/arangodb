@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Updated Rclone to v1.59.0.
+
 * Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
   to take the user to the collections view).
 
