@@ -759,6 +759,86 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
                   .ok());
 }
 
+TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
+  auto& vocbase = server->getSystemDatabase();
+  auto b = velocypack::Parser::fromJson(
+      "{\"name\":\"test\", \"computedValues\": [{\"name\":\"attr\", "
+      "\"expression\":\"RETURN 'update'\", \"overwrite\": true, "
+      "\"computeOn\":[\"update\"]}]}");
+
+  auto c = vocbase.createCollection(b->slice());
+
+  std::vector<std::string> const EMPTY;
+  std::vector<std::string> collections{"test"};
+  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
+                           EMPTY, collections, EMPTY, transaction::Options());
+
+  EXPECT_TRUE(trx.begin().ok());
+  auto doc1 =
+      velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":\"abc\"}");
+  EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
+  EXPECT_TRUE(trx.documentFastPathLocal(
+                     "test", "test1",
+                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
+                       EXPECT_EQ("abc", doc.get("attr").stringView());
+                       return true;
+                     })
+                  .ok());
+
+  auto doc2 =
+      velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":\"qux\"}");
+  EXPECT_TRUE(trx.update("test", doc2->slice(), OperationOptions()).ok());
+
+  EXPECT_TRUE(trx.documentFastPathLocal(
+                     "test", "test1",
+                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
+                       EXPECT_EQ("update", doc.get("attr").stringView());
+                       return true;
+                     })
+                  .ok());
+}
+
+TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
+  auto& vocbase = server->getSystemDatabase();
+  auto b = velocypack::Parser::fromJson(
+      "{\"name\":\"test\", \"computedValues\": [{\"name\":\"attr\", "
+      "\"expression\":\"RETURN 'insert'\", \"overwrite\": false, "
+      "\"computeOn\":[\"insert\"]}, {\"name\":\"attr\", "
+      "\"expression\":\"RETURN 'update'\", \"overwrite\": false, "
+      "\"computeOn\":[\"update\"]}]}");
+
+  auto c = vocbase.createCollection(b->slice());
+
+  std::vector<std::string> const EMPTY;
+  std::vector<std::string> collections{"test"};
+  transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
+                           EMPTY, collections, EMPTY, transaction::Options());
+
+  EXPECT_TRUE(trx.begin().ok());
+  auto doc1 =
+      velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":\"abc\"}");
+  EXPECT_TRUE(trx.insert("test", doc1->slice(), OperationOptions()).ok());
+  EXPECT_TRUE(trx.documentFastPathLocal(
+                     "test", "test1",
+                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
+                       EXPECT_EQ("abc", doc.get("attr").stringView());
+                       return true;
+                     })
+                  .ok());
+
+  auto doc2 =
+      velocypack::Parser::fromJson("{\"_key\":\"test1\", \"attr\":\"qux\"}");
+  EXPECT_TRUE(trx.update("test", doc2->slice(), OperationOptions()).ok());
+
+  EXPECT_TRUE(trx.documentFastPathLocal(
+                     "test", "test1",
+                     [&](LocalDocumentId const& token, velocypack::Slice doc) {
+                       EXPECT_EQ("qux", doc.get("attr").stringView());
+                       return true;
+                     })
+                  .ok());
+}
+
 TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningStatic) {
   auto& vocbase = server->getSystemDatabase();
   auto b = velocypack::Parser::fromJson(
