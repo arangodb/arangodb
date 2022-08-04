@@ -41,13 +41,12 @@ namespace algos {
 namespace accumulators {
 
 // Graph Format
-GraphFormat::GraphFormat(application_features::ApplicationServer& server,
-                         std::string resultField,
+GraphFormat::GraphFormat(std::string resultField,
                          AccumulatorsDeclaration globalAccumulatorDeclarations,
                          AccumulatorsDeclaration vertexAccumulatorDeclarations,
                          CustomAccumulatorDefinitions customDefinitions,
                          DataAccessDefinition dataAccess)
-    : graph_format(server),
+    : graph_format(),
       _resultField(std::move(resultField)),
       _globalAccumulatorDeclarations(std::move(globalAccumulatorDeclarations)),
       _vertexAccumulatorDeclarations(std::move(vertexAccumulatorDeclarations)),

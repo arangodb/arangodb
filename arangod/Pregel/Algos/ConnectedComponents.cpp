@@ -36,12 +36,12 @@ using namespace arangodb::pregel::algos;
 namespace {
 struct MyComputation : public VertexComputation<uint64_t, uint8_t, uint64_t> {
   MyComputation() {}
-  void compute(MessageIterator<uint64_t> const& messages) override {
+  void compute(MessageIterator<uint64_t> const &messages) override {
     if (localSuperstep() == 0) {
       sendMessageToAllNeighbours(vertexData());
     } else {
       uint64_t currentComponent = vertexData();
-      for (const uint64_t* msg : messages) {
+      for (const uint64_t *msg : messages) {
         if (*msg < currentComponent) {
           currentComponent = *msg;
         }
@@ -57,15 +57,13 @@ struct MyComputation : public VertexComputation<uint64_t, uint8_t, uint64_t> {
 };
 
 struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
-  explicit MyGraphFormat(application_features::ApplicationServer& server,
-                         std::string const& result)
-      : VertexGraphFormat<uint64_t, uint8_t>(server, result, /*vertexNull*/ 0) {
-  }
+  explicit MyGraphFormat(std::string const &result)
+      : VertexGraphFormat<uint64_t, uint8_t>(result, /*vertexNull*/ 0) {}
 
-  void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
+  void copyVertexData(arangodb::velocypack::Options const &,
+                      std::string const & /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      uint64_t& targetPtr, uint64_t& vertexIdRange) override {
+                      uint64_t &targetPtr, uint64_t &vertexIdRange) override {
     targetPtr = vertexIdRange++;
   }
 };
@@ -82,18 +80,18 @@ struct MyCompensation : public VertexCompensation<uint64_t, uint8_t, uint64_t> {
   }
 };
 
-}  // namespace
+} // namespace
 
-VertexComputation<uint64_t, uint8_t, uint64_t>*
-ConnectedComponents::createComputation(WorkerConfig const* config) const {
+VertexComputation<uint64_t, uint8_t, uint64_t> *
+ConnectedComponents::createComputation(WorkerConfig const *config) const {
   return new MyComputation();
 }
 
-GraphFormat<uint64_t, uint8_t>* ConnectedComponents::inputFormat() const {
-  return new MyGraphFormat(_server, _resultField);
+GraphFormat<uint64_t, uint8_t> *ConnectedComponents::inputFormat() const {
+  return new MyGraphFormat(_resultField);
 }
 
-VertexCompensation<uint64_t, uint8_t, uint64_t>*
-ConnectedComponents::createCompensation(WorkerConfig const* config) const {
+VertexCompensation<uint64_t, uint8_t, uint64_t> *
+ConnectedComponents::createCompensation(WorkerConfig const *config) const {
   return new MyCompensation();
 }

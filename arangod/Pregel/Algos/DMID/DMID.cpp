@@ -599,9 +599,8 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   const std::string _resultField;
   unsigned _maxCommunities;
 
-  explicit DMIDGraphFormat(application_features::ApplicationServer& server,
-                           std::string const& result, unsigned mc)
-      : GraphFormat<DMIDValue, float>(server),
+  explicit DMIDGraphFormat(std::string const& result, unsigned mc)
+      : GraphFormat<DMIDValue, float>(),
         _resultField(result),
         _maxCommunities(mc) {}
 
@@ -664,7 +663,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
 };
 
 GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
-  return new DMIDGraphFormat(_server, _resultField, _maxCommunities);
+  return new DMIDGraphFormat(_resultField, _maxCommunities);
 }
 
 struct DMIDMasterContext : public MasterContext {

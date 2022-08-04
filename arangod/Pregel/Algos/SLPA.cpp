@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SLPA.h"
-#include <atomic>
-#include <cmath>
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -34,6 +32,8 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 #include "Random/RandomGenerator.h"
+#include <atomic>
+#include <cmath>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -52,7 +52,7 @@ struct SLPAWorkerContext : public WorkerContext {
 struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   SLPAComputation() {}
 
-  uint64_t mostFrequent(MessageIterator<uint64_t> const& messages) {
+  uint64_t mostFrequent(MessageIterator<uint64_t> const &messages) {
     TRI_ASSERT(messages.size() > 0);
     if (messages.size() == 1) {
       return **messages;
@@ -61,7 +61,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     // most frequent value
     size_t i = 0;
     std::vector<uint64_t> all(messages.size());
-    for (uint64_t const* msg : messages) {
+    for (uint64_t const *msg : messages) {
       all[i++] = *msg;
     }
     std::sort(all.begin(), all.end());
@@ -87,8 +87,8 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     return maxValue;
   }
 
-  void compute(MessageIterator<uint64_t> const& messages) override {
-    SLPAValue* val = mutableVertexData();
+  void compute(MessageIterator<uint64_t> const &messages) override {
+    SLPAValue *val = mutableVertexData();
     if (globalSuperstep() == 0) {
       val->memory.try_emplace(val->nodeId, 1);
       val->numCommunities = 1;
@@ -98,8 +98,8 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     // which is not really well parallizable. Additionally I figure
     // since a speaker only speaks to neighbours and the speaker order is random
     // we can get away with letting some nodes listen in turn
-    SLPAWorkerContext const* ctx =
-        reinterpret_cast<SLPAWorkerContext const*>(context());
+    SLPAWorkerContext const *ctx =
+        reinterpret_cast<SLPAWorkerContext const *>(context());
     bool shouldListen = (ctx->mod + val->nodeId) % 2 == globalSuperstep() % 2;
     if (messages.size() > 0 && shouldListen) {
       // listen to our neighbours
@@ -116,7 +116,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     uint64_t cumulativeSum = 0;
     // Randomly select a label with probability proportional to the
     // occurrence frequency of this label in its memory
-    for (auto const& e : val->memory) {
+    for (auto const &e : val->memory) {
       cumulativeSum += e.second;
       if (cumulativeSum >= random) {
         sendMessageToAllNeighbours(e.first);
@@ -127,8 +127,8 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   }
 };
 
-VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<SLPAValue, int8_t, uint64_t> *
+SLPA::createComputation(WorkerConfig const *config) const {
   return new SLPAComputation();
 }
 
@@ -138,30 +138,27 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   double threshold;
   unsigned maxCommunities;
 
-  explicit SLPAGraphFormat(application_features::ApplicationServer& server,
-                           std::string const& result, double thr, unsigned mc)
-      : GraphFormat<SLPAValue, int8_t>(server),
-        resField(result),
-        threshold(thr),
+  explicit SLPAGraphFormat(std::string const &result, double thr, unsigned mc)
+      : GraphFormat<SLPAValue, int8_t>(), resField(result), threshold(thr),
         maxCommunities(mc) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); }
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
+  void copyVertexData(arangodb::velocypack::Options const &,
+                      std::string const & /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      SLPAValue& value, uint64_t& vertexIdRange) override {
+                      SLPAValue &value, uint64_t &vertexIdRange) override {
     value.nodeId = (uint32_t)vertexIdRange++;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           SLPAValue const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder &b,
+                           SLPAValue const *ptr) const override {
     if (ptr->memory.empty()) {
       return false;
     } else {
       std::vector<std::pair<uint64_t, double>> vec;
-      for (auto const& pair : ptr->memory) {
+      for (auto const &pair : ptr->memory) {
         double t = (double)pair.second / ptr->numCommunities;
         if (t >= threshold) {
           vec.emplace_back(pair.first, t);
@@ -199,11 +196,10 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   }
 };
 
-GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
-  return new SLPAGraphFormat(_server, _resultField, _threshold,
-                             _maxCommunities);
+GraphFormat<SLPAValue, int8_t> *SLPA::inputFormat() const {
+  return new SLPAGraphFormat(_resultField, _threshold, _maxCommunities);
 }
 
-WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {
+WorkerContext *SLPA::workerContext(velocypack::Slice userParams) const {
   return new SLPAWorkerContext();
 }

@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SCC.h"
-#include <atomic>
-#include <climits>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -32,6 +30,8 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
+#include <atomic>
+#include <climits>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -155,9 +155,8 @@ namespace {
 struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
 
-  explicit SCCGraphFormat(application_features::ApplicationServer& server,
-                          std::string const& result)
-      : GraphFormat<SCCValue, int8_t>(server), _resultField(result) {}
+  explicit SCCGraphFormat(std::string const& result)
+      : GraphFormat<SCCValue, int8_t>(), _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; }
 
@@ -182,7 +181,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 }  // namespace
 
 GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
-  return new SCCGraphFormat(_server, _resultField);
+  return new SCCGraphFormat(_resultField);
 }
 
 struct SCCMasterContext : public MasterContext {

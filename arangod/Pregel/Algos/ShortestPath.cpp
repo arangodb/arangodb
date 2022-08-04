@@ -82,9 +82,8 @@ struct arangodb::pregel::algos::SPGraphFormat
   std::string _sourceDocId, _targetDocId;
 
  public:
-  SPGraphFormat(application_features::ApplicationServer& server,
-                std::string const& source, std::string const& target)
-      : InitGraphFormat<int64_t, int64_t>(server, "length", 0, 1),
+  SPGraphFormat(std::string const& source, std::string const& target)
+      : InitGraphFormat<int64_t, int64_t>("length", 0, 1),
         _sourceDocId(source),
         _targetDocId(target) {}
 
@@ -115,7 +114,7 @@ std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
 }
 
 GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
-  return new SPGraphFormat(_server, _source, _target);
+  return new SPGraphFormat(_source, _target);
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*

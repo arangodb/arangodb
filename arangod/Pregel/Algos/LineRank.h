@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace pregel {
@@ -38,29 +38,29 @@ namespace algos {
 /// Implementation based on
 /// github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
 struct LineRank : public SimpleAlgorithm<float, float, float> {
- public:
-  explicit LineRank(application_features::ApplicationServer& server,
+public:
+  explicit LineRank(application_features::ApplicationServer &server,
                     arangodb::velocypack::Slice params);
 
-  GraphFormat<float, float>* inputFormat() const override {
-    return new VertexGraphFormat<float, float>(_server, _resultField, 0);
+  GraphFormat<float, float> *inputFormat() const override {
+    return new VertexGraphFormat<float, float>(_resultField, 0);
   }
-  MessageFormat<float>* messageFormat() const override {
+  MessageFormat<float> *messageFormat() const override {
     return new NumberMessageFormat<float>();
   }
 
-  MessageCombiner<float>* messageCombiner() const override {
+  MessageCombiner<float> *messageCombiner() const override {
     return new SumCombiner<float>();
   }
 
-  WorkerContext* workerContext(velocypack::Slice params) const override;
-  MasterContext* masterContext(velocypack::Slice) const override;
+  WorkerContext *workerContext(velocypack::Slice params) const override;
+  MasterContext *masterContext(velocypack::Slice) const override;
 
-  VertexComputation<float, float, float>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<float, float, float> *
+  createComputation(WorkerConfig const *) const override;
 
-  IAggregator* aggregator(std::string const& name) const override;
+  IAggregator *aggregator(std::string const &name) const override;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+} // namespace algos
+} // namespace pregel
+} // namespace arangodb

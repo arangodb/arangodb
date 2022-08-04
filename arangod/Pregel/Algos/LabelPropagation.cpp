@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LabelPropagation.h"
-#include <cmath>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -32,6 +31,7 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 #include "Random/RandomGenerator.h"
+#include <cmath>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -42,13 +42,13 @@ static const uint64_t STABILISATION_ROUNDS = 20;
 struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   LPComputation() {}
 
-  uint64_t mostFrequent(MessageIterator<uint64_t> const& messages) {
+  uint64_t mostFrequent(MessageIterator<uint64_t> const &messages) {
     TRI_ASSERT(messages.size() > 0);
 
     // most frequent value
     size_t i = 0;
     std::vector<uint64_t> all(messages.size());
-    for (uint64_t const* msg : messages) {
+    for (uint64_t const *msg : messages) {
       all[i++] = *msg;
     }
     std::sort(all.begin(), all.end());
@@ -74,8 +74,8 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
     return maxValue;
   }
 
-  void compute(MessageIterator<uint64_t> const& messages) override {
-    LPValue* value = mutableVertexData();
+  void compute(MessageIterator<uint64_t> const &messages) override {
+    LPValue *value = mutableVertexData();
     if (globalSuperstep() == 0) {
       sendMessageToAllNeighbours(value->currentCommunity);
     } else {
@@ -96,7 +96,7 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
       if (isUnstable) {
         value->lastCommunity = value->currentCommunity;
         value->currentCommunity = newCommunity;
-        value->stabilizationRounds = 0;  // reset stabilization counter
+        value->stabilizationRounds = 0; // reset stabilization counter
         sendMessageToAllNeighbours(value->currentCommunity);
       }
     }
@@ -104,36 +104,35 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
   }
 };
 
-VertexComputation<LPValue, int8_t, uint64_t>*
-LabelPropagation::createComputation(WorkerConfig const* config) const {
+VertexComputation<LPValue, int8_t, uint64_t> *
+LabelPropagation::createComputation(WorkerConfig const *config) const {
   return new LPComputation();
 }
 
 struct LPGraphFormat : public GraphFormat<LPValue, int8_t> {
   std::string _resultField;
 
-  explicit LPGraphFormat(application_features::ApplicationServer& server,
-                         std::string const& result)
-      : GraphFormat<LPValue, int8_t>(server), _resultField(result) {}
+  explicit LPGraphFormat(std::string const &result)
+      : GraphFormat<LPValue, int8_t>(), _resultField(result) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); }
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
-                      arangodb::velocypack::Slice /*document*/, LPValue& value,
-                      uint64_t& vertexIdRange) override {
+  void copyVertexData(arangodb::velocypack::Options const &,
+                      std::string const & /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/, LPValue &value,
+                      uint64_t &vertexIdRange) override {
     value.currentCommunity = vertexIdRange++;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           LPValue const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder &b,
+                           LPValue const *ptr) const override {
     b.add(_resultField, VPackValue(ptr->currentCommunity));
     // b.add("stabilizationRounds", VPackValue(ptr->stabilizationRounds));
     return true;
   }
 };
 
-GraphFormat<LPValue, int8_t>* LabelPropagation::inputFormat() const {
-  return new LPGraphFormat(_server, _resultField);
+GraphFormat<LPValue, int8_t> *LabelPropagation::inputFormat() const {
+  return new LPGraphFormat(_resultField);
 }

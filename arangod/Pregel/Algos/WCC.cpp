@@ -134,9 +134,8 @@ struct WCCComputation
 };
 
 struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
-  explicit WCCGraphFormat(application_features::ApplicationServer& server,
-                          std::string const& result)
-      : GraphFormat<WCCValue, uint64_t>(server), _resultField(result) {}
+  explicit WCCGraphFormat(std::string const& result)
+      : GraphFormat<WCCValue, uint64_t>(), _resultField(result) {}
 
   std::string const _resultField;
 
@@ -175,5 +174,5 @@ WCC::createComputation(WorkerConfig const* config) const {
 }
 
 GraphFormat<WCCValue, uint64_t>* WCC::inputFormat() const {
-  return new ::WCCGraphFormat(_server, _resultField);
+  return new ::WCCGraphFormat(_resultField);
 }

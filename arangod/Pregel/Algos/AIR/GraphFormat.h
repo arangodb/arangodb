@@ -33,8 +33,7 @@ namespace algos {
 namespace accumulators {
 
 struct GraphFormat final : public graph_format {
-  explicit GraphFormat(application_features::ApplicationServer& server,
-                       std::string resultField,
+  explicit GraphFormat(std::string resultField,
                        AccumulatorsDeclaration globalAccumulatorDeclarations,
                        AccumulatorsDeclaration vertexAccumulatorDeclarations,
                        CustomAccumulatorDefinitions customDefinitions,
@@ -52,31 +51,31 @@ struct GraphFormat final : public graph_format {
   size_t estimatedVertexSize() const override;
   size_t estimatedEdgeSize() const override;
 
-  void copyVertexData(arangodb::velocypack::Options const& vpackOptions,
-                      std::string const& documentId,
+  void copyVertexData(arangodb::velocypack::Options const &vpackOptions,
+                      std::string const &documentId,
                       arangodb::velocypack::Slice rawDocument,
-                      ProgrammablePregelAlgorithm::vertex_type& targetPtr,
-                      uint64_t& vertexIdRange) override;
+                      ProgrammablePregelAlgorithm::vertex_type &targetPtr,
+                      uint64_t &vertexIdRange) override;
 
-  void copyEdgeData(arangodb::velocypack::Options const& vpackOptions,
+  void copyEdgeData(arangodb::velocypack::Options const &vpackOptions,
                     arangodb::velocypack::Slice rawDocument,
-                    ProgrammablePregelAlgorithm::edge_type& targetPtr) override;
+                    ProgrammablePregelAlgorithm::edge_type &targetPtr) override;
 
   greenspun::EvalResult buildVertexDocumentWithResult(
-      arangodb::velocypack::Builder& b,
-      const ProgrammablePregelAlgorithm::vertex_type* ptr) const override;
+      arangodb::velocypack::Builder &b,
+      const ProgrammablePregelAlgorithm::vertex_type *ptr) const override;
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           VertexData const* targetPtr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder &b,
+                           VertexData const *targetPtr) const override {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
- protected:
+protected:
   std::atomic<uint64_t> _vertexIdRange = 0;
 };
 
-}  // namespace accumulators
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+} // namespace accumulators
+} // namespace algos
+} // namespace pregel
+} // namespace arangodb
