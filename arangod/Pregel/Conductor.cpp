@@ -282,16 +282,16 @@ bool Conductor::_startGlobalStep() {
     }
   }
 
-  VPackBuilder startGssCommand;
-  _createStartGssCommand(startGssCommand, activateAll);
+  auto startGssCommand = _startGssEvent(activateAll);
+  VPackBuilder startCommand;
+  serialize(startCommand, startGssCommand);
 
-  LOG_PREGEL("d98de", DEBUG) << startGssCommand.slice().toJson();
+  LOG_PREGEL("d98de", DEBUG)
+      << "Initiate starting GSS: " << startCommand.slice().toJson();
   _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
                                     ._finish = std::nullopt});
 
-  // start vertex level operations, does not get a response
-  auto res = _sendToAllDBServers(Utils::startGSSPath,
-                                 startGssCommand);  // call me maybe
+  auto res = _sendToAllDBServers(Utils::startGSSPath, startCommand);
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_PREGEL("f34bb", ERR)
         << "Conductor could not start GSS " << _globalSuperstep;
@@ -303,23 +303,26 @@ bool Conductor::_startGlobalStep() {
   return true;
 }
 
-void Conductor::_createStartGssCommand(VPackBuilder& b, bool activateAll) {
-  VPackObjectBuilder o(&b);
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-  b.add(Utils::activateAllKey, VPackValue(activateAll));
-
+auto Conductor::_startGssEvent(bool activateAll) const -> StartGss {
   VPackBuilder toWorkerMessages;
-  if (_masterContext) {
-    _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
+  {
+    VPackObjectBuilder ob(&toWorkerMessages);
+    if (_masterContext) {
+      _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
+    }
   }
-  if (!toWorkerMessages.slice().isNone()) {
-    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  VPackBuilder aggregators;
+  {
+    VPackObjectBuilder ob(&aggregators);
+    _aggregators->serializeValues(aggregators);
   }
-
-  _aggregators->serializeValues(b);
+  return StartGss{.executionNumber = _executionNumber,
+                  .gss = _globalSuperstep,
+                  .vertexCount = _totalVerticesCount,
+                  .edgeCount = _totalEdgesCount,
+                  .activateAll = activateAll,
+                  .toWorkerMessages = std::move(toWorkerMessages),
+                  .aggregators = std::move(aggregators)};
 }
 
 // ============ Conductor callbacks ===============
@@ -358,9 +361,11 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
 /// values which can be coninually updated (in async mode)
 VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
+
+  auto finishedEvent = deserialize<GssFinished>(data);
   // this method can be called multiple times in a superstep depending on
   // whether we are in the async mode
-  uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
+  uint64_t gss = finishedEvent.gss;
   if (gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
                                    _state == ExecutionState::CANCELED)) {
     LOG_PREGEL("dc904", WARN)
@@ -368,16 +373,17 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return VPackBuilder();
   }
 
-  if (auto reports = data.get("reports"); reports.isArray()) {
+  if (auto reports = finishedEvent.reports.slice(); reports.isArray()) {
     _reports.appendFromSlice(reports);
   }
 
   // track message counts to decide when to halt or add global barriers.
   // In normal mode this will wait for a response from each worker,
   // in async mode this will wait until all messages were processed
-  _statistics.accumulateMessageStats(data);
+  _statistics.accumulateMessageStats(finishedEvent.senderId,
+                                     finishedEvent.messageStats.slice());
   if (_asyncMode == false) {  // in async mode we wait for all responded
-    _ensureUniqueResponse(data.get(Utils::senderKey).copyString());
+    _ensureUniqueResponse(finishedEvent.senderId);
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
       return VPackBuilder();
@@ -385,7 +391,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
              !_statistics.allMessagesProcessed()) {  // haven't received msgs
     VPackBuilder response;
-    _aggregators->aggregateValues(data);
+    _aggregators->aggregateValues(finishedEvent.aggregators.slice());
     if (_masterContext) {
       _masterContext->postLocalSuperstep();
     }
@@ -398,7 +404,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  state->receive(GssFinished{});
+  state->receive(finishedEvent);
 
   return VPackBuilder();
 }
@@ -652,17 +658,10 @@ void Conductor::cleanup() {
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _ensureUniqueResponse(data.get(Utils::senderKey).copyString());
-  {
-    auto reports = data.get(Utils::reportsKey);
-    if (reports.isArray()) {
-      _reports.appendFromSlice(reports);
-    }
-  }
-  if (_respondedServers.size() != _dbServers.size()) {
-    return;
-  }
-  receive(CleanupFinished{});
+
+  auto event = deserialize<CleanupFinished>(data);
+
+  state->receive(event);
 }
 
 bool Conductor::canBeGarbageCollected() const {

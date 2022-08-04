@@ -324,14 +324,16 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
         TRI_ERROR_INTERNAL,
         "Cannot start a gss when the worker is not prepared");
   }
+
   LOG_PREGEL("d5e44", DEBUG) << "Starting GSS: " << data.toJson();
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  auto event = deserialize<StartGss>(data);
+
+  const uint64_t gss = event.gss;
   if (gss != _config.globalSuperstep()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
   }
 
-  if (data.get(Utils::activateAllKey).isTrue()) {
+  if (event.activateAll) {
     for (auto vertices = _graphStore->vertexIterator(); vertices.hasMore();
          ++vertices) {
       vertices->setActive(true);
@@ -339,15 +341,15 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
   }
 
   _workerAggregators->resetValues();
-  _conductorAggregators->setAggregatedValues(data);
+  _conductorAggregators->setAggregatedValues(event.aggregators.slice());
   // execute context
   if (_workerContext) {
-    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
+    _workerContext->_vertexCount = event.vertexCount;
+    _workerContext->_edgeCount = event.edgeCount;
     _workerContext->_reports = &this->_reports;
     _workerContext->preGlobalSuperstep(gss);
     _workerContext->preGlobalSuperstepMasterMessage(
-        data.get(Utils::masterToWorkerMessagesKey));
+        event.toWorkerMessages.slice());
   }
 
   LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << gss;
@@ -554,7 +556,9 @@ void Worker<V, E, M>::_finishedProcessing() {
     // only set the state here, because _processVertices checks for it
     _state = WorkerState::IDLE;
 
-    _createGssFinishedEvent(event);
+    auto gssFinishedEvent = _gssFinishedEvent();
+    serialize(event, gssFinishedEvent);
+    _reports.clear();
 
     if (_config.asynchronousMode()) {
       // async adaptive message buffering
@@ -569,7 +573,7 @@ void Worker<V, E, M>::_finishedProcessing() {
   }
 
   if (_config.asynchronousMode()) {
-    LOG_PREGEL("56a27", DEBUG) << "Finished LSS: " << event.toJson();
+    LOG_PREGEL("56a27", DEBUG) << "Finished GSS: " << event.toJson();
 
     // if the conductor is unreachable or has send data (try to) proceed
     _callConductorWithResponse(
@@ -592,18 +596,29 @@ void Worker<V, E, M>::_finishedProcessing() {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_createGssFinishedEvent(VPackBuilder& b) {
-  VPackObjectBuilder o(&b);
-  b.add(VPackValue(Utils::reportsKey));
-  _reports.intoBuilder(b);
-  _reports.clear();
-  b.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  b.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
-  b.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
-  _messageStats.serializeValues(b);
-  if (_config.asynchronousMode()) {
-    _workerAggregators->serializeValues(b, true);
+auto Worker<V, E, M>::_gssFinishedEvent() const -> GssFinished {
+  VPackBuilder reports;
+  {
+    VPackObjectBuilder o(&reports);
+    reports.add(VPackValue(Utils::reportsKey));
+    _reports.intoBuilder(reports);
   }
+  VPackBuilder messageStats;
+  {
+    VPackObjectBuilder ob(&messageStats);
+    _messageStats.serializeValues(messageStats);
+  }
+  VPackBuilder aggregators;
+  {
+    VPackObjectBuilder ob(&aggregators);
+    if (_config.asynchronousMode()) {
+      _workerAggregators->serializeValues(aggregators, true);
+    }
+  }
+  return GssFinished{
+      ServerState::instance()->getId(), _config.executionNumber(),
+      _config.globalSuperstep(),        std::move(reports),
+      std::move(messageStats),          std::move(aggregators)};
 }
 
 /// WARNING only call this while holding the _commandMutex
@@ -667,9 +682,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
 
-    VPackBuilder executionFinished;
-    _createExecutionFinishedEvent(executionFinished);
-    _callConductor(Utils::finishedWorkerFinalizationPath, executionFinished);
+    auto event = _cleanupFinishedEvent();
+    VPackBuilder message;
+    serialize(message, event);
+    _callConductor(Utils::finishedWorkerFinalizationPath, message);
     _reports.clear();
     cb();
   };
@@ -689,12 +705,15 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_createExecutionFinishedEvent(VPackBuilder& b) {
-  VPackObjectBuilder o(&b);
-  b.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  b.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
-  b.add(VPackValue(Utils::reportsKey));
-  _reports.intoBuilder(b);
+auto Worker<V, E, M>::_cleanupFinishedEvent() const -> CleanupFinished {
+  VPackBuilder reports;
+  {
+    VPackObjectBuilder o(&reports);
+    reports.add(VPackValue(Utils::reportsKey));
+    _reports.intoBuilder(reports);
+  }
+  return CleanupFinished{ServerState::instance()->getId(),
+                         _config.executionNumber(), std::move(reports)};
 }
 
 template<typename V, typename E, typename M>

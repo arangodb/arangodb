@@ -30,6 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Reports.h"
 #include "Pregel/Statistics.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -150,7 +151,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(std::string const& body);
-  void _createStartGssCommand(VPackBuilder& b, bool activateAll);
+  auto _startGssEvent(bool activateAll) const -> StartGss;
 
   // === REST callbacks ===
   void workerStatusUpdate(VPackSlice const& data);

@@ -52,6 +52,18 @@ auto Canceled::receive(Message const& message) -> void {
         << static_cast<int>(message.type());
     return;
   }
+  auto event = static_cast<CleanupFinished const&>(message);
+  conductor._ensureUniqueResponse(event.senderId);
+  {
+    auto reports = event.reports.slice();
+    if (reports.isArray()) {
+      conductor._reports.appendFromSlice(reports);
+    }
+  }
+  if (conductor._respondedServers.size() != conductor._dbServers.size()) {
+    return;
+  }
+
   if (conductor._inErrorAbort) {
     conductor.changeState(StateType::FatalError);
     return;

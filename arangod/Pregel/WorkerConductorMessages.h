@@ -27,6 +27,7 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "VocBase/Methods/Tasks.h"
+#include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 #include <cstdint>
 #include <optional>
@@ -85,15 +86,57 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
+struct GssFinished : Message {
+  std::string senderId;
+  uint64_t executionNumber;
+  uint64_t gss;
+  VPackBuilder reports;
+  VPackBuilder messageStats;
+  VPackBuilder aggregators;
+  GssFinished(){};
+  GssFinished(std::string const& senderId, uint64_t executionNumber,
+              uint64_t gss, VPackBuilder reports, VPackBuilder messageStats,
+              VPackBuilder aggregators)
+      : senderId{senderId},
+        executionNumber{executionNumber},
+        gss{gss},
+        reports{std::move(reports)},
+        messageStats{std::move(messageStats)},
+        aggregators{std::move(aggregators)} {}
+  auto type() const -> MessageType override { return MessageType::GssFinished; }
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, GssFinished& x) {
+  return f.object(x).fields(
+      f.field(Utils::senderKey, x.senderId),
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss), f.field("reports", x.reports),
+      f.field("messageStats", x.messageStats),
+      f.field("aggregators", x.aggregators));
+}
+
 struct CleanupFinished : Message {
+  std::string senderId;
+  uint64_t executionNumber;
+  VPackBuilder reports;
+  CleanupFinished(){};
+  CleanupFinished(std::string const& senderId, uint64_t executionNumber,
+                  VPackBuilder reports)
+      : senderId{senderId},
+        executionNumber{executionNumber},
+        reports{std::move(reports)} {}
   auto type() const -> MessageType override {
     return MessageType::CleanupFinished;
   }
 };
-
-struct GssFinished : Message {
-  auto type() const -> MessageType override { return MessageType::GssFinished; }
-};
+template<typename Inspector>
+auto inspect(Inspector& f, CleanupFinished& x) {
+  return f.object(x).fields(
+      f.field(Utils::senderKey, x.senderId),
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("reports", x.reports));
+}
 
 struct RecoveryFinished : Message {
   std::string senderId;
@@ -150,6 +193,27 @@ auto inspect(Inspector& f, PrepareGss& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
+}
+
+struct StartGss {
+  uint64_t executionNumber;
+  uint64_t gss;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  bool activateAll;
+  VPackBuilder toWorkerMessages;
+  VPackBuilder aggregators;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, StartGss& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("reset-all-active", x.activateAll),
+      f.field("masterToWorkerMessages", x.toWorkerMessages),
+      f.field("aggregators", x.aggregators));
 }
 
 struct CancelGss {

@@ -32,6 +32,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 #include "Reports.h"
@@ -159,8 +160,8 @@ class Worker : public IWorker {
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
-  void _createGssFinishedEvent(VPackBuilder& b);
-  void _createExecutionFinishedEvent(VPackBuilder& b);
+  auto _gssFinishedEvent() const -> GssFinished;
+  auto _cleanupFinishedEvent() const -> CleanupFinished;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
