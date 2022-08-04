@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Added OFFSET_INFO function (Enterprise Edition only) to support search results
+  highliting.
+
 * Updated Rclone to v1.59.0.
 
 * Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
