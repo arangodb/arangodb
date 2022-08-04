@@ -122,6 +122,14 @@ ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
   return basics::downCast<ViewSnapshotCookie>(state.cookie(key));
 }
 
+FilterCookie* getFilterCookie(transaction::Methods& trx,
+                              void const* key) noexcept {
+  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(trx.state());
+  auto& state = *(trx.state());
+  return basics::downCast<FilterCookie>(state.cookie(key));
+}
+
 void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
   auto& ctx = basics::downCast<ViewSnapshotCookie>(snapshot);
   ctx.clear();
