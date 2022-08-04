@@ -211,7 +211,7 @@ auto inspect(Inspector& f, StartGss& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
-      f.field("reset-all-active", x.activateAll),
+      f.field("activateAll", x.activateAll),
       f.field("masterToWorkerMessages", x.toWorkerMessages),
       f.field("aggregators", x.aggregators));
 }

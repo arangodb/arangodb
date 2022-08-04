@@ -347,12 +347,6 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
 
   auto loadedEvent = deserialize<GraphLoaded>(data);
 
-  receive(loadedEvent);
-
-  // TODO remove when rest of function is moved to Computing state
-  if (_respondedServers.size() != _dbServers.size()) {
-    return;
-  }
   state->receive(loadedEvent);
 }
 
