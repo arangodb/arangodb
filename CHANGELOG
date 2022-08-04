@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
+
 * ArangoSearch nested search feature (Enterprise Edition): Added ability to
   index and search nested documents with ArangoSearch views.
 
