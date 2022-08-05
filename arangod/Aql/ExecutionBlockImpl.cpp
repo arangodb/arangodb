@@ -72,6 +72,12 @@
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/OffsetInfoMaterializeExecutor.h"
+#endif
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -895,6 +901,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               SingleRemoteModificationExecutor<Update>,
               SingleRemoteModificationExecutor<Replace>,
               SingleRemoteModificationExecutor<Upsert>, SortExecutor,
+#ifdef USE_ENTERPRISE
+              arangodb::iresearch::OffsetMaterializeExecutor,
+#endif
               MaterializeExecutor<RegisterId>,
               MaterializeExecutor<std::string const&>>),
       "Unexpected executor for SkipVariants::EXECUTOR");
@@ -928,7 +937,7 @@ struct dependent_false : std::false_type {};
 enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
 
 template<class Executor>
-static auto fastForwardType(AqlCall const& call, Executor const& e)
+static auto fastForwardType(AqlCall const& call, Executor const&)
     -> FastForwardVariant {
   if (call.needsFullCount() && call.getOffset() == 0 && call.getLimit() == 0) {
     // Only start fullCount after the original call is fulfilled. Otherwise
@@ -2779,5 +2788,10 @@ template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
+
+#ifdef USE_ENTERPRISE
+template class ::arangodb::aql::ExecutionBlockImpl<
+    ::arangodb::iresearch::OffsetMaterializeExecutor>;
+#endif
 
 #endif

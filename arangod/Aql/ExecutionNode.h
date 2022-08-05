@@ -164,6 +164,7 @@ class ExecutionNode {
     ASYNC = 32,
     MUTEX = 33,
     WINDOW = 34,
+    OFFSET_INFO_MATERIALIZE = 35,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -1159,8 +1160,10 @@ class MaterializeNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief return out variable
-  arangodb::aql::Variable const& outVariable() const noexcept {
-    return *_outVariable;
+  aql::Variable const& outVariable() const noexcept { return *_outVariable; }
+
+  aql::Variable const& docIdVariable() const noexcept {
+    return *_inNonMaterializedDocId;
   }
 
  protected:

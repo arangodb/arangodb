@@ -86,6 +86,7 @@ class MaterializeExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
+    // FIXME(gnusi): enable?
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
     // TODO this could be set to true!
@@ -116,6 +117,11 @@ class MaterializeExecutor {
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
+
+  void initializeCursor() noexcept {
+    // Does nothing but prevents the whole executor to be re-created.
+    _collection = nullptr;
+  }
 
  protected:
   class ReadContext {
