@@ -658,7 +658,7 @@ function optimizerDoubleCollectTestSuite() {
       assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
       assertEqual(3, results.json.length);
     },
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

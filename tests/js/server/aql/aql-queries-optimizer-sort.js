@@ -59,7 +59,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       {"friend": {"name": "piotr"}, id: 1, age: 10},
       {"friend": {"name": "heiko"}, id: 2, age: 20},
       {"friend": {"name": "micha"}, id: 3, age: 30}
-    ]
+    ];
   };
 
   const explainMultipleSorts = function (query, params) {
