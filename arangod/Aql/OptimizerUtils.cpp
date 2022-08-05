@@ -601,11 +601,11 @@ void captureArrayFilterArgumentExpressions(
         // entire array to be evaluated (like if someone writes
         // query 1..1234567890)
         captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(0),
-                                  path1, result);
+                                  std::move(path1), result);
         auto path2 = path;
         path2.emplace_back(1);
         captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(1),
-                                  path2, result);
+                                  std::move(path2), result);
       } else if (member->type == NODE_TYPE_QUANTIFIER) {
         auto quantifierType =
             static_cast<Quantifier::Type>(member->getIntValue(true));
@@ -613,17 +613,15 @@ void captureArrayFilterArgumentExpressions(
           TRI_ASSERT(member->numMembers() == 1);
           auto atLeastNodeValue = member->getMemberUnchecked(0);
           if (!atLeastNodeValue->isConstant()) {
-            auto path1 = path;
-            path1.emplace_back(0);
-            captureNonConstExpression(ast, varInfo, atLeastNodeValue, path1,
-                                      result);
+            path.emplace_back(0);
+            captureNonConstExpression(ast, varInfo, atLeastNodeValue,
+                                      std::move(path), result);
           }
         }
       } else {
-        auto localPath = path;
-        auto preVisitor = [&localPath, ast, &varInfo, &result, indexVariable,
+        auto preVisitor = [&path, ast, &varInfo, &result, indexVariable,
                            evaluateFCalls](AstNode const* node) -> bool {
-          auto sg = ScopeGuard([&localPath]() noexcept { ++localPath.back(); });
+          auto sg = ScopeGuard([&path]() noexcept { ++path.back(); });
           if (node->isConstant()) {
             return false;
           }
@@ -633,7 +631,7 @@ void captureArrayFilterArgumentExpressions(
             TRI_ASSERT(acessedVar);
             if (acessedVar->needsRegister() && acessedVar != indexVariable) {
               captureNonConstExpression(
-                  ast, varInfo, const_cast<AstNode*>(node), localPath, result);
+                  ast, varInfo, const_cast<AstNode*>(node), path, result);
             }
             // never dive into attribute access
             return false;
@@ -644,11 +642,11 @@ void captureArrayFilterArgumentExpressions(
               // it? -> execute only functions that does
               // not touch index variable and local temp
               // variables!
-              captureFCallArgumentExpressions(ast, varInfo, node, localPath,
+              captureFCallArgumentExpressions(ast, varInfo, node, path,
                                               indexVariable, result);
             } else {
               captureNonConstExpression(
-                  ast, varInfo, const_cast<AstNode*>(node), localPath, result);
+                  ast, varInfo, const_cast<AstNode*>(node), path, result);
             }
             return false;
           } else if (node->type == NODE_TYPE_REFERENCE) {
@@ -656,22 +654,20 @@ void captureArrayFilterArgumentExpressions(
             TRI_ASSERT(acessedVar);
             if (acessedVar->needsRegister() && acessedVar != indexVariable) {
               captureNonConstExpression(
-                  ast, varInfo, const_cast<AstNode*>(node), localPath, result);
+                  ast, varInfo, const_cast<AstNode*>(node), path, result);
             }
             return false;
           }
-          localPath.push_back(0);
+          path.push_back(0);
           // dive into hierarchy. postVisitor will do the cleanup
           sg.cancel();
           return true;
         };
 
-        auto postVisitor = [&localPath](AstNode const*) -> void {
-          ++localPath.back();
-        };
+        auto postVisitor = [&path](AstNode const*) -> void { ++path.back(); };
 
-        auto visitor = [&localPath](AstNode* node) -> AstNode* {
-          localPath.pop_back();
+        auto visitor = [&path](AstNode* node) -> AstNode* {
+          path.pop_back();
           return node;
         };
         Ast::traverseAndModify(member, preVisitor, visitor, postVisitor);
