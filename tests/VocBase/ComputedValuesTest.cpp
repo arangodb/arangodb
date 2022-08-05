@@ -61,7 +61,7 @@ class ComputedValuesTest : public ::testing::Test {
   static inline std::unique_ptr<mocks::MockAqlServer> server;
 };
 
-TEST_F(ComputedValuesTest, createComputedValuesFromObject) {
+TEST_F(ComputedValuesTest, createComputedValuesFromEmptyObject) {
   auto& vocbase = server->getSystemDatabase();
 
   std::vector<std::string> shardKeys;
@@ -76,7 +76,7 @@ TEST_F(ComputedValuesTest, createComputedValuesFromNone) {
   auto& vocbase = server->getSystemDatabase();
 
   std::vector<std::string> shardKeys;
-  // when createing computed values from a None slice, we get no
+  // when creating computed values from a None slice, we get no
   // error, but a nullptr back
   auto res = ComputedValues::buildInstance(vocbase, shardKeys,
                                            velocypack::Slice::noneSlice());
@@ -88,7 +88,7 @@ TEST_F(ComputedValuesTest, createComputedValuesFromEmptyArray) {
   auto& vocbase = server->getSystemDatabase();
 
   std::vector<std::string> shardKeys;
-  // when createing computed values from an empty Array slice, we get no
+  // when creating computed values from an empty Array slice, we get no
   // error, but a nullptr back
   auto res = ComputedValues::buildInstance(
       vocbase, shardKeys, velocypack::Slice::emptyArraySlice());
@@ -192,7 +192,8 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectInvalidExpression) {
                       "LET a = 1",
                       "LET a = 1 RETURN a",
                       "RETURN (RETURN 1)",
-                      "RETURN (FOR i IN 1..10 RETURN i)"};
+                      "RETURN (FOR i IN 1..10 RETURN i)",
+                      "RETURN TOKENS('Lörem ipsüm, DOLOR SIT Ämet.', 'text_de')"};
 
   for (auto const& expression : expressions) {
     velocypack::Builder b;
@@ -548,6 +549,30 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnMultiple) {
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
   ASSERT_FALSE(cv->mustComputeValuesOnUpdate());
   ASSERT_TRUE(cv->mustComputeValuesOnReplace());
+
+  velocypack::Builder bActual;
+  cv->toVelocyPack(bActual);
+
+  ASSERT_TRUE(bActual.slice().isArray());
+  ASSERT_EQ(2, bActual.slice().length());
+
+  {
+    auto s = bActual.slice().at(0);
+    ASSERT_EQ("foo", s.get("name").stringView());
+    ASSERT_EQ("RETURN 1", s.get("expression").stringView());
+    ASSERT_TRUE(s.get("overwrite").getBoolean());
+    ASSERT_TRUE(s.get("keepNull").getBoolean());
+    ASSERT_FALSE(s.get("failOnWarning").getBoolean());
+  }
+
+  {
+    auto s = bActual.slice().at(1);
+    ASSERT_EQ("bar", s.get("name").stringView());
+    ASSERT_EQ("RETURN 2", s.get("expression").stringView());
+    ASSERT_TRUE(s.get("overwrite").getBoolean());
+    ASSERT_TRUE(s.get("keepNull").getBoolean());
+    ASSERT_FALSE(s.get("failOnWarning").getBoolean());
+  }
 }
 
 TEST_F(ComputedValuesTest, createComputedValuesComputeOnMultiple2) {
@@ -591,6 +616,39 @@ TEST_F(ComputedValuesTest, createComputedValuesComputeOnMultiple2) {
   ASSERT_TRUE(cv->mustComputeValuesOnInsert());
   ASSERT_TRUE(cv->mustComputeValuesOnUpdate());
   ASSERT_TRUE(cv->mustComputeValuesOnReplace());
+
+  velocypack::Builder bActual;
+  cv->toVelocyPack(bActual);
+
+  ASSERT_TRUE(bActual.slice().isArray());
+  ASSERT_EQ(3, bActual.slice().length());
+
+  {
+    auto s = bActual.slice().at(0);
+    ASSERT_EQ("foo", s.get("name").stringView());
+    ASSERT_EQ("RETURN 1", s.get("expression").stringView());
+    ASSERT_TRUE(s.get("overwrite").getBoolean());
+    ASSERT_TRUE(s.get("keepNull").getBoolean());
+    ASSERT_FALSE(s.get("failOnWarning").getBoolean());
+  }
+
+  {
+    auto s = bActual.slice().at(1);
+    ASSERT_EQ("bar", s.get("name").stringView());
+    ASSERT_EQ("RETURN 2", s.get("expression").stringView());
+    ASSERT_TRUE(s.get("overwrite").getBoolean());
+    ASSERT_TRUE(s.get("keepNull").getBoolean());
+    ASSERT_FALSE(s.get("failOnWarning").getBoolean());
+  }
+
+  {
+    auto s = bActual.slice().at(2);
+    ASSERT_EQ("qux", s.get("name").stringView());
+    ASSERT_EQ("RETURN 3", s.get("expression").stringView());
+    ASSERT_TRUE(s.get("overwrite").getBoolean());
+    ASSERT_TRUE(s.get("keepNull").getBoolean());
+    ASSERT_FALSE(s.get("failOnWarning").getBoolean());
+  }
 }
 
 TEST_F(ComputedValuesTest, createComputedValuesComputeOnSystemAttributes) {
