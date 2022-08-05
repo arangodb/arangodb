@@ -1360,6 +1360,17 @@ void arangodb::aql::removeRedundantSortsRule(
                   break;
                 }
 
+                if (sortNode->isStable()) {
+                  // we should not optimize predecessors of a stable sort
+                  // (used in a COLLECT node)
+                  // the stable sort is for a reason, and removing any
+                  // predecessors sorts might change the result.
+                  // We're not allowed to continue our search for further
+                  // redundant SORTS in this iteration.
+                  canContinueSearch = false;
+                  break;
+                }
+
                 // remove sort that is a direct predecessor of a sort
                 toUnlink.emplace(current);
               } else {
