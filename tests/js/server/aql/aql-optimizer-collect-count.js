@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, assertNull, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, assertNull, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -546,6 +546,119 @@ function optimizerCountTestSuite () {
       assertEqual(undefined, results[0].start);
     }
   };
+}
+
+function optimizerDoubleCollectTestSuite() {
+  const generateData = () => {
+    // Static data we will use in our AQL Queries.
+    // We do not need collection/document access or dynamic data.
+    return [
+      {"friend": {"name": "piotr"}, id: 10},
+      {"friend": {"name": "heiko"}, id: 11},
+      {"friend": {"name": "micha"}, id: 12},
+      {"friend": {"name": "micha"}, id: 13},
+      {"friend": {"name": "micha"}, id: 14},
+      {"friend": {"name": "piotr"}, id: 10},
+      {"friend": {"name": "micha"}, id: 12},
+      {"friend": {"name": "heiko"}, id: 11},
+      {"friend": {"name": "piotr"}, id: 10},
+      {"friend": {"name": "heiko"}, id: 9}
+    ];
+  };
+
+  const hasDuplicates = (values) => {
+    let seen = new Set();
+    let checkedName;
+
+    let duplicatesFound = values.some(function (currentObject) {
+      checkedName = currentObject.name;
+      return seen.size === seen.add(currentObject.name).size;
+    });
+
+    return {duplicatesFound, checkedName};
+  };
+
+  return {
+    testDoubleCollectSort: function () {
+      // Forces SORT NULL on first COLLECT statement
+
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR f in friends
+          COLLECT friend_temp = f.friend, id = f.id WITH COUNT INTO messageCount
+          COLLECT friend = friend_temp INTO countryData = {id, messageCount}
+
+          SORT friend.name
+          RETURN {"name": friend.name, countryData}
+      `;
+
+      const results = AQL_EXECUTE(query);
+      // Our result must contain 3. Rows with collected data
+      const duplicatesChecker = hasDuplicates(results.json);
+      assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
+      assertEqual(3, results.json.length);
+    },
+
+    testDoubleCollectSortNullRemoveSecondCalculationRule: function () {
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR f in friends
+          COLLECT friend_temp = f.friend, id = f.id WITH COUNT INTO messageCount SORT NULL
+          COLLECT friend = friend_temp INTO countryData = {id, messageCount}
+
+          SORT friend.name
+          RETURN {"name": friend.name, countryData}
+      `;
+
+      const results = db._query(query).toArray();
+
+      // Our result must contain 3. Rows with collected data
+      const duplicatesChecker = hasDuplicates(results);
+      assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
+      assertEqual(3, results.length);
+    },
+
+    testDoubleCollectSortNull: function () {
+      // Forces SORT NULL on first COLLECT statement
+
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR f in friends
+          COLLECT friend_temp = f.friend, id = f.id WITH COUNT INTO messageCount SORT NULL
+          COLLECT friend = friend_temp INTO countryData = {id, messageCount}
+
+          SORT friend.name
+          RETURN {"name": friend.name, countryData}
+      `;
+
+      const results = AQL_EXECUTE(query);
+      // Our result must contain 3. Rows with collected data
+      const duplicatesChecker = hasDuplicates(results.json);
+      assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
+      assertEqual(3, results.json.length);
+    },
+
+    testDoubleCollectSortNullWithForcedHashMethod: function () {
+      // Forces SORT NULL on first COLLECT statement
+      // Forces HASH method on second COLLECT
+
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR f in friends
+          COLLECT friend_temp = f.friend, id = f.id WITH COUNT INTO messageCount SORT NULL
+          COLLECT friend = friend_temp INTO countryData = {id, messageCount} OPTIONS {method: "hash"}
+
+          SORT friend.name
+          RETURN {"name": friend.name, countryData}
+      `;
+
+      const results = AQL_EXECUTE(query);
+      // Our result must contain 3. Rows with collected data
+      const duplicatesChecker = hasDuplicates(results.json);
+      assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
+      assertEqual(3, results.json.length);
+    },
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
