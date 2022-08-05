@@ -2976,7 +2976,9 @@ function testSmallCircleFilterOptimization(testGraph) {
   // Non optimizable filters
   const nonOptimizableFilters = [
     `DOCUMENT(v.docId).color == "blue"`,
-    `DOCUMENT(e.docId).color == "blue"`
+    `DOCUMENT(e.docId).color == "blue"`,
+    /* ASSSERT has side-effects on false so it should not be optimized */
+    `ASSERT v.color == "blue"`
   ];
 
   // This is a pair of FilterCondition and LeftOver non-optimized condition.
