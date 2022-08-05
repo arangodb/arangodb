@@ -23,57 +23,40 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
 #include "Pregel/Algorithm.h"
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
 
-struct PageRankVertex {
-  float rank;
-};
-struct PageRankEdge {};
-struct PageRankMessage {
-  float m;
-};
-
-struct NewPageRank
-    : public NewAlgorithm<PageRankVertex, PageRankEdge, PageRankMessage> {
-  auto readVertexDocument(Slice const& data) -> PageRankVertex;
-  auto readEdgeDocument(Slice const& data) -> PageRankEdge;
-  auto writeVertexDocument(VPackBuilder& doc) -> void;
-
-  auto compute(vertex, messages) -> messages;
-};
-
 /// PageRank
 struct PageRank : public SimpleAlgorithm<float, float, float> {
-  explicit PageRank(application_features::ApplicationServer& server,
-                    arangodb::velocypack::Slice const& params);
+  explicit PageRank(application_features::ApplicationServer &server,
+                    arangodb::velocypack::Slice const &params);
 
-  GraphFormat<float, float>* inputFormat() const override;
+  GraphFormat<float, float> *inputFormat() const override;
 
-  MessageFormat<float>* messageFormat() const override {
+  MessageFormat<float> *messageFormat() const override {
     return new NumberMessageFormat<float>();
   }
 
-  MessageCombiner<float>* messageCombiner() const override {
+  MessageCombiner<float> *messageCombiner() const override {
     return new SumCombiner<float>();
   }
 
-  VertexComputation<float, float, float>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<float, float, float> *
+  createComputation(WorkerConfig const *) const override;
 
-  WorkerContext* workerContext(VPackSlice userParams) const override;
+  WorkerContext *workerContext(VPackSlice userParams) const override;
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  MasterContext *masterContext(VPackSlice userParams) const override;
 
-  IAggregator* aggregator(std::string const& name) const override;
+  IAggregator *aggregator(std::string const &name) const override;
 
- private:
+private:
   bool const _useSource;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+} // namespace algos
+} // namespace pregel
+} // namespace arangodb
