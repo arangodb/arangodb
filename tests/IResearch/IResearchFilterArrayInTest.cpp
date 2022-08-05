@@ -3749,17 +3749,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-  auto checkNotAtLeast = [](irs::Or& actual, irs::score_t boost) {
-    SCOPED_TRACE(testing::Message("Actual:") << iresearch::to_string(actual));
-    EXPECT_EQ(1, actual.size());
-    auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
-    EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
-    EXPECT_EQ(3, root.size());
-    // hardcode here to keep same number of arguments
-    EXPECT_EQ(2, root.min_match_count());
-    EXPECT_EQ(boost, root.boost());
-    return root.begin();
-  };
   // nondeterministic value
   {
     std::vector<std::pair<
