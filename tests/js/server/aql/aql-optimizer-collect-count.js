@@ -666,5 +666,6 @@ function optimizerDoubleCollectTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerCountTestSuite);
+jsunity.run(optimizerDoubleCollectTestSuite);
 
 return jsunity.done();
