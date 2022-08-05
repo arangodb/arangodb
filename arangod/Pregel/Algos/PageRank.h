@@ -30,6 +30,23 @@ namespace arangodb {
 namespace pregel {
 namespace algos {
 
+struct PageRankVertex {
+  float rank;
+};
+struct PageRankEdge {};
+struct PageRankMessage {
+  float m;
+};
+
+struct NewPageRank
+    : public NewAlgorithm<PageRankVertex, PageRankEdge, PageRankMessage> {
+  auto readVertexDocument(Slice const& data) -> PageRankVertex;
+  auto readEdgeDocument(Slice const& data) -> PageRankEdge;
+  auto writeVertexDocument(VPackBuilder& doc) -> void;
+
+  auto compute(vertex, messages) -> messages;
+};
+
 /// PageRank
 struct PageRank : public SimpleAlgorithm<float, float, float> {
   explicit PageRank(application_features::ApplicationServer& server,

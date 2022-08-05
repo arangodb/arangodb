@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
 #include <cstdint>
 #include <functional>
+#include <velocypack/Slice.h>
 
 #include "Basics/Common.h"
 #include "Pregel/GraphFormat.h"
@@ -129,8 +129,8 @@ struct Algorithm : IAlgorithm {
  protected:
   Algorithm(application_features::ApplicationServer& server,
             std::string const& name)
-      : IAlgorithm(name), _server(server) {}
-  application_features::ApplicationServer& _server;
+      : IAlgorithm(name) /*, _server(server) */ {}
+  //  application_features::ApplicationServer& _server;
 };
 
 template<typename V, typename E, typename M>
