@@ -119,7 +119,7 @@ void TimeZoneFeature::prepare() {
 void TimeZoneFeature::start() {
   try {
     date::reload_tzdb();
-  } catch (const std::runtime_error& ex) {
+  } catch (std::runtime_error const& ex) {
     LOG_TOPIC("67bdd", FATAL, arangodb::Logger::STARTUP) << ex.what();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
   }

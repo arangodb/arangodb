@@ -119,6 +119,14 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto setEmptyTerm() -> AgencyLogBuilder& {
+    auto& term = makeTerm();
+
+    term.leader.reset();
+    term.term.value++;
+    return *this;
+  }
+
   auto acknowledgeTerm(replication2::ParticipantId const& id)
       -> AgencyLogBuilder& {
     auto& current = makeCurrent();

@@ -1,6 +1,19 @@
 devel
 -----
 
+* Updated Rclone to v1.59.0.
+
+* Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
+
+* Updated arangosync to v2.12.0-preview-2.
+
+* ArangoSearch nested search feature. (Enterprise Edition): Added ability to index
+  and search nested documents with ArangoSearch views.
+
+* Fixed handling of illegal edges in Enterprise Graphs. Adding an edge to a SmartGraph
+  vertex collection through document API caused incorrect sharding of the edge. Now
+  this edge is rejected as invalid. (BTS-906)
+
 * Removed unused log topics "CLUSTERCOMM", "COLLECTOR" and "PERFORMANCE" from
   the code.
 
