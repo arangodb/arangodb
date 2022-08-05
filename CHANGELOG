@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added new AQL function `VALUE` capable of accessing object attribute by a
+  specified path.
+
 * Added OFFSET_INFO function (Enterprise Edition only) to support search results
   highliting.
 
