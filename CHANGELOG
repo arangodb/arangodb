@@ -1,8 +1,8 @@
 devel
 -----
 
-* Fixed some rare SortNode related optimizer issues, when at least two or more
-  SortNodes appeared in the AQL execution plan.
+* BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
+  or more SortNodes appeared in the AQL execution plan.
 
 * Added OFFSET_INFO function (Enterprise Edition only) to support search results
   highliting.
