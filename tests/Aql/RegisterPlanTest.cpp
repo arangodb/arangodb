@@ -209,7 +209,7 @@ class RegisterPlanTest : public ::testing::Test {
   auto walk(std::vector<ExecutionNodeMock>& nodes)
       -> std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> {
     // Compute the variable usage for nodes.
-    std::unordered_map<VariableId, ExecutionNodeMock*> varSetBy;
+    arangodb::containers::FlatHashMap<VariableId, ExecutionNodeMock*> varSetBy;
     ::VarUsageFinderT finder(&varSetBy);
     applyWalkerToNodes(nodes, finder);
 
@@ -329,7 +329,7 @@ class RegisterPlanTest : public ::testing::Test {
   }
 
   auto getVarUsage(std::vector<ExecutionNodeMock>& nodes) {
-    std::unordered_map<VariableId, ExecutionNodeMock*> varSetBy;
+    arangodb::containers::FlatHashMap<VariableId, ExecutionNodeMock*> varSetBy;
     ::VarUsageFinderT finder(&varSetBy);
     applyWalkerToNodes(nodes, finder);
   }
