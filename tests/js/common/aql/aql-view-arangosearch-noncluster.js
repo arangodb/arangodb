@@ -1610,6 +1610,11 @@ function iResearchAqlTestSuite () {
         assertEqual(0, result[0].c);
       }
       {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'boo'] AT LEAST(2) == d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+        assertEqual(1, result.length);
+        assertEqual(0, result[0].c);
+      }
+      {
         let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'boo', 'abaz', 'afoo'] AT LEAST(3) IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
         assertEqual(0, result.length);
       }
@@ -1638,8 +1643,8 @@ function iResearchAqlTestSuite () {
       {
         let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'afoo'] AT LEAST(2) <= d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
         assertEqual(2, result.length);
-        assertEqual(0, result[0].c)
-        assertEqual(1, result[1].c);;
+        assertEqual(0, result[0].c);
+        assertEqual(1, result[1].c);
       }
       {
         let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(3) NOT IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
@@ -1647,6 +1652,11 @@ function iResearchAqlTestSuite () {
       }
       {
         let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'afoo', 'abar', 'abaz'] AT LEAST(3) NOT IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(1, result.length);
+        assertEqual(0, result[0].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'afoo', 'abar', 'abaz'] AT LEAST(3) != d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
         assertEqual(1, result.length);
         assertEqual(0, result[0].c);
       }

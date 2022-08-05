@@ -1058,6 +1058,11 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
               aql::AstNodeType::NODE_TYPE_ROOT};
     }
     auto number = quantifierNode->getMemberUnchecked(0);
+    if (!ctx.isSearchQuery && !number->isConstant()) {
+      return {Result(TRI_ERROR_NOT_IMPLEMENTED,
+                     "Non const AT LEAST is not supported for FILTER"),
+              aql::AstNodeType::NODE_TYPE_ROOT};
+    }
     ScopedAqlValue atLeastCountValue;
     auto rv = evaluateArg<decltype(atLeastCount), true>(
         atLeastCount, atLeastCountValue, kFuncName.data(), *quantifierNode, 0,
@@ -1329,7 +1334,8 @@ class ByTermSubFilterFactory {
     irs::by_term* termFilter = nullptr;
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NE == arrayExpansionNodeType) {
-        termFilter = &filter->add<irs::Not>().filter<irs::by_term>();
+        termFilter =
+            &filter->add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       } else {
         termFilter = &filter->add<irs::by_term>();
       }

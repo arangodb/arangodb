@@ -239,6 +239,12 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << "[Unknown filter]";
   }
 }
+
+std::string to_string(irs::filter const& f) {
+  std::stringstream ss;
+  ss << f;
+  return ss.str();
+}
 }  // namespace iresearch
 
 namespace {
