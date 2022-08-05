@@ -1,6 +1,10 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Added support for AT LEAST quantifier for SEARCH
+
+* Fixed BTS-335 Ranges parsing fixed for nested queries
+
 * Fixed BTS-918 (incorrectly navigating back 1 level in history when a
   modal-dialog element is present).
 
