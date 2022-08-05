@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.12.0-preview-3.
+
 * Added new AQL function `VALUE` capable of accessing object attribute by a
   specified path.
 
