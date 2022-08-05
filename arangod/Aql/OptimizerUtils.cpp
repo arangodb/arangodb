@@ -606,6 +606,19 @@ void captureArrayFilterArgumentExpressions(
         path2.emplace_back(1);
         captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(1),
                                   path2, result);
+      } else if (member->type == NODE_TYPE_QUANTIFIER) {
+        auto quantifierType =
+            static_cast<Quantifier::Type>(member->getIntValue(true));
+        if (quantifierType == Quantifier::Type::kAtLeast) {
+          TRI_ASSERT(member->numMembers() == 1);
+          auto atLeastNodeValue = member->getMemberUnchecked(0);
+          if (!atLeastNodeValue->isConstant()) {
+            auto path1 = path;
+            path1.emplace_back(0);
+            captureNonConstExpression(ast, varInfo, atLeastNodeValue, path1,
+                                      result);
+          }
+        }
       } else {
         auto localPath = path;
         auto preVisitor = [&localPath, ast, &varInfo, &result, indexVariable,
