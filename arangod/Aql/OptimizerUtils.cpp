@@ -602,10 +602,9 @@ void captureArrayFilterArgumentExpressions(
         // query 1..1234567890)
         captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(0),
                                   std::move(path1), result);
-        auto path2 = path;
-        path2.emplace_back(1);
+        path.emplace_back(1);
         captureNonConstExpression(ast, varInfo, member->getMemberUnchecked(1),
-                                  std::move(path2), result);
+                                  std::move(path), result);
       } else if (member->type == NODE_TYPE_QUANTIFIER) {
         auto quantifierType =
             static_cast<Quantifier::Type>(member->getIntValue(true));
