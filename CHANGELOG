@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Added new AQL function `VALUE` capable of accessing object attribute by a
+  specified path.
+
 * Fixed BTS-918 (incorrectly navigating back 1 level in history when a
   modal-dialog element is present).
 

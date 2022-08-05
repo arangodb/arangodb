@@ -4756,6 +4756,83 @@ AqlValue functions::Values(ExpressionContext* expressionContext, AstNode const&,
   return AqlValue(builder->slice(), builder->size());
 }
 
+AqlValue functions::Value(ExpressionContext* expressionContext,
+                          AstNode const& node,
+                          VPackFunctionParametersView parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 2) {
+    // no parameters
+    registerWarning(expressionContext, getFunctionName(node).data(),
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    return AqlValue{AqlValueHintNull()};
+  }
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  if (!value.isObject()) {
+    // not an object
+    registerWarning(expressionContext, getFunctionName(node).data(),
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue{AqlValueHintNull()};
+  }
+
+  AqlValue const& pathArg = extractFunctionParameterValue(parameters, 1);
+
+  if (!pathArg.isArray()) {
+    registerWarning(expressionContext, getFunctionName(node).data(),
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue{AqlValueHintNull()};
+  }
+
+  auto& trx = expressionContext->trx();
+  AqlValueMaterializer materializer{&trx.vpackOptions()};
+  VPackSlice slice{materializer.slice(value, false)};
+  VPackSlice const root{slice};
+
+  auto visitor = [&slice]<typename T>(T value) {
+    static_assert(std::is_same_v<T, std::string_view> ||
+                  std::is_same_v<T, size_t>);
+
+    if constexpr (std::is_same_v<T, std::string_view>) {
+      if (!slice.isObject()) {
+        return false;
+      }
+      slice = slice.get(value);
+      return !slice.isNone();
+    } else if (std::is_same_v<T, size_t>) {
+      if (!slice.isArray() || slice.length() <= value) {
+        return false;
+      }
+      slice = slice.at(value);
+      return true;
+    }
+  };
+
+  if (0 == pathArg.length()) {
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  for (auto entry : velocypack::ArrayIterator{pathArg.slice()}) {
+    bool ok = false;
+    if (entry.isString()) {
+      ok = visitor(entry.stringView());
+    } else if (entry.isNumber()) {
+      ok = visitor(entry.getNumber<size_t>());
+    }
+
+    if (!ok) {
+      return AqlValue{AqlValueHintNull{}};
+    }
+  }
+
+  if (slice.isCustom()) {
+    // The only custom slice is `_id` field
+    return AqlValue{trx.extractIdString(root)};
+  }
+
+  return AqlValue{slice};
+}
+
 /// @brief function MIN
 AqlValue functions::Min(ExpressionContext* expressionContext, AstNode const&,
                         VPackFunctionParametersView parameters) {
