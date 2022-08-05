@@ -41,9 +41,11 @@ class ApplicationServer;
 }
 namespace pregel {
 
-template <typename V, typename E, typename M> class VertexComputation;
+template<typename V, typename E, typename M>
+class VertexComputation;
 
-template <typename V, typename E, typename M> class VertexCompensation;
+template<typename V, typename E, typename M>
+class VertexCompensation;
 
 class IAggregator;
 class WorkerConfig;
@@ -58,29 +60,30 @@ struct IAlgorithm {
 
   virtual bool supportsCompensation() const { return false; }
 
-  virtual IAggregator *aggregator(std::string const &name) const {
+  virtual IAggregator* aggregator(std::string const& name) const {
     return nullptr;
   }
 
-  virtual MasterContext *
-  masterContext(arangodb::velocypack::Slice userParams) const {
+  virtual MasterContext* masterContext(
+      arangodb::velocypack::Slice userParams) const {
     return nullptr;
   }
 
   // ============= Configure runtime parameters ============
 
-  std::string const &name() const { return _name; }
+  std::string const& name() const { return _name; }
 
-protected:
-  explicit IAlgorithm(std::string const &name) : _name(name) {}
+ protected:
+  explicit IAlgorithm(std::string const& name) : _name(name) {}
 
-private:
+ private:
   std::string _name;
 };
 
 // specify serialization, whatever
-template <typename V, typename E, typename M> struct Algorithm : IAlgorithm {
-public:
+template<typename V, typename E, typename M>
+struct Algorithm : IAlgorithm {
+ public:
   // Data used by the algorithm at every vertex
   using vertex_type = V;
   // Data used by the algorithm for every edge
@@ -96,47 +99,47 @@ public:
   using vertex_compensation =
       VertexCompensation<vertex_type, edge_type, message_type>;
 
-public:
-  virtual WorkerContext *workerContext(velocypack::Slice userParams) const {
+ public:
+  virtual WorkerContext* workerContext(velocypack::Slice userParams) const {
     return new WorkerContext();
   }
-  virtual graph_format *inputFormat() const = 0;
-  virtual message_format *messageFormat() const = 0;
-  virtual message_combiner *messageCombiner() const { return nullptr; }
-  virtual vertex_computation *createComputation(WorkerConfig const *) const = 0;
-  virtual vertex_compensation *createCompensation(WorkerConfig const *) const {
+  virtual graph_format* inputFormat() const = 0;
+  virtual message_format* messageFormat() const = 0;
+  virtual message_combiner* messageCombiner() const { return nullptr; }
+  virtual vertex_computation* createComputation(WorkerConfig const*) const = 0;
+  virtual vertex_compensation* createCompensation(WorkerConfig const*) const {
     return nullptr;
   }
   virtual std::set<std::string> initialActiveSet() {
     return std::set<std::string>();
   }
 
-  virtual uint32_t messageBatchSize(WorkerConfig const &config,
-                                    MessageStats const &stats) const {
+  virtual uint32_t messageBatchSize(WorkerConfig const& config,
+                                    MessageStats const& stats) const {
     if (config.localSuperstep() == 0) {
       return 500;
     } else {
       double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
-      msgsPerSec /= config.parallelism(); // per thread
+      msgsPerSec /= config.parallelism();  // per thread
       msgsPerSec *= 0.06;
       return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
     }
   }
 
-protected:
-  Algorithm(application_features::ApplicationServer &server,
-            std::string const &name)
+ protected:
+  Algorithm(application_features::ApplicationServer& server,
+            std::string const& name)
       : IAlgorithm(name), _server(server) {}
-  application_features::ApplicationServer &_server;
+  application_features::ApplicationServer& _server;
 };
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class SimpleAlgorithm : public Algorithm<V, E, M> {
-protected:
+ protected:
   std::string _sourceField, _resultField;
 
-  SimpleAlgorithm(application_features::ApplicationServer &server,
-                  std::string const &name, VPackSlice userParams)
+  SimpleAlgorithm(application_features::ApplicationServer& server,
+                  std::string const& name, VPackSlice userParams)
       : Algorithm<V, E, M>(server, name) {
     arangodb::velocypack::Slice field = userParams.get("sourceField");
     _sourceField = field.isString() ? field.copyString() : "value";
@@ -144,5 +147,5 @@ protected:
     _resultField = field.isString() ? field.copyString() : "result";
   }
 };
-} // namespace pregel
-} // namespace arangodb
+}  // namespace pregel
+}  // namespace arangodb
