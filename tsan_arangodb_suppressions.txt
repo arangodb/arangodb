@@ -1,5 +1,6 @@
 race:boost/lockfree/queue.hpp
 race:boost/lockfree/detail/freelist.hpp
+race:boost::lockfree::queue
 
 # These operators contain an assertion that checks the refCount.
 # That read operation is racy, but since it is just an assert we don't care!
