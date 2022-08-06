@@ -64,6 +64,15 @@ struct HITSValue {
   double hubScore;
 };
 
+/// Value for Hyperlink-Induced Topic Search (HITS; also known as
+/// hubs and authorities) according to the paper
+struct HITSKleinbergValue {
+  double nonNormalizedAuth;
+  double nonNormalizedHub;
+  double normalizedAuth;
+  double normalizedHub;
+};
+
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
   float weightedInDegree = INVALID_DEGREE;

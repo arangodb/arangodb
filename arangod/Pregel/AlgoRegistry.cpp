@@ -29,6 +29,7 @@
 #include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
 #include "Pregel/Algos/HITS.h"
+#include "Pregel/Algos/HITSKleinberg.h"
 #include "Pregel/Algos/LabelPropagation.h"
 #include "Pregel/Algos/LineRank.h"
 #include "Pregel/Algos/PageRank.h"
@@ -66,6 +67,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::AsyncSCC(server, userParams);
   } else if (algorithm == "hits") {
     return new algos::HITS(server, userParams);
+  } else if (algorithm == "hitsKleinberg") {
+    return new algos::HITSKleinberg(server, userParams);
   } else if (algorithm == "labelpropagation") {
     return new algos::LabelPropagation(server, userParams);
   } else if (algorithm == "slpa") {
@@ -140,6 +143,9 @@ template<typename V, typename E, typename M>
   } else if (algorithm == "hits") {
     return createWorker(vocbase, new algos::HITS(server, userParams), body,
                         feature);
+  } else if (algorithm == "hitskleinberg") {
+    return createWorker(vocbase, new algos::HITSKleinberg(server, userParams),
+                        body, feature);
   } else if (algorithm == "labelpropagation") {
     return createWorker(vocbase,
                         new algos::LabelPropagation(server, userParams), body,

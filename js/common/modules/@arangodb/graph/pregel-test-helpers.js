@@ -73,8 +73,10 @@ const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDes
         console.error("        " + expected);
         console.error("    " + actualDescription + ":");
         console.error("        " + actual);
+        console.error("    Difference: " + Math.abs(actual - expected));
         console.error(context);
     }
+    // assertTrue(false);
 };
 
 const runPregelInstance = function (algName, graphName, parameters, query, maxWaitTimeSecs = 120) {
@@ -91,7 +93,7 @@ const runPregelInstance = function (algName, graphName, parameters, query, maxWa
 };
 
 const dampingFactor = 0.85;
-const epsilon = 0.0001;
+let epsilon = 0.00001;
 
 const testPageRankOnGraph = function (vertices, edges, seeded = false) {
     db[vColl].save(vertices);
@@ -129,16 +131,17 @@ const testPageRankOnGraph = function (vertices, edges, seeded = false) {
  * @param compare
  * @param variant "Kleinberg", "Wiki" or "Graetzer"
  */
-const testHITSOnGraph = function (vertices, edges, compare, variant = "Graetzer") {
+const testHITSOnGraph = function (vertices, edges, compare, variant = "Kleinberg") {
     db[vColl].save(vertices);
     db[eColl].save(edges);
     const query = `
                   FOR v in ${vColl}
                   RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
               `;
-    const numberIterations = 100;
-    let parameters = {maxGSS: 2 + numberIterations, resultField: "hits"};
-    const result = runPregelInstance("hits", graphName, parameters, query);
+    const numberIterations = 10;
+    let parameters = {/*maxGSS: 2 + 2 * numberIterations,*/ resultField: "hits", maxNumIterations: numberIterations};
+    const algName = variant === "Graetzer"? "hits" : "hitsKleinberg";
+    const result = runPregelInstance(algName, graphName, parameters, query);
     const hits = new HITS();
     const graph = new Graph(vertices, edges);
 
@@ -164,6 +167,7 @@ const testHITSOnGraph = function (vertices, edges, compare, variant = "Graetzer"
         return;
     }
 
+    epsilon = 0.00001;
     for (const resultV of result) {
         const vKey = resultV._key;
         const v = graph.vertex(resultV._key);
@@ -177,7 +181,7 @@ const testHITSOnGraph = function (vertices, edges, compare, variant = "Graetzer"
 
         // hub
         assertAlmostEquals(resultV.value.hits_hub, v.value.hits_hub, epsilon,
-            `Different hub values for vertex ${vKey}.`,
+            `Different hub values for vertex ${vKey}`,
             "Pregel returned",
             "test returned",
             ""
@@ -619,7 +623,6 @@ class HITS {
             }
             ++step;
         } while (step < numSteps && maxDiff > epsilon);
-
         return maxDiff;
     }
 

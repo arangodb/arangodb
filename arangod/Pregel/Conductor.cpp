@@ -119,7 +119,11 @@ Conductor::Conductor(
   _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
 
   _maxSuperstep =
-      VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
+      VelocyPackHelper::getNumericValue(config, Utils::maxGSS, _maxSuperstep);
+  if (config.hasKey(Utils::maxNumIterations)) {
+    // set to "infinity"
+    _maxSuperstep = std::numeric_limits<uint64_t>::max();
+  }
   // configure the async mode as off by default
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode =
