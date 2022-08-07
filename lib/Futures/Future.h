@@ -55,9 +55,6 @@ struct isFuture<Future<T>> {
   typedef typename lift_unit<T>::type inner;
 };
 
-/// @brief Specifies state of a future as returned by wait_for and wait_until
-enum class FutureStatus : uint8_t { Ready, Timeout };
-
 namespace detail {
 
 template<typename...>
@@ -160,37 +157,6 @@ void waitImpl(Future<T>& f) {
   f = std::move(ret);
 }
 
-// uses a condition_variable to wait
-template<typename T, typename Clock, typename Duration>
-void waitImpl(Future<T>& f,
-              std::chrono::time_point<Clock, Duration> const& tp) {
-  if (f.isReady()) {
-    return;  // short-circuit
-  }
-  struct Waiter final {
-    std::mutex m;
-    std::condition_variable cv;
-  };
-  // We need allocate Waiter for case when timeout expire
-  // in that case waiter still should be valid
-  auto waiter = std::make_unique<Waiter>();
-  // can be without any allocation with better Future
-
-  Promise<T> p;
-  Future<T> next = p.getFuture();
-  std::move(f).thenFinal([p = std::move(p), waiter](Try<T>&& t) mutable {
-    {
-      std::lock_guard lock{waiter->m};
-      p.setTry(std::move(t));
-    }
-    waiter->cv.notify_one();
-  });
-  {
-    std::unique_lock lock{waiter->m};
-    waiter->cv.wait_until(lock, tp, [&next] { return next.isReady(); });
-  }
-  f = std::move(next);
-}
 }  // namespace detail
 
 /// Simple Future library based on Facebooks Folly
@@ -284,18 +250,6 @@ class Future {
     return Future<T>(std::move(*this)).result().get();
   }
 
-  template<class Rep, class Period>
-  T get(const std::chrono::duration<Rep, Period>& duration) & {
-    wait_for(duration);
-    return result().get();
-  }
-
-  template<class Rep, class Period>
-  T get(const std::chrono::duration<Rep, Period>& duration) && {
-    wait_for(duration);
-    return Future<T>(std::move(*this)).result().get();
-  }
-
   /// Blocks until the future is fulfilled. Returns the Try of the result
   Try<T>& getTry() & {
     wait();
@@ -317,23 +271,6 @@ class Future {
 
   /// Blocks until this Future is complete.
   void wait() { detail::waitImpl(*this); }
-
-  /// waits for the result, returns if it is not available
-  /// for the specified timeout duration. Future must be valid
-  template<class Rep, class Period>
-  FutureStatus wait_for(
-      const std::chrono::duration<Rep, Period>& timeout_duration) {
-    return wait_until(std::chrono::steady_clock::now() + timeout_duration);
-  }
-
-  /// waits for the result, returns if it is not available until
-  /// specified time point. Future must be valid
-  template<class Clock, class Duration>
-  FutureStatus wait_until(
-      const std::chrono::time_point<Clock, Duration>& timeout_time) {
-    detail::waitImpl(*this, timeout_time);
-    return FutureStatus::Ready;
-  }
 
   /// When this Future has completed, execute func which is a function that
   /// can be called with either `T&&` or `Try<T>&&`.
