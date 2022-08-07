@@ -167,25 +167,29 @@ void waitImpl(Future<T>& f,
   if (f.isReady()) {
     return;  // short-circuit
   }
-
-  std::mutex m;
-  std::condition_variable cv;
+  struct Waiter final {
+    std::mutex m;
+    std::condition_variable cv;
+  };
+  // We need allocate Waiter for case when timeout expire
+  // in that case waiter still should be valid
+  auto waiter = std::make_unique<Waiter>();
+  // can be without any allocation with better Future
 
   Promise<T> p;
-  Future<T> ret = p.getFuture();
-  std::move(f).thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
-    // We need to hold this mutex, while sending the notify.
-    // Otherwise the future ret may be ready and thereby leaving this function
-    // which would free the condtion variable, before sending notify.
-    // This is one of the rare cases where notify without lock would cause
-    // undefined behaviour.
-    std::lock_guard<std::mutex> guard(m);
-    p.setTry(std::move(t));
-    cv.notify_one();
+  Future<T> next = p.getFuture();
+  std::move(f).thenFinal([p = std::move(p), waiter](Try<T>&& t) mutable {
+    {
+      std::lock_guard lock{waiter->m};
+      p.setTry(std::move(t));
+    }
+    waiter->cv.notify_one();
   });
-  std::unique_lock<std::mutex> lock(m);
-  cv.wait_until(lock, tp, [&ret] { return ret.isReady(); });
-  f = std::move(ret);
+  {
+    std::unique_lock lock{waiter->m};
+    waiter->cv.wait_until(lock, tp, [&next] { return next.isReady(); });
+  }
+  f = std::move(next);
 }
 }  // namespace detail
 
