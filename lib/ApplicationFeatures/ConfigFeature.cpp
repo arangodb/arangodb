@@ -23,8 +23,6 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 
-#include <stdlib.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -42,24 +40,29 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Translator.h"
 
+#include <cstdlib>
+
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--configuration,-c", "the configuration file or 'none'",
+  options->addOption("--configuration,-c",
+                     "The configuration file or \"none\".",
                      new StringParameter(&_file));
 
   // add --config as an alias for --configuration. both point to the same
   // variable!
   options->addOption(
-      "--config", "the configuration file or 'none'",
+      "--config", "The configuration file or \"none\".",
       new StringParameter(&_file),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--define,-D", "define key=value for a @key@ entry in config file",
+      "--define,-D",
+      "Define a value for a `@key@` entry in the configuration file using the "
+      "syntax `\"key=value\"`.",
       new VectorParameter<StringParameter>(&_defines),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -114,7 +117,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
           << "loading override '" << local << "'";
 
       if (!parser.parse(local, true)) {
-        FATAL_ERROR_EXIT();
+        FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
       }
     }
 
@@ -122,7 +125,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
         << "using user supplied config file '" << _file << "'";
 
     if (!parser.parse(_file, true)) {
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
     }
 
     return;
@@ -148,6 +151,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   }
 
   std::vector<std::string> locations;
+  locations.reserve(4);
 
   std::string current = FileUtils::currentDirectory().result();
   // ./etc/relative/ is always first choice, if it exists
@@ -184,7 +188,9 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
           << "found config file '" << name << "'";
       filename = name;
       break;
-    } else if (checkArangoImp) {
+    }
+
+    if (checkArangoImp) {
       name = FileUtils::buildFilename(location, "arangoimp.conf");
       LOG_TOPIC("b629e", TRACE, Logger::CONFIG)
           << "checking config file '" << name << "'";
@@ -212,7 +218,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
         << "loading override '" << local << "'";
 
     if (!parser.parse(local, true)) {
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
     }
   } else {
     LOG_TOPIC("d601e", TRACE, Logger::CONFIG) << "no override file found";
@@ -231,15 +237,16 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
         locationMsg += "'" + FileUtils::buildFilename(it, basename) + "'";
       }
       locationMsg += ")";
-      options->failNotice("cannot find configuration file\n\n" + locationMsg);
-      exit(EXIT_FAILURE);
+      options->failNotice(TRI_EXIT_CONFIG_NOT_FOUND,
+                          "cannot find configuration file\n\n" + locationMsg);
+      FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
     } else {
       return;
     }
   }
 
   if (!parser.parse(filename, true)) {
-    exit(EXIT_FAILURE);
+    FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
   }
 }
 

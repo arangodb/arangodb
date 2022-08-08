@@ -154,7 +154,7 @@ const replicatedLogSuite = function () {
     testUpdateTermInPlanLog: function () {
       const {logId, term, servers, leader} = lh.createReplicatedLogPlanOnly(database, planConfig, replicationFactor);
       const newTerm = lh.createTermSpecification(term + 1, servers, leader);
-      lh.replicatedLogSetPlanTerm(database, logId, newTerm);
+      lh.replicatedLogSetPlanTermConfig(database, logId, newTerm);
 
       // wait again for all servers to have acked term
       lh.waitFor(lp.replicatedLogIsReady(database, logId, term + 1, servers, leader));
@@ -166,7 +166,7 @@ const replicatedLogSuite = function () {
       // wait again for all servers to have acked term
       const otherLeader = servers[1];
       const newTerm = lh.createTermSpecification(term + 1, servers, otherLeader);
-      lh.replicatedLogSetPlanTerm(database, logId, newTerm);
+      lh.replicatedLogSetPlanTermConfig(database, logId, newTerm);
       lh.waitFor(lp.replicatedLogIsReady(database, logId, term + 1, servers, otherLeader));
       lh.replicatedLogDeletePlan(database, logId);
     },

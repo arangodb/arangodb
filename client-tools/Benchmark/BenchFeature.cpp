@@ -182,8 +182,8 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--create-collection",
-                  "whether we should create the collection specified via "
-                  "the --collection parameter",
+                  "Whether we should create the collection specified via "
+                  "the `--collection` parameter",
                   new BooleanParameter(&_createCollection))
       .setIntroducedIn(31000);
 
@@ -225,7 +225,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--custom-query",
-                  "the query to be used in the 'custom-query' testcase",
+                  "The query to be used in the \"custom-query\" testcase.",
                   new StringParameter(&_customQuery))
       .setIntroducedIn(30800);
 
@@ -239,9 +239,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30800);
 
   options
-      ->addOption("--custom-query-bindvars",
-                  "bind parameters to be used in the 'custom-query' testcase.",
-                  new StringParameter(&_customQueryBindVars))
+      ->addOption(
+          "--custom-query-bindvars",
+          "The bind parameters to be used in the `custom-query` testcase.",
+          new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
   options->addOption("--quiet", "suppress status messages",

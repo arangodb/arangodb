@@ -377,7 +377,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
   auto fieldsSlice = definition.get(attributeName);
   auto const idxType = Index::type(
       definition.get(arangodb::StaticStrings::IndexType).stringView());
-  auto const fieldIsObject = Index::TRI_IDX_TYPE_INVERTED_INDEX == idxType;
+  auto const fieldMaybeObject = Index::TRI_IDX_TYPE_INVERTED_INDEX == idxType;
 
   if (fieldsSlice.isArray()) {
     std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$",
@@ -385,11 +385,11 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
 
     // "fields" is a list of fields
     for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
-      if (fieldIsObject && !it.isObject()) {
+      if (!fieldMaybeObject && it.isObject()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "inverted index: field must be an object");
+                      "index field names must be only strings");
       }
-      auto fieldName = fieldIsObject ? it.get("name") : it;
+      auto fieldName = it.isObject() ? it.get("name") : it;
       if (!fieldName.isString()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "index field names must be non-empty strings");
