@@ -20,13 +20,14 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "IResearchViewMeta.h"
+#include "IResearchDataStoreMeta.h"
 #include "Containers.h"
 #include "IResearchCommon.h"
-#include "IResearchPrimaryKeyFilter.h"
 #include "IResearchVPackComparer.h"
+#include "IResearchPrimaryKeyFilter.h"
 #include "Indexes/Index.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -82,13 +83,13 @@ using LinkLock = AsyncValue<IResearchDataStore>::Value;
 /// @brief container storing the index state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchTrxState final : public TransactionState::Cookie {
-  irs::index_writer::documents_context _ctx;
   // prevent data-store deallocation (lock @ AsyncSelf)
-  LinkLock _linkLock;
+  LinkLock _linkLock;  // should be first field to destroy last
+  irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
   IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
-      : _ctx{writer.documents()}, _linkLock{std::move(linkLock)} {}
+      : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~IResearchTrxState() final {
     if (_removals.empty()) {
@@ -109,8 +110,9 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     }
   }
 
-  void remove(StorageEngine& engine, LocalDocumentId const& value) {
-    _ctx.remove(_removals.emplace(engine, value));
+  void remove(StorageEngine& engine, LocalDocumentId const& value,
+              bool nested) {
+    _ctx.remove(_removals.emplace(engine, value, nested));
   }
 
   void reset() noexcept {
@@ -218,7 +220,8 @@ class IResearchDataStore {
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId);
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                bool nested);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta'
@@ -233,8 +236,8 @@ class IResearchDataStore {
   /// @brief update runtine data processing properties
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  Result properties(IResearchViewMeta const& meta);
-  static void properties(LinkLock linkLock, IResearchViewMeta const& meta);
+  Result properties(IResearchDataStoreMeta const& meta);
+  static void properties(LinkLock linkLock, IResearchDataStoreMeta const& meta);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
@@ -285,7 +288,8 @@ class IResearchDataStore {
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
-    IResearchViewMeta _meta;  // runtime meta for a data store (not persisted)
+    IResearchDataStoreMeta
+        _meta;  // runtime meta for a data store (not persisted)
     irs::directory::ptr _directory;
     basics::ReadWriteLock _mutex;  // for use with member '_meta'
     irs::utf8_path _path;
@@ -327,7 +331,7 @@ class IResearchDataStore {
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
   UnsafeOpResult consolidateUnsafe(
-      IResearchViewMeta::ConsolidationPolicy const& policy,
+      IResearchDataStoreMeta::ConsolidationPolicy const& policy,
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
 
@@ -349,7 +353,7 @@ class IResearchDataStore {
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
   Result consolidateUnsafeImpl(
-      IResearchViewMeta::ConsolidationPolicy const& policy,
+      IResearchDataStoreMeta::ConsolidationPolicy const& policy,
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
 
@@ -415,10 +419,9 @@ class IResearchDataStore {
 
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
-  StorageEngine* _engine;
+  virtual irs::comparer const* getComparator() const noexcept = 0;
 
-  // for primarySort ordering
-  VPackComparer _comparer;
+  StorageEngine* _engine;
 
   // the feature where async jobs were registered (nullptr == no jobs
   // registered)

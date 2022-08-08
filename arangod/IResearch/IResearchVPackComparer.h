@@ -24,38 +24,36 @@
 
 #pragma once
 
-#include "IResearchViewSort.h"
+#include "IResearch/IResearchViewSort.h"
+
 #include "index/comparer.hpp"
 #include "utils/string.hpp"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
+template<typename Sort>
 class VPackComparer final : public irs::comparer {
  public:
   VPackComparer();
 
-  explicit VPackComparer(IResearchViewSort const& sort) noexcept
-      : _sort(&sort), _size(sort.size()) {}
+  explicit VPackComparer(Sort const& sort) noexcept
+      : _sort{&sort}, _size{sort.size()} {}
 
-  VPackComparer(IResearchViewSort const& sort, size_t size) noexcept
-      : _sort(&sort), _size(std::min(sort.size(), size)) {}
+  VPackComparer(Sort const& sort, size_t size) noexcept
+      : _sort{&sort}, _size{std::min(sort.size(), size)} {}
 
-  void reset(IResearchViewSort const& sort) noexcept {
+  void reset(Sort const& sort) noexcept {
     _sort = &sort;
     _size = sort.size();
   }
 
   bool empty() const noexcept { return 0 == _size; }
 
- protected:
-  virtual bool less(irs::bytes_ref const& lhs,
-                    irs::bytes_ref const& rhs) const override;
-
  private:
-  IResearchViewSort const* _sort;
-  size_t _size;  // number of buckets to compare
-};               // VPackComparer
+  bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const final;
 
-}  // namespace iresearch
-}  // namespace arangodb
+  Sort const* _sort;
+  size_t _size;  // number of buckets to compare
+};
+
+}  // namespace arangodb::iresearch

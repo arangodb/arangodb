@@ -195,7 +195,7 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
   if (!logical) {
     return {};
   }
-  if (logical->type() != ViewType::kSearch) {
+  if (logical->type() != ViewType::kView) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             "error finding view: '" + _viewGuid + "' for link '" +
                 std::to_string(_id.id()) + "' : no such view"};
@@ -380,8 +380,9 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
 Result IResearchLink::insert(transaction::Methods& trx,
                              LocalDocumentId const documentId,
                              velocypack::Slice const doc) {
-  return IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(
-      trx, documentId, doc, _meta);
+  return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                    IResearchLinkMeta>(trx, documentId, doc,
+                                                       _meta);
 }
 
 bool IResearchLink::isHidden() {
@@ -518,6 +519,14 @@ std::string IResearchLink::getCollectionName() const {
     return std::to_string(_collection.id().id());
   }
   return _meta._collectionName;
+}
+
+bool IResearchLink::hasNested() const noexcept {
+#ifdef USE_ENTERPRISE
+  return _meta._hasNested;
+#else
+  return false;
+#endif
 }
 
 void IResearchLink::insertMetrics() {

@@ -1450,7 +1450,8 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   auto const type = static_cast<arangodb::graph::PathType::Type>(
       node->getMember(0)->getIntValue());
   TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
-             type == arangodb::graph::PathType::Type::KPaths);
+             type == arangodb::graph::PathType::Type::KPaths ||
+             type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
@@ -2870,7 +2871,7 @@ struct Shower final
 /// @brief show an overview over the plan
 void ExecutionPlan::show() const {
   Shower shower;
-  _root->walk(shower);
+  _root->flatWalk(shower, false);
 }
 
 #endif

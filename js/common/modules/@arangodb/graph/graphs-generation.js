@@ -186,6 +186,77 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return makeClique(size, "bidirected");
     };
 
+    // Creates a path of length length.
+    // The parameter kind has the following meaning:
+    //  - "directed" (default):  directed path
+    //  - "bidirected": as "directed" but for every edge (v,w), we also have the edge (w,v)
+    //  - "alternating": as "directed" but every second edge is inverted
+    const makePath = function (length, kind = "directed") {
+        let vertices = makeVertices(length);
+        let edges = [];
+        for (let v = 0; v < length - 1; ++v) {
+            switch (kind) {
+                case "directed":
+                    edges.push(makeEdge(v, v + 1));
+                    break;
+                case "bidirected":
+                    edges.push(makeEdge(v, v + 1));
+                    edges.push(makeEdge(v + 1, v));
+                    break;
+                case "alternating":
+                    const inverted = v % 2 === 0;
+                    if (inverted) {
+                        edges.push(makeEdge(v + 1, v));
+                    } else {
+                        edges.push(makeEdge(v, v + 1));
+                    }
+                    break;
+            }
+
+        }
+        return {vertices, edges};
+    };
+
+    // Creates a with numberLeaves many rays. The center has index 0.
+    // The parameter kind has the following meaning:
+    //  - "fromCenter":  the edges point from the center to the leaves
+    //  - "toCenter":  the edges point from the leaves to the center
+    //  - "bidirected" (default): as "directed" but for every edge (v,w), we also have the edge (w,v)
+    //  - "fromAndToCenter": the half of the edges point as with "fromCenter", the other half vice versa; if
+    //      numberLeaves is odd, one more edge points from the center to a leaf
+    const makeStar = function (numberLeaves, kind = "bidirected") {
+        let vertices = makeVertices(numberLeaves + 1);
+        let edges = [];
+        switch (kind) {
+            case "fromCenter":
+                for (let v = 1; v <= numberLeaves; ++v) {
+                    edges.push(makeEdge(0, v));
+                }
+                break;
+            case "toCenter":
+                for (let v = 1; v <= numberLeaves; ++v) {
+                    edges.push(makeEdge(v, 0));
+                }
+                break;
+            case "bidirected":
+                for (let v = 1; v <= numberLeaves; ++v) {
+                    edges.push(makeEdge(0, v));
+                    edges.push(makeEdge(v, 0));
+                }
+                break;
+            case "fromAndToCenter":
+                for (let v = 1; v < Math.floor(numberLeaves / 2); ++v) {
+                    edges.push(makeEdge(v, 0));
+                }
+                for (let v = Math.floor(numberLeaves / 2); v <= numberLeaves; ++v) {
+                    edges.push(makeEdge(0, v));
+                }
+                break;
+        }
+        // console.warn(edges);
+        return {vertices, edges};
+    };
+
     return {
         makeVertices,
         makeOneVertex,
@@ -194,9 +265,10 @@ const graphGenerator = function (verticesEdgesGenerator) {
         makeAlternatingCycle,
         makeFullBinaryTree,
         makeClique,
-        makeBidirectedClique
+        makeBidirectedClique,
+        makePath,
+        makeStar
     };
-
 };
 
 const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
@@ -207,6 +279,25 @@ const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
     };
 };
 
+/**
+ * Make the graph that is the disjoint union of given subgraphs. it is assumed that the
+ * subgraphs are disjoint.
+ * @param subgraphs a document containing "vertices" and "edges"
+ * @returns {{vertices: *[], edges: *[]}}
+ */
+const unionGraph = function(subgraphs) {
+    let vertices = [];
+    for (const subgraph of subgraphs) {
+        vertices = vertices.concat(subgraph.vertices);
+    }
+    let edges = [];
+    for (const subgraph of subgraphs) {
+        edges = edges.concat(subgraph.edges);
+    }
+    return {vertices, edges};
+};
+
 exports.communityGenerator = communityGenerator;
 exports.graphGenerator = graphGenerator;
 exports.makeEdgeBetweenVertices = makeEdgeBetweenVertices;
+exports.unionGraph = unionGraph;

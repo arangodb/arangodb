@@ -193,6 +193,7 @@ void writeTime(std::string& out, TimeFormat format,
         out.push_back('.');
         appendNumber(uint64_t(day_time.subseconds().count()), out, 6);
       }
+
       out.push_back('Z');
     } else if (format == TimeFormat::LocalDateString) {
       // local datestring

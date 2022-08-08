@@ -671,25 +671,10 @@ Result parseAnalyzerSlice(VPackSlice const& slice, irs::string_ref& name,
   if (slice.hasKey("features")) {
     auto subSlice = slice.get("features");
 
-    if (!subSlice.isArray()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "failed to find an array value for analyzer 'features'"};
-    }
-
-    for (VPackArrayIterator subItr(subSlice); subItr.valid(); ++subItr) {
-      auto subEntry = *subItr;
-
-      if (!subEntry.isString() && !subSlice.isNull()) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "failed to find a string value for an entry in analyzer "
-                "'features'"};
-      }
-      const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
-      if (!features.add(featureName)) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "failed to find feature '"s.append(std::string(featureName))
-                    .append("'")};
-      }
+    auto featuresRes = features.fromVelocyPack(subSlice);
+    if (featuresRes.fail()) {
+      return {TRI_ERROR_BAD_PARAMETER, "Error in analyzer 'features': "s.append(
+                                           featuresRes.errorMessage())};
     }
   }
   return {};
@@ -836,11 +821,9 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
 
   // add features
-  VPackArrayBuilder featuresScope(&builder,
-                                  StaticStrings::AnalyzerFeaturesField);
-
-  features().visit(
-      [&builder](std::string_view feature) { addStringRef(builder, feature); });
+  VPackBuilder tmp;
+  features().toVelocyPack(tmp);
+  builder.add(StaticStrings::AnalyzerFeaturesField, tmp.slice());
 }
 
 void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
@@ -1281,10 +1264,10 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     return pool ? irs::hashed_string_ref(key.hash(), pool->name())
                 : key;  // reuse hash but point ref at value in pool
   };
-  auto itr = irs::map_utils::try_emplace_update_key(
+  auto emplaceRes = irs::map_utils::try_emplace_update_key(
       analyzers, generator,
       irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
-  auto analyzer = itr.first->second;
+  auto analyzer = emplaceRes.first->second;
 
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -1294,15 +1277,16 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   }
 
   // new analyzer creation, validate
-  if (itr.second) {
+  if (emplaceRes.second) {
     bool erase = true;  // potentially invalid insertion took place
-    auto cleanup = irs::make_finally([&erase, &analyzers, &itr]() -> void {
-      // cppcheck-suppress knownConditionTrueFalse
-      if (erase) {
-        analyzers.erase(
-            itr.first);  // ensure no broken analyzers are left behind
-      }
-    });
+    auto cleanup =
+        irs::make_finally([&erase, &analyzers, &emplaceRes]() noexcept {
+          // cppcheck-suppress knownConditionTrueFalse
+          if (erase) {
+            // ensure no broken analyzers are left behind
+            analyzers.erase(emplaceRes.first);
+          }
+        });
 
     // emplaceAnalyzer is used by Analyzers API where we don't actually use
     // features
@@ -1352,7 +1336,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     return {TRI_ERROR_BAD_PARAMETER, errorText.str()};
   }
 
-  result = itr;
+  result = emplaceRes;
 
   return {};
 }
@@ -1394,9 +1378,9 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
     WRITE_LOCKER(lock, _mutex);
 
     // validate and emplace an analyzer
-    EmplaceAnalyzerResult itr;
+    EmplaceAnalyzerResult emplaceRes;
     auto res = emplaceAnalyzer(
-        itr, _analyzers, name, type, properties, features,
+        emplaceRes, _analyzers, name, type, properties, features,
         transaction ? transaction->buildingRevision() : AnalyzersRevision::MIN);
 
     if (!res.ok()) {
@@ -1404,17 +1388,17 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
     }
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    bool erase = itr.second;  // an insertion took place
-    auto cleanup = irs::make_finally([&erase, this, &itr]() -> void {
+    bool erase = emplaceRes.second;  // an insertion took place
+    auto cleanup = irs::make_finally([&erase, this, &emplaceRes]() noexcept {
       if (erase) {
-        _analyzers.erase(
-            itr.first);  // ensure no broken analyzers are left behind
+        // ensure no broken analyzers are left behind
+        _analyzers.erase(emplaceRes.first);
       }
     });
-    auto pool = itr.first->second;
+    auto pool = emplaceRes.first->second;
 
     // new pool creation
-    if (itr.second) {
+    if (emplaceRes.second) {
       if (!pool) {
         return {
             TRI_ERROR_INTERNAL,
@@ -1451,7 +1435,7 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
       }
       erase = false;
     }
-    result = std::make_pair(pool, itr.second);
+    result = std::make_pair(pool, emplaceRes.second);
   } catch (basics::Exception const& e) {
     return {e.code(),
             StringUtils::concatT("caught exception while registering an "
@@ -1612,14 +1596,11 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_ref> inserted;
-    auto cleanup = irs::make_finally([&erase, &inserted, this]() {
+    auto cleanup = irs::make_finally([&erase, &inserted, this]() noexcept {
       if (erase) {
         for (auto const& s : inserted) {
-          auto itr = _analyzers.find(s);
-          if (itr == _analyzers.end()) {
-            _analyzers.erase(
-                itr);  // ensure no broken analyzers are left behind
-          }
+          // ensure no broken analyzers are left behind
+          _analyzers.erase(s);
         }
       }
     });
@@ -1693,6 +1674,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     }
     // cppcheck-suppress unreadVariable
     if (transaction) {
+      // TODO: add fail point and test in case of failed commit
       res = transaction->commit();
       if (res.fail()) {
         return res;
@@ -2538,7 +2520,7 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref name,
                            builder.slice(), options);
 
   if (!result.ok()) {
-    trx.abort();
+    std::ignore = trx.abort();
 
     return result.result;
   }
@@ -2713,7 +2695,7 @@ Result IResearchAnalyzerFeature::remove(irs::string_ref const& name,
                                builder.slice(), options);
 
       if (!result.ok()) {
-        trx.abort();
+        std::ignore = trx.abort();
 
         return result.result;
       }
@@ -2880,7 +2862,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
                              builder.slice(), options);
 
     if (!result.ok()) {
-      trx.abort();
+      std::ignore = trx.abort();
 
       return result.result;
     }
@@ -2906,7 +2888,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     res = trx.commit();
 
     if (!res.ok()) {
-      trx.abort();
+      std::ignore = trx.abort();
 
       return res;
     }
@@ -3015,10 +2997,10 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref database) {
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   WRITE_LOCKER(lock, _mutex);
   auto database = irs::string_ref(vocbase.name());
-  auto itr = _lastLoad.find(
-      static_cast<std::string>(  // FIXME: after C++20 remove cast and use
-                                 // heterogeneous lookup
-          irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
+  // FIXME: after C++20 remove cast and use
+  // heterogeneous lookup
+  auto itr = _lastLoad.find(static_cast<std::string>(
+      irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
   if (itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
@@ -3026,11 +3008,14 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
 }
 
 void Features::visit(std::function<void(std::string_view)> visitor) const {
-  if (irs::IndexFeatures::FREQ == (_indexFeatures & irs::IndexFeatures::FREQ)) {
+  if (hasFeatures(irs::IndexFeatures::FREQ)) {
     visitor(irs::type<irs::frequency>::name());
   }
-  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
+  if (hasFeatures(irs::IndexFeatures::POS)) {
     visitor(irs::type<irs::position>::name());
+  }
+  if (hasFeatures(irs::IndexFeatures::OFFS)) {
+    visitor(irs::type<irs::offset>::name());
   }
   if (FieldFeatures::NORM == (_fieldFeatures & FieldFeatures::NORM)) {
     visitor(irs::type<irs::Norm>::name());
@@ -3047,6 +3032,35 @@ std::vector<irs::type_info::type_id> Features::fieldFeatures(
                                      : irs::type<irs::Norm>::id()};
 }
 
+void Features::toVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder featuresScope(&builder);
+  visit(
+      [&builder](std::string_view feature) { addStringRef(builder, feature); });
+}
+
+Result Features::fromVelocyPack(VPackSlice slice) {
+  if (!slice.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER, "array expected"};
+  }
+  for (VPackArrayIterator subItr(slice); subItr.valid(); ++subItr) {
+    auto subEntry = *subItr;
+
+    if (!subEntry.isString()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "array entry #"s.append(std::to_string(subItr.index()))
+                  .append(" is not a string")};
+    }
+    const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
+    if (!add(featureName)) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "failed to find feature '"s.append(std::string(featureName))
+                  .append("' see array entry #")
+                  .append(std::to_string(subItr.index()))};
+    }
+  }
+  return {};
+}
+
 bool Features::add(irs::string_ref featureName) {
   if (featureName == irs::type<irs::position>::name()) {
     _indexFeatures |= irs::IndexFeatures::POS;
@@ -3055,6 +3069,11 @@ bool Features::add(irs::string_ref featureName) {
 
   if (featureName == irs::type<irs::frequency>::name()) {
     _indexFeatures |= irs::IndexFeatures::FREQ;
+    return true;
+  }
+
+  if (featureName == irs::type<irs::offset>::name()) {
+    _indexFeatures |= irs::IndexFeatures::OFFS;
     return true;
   }
 
@@ -3067,17 +3086,25 @@ bool Features::add(irs::string_ref featureName) {
 }
 
 Result Features::validate() const {
-  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
-    if (irs::IndexFeatures::FREQ !=
-        (_indexFeatures & irs::IndexFeatures::FREQ)) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "missing feature 'frequency' required when 'position' feature is "
-              "specified"};
-    }
+  if (hasFeatures(irs::IndexFeatures::OFFS) &&
+      !hasFeatures(irs::IndexFeatures::POS)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "missing feature 'position' required when 'offset' feature is "
+            "specified"};
   }
 
-  if ((irs::IndexFeatures::POS | irs::IndexFeatures::FREQ) !=
-      (_indexFeatures | irs::IndexFeatures::POS | irs::IndexFeatures::FREQ)) {
+  if (hasFeatures(irs::IndexFeatures::POS) &&
+      !hasFeatures(irs::IndexFeatures::FREQ)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "missing feature 'frequency' required when 'position' feature is "
+            "specified"};
+  }
+
+  constexpr irs::IndexFeatures kSupportedFeatures = irs::IndexFeatures::OFFS |
+                                                    irs::IndexFeatures::POS |
+                                                    irs::IndexFeatures::FREQ;
+
+  if (kSupportedFeatures != (_indexFeatures | kSupportedFeatures)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Unsupported index features are specified: "s +
                 std::to_string(
@@ -3090,7 +3117,3 @@ Result Features::validate() const {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -785,8 +785,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   auto before = StorageEngineMock::recoveryStateResult;
   StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally(
-      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+  auto restore = irs::make_finally([&before]() noexcept {
+    StorageEngineMock::recoveryStateResult = before;
+  });
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice());
   // emplace should return OK for the sake of recovery
@@ -1830,7 +1831,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
                      "\"properties\": null}")
                      ->slice(),
                  options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     std::map<std::string, std::pair<irs::string_ref, irs::string_ref>>
@@ -1887,7 +1889,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
                      "\"properties\": {\"args\":\"abc\"} }")
                      ->slice(),
                  options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -1947,7 +1950,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
                      "\"properties\": { \"a\": 7, \"b\": \"c\" }}")
                      ->slice(),
                  options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -2027,7 +2031,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
                                        "\"identity\", \"properties\": {}}")
                      ->slice(),
                  options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     {
@@ -2166,7 +2171,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
           collection, arangodb::AccessMode::Type::WRITE);
       trx.begin();
       trx.truncate(collection, options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -2497,7 +2503,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
 
@@ -2516,7 +2522,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restoreRole = irs::make_finally([&beforeRole]() -> void {
+    auto restoreRole = irs::make_finally([&beforeRole]() noexcept {
       arangodb::ServerState::instance()->setRole(beforeRole);
     });
 
@@ -2600,7 +2606,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restoreRole = irs::make_finally([&beforeRole]() -> void {
+    auto restoreRole = irs::make_finally([&beforeRole]() noexcept {
       arangodb::ServerState::instance()->setRole(beforeRole);
     });
 
@@ -2671,7 +2677,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
 
@@ -2776,8 +2782,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   auto before = StorageEngineMock::recoveryStateResult;
   StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally(
-      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+  auto restore = irs::make_finally([&before]() noexcept {
+    StorageEngineMock::recoveryStateResult = before;
+  });
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   EXPECT_TRUE(feature.visit(
       [](auto) { return false; }));  // ensure feature is empty after creation
@@ -2837,7 +2844,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -2914,7 +2921,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -3311,7 +3318,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     auto result = AqlValueWrapper(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
-    EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), result->length());
+    EXPECT_EQ(std::size(expected123P4), result->length());
 
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
@@ -3327,7 +3334,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->emplace_back(arangodb::aql::AqlValueHintInt(expected));
     auto result = AqlValueWrapper(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
-    EXPECT_EQ(IRESEARCH_COUNTOF(expected123), result->length());
+    EXPECT_EQ(std::size(expected123), result->length());
 
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
@@ -3382,7 +3389,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->emplace_back(analyzer.c_str(), analyzer.size());
     auto result = AqlValueWrapper(impl(&exprCtx, node, *args));
     EXPECT_TRUE(result->isArray());
-    EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), result->length());
+    EXPECT_EQ(std::size(expected123P4), result->length());
 
     for (size_t i = 0; i < result->length(); ++i) {
       bool mustDestroy;
@@ -3597,7 +3604,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       {
         auto numberTokens = nested.at(1);
         EXPECT_TRUE(numberTokens.isArray());
-        EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), numberTokens.length());
+        EXPECT_EQ(std::size(expected123P4), numberTokens.length());
         for (size_t i = 0; i < numberTokens.length(); ++i) {
           auto entry = numberTokens.at(i);
           EXPECT_TRUE(entry.isString());
@@ -3618,7 +3625,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       bool mustDestroy;
       auto entry = result->at(2, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
-      EXPECT_EQ(IRESEARCH_COUNTOF(expected123), entry.length());
+      EXPECT_EQ(std::size(expected123), entry.length());
       for (size_t i = 0; i < entry.length(); ++i) {
         auto numberSlice = entry.at(i);
         EXPECT_TRUE(numberSlice.isString());
@@ -3630,7 +3637,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       bool mustDestroy;
       auto entry = result->at(3, mustDestroy, false).slice();
       EXPECT_TRUE(entry.isArray());
-      EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), entry.length());
+      EXPECT_EQ(std::size(expected123P4), entry.length());
       for (size_t i = 0; i < entry.length(); ++i) {
         auto numberSlice = entry.at(i);
         EXPECT_TRUE(numberSlice.isString());

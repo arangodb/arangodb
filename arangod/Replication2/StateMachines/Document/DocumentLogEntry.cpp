@@ -21,7 +21,8 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+
 #include "Inspection/VPack.h"
 
 namespace {
@@ -106,6 +107,13 @@ auto OperationStringTransformer::fromSerialized(std::string const& source,
     return inspection::Status{"Invalid operation " + std::string{source}};
   }
   return {};
+}
+
+auto document::operator<<(std::ostream& os, DocumentLogEntry entry)
+    -> std::ostream& {
+  VPackBuilder b;
+  velocypack::serialize(b, entry);
+  return os << b.toJson();
 }
 
 auto EntryDeserializer<DocumentLogEntry>::operator()(

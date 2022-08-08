@@ -45,6 +45,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
+#include <rocksdb/advanced_options.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
@@ -138,7 +139,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _transactionLockStripes(
           std::max(NumberOfCores::getValue(), std::size_t(16))),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
-      _compressionType("snappy"),
+      _compressionType("lz4"),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(8 + 2),  // number of column families plus 2
@@ -172,6 +173,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
       _checksumType("xxHash64"),
+      _compactionStyle("level"),
       _formatVersion(5),
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
@@ -813,6 +815,22 @@ void RocksDBOptionFeature::collectOptions(
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000);
 
+  std::unordered_set<std::string> compactionStyles = {"level", "universal",
+                                                      "fifo", "none"};
+  TRI_ASSERT(compactionStyles.contains(_compactionStyle));
+  options
+      ->addOption("--rocksdb.compaction-style",
+                  "compaction style which is used to pick the next file(s) to "
+                  "be compacted",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_compactionStyle, compactionStyles),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
   std::unordered_set<uint32_t> formatVersions = {3, 4, 5};
   options
       ->addOption("--rocksdb.format-version",
@@ -1155,6 +1173,21 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
     result.compression_per_level[level] =
         (((uint64_t)level >= _numUncompressedLevels) ? compressionType
                                                      : rocksdb::kNoCompression);
+  }
+
+  if (_compactionStyle == "level") {
+    result.compaction_style = rocksdb::kCompactionStyleLevel;
+  } else if (_compactionStyle == "universal") {
+    result.compaction_style = rocksdb::kCompactionStyleUniversal;
+  } else if (_compactionStyle == "fifo") {
+    result.compaction_style = rocksdb::kCompactionStyleFIFO;
+  } else if (_compactionStyle == "none") {
+    result.compaction_style = rocksdb::kCompactionStyleNone;
+  } else {
+    TRI_ASSERT(false);
+    LOG_TOPIC("edc92", FATAL, arangodb::Logger::STARTUP)
+        << "unexpected compaction style '" << _compactionStyle << "'";
+    FATAL_ERROR_EXIT();
   }
 
   // Number of files to trigger level-0 compaction. A value <0 means that

@@ -248,8 +248,6 @@ class LogicalCollection : public LogicalDataSource {
           replication2::replicated_state::document::DocumentState>>;
   auto getDocumentStateLeader() -> std::shared_ptr<
       replication2::replicated_state::document::DocumentLeaderState>;
-  auto waitForDocumentStateLeader() -> std::shared_ptr<
-      replication2::replicated_state::document::DocumentLeaderState>;
   auto getDocumentStateFollower() -> std::shared_ptr<
       replication2::replicated_state::document::DocumentFollowerState>;
 
@@ -327,7 +325,7 @@ class LogicalCollection : public LogicalDataSource {
   std::shared_ptr<Index> lookupIndex(IndexId) const;
 
   /// @brief Find index by name
-  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+  std::shared_ptr<Index> lookupIndex(std::string_view) const;
 
   bool dropIndex(IndexId iid);
 

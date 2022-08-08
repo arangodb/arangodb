@@ -21,7 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
 
 #include "IResearchViewOptimizerRules.h"
 
@@ -41,6 +40,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/DownCast.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
@@ -48,6 +48,8 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/Search.h"
+#include "IResearch/SearchFuncReplace.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -60,7 +62,12 @@ using namespace arangodb::basics;
 
 namespace {
 
-inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
+inline IResearchSortBase const& primarySort(arangodb::LogicalView const& view) {
+  if (view.type() == ViewType::kSearch) {
+    auto const& viewImpl = basics::downCast<Search>(view);
+    return viewImpl.primarySort();
+  }
+  TRI_ASSERT(view.type() == ViewType::kView);
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.primarySort();
@@ -71,6 +78,11 @@ inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
 
 inline IResearchViewStoredValues const& storedValues(
     arangodb::LogicalView const& view) {
+  if (view.type() == ViewType::kSearch) {
+    auto const& viewImpl = basics::downCast<Search>(view);
+    return viewImpl.storedValues();
+  }
+  TRI_ASSERT(view.type() == ViewType::kView);
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.storedValues();
@@ -133,7 +145,8 @@ bool addView(arangodb::LogicalView const& view,
   auto& collections = query.collections();
 
   // linked collections
-  auto visitor = [&collections](arangodb::DataSourceId cid) {
+  auto visitor = [&collections](arangodb::DataSourceId cid,
+                                LogicalView::Indexes*) {
     collections.add(arangodb::basics::StringUtils::itoa(cid.id()),
                     arangodb::AccessMode::Type::READ,
                     arangodb::aql::Collection::Hint::Collection);
@@ -160,7 +173,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   Condition searchCondition(plan.getAst());
 
   auto nodeFilter = viewNode.filterCondition();
-  if (!filterConditionIsEmpty(&nodeFilter)) {
+  if (!isFilterConditionEmpty(&nodeFilter)) {
     searchCondition.andCombine(&nodeFilter);
     searchCondition.normalize(&plan, true,
                               viewNode.options().conditionOptimization);
@@ -196,11 +209,21 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
       TRI_ASSERT(starts_with);
       pushFuncToBack(*searchCondition.root(), starts_with);
     }
+
+    arangodb::iresearch::QueryContext ctx{
+        .trx = &query.trxForOptimization(),
+        .ref = &viewNode.outVariable(),
+        .isSearchQuery = true,
+        .isOldMangling =
+            (viewNode.view() && viewNode.view()->type() == ViewType::kView)};
+
+    // The analyzer is referenced in the FilterContext and used during the
+    // following ::makeFilter() call, so may not be a temporary.
+    FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+    FilterContext const filterCtx{.contextAnalyzer = analyzer};
+
     auto filterCreated =
-        FilterFactory::filter(nullptr,
-                              {&query.trxForOptimization(), nullptr, nullptr,
-                               nullptr, nullptr, &viewNode.outVariable()},
-                              *searchCondition.root());
+        FilterFactory::filter(nullptr, ctx, filterCtx, *searchCondition.root());
 
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -211,7 +234,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   }
 
   if (!searchCondition.isEmpty()) {
-    viewNode.filterCondition(searchCondition.root());
+    viewNode.setFilterCondition(searchCondition.root());
   }
 
   return true;
@@ -275,7 +298,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       if (!astCalcNode ||
           astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
         // Not a reference?  Seems that it is not
-        // something produced by ScorerReplacer.
+        // something produced by during search function replacement.
         // e.g. it is expected to be LET sortVar = scorerVar;
         // Definately not something we could handle.
         return false;
@@ -290,7 +313,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     auto s = std::find_if(scorers.begin(), scorers.end(),
-                          [sortVariable](Scorer const& t) {
+                          [sortVariable](SearchFunc const& t) {
                             return t.var->id == sortVariable->id;
                           });
     if (s == scorers.end()) {
@@ -311,7 +334,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   TRI_ASSERT(viewNode.view());
-  auto& primarySort = ::primarySort(*viewNode.view());
+  auto const& primarySort = ::primarySort(*viewNode.view());
 
   if (primarySort.empty()) {
     // use system sort
@@ -429,7 +452,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     assert(!primarySort.empty());
-    viewNode.sort(&primarySort, sortElements.size());
+    viewNode.setSort(primarySort, sortElements.size());
 
     sortNode->_reinsertInCluster = false;
     if (!arangodb::ServerState::instance()->isCoordinator()) {
@@ -600,6 +623,9 @@ void lateDocumentMaterializationArangoSearchRule(
     return;
   }
 
+  VarSet currentUsedVars;
+  // nodes variables can be replaced
+  containers::SmallVector<aql::CalculationNode*, 16> calcNodes;
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
@@ -607,7 +633,7 @@ void lateDocumentMaterializationArangoSearchRule(
     if (loop != nullptr &&
         ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
-      if (viewNode.noMaterialization() || viewNode.isLateMaterialized()) {
+      if (viewNode.isNoMaterialization() || viewNode.isLateMaterialized()) {
         continue;  // loop is already optimized
       }
       auto* current = limitNode->getFirstDependency();
@@ -619,8 +645,7 @@ void lateDocumentMaterializationArangoSearchRule(
       auto stopSearch = false;
       auto stickToSortNode = false;
       auto const& var = viewNode.outVariable();
-      std::vector<aql::CalculationNode*>
-          calcNodes;  // nodes variables can be replaced
+      calcNodes.clear();
       auto& viewNodeState = viewNode.state();
       while (current != loop) {
         auto const type = current->getType();
@@ -655,7 +680,7 @@ void lateDocumentMaterializationArangoSearchRule(
             break;
         }
         if (!stopSearch) {
-          VarSet currentUsedVars;
+          currentUsedVars.clear();
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&var) != currentUsedVars.end()) {
             // currently only calculation nodes expected to use a loop variable
@@ -777,7 +802,7 @@ void handleConstrainedSortInView(Optimizer* opt,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
   });
 
@@ -811,14 +836,13 @@ void handleConstrainedSortInView(Optimizer* opt,
   }
 }
 
-/// @brief move filters and sort conditions into views
 void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
   TRI_ASSERT(plan && plan->getAst());
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
   });
 
@@ -834,12 +858,12 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   // replace scorers in all calculation nodes with references
   plan->findNodesOfType(calcNodes, ExecutionNode::CALCULATION, true);
 
-  ScorerReplacer scorerReplacer;
+  DedupSearchFuncs searchFuncs;
 
   for (auto* node : calcNodes) {
     TRI_ASSERT(node && ExecutionNode::CALCULATION == node->getType());
-
-    scorerReplacer.replace(*ExecutionNode::castTo<CalculationNode*>(node));
+    replaceSearchFunc(*ExecutionNode::castTo<CalculationNode*>(node),
+                      searchFuncs, &order_factory::refFromScorer);
   }
 
   // register replaced scorers to be evaluated by corresponding view nodes
@@ -849,7 +873,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   aql::QueryContext& query = plan->getAst()->query();
 
-  std::vector<Scorer> scorers;
+  std::vector<SearchFunc> scorers;
 
   for (auto* node : viewNodes) {
     TRI_ASSERT(node &&
@@ -864,8 +888,8 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     }
 
     // find scorers that have to be evaluated by a view
-    scorerReplacer.extract(viewNode, scorers);
-    viewNode.scorers(std::move(scorers));
+    extractSearchFunc(viewNode, searchFuncs, scorers);
+    viewNode.setScorers(std::move(scorers));
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
       continue;
@@ -874,14 +898,14 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     modified = true;
   }
   keepReplacementViewVariables(calcNodes, viewNodes);
-  arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::HashSet<ExecutionNode*> toUnlink;
   modified |= noDocumentMaterialization(viewNodes, toUnlink);
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
   }
 
   // ensure all replaced scorers are covered by corresponding view nodes
-  scorerReplacer.visit([](Scorer const& scorer) -> bool {
+  for (auto& [scorer, _] : searchFuncs) {
     TRI_ASSERT(scorer.node);
     auto const funcName = iresearch::getFuncName(*scorer.node);
 
@@ -889,7 +913,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
         "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
         scorer.var->name.c_str(), funcName.c_str());
-  });
+  }
 }
 
 void scatterViewInClusterRule(Optimizer* opt,
@@ -1007,7 +1031,3 @@ void scatterViewInClusterRule(Optimizer* opt,
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

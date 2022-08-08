@@ -27,53 +27,22 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
+#include <absl/strings/str_cat.h>
+
 #include "VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 
 #include "utils/math_utils.hpp"
 
+namespace arangodb::iresearch {
 namespace {
 
-bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
-  if (slice.isBool()) {
-    // true - asc
-    // false - desc
-    direction = slice.getBool();
-    return true;
-  }
-
-  // unsupported value type
-  return false;
-}
-
-bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
-  if (slice.isString()) {
-    std::string value = slice.copyString();
-    arangodb::basics::StringUtils::tolowerInPlace(value);
-
-    if (value == "asc") {
-      direction = true;
-      return true;
-    }
-
-    if (value == "desc") {
-      direction = false;
-      return true;
-    }
-
-    return false;
-  }
-
-  // unsupported value type
-  return false;
-}
+constexpr std::string_view kFieldName = "field";
+constexpr std::string_view kAscFieldName = "asc";
 
 }  // namespace
 
-namespace arangodb {
-namespace iresearch {
-
-bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
+bool IResearchSortBase::toVelocyPack(velocypack::Builder& builder) const {
   if (!builder.isOpenArray()) {
     return false;
   }
@@ -85,9 +54,9 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
     fieldName.clear();
     basics::TRI_AttributeNamesToString(field, fieldName, true);
 
-    arangodb::velocypack::ObjectBuilder sortEntryBuilder(&builder);
-    builder.add("field", VPackValue(fieldName));
-    builder.add("asc", VPackValue(direction));
+    arangodb::velocypack::ObjectBuilder sortEntryBuilder{&builder};
+    builder.add(kFieldName, VPackValue{fieldName});
+    builder.add(kAscFieldName, VPackValue{direction});
 
     return true;
   };
@@ -95,55 +64,52 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
   return visit(visitor);
 }
 
-bool IResearchViewSort::fromVelocyPack(velocypack::Slice slice,
+bool IResearchSortBase::fromVelocyPack(velocypack::Slice slice,
                                        std::string& error) {
-  static std::string const directionFieldName = "direction";
-  static std::string const ascFieldName = "asc";
-  static std::string const fieldName = "field";
-
+  constexpr std::string_view kDirectionFieldName = "direction";
   clear();
 
   if (!slice.isArray()) {
     return false;
   }
+  velocypack::ArrayIterator it{slice};
+  _fields.reserve(it.size());
+  _directions.reserve(it.size());
 
-  _fields.reserve(slice.length());
-  _directions.reserve(slice.length());
-
-  for (auto sortSlice : velocypack::ArrayIterator(slice)) {
+  for (; it.valid(); ++it) {
+    auto sortSlice = *it;
     if (!sortSlice.isObject() || sortSlice.length() != 2) {
-      error = "[" + std::to_string(size()) + "]";
+      error = absl::StrCat("[", size(), "]");
       return false;
     }
 
     bool direction;
 
-    auto const directionSlice = sortSlice.get(directionFieldName);
+    auto const directionSlice = sortSlice.get(kDirectionFieldName);
     if (!directionSlice.isNone()) {
       if (!parseDirectionString(directionSlice, direction)) {
-        error = "[" + std::to_string(size()) + "]." + directionFieldName;
+        error = absl::StrCat("[", size(), "].", kDirectionFieldName);
         return false;
       }
-    } else if (!parseDirectionBool(sortSlice.get(ascFieldName), direction)) {
-      error = "[" + std::to_string(size()) + "]." + ascFieldName;
+    } else if (!parseDirectionBool(sortSlice.get(kAscFieldName), direction)) {
+      error = absl::StrCat("[", size(), "].", kAscFieldName);
       return false;
     }
 
-    auto const fieldSlice = sortSlice.get(fieldName);
+    auto const fieldSlice = sortSlice.get(kFieldName);
 
     if (!fieldSlice.isString()) {
-      error = "[" + std::to_string(size()) + "]." + fieldName;
+      error = absl::StrCat("[", size(), "].", kFieldName);
       return false;
     }
 
     std::vector<arangodb::basics::AttributeName> field;
 
     try {
-      arangodb::basics::TRI_ParseAttributeString(
-          arangodb::iresearch::getStringRef(fieldSlice), field, false);
+      basics::TRI_ParseAttributeString(getStringRef(fieldSlice), field, false);
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
-      error = "[" + std::to_string(size()) + "]." + fieldName;
+      error = absl::StrCat("[", size(), "].", kFieldName);
       return false;
     }
 
@@ -153,20 +119,16 @@ bool IResearchViewSort::fromVelocyPack(velocypack::Slice slice,
   return true;
 }
 
-size_t IResearchViewSort::memory() const noexcept {
-  size_t size = sizeof(IResearchViewSort);
-
+size_t IResearchSortBase::memory() const noexcept {
+  size_t size = 0;
   for (auto& field : _fields) {
     size += sizeof(basics::AttributeName) * field.size();
     for (auto& entry : field) {
       size += entry.name.size();
     }
   }
-
   size += irs::math::math_traits<size_t>::div_ceil(_directions.size(), 8);
-
   return size;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

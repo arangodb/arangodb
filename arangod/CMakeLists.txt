@@ -57,6 +57,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchCommon.h
   IResearch/IResearchCompression.h
   IResearch/IResearchDataStore.h
+  IResearch/IResearchDataStoreMeta.h
   IResearch/IResearchDocument.h
   IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.h
@@ -83,6 +84,8 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchViewMeta.h
   IResearch/IResearchViewSort.h
   IResearch/IResearchViewStoredValues.h
+  IResearch/Search.h
+  IResearch/SearchFuncReplace.h
   IResearch/VelocyPackHelper.h
   IResearch/ViewSnapshot.h
   RestHandler/RestAnalyzerHandler.h
@@ -100,6 +103,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchCommon.cpp
   IResearch/IResearchCompression.cpp
   IResearch/IResearchDataStore.cpp
+  IResearch/IResearchDataStoreMeta.cpp
   IResearch/IResearchDocument.cpp
   IResearch/IResearchExpressionContext.cpp
   IResearch/IResearchFeature.cpp
@@ -126,6 +130,8 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchViewMeta.cpp
   IResearch/IResearchViewSort.cpp
   IResearch/IResearchViewStoredValues.cpp
+  IResearch/Search.cpp
+  IResearch/SearchFuncReplace.cpp
   IResearch/VelocyPackHelper.cpp
   IResearch/ViewSnapshot.cpp
   RestHandler/RestAnalyzerHandler.cpp
@@ -284,6 +290,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
+  Pregel/PregelMetrics.cpp
   Pregel/Recovery.cpp
   Pregel/Reports.cpp
   Pregel/Reports.h
@@ -447,6 +454,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
   Aql/SortedCollectExecutor.cpp
+  Aql/SortedRowsStorageBackendMemory.cpp
+  Aql/SortedRowsStorageBackendStaged.cpp
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
   Aql/SubqueryEndExecutor.cpp
@@ -643,6 +652,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   RestHandler/RestLogHandler.cpp
   RestHandler/RestPrototypeStateHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
+  Replication2/MetricsHelper.cpp
 )
 
 set (LIB_ARANGO_METRICS_SOURCES
@@ -737,6 +747,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/AgencyCache.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
+  Cluster/AutoRebalance.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
@@ -751,13 +762,13 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/DropDatabase.cpp
   Cluster/DropIndex.cpp
   Cluster/EnsureIndex.cpp
+  Cluster/FailureOracleFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
-  Cluster/FailureOracleFeature.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
@@ -870,6 +881,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
+  RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -895,9 +907,11 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/CountCache.cpp
   Transaction/Helpers.cpp
   Transaction/Manager.cpp
+  Transaction/ManagedContext.cpp
   Transaction/ManagerFeature.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
+  Transaction/ReplicatedContext.cpp
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
@@ -1138,6 +1152,7 @@ target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
 target_link_libraries(arango_replication2 fmt)
 target_link_libraries(arango_replication2 arango_network)
+target_link_libraries(arango_replication2 arangoserver)
 
 target_link_libraries(arango_rocksdb rocksdb)
 target_link_libraries(arango_rocksdb arango_cache)

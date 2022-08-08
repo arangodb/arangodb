@@ -26,6 +26,7 @@
 
 #include "IResearchFilterOptimization.h"
 #include "IResearchLinkMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 
 #include "VocBase/voc-types.h"
 
@@ -53,6 +54,40 @@ struct QueryContext;
 using AnalyzerProvider =
     std::function<FieldMeta::Analyzer const&(std::string_view)>;
 
+inline FieldMeta::Analyzer const& emptyAnalyzer() noexcept {
+  static FieldMeta::Analyzer const empty{{}, {}};
+  return empty;
+}
+
+struct FilterContext {
+  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name,
+                                           Result& r) const noexcept {
+    if (ADB_UNLIKELY(!contextAnalyzer && !fieldAnalyzerProvider)) {
+      TRI_ASSERT(false);
+      r = {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
+    }
+    if (!fieldAnalyzerProvider) {
+      return contextAnalyzer;
+    }
+
+    auto const& analyzer = (*fieldAnalyzerProvider)(name);
+    // TODO(SEARCH-342) we want to return error if analyzers don't match
+    // if (ADB_UNLIKELY(contextAnalyzer && contextAnalyzer._pool !=
+    // analyzer._pool)) {
+    //   r = {TRI_ERROR_BAD_PARAMETER,
+    //        "Context analyzer doesn't match field analyzer"};
+    // }
+    return analyzer;
+  }
+
+  AnalyzerProvider const* fieldAnalyzerProvider{};
+  // need shared_ptr since pool could be deleted from the feature
+  FieldMeta::Analyzer const& contextAnalyzer;
+  std::span<const InvertedIndexField> fields{};
+  std::string_view namePrefix{};  // field name prefix
+  irs::score_t boost{irs::kNoBoost};
+};
+
 struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch filter
@@ -60,9 +95,8 @@ struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static arangodb::Result filter(irs::boolean_filter* filter,
                                  QueryContext const& ctx,
-                                 arangodb::aql::AstNode const& node,
-                                 bool forSearch = true,
-                                 AnalyzerProvider const* provider = nullptr);
+                                 FilterContext const& filterCtx,
+                                 arangodb::aql::AstNode const& node);
 };  // FilterFactory
 
 struct FilterConstants {

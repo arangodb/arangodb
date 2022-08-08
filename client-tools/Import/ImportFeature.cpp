@@ -60,6 +60,7 @@ ImportFeature::ImportFeature(Server& server, int* result)
       _collectionName(""),
       _fromCollectionPrefix(""),
       _toCollectionPrefix(""),
+      _overwriteCollectionPrefix(false),
       _createCollection(false),
       _createDatabase(false),
       _createCollectionType("document"),
@@ -119,6 +120,11 @@ void ImportFeature::collectOptions(
       "_to collection name prefix (will be prepended to all values in '_to')",
       new StringParameter(&_toCollectionPrefix));
 
+  options->addOption("--overwrite-collection-prefix",
+                     "only useful with '--from/--to-collection-prefix', if the "
+                     "value is already prefixed, overwrite the prefix.",
+                     new BooleanParameter(&_overwriteCollectionPrefix));
+
   options->addOption("--create-collection",
                      "create collection if it does not yet exist",
                      new BooleanParameter(&_createCollection));
@@ -159,7 +165,7 @@ void ImportFeature::collectOptions(
 
   options->addOption("--remove-attribute",
                      "remove an attribute before inserting documents"
-                     " into collection (for CSV and TSV only)",
+                     " into collection (for CSV, TSV and JSON only)",
                      new VectorParameter<StringParameter>(&_removeAttributes));
 
   std::unordered_set<std::string> types = {"document", "edge"};
@@ -407,6 +413,8 @@ void ImportFeature::start() {
       std::cout << "to collection prefix:   " << _toCollectionPrefix
                 << std::endl;
     }
+    std::cout << "overwrite coll. prefix: "
+              << (_overwriteCollectionPrefix ? "yes" : "no") << std::endl;
     std::cout << "create:                 "
               << (_createCollection ? "yes" : "no") << std::endl;
     std::cout << "create database:        " << (_createDatabase ? "yes" : "no")
@@ -591,6 +599,7 @@ void ImportFeature::start() {
     // set prefixes
     ih.setFrom(_fromCollectionPrefix);
     ih.setTo(_toCollectionPrefix);
+    ih.setOverwritePrefix(_overwriteCollectionPrefix);
 
     TRI_NormalizePath(_filename);
     // import type
@@ -605,7 +614,15 @@ void ImportFeature::start() {
                               arangodb::import::ImportHelper::TSV);
     } else if (_typeImport == "json" || _typeImport == "jsonl") {
       std::cout << "Starting JSON import..." << std::endl;
-      ok = ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
+      if (_removeAttributes.empty()) {
+        ok =
+            ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
+      } else {
+        // This variant does more parsing, on the client side
+        // and in general is considered slower, so only use it if necessary.
+        ok = ih.importJsonWithRewrite(_collectionName, _filename,
+                                      (_typeImport == "jsonl"));
+      }
     } else {
       LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME)
           << "Wrong type '" << _typeImport << "'.";

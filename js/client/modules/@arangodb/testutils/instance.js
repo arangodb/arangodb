@@ -211,6 +211,10 @@ class instance {
     fs.makeDirectoryRecursive(this.appDir);
     fs.makeDirectoryRecursive(this.tmpDir);
     this.logFile = fs.join(rootDir, 'log');
+    this.coreDirectory = this.rootDir;
+    if (process.env.hasOwnProperty('COREDIR')) {
+      this.coreDirectory = process.env['COREDIR'];
+    }
     this._makeArgsArangod();
     
     this.name = instanceRole + ' - ' + this.port;
@@ -335,6 +339,7 @@ class instance {
       'temp.path': this.tmpDir,
       'server.endpoint': this.endpoint,
       'database.directory': this.dataDir,
+      'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
     if (this.options.auditLoggingEnabled) {
@@ -509,24 +514,29 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   readAssertLogLines () {
-    const buf = fs.readBuffer(this.logFile);
-    let lineStart = 0;
-    let maxBuffer = buf.length;
+    try {
+      const buf = fs.readBuffer(this.logFile);
+      let lineStart = 0;
+      let maxBuffer = buf.length;
 
-    for (let j = 0; j < maxBuffer; j++) {
-      if (buf[j] === 10) { // \n
-        const line = buf.asciiSlice(lineStart, j);
-        lineStart = j + 1;
-        
-        // scan for asserts from the crash dumper
-        if (line.search('{crash}') !== -1) {
-          if (!IS_A_TTY) {
-            // else the server has already printed these:
-            print("ERROR: " + line);
+      for (let j = 0; j < maxBuffer; j++) {
+        if (buf[j] === 10) { // \n
+          const line = buf.asciiSlice(lineStart, j);
+          lineStart = j + 1;
+
+          // scan for asserts from the crash dumper
+          if (line.search('{crash}') !== -1) {
+            if (!IS_A_TTY) {
+              // else the server has already printed these:
+              print("ERROR: " + line);
+            }
+            this.assertLines.push(line);
           }
-          this.assertLines.push(line);
         }
       }
+    } catch (ex) {
+      print("failed to read " + this.logFile + " -> " + ex);
+      this.assertLines.push("failed to read " + this.logFile + " -> " + ex);
     }
   }
   terminateInstance() {
@@ -630,7 +640,7 @@ class instance {
     }
 
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
-      if (!crashUtils.runProcdump(this.options, this, this.rootDir, this.pid)) {
+      if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
         print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
@@ -663,7 +673,7 @@ class instance {
       throw x;
     }
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
-      if (!crashUtils.runProcdump(this.options, this, this.rootDir, this.pid)) {
+      if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
         print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
@@ -803,7 +813,7 @@ class instance {
       if (!this.options.disableMonitor) {
         crashUtils.stopProcdump (this.options, this, true);
       }
-      crashUtils.runProcdump (this.options, this, this.rootDir, this.pid, true);
+      crashUtils.runProcdump (this.options, this, this.coreDirectory, this.pid, true);
     }
     if (this.options.test !== undefined) {
       print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
