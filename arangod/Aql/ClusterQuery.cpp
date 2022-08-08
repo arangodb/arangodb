@@ -68,7 +68,10 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
         : ClusterQuery{id, std::move(ctx), std::move(options)} {}
 
     ~MakeSharedQuery() final {
-      _queryProfile.reset();  // to prevent data race on vptr
+      // Unregister this query from the query list, otherwise it's still
+      // accessible via this list while the query is being destructed,
+      // which can result in a data race on the vptr
+      _queryProfile.reset();
       try {
         _traversers.clear();
       } catch (...) {
