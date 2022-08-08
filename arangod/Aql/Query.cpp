@@ -183,6 +183,8 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 Query::~Query() {
+  TRI_ASSERT(_queryProfile == nullptr);
+  unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
 
   _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
@@ -212,8 +214,6 @@ Query::~Query() {
     // unfortunately we cannot do anything here, as we are in the destructor
   }
 
-  _queryProfile.reset();  // unregister from QueryList
-
   unregisterSnippets();
 
   exitV8Context();
@@ -241,12 +241,7 @@ std::shared_ptr<Query> Query::create(
         : Query{std::move(ctx), std::move(queryString),
                 std::move(bindParameters), std::move(options)} {}
 
-    ~MakeSharedQuery() final {
-      try {
-        unregisterQueryInTransactionState();  // to prevent data race on vptr
-      } catch (...) {
-      }
-    }
+    ~MakeSharedQuery() final { _queryProfile.reset(); }
   };
   TRI_ASSERT(ctx != nullptr);
   return std::make_shared<MakeSharedQuery>(

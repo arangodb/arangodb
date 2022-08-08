@@ -111,7 +111,7 @@ struct MockQuery final : arangodb::aql::Query {
       : arangodb::aql::Query{ctx, queryString, nullptr, {}} {}
 
   ~MockQuery() final {
-    unregisterQueryInTransactionState();  // to prevent data race on vptr
+    _queryProfile.reset();  // to prevent data race on vptr
   }
 
   arangodb::transaction::Methods& trxForOptimization() final {
