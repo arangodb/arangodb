@@ -187,13 +187,14 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectInvalidExpression) {
 
   std::vector<std::string> shardKeys;
 
-  auto expressions = {"",
-                      "RETURN",
-                      "LET a = 1",
-                      "LET a = 1 RETURN a",
-                      "RETURN (RETURN 1)",
-                      "RETURN (FOR i IN 1..10 RETURN i)",
-                      "RETURN TOKENS('Lörem ipsüm, DOLOR SIT Ämet.', 'text_de')"};
+  auto expressions = {
+      "",
+      "RETURN",
+      "LET a = 1",
+      "LET a = 1 RETURN a",
+      "RETURN (RETURN 1)",
+      "RETURN (FOR i IN 1..10 RETURN i)",
+      "RETURN TOKENS('Lörem ipsüm, DOLOR SIT Ämet.', 'text_de')"};
 
   for (auto const& expression : expressions) {
     velocypack::Builder b;
