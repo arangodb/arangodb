@@ -55,6 +55,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "Metrics/MetricsFeature.h"
+#include "velocypack/Builder.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -736,16 +737,26 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     w->prepareGlobalStep(body, outBuilder);
   } else if (path == Utils::startGSSPath) {
     w->startGlobalStep(body);
+    auto response = GssStarted{};
+    serialize(outBuilder, response);
   } else if (path == Utils::messagesPath) {
     w->receivedMessages(body);
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
+    auto response = GssCanceled{};
+    serialize(outBuilder, response);
   } else if (path == Utils::finalizeExecutionPath) {
     w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
+    auto response = CleanupStarted{};
+    serialize(outBuilder, response);
   } else if (path == Utils::continueRecoveryPath) {
     w->compensateStep(body);
+    auto response = RecoveryContinued{};
+    serialize(outBuilder, response);
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
+    auto response = RecoveryFinalized{};
+    serialize(outBuilder, response);
   } else if (path == Utils::aqlResultsPath) {
     auto command = deserialize<CollectPregelResults>(body);
     w->aqlResult(outBuilder, command.withId);

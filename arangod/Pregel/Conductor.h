@@ -145,11 +145,9 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   bool _startGlobalStep();
   ErrorCode _initializeWorkers(std::string const& suffix,
                                VPackSlice additional);
-  ErrorCode _sendToAllDBServers(std::string const& path,
-                                VPackBuilder const& message);
-  ErrorCode _sendToAllDBServers(std::string const& path,
-                                VPackBuilder const& message,
-                                std::function<void(VPackSlice)> handle);
+  template<typename OutType, typename InType>
+  auto _sendToAllDBServers(std::string const& path, InType const& message)
+      -> ResultT<std::vector<OutType>>;
   void _ensureUniqueResponse(std::string const& body);
   auto _startGssEvent(bool activateAll) const -> StartGss;
 

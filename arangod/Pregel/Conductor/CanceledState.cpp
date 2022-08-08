@@ -26,15 +26,13 @@ auto Canceled::run() -> void {
       [this]() -> bool {
         conductor.cleanup();
         LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
-        auto finalizeExecutionCommand =
-            FinalizeExecution{.executionNumber = conductor._executionNumber,
-                              .gss = conductor._globalSuperstep,
-                              .withStoring = false};
-        VPackBuilder command;
-        serialize(command, finalizeExecutionCommand);
-
-        return conductor._sendToAllDBServers(Utils::finalizeExecutionPath,
-                                             command) != TRI_ERROR_QUEUE_FULL;
+        auto startCleanupCommand =
+            StartCleanup{.executionNumber = conductor._executionNumber,
+                         .gss = conductor._globalSuperstep,
+                         .withStoring = false};
+        auto response = conductor._sendToAllDBServers<CleanupStarted>(
+            Utils::finalizeExecutionPath, startCleanupCommand);
+        return response.ok();
       },
       Logger::PREGEL, "cancel worker execution");
   if (!ok) {

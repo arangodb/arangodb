@@ -51,9 +51,12 @@ auto Recovering::run() -> void {
         auto cancelGssCommand =
             CancelGss{.executionNumber = conductor._executionNumber,
                       .gss = conductor._globalSuperstep};
-        VPackBuilder command;
-        serialize(command, cancelGssCommand);
-        conductor._sendToAllDBServers(Utils::cancelGSSPath, command);
+        auto response = conductor._sendToAllDBServers<GssCanceled>(
+            Utils::cancelGSSPath, cancelGssCommand);
+        if (response.fail()) {
+          LOG_PREGEL_CONDUCTOR("", ERR) << "Gss could not be canceled";
+        }
+
         // TODO somehow test here that state is not Canceled
         if (conductor._state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
@@ -118,10 +121,9 @@ auto Recovering::receive(Message const& message) -> void {
     auto finalizeRecoveryCommand =
         FinalizeRecovery{.executionNumber = conductor._executionNumber,
                          .gss = conductor._globalSuperstep};
-    VPackBuilder message;
-    serialize(message, finalizeRecoveryCommand);
-    if (conductor._sendToAllDBServers(Utils::finalizeRecoveryPath, message) !=
-        TRI_ERROR_NO_ERROR) {
+    auto response = conductor._sendToAllDBServers<RecoveryFinalized>(
+        Utils::finalizeRecoveryPath, finalizeRecoveryCommand);
+    if (response.fail()) {
       LOG_PREGEL_CONDUCTOR("7f97e", INFO) << "Recovery failed";
       conductor.changeState(conductor::StateType::Canceled);
       return;
@@ -144,11 +146,9 @@ auto Recovering::receive(Message const& message) -> void {
   auto continueRecoveryCommand =
       ContinueRecovery{.executionNumber = conductor._executionNumber,
                        .aggregators = std::move(aggregators)};
-  VPackBuilder command;
-  serialize(command, continueRecoveryCommand);
-  // first allow all workers to run worker level operations
-  if (conductor._sendToAllDBServers(Utils::continueRecoveryPath, command) !=
-      TRI_ERROR_NO_ERROR) {
+  auto response = conductor._sendToAllDBServers<RecoveryContinued>(
+      Utils::continueRecoveryPath, continueRecoveryCommand);
+  if (response.fail()) {
     LOG_PREGEL_CONDUCTOR("7f97e", INFO) << "Recovery failed";
     conductor.changeState(conductor::StateType::Canceled);
     return;
