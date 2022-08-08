@@ -1315,7 +1315,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
         // assign to each vertex.value infinity
         // (This is what Pregel, in fact, returns if a vertex is not reachable.
         // The documentation says "length above 9007199254740991 (max safe integer)".)
-        const infinity = 9223372036854776000n;
+        const infinity = 9223372036854776000;
         for (let [ , vertex] of graph.vertices) {
             vertex.value = infinity;
         }
@@ -1433,4 +1433,3 @@ exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;
 exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
-exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
