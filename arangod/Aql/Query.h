@@ -84,7 +84,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
         std::shared_ptr<velocypack::Builder> bindParameters,
         QueryOptions options);
 
-  void destroy() noexcept;
+  ~Query() override;
 
  public:
   Query(Query const&) = delete;

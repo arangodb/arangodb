@@ -56,28 +56,31 @@ ClusterQuery::ClusterQuery(QueryId id,
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server())} {
 }
 
-void ClusterQuery::destroy() noexcept {
-  try {
-    _traversers.clear();
-  } catch (...) {
-  }
-  Query::destroy();
-}
-
 /// @brief factory method for creating a cluster query. this must be used to
 /// ensure that ClusterQuery objects are always created using shared_ptrs.
 std::shared_ptr<ClusterQuery> ClusterQuery::create(
     QueryId id, std::shared_ptr<transaction::Context> ctx,
     QueryOptions options) {
+  // workaround to enable make_shared on a class with a protected constructor
+  struct MakeSharedQuery final : ClusterQuery {
+    MakeSharedQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
+                    QueryOptions options)
+        : ClusterQuery{id, std::move(ctx), std::move(options)} {}
+
+    ~MakeSharedQuery() final {
+      try {
+        _traversers.clear();
+      } catch (...) {
+      }
+      try {
+        unregisterQueryInTransactionState();  // to prevent data race on vptr
+      } catch (...) {
+      }
+    }
+  };
   TRI_ASSERT(ctx != nullptr);
-  return std::shared_ptr<ClusterQuery>{
-      new ClusterQuery{id, std::move(ctx), std::move(options)},
-      [](ClusterQuery* query) noexcept {
-        if (query) {
-          query->destroy();  // to prevent data race on vptr
-          delete query;
-        }
-      }};
+  return std::make_shared<MakeSharedQuery>(id, std::move(ctx),
+                                           std::move(options));
 }
 
 void ClusterQuery::prepareClusterQuery(

@@ -182,54 +182,48 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
             std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
-void Query::destroy() noexcept {
-  try {
-    unregisterQueryInTransactionState();
-    TRI_ASSERT(!_registeredQueryInTrx);
+Query::~Query() {
+  TRI_ASSERT(!_registeredQueryInTrx);
 
-    _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
-    _resultMemoryUsage = 0;
+  _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
+  _resultMemoryUsage = 0;
 
-    if (_queryOptions.profile >= ProfileLevel::TraceOne) {
-      LOG_TOPIC("36a75", INFO, Logger::QUERIES)
-          << elapsedSince(_startTime) << " Query::~Query queryString: "
-          << " this: " << (uintptr_t)this;
-    }
-
-    // log to audit log
-    if (!_queryOptions.skipAudit &&
-        (ServerState::instance()->isCoordinator() ||
-         ServerState::instance()->isSingleServer())) {
-      try {
-        events::AqlQuery(*this);
-      } catch (...) {
-        // we must not make any exception escape from here!
-      }
-    }
-
-    // this will reset _trx, so _trx is invalid after here
-    try {
-      auto state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
-      TRI_ASSERT(state != ExecutionState::WAITING);
-    } catch (...) {
-      // unfortunately we cannot do anything here, as we are in the destructor
-    }
-
-    _queryProfile.reset();  // unregister from QueryList
-
-    unregisterSnippets();
-
-    exitV8Context();
-
-    _snippets.clear();  // simon: must be before plan
-    _plans.clear();     // simon: must be before AST
-    _ast.reset();
-
-    LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
-        << elapsedSince(_startTime)
-        << " Query::~Query this: " << (uintptr_t)this;
-  } catch (...) {
+  if (_queryOptions.profile >= ProfileLevel::TraceOne) {
+    LOG_TOPIC("36a75", INFO, Logger::QUERIES)
+        << elapsedSince(_startTime) << " Query::~Query queryString: "
+        << " this: " << (uintptr_t)this;
   }
+
+  // log to audit log
+  if (!_queryOptions.skipAudit && (ServerState::instance()->isCoordinator() ||
+                                   ServerState::instance()->isSingleServer())) {
+    try {
+      events::AqlQuery(*this);
+    } catch (...) {
+      // we must not make any exception escape from here!
+    }
+  }
+
+  // this will reset _trx, so _trx is invalid after here
+  try {
+    auto state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
+    TRI_ASSERT(state != ExecutionState::WAITING);
+  } catch (...) {
+    // unfortunately we cannot do anything here, as we are in the destructor
+  }
+
+  _queryProfile.reset();  // unregister from QueryList
+
+  unregisterSnippets();
+
+  exitV8Context();
+
+  _snippets.clear();  // simon: must be before plan
+  _plans.clear();     // simon: must be before AST
+  _ast.reset();
+
+  LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
+      << elapsedSince(_startTime) << " Query::~Query this: " << (uintptr_t)this;
 }
 
 /// @brief factory function for creating a query. this must be used to
@@ -238,15 +232,26 @@ std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options) {
   TRI_ASSERT(ctx != nullptr);
-  return std::shared_ptr<Query>{
-      new Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options)},
-      [](Query* query) noexcept {
-        if (query) {
-          query->destroy();  // to prevent data race on vptr
-          delete query;
-        }
-      }};
+  // workaround to enable make_shared on a class with a protected constructor
+  struct MakeSharedQuery final : Query {
+    MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
+                    QueryString queryString,
+                    std::shared_ptr<velocypack::Builder> bindParameters,
+                    QueryOptions options)
+        : Query{std::move(ctx), std::move(queryString),
+                std::move(bindParameters), std::move(options)} {}
+
+    ~MakeSharedQuery() final {
+      try {
+        unregisterQueryInTransactionState();  // to prevent data race on vptr
+      } catch (...) {
+      }
+    }
+  };
+  TRI_ASSERT(ctx != nullptr);
+  return std::make_shared<MakeSharedQuery>(
+      std::move(ctx), std::move(queryString), std::move(bindParameters),
+      std::move(options));
 }
 
 /// @brief return the user that started the query

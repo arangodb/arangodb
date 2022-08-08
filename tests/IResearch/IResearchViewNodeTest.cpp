@@ -110,7 +110,9 @@ struct MockQuery final : arangodb::aql::Query {
             arangodb::aql::QueryString const& queryString)
       : arangodb::aql::Query{ctx, queryString, nullptr, {}} {}
 
-  ~MockQuery() final { arangodb::aql::Query::destroy(); }
+  ~MockQuery() final {
+    unregisterQueryInTransactionState();  // to prevent data race on vptr
+  }
 
   arangodb::transaction::Methods& trxForOptimization() final {
     // original version contains an assertion
