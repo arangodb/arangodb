@@ -494,7 +494,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--database.extended-names-databases",
-                  "allow extended characters in database names",
+                  "Allow most UTF-8 characters in database names. Once in use, "
+                  "this option cannot be turned off again.",
                   new BooleanParameter(&_extendedNamesForDatabases),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
@@ -512,7 +513,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
-      "create and use deprecated system collection (_modules, _fishbowl)",
+      "Create and use deprecated system collection (_modules, _fishbowl).",
       false);
 
   // the following option was obsoleted in 3.8
