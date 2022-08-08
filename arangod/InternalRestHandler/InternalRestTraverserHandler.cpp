@@ -257,7 +257,7 @@ void InternalRestTraverserHandler::queryEngine() {
         eng->smartSearch(body, result);
       }
     } catch (arangodb::basics::Exception const& ex) {
-      generateError(ResponseCode::BAD, ex.code(), ex.message());
+      generateError(ResponseCode::BAD, ex.code(), ex.what());
       return;
     }
   } else {
