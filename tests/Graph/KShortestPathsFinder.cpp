@@ -331,7 +331,9 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
 
     spo = gdb.getShortestPathOptions(query.get());
-    spo->setWeightAttribute("cost");
+    std::string const usedWeightAttribute{"cost"};
+    double const usedDefaultWeight = spo->getDefaultWeight();
+    spo->setWeightAttribute(usedWeightAttribute);
 
     _trx = std::make_unique<arangodb::transaction::Methods>(
         query->newTrxContext());
@@ -381,6 +383,31 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextBackward.get(), {}, _emptyShardMap,
         _vertexProjections, _edgeProjections);
+
+    forwardOpts.setWeightEdgeCallback(
+        [weightAttribute = usedWeightAttribute, usedDefaultWeight](
+            double previousWeight, VPackSlice edge) -> double {
+          auto const weight =
+              arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                  edge, weightAttribute, usedDefaultWeight);
+          if (weight < 0.) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+          }
+
+          return previousWeight + weight;
+        });
+    backwardOpts.setWeightEdgeCallback(
+        [weightAttribute = usedWeightAttribute, usedDefaultWeight](
+            double previousWeight, VPackSlice edge) -> double {
+          auto const weight =
+              arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                  edge, weightAttribute, usedDefaultWeight);
+          if (weight < 0.) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+          }
+
+          return previousWeight + weight;
+        });
 
     finder = new KShortestPathsFinder<
         SingleServerProvider<SingleServerProviderStep>>(
