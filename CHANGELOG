@@ -1,6 +1,9 @@
 devel
 -----
 
+* Removed the deprecated Batch API (`/_api/batch`).
+  The arangobench `--batch-size` startup option is ignored now.
+
 * BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
   or more SortNodes appeared in the AQL execution plan.
 

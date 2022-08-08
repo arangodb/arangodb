@@ -66,7 +66,6 @@
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
-#include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCompactHandler.h"
 #include "RestHandler/RestControlPregelHandler.h"
 #include "RestHandler/RestCursorHandler.h"
@@ -569,9 +568,6 @@ void GeneralServerFeature::defineRemainingHandlers(
       RestHandlerCreator<
           iresearch::RestAnalyzerHandler>::createNoData  // handler
   );
-
-  f.addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                     RestHandlerCreator<RestBatchHandler>::createNoData);
 
   f.addPrefixHandler(
       RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,

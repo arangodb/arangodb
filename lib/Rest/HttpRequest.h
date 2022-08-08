@@ -28,16 +28,12 @@
 #include "Rest/GeneralRequest.h"
 
 namespace arangodb {
-class RestBatchHandler;
-
 namespace velocypack {
 class Builder;
 struct Options;
 }  // namespace velocypack
 
 class HttpRequest final : public GeneralRequest {
-  friend class RestBatchHandler;  // TODO remove
-
  public:
   HttpRequest(ConnectionInfo const&, uint64_t mid, bool allowMethodOverride);
 
@@ -88,6 +84,7 @@ class HttpRequest final : public GeneralRequest {
 
  private:
   /// used by RestBatchHandler (an API straight from hell)
+  // TODO: Can they be removed / cleaned up?
   void parseHeader(char* buffer, size_t length);
   void setValues(char* buffer, char* end);
   void setCookie(char* key, size_t length, char const* value);

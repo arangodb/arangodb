@@ -861,7 +861,7 @@ Testing a single test with the framework via arangosh:
 
 Running a test against a server you started (instead of letting the script start its own server):
 
-    scripts/unittest shell_client --test api-batch.js --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
+    scripts/unittest shell_api --test analyzer.js --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
 
 Re-running previously failed tests:
 
