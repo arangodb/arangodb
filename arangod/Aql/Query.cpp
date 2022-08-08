@@ -183,7 +183,11 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 Query::~Query() {
+  // In the most derived class needs to explicitly call '_queryProfile.reset()'
+  // in order to unregister the query from the query list,
+  // because otherwise we have potential data races on the vptr
   TRI_ASSERT(_queryProfile == nullptr);
+
   unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
 

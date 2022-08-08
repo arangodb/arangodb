@@ -38,6 +38,8 @@ class ClusterQuery : public Query {
   ClusterQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
                QueryOptions options);
 
+  ~ClusterQuery() override;
+
  public:
   /// @brief factory method for creating a cluster query. this must be used to
   /// ensure that ClusterQuery objects are always created using shared_ptrs.
@@ -57,7 +59,7 @@ class ClusterQuery : public Query {
 
   futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
- protected:
+ private:
   /// @brief first one should be the local one
   traverser::GraphEngineList _traversers;
 };

@@ -56,6 +56,13 @@ ClusterQuery::ClusterQuery(QueryId id,
                 : std::make_shared<SharedQueryState>(ctx->vocbase().server())} {
 }
 
+ClusterQuery::~ClusterQuery() {
+  try {
+    _traversers.clear();
+  } catch (...) {
+  }
+}
+
 /// @brief factory method for creating a cluster query. this must be used to
 /// ensure that ClusterQuery objects are always created using shared_ptrs.
 std::shared_ptr<ClusterQuery> ClusterQuery::create(
@@ -72,10 +79,6 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
       // accessible via this list while the query is being destructed,
       // which can result in a data race on the vptr
       _queryProfile.reset();
-      try {
-        _traversers.clear();
-      } catch (...) {
-      }
     }
   };
   TRI_ASSERT(ctx != nullptr);
