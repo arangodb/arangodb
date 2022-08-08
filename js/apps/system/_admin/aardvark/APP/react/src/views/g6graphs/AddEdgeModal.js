@@ -63,7 +63,7 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
         };
         openNotificationWithIcon(response.edge._id);
         onEdgeCreation(edgeModel);
-        onRequestClose();
+        onRequestClose(true);
       },
       error: function (response) {
         console.log("Error: Could not create edge: ", response);
@@ -72,9 +72,9 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
     });
   }
 
-  const cancelEdge = (updateEdgeId) => {
-    onEdgeCreationCancellation(edgeModelToAdd);
-    onRequestClose();
+  const cancelEdge = () => {
+    onEdgeCreationCancellation();
+    onRequestClose(false);
   }
 
   const handleChange = (value) => {
@@ -82,7 +82,7 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
   }
 
   return shouldShow ? (
-    <ModalBackground onClick={onRequestClose}>
+    <ModalBackground onClick={() => onRequestClose(false)}>
       <ModalBody onClick={(e) => e.stopPropagation()}>
         <div>
           {children}<br />
@@ -131,7 +131,7 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
           }
         </div>
         <div style={{ 'marginTop': '38px', 'textAlign': 'right' }}>
-          <StyledButton className="button-close" onClick={() => cancelEdge(edge)}>Cancel</StyledButton>
+          <StyledButton className="button-close" onClick={() => cancelEdge()}>Cancel</StyledButton>
           <StyledButton className="button-success" onClick={() => { addEdge(edge) }}>Create</StyledButton>
         </div>
       </ModalBody>
