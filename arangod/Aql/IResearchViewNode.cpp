@@ -813,7 +813,17 @@ constexpr Executor kExecutors[] = {
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
       return std::make_unique<aql::ExecutionBlockImpl<
-          aql::IResearchViewExecutor<copyStored, false, materializeType>>>(
+          aql::IResearchViewExecutor<aql::ExecutionTraits<
+              copyStored, false, false, materializeType>>>>(
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+    },
+    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos)
+        -> std::unique_ptr<aql::ExecutionBlock> {
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewExecutor<
+              aql::ExecutionTraits<copyStored, true, false, materializeType>>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
@@ -821,7 +831,17 @@ constexpr Executor kExecutors[] = {
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
       return std::make_unique<aql::ExecutionBlockImpl<
-          aql::IResearchViewExecutor<copyStored, true, materializeType>>>(
+          aql::IResearchViewMergeExecutor<aql::ExecutionTraits<
+              copyStored, false, false, materializeType>>>>(
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+    },
+    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos)
+        -> std::unique_ptr<aql::ExecutionBlock> {
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<
+              aql::ExecutionTraits<copyStored, true, false, materializeType>>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
@@ -829,15 +849,8 @@ constexpr Executor kExecutors[] = {
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
       return std::make_unique<aql::ExecutionBlockImpl<
-          aql::IResearchViewMergeExecutor<copyStored, false, materializeType>>>(
-          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
-    },
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
-       aql::RegisterInfos&& registerInfos,
-       aql::IResearchViewExecutorInfos&& executorInfos)
-        -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<
-          aql::IResearchViewMergeExecutor<copyStored, true, materializeType>>>(
+          aql::IResearchViewHeapSortExecutor<aql::ExecutionTraits<
+              copyStored, false, false, materializeType>>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
@@ -846,16 +859,7 @@ constexpr Executor kExecutors[] = {
         -> std::unique_ptr<aql::ExecutionBlock> {
       return std::make_unique<
           aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
-              copyStored, false, materializeType>>>(
-          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
-    },
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
-       aql::RegisterInfos&& registerInfos,
-       aql::IResearchViewExecutorInfos&& executorInfos)
-        -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<
-          aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
-              copyStored, true, materializeType>>>(
+              aql::ExecutionTraits<copyStored, true, false, materializeType>>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     }};
 
