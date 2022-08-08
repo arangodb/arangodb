@@ -134,6 +134,10 @@ void expectEqualSlices_(const velocypack::Slice& lhs,
 }  // namespace tests
 }  // namespace arangodb
 
+namespace iresearch {
+std::string to_string(irs::filter const& f);
+}
+
 std::string mangleNested(std::string name);
 std::string mangleType(std::string name);
 std::string mangleAnalyzer(std::string name);
