@@ -42,6 +42,7 @@
 #include "Futures/Utilities.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Metrics/Counter.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -89,6 +90,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Metrics/Types.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -805,88 +807,6 @@ static std::shared_ptr<ShardMap> CloneShardDistribution(
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a list of attributes have the same values in two vpack
-/// documents
-////////////////////////////////////////////////////////////////////////////////
-
-bool shardKeysChanged(LogicalCollection const& collection,
-                      VPackSlice const& oldValue, VPackSlice const& newValue,
-                      bool isPatch) {
-  if (!oldValue.isObject() || !newValue.isObject()) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (collection.vocbase().name() == "sync-replication-test") {
-    return false;
-  }
-#endif
-
-  std::vector<std::string> const& shardKeys = collection.shardKeys();
-
-  for (const auto& shardKey : shardKeys) {
-    if (shardKey == StaticStrings::KeyString) {
-      continue;
-    }
-
-    VPackSlice n = newValue.get(shardKey);
-
-    if (n.isNone() && isPatch) {
-      // attribute not set in patch document. this means no update
-      continue;
-    }
-
-    VPackSlice o = oldValue.get(shardKey);
-
-    if (o.isNone()) {
-      // if attribute is undefined, use "null" instead
-      o = arangodb::velocypack::Slice::nullSlice();
-    }
-
-    if (n.isNone()) {
-      // if attribute is undefined, use "null" instead
-      n = arangodb::velocypack::Slice::nullSlice();
-    }
-
-    if (!Helper::equal(n, o, false)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool smartJoinAttributeChanged(LogicalCollection const& collection,
-                               VPackSlice const& oldValue,
-                               VPackSlice const& newValue, bool isPatch) {
-  if (!collection.hasSmartJoinAttribute()) {
-    return false;
-  }
-  if (!oldValue.isObject() || !newValue.isObject()) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-
-  std::string const& s = collection.smartJoinAttribute();
-
-  VPackSlice n = newValue.get(s);
-  if (!n.isString()) {
-    if (isPatch && n.isNone()) {
-      // attribute not set in patch document. this means no update
-      return false;
-    }
-
-    // no string value... invalid!
-    return true;
-  }
-
-  VPackSlice o = oldValue.get(s);
-  TRI_ASSERT(o.isString());
-
-  return !Helper::equal(n, o, false);
-}
-
 void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
                              VPackSlice value, VPackBuilder& builder) {
   TRI_ASSERT(value.isObject());
@@ -1382,8 +1302,9 @@ futures::Future<OperationResult> countOnCoordinator(
 /// @brief gets the metrics from DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::RawDBServers> metricsOnCoordinator(
+futures::Future<metrics::RawDBServers> metricsOnLeader(
     NetworkFeature& network, ClusterFeature& cluster) {
+  LOG_TOPIC("badf0", TRACE, Logger::CLUSTER) << "Start collect metrics";
   auto* pool = network.pool();
   auto serverIds = cluster.clusterInfo().getCurrentDBServers();
 
@@ -1395,15 +1316,17 @@ futures::Future<metrics::RawDBServers> metricsOnCoordinator(
                     StaticStrings::MimeTypeJsonNoEncoding);
     futures.push_back(network::sendRequest(
         pool, "server:" + id, fuerte::RestVerb::Get, "/_admin/metrics", {},
-        network::RequestOptions{}.param("type", "json"), std::move(headers)));
+        network::RequestOptions{}.param("type", metrics::kDBJson),
+        std::move(headers)));
   }
-  return collectAll(futures).thenValue(
-      [](std::vector<Try<network::Response>>&& responses) {
+  return collectAll(futures).then(
+      [](Try<std::vector<Try<network::Response>>>&& responses) {
+        TRI_ASSERT(responses.hasValue());  // collectAll always return value
         metrics::RawDBServers metrics;
-        metrics.reserve(responses.size());
-        for (auto& response : responses) {
-          if (!response.hasValue() || response->fail() ||
-              !response->hasResponse()) {
+        metrics.reserve(responses->size());
+        for (auto& response : *responses) {
+          if (!response.hasValue() || !response->hasResponse() ||
+              response->fail()) {
             continue;  // Shit happens, just ignore it
           }
           auto payload = response->response().stealPayload();
@@ -1423,6 +1346,33 @@ futures::Future<metrics::RawDBServers> metricsOnCoordinator(
         }
         return metrics;
       });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the metrics from leader Coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<metrics::LeaderResponse> metricsFromLeader(
+    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
+    std::string serverId, uint64_t rebootId, uint64_t version) {
+  LOG_TOPIC("badf1", TRACE, Logger::CLUSTER) << "Start receive metrics";
+  auto* pool = network.pool();
+  network::Headers headers;
+  headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
+  auto options = network::RequestOptions{}
+                     .param("type", metrics::kCDJson)
+                     .param("MetricsServerId", std::move(serverId))
+                     .param("MetricsRebootId", std::to_string(rebootId))
+                     .param("MetricsVersion", std::to_string(version));
+  auto future = network::sendRequest(
+      pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
+      "/_admin/metrics", {}, std::move(options), std::move(headers));
+  return std::move(future).then([](Try<network::Response>&& response) {
+    if (!response.hasValue() || !response->hasResponse() || response->fail()) {
+      return metrics::LeaderResponse{};
+    }
+    return response->response().stealPayload();
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2082,6 +2032,8 @@ Future<OperationResult> getDocumentOnCoordinator(
           builder.close();
         }
         if (allowDirtyReads) {
+          auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
+          ++cf.potentiallyDirtyDocumentReadsCounter();
           reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
           headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
         }
@@ -2130,7 +2082,9 @@ Future<OperationResult> getDocumentOnCoordinator(
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+  auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
+  auto& nf = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = nf.pool();
   const size_t expectedLen = useMultiple ? slice.length() : 0;
   if (!useMultiple) {
     std::string_view const key(
@@ -2153,6 +2107,7 @@ Future<OperationResult> getDocumentOnCoordinator(
       }
 
       if (allowDirtyReads) {
+        ++cf.potentiallyDirtyDocumentReadsCounter();
         reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }
@@ -2172,6 +2127,7 @@ Future<OperationResult> getDocumentOnCoordinator(
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
       if (allowDirtyReads) {
+        ++cf.potentiallyDirtyDocumentReadsCounter();
         reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }

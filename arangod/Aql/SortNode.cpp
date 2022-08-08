@@ -23,7 +23,7 @@
 
 #include "SortNode.h"
 
-#include "Aql/AllRowsFetcher.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -36,8 +36,8 @@
 #include "Aql/SortRegister.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
@@ -192,13 +192,19 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     sortRegs.emplace_back(id, element);
     inputRegs.emplace(id);
   }
+
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
   auto executorInfos = SortExecutorInfos(
       registerInfos.numberOfInputRegisters(),
       registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
       std::move(sortRegs), _limit, engine.itemBlockManager(),
+      engine.getQuery()
+          .vocbase()
+          .server()
+          .getFeature<TemporaryStorageFeature>(),
       &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
-      _stable);
+      engine.getQuery().queryOptions().spillOverThresholdNumRows,
+      engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));

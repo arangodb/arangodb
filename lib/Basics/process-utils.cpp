@@ -486,7 +486,7 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
   err = wAppendQuotedArg(
       res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
-    return nullptr;
+    return L"";
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
@@ -494,7 +494,7 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     err = wAppendQuotedArg(
         res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
-      return nullptr;
+      return L"";
     }
   }
   return res;

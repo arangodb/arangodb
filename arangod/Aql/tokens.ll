@@ -15,7 +15,9 @@
 %top{
 /* clang-format off */
 
-#include <stdint.h>
+#include <algorithm>
+#include <cstdint>
+
 #if (_MSC_VER >= 1)
 // fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
 #pragma warning( disable : 4267)
@@ -47,8 +49,6 @@ class Parser;
 #include "Aql/Functions.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
-
-#include <algorithm>
 
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
@@ -126,6 +126,10 @@ class Parser;
   return T_DESC;
 }
 
+(?i:NOT[ \t\r\n]+IN) {
+  return T_NOT_IN;
+}
+
 (?i:NOT) {
   return T_NOT;
 }
@@ -182,6 +186,10 @@ class Parser;
   return T_K_SHORTEST_PATHS;
 }
 
+(?i:ALL_SHORTEST_PATHS) {
+  return T_ALL_SHORTEST_PATHS;
+}
+
 (?i:K_PATHS) {
   return T_K_PATHS;
 }
@@ -204,6 +212,10 @@ class Parser;
 
 (?i:NONE) {
   return T_NONE;
+}
+
+(?i:AT[ \t\r\n]+LEAST) {
+  return T_AT_LEAST;
 }
 
 (?i:LIKE) {
@@ -264,6 +276,10 @@ class Parser;
 
 "=" {
   return T_ASSIGN;
+}
+
+(?i:![ \t\r\n]*IN) {
+  return T_NOT_IN;
 }
 
 "!" {
@@ -528,7 +544,7 @@ class Parser;
   char const* e = yytext + yyleng;
 
   auto parser = yyextra;
-  if (static_cast<uint64_t>(e - p) > arangodb::aql::Functions::bitFunctionsMaxSupportedBits) {
+  if (static_cast<uint64_t>(e - p) > arangodb::aql::functions::bitFunctionsMaxSupportedBits) {
     /* we only support up to 32 bits for now */
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "binary number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
   }
@@ -562,7 +578,7 @@ class Parser;
 
   auto parser = yyextra;
   /* each digit 0-9a-f carries 4 bits of information */
-  if (static_cast<uint64_t>(e - p) > arangodb::aql::Functions::bitFunctionsMaxSupportedBits / 4) {
+  if (static_cast<uint64_t>(e - p) > arangodb::aql::functions::bitFunctionsMaxSupportedBits / 4) {
     /* we only support up to 32 bits for now */
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "hex number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
   }

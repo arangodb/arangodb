@@ -102,6 +102,7 @@
 #include "VocBase/LogicalView.h"
 
 #include <thread>
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -119,7 +120,6 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    using namespace fmt::literals;
     throw basics::Exception::fmt(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
@@ -130,7 +130,6 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    using namespace fmt::literals;
     throw basics::Exception::fmt(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
@@ -145,6 +144,8 @@ struct arangodb::VocBaseLogManager {
                                   "replicated state %" PRIu64 " not found",
                                   id.id());
   }
+
+  auto resignStates() { _guardedData.getLockedGuard()->states.clear(); }
 
   auto resignAll() {
     auto guard = _guardedData.getLockedGuard();
@@ -207,12 +208,9 @@ struct arangodb::VocBaseLogManager {
     });
 
     if (result.ok()) {
-      _server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogNumber->fetch_sub(1);
-      _server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogDeletionNumber->count();
+      auto& feature = _server.getFeature<ReplicatedLogFeature>();
+      feature.metrics()->replicatedLogNumber->fetch_sub(1);
+      feature.metrics()->replicatedLogDeletionNumber->count();
     }
     return result;
   }
@@ -495,76 +493,57 @@ void TRI_vocbase_t::checkCollectionInvariants() const {
 void TRI_vocbase_t::registerCollection(
     bool doLock,
     std::shared_ptr<arangodb::LogicalCollection> const& collection) {
-  std::string name = collection->name();
-  DataSourceId cid = collection->id();
+  auto const& name = collection->name();
+  auto const id = collection->id();
+  auto const& guid = collection->guid();
   {
     RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock,
                                  _dataSourceLockWriteOwner, doLock);
-
     checkCollectionInvariants();
-    auto sg =
-        arangodb::scopeGuard([&]() noexcept { checkCollectionInvariants(); });
+    ScopeGuard guard0{[&]() noexcept { checkCollectionInvariants(); }};
 
-    // check name
-    auto it = _dataSourceByName.try_emplace(name, collection);
-
-    if (!it.second) {
-      std::string msg;
-      msg.append(std::string("duplicate entry for collection name '") + name +
-                 "'. collection id " + std::to_string(cid.id()) +
-                 " has same name as already added collection " +
-                 std::to_string(_dataSourceByName[name]->id().id()));
-      LOG_TOPIC("405f9", ERR, arangodb::Logger::FIXME) << msg;
-
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME, msg);
+    if (auto it = _dataSourceByName.try_emplace(name, collection); !it.second) {
+      auto const& ptr = it.first->second;
+      TRI_ASSERT(ptr);
+      auto msg =
+          absl::StrCat("collection name '", name, "' already exist with id '",
+                       ptr->id().id(), "', guid '", ptr->guid(), "'");
+      LOG_TOPIC("405f9", ERR, Logger::FIXME) << msg;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                                     std::move(msg));
     }
+    ScopeGuard guard1{[&]() noexcept { _dataSourceByName.erase(name); }};
 
-    // check collection identifier
-    try {
-      auto it2 = _dataSourceById.try_emplace(cid, collection);
-
-      if (!it2.second) {
-        std::string msg;
-        msg.append(std::string("duplicate collection identifier ") +
-                   std::to_string(collection->id().id()) + " for name '" +
-                   name + "'");
-        LOG_TOPIC("0ef12", ERR, arangodb::Logger::FIXME) << msg;
-
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-                                       msg);
-      }
-    } catch (...) {
-      _dataSourceByName.erase(name);
-      throw;
+    if (auto it = _dataSourceById.try_emplace(id, collection); !it.second) {
+      auto const& ptr = it.first->second;
+      TRI_ASSERT(ptr);
+      auto msg = absl::StrCat("collection id '", id.id(),
+                              "' already exist with name '", ptr->name(),
+                              "', guid '", ptr->guid(), "'");
+      LOG_TOPIC("0ef12", ERR, Logger::FIXME) << msg;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                     std::move(msg));
     }
+    ScopeGuard guard2{[&]() noexcept { _dataSourceById.erase(id); }};
 
-    try {
-      auto it2 = _dataSourceByUuid.try_emplace(collection->guid(), collection);
-
-      if (!it2.second) {
-        std::string msg;
-        msg.append(std::string("duplicate entry for collection uuid '") +
-                   collection->guid() + "'");
-        LOG_TOPIC("d4958", ERR, arangodb::Logger::FIXME) << msg;
-
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-                                       msg);
-      }
-    } catch (...) {
-      _dataSourceByName.erase(name);
-      _dataSourceById.erase(cid);
-      throw;
+    if (auto it = _dataSourceByUuid.try_emplace(guid, collection); !it.second) {
+      auto const& ptr = it.first->second;
+      TRI_ASSERT(ptr);
+      auto msg =
+          absl::StrCat("collection guid '", guid, "' already exist with name '",
+                       ptr->name(), "', id '", ptr->id().id(), "'");
+      LOG_TOPIC("d4958", ERR, Logger::FIXME) << msg;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                     std::move(msg));
     }
+    ScopeGuard guard3{[&]() noexcept { _dataSourceByUuid.erase(guid); }};
 
-    try {
-      _collections.emplace_back(collection);
-    } catch (...) {
-      _dataSourceByName.erase(name);
-      _dataSourceById.erase(cid);
-      _dataSourceByUuid.erase(collection->guid());
-      throw;
-    }
+    _collections.emplace_back(collection);
+    guard1.cancel();
+    guard2.cancel();
+    guard3.cancel();
 
+    // TODO should be noexcept?
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
   }
 }
@@ -604,61 +583,50 @@ void TRI_vocbase_t::unregisterCollection(
 void TRI_vocbase_t::registerView(
     bool doLock, std::shared_ptr<arangodb::LogicalView> const& view) {
   TRI_ASSERT(false == !view);
-  auto& name = view->name();
+  auto const& name = view->name();
   auto id = view->id();
-
+  auto const& guid = view->guid();
   {
     RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock,
                                  _dataSourceLockWriteOwner, doLock);
-
-    // check name
-    auto it = _dataSourceByName.emplace(name, view);
-
-    if (!it.second) {
-      LOG_TOPIC("560a6", ERR, arangodb::Logger::FIXME)
-          << "duplicate entry for view name '" << name << "'";
-      LOG_TOPIC("0168f", ERR, arangodb::Logger::FIXME)
-          << "view id " << id << " has same name as already added view "
-          << _dataSourceByName[name]->id();
-
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-    }
-
-    // check id
-    try {
-      auto it2 = _dataSourceById.emplace(id, view);
-
-      if (!it2.second) {
-        _dataSourceByName.erase(name);
-
-        LOG_TOPIC("cb53a", ERR, arangodb::Logger::FIXME)
-            << "duplicate view identifier '" << view->id() << "' for name '"
-            << name << "'";
-
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
-      }
-    } catch (...) {
-      _dataSourceByName.erase(name);
-      throw;
-    }
-
-    try {
-      auto it2 = _dataSourceByUuid.emplace(view->guid(), view);
-
-      if (!it2.second) {
-        LOG_TOPIC("a30ae", ERR, arangodb::Logger::FIXME)
-            << "duplicate view globally-unique identifier '" << view->guid()
-            << "' for name '" << name << "'";
-
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
-      }
-    } catch (...) {
-      _dataSourceByName.erase(name);
-      _dataSourceById.erase(id);
-      throw;
-    }
-
     checkCollectionInvariants();
+    ScopeGuard guard0{[&]() noexcept { checkCollectionInvariants(); }};
+
+    if (auto it = _dataSourceByName.try_emplace(name, view); !it.second) {
+      auto const& ptr = it.first->second;
+      TRI_ASSERT(ptr);
+      auto msg = absl::StrCat("view name '", name, "' already exist with id '",
+                              ptr->id().id(), "', guid '", ptr->guid(), "'");
+      LOG_TOPIC("560a6", ERR, Logger::FIXME) << msg;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                                     std::move(msg));
+    }
+    ScopeGuard guard1{[&]() noexcept { _dataSourceByName.erase(name); }};
+
+    if (auto it = _dataSourceById.try_emplace(id, view); !it.second) {
+      auto const& ptr = it.first->second;
+      TRI_ASSERT(ptr);
+      auto msg =
+          absl::StrCat("view id '", id.id(), "' already exist with name '",
+                       ptr->name(), "', guid '", ptr->guid(), "'");
+      LOG_TOPIC("cb53a", ERR, Logger::FIXME) << msg;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                     std::move(msg));
+    }
+    ScopeGuard guard2{[&]() noexcept { _dataSourceById.erase(id); }};
+
+    if (auto it = _dataSourceByUuid.try_emplace(guid, view); !it.second) {
+      auto const& ptr = it.first->second;
+      TRI_ASSERT(ptr);
+      auto msg =
+          absl::StrCat("view guid '", guid, "' already exist with name '",
+                       ptr->name(), "', id '", ptr->id().id(), "'");
+      LOG_TOPIC("a30ae", ERR, Logger::FIXME) << msg;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                     std::move(msg));
+    }
+    guard1.cancel();
+    guard2.cancel();
   }
 }
 
@@ -901,8 +869,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
 
       engine.getCollectionInfo(*this, collection->id(), builder, false, 0);
 
-      auto res = collection->properties(builder.slice().get("parameters"),
-                                        false);  // always a full-update
+      auto res = collection->properties(builder.slice().get("parameters"));
 
       if (!res.ok()) {
         // TODO: Here we're only returning the errorNumber. The errorMessage is
@@ -955,6 +922,7 @@ void TRI_vocbase_t::stop() {
 void TRI_vocbase_t::shutdown() {
   this->stop();
 
+  _logManager->resignStates();
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   {
@@ -1036,7 +1004,7 @@ void TRI_vocbase_t::inventory(
   TRI_ASSERT(result.isOpenObject());
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
-  std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>>
+  containers::FlatHashMap<DataSourceId, std::shared_ptr<LogicalDataSource>>
       dataSourceById;
 
   // cycle on write-lock
@@ -1047,7 +1015,7 @@ void TRI_vocbase_t::inventory(
   {
     RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
     collections = _collections;
-    dataSourceById = _dataSourceById;
+    dataSourceById = _dataSourceById;  // TODO unused now, remove it?
   }
 
   if (collections.size() > 1) {
@@ -1137,7 +1105,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
 
 /// @brief looks up a collection by name or stringified cid or uuid
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
-    std::string const& nameOrId) const noexcept {
+    std::string_view nameOrId) const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
       lookupDataSource(nameOrId));
@@ -1183,7 +1151,7 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 
 /// @brief looks up a data-source by name
 std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
-    std::string const& nameOrId) const noexcept {
+    std::string_view nameOrId) const noexcept {
   if (nameOrId.empty()) {
     return nullptr;
   }
@@ -1559,22 +1527,20 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   // Check for duplicate name
-  auto it = _dataSourceByName.find(newName);
-
-  if (it != _dataSourceByName.end()) {
+  if (_dataSourceByName.contains(newName)) {
     // new name already in use
     return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
   // get the original pointer and ensure it's a LogicalView
-  auto itr1 = _dataSourceByName.find(oldName);
-
-  if (itr1 == _dataSourceByName.end() ||
-      LogicalDataSource::Category::kView != itr1->second->category()) {
+  auto it1 = _dataSourceByName.find(oldName);
+  if (it1 == _dataSourceByName.end() ||
+      LogicalDataSource::Category::kView != it1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-
-  TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second));
+  // Important to save it here, before emplace in map
+  auto dataSource = it1->second;
+  TRI_ASSERT(std::dynamic_pointer_cast<LogicalView>(dataSource));
   // skip persistence while in recovery since definition already from engine
   if (!engine.inRecovery()) {
     velocypack::Builder build;
@@ -1591,10 +1557,9 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
   }
 
   // stores the parameters on disk
-  auto itr2 = _dataSourceByName.emplace(newName, itr1->second);
-
-  TRI_ASSERT(itr2.second);
-  _dataSourceByName.erase(itr1);
+  auto it2 = _dataSourceByName.emplace(newName, std::move(dataSource));
+  TRI_ASSERT(it2.second);
+  _dataSourceByName.erase(oldName);
 
   checkCollectionInvariants();
 
@@ -1664,24 +1629,21 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   TRI_ASSERT(locker.isLocked());
 
   // Check for duplicate name
-  auto itr = _dataSourceByName.find(newName);
-
-  if (itr != _dataSourceByName.end()) {
+  if (_dataSourceByName.contains(newName)) {
     return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
   // get the original pointer and ensure it's a LogicalCollection
-  auto itr1 = _dataSourceByName.find(oldName);
-
-  if (itr1 == _dataSourceByName.end() ||
-      LogicalDataSource::Category::kCollection != itr1->second->category()) {
+  auto it1 = _dataSourceByName.find(oldName);
+  if (it1 == _dataSourceByName.end() ||
+      LogicalDataSource::Category::kCollection != it1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
+  // Important to save it here, before emplace in map
+  auto dataSource = it1->second;
+  TRI_ASSERT(std::dynamic_pointer_cast<LogicalCollection>(dataSource));
 
-  TRI_ASSERT(
-      std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr1->second));
-
-  auto res = itr1->second->rename(std::string(newName));
+  auto res = it1->second->rename(std::string(newName));
 
   if (!res.ok()) {
     // rename failed
@@ -1699,9 +1661,9 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   }
 
   // The collection is renamed. Now swap cache entries.
-  auto it2 = _dataSourceByName.emplace(newName, itr1->second);
+  auto it2 = _dataSourceByName.emplace(newName, std::move(dataSource));
   TRI_ASSERT(it2.second);
-  _dataSourceByName.erase(itr1);
+  _dataSourceByName.erase(oldName);
 
   checkCollectionInvariants();
   locker.unlock();
@@ -2165,7 +2127,7 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
 /// the result is the object excluding _id, _key and _rev
-void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
+void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
@@ -2174,26 +2136,7 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString)) {
-      builder.add(key.data(), key.size(), it.value());
-    }
-    it.next();
-  }
-}
-
-/// @brief sanitize an object, given as slice, builder must contain an
-/// open object which will remain open. also excludes _from and _to
-void TRI_SanitizeObjectWithEdges(VPackSlice const slice,
-                                 VPackBuilder& builder) {
-  TRI_ASSERT(slice.isObject());
-  VPackObjectIterator it(slice, true);
-  while (it.valid()) {
-    std::string_view key(it.key().stringView());
-    // _id, _key, _rev, _from, _to. minimum size here is 3
-    if (key.size() < 3 || key[0] != '_' ||
-        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
-         key != StaticStrings::RevString && key != StaticStrings::FromString &&
-         key != StaticStrings::ToString)) {
-      builder.add(key.data(), key.length(), it.value());
+      builder.add(key, it.value());
     }
     it.next();
   }

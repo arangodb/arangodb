@@ -28,6 +28,9 @@
 #include <limits>
 #include <numeric>
 
+#include "Futures/Utilities.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
@@ -65,31 +68,99 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
 }
 
 /// @brief commit a transaction
-Result ReplicatedRocksDBTransactionState::doCommit() {
-  Result res;
-  for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-              .commitTransaction();
-    if (!res.ok()) {
-      break;
-    }
-  }
+futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   _hasActiveTrx = false;
-  return res;
+
+  if (!mustBeReplicated()) {
+    Result res;
+    for (auto& col : _collections) {
+      res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                .commitTransaction();
+      if (!res.ok()) {
+        break;
+      }
+    }
+    return res;
+  }
+
+  auto operation =
+      replication2::replicated_state::document::OperationType::kCommit;
+  auto options = replication2::replicated_state::document::ReplicationOptions{
+      .waitForCommit = true};
+  std::vector<futures::Future<Result>> commits;
+  allCollections([&](TransactionCollection& tc) {
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
+    if (rtc.hasOperations()) {
+      // For non-empty transactions we have to write to the log and wait for the
+      // log entry to be committed (in the log sense), before we can commit
+      // locally.
+      auto leader = rtc.leaderState();
+      commits.emplace_back(leader
+                               ->replicateOperation(velocypack::SharedSlice{},
+                                                    operation, id(), options)
+                               .thenValue([&rtc](auto&& res) -> Result {
+                                 return rtc.commitTransaction();
+                               }));
+    } else {
+      // For empty transactions the commit is a no-op, but we still have to call
+      // it to ensure cleanup.
+      rtc.commitTransaction();
+    }
+    return true;
+  });
+
+  return futures::collectAll(commits).thenValue(
+      [](std::vector<futures::Try<Result>>&& results) -> Result {
+        for (auto& res : results) {
+          auto result = res.get();
+          if (result.fail()) {
+            return result;
+          }
+        }
+        return {};
+      });
+}
+
+std::lock_guard<std::mutex> ReplicatedRocksDBTransactionState::lockCommit() {
+  return std::lock_guard(_commitLock);
 }
 
 /// @brief abort and rollback a transaction
 Result ReplicatedRocksDBTransactionState::doAbort() {
-  Result res;
+  _hasActiveTrx = false;
+
+  if (!mustBeReplicated()) {
+    Result res;
+    for (auto& col : _collections) {
+      auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
+      res = rtc.abortTransaction();
+      if (!res.ok()) {
+        break;
+      }
+    }
+    return res;
+  }
+
+  auto operation =
+      replication2::replicated_state::document::OperationType::kAbort;
+  auto options = replication2::replicated_state::document::ReplicationOptions{};
+
+  // The following code has been simplified based on this assertion.
+  TRI_ASSERT(options.waitForCommit == false);
   for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-              .abortTransaction();
-    if (!res.ok()) {
-      break;
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
+    if (rtc.hasOperations()) {
+      auto leader = rtc.leaderState();
+      leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                                 options);
+    }
+    auto r = rtc.abortTransaction();
+    if (r.fail()) {
+      return r;
     }
   }
-  _hasActiveTrx = false;
-  return res;
+
+  return {};
 }
 
 RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
@@ -192,4 +263,9 @@ rocksdb::SequenceNumber ReplicatedRocksDBTransactionState::beginSeq() const {
       });
   TRI_ASSERT(seq != std::numeric_limits<rocksdb::SequenceNumber>::max());
   return seq;
+}
+
+bool ReplicatedRocksDBTransactionState::mustBeReplicated() const {
+  auto isIndexCreation = _hints.has(transaction::Hints::Hint::INDEX_CREATION);
+  return !isReadOnlyTransaction() && !isIndexCreation;
 }

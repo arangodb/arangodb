@@ -106,11 +106,11 @@ class NgramMatchFunctionTest : public ::testing::Test {
       params.emplace_back(*analyzer);
     }
 
-    arangodb::aql::Function f("NGRAM_MATCH", &Functions::NgramMatch);
+    arangodb::aql::Function f("NGRAM_MATCH", &functions::NgramMatch);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
 
-    return Functions::NgramMatch(&expressionContext, node, params);
+    return functions::NgramMatch(&expressionContext, node, params);
   }
 
   void assertNgramMatchFail(size_t line, std::set<int> const& expected_warnings,

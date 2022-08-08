@@ -1,5 +1,4 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -29,18 +28,26 @@
 // tests for streaming transactions
 
 const jsunity = require('jsunity');
+const {
+  fail,
+  assertTrue,
+  assertFalse,
+  assertEqual,
+  assertIdentical,
+  assertNotUndefined,
+} = jsunity.jsUnity.assertions;
 const internal = require('internal');
+const arango = internal.arango;
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').Helper;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const analyzers = require("@arangodb/analyzers");
+const analyzers = require('@arangodb/analyzers');
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
-const _ = require('lodash');
 
-var compareStringIds = function (l, r) {
+const compareStringIds = function (l, r) {
   'use strict';
   var i;
   if (l.length !== r.length) {
@@ -57,7 +64,7 @@ var compareStringIds = function (l, r) {
   return 0;
 };
 
-var sortedKeys = function (col) {
+const sortedKeys = function (col) {
   'use strict';
   var keys = [ ];
 
@@ -2118,7 +2125,7 @@ function transactionOperationsSuite (dbParams) {
       assertEqual(0, c1.count());
       assertEqual([ ], sortedKeys(c1));
     },
-
+    
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with truncate operation
     // //////////////////////////////////////////////////////////////////////////////
@@ -2223,7 +2230,43 @@ function transactionOperationsSuite (dbParams) {
       assertEqual(1, c1.count());
       let doc = c1.document("1");
       assertEqual(doc.updated, 1);
-    }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx with truncate operation
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testTruncateAbort: function () {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
+
+      for (let i = 0; i < 100; ++i) {
+        c1.save({ a: i });
+      }
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+      
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.truncate({ compact: false });
+
+      } catch(err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (trx) {
+          trx.abort();
+        }
+      }
+
+      assertEqual(100, c1.count());
+    },
+
 
   };
 }

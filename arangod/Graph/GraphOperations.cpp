@@ -780,14 +780,11 @@ OperationResult GraphOperations::validateEdgeVertices(
       trx.document(toCollectionName, bT.slice(), options);
 
   // actual result doesn't matter here
-  if (!resultFrom.ok()) {
-    trx.finish(resultFrom.result);
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
-  } else if (!resultTo.ok()) {
-    trx.finish(resultTo.result);
+  if (resultFrom.ok() && resultTo.ok()) {
+    return OperationResult(TRI_ERROR_NO_ERROR, options);
+  } else {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
   }
-  return OperationResult(TRI_ERROR_NO_ERROR, options);
 }
 
 std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(

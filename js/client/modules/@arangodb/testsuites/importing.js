@@ -301,6 +301,24 @@ const impTodos = [{
   type: 'json',
   create: 'false'
 }, {
+  id: 'edgeRewriteOn',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-edges.json')),
+  coll: 'UnitTestsImportEdgeRewriteCollectionOn',
+  type: 'json',
+  create: 'false',
+  "from-collection-prefix": 'UnitTestsImportJson1',
+  "to-collection-prefix": 'UnitTestsImportJson2',
+  "overwrite-collection-prefix": true
+}, {
+  id: 'edgeRewriteOff',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-edges.json')),
+  coll: 'UnitTestsImportEdgeRewriteCollectionOff',
+  type: 'json',
+  create: 'false',
+  "from-collection-prefix": 'UnitTestsImportJson1',
+  "to-collection-prefix": 'UnitTestsImportJson2'
+  /* This tests the default value of overwrite-collection-prefix, by default this value is false */
+}, {
   id: 'unique',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-ignore.json')),
   coll: 'UnitTestsImportIgnore',
@@ -321,6 +339,26 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   removeAttribute: 'a'
+}, {
+  id: 'removeAttributeJSON',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportRemoveAttributeJSON',
+  type: 'json',
+  create: 'true',
+  removeAttribute: 'a'
+}, {
+  id: 'importJSONLarge',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-large.json')),
+  coll: 'UnitTestsImportJsonLarge',
+  type: 'json',
+  create: true,
+}, {
+  id: 'removeAttributeJSONLarge',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-large.json')),
+  coll: 'UnitTestsImportRemoveAttributeJsonLarge',
+  type: 'json',
+  create: true,
+  removeAttribute: 'attribute4'
 }, {
   id: 'createDB',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),

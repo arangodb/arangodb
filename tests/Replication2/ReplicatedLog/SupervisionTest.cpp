@@ -29,8 +29,10 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/Helper/AgencyLogBuilder.h"
 
 #include "velocypack/Parser.h"
 #include "Inspection/VPack.h"
@@ -39,6 +41,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::test;
 
 struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
@@ -209,7 +212,12 @@ TEST_F(SupervisionLogTest, test_log_not_created) {
   EXPECT_TRUE(std::holds_alternative<NoActionPossibleAction>(r));
 }
 
-struct LogSupervisionTest : ::testing::Test {};
+struct LogSupervisionTest : ::testing::Test {
+  LogId const logId = LogId{12};
+  ParticipantFlags const defaultFlags{};
+  LogTargetConfig const defaultConfig{2, 2, true};
+  LogPlanConfig const defaultPlanConfig{2, true};
+};
 
 TEST_F(LogSupervisionTest, test_leader_not_failed) {
   // Leader is not failed and the reboot id is as expected
@@ -290,7 +298,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 1,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -307,6 +315,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
                          .commitStatus = std::nullopt};
 
   current.supervision.emplace(LogCurrentSupervision{});
+  current.supervision->assumedWriteConcern = 3;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -360,7 +369,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -399,24 +408,19 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   checkReplicatedLog(ctx, log, health);
 
-  EXPECT_FALSE(ctx.hasAction());
-  auto const r = ctx.getReport();
+  EXPECT_TRUE(ctx.hasAction());
+  auto const& a = ctx.getAction();
 
-  // TODO: we get two "Waiting for config committed", and the source
-  //       of this report should be made obvious.
-  //       The Third is config change not implemented and this is
-  //       temporary while config changes are implemented.
-  EXPECT_EQ(r.size(), 3);
+  EXPECT_TRUE(std::holds_alternative<NoActionPossibleAction>(a))
+      << fmt::format("{}", a);
+
+  auto const& r = ctx.getReport();
+
+  EXPECT_EQ(r.size(), 1);
 
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
           r[0]));
-  EXPECT_TRUE(
-      std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
-          r[1]));
-  EXPECT_TRUE(
-      std::holds_alternative<LogCurrentSupervision::ConfigChangeNotImplemented>(
-          r[2]));
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
@@ -441,7 +445,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -457,6 +461,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
+  current.supervision->assumedWriteConcern = 3;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -505,7 +510,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -564,4 +569,127 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   auto writeEmptyTermAction = std::get<WriteEmptyTermAction>(r);
 
   ASSERT_EQ(writeEmptyTermAction.minTerm, LogTerm{3});
+}
+
+TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
+  auto const config = LogTargetConfig(3, 3, false);
+  auto const participants = ParticipantsFlagsMap{{"A", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 3);
+}
+
+TEST_F(LogSupervisionTest,
+       test_compute_effective_write_concern_accepts_higher_soft_write_concern) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{
+      {"A", {}}, {"B", {}}, {"C", {}}, {"D", {}}, {"E", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 3);
+}
+
+TEST_F(LogSupervisionTest,
+       test_compute_effective_write_concern_with_all_participants_failed) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{
+      {"A", {}}, {"B", {}}, {"C", {}}, {"D", {}}, {"E", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = false}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 2);
+}
+
+TEST_F(
+    LogSupervisionTest,
+    test_compute_effective_write_concern_with_no_intersection_between_participants_and_health) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{{"A", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 2);
+}
+
+TEST_F(LogSupervisionTest, test_convergence_no_leader_established) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(defaultConfig)
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags)
+      .setTargetVersion(5);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags);
+  log.setPlanLeader("A").setPlanConfig(defaultPlanConfig);
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  {
+    SupervisionContext ctx;
+    checkReplicatedLog(ctx, log.get(), health);
+    EXPECT_FALSE(ctx.hasAction());
+  }
+  log.establishLeadership();
+  {
+    SupervisionContext ctx;
+    checkReplicatedLog(ctx, log.get(), health);
+    EXPECT_TRUE(ctx.hasAction());
+    auto const& r = ctx.getAction();
+    EXPECT_TRUE(std::holds_alternative<ConvergedToTargetAction>(r));
+  }
 }

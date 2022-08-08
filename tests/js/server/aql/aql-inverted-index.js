@@ -1,4 +1,4 @@
-/* global AQL_EXPLAIN*/
+/* global fail, AQL_EXPLAIN*/
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -34,6 +34,7 @@ const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 const useIndexForSort = "use-index-for-sort";
 const sleep = require('internal').sleep;
+const errors = require('internal').errors;
 
 function optimizerRuleInvertedIndexTestSuite() {
   const colName = 'UnitTestInvertedIndexCollection';
@@ -45,15 +46,15 @@ function optimizerRuleInvertedIndexTestSuite() {
       analyzers.save("my_geo", "geojson",{type: 'point'}, ["frequency", "norm", "position"]);
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexUnsorted',
-                       fields: [{name:'data_field'},
+                       fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}]});
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexSorted',
-                       fields: [{name:'data_field'},
+                       fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}],
-                       primarySort:[{field: "count", direction:"desc"}]});
+                        primarySort:{fields:[{field: "count", direction:"desc"}]}});
       let data = [];
       for (let i = 0; i < docs; i++) {
         if (i % 10 === 0) {
@@ -193,6 +194,40 @@ function optimizerRuleInvertedIndexTestSuite() {
         assertTrue(executeRes[i-1].count > executeRes[i].count);
       }
     },
+    testEmptyFields: function() {
+      col.ensureIndex({type: 'inverted',
+                       name: 'AllFieldsEmpty',
+                       includeAllFields:true,
+                       fields: [],
+                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+      col.dropIndex('AllFieldsEmpty');
+      col.ensureIndex({type: 'inverted',
+                       name: 'AllFieldsEmpty2',
+                       includeAllFields:true,
+                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+      col.dropIndex('AllFieldsEmpty2');
+      try {
+        col.ensureIndex({type: 'inverted',
+                       name: 'AllFieldsEmpty3',
+                       includeAllFields:false,
+                       fields: [],
+                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+        fail();
+      } catch(e) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
+      }
+      try {
+        col.ensureIndex({type: 'inverted',
+                       name: 'AllFieldsEmpty4',
+                       includeAllFields:false,
+                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+        fail();
+      } catch(e) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
+      }
+    }
   };
 }
 

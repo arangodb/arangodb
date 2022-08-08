@@ -97,7 +97,7 @@ find_package(Git 1.5.3 REQUIRED)
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "10")
+set(ARANGODB_VERSION_MINOR "11")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -604,11 +604,16 @@ if (MSVC)
   # Increase the reserved stack size for all threads to 4MB
   # Note: this is only _reserved_ memory, not necessarily _committed_ memory
   set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
+  if (MSVC_VERSION VERSION_GREATER_EQUAL 1930)
+    # see https://docs.microsoft.com/en-us/cpp/overview/cpp-conformance-improvements?view=msvc-170#error-on-a-non-dependent-static_assert
+    set(BASE_C_FLAGS "/Zc:static_assert- ${BASE_C_FLAGS}")
+    set(BASE_CXX_FLAGS "/Zc:static_assert- ${BASE_CXX_FLAGS}")
+  endif()
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
-    message(WARNING "ArangoDB requires g++ 10.0 or newer, building with older compiler versions is unsupported")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
+    message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "11.9.9")
     message(WARNING "ArangoDB doesn't support g++ 12.0 yet, building with newer compiler versions is unsupported")
   endif()

@@ -26,14 +26,18 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Meta/utility.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Buffer.h>
+#include <functional>
+#include <span>
 
 namespace arangodb {
 namespace velocypack {
@@ -46,7 +50,10 @@ class Slice;
 class LogicalView : public LogicalDataSource {
  public:
   using ptr = std::shared_ptr<LogicalView>;
-  using CollectionVisitor = std::function<bool(DataSourceId)>;
+  using Indexes = containers::SmallVector<IndexId, 1>;
+  // TODO(MBkkt) fu2::function_view
+  // visitor for map<CollectionId, set<IndexId>>, Indexes is movable
+  using CollectionVisitor = std::function<bool(DataSourceId, Indexes*)>;
 
   static constexpr Category category() noexcept { return Category::kView; }
 
@@ -173,7 +180,7 @@ Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
 
 Result drop(LogicalView const& view) noexcept;
 
-Result properties(LogicalView const& view) noexcept;
+Result properties(LogicalView const& view, bool safe) noexcept;
 
 }  // namespace cluster_helper
 

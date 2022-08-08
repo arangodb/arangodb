@@ -105,6 +105,9 @@ class Features {
   //////////////////////////////////////////////////////////////////////////////
   bool add(irs::string_ref featureName);
 
+  Result fromVelocyPack(VPackSlice slice);
+  void toVelocyPack(VPackBuilder& vpack) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Set to default state with no features
   //////////////////////////////////////////////////////////////////////////////
@@ -154,6 +157,10 @@ class Features {
   }
 
  private:
+  bool hasFeatures(irs::IndexFeatures test) const noexcept {
+    return (test == (_indexFeatures & test));
+  }
+
   FieldFeatures _fieldFeatures{FieldFeatures::NONE};
   irs::IndexFeatures _indexFeatures{irs::IndexFeatures::NONE};
 };  // Features

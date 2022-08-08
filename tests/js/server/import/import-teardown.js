@@ -66,18 +66,24 @@
   db._drop("UnitTestsImportVertex");
   db._drop("UnitTestsImportEdge");
   db._drop("UnitTestsImportEdgeGz");
+  db._drop("UnitTestsImportEdgeRewriteCollectionOn");
+  db._drop("UnitTestsImportEdgeRewriteCollectionOff");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
-  
+  db._drop("UnitTestsImportRemoveAttribute");
+  db._drop("UnitTestsImportRemoveAttributeJSON");
+  db._drop("UnitTestsImportJsonLarge");
+  db._drop("UnitTestsImportRemoveAttributeJsonLarge");
+
   let dbs = ["maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "abc mötor !\" ' & <>", "UnitTestImportCreateDatabase"];
   dbs.forEach((name) => {
     try {
       db._dropDatabase(name);
-    } catch(err) {}
+    } catch (err) {
+    }
   });
 })();
 
 return {
   status: true
 };
-

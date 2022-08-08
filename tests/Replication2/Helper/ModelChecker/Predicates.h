@@ -148,4 +148,59 @@ static inline auto nonExcludedServerHasSnapshot() {
   });
 }
 
+static inline auto
+isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+
+    // If the log has not been planned yet, we don't want to
+    // break off.
+    if (state.replicatedLog and not state.replicatedLog->plan.has_value()) {
+      return true;
+    }
+
+    if (state.replicatedLog and state.replicatedLog->plan and
+        state.replicatedLog->current and
+        state.replicatedLog->current->supervision) {
+      auto const& planConfig =
+          state.replicatedLog->plan->participantsConfig.config;
+      auto const& currentSupervision =
+          *state.replicatedLog->current->supervision;
+
+      return currentSupervision.assumedWriteConcern <=
+             planConfig.effectiveWriteConcern;
+    }
+    return false;
+  });
+}
+
+static inline auto isAssumedWriteConcernLessThanWriteConcernUsedForCommit() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+
+    if (not state.logLeaderWriteConcern) {
+      return true;
+    }
+
+    if (state.replicatedLog and state.replicatedLog->plan and
+        state.replicatedLog->current and
+        state.replicatedLog->current->supervision) {
+      return state.replicatedLog->current->supervision->assumedWriteConcern <=
+             *state.logLeaderWriteConcern;
+    }
+    return false;
+  });
+}
+
+static inline auto isPlannedWriteConcern(bool concern) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan) {
+      return state.replicatedLog->plan->participantsConfig.config.waitForSync ==
+             concern;
+    }
+    return false;
+  });
+}
+
 }  // namespace arangodb::test::mcpreds

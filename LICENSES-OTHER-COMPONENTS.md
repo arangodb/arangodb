@@ -205,6 +205,16 @@ _Enterprise Edition only_
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
+#### is-wsl
+
+* Name: is-wsl
+* Version: 2.2.0
+* Date: 2.12.2020
+* Project Home: https://github.com/sindresorhus/is-wsl
+* License: https://github.com/sindresorhus/is-wsl/blob/main/license
+* License Name: MIT License
+* License Id: MIT
+
 #### Jinja2
 
 * Name: Jinja2 Python Template Engine
@@ -1387,15 +1397,6 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: BSD License
 License Id: BSD
 
-#### expect.js
-
-Name: expect.js
-Version: 0.3.1
-Project Home: https://github.com/LearnBoost/expect.js
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/expect.js/README.md
-License Name: MIT License
-License Id: MIT
-
 #### extendible
 
 Name: extendible
@@ -1918,6 +1919,16 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
+
+#### node-netstat
+
+Name: node-netstat
+Version: 1.8.0 + adjustments for ArangoDB
+Project Home: https://github.com/danielkrainas/node-netstat#readme
+License: http://unlicense.org/UNLICENSE
+License Name: Unlicense / Public Domain
+License Id: -
+
 #### once
 
 Name: once
@@ -2392,15 +2403,6 @@ Name: type-is
 Version: 1.6.16
 Project Home: https://github.com/jshttp/type-is
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/type-is/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### underscore
-
-Name: underscore
-Version: 1.13.1
-Project Home: https://github.com/jashkenas/underscore
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/underscore/LICENSE
 License Name: MIT License
 License Id: MIT
 

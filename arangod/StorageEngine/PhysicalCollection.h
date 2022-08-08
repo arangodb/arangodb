@@ -36,11 +36,13 @@
 #include "StorageEngine/ReplicationIterator.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
+
+#include <boost/container/flat_set.hpp>
 
 namespace arangodb {
 
-class ClusterInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -100,22 +102,22 @@ class PhysicalCollection {
 
   /// @brief determines order of index execution on collection
   struct IndexOrder {
-    bool operator()(const std::shared_ptr<Index>& left,
-                    const std::shared_ptr<Index>& right) const;
+    bool operator()(std::shared_ptr<Index> const& left,
+                    std::shared_ptr<Index> const& right) const;
   };
 
   using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder>;
   /// @brief find index by definition
-  static std::shared_ptr<Index> findIndex(velocypack::Slice const&,
-                                          IndexContainerType const&);
+  static std::shared_ptr<Index> findIndex(velocypack::Slice info,
+                                          IndexContainerType const& indexes);
   /// @brief Find index by definition
-  std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
+  std::shared_ptr<Index> lookupIndex(velocypack::Slice info) const;
 
   /// @brief Find index by iid
-  std::shared_ptr<Index> lookupIndex(IndexId) const;
+  std::shared_ptr<Index> lookupIndex(IndexId idxId) const;
 
   /// @brief Find index by name
-  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+  std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
   /// @brief get list of all indices
   std::vector<std::shared_ptr<Index>> getIndexes() const;
@@ -132,8 +134,8 @@ class PhysicalCollection {
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
-  virtual std::shared_ptr<Index> createIndex(
-      arangodb::velocypack::Slice const& info, bool restore, bool& created) = 0;
+  virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
+                                             bool restore, bool& created) = 0;
 
   virtual bool dropIndex(IndexId iid) = 0;
 
@@ -182,6 +184,12 @@ class PhysicalCollection {
                       IndexIterator::DocumentCallback const& cb,
                       ReadOwnWrites readOwnWrites) const = 0;
 
+  virtual Result lookupDocument(transaction::Methods& trx,
+                                LocalDocumentId token,
+                                velocypack::Builder& builder, bool readCache,
+                                bool fillCache,
+                                ReadOwnWrites readOwnWrites) const = 0;
+
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx,
                             LocalDocumentId const& token,
@@ -193,35 +201,30 @@ class PhysicalCollection {
    * If (options.returnNew == false && !options.silent) result might
    * just contain an object with the '_key' field
    */
-  virtual Result insert(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice newSlice,
-                        arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options) = 0;
+  virtual Result insert(transaction::Methods& trx, RevisionId newRevisionId,
+                        velocypack::Slice newDocument,
+                        OperationOptions const& options) = 0;
 
-  virtual Result update(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice newSlice,
-                        ManagedDocumentResult& result,
-                        OperationOptions& options,
-                        ManagedDocumentResult& previous) = 0;
+  virtual Result update(transaction::Methods& trx,
+                        LocalDocumentId newDocumentId,
+                        RevisionId previousRevisionId,
+                        velocypack::Slice previousDocument,
+                        RevisionId newRevisionId, velocypack::Slice newDocument,
+                        OperationOptions const& options) = 0;
 
-  virtual Result replace(arangodb::transaction::Methods* trx,
-                         arangodb::velocypack::Slice newSlice,
-                         ManagedDocumentResult& result,
-                         OperationOptions& options,
-                         ManagedDocumentResult& previous) = 0;
+  virtual Result replace(transaction::Methods& trx,
+                         LocalDocumentId newDocumentId,
+                         RevisionId previousRevisionId,
+                         velocypack::Slice previousDocument,
+                         RevisionId newRevisionId,
+                         velocypack::Slice newDocument,
+                         OperationOptions const& options) = 0;
 
-  virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                        ManagedDocumentResult& previous,
-                        OperationOptions& options) = 0;
-
-  virtual Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                        ManagedDocumentResult& previous,
-                        OperationOptions& options);
-
-  /// @brief new object for insert, value must have _key set correctly.
-  Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice value,
-                            bool isEdgeCollection, velocypack::Builder& builder,
-                            bool isRestore, RevisionId& revisionId) const;
+  virtual Result remove(transaction::Methods& trx,
+                        LocalDocumentId previousDocumentId,
+                        RevisionId previousRevisionId,
+                        velocypack::Slice previousDocument,
+                        OperationOptions const& options) = 0;
 
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
@@ -235,51 +238,18 @@ class PhysicalCollection {
   virtual uint64_t placeRevisionTreeBlocker(TransactionId transactionId);
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
-  RevisionId newRevisionId() const;
-
  protected:
-  PhysicalCollection(LogicalCollection& collection,
-                     arangodb::velocypack::Slice const& info);
+  PhysicalCollection(LogicalCollection& collection, velocypack::Slice info);
 
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(bool details,
                                arangodb::velocypack::Builder&) = 0;
 
-  // SECTION: Document pre commit preperation
-
-  bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
-
-  /// @brief new object for remove, must have _key set
-  void newObjectForRemove(transaction::Methods* trx, velocypack::Slice oldValue,
-                          velocypack::Builder& builder, bool isRestore,
-                          RevisionId& revisionId) const;
-
-  /// @brief merge two objects for update
-  Result mergeObjectsForUpdate(transaction::Methods* trx,
-                               velocypack::Slice oldValue,
-                               velocypack::Slice newValue,
-                               bool isEdgeCollection, bool mergeObjects,
-                               bool keepNull, velocypack::Builder& builder,
-                               bool isRestore, RevisionId& revisionId) const;
-
-  /// @brief new object for replace
-  Result newObjectForReplace(transaction::Methods* trx,
-                             velocypack::Slice oldValue,
-                             velocypack::Slice newValue, bool isEdgeCollection,
-                             velocypack::Builder& builder, bool isRestore,
-                             RevisionId& revisionId) const;
-
-  bool checkRevision(transaction::Methods* trx, RevisionId expected,
-                     RevisionId found) const;
-
   LogicalCollection& _logicalCollection;
-  ClusterInfo* _ci;
-  bool const _isDBServer;
-  bool const _extendedNames; /* for collections */
 
   mutable basics::ReadWriteLock _indexesLock;
-  mutable std::atomic<std::thread::id>
-      _indexesLockWriteOwner;  // current thread owning '_indexesLock'
+  // current thread owning '_indexesLock'
+  mutable std::atomic<std::thread::id> _indexesLockWriteOwner;
   IndexContainerType _indexes;
 };
 

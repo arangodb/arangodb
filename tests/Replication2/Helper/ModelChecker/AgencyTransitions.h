@@ -64,7 +64,6 @@ struct DBServerSnapshotCompleteAction {
       replication2::replicated_state::StateGeneration generation);
 
   void apply(AgencyState& agency);
-  ;
   auto toString() const -> std::string;
 
   replication2::ParticipantId name;
@@ -104,11 +103,49 @@ struct ReplaceServerTargetState {
   replication2::ParticipantId newServer;
 };
 
+struct ReplaceServerTargetLog {
+  ReplaceServerTargetLog(replication2::ParticipantId oldServer,
+                         replication2::ParticipantId newServer);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  replication2::ParticipantId oldServer;
+  replication2::ParticipantId newServer;
+};
+
 struct SetLeaderInTargetAction {
   SetLeaderInTargetAction(replication2::ParticipantId newLeader);
   void apply(AgencyState& agency) const;
   auto toString() const -> std::string;
   replication2::ParticipantId newLeader;
+};
+
+struct SetWriteConcernAction {
+  SetWriteConcernAction(size_t newWriteConcern);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  size_t newWriteConcern;
+};
+
+struct SetSoftWriteConcernAction {
+  SetSoftWriteConcernAction(size_t newSoftWriteConcern);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  size_t newSoftWriteConcern;
+};
+
+struct SetBothWriteConcernAction {
+  SetBothWriteConcernAction(size_t newWriteConcern, size_t newSoftWriteConcern);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  size_t newWriteConcern;
+  size_t newSoftWriteConcern;
+};
+
+struct SetWaitForSyncAction {
+  SetWaitForSyncAction(bool newWaitForSync);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  bool newWaitForSync;
 };
 
 struct AddLogParticipantAction {
@@ -130,7 +167,10 @@ using AgencyTransition =
                  DBServerSnapshotCompleteAction, DBServerReportTermAction,
                  DBServerCommitConfigAction, KillServerAction,
                  ReplaceServerTargetState, AddLogParticipantAction,
-                 SetLeaderInTargetAction, RemoveLogParticipantAction>;
+                 SetLeaderInTargetAction, RemoveLogParticipantAction,
+                 SetWriteConcernAction, SetSoftWriteConcernAction,
+                 SetBothWriteConcernAction, ReplaceServerTargetLog,
+                 SetWaitForSyncAction>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test

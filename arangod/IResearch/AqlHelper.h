@@ -29,6 +29,7 @@
 #include "Aql/SortCondition.h"
 #include "VelocyPackHelper.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 #include "search/sort.hpp"
 #include "utils/noncopyable.hpp"
@@ -59,6 +60,8 @@ class Methods;  // forward declaration
 }  // namespace transaction
 
 namespace iresearch {
+
+struct IResearchInvertedIndexMeta;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns true if both nodes are equal, false otherwise
@@ -232,21 +235,20 @@ struct AqlValueTraits {
         return SCOPED_VALUE_TYPE_INVALID;
     }
   }
-};  // AqlValueTraits
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct QueryContext
-////////////////////////////////////////////////////////////////////////////////
 struct QueryContext {
-  transaction::Methods* trx;
-  aql::ExecutionPlan const* plan;
-  aql::Ast* ast;
-  aql::ExpressionContext* ctx;
-  irs::index_reader const* index;
-  aql::Variable const* ref;
-  /// @brief allow optimize away/modify some conditions during filter building
+  transaction::Methods* trx{};
+  aql::Ast* ast{};
+  aql::ExpressionContext* ctx{};
+  irs::index_reader const* index{};
+  aql::Variable const* ref{};
+  // Allow optimize away/modify some conditions during filter building
   FilterOptimization filterOptimization{FilterOptimization::MAX};
-};  // QueryContext
+  // The flag is set when a query is dedicated to a search view
+  bool isSearchQuery{true};
+  bool isOldMangling{true};
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ScopedAqlValue
@@ -256,7 +258,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
 
-  static irs::string_ref const& typeString(ScopedValueType type) noexcept;
+  static irs::string_ref typeString(ScopedValueType type) noexcept;
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
@@ -286,6 +288,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   bool isArray() const noexcept { return _type == SCOPED_VALUE_TYPE_ARRAY; }
   bool isDouble() const noexcept { return _type == SCOPED_VALUE_TYPE_DOUBLE; }
   bool isString() const noexcept { return _type == SCOPED_VALUE_TYPE_STRING; }
+  bool isRange() const noexcept { return _type == SCOPED_VALUE_TYPE_RANGE; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes expression specified in the given `node`
   /// @returns true if expression has been executed, false otherwise
@@ -534,8 +537,10 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 /// @brief generates field name from the specified 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
-                             QueryContext const& ctx, bool allowExpansion);
+bool nameFromAttributeAccess(
+    std::string& name, aql::AstNode const& node, QueryContext const& ctx,
+    bool filter, std::span<InvertedIndexField const> fields,
+    std::span<InvertedIndexField const>* subFields = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the specified node is correct attribute access node,
@@ -545,58 +550,6 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
                                          aql::Variable const& ref,
                                          bool allowExpansion) noexcept;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Enumerates all attributes accessed for specified variable in node and
-/// subnodes.
-///        Full path is visited only once e.g. for d.a.b.c.d and variable d
-///        there will be only 1 call with name "a.b.c.d"
-/// @tparam Visitor callable accepting string_view with full attribute name
-/// @param node node to visit
-/// @param ref variable to check for access
-/// @param ctx current query context
-/// @param allowExpansion allow to have [*] in path
-/// @param visitor visitor to apply
-/// @return true if all access were valid and all visitor calls returned true,
-/// false otherwise
-////////////////////////////////////////////////////////////////////////////////
-template<typename Visitor>
-bool nameFromAttributeAccesses(aql::AstNode const* node,
-                               aql::Variable const& ref, bool allowExpansion,
-                               QueryContext const& ctx,
-                               Visitor const& visitor) {
-  if (!node) {
-    return false;
-  }
-  std::string name;
-  switch (node->type) {
-    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:
-    case aql::NODE_TYPE_INDEXED_ACCESS:
-    case aql::NODE_TYPE_EXPANSION:
-      if (checkAttributeAccess(node, ref, allowExpansion) &&
-          nameFromAttributeAccess(name, *node, ctx, allowExpansion)) {
-        if (!visitor(name)) {
-          return false;
-        }
-      } else if (findReference(*node, ref)) {
-        return false;
-      }
-      break;  // nameFromAttributeAccess has already consumed all the path. So
-              // we are done with this branch
-    default: {
-      size_t const n = node->numMembers();
-      for (size_t i = 0; i < n; ++i) {
-        auto const* member = node->getMemberUnchecked(i);
-        TRI_ASSERT(member);
-        if (!nameFromAttributeAccesses(member, ref, allowExpansion, ctx,
-                                       visitor)) {
-          return false;
-        }
-      }
-    }
-  }
-  return true;
-}
 
 }  // namespace iresearch
 }  // namespace arangodb

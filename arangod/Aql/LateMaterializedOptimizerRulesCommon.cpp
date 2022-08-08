@@ -25,6 +25,7 @@
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/IResearchViewNode.h"
 #include "IResearch/IResearchViewSort.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 using namespace arangodb::aql;
 
@@ -165,7 +166,7 @@ bool getReferencedAttributes(AstNode* node, Variable const* variable,
 
 template<bool indexDataOnly, typename Attrs>
 bool attributesMatch(
-    iresearch::IResearchViewSort const& primarySort,
+    iresearch::IResearchSortBase const& primarySort,
     iresearch::IResearchViewStoredValues const& storedValues, Attrs& attrs,
     std::vector<std::vector<ColumnVariant<indexDataOnly>>>& usedColumnsCounter,
     size_t columnsCount) {
@@ -250,7 +251,7 @@ void setAttributesMaxMatchedColumns(
         f.afData->field = f.field;
         // if assertion below is violated consider adding proper i -> columnNum
         // conversion for filling f.afData->columnNumber
-        static_assert((-1) == iresearch::IResearchViewNode::SortColumnNumber,
+        static_assert((-1) == iresearch::IResearchViewNode::kSortColumnNumber,
                       "Value is no more valid for such implementation");
         f.afData->columnNumber = i - 1;
         f.afData->postfix = std::move(f.postfix);
@@ -328,8 +329,8 @@ template void latematerialized::setAttributesMaxMatchedColumns<true>(
 template bool latematerialized::attributesMatch<
     true, std::vector<latematerialized::AttributeAndField<
               latematerialized::IndexFieldData>>>(
-    iresearch::IResearchViewSort const& primarySort,
-    iresearch::IResearchViewStoredValues const& storedValues,
+    arangodb::iresearch::IResearchSortBase const& primarySort,
+    arangodb::iresearch::IResearchViewStoredValues const& storedValues,
     std::vector<
         latematerialized::AttributeAndField<latematerialized::IndexFieldData>>&
         attrs,
@@ -339,8 +340,8 @@ template bool latematerialized::attributesMatch<
 template bool latematerialized::attributesMatch<
     false, std::vector<latematerialized::AttributeAndField<
                latematerialized::AstAndColumnFieldData>>>(
-    iresearch::IResearchViewSort const& primarySort,
-    iresearch::IResearchViewStoredValues const& storedValues,
+    arangodb::iresearch::IResearchSortBase const& primarySort,
+    arangodb::iresearch::IResearchViewStoredValues const& storedValues,
     std::vector<latematerialized::AttributeAndField<
         latematerialized::AstAndColumnFieldData>>& attrs,
     std::vector<std::vector<ColumnVariant<false>>>& usedColumnsCounter,

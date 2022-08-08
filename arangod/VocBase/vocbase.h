@@ -39,6 +39,7 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
+#include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -139,12 +140,15 @@ struct TRI_vocbase_t {
   std::vector<std::shared_ptr<arangodb::LogicalCollection>>
       _deadCollections;  // collections dropped that can be removed later
 
-  std::unordered_map<arangodb::DataSourceId,
-                     std::shared_ptr<arangodb::LogicalDataSource>>
+  arangodb::containers::FlatHashMap<
+      arangodb::DataSourceId,
+      std::shared_ptr<arangodb::LogicalDataSource>>
       _dataSourceById;  // data-source by id
-  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>>
+  arangodb::containers::FlatHashMap<
+      std::string, std::shared_ptr<arangodb::LogicalDataSource>>
       _dataSourceByName;  // data-source by name
-  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>>
+  arangodb::containers::FlatHashMap<
+      std::string, std::shared_ptr<arangodb::LogicalDataSource>>
       _dataSourceByUuid;  // data-source by uuid
   mutable arangodb::basics::ReadWriteLock
       _dataSourceLock;  // data-source iterator lock
@@ -323,7 +327,7 @@ struct TRI_vocbase_t {
 
   /// @brief looks up a collection by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
-      std::string const& nameOrId) const noexcept;
+      std::string_view nameOrId) const noexcept;
 
   /// @brief looks up a collection by uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
@@ -335,7 +339,7 @@ struct TRI_vocbase_t {
 
   /// @brief looks up a data-source by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(
-      std::string const& nameOrId) const noexcept;
+      std::string_view nameOrId) const noexcept;
 
   /// @brief looks up a replicated log by identifier
   std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant>
@@ -500,7 +504,5 @@ struct TRI_vocbase_t {
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
-void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
+void TRI_SanitizeObject(arangodb::velocypack::Slice slice,
                         arangodb::velocypack::Builder& builder);
-void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
-                                 arangodb::velocypack::Builder& builder);

@@ -23,6 +23,7 @@
 
 #include "Supervision.h"
 
+#include <cstddef>
 #include <memory>
 
 #include "Agency/AgencyPaths.h"
@@ -44,6 +45,16 @@ namespace paths = arangodb::cluster::paths::aliases;
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
+
+auto computeEffectiveWriteConcern(LogTargetConfig const& config,
+                                  ParticipantsFlagsMap const& participants,
+                                  ParticipantsHealth const& health) -> size_t {
+  auto const numberNotFailedParticipants =
+      health.numberNotIsFailedOf(participants);
+
+  return std::max(config.writeConcern, std::min(numberNotFailedParticipants,
+                                                config.softWriteConcern));
+}
 
 auto isConfigurationCommitted(Log const& log) -> bool {
   if (!log.plan) {
@@ -207,24 +218,29 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
+  if (!current.supervision.has_value()) {
+    return;
+  }
+  ADB_PROD_ASSERT(current.supervision.has_value());
+
   if (currentTerm.leader) {
     return;
   }
 
   // Check whether there are enough participants to reach a quorum
   if (plan.participantsConfig.participants.size() + 1 <=
-      plan.participantsConfig.config.effectiveWriteConcern) {
+      current.supervision->assumedWriteConcern) {
     ctx.reportStatus<LogCurrentSupervision::LeaderElectionImpossible>();
     ctx.createAction<NoActionPossibleAction>();
     return;
   }
 
-  TRI_ASSERT(plan.participantsConfig.participants.size() + 1 >
-             plan.participantsConfig.config.effectiveWriteConcern);
+  ADB_PROD_ASSERT(plan.participantsConfig.participants.size() + 1 >
+                  current.supervision->assumedWriteConcern);
 
   auto const requiredNumberOfOKParticipants =
       plan.participantsConfig.participants.size() + 1 -
-      plan.participantsConfig.config.effectiveWriteConcern;
+      current.supervision->assumedWriteConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
   auto election = runElectionCampaign(
@@ -339,14 +355,16 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
-  if (!isConfigurationCommitted(log)) {
-    ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
-    return;
-  }
   auto const& committedParticipants =
       current.leader->committedParticipantsConfig->participants;
 
   if (!target.participants.contains(leader.serverId)) {
+    if (!isConfigurationCommitted(log)) {
+      ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+      ctx.createAction<NoActionPossibleAction>();
+      return;
+    }
+
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
         current.leader->serverId,
         current.leader->committedParticipantsConfig->participants);
@@ -510,20 +528,13 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
     } else {
       auto leader = pickLeader(target.leader, target.participants, health,
                                log.target.id.id());
-      auto config = LogPlanConfig(target.config.writeConcern,
-                                  target.config.softWriteConcern,
-                                  target.config.waitForSync);
+      auto effectiveWriteConcern = computeEffectiveWriteConcern(
+          target.config, target.participants, health);
+      auto config =
+          LogPlanConfig(effectiveWriteConcern, target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
                                            config, leader);
     }
-  }
-}
-
-auto checkCurrentExists(SupervisionContext& ctx, Log const& log) -> void {
-  // If the Current subtree does not exist yet, create it by writing
-  // a message into it.
-  if (!log.current || !log.current->supervision) {
-    ctx.createAction<CurrentNotAvailableAction>();
   }
 }
 
@@ -594,6 +605,7 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
       } else {
         // still waiting
         ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+        ctx.createAction<NoActionPossibleAction>();
       }
     }
   }
@@ -624,9 +636,75 @@ auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
   }
 }
 
-auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
+auto checkConfigChanged(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
-  ctx.reportStatus<LogCurrentSupervision::ConfigChangeNotImplemented>();
+  if (!log.plan.has_value() || !log.current.has_value()) {
+    return;
+  }
+  ADB_PROD_ASSERT(log.plan.has_value());
+  ADB_PROD_ASSERT(log.current.has_value());
+
+  auto const& target = log.target;
+  auto const& plan = *log.plan;
+  auto const& current = *log.current;
+
+  ADB_PROD_ASSERT(current.supervision.has_value());
+
+  // Check write concern
+  auto effectiveWriteConcern = computeEffectiveWriteConcern(
+      target.config, plan.participantsConfig.participants, health);
+
+  if (effectiveWriteConcern !=
+      plan.participantsConfig.config.effectiveWriteConcern) {
+    ctx.createAction<UpdateEffectiveAndAssumedWriteConcernAction>(
+        effectiveWriteConcern,
+        std::min(effectiveWriteConcern,
+                 current.supervision->assumedWriteConcern));
+
+    return;
+  }
+
+  // Wait for sync
+  if (target.config.waitForSync != plan.participantsConfig.config.waitForSync) {
+    // FIXME: assumedWaitForSync does not change here.
+    ctx.createAction<UpdateWaitForSyncAction>(
+        target.config.waitForSync, current.supervision->assumedWaitForSync);
+    return;
+  }
+}
+
+auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
+  if (!log.plan.has_value() || !log.current.has_value()) {
+    return;
+  }
+  ADB_PROD_ASSERT(log.plan.has_value());
+  ADB_PROD_ASSERT(log.current.has_value());
+
+  auto const& plan = *log.plan;
+  auto const& current = *log.current;
+
+  ADB_PROD_ASSERT(current.supervision.has_value());
+
+  if (!current.leader.has_value() ||
+      !current.leader->committedParticipantsConfig.has_value()) {
+    return;
+  }
+
+  if (plan.participantsConfig.generation ==
+      current.leader->committedParticipantsConfig->generation)
+
+    if (plan.participantsConfig.config.effectiveWriteConcern !=
+        current.supervision->assumedWriteConcern) {
+      // update assumedWriteConcern
+      ctx.createAction<SetAssumedWriteConcernAction>(
+          plan.participantsConfig.config.effectiveWriteConcern);
+    }
+
+  if (plan.participantsConfig.config.waitForSync !=
+      current.supervision->assumedWaitForSync) {
+    ctx.createAction<SetAssumedWaitForSyncAction>(
+        plan.participantsConfig.config.waitForSync);
+  }
 }
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {
@@ -637,6 +715,19 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
   }
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
+
+  if (!current.leader.has_value()) {
+    return;
+  }
+
+  if (log.plan->participantsConfig.generation !=
+      current.leader->committedParticipantsConfig->generation) {
+    return;
+  }
+
+  if (!current.leader->leadershipEstablished) {
+    return;
+  }
 
   if (target.version.has_value() &&
       (!current.supervision.has_value() ||
@@ -669,11 +760,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // we can only report back that this log cannot be created.
   checkLogExists(ctx, log, health);
 
-  // FIXME: This is probably not necessary, as all other check functions should
-  //        check whether current is available (and not do anything if it is
-  //        not)
-  checkCurrentExists(ctx, log);
-
   // If currentTerm's leader entry does not have a value,
   // make sure a leader is elected.
   checkLeaderPresent(ctx, log, health);
@@ -682,6 +768,9 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // does not have a leader.
   // In the next round this will lead to a leadership election.
   checkLeaderHealthy(ctx, log, health);
+
+  checkConfigChanged(ctx, log, health);
+  checkConfigCommitted(ctx, log);
 
   // Check whether a participant was added in Target that is not in Plan.
   // If so, add it to Plan.
@@ -718,9 +807,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // If the configuration differs between Target and Plan,
   // apply the new configuration.
   checkParticipantWithFlagsToUpdate(ctx, log, health);
-
-  // TODO: This has not been implemented yet!
-  checkConfigUpdated(ctx, log, health);
 
   // Check whether we have converged, and if so, report and set version
   // to target version
@@ -854,15 +940,12 @@ auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
                    .end();
   }
 
-  return envelope
-      .write()
-      // this is here to trigger all waitForPlan, even if we only
-      // update current.
-      .inc(paths::plan()->version()->str())
+  return envelope.write()
       .cond(actx.hasModificationFor<LogPlanSpecification>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx).emplace_object(
-                  planPath, [&](VPackBuilder& builder) {
+              return std::move(trx)
+                  .inc(paths::plan()->version()->str())
+                  .emplace_object(planPath, [&](VPackBuilder& builder) {
                     velocypack::serialize(
                         builder, actx.getValue<LogPlanSpecification>());
                   });

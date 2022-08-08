@@ -55,6 +55,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -116,6 +117,10 @@ struct ShardStatistics {
 };
 
 namespace {
+
+std::string const kMetricsServerId = "Plan/Metrics/ServerId";
+std::string const kMetricsRebootId = "Plan/Metrics/RebootId";
+
 void addToShardStatistics(arangodb::ShardStatistics& stats,
                           containers::FlatHashSet<std::string>& servers,
                           arangodb::velocypack::Slice databaseSlice,
@@ -518,7 +523,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 
 auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
-    ClusterCollectionCreationInfo const& info)
+    ClusterCollectionCreationInfo const& info, std::string const& databaseName)
     -> replication2::replicated_state::agency::Target {
   using namespace replication2::replicated_state;
 
@@ -527,7 +532,8 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters = document::DocumentCoreParameters{info.collectionID};
+  auto parameters =
+      document::DocumentCoreParameters{info.collectionID, databaseName};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
@@ -1155,11 +1161,16 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  // Ensure views are being created BEFORE collections to allow
-  // links find them
+  // Since we have few types of view requiring initialization we perform
+  // dedicated loop to ensure database involved are properly cleared
+  for (auto const& database : changeSet.dbs) {
+    // TODO Why database name can be emtpy
+    if (!database.first.empty()) {
+      _newPlannedViews.erase(database.first);
+    }
+  }
   // Immediate children of "Views" are database names, then ids
   // of views, then one JSON object with the description:
-
   // "Plan":{"Views": {
   //  "_system": {
   //    "654321": {
@@ -1171,100 +1182,110 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   //  }}
-
-  // Now the same for views: // TODO change
-  for (auto const& database : changeSet.dbs) {
-    if (database.first.empty()) {  // Rest of plan
-      continue;
-    }
-    auto const& databaseName = database.first;
-    _newPlannedViews.erase(databaseName);  // clear views for this database
-    std::initializer_list<std::string_view> const viewsPath{
-        AgencyCommHelper::path(), "Plan", "Views", databaseName};
-    auto viewsSlice = database.second->slice()[0];
-    if (!viewsSlice.hasKey(viewsPath)) {
-      continue;
-    }
-    viewsSlice = viewsSlice.get(viewsPath);
-
-    auto* vocbase = databaseFeature.lookupDatabase(databaseName);
-
-    if (!vocbase) {
-      // No database with this name found.
-      // We have an invalid state here.
-      LOG_TOPIC("f105f", WARN, Logger::AGENCY)
-          << "No database '" << databaseName << "' found,"
-          << " corresponding view will be ignored for now and the "
-          << "invalid information will be repaired. VelocyPack: "
-          << viewsSlice.toJson();
-      // cannot find vocbase for defined views (allow empty views for missing
-      // vocbase)
-      planValid &= !viewsSlice.length();
-      continue;
-    }
-
-    for (auto const& viewPairSlice :
-         velocypack::ObjectIterator(viewsSlice, true)) {
-      auto const& viewSlice = viewPairSlice.value;
-
-      if (!viewSlice.isObject()) {
-        LOG_TOPIC("2487b", INFO, Logger::AGENCY)
-            << "View entry is not a valid json object."
-            << " The view will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << viewSlice.toJson();
+  auto ensureViews = [&](std::string_view type) {
+    for (auto const& database : changeSet.dbs) {
+      // TODO Why database name can be emtpy
+      if (database.first.empty()) {  // Rest of plan
+        continue;
+      }
+      auto const& databaseName = database.first;
+      std::initializer_list<std::string_view> const viewsPath{
+          AgencyCommHelper::path(), "Plan", "Views", databaseName};
+      auto viewsSlice = database.second->slice()[0];
+      viewsSlice = viewsSlice.get(viewsPath);
+      if (viewsSlice.isNone()) {
         continue;
       }
 
-      auto const viewId = viewPairSlice.key.copyString();
+      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
-      try {
-        LogicalView::ptr view;
-        auto res =
-            LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
+      if (!vocbase) {
+        // No database with this name found.
+        // We have an invalid state here.
+        LOG_TOPIC("f105f", WARN, Logger::AGENCY)
+            << "No database '" << databaseName << "' found,"
+            << " corresponding view will be ignored for now and the "
+            << "invalid information will be repaired. VelocyPack: "
+            << viewsSlice.toJson();
+        // cannot find vocbase for defined views (allow empty views for missing
+        // vocbase)
+        planValid &= !viewsSlice.length();
+        continue;
+      }
 
-        if (!res.ok() || !view) {
-          LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
-              << "Failed to create view '" << viewId
-              << "'. The view will be ignored for now and the invalid "
+      for (auto const& viewPairSlice :
+           velocypack::ObjectIterator(viewsSlice, true)) {
+        auto const& viewSlice = viewPairSlice.value;
+
+        if (!viewSlice.isObject()) {
+          LOG_TOPIC("2487b", INFO, Logger::AGENCY)
+              << "View entry is not a valid json object."
+              << " The view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: "
               << viewSlice.toJson();
-          planValid = false;  // view creation failure
           continue;
         }
+        auto const typeSlice = viewSlice.get(StaticStrings::DataSourceType);
+        if (!typeSlice.isString() || typeSlice.stringView() != type) {
+          continue;
+        }
+        auto const viewId = viewPairSlice.key.copyString();
 
-        auto& views = _newPlannedViews[databaseName];
+        try {
+          LogicalView::ptr view;
+          auto res =
+              LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
 
-        // register with guid/id/name
-        views.reserve(views.size() + 3);
-        views[viewId] = view;
-        views[view->name()] = view;
-        views[view->guid()] = view;
+          if (!res.ok() || !view) {
+            LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
+                << "Failed to create view '" << viewId
+                << "'. The view will be ignored for now and the invalid "
+                << "information will be repaired. VelocyPack: "
+                << viewSlice.toJson();
+            planValid = false;  // view creation failure
+            continue;
+          }
 
-      } catch (std::exception const& ex) {
-        // The Plan contains invalid view information.
-        // This should not happen in healthy situations.
-        // If it happens in unhealthy situations the
-        // cluster should not fail.
-        LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
-            << "Failed to load information for view '" << viewId
-            << "': " << ex.what() << ". invalid information in Plan. The "
-            << "view will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << viewSlice.toJson();
-      } catch (...) {
-        // The Plan contains invalid view information.
-        // This should not happen in healthy situations.
-        // If it happens in unhealthy situations the
-        // cluster should not fail.
-        LOG_TOPIC("660bf", ERR, Logger::AGENCY)
-            << "Failed to load information for view '" << viewId
-            << ". invalid information in Plan. The view will "
-            << "be ignored for now and the invalid information will "
-            << "be repaired. VelocyPack: " << viewSlice.toJson();
+          auto& views = _newPlannedViews[databaseName];
+
+          // register with guid/id/name
+          // TODO Maybe assert view.id == view.planId == viewId?
+          // In that case we can use map<uint64_t, ...> for mapping id -> view
+          // and map<string_view, ...> for name/guid -> view
+          views.reserve(views.size() + 3);
+          views[viewId] = view;
+          views[view->name()] = view;
+          views[view->guid()] = view;
+        } catch (std::exception const& ex) {
+          // The Plan contains invalid view information.
+          // This should not happen in healthy situations.
+          // If it happens in unhealthy situations the
+          // cluster should not fail.
+          LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
+              << "Failed to load information for view '" << viewId
+              << "': " << ex.what() << ". invalid information in Plan. The "
+              << "view will be ignored for now and the invalid "
+              << "information will be repaired. VelocyPack: "
+              << viewSlice.toJson();
+        } catch (...) {
+          // The Plan contains invalid view information.
+          // This should not happen in healthy situations.
+          // If it happens in unhealthy situations the
+          // cluster should not fail.
+          LOG_TOPIC("660bf", ERR, Logger::AGENCY)
+              << "Failed to load information for view '" << viewId
+              << ". invalid information in Plan. The view will "
+              << "be ignored for now and the invalid information will "
+              << "be repaired. VelocyPack: " << viewSlice.toJson();
+        }
       }
     }
-  }
+  };
+
+  // Ensure "arangosearch" views are being created BEFORE collections
+  // to allow collection's links find them
+  ensureViews(iresearch::StaticStrings::ViewType);
+
   // "Plan":{"Analyzers": {
   //  "_system": {
   //    "Revision": 0,
@@ -1325,7 +1346,6 @@ void ClusterInfo::loadPlan() {
 
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
-
   // "Plan":{"Collections": {
   //  "_system": {
   //    "3010001": {
@@ -1614,6 +1634,12 @@ void ClusterInfo::loadPlan() {
     }
     newCollections.insert_or_assign(databaseName,
                                     std::move(databaseCollections));
+  }
+
+  // Ensure "search" views are being created AFTER collections
+  // to allow views find collection's inverted indexes
+  if (ServerState::instance()->isCoordinator()) {
+    ensureViews(iresearch::StaticStrings::SearchType);
   }
 
   // And now for replicated logs
@@ -1968,7 +1994,7 @@ void ClusterInfo::loadCurrent() {
   _current.swap(newCurrent);
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
-  LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
       << "Updating current in ClusterInfo: version=" << changeSet.version
       << " index=" << _currentIndex;
 
@@ -3274,7 +3300,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        auto spec = createDocumentStateSpec(shardId, serverIds, info);
+        auto spec =
+            createDocumentStateSpec(shardId, serverIds, info, databaseName);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
@@ -4003,6 +4030,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
            VPackValue(info->usesRevisionsAsDocumentIds()));
   temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
+  temp.add(VPackValue(StaticStrings::ComputedValues));
+  info->computedValuesToVelocyPack(temp);
   temp.add(VPackValue(StaticStrings::Schema));
   info->schemaToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
@@ -4505,6 +4534,101 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
   } while (true);
 
   return Result(TRI_ERROR_NO_ERROR);
+}
+
+void ClusterInfo::initMetricsState() {
+  auto rebootId = ServerState::instance()->getRebootId().value();
+  auto serverId = ServerState::instance()->getId();
+
+  VPackBuilder builderRebootId;
+  builderRebootId.add(VPackValue{rebootId});
+  VPackBuilder builderServerId;
+  builderServerId.add(VPackValue{serverId});
+
+  AgencyWriteTransaction const write{
+      {{kMetricsRebootId, AgencyValueOperationType::SET,
+        builderRebootId.slice()},
+       {kMetricsServerId, AgencyValueOperationType::SET,
+        builderServerId.slice()}},
+      {{kMetricsRebootId, AgencyPrecondition::Type::EMPTY, true},
+       {kMetricsServerId, AgencyPrecondition::Type::EMPTY, true}}};
+  AgencyComm ac{_server};
+  while (!server().isStopping()) {
+    auto const r = ac.sendTransactionWithFailover(write);
+    if (r.successful() ||
+        r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+      return;
+    }
+    LOG_TOPIC("bfdc3", WARN, Logger::CLUSTER)
+        << "Failed to self-propose leader with httpCode: " << r.httpCode();
+  }
+}
+
+ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
+  auto& ac = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [result, index] = ac.read({AgencyCommHelper::path(kMetricsServerId),
+                                  AgencyCommHelper::path(kMetricsRebootId)});
+  auto data = result->slice().at(0).get(std::initializer_list<std::string_view>{
+      AgencyCommHelper::path(), "Plan", "Metrics"});
+  auto leaderRebootId = data.get("RebootId").getNumber<uint64_t>();
+  auto leaderServerId = data.get("ServerId").stringView();
+  auto ourRebootId = ServerState::instance()->getRebootId().value();
+  auto ourServerId = ServerState::instance()->getId();
+  if (wantLeader) {
+    // remove old callback (with _metricsGuard call)
+    // then store new callback or understand we are leader
+    _metricsGuard = {};
+  }
+  if (ourRebootId == leaderRebootId && ourServerId == leaderServerId) {
+    return {std::nullopt};
+  }
+  if (wantLeader) {
+    _metricsGuard = _rebootTracker.callMeOnChange(
+        {std::string{leaderServerId}, RebootId{leaderRebootId}},
+        [this, leaderRebootId, serverId = std::string{leaderServerId}] {
+          proposeMetricsLeader(leaderRebootId, serverId);
+        },
+        "Try to propose current server as a new leader for cluster metrics");
+  }
+  return {std::string{leaderServerId}};
+}
+
+void ClusterInfo::proposeMetricsLeader(uint64_t oldRebootId,
+                                       std::string_view oldServerId) {
+  AgencyComm ac{_server};
+  auto rebootId = ServerState::instance()->getRebootId().value();
+  auto serverId = ServerState::instance()->getId();
+
+  VPackBuilder builderOldRebootId;
+  builderOldRebootId.add(VPackValue{oldRebootId});
+  VPackBuilder builderOldServerId;
+  builderOldServerId.add(VPackValue{oldServerId});
+  VPackBuilder builderRebootId;
+  builderRebootId.add(VPackValue{rebootId});
+  VPackBuilder builderServerId;
+  builderServerId.add(VPackValue{serverId});
+
+  AgencyWriteTransaction const write{
+      {{kMetricsRebootId, AgencyValueOperationType::SET,
+        builderRebootId.slice()},
+       {kMetricsServerId, AgencyValueOperationType::SET,
+        builderServerId.slice()}},
+      {{kMetricsRebootId, AgencyPrecondition::Type::VALUE,
+        builderOldRebootId.slice()},
+       {kMetricsServerId, AgencyPrecondition::Type::VALUE,
+        builderOldServerId.slice()}}};
+  auto const r = ac.sendTransactionWithFailover(write);
+  if (r.successful()) {
+    return;
+  }
+  if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
+    LOG_TOPIC("bfdc5", TRACE, Logger::CLUSTER)
+        << "Failed to self-propose leader";
+  } else {
+    // We don't need retry here, because we have retry in ClusterMetricsFeature
+    LOG_TOPIC("bfdc6", WARN, Logger::CLUSTER)
+        << "Failed to self-propose leader with httpCode: " << r.httpCode();
+  }
 }
 
 AnalyzerModificationTransaction::Ptr
@@ -6822,10 +6946,12 @@ void ClusterInfo::SyncerThread::beginShutdown() {
 }
 
 bool ClusterInfo::SyncerThread::start() {
+  ThreadNameFetcher nameFetcher;
+  std::string_view name = nameFetcher.get();
+
   LOG_TOPIC("38256", DEBUG, Logger::CLUSTER)
       << "Starting "
-      << (currentThreadName() != nullptr ? currentThreadName()
-                                         : "by unknown thread");
+      << (name.empty() ? std::string_view("by unknown thread") : name);
   return Thread::start();
 }
 
@@ -7117,13 +7243,12 @@ void ClusterInfo::triggerWaiting(
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp =
-        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !_server.isStopping()) {
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp] { pp->setValue(Result()); });
+      scheduler->queue(
+          RequestLane::CLUSTER_INTERNAL,
+          [pp = std::move(pit->second)]() mutable { pp.setValue(Result()); });
     } else {
-      pp->setValue(Result(_syncerShutdownCode));
+      pit->second.setValue(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }

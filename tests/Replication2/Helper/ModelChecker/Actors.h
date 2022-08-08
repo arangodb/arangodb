@@ -180,9 +180,20 @@ struct ReplaceAnyServerActor : OnceActorBase<ReplaceAnyServerActor> {
 
   replication2::ParticipantId newServer;
 };
+
 struct ReplaceSpecificServerActor : OnceActorBase<ReplaceSpecificServerActor> {
   explicit ReplaceSpecificServerActor(replication2::ParticipantId oldServer,
                                       replication2::ParticipantId newServer);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  replication2::ParticipantId oldServer;
+  replication2::ParticipantId newServer;
+};
+
+struct ReplaceSpecificLogServerActor
+    : OnceActorBase<ReplaceSpecificLogServerActor> {
+  explicit ReplaceSpecificLogServerActor(replication2::ParticipantId oldServer,
+                                         replication2::ParticipantId newServer);
   auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
 
   replication2::ParticipantId oldServer;
@@ -194,6 +205,63 @@ struct SetLeaderActor : OnceActorBase<SetLeaderActor> {
   auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
 
   replication2::ParticipantId newLeader;
+};
+
+struct SetWriteConcernActor : OnceActorBase<SetWriteConcernActor> {
+  explicit SetWriteConcernActor(size_t writeConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newWriteConcern;
+};
+
+struct SetSoftWriteConcernActor : OnceActorBase<SetSoftWriteConcernActor> {
+  explicit SetSoftWriteConcernActor(size_t softWriteConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newSoftWriteConcern;
+};
+
+struct SetBothWriteConcernActor : OnceActorBase<SetBothWriteConcernActor> {
+  explicit SetBothWriteConcernActor(size_t writeConcern,
+                                    size_t softWriteConcern);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  size_t newWriteConcern;
+  size_t newSoftWriteConcern;
+};
+
+struct ModifySoftWCMultipleStepsActor
+    : ActorBase<ModifySoftWCMultipleStepsActor> {
+  ModifySoftWCMultipleStepsActor(size_t setInvalidWc, size_t resetValidWc);
+
+  size_t setInvalidWC;
+  size_t resetValidWC;
+
+  enum class State { INIT, SET_TO_INVALID, RESET };
+
+  struct InternalState {
+    State state = State::INIT;
+
+    friend auto operator==(InternalState const&, InternalState const&) noexcept
+        -> bool = default;
+    friend auto hash_value(InternalState const& i) noexcept -> std::size_t {
+      return boost::hash_value(i.state);
+    }
+    friend auto operator<<(std::ostream& os, InternalState const& s) noexcept
+        -> std::ostream& {
+      return os << "state = " << static_cast<int>(s.state);
+    }
+  };
+
+  auto expand(AgencyState const& s, InternalState const& i)
+      -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>;
+};
+
+struct SetWaitForSyncActor : OnceActorBase<SetWaitForSyncActor> {
+  explicit SetWaitForSyncActor(bool waitForSync);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  bool newWaitForSync;
 };
 
 }  // namespace arangodb::test

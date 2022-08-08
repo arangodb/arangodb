@@ -85,7 +85,8 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() = default;
 
 /// @brief doToVelocyPack, for CollectNode
-void CollectNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void CollectNode::doToVelocyPack(VPackBuilder& nodes,
+                                 unsigned /*flags*/) const {
   // group variables
   nodes.add(VPackValue("groups"));
   {
@@ -476,12 +477,13 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
@@ -520,12 +522,13 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
@@ -544,7 +547,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::COLLECT:
       return true;
@@ -570,6 +573,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;

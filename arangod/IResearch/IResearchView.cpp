@@ -386,7 +386,7 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
 
 bool IResearchView::apply(transaction::Methods& trx) {
   // called from IResearchView when this view is added to a transaction
-  return trx.addStatusChangeCallback(&_trxCallback);  // add shapshot
+  return trx.addStatusChangeCallback(&_trxCallback);  // add snapshot
 }
 
 Result IResearchView::dropImpl() {
@@ -525,7 +525,7 @@ Result IResearchView::properties(velocypack::Slice slice, bool isUserRequest,
   if (ServerState::instance()->isSingleServer()) {
     return storage_helper::properties(*this, false);
   } else {
-    return cluster_helper::properties(*this);
+    return cluster_helper::properties(*this, false);
   }
 }
 
@@ -666,7 +666,7 @@ bool IResearchView::visitCollections(
     LogicalView::CollectionVisitor const& visitor) const {
   std::shared_lock lock{_mutex};
   for (auto& entry : _links) {
-    if (!visitor(entry.first)) {
+    if (!visitor(entry.first, nullptr)) {
       return false;
     }
   }
@@ -685,8 +685,8 @@ LinkLock IResearchView::linkLock(
 
 ViewSnapshot::Links IResearchView::getLinks() const noexcept {
   ViewSnapshot::Links links;
+  auto const lock = linksReadLock();
   links.reserve(_links.size());
-  auto const guard = linksReadLock();
   for (auto const& [_, link] : _links) {
     links.emplace_back(link ? link->lock() : LinkLock{});
   }

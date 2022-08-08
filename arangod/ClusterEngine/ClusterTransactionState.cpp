@@ -90,6 +90,10 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   updateStatus(transaction::Status::RUNNING);
   if (isReadOnlyTransaction()) {
     ++stats._readTransactions;
+    if (_options.allowDirtyReads) {
+      TRI_ASSERT(ServerState::instance()->isCoordinator());
+      ++stats._dirtyReadTransactions;
+    }
   } else {
     ++stats._transactionsStarted;
   }
@@ -130,7 +134,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 }
 
 /// @brief commit a transaction
-Result ClusterTransactionState::commitTransaction(
+futures::Future<Result> ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
   LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
@@ -146,7 +150,7 @@ Result ClusterTransactionState::commitTransaction(
         .serverStatistics()
         ._transactionsStatistics._transactionsCommitted;
 
-  return {};
+  return Result{};
 }
 
 /// @brief abort and rollback a transaction

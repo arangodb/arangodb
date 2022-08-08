@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "DocumentLogEntry.h"
-#include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -35,17 +35,18 @@ namespace arangodb::replication2::replicated_state::document {
 struct DocumentCore {
   explicit DocumentCore(
       GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
       LoggerContext loggerContext);
 
   LoggerContext const loggerContext;
 
-  auto getCollectionId() -> std::string_view;
+  auto getShardId() -> std::string_view;
+  auto getGid() -> GlobalLogIdentifier;
 
  private:
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
+  ShardID _shardId;
   std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };

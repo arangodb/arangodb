@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "IResearchDataStore.h"
 #include "IResearchDocument.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDocumentEE.h"
+#endif
 #include "IResearchFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
@@ -52,6 +55,10 @@ using namespace std::literals;
 
 namespace arangodb::iresearch {
 namespace {
+
+#ifndef USE_ENTERPRISE
+inline bool needTrackPrevDoc(irs::string_ref) { return false; }
+#endif
 
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
@@ -172,20 +179,35 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   if (!body.valid()) {
     return {};  // no fields to index
   }
-
-  auto doc = ctx.insert();
   auto& field = *body;
+#ifdef USE_ENTERPRISE
+  auto eeRes = insertDocumentEE(ctx, body, id, documentId);
+  if (eeRes.fail()) {
+    return eeRes;
+  }
+#endif
+  auto doc = ctx.insert(body.disableFlush());
+  if (!doc) {
+    return {TRI_ERROR_INTERNAL,
+            "failed to insert document into arangosearch link '" +
+                std::to_string(id.id()) + "', revision '" +
+                std::to_string(documentId.id()) + "'"};
+  }
 
   // User fields
   while (body.valid()) {
-    if (ValueStorage::NONE == field._storeValues) {
-      doc.insert<irs::Action::INDEX>(field);
+#ifdef USE_ENTERPRISE
+    if (field._root) {
+      handleNestedRoot(doc, field);
+    } else
+#endif
+        if (ValueStorage::NONE == field._storeValues) {
+      doc.template insert<irs::Action::INDEX>(field);
     } else {
-      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
+      doc.template insert<irs::Action::INDEX | irs::Action::STORE>(field);
     }
     ++body;
   }
-
   // Sorted field
   {
     struct SortedField {
@@ -197,7 +219,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     } field;  // SortedField
     for (auto& sortField : meta._sort.fields()) {
       field.slice = get(document, sortField, VPackSlice::nullSlice());
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.template insert<irs::Action::STORE_SORTED>(field);
     }
   }
 
@@ -207,25 +229,17 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
-      doc.insert<irs::Action::STORE>(field);
+      doc.template insert<irs::Action::STORE>(field);
     }
   }
 
   // System fields
-
   // Indexed and Stored: LocalDocumentId
   auto docPk = DocumentPrimaryKey::encode(documentId);
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   Field::setPkValue(const_cast<Field&>(field), docPk);
-  doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
-
-  if (!doc) {
-    return {TRI_ERROR_INTERNAL,
-            "failed to insert document into arangosearch link '" +
-                std::to_string(id.id()) + "', revision '" +
-                std::to_string(documentId.id()) + "'"};
-  }
+  doc.template insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
     ctx.tick(engine->currentTick());
@@ -421,7 +435,7 @@ struct ConsolidationTask : Task<ConsolidationTask> {
   static constexpr const char* typeName() noexcept { return "consolidation"; }
   void operator()();
   irs::merge_writer::flush_progress_t progress;
-  IResearchViewMeta::ConsolidationPolicy consolidationPolicy;
+  IResearchDataStoreMeta::ConsolidationPolicy consolidationPolicy;
   std::chrono::milliseconds consolidationIntervalMsec{};
 };
 void ConsolidationTask::operator()() {
@@ -823,7 +837,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 IResearchDataStore::UnsafeOpResult IResearchDataStore::consolidateUnsafe(
-    IResearchViewMeta::ConsolidationPolicy const& policy,
+    IResearchDataStoreMeta::ConsolidationPolicy const& policy,
     irs::merge_writer::flush_progress_t const& progress,
     bool& emptyConsolidation) {
   auto begin = std::chrono::steady_clock::now();
@@ -844,7 +858,7 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::consolidateUnsafe(
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchDataStore::consolidateUnsafeImpl(
-    IResearchViewMeta::ConsolidationPolicy const& policy,
+    IResearchDataStoreMeta::ConsolidationPolicy const& policy,
     irs::merge_writer::flush_progress_t const& progress,
     bool& emptyConsolidation) {
   emptyConsolidation = false;  // TODO Why?
@@ -1034,7 +1048,7 @@ Result IResearchDataStore::initDataStore(
   // Do not lock index, ArangoDB has its own lock.
   options.lock_repository = false;
   // Set comparator if requested.
-  options.comparator = sorted ? &_comparer : nullptr;
+  options.comparator = sorted ? getComparator() : nullptr;
   // Set index features.
   if (LinkVersion{version} < LinkVersion::MAX) {
     options.features = getIndexFeatures<irs::Norm>();
@@ -1056,7 +1070,7 @@ Result IResearchDataStore::initDataStore(
   // as meta is still not filled at this moment
   // we need to store all compression mapping there
   // as values provided may be temporary
-  std::map<std::string, irs::type_info::type_id> compressionMap;
+  std::map<std::string, irs::type_info::type_id, std::less<>> compressionMap;
   for (auto const& c : storedColumns) {
     if (ADB_LIKELY(c.compression != nullptr)) {
       compressionMap.emplace(c.name, c.compression);
@@ -1068,23 +1082,27 @@ Result IResearchDataStore::initDataStore(
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt =
       (nullptr != _dataStore._directory->attributes().encryption());
-  options.column_info = [encrypt, compressionMap = std::move(compressionMap),
-                         primarySortCompression](
-                            const irs::string_ref& name) -> irs::column_info {
+  options.column_info =
+      [encrypt, compressionMap = std::move(compressionMap),
+       primarySortCompression](irs::string_ref name) -> irs::column_info {
     if (name.null()) {
-      return {primarySortCompression(), {}, encrypt};
+      return {.compression = primarySortCompression(),
+              .options = {},
+              .encryption = encrypt,
+              .track_prev_doc = false};
     }
-    auto compress = compressionMap.find(
-        static_cast<std::string>(name));  // FIXME: remove cast after C++20
-    if (compress != compressionMap.end()) {
+    if (auto compress = compressionMap.find(name);
+        compress != compressionMap.end()) {
       // do not waste resources to encrypt primary key column
-      return {compress->second(),
-              {},
-              encrypt && (DocumentPrimaryKey::PK() != name)};
+      return {.compression = compress->second(),
+              .options = {},
+              .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
+              .track_prev_doc = false};
     }
-    return {getDefaultCompression()(),
-            {},
-            encrypt && (DocumentPrimaryKey::PK() != name)};
+    return {.compression = getDefaultCompression()(),
+            .options = {},
+            .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
+            .track_prev_doc = needTrackPrevDoc(name)};
   };
 
   auto openFlags = irs::OM_APPEND;
@@ -1132,7 +1150,7 @@ Result IResearchDataStore::initDataStore(
   _dataStore._meta._commitIntervalMsec = 0;         // 0 == disable
   _dataStore._meta._consolidationIntervalMsec = 0;  // 0 == disable
   _dataStore._meta._consolidationPolicy =
-      IResearchViewMeta::ConsolidationPolicy();  // disable
+      IResearchDataStoreMeta::ConsolidationPolicy();  // disable
   _dataStore._meta._writebufferActive = options.segment_count_max;
   _dataStore._meta._writebufferIdle = options.segment_pool_size;
   _dataStore._meta._writebufferSizeMax = options.segment_memory_max;
@@ -1215,7 +1233,7 @@ Result IResearchDataStore::initDataStore(
       });
 }
 
-Result IResearchDataStore::properties(IResearchViewMeta const& meta) {
+Result IResearchDataStore::properties(IResearchDataStoreMeta const& meta) {
   auto linkLock = _asyncSelf->lock();
   // '_dataStore' can be asynchronously modified
   if (!linkLock) {
@@ -1230,7 +1248,7 @@ Result IResearchDataStore::properties(IResearchViewMeta const& meta) {
 }
 
 void IResearchDataStore::properties(LinkLock linkLock,
-                                    IResearchViewMeta const& meta) {
+                                    IResearchDataStoreMeta const& meta) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
   // must be valid if _asyncSelf->lock() is valid
@@ -1260,7 +1278,7 @@ void IResearchDataStore::properties(LinkLock linkLock,
 }
 
 Result IResearchDataStore::remove(transaction::Methods& trx,
-                                  LocalDocumentId documentId) {
+                                  LocalDocumentId documentId, bool nested) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1318,7 +1336,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(*_engine, documentId);
+    ctx->remove(*_engine, documentId, nested);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {
@@ -1396,7 +1414,10 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
   }
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    auto lock = _asyncSelf->lock();
+    auto linkLock = _asyncSelf->lock();
+    if (!linkLock) {
+      return {TRI_ERROR_INTERNAL};
+    }
     auto ctx = _dataStore._writer->documents();
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
       auto res = insertImpl(ctx);  // we need insert to succeed, so  we have
@@ -1501,8 +1522,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
 
-  auto lastCommittedTickGuard =
-      irs::make_finally([lastCommittedTick, this, &recoverCommittedTick] {
+  auto lastCommittedTickGuard = irs::make_finally(
+      [lastCommittedTick, this, &recoverCommittedTick]() noexcept {
         if (recoverCommittedTick) {
           _lastCommittedTick = lastCommittedTick;
         }
@@ -1651,13 +1672,16 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   return dataPath;
 }
 
-template Result IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(
+template Result
+IResearchDataStore::insert<FieldIterator<FieldMeta>, IResearchLinkMeta>(
     transaction::Methods& trx, LocalDocumentId documentId,
     velocypack::Slice doc, IResearchLinkMeta const& meta);
 
-template Result IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                           IResearchInvertedIndexMeta>(
+template Result IResearchDataStore::insert<
+    FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+    IResearchInvertedIndexMetaIndexingContext>(
     transaction::Methods& trx, LocalDocumentId documentId,
-    velocypack::Slice doc, IResearchInvertedIndexMeta const& meta);
+    velocypack::Slice doc,
+    IResearchInvertedIndexMetaIndexingContext const& meta);
 
 }  // namespace arangodb::iresearch

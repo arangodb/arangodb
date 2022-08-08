@@ -76,32 +76,6 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
     bool isClusterConstructor) const {
   auto const clusterWideIndex =
       collection.id() == collection.planId() && collection.isAStub();
-  IResearchViewMeta indexMeta;
-  std::string errField;
-  if (!indexMeta.init(definition, errField)) {
-    LOG_TOPIC("d2b8a", ERR, iresearch::TOPIC)
-        << (errField.empty()
-                ? (std::string(
-                       "failed to initialize index meta from definition: ") +
-                   definition.toString())
-                : (std::string("failed to initialize index meta from "
-                               "definition, error in attribute '") +
-                   errField + "': " + definition.toString()));
-    return nullptr;
-  }
-  IResearchInvertedIndexMeta fieldsMeta;
-  if (!fieldsMeta.init(_server, definition, true, errField,
-                       collection.vocbase().name())) {
-    LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
-        << (errField.empty()
-                ? (std::string(
-                       "failed to initialize index fields from definition: ") +
-                   definition.toString())
-                : (std::string("failed to initialize index fields from "
-                               "definition, error in attribute '") +
-                   errField + "': " + definition.toString()));
-    return nullptr;
-  }
   auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
   std::string indexName;
   if (!nameSlice.isNone()) {
@@ -119,7 +93,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
   auto objectId = basics::VelocyPackHelper::stringUInt64(
       definition, arangodb::StaticStrings::ObjectId);
   auto index = std::make_shared<IResearchRocksDBInvertedIndex>(
-      id, collection, objectId, indexName, std::move(fieldsMeta));
+      id, collection, objectId, indexName);
   if (!clusterWideIndex) {
     bool pathExists = false;
     auto cleanup = scopeGuard([&]() noexcept {
@@ -129,8 +103,9 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
         index->drop();
       }
     });
-    auto initRes =
-        index->init(pathExists, [this]() -> irs::directory_attributes {
+
+    auto initRes = index->init(
+        definition, pathExists, [this]() -> irs::directory_attributes {
           auto& selector = _server.getFeature<EngineSelectorFeature>();
           TRI_ASSERT(selector.isRocksDB());
           auto& engine = selector.engine<RocksDBEngine>();
@@ -149,17 +124,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
           << initRes.errorMessage();
       return nullptr;
     }
-
-    // separate call as here object should be fully constructed and could be
-    // safely used by async tasks
-    initRes = index->properties(indexMeta);
-    if (initRes.fail()) {
-      LOG_TOPIC("9c949", ERR, iresearch::TOPIC)
-          << "failed to initialize index from definition, error setting index "
-             "properties: "
-          << initRes.errorMessage();
-      return nullptr;
-    }
+    index->initFields();
     cleanup.cancel();
   }
   return index;
@@ -171,29 +136,12 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   TRI_ASSERT(normalized.isOpenObject());
 
   auto res = IndexFactory::validateFieldsDefinition(
-      definition, arangodb::StaticStrings::IndexFields, 1, SIZE_MAX, true);
+      definition, arangodb::StaticStrings::IndexFields, 0, SIZE_MAX, true);
   if (res.fail()) {
     return res;
   }
 
-  IResearchViewMeta tmpMeta;
   std::string errField;
-  if (!tmpMeta.init(definition, errField)) {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        errField.empty()
-            ? (std::string("failed to normalize index meta from definition: ") +
-               definition.toString())
-            : (std::string("failed to normalize index meta from definition, "
-                           "error in attribute '") +
-               errField + "': " + definition.toString()));
-  }
-  if (!tmpMeta.json(normalized)) {
-    return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to write normalized index meta from definition: ") +
-            definition.toString());
-  }
   IResearchInvertedIndexMeta tmpLinkMeta;
   if (!tmpLinkMeta.init(_server, definition,
                         arangodb::ServerState::instance()->isDBServer(),
@@ -241,19 +189,17 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   normalized.add(arangodb::StaticStrings::IndexUnique,
                  arangodb::velocypack::Value(false));
 
-  bool bck = basics::VelocyPackHelper::getBooleanValue(
-      definition, arangodb::StaticStrings::IndexInBackground, false);
-  normalized.add(arangodb::StaticStrings::IndexInBackground, VPackValue(bck));
+  arangodb::IndexFactory::processIndexInBackground(definition, normalized);
+  arangodb::IndexFactory::processIndexParallelism(definition, normalized);
+
   return res;
 }
 
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
     IndexId id, LogicalCollection& collection, uint64_t objectId,
-    std::string const& name, IResearchInvertedIndexMeta&& m)
-    : IResearchInvertedIndex(id, collection,
-                             std::forward<IResearchInvertedIndexMeta>(m)),
-      RocksDBIndex(id, collection, name, IResearchInvertedIndex::fields(meta()),
-                   false, true,
+    std::string const& name)
+    : IResearchInvertedIndex(id, collection),
+      RocksDBIndex(id, collection, name, {}, false, true,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Invalid),
                    objectId, /*useCache*/ false,
@@ -319,7 +265,8 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(
     std::string_view idRef = value.stringView();
     return idRef == std::to_string(IResearchDataStore::id().id());
   }
-  return IResearchInvertedIndex::matchesFieldsDefinition(other);
+  return IResearchInvertedIndex::matchesFieldsDefinition(
+      other, IResearchDataStore::_collection);
 }
 }  // namespace iresearch
 }  // namespace arangodb

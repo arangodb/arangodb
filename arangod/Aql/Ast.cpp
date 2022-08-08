@@ -1032,9 +1032,19 @@ AstNode* Ast::createNodeParameterDatasource(std::string_view name) {
 }
 
 /// @brief create an AST quantifier node
-AstNode* Ast::createNodeQuantifier(int64_t type) {
+AstNode* Ast::createNodeQuantifier(Quantifier::Type type) {
   AstNode* node = createNode(NODE_TYPE_QUANTIFIER);
-  node->setIntValue(type);
+  node->setIntValue(static_cast<int64_t>(type));
+
+  return node;
+}
+
+/// @brief create an AST quantifier node, with a value
+AstNode* Ast::createNodeQuantifier(Quantifier::Type type,
+                                   AstNode const* value) {
+  TRI_ASSERT(type == Quantifier::Type::kAtLeast);
+  AstNode* node = createNodeQuantifier(type);
+  node->addMember(value);
 
   return node;
 }
@@ -1740,20 +1750,21 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
   return node;
 }
 
-/// @brief create an AST k-shortest paths or k-paths node
-AstNode* Ast::createNodeKShortestPaths(
-    arangodb::graph::ShortestPathType::Type type, AstNode const* outVars,
-    AstNode const* graphInfo) {
+/// @brief create an AST k-shortest paths, k-paths or all-shortest paths node
+AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
+                                       AstNode const* outVars,
+                                       AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
-  AstNode* node = createNode(NODE_TYPE_K_SHORTEST_PATHS);
+  AstNode* node = createNode(NODE_TYPE_ENUMERATE_PATHS);
   node->reserve(1 + outVars->numMembers() + graphInfo->numMembers());
 
   TRI_ASSERT(graphInfo->numMembers() == 5);
   TRI_ASSERT(outVars->numMembers() == 1);
 
-  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
-             type == arangodb::graph::ShortestPathType::Type::KPaths);
+  TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
+             type == arangodb::graph::PathType::Type::KPaths ||
+             type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // type: K_SHORTEST_PATH vs. K_PATHS
   TRI_ASSERT(node->numMembers() == 0);
@@ -2133,7 +2144,7 @@ void Ast::injectBindParameters(
         extractCollectionsFromGraph(node->getMember(2));
       } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
         extractCollectionsFromGraph(node->getMember(3));
-      } else if (node->type == NODE_TYPE_K_SHORTEST_PATHS) {
+      } else if (node->type == NODE_TYPE_ENUMERATE_PATHS) {
         extractCollectionsFromGraph(node->getMember(4));
       }
 
@@ -2348,7 +2359,8 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
 /// this does not only optimize but also performs a few validations after
 /// bind parameter injection. merging this pass with the regular AST
 /// optimizations saves one extra pass over the AST
-void Ast::validateAndOptimize(transaction::Methods& trx) {
+void Ast::validateAndOptimize(transaction::Methods& trx,
+                              Ast::ValidateAndOptimizeOptions const& options) {
   ::ValidateAndOptimizeContext context(trx);
 
   auto preVisitor = [&](AstNode const* node) -> bool {
@@ -2560,8 +2572,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
-        return this->optimizeFunctionCall(ctx->trx,
-                                          ctx->aqlFunctionsInternalCache, node);
+        return this->optimizeFunctionCall(
+            ctx->trx, ctx->aqlFunctionsInternalCache, node, options);
       }
       // optimization not allowed
       return node;
@@ -3681,10 +3693,16 @@ AstNode* Ast::optimizeAttributeAccess(
 /// @brief optimizes a call to a built-in function
 AstNode* Ast::optimizeFunctionCall(
     transaction::Methods& trx,
-    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
+    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node,
+    Ast::ValidateAndOptimizeOptions const& options) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
+
+  if (!options.optimizeFunctionCalls) {
+    // function call optimization not allowed
+    return node;
+  }
 
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
@@ -3785,6 +3803,12 @@ AstNode* Ast::optimizeFunctionCall(
 
   if (!func->hasFlag(Function::Flags::Deterministic)) {
     // non-deterministic function
+    return node;
+  }
+
+  if (!options.optimizeNonCacheable &&
+      !func->hasFlag(Function::Flags::Cacheable)) {
+    // non-cacheable function
     return node;
   }
 

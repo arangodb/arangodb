@@ -118,6 +118,7 @@
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SupervisorFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "RestServer/TimeZoneFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"

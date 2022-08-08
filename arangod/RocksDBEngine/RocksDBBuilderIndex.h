@@ -23,15 +23,16 @@
 
 #pragma once
 
+#include "Basics/Result.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 #include <atomic>
-#include <condition_variable>
-#include <mutex>
+
 namespace arangodb {
+
 namespace trx {
 struct BuilderTrx : public arangodb::transaction::Methods {
   BuilderTrx(
@@ -56,51 +57,19 @@ struct BuilderTrx : public arangodb::transaction::Methods {
 };
 }  // namespace trx
 
-class SharedWorkEnv;
+Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
+                                 rocksdb::DB* rootDB,
+                                 RocksDBTransactionCollection* trxColl,
+                                 std::atomic<uint64_t>& docsProcessed,
+                                 RocksDBIndex& ridx, bool isForeground);
+
+Result fillIndexSingleThreaded(
+    bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
+    rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
+    trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
+    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it);
 
 class RocksDBCollection;
-
-struct ThreadStatistics {
-  uint64_t numSeeks = 0;
-  uint64_t numNexts = 0;
-  double commitTime = 0.0;
-};
-
-class IndexCreatorThread final : public Thread {
- public:
-  IndexCreatorThread(bool isUniqueIndex, bool isForeground, uint64_t batchSize,
-                     std::atomic<uint64_t>& docsProcessed,
-                     std::shared_ptr<SharedWorkEnv> sharedWorkEnv,
-                     RocksDBCollection* rcoll, rocksdb::DB* rootDB,
-                     RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
-                     rocksdb::Options const& dbOptions,
-                     std::string const& idxPath);
-
-  ~IndexCreatorThread() override;
-
- protected:
-  void run() override;
-
- private:
-  bool _isUniqueIndex = false;
-  bool _isForeground = false;
-  uint64_t _batchSize;
-  std::atomic<uint64_t>& _docsProcessed;
-  std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
-  RocksDBCollection* _rcoll;
-  rocksdb::DB* _rootDB;
-  RocksDBIndex& _ridx;
-  rocksdb::Snapshot const* _snap;
-  trx::BuilderTrx _trx;
-  RocksDBTransactionCollection* _trxColl;
-  rocksdb::Options _dbOptions;
-
-  // ptrs because of abstract class, have to know which type to craete
-  std::unique_ptr<rocksdb::WriteBatchBase> _batch;
-  std::unique_ptr<RocksDBMethods> _methods;
-  rocksdb::ReadOptions _readOptions;
-  ThreadStatistics _statistics;
-};
 
 /// Dummy index class that contains the logic to build indexes
 /// without an exclusive lock. It wraps the actual index implementation
@@ -108,7 +77,7 @@ class IndexCreatorThread final : public Thread {
 class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
  public:
   explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex>,
-                               uint64_t numDocsHint);
+                               uint64_t numDocsHint, size_t parallelism);
 
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(
@@ -190,15 +159,15 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   /// @brief fill the index, assume already locked exclusively
   /// @param locker locks and unlocks the collection
   Result fillIndexBackground(Locker& locker);
-  // it's public for SharedWorkEnv to access
-  static constexpr size_t kNumThreads = 2;
 
  private:
   static constexpr uint64_t kThreadBatchSize = 100000;
   static constexpr size_t kSingleThreadThreshold = 120000;
+
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
-  std::uint64_t _numDocsHint;
   std::atomic<uint64_t> _docsProcessed;
+  uint64_t const _numDocsHint;
+  size_t const _numThreads;
 };
 
 }  // namespace arangodb

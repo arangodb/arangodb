@@ -59,6 +59,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -167,8 +168,6 @@ class Logger {
   static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
-  static LogTopic CLUSTERCOMM;
-  static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;
   static LogTopic CONFIG;
   static LogTopic CRASH;
@@ -184,7 +183,6 @@ class Logger {
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
-  static LogTopic PERFORMANCE;
   static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
@@ -257,6 +255,8 @@ class Logger {
   };
 
  public:
+  static constexpr std::string_view logThreadName = "Logging";
+
   static LogGroup& defaultLogGroup();
   static LogLevel logLevel();
   static std::unordered_set<std::string> structuredLogParams();

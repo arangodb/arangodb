@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "DocumentCore.h"
-#include "DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentCore.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -41,12 +41,12 @@ struct DocumentLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  void replicateOperations(velocypack::SharedSlice payload,
-                           OperationType operation,
-                           TransactionId transactionId);
+  auto replicateOperation(velocypack::SharedSlice payload,
+                          OperationType operation, TransactionId transactionId,
+                          ReplicationOptions opts) -> futures::Future<LogIndex>;
 
   LoggerContext const loggerContext;
-  std::string_view collectionId;
+  std::string_view shardId;
 
  private:
   struct GuardedData {

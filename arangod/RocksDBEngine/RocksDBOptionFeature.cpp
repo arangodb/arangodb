@@ -45,6 +45,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
+#include <rocksdb/advanced_options.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
@@ -67,7 +68,7 @@ rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 // that much data in each shard (rationale: a data block read from
 // disk must fit into the block cache if the block cache's strict
 // capacity limit is set. otherwise the block cache will fail reads
-// with Status::Incomplete()).
+// with Status::Incomplete() or Status::MemoryLimit()).
 constexpr uint64_t minShardSize = 128 * 1024 * 1024;
 
 uint64_t defaultBlockCacheSize() {
@@ -138,7 +139,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _transactionLockStripes(
           std::max(NumberOfCores::getValue(), std::size_t(16))),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
-      _compressionType("snappy"),
+      _compressionType("lz4"),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(8 + 2),  // number of column families plus 2
@@ -172,6 +173,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
       _checksumType("xxHash64"),
+      _compactionStyle("level"),
       _formatVersion(5),
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
@@ -813,6 +815,22 @@ void RocksDBOptionFeature::collectOptions(
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000);
 
+  std::unordered_set<std::string> compactionStyles = {"level", "universal",
+                                                      "fifo", "none"};
+  TRI_ASSERT(compactionStyles.contains(_compactionStyle));
+  options
+      ->addOption("--rocksdb.compaction-style",
+                  "compaction style which is used to pick the next file(s) to "
+                  "be compacted",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_compactionStyle, compactionStyles),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
   std::unordered_set<uint32_t> formatVersions = {3, 4, 5};
   options
       ->addOption("--rocksdb.format-version",
@@ -958,8 +976,8 @@ void RocksDBOptionFeature::validateOptions(
     // we would like that each block cache shard can hold data blocks of
     // at least a common size. Rationale: data blocks can be quite large. if
     // they don't fit into the block cache upon reading, the block cache will
-    // return Status::Incomplete() when the block cache's strict capacity limit
-    // is set. then we cannot read any data anymore.
+    // return Status::Incomplete() or Status::MemoryLimit() when the block
+    // cache's strict capacity limit is set. then we cannot read data anymore.
     // we are limiting the maximum number of shard bits to 10 here, which is
     // 1024 shards. that should be enough shards even for very big caches.
     // note that RocksDB also has an internal upper bound for the number of
@@ -977,8 +995,9 @@ void RocksDBOptionFeature::prepare() {
         _blockCacheSize / (uint64_t(1) << _blockCacheShardBits);
     // if we can't store a data block of the mininmum size in the block cache,
     // we may run into problems when trying to put a large data block into the
-    // cache. in this case the block cache may return a Status::Incomplete
-    // error and fail the entire read. warn the user about it!
+    // cache. in this case the block cache may return a Status::Incomplete()
+    // or Status::MemoryLimit() error and fail the entire read.
+    // warn the user about it!
     if (shardSize < ::minShardSize) {
       LOG_TOPIC("31d7c", WARN, Logger::ROCKSDB)
           << "size of RocksDB block cache shards seems to be too low. "
@@ -1154,6 +1173,21 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
     result.compression_per_level[level] =
         (((uint64_t)level >= _numUncompressedLevels) ? compressionType
                                                      : rocksdb::kNoCompression);
+  }
+
+  if (_compactionStyle == "level") {
+    result.compaction_style = rocksdb::kCompactionStyleLevel;
+  } else if (_compactionStyle == "universal") {
+    result.compaction_style = rocksdb::kCompactionStyleUniversal;
+  } else if (_compactionStyle == "fifo") {
+    result.compaction_style = rocksdb::kCompactionStyleFIFO;
+  } else if (_compactionStyle == "none") {
+    result.compaction_style = rocksdb::kCompactionStyleNone;
+  } else {
+    TRI_ASSERT(false);
+    LOG_TOPIC("edc92", FATAL, arangodb::Logger::STARTUP)
+        << "unexpected compaction style '" << _compactionStyle << "'";
+    FATAL_ERROR_EXIT();
   }
 
   // Number of files to trigger level-0 compaction. A value <0 means that

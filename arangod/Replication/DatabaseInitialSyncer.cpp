@@ -37,6 +37,7 @@
 #include "Basics/system-functions.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -110,39 +111,44 @@ arangodb::Result removeRevisions(
   using arangodb::PhysicalCollection;
   using arangodb::Result;
 
-  if (toRemove.empty()) {
-    // no need to do anything
-    return Result();
-  }
+  if (!toRemove.empty()) {
+    PhysicalCollection* physical = collection.getPhysical();
 
-  PhysicalCollection* physical = collection.getPhysical();
+    arangodb::OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.waitForSync = false;
 
-  arangodb::ManagedDocumentResult mdr;
-  arangodb::OperationOptions options;
-  options.silent = true;
-  options.ignoreRevs = true;
-  options.isRestore = true;
-  options.waitForSync = false;
+    arangodb::transaction::BuilderLeaser tempBuilder(&trx);
 
-  double t = TRI_microtime();
-  for (arangodb::RevisionId const& rid : toRemove) {
-    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr,
-                              options);
+    double t = TRI_microtime();
+    for (auto const& rid : toRemove) {
+      auto documentId = arangodb::LocalDocumentId::create(rid);
 
-    if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      // ignore not found, we remove conflicting docs ahead of time
-      stats.waitedForRemovals += TRI_microtime() - t;
-      return r;
+      tempBuilder->clear();
+      auto r = physical->lookupDocument(trx, documentId, *tempBuilder,
+                                        /*readCache*/ true, /*fillCache*/ false,
+                                        arangodb::ReadOwnWrites::yes);
+
+      if (r.ok()) {
+        r = physical->remove(trx, documentId, rid, tempBuilder->slice(),
+                             options);
+      }
+
+      if (r.ok()) {
+        ++stats.numDocsRemoved;
+      } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // ignore not found, we remove conflicting docs ahead of time
+        stats.waitedForRemovals += TRI_microtime() - t;
+        return r;
+      }
     }
 
-    if (r.ok()) {
-      ++stats.numDocsRemoved;
-    }
+    stats.waitedForRemovals += TRI_microtime() - t;
   }
 
-  stats.waitedForRemovals += TRI_microtime() - t;
-
-  return Result();
+  return {};
 }
 
 arangodb::Result fetchRevisions(
@@ -161,8 +167,6 @@ arangodb::Result fetchRevisions(
     return Result();  // nothing to do
   }
 
-  arangodb::transaction::BuilderLeaser keyBuilder(&trx);
-  arangodb::ManagedDocumentResult mdr, previous;
   arangodb::OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
@@ -185,17 +189,39 @@ arangodb::Result fetchRevisions(
   config.progress.set("fetching documents by revision for collection '" +
                       collection.name() + "' from " + path);
 
+  arangodb::transaction::BuilderLeaser tempBuilder(&trx);
+
   auto removeConflict = [&](auto const& conflictingKey) -> Result {
-    keyBuilder->clear();
-    keyBuilder->add(VPackValue(conflictingKey));
+    std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
+    auto r = physical->lookupKey(&trx, conflictingKey, lookupResult,
+                                 arangodb::ReadOwnWrites::yes);
 
-    auto res = physical->remove(trx, keyBuilder->slice(), mdr, options);
+    if (r.ok()) {
+      TRI_ASSERT(lookupResult.first.isSet());
+      TRI_ASSERT(lookupResult.second.isSet());
+      auto [documentId, revisionId] = lookupResult;
 
-    if (res.ok()) {
+      tempBuilder->clear();
+      r = physical->lookupDocument(trx, documentId, *tempBuilder,
+                                   /*readCache*/ true, /*fillCache*/ false,
+                                   arangodb::ReadOwnWrites::yes);
+
+      if (r.ok()) {
+        TRI_ASSERT(tempBuilder->slice().isObject());
+        r = physical->remove(trx, documentId, revisionId, tempBuilder->slice(),
+                             options);
+      }
+    }
+
+    // if a conflict document cannot be removed because it doesn't exist,
+    // we do not care, because the goal is deletion anyway. if it fails
+    // for some other reason, the following re-insert will likely complain.
+    // so intentionally no special error handling here.
+    if (r.ok()) {
       ++stats.numDocsRemoved;
     }
 
-    return res;
+    return r;
   };
 
   std::size_t numUniqueIndexes = [&]() {
@@ -326,13 +352,14 @@ arangodb::Result fetchRevisions(
             options.indexOperationMode = arangodb::IndexOperationMode::normal;
           }
 
+          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
+
           double tInsert = TRI_microtime();
-          Result res = physical->insert(&trx, leaderDoc, mdr, options);
+          Result res = trx.insert(collection.name(), leaderDoc, options).result;
           stats.waitedForInsertions += TRI_microtime() - tInsert;
 
           options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
-          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
           // We must see our own writes, because we may have to remove
           if (res.ok()) {
             sl.erase(rid);
@@ -347,11 +374,12 @@ arangodb::Result fetchRevisions(
             return res;
           }
 
-          // conflicting documents (that we just inserted) as documents may be
+          // conflicting documents (that we just inserted), as documents may be
           // replicated in unexpected order.
+          arangodb::ManagedDocumentResult mdr;
           if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
                                      mdr, arangodb::ReadOwnWrites::yes)) {
-            // already have exactly this revision no need to insert
+            // already have exactly this revision. no need to insert
             sl.erase(rid);
             break;
           }
@@ -1751,13 +1779,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                   concatT("unable to start transaction: ", res.errorMessage()));
   }
   auto guard = scopeGuard([trx = trx.get()]() noexcept {
-    try {
+    auto res = basics::catchToResult([&]() -> Result {
       if (trx->status() == transaction::Status::RUNNING) {
-        trx->abort();
+        return trx->abort();
       }
-    } catch (std::exception const& ex) {
+      return {};
+    });
+    if (res.fail()) {
       LOG_TOPIC("1a537", ERR, Logger::REPLICATION)
-          << "Failed to abort transaction: " << ex.what();
+          << "Failed to abort transaction: " << res;
     }
   });
 
@@ -2094,7 +2124,7 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                                VPackSlice const& slice) {
   arangodb::CollectionGuard guard(&vocbase(), col->id());
 
-  return guard.collection()->properties(slice, false);  // always a full-update
+  return guard.collection()->properties(slice);
 }
 
 /// @brief whether or not the collection has documents
@@ -2551,17 +2581,19 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
     return res;
   }
 
-  // STEP 4: now that the collections exist create the views
+  // STEP 4: now that the collections exist create the "arangosearch" views
   // this should be faster than re-indexing afterwards
+  // We don't create "search" view because inverted indexes don't exist yet
   // ----------------------------------------------------------------------------------
 
   if (!_config.applier._skipCreateDrop &&
       _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
-    Result r = handleViewCreation(viewSlices);  // no requests to leader
+    auto r = handleViewCreation(viewSlices,
+                                arangodb::iresearch::StaticStrings::ViewType);
     if (r.fail()) {
       LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
-          << "Error during intial sync view creation: " << r.errorMessage();
+          << "Error during initial sync view creation: " << r.errorMessage();
       return r;
     }
   } else {
@@ -2570,9 +2602,16 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
 
   // STEP 5: sync collection data from leader and create initial indexes
   // ----------------------------------------------------------------------------------
-
   // now load the data into the collections
-  return iterateCollections(collections, incremental, PHASE_DUMP);
+  auto r = iterateCollections(collections, incremental, PHASE_DUMP);
+  if (r.fail()) {
+    return r;
+  }
+
+  // STEP 6 load "search" views
+  // ----------------------------------------------------------------------------------
+  return handleViewCreation(viewSlices,
+                            arangodb::iresearch::StaticStrings::SearchType);
 }
 
 /// @brief iterate over all collections from an array and apply an action
@@ -2599,8 +2638,29 @@ Result DatabaseInitialSyncer::iterateCollections(
 }
 
 /// @brief create non-existing views locally
-Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
+Result DatabaseInitialSyncer::handleViewCreation(VPackSlice views,
+                                                 std::string_view type) {
+  if (!views.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER};
+  }
+  auto check = [&](VPackSlice definition) noexcept {
+    // I want to cause fail in createView if definition is invalid
+    if (!definition.isObject()) {
+      return true;
+    }
+    if (!definition.hasKey(StaticStrings::DataSourceType)) {
+      return true;
+    }
+    auto sliceType = definition.get(StaticStrings::DataSourceType);
+    if (!sliceType.isString()) {
+      return true;
+    }
+    return sliceType.stringView() == type;
+  };
   for (VPackSlice slice : VPackArrayIterator(views)) {
+    if (check(slice)) {
+      continue;
+    }
     Result res = createView(vocbase(), slice);
     if (res.fail()) {
       return res;

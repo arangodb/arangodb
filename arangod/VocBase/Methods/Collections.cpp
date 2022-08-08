@@ -56,6 +56,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/V8Context.h"
+#include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/vocbase.h"
@@ -102,7 +103,7 @@ bool isSystemName(CollectionCreationInfo const& info) {
 }
 
 Result validateCreationInfo(CollectionCreationInfo const& info,
-                            TRI_vocbase_t const& vocbase,
+                            TRI_vocbase_t& vocbase,
                             bool isSingleServerSmartGraph,
                             bool enforceReplicationFactor,
                             bool isLocalCollection, bool isSystemName,
@@ -126,13 +127,37 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
     return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
   }
 
-  // validate shards factor and replication factor
+  // validate number of shards and replication factor
   if (ServerState::instance()->isCoordinator() || isSingleServerSmartGraph) {
     Result res = ShardingInfo::validateShardsAndReplicationFactor(
         info.properties, vocbase.server(), enforceReplicationFactor);
     if (res.fail()) {
       return res;
     }
+  }
+
+  std::vector<std::string> shardKeys;
+  if (ServerState::instance()->isCoordinator()) {
+    bool isSmart = basics::VelocyPackHelper::getBooleanValue(
+        info.properties, StaticStrings::IsSmart, false);
+    size_t replicationFactor = 1;
+    Result res = ShardingInfo::extractReplicationFactor(
+        info.properties, isSmart, replicationFactor);
+    if (res.ok()) {
+      // extract shard keys
+      res = ShardingInfo::extractShardKeys(info.properties, replicationFactor,
+                                           shardKeys);
+    }
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  // validate computed values
+  auto result = ComputedValues::buildInstance(
+      vocbase, shardKeys, info.properties.get(StaticStrings::ComputedValues));
+  if (result.fail()) {
+    return result.result();
   }
 
   // All collections on a single server should be local collections.
@@ -182,9 +207,8 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
 // validate collection parameters. if the validation fails, it will audit-log
 // the failure.
 Result validateAllCollectionsInfo(
-    TRI_vocbase_t const& vocbase,
-    std::vector<CollectionCreationInfo> const& infos, bool allowSystem,
-    bool allowEnterpriseCollectionsOnSingleServer,
+    TRI_vocbase_t& vocbase, std::vector<CollectionCreationInfo> const& infos,
+    bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
     bool enforceReplicationFactor) {
   Result res;
 
@@ -640,7 +664,7 @@ Result Collections::create(
   VPackBuilder builder = createCollectionProperties(
       vocbase, infos, allowEnterpriseCollectionsOnSingleServer);
 
-  VPackSlice const infoSlice = builder.slice();
+  VPackSlice infoSlice = builder.slice();
 
   TRI_ASSERT(infoSlice.isArray());
   TRI_ASSERT(infoSlice.length() >= 1);
@@ -877,8 +901,6 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice const& props,
                                      OperationOptions const& options) {
-  const bool partialUpdate = false;  // always a full update for collections
-
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
 
@@ -924,7 +946,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
       return res;
     }
 
-    auto rv = info->properties(props, partialUpdate);
+    auto rv = info->properties(props);
     if (rv.ok()) {
       velocypack::Builder builder(props);
       OperationResult result(rv, builder.steal(), options);
@@ -942,7 +964,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     if (res.ok()) {
       // try to write new parameter to file
-      res = collection.properties(props, partialUpdate);
+      res = collection.properties(props);
       if (res.ok()) {
         velocypack::Builder builder(props);
         OperationResult result(res, builder.steal(), options);
@@ -1310,7 +1332,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
       StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,          \
       StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,     \
       StaticStrings::MinReplicationFactor, /* deprecated */                    \
-      StaticStrings::WriteConcern, "servers"
+      StaticStrings::WriteConcern, "servers", StaticStrings::ComputedValues
 
 arangodb::velocypack::Builder Collections::filterInput(
     arangodb::velocypack::Slice properties, bool allowDC2DCAttributes) {
