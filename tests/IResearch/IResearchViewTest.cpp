@@ -5375,9 +5375,9 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
 
   auto newProperties = arangodb::velocypack::Parser::fromJson(
       "{"
-      "\"writeBufferActive\": 125, "
-      "\"writeBufferIdle\": 112, "
-      "\"writeBufferSizeMax\": 142, "
+      "\"writebufferActive\": 125, "
+      "\"writebufferIdle\": 112, "
+      "\"writebufferSizeMax\": 142, "
       "\"locale\": \"en\", "
       "\"version\": 1, "
       "\"primarySortCompression\":\"none\","

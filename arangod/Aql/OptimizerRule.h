@@ -341,6 +341,12 @@ struct OptimizerRule {
     // for arango search view
     lateDocumentMaterializationArangoSearchRule,
 
+#ifdef USE_ENTERPRISE
+    // FIXME(gnusi): when to execute?
+    // handle OFFSET_INFO functions calls
+    hanldeOffsetInfoFunc,
+#endif
+
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
     // needs to take into account query distribution across cluster nodes

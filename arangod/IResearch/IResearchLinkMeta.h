@@ -54,21 +54,21 @@ namespace iresearch {
 // Possible ways to store values in the view.
 enum class ValueStorage : uint32_t {
   NONE = 0,  // do not store values in the view
-  ID,        // only store value existance
+  ID,        // only store value existence
   VALUE      // store full value in the view
 };
 
 struct FieldMeta {
   // can't use FieldMeta as value type since it's incomplete type so far
-  typedef UnorderedRefKeyMap<char, UniqueHeapInstance<FieldMeta>> Fields;
+  using Fields = UnorderedRefKeyMap<char, UniqueHeapInstance<FieldMeta>>;
 
   struct Analyzer {
     Analyzer(AnalyzerPool::ptr const& pool)
-        : Analyzer(pool, pool ? std::string{pool->name()} : std::string{}) {}
+        : Analyzer{pool, pool ? std::string{pool->name()} : std::string{}} {}
     Analyzer(AnalyzerPool::ptr const& pool, std::string&& shortName) noexcept
         : _pool(pool), _shortName(std::move(shortName)) {}
 
-    operator bool() const noexcept { return false == !_pool; }
+    explicit operator bool() const noexcept { return _pool != nullptr; }
 
     AnalyzerPool const* operator->() const noexcept { return _pool.get(); }
     AnalyzerPool* operator->() noexcept { return _pool.get(); }
@@ -172,6 +172,11 @@ struct FieldMeta {
   size_t _primitiveOffset{0};
   // Explicit list of fields to be indexed with optional overrides.
   Fields _fields;
+
+#ifdef USE_ENTERPRISE
+  // List of nested fields to be indexed with optional overrides.
+  Fields _nested;
+#endif
   // How values should be stored inside the view.
   ValueStorage _storeValues{ValueStorage::NONE};
   // Include all fields or only fields listed in '_fields'.
@@ -179,6 +184,9 @@ struct FieldMeta {
   // Append relative offset in list to attribute name (as opposed to without
   // offset).
   bool _trackListPositions{false};
+#ifdef USE_ENTERPRISE
+  bool _hasNested{false};
+#endif
 };
 
 ////////////////////////////////////////////////////////////////////////////////
