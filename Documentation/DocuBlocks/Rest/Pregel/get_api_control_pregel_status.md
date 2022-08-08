@@ -62,17 +62,18 @@ State of the execution. The following values can be returned:
 The number of global supersteps executed.
 
 @RESTREPLYBODY{totalRuntime,number,required,float}
-Total runtime of the execution up to now (if the execution is still ongoing).
+The total runtime of the execution up to now (if the execution is still ongoing).
 
 @RESTREPLYBODY{startupTime,number,required,float}
-Startup runtime of the execution.
+The startup runtime of the execution.
 The startup time includes the data loading time and can be substantial.
 
 @RESTREPLYBODY{computationTime,number,required,float}
-Algorithm execution time. Is shown when the computation started. 
+The algorithm execution time. Is shown when the computation started. 
 
 @RESTREPLYBODY{storageTime,number,optional,float}
-Time for storing the results if the job includes results storage. Is shown when the storing started.
+The time for storing the results if the job includes results storage.
+Is shown when the storing started.
 
 @RESTREPLYBODY{gssTimes,array,optional,float}
 Computation time of each global super step. Is shown when the computation started.
@@ -82,48 +83,58 @@ Statistics about the Pregel execution. The value will only be populated once
 the algorithm has finished.
 
 @RESTSTRUCT{vertexCount,get_api_control_pregel_reports,integer,optional,int64}
-Total number of vertices processed.
+The total number of vertices processed.
 
 @RESTSTRUCT{edgeCount,get_api_control_pregel_reports,integer,optional,int64}
-Total number of edges processed.
+The total number of edges processed.
 
-@RESTREPLYBODY{detail,object,required,get_api_contol_pregel_detail}
-Pregel run details. These details consist of the total `aggregatedStatus` and the `workerStatus`. The `workerStatus` shows the details for each DB Server individually, while the `aggregatedStatus` is an aggregate of all these DB Server details and therefore gives the details for the full Pregel run. 
+@RESTREPLYBODY{detail,object,required,get_api_control_pregel_detail}
+The Pregel run details.
 
-A status consists of a timeStamp, graphStoreStatus and allGssStatus has the following properties:
+@RESTSTRUCT{aggregatedStatus,get_api_control_pregel_detail,object,required,get_api_control_pregel_detail_aggregated}
+The aggregated details of the full Pregel run. The values are totals of all the
+DB-Server.
 
-@RESTSTRUCT{timeStamp,get_api_control_pregel_detail,time,required,time}
+@RESTSTRUCT{timeStamp,get_api_control_pregel_detail_aggregated,string,required,date-time}
 The time at which the status was measured.
 
-@RESTREPLYBODY{graphStoreStatus,object,optional,get_api_control_pregel_detail_graphstorestatus}
-Status of the in memory graph.
+@RESTSTRUCT{graphStoreStatus,get_api_control_pregel_detail_aggregated,object,optional,get_api_control_pregel_detail_aggregated_store}
+The status of the in memory graph.
 
-@RESTSTRUCT{verticesLoaded,get_api_control_pregel_detail_graphstorestatus,number,optional,int64}
-Number of vertices that are loaded from the database into memory.
+@RESTSTRUCT{verticesLoaded,get_api_control_pregel_detail_aggregated_store,integer,optional,int64}
+The number of vertices that are loaded from the database into memory.
 
-@RESTSTRUCT{edgesLoaded,get_api_control_pregel_detail_graphstorestatus,number,optional,int64}
-Number of edges that are loaded from the database into memory.
+@RESTSTRUCT{edgesLoaded,get_api_control_pregel_detail_aggregated_store,integer,optional,int64}
+The number of edges that are loaded from the database into memory.
 
-@RESTSTRUCT{memoryBytesUsed,get_api_control_pregel_detail_graphstorestatus,number,optional,int64}
-Number of bytes used in-memory for the loaded graph.
+@RESTSTRUCT{memoryBytesUsed,get_api_control_pregel_detail_aggregated_store,integer,optional,int64}
+The number of bytes used in-memory for the loaded graph.
 
-@RESTSTRUCT{verticesStored,get_api_control_pregel_detail_graphstorestatus,number,optional,int64}
-Number of vertices that are written back to the database after the Pregel computation finished. Only occurs if the store parameter is set to true.
+@RESTSTRUCT{verticesStored,get_api_control_pregel_detail_aggregated_store,integer,optional,int64}
+The number of vertices that are written back to the database after the Pregel
+computation finished. It is only set if the `store` parameter is set to `true`.
 
-@RESTREPLYBODY{allGssStatus,object,optional,get_api_control_pregel_detail_allgssstatus}
-Details for each global superstep, `item` includes an array with
+@RESTSTRUCT{allGssStatus,get_api_control_pregel_detail_aggregated,object,optional,get_api_control_pregel_detail_aggregated_gss}
+Information about the global supersteps.
 
-@RESTSTRUCT{verticesProcessed,get_api_control_pregel_detail_allgssstatus,number,optional,int64}
-Number of vertices that have been processed in this step.
+@RESTSTRUCT{items,get_api_control_pregel_detail_aggregated_gss,array,optional,get_api_control_pregel_detail_aggregated_gss_items}
+Details for each global superstep.
 
-@RESTSTRUCT{messagesSent,get_api_control_pregel_detail_allgssstatus,number,optional,int64}
-Number of messages sent in this step.
+@RESTSTRUCT{verticesProcessed,get_api_control_pregel_detail_aggregated_gss_items,integer,optional,int64}
+The number of vertices that have been processed in this step.
 
-@RESTSTRUCT{messagesReceived,get_api_control_pregel_detail_allgssstatus,number,optional,int64}
-Number of messages received in this step.
+@RESTSTRUCT{messagesSent,get_api_control_pregel_detail_aggregated_gss_items,integer,optional,int64}
+The number of messages sent in this step.
 
-@RESTSTRUCT{memoryBytesUsedForMessages,get_api_control_pregel_detail_allgssstatus,number,optional,int64}
-Number of bytes used in memory for the messages in this step.
+@RESTSTRUCT{messagesReceived,get_api_control_pregel_detail_aggregated_gss_items,integer,optional,int64}
+The number of messages received in this step.
+
+@RESTSTRUCT{memoryBytesUsedForMessages,get_api_control_pregel_detail_aggregated_gss_items,integer,optional,int64}
+The number of bytes used in memory for the messages in this step.
+
+@RESTSTRUCT{workerStatus,get_api_control_pregel_detail,object,required,}
+The details of the Pregel for every DB-Server. Each object key is a DB-Server ID,
+and the value is a nested object similar to the `aggregatedStatus` attribute.
 
 @RESTRETURNCODE{404}
 An HTTP 404 error is returned if no Pregel job with the specified execution number
