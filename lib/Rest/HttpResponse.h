@@ -35,7 +35,6 @@
 namespace arangodb {
 
 class HttpResponse : public GeneralResponse {
-
  public:
   static bool HIDE_PRODUCT_HEADER;
 

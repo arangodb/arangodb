@@ -310,8 +310,8 @@ class BenchmarkThread : public arangodb::Thread {
     if (++_warningCount < maxWarnings) {
       if (check.fail()) {
         LOG_TOPIC("fb835", WARN, arangodb::Logger::BENCH)
-            << "Request for URL '" << _requestData.url << "': "
-            << check.errorMessage();
+            << "Request for URL '" << _requestData.url
+            << "': " << check.errorMessage();
       }
     } else if (_warningCount == maxWarnings) {
       LOG_TOPIC("6daf1", WARN, arangodb::Logger::BENCH)
