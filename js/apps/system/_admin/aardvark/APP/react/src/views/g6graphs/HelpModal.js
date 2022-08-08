@@ -31,8 +31,18 @@ export const HelpModal = ({ shouldShow, onRequestClose, children }) => {
     <ModalBackground onClick={onRequestClose}>
       <ModalBody onClick={(e) => e.stopPropagation()}>
         <div>
-          {children}<br />
-          <strong>content from the modal</strong>
+          <span class="arangoHeader">Instructions</span>
+          <hr />
+          <dl>
+            <dt>Creating an edge</dt>
+            <dd>
+              Press and hold shift, then click the two nodes you want to connect with an edge. The first node will be the <code>_from</code> node and the second one the <code>_to</code> node. A modal opens to:
+              <ul>
+                <li>Set a "_key" (optional) </li>
+                <li>Select the edge collection you want the edge to be saved in</li>
+              </ul>
+            </dd>
+          </dl>
         </div>
         <div style={{ 'marginTop': '38px', 'textAlign': 'right' }}>
           <StyledButton className="button-success" onClick={onRequestClose}>Close</StyledButton>

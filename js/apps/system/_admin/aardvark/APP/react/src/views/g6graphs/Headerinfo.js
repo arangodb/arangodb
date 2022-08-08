@@ -98,7 +98,6 @@ const screenshotMenu = (
           setShowHelpModal(false);
         }}
       >
-        <strong>Help texts (example at ANALYZERS)</strong>
       </HelpModal>
       <PageHeader
         id="headerinfo"
