@@ -46,9 +46,3 @@ deadlock:consensus::Agent::setPersistedState
 
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
-
-# TODO Fix data race in arangodump
-race:arangodump
-
-# TODO Fix data race in arangorestore
-race:arangorestore
