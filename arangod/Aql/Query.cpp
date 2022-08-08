@@ -241,7 +241,9 @@ std::shared_ptr<Query> Query::create(
         : Query{std::move(ctx), std::move(queryString),
                 std::move(bindParameters), std::move(options)} {}
 
-    ~MakeSharedQuery() final { _queryProfile.reset(); }
+    ~MakeSharedQuery() final {
+      _queryProfile.reset();  // to prevent data race on vptr
+    }
   };
   TRI_ASSERT(ctx != nullptr);
   return std::make_shared<MakeSharedQuery>(
