@@ -1,6 +1,9 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
+  or more SortNodes appeared in the AQL execution plan.
+
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 
 * Updated arangosync to v2.11.0.
