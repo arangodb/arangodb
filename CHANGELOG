@@ -5,6 +5,9 @@ v3.10.0 (XXXX-XX-XX)
 
 * Fixed BTS-335 Ranges parsing fixed for nested queries.
 
+* BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
+  or more SortNodes appeared in the AQL execution plan.
+
 * Updated arangosync to v2.12.0-preview-3.
 
 * Added new AQL function `VALUE` capable of accessing object attribute by a
