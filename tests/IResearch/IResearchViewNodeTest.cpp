@@ -3608,12 +3608,14 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     {
       auto block = node.createBlock(engine, EMPTY);
       EXPECT_NE(nullptr, block);
-      EXPECT_NE(nullptr,
-                (dynamic_cast<arangodb::aql::ExecutionBlockImpl<
-                     arangodb::aql::IResearchViewExecutor<
-                         false, false,
-                         arangodb::iresearch::MaterializeType::Materialize>>*>(
-                    block.get())));
+      EXPECT_NE(
+          nullptr,
+          (dynamic_cast<arangodb::aql::ExecutionBlockImpl<
+               arangodb::aql::IResearchViewExecutor<
+                   arangodb::aql::ExecutionTraits<
+                       false, false, false,
+                       arangodb::iresearch::MaterializeType::Materialize>>>*>(
+              block.get())));
     }
   }
 }

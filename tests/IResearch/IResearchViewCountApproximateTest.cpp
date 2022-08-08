@@ -571,8 +571,9 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::aql::AqlCall call{};
   arangodb::aql::IResearchViewStats stats;
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
-  arangodb::aql::IResearchViewMergeExecutor<
-      false, false, arangodb::iresearch::MaterializeType::NotMaterialize>
+  arangodb::aql::IResearchViewMergeExecutor<arangodb::aql::ExecutionTraits<
+      false, false, false,
+      arangodb::iresearch::MaterializeType::NotMaterialize>>
       mergeExecutor(fetcher, executorInfos);
   arangodb::aql::SharedAqlItemBlockPtr inputBlock =
       itemBlockManager.requestBlock(1, 1);
@@ -648,8 +649,9 @@ TEST_F(IResearchViewCountApproximateTest,
       monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock =
       itemBlockManager.requestBlock(1, 1);
-  arangodb::aql::IResearchViewMergeExecutor<
-      false, false, arangodb::iresearch::MaterializeType::NotMaterialize>
+  arangodb::aql::IResearchViewMergeExecutor<arangodb::aql::ExecutionTraits<
+      false, false, false,
+      arangodb::iresearch::MaterializeType::NotMaterialize>>
       mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
@@ -729,8 +731,9 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock =
       itemBlockManager.requestBlock(1, 1);
-  arangodb::aql::IResearchViewMergeExecutor<
-      false, false, arangodb::iresearch::MaterializeType::NotMaterialize>
+  arangodb::aql::IResearchViewMergeExecutor<arangodb::aql::ExecutionTraits<
+      false, false, false,
+      arangodb::iresearch::MaterializeType::NotMaterialize>>
       mergeExecutor(fetcher, executorInfos);
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
