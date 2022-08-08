@@ -16,29 +16,29 @@ received messages.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-HTTP 200 will be returned in case the job execution id was valid and the state is
+HTTP 200 is returned in case the job execution ID was valid and the state is
 returned along with the response.
 
 @RESTREPLYBODY{id,string,required,string}
-An id of the Pregel job, as a string.
+The ID of the Pregel job, as a string.
 
 @RESTREPLYBODY{algorithm,string,required,string}
-An algorithm used by the job.
+The algorithm used by the job.
 
 @RESTREPLYBODY{created,string,required,string}
-A date and time when the job was created.
+The date and time when the job was created.
 
 @RESTREPLYBODY{expires,string,optional,string}
-A date and time when the job results expire. The expiration date is only
+The date and time when the job results expire. The expiration date is only
 meaningful for jobs that were completed, canceled or resulted in an error. Such jobs
 are cleaned up by the garbage collection when they reach their expiration date/time.
 
 @RESTREPLYBODY{ttl,number,required,float}
-A TTL (time to live) value for the job results, specified in seconds.
+The TTL (time to live) value for the job results, specified in seconds.
 The TTL is used to calculate the expiration date for the job's results.
 
 @RESTREPLYBODY{state,string,required,string}
-State of the execution. The following values can be returned:
+The state of the execution. The following values can be returned:
 - `"none"`: The Pregel run did not yet start.
 - `"loading"`: The graph is loaded from the database into memory before the execution of the algorithm.
 - `"running"`: The algorithm is executing normally.
@@ -55,10 +55,10 @@ State of the execution. The following values can be returned:
   caused by DB-Servers being not reachable or being non responsive. The execution
   might recover later, or switch to `"canceled"` if it was not able to recover
   successfully. 
-- `"recovering"` (currently unused): The execution is actively recovering, will
-  switch back to `running` if the recovery was successful.
+- `"recovering"` (currently unused): The execution is actively recovering and
+  switches back to `running` if the recovery is successful.
 
-@RESTREPLYBODY{gss,number,required,int64}
+@RESTREPLYBODY{gss,integer,required,int64}
 The number of global supersteps executed.
 
 @RESTREPLYBODY{totalRuntime,number,required,float}
@@ -75,11 +75,11 @@ The algorithm execution time. Is shown when the computation started.
 The time for storing the results if the job includes results storage.
 Is shown when the storing started.
 
-@RESTREPLYBODY{gssTimes,array,optional,float}
+@RESTREPLYBODY{gssTimes,array,optional,number}
 Computation time of each global super step. Is shown when the computation started.
 
 @RESTREPLYBODY{reports,object,optional,get_api_control_pregel_reports}
-Statistics about the Pregel execution. The value will only be populated once
+Statistics about the Pregel execution. The value is only populated once
 the algorithm has finished.
 
 @RESTSTRUCT{vertexCount,get_api_control_pregel_reports,integer,optional,int64}
@@ -118,7 +118,7 @@ computation finished. It is only set if the `store` parameter is set to `true`.
 Information about the global supersteps.
 
 @RESTSTRUCT{items,get_api_control_pregel_detail_aggregated_gss,array,optional,get_api_control_pregel_detail_aggregated_gss_items}
-Details for each global superstep.
+A list of objects with details for each global superstep.
 
 @RESTSTRUCT{verticesProcessed,get_api_control_pregel_detail_aggregated_gss_items,integer,optional,int64}
 The number of vertices that have been processed in this step.
@@ -134,7 +134,8 @@ The number of bytes used in memory for the messages in this step.
 
 @RESTSTRUCT{workerStatus,get_api_control_pregel_detail,object,required,}
 The details of the Pregel for every DB-Server. Each object key is a DB-Server ID,
-and the value is a nested object similar to the `aggregatedStatus` attribute.
+and each value is a nested object similar to the `aggregatedStatus` attribute.
+In a single server deployment, there is only a single entry with an empty string as key.
 
 @RESTRETURNCODE{404}
 An HTTP 404 error is returned if no Pregel job with the specified execution number
@@ -162,7 +163,7 @@ Get the execution status of a Pregel job:
   var url = "/_api/control_pregel/" + id;
   while (true) {
     var status = internal.arango.GET(url);
-    if (["done", "canceled", "fatal error"].includes(status.state)) {
+    if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
       assert(status.state == "done");
       break;
     } else {
