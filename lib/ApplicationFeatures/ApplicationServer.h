@@ -23,6 +23,14 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "Basics/ConditionVariable.h"
+
+#include <velocypack/Builder.h>
+
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <functional>
@@ -32,17 +40,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <typeindex>
-#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <boost/type_index/ctti_type_index.hpp>
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-
-#include <velocypack/Builder.h>
 
 namespace arangodb {
 

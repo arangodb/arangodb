@@ -23,13 +23,14 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Containers/FlatHashSet.h"
+
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace arangodb {
 namespace options {
