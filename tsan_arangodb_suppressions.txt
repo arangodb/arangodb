@@ -24,3 +24,6 @@ race:VersionSet::SetLastSequence
 
 # TODO - this should be removed once BTS-685 is fixed
 race:AllowImplicitCollectionsSwitcher
+
+# Known false-positive, see https://github.com/google/sanitizers/issues/953
+race:absl/synchronization/internal/waiter.cc

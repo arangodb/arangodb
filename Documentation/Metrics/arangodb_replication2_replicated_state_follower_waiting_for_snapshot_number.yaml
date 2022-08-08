@@ -1,0 +1,12 @@
+name: arangodb_replication2_replicated_state_follower_waiting_for_snapshot_number
+introducedIn: "3.10.0"
+help: |
+  Number of followers waiting for a snapshot transfer to complete.
+unit: number
+type: gauge
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of followers waiting for a snapshot transfer to complete.

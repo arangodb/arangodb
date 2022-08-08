@@ -2008,6 +2008,9 @@ function processQuery(query, explain, planIndex) {
 
       case 'MaterializeNode':
         return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'OffsetMaterializeNode':
+        return keyword('LET ') + variableName(node.outVariable) + ' = ' +
+               func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', [ ' + Object.keys(node.options.fields).map(v => value("'" + v + "'")) + ' ])';
       case 'MutexNode':
         return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':

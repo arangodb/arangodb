@@ -134,6 +134,10 @@ void expectEqualSlices_(const velocypack::Slice& lhs,
 }  // namespace tests
 }  // namespace arangodb
 
+namespace iresearch {
+std::string to_string(irs::filter const& f);
+}
+
 std::string mangleNested(std::string name);
 std::string mangleType(std::string name);
 std::string mangleAnalyzer(std::string name);
@@ -176,7 +180,8 @@ void assertFilter(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
-        arangodb::iresearch::FilterOptimization::NONE);
+        arangodb::iresearch::FilterOptimization::NONE,
+    bool searchQuery = true, bool oldMangling = true);
 
 void assertFilterSuccess(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -185,7 +190,8 @@ void assertFilterSuccess(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
-        arangodb::iresearch::FilterOptimization::NONE);
+        arangodb::iresearch::FilterOptimization::NONE,
+    bool searchQuery = true, bool oldMangling = true);
 
 void assertFilterFail(
     TRI_vocbase_t& vocbase, std::string const& queryString,

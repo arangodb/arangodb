@@ -5042,6 +5042,7 @@ void arangodb::aql::distributeSortToClusterRule(
         // distributed in cluster as it accounts this disctribution. So we
         // should not encounter this kind of nodes for now
         case EN::MATERIALIZE:
+        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
@@ -7425,6 +7426,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     // TODO: As soon as materialize does no longer have to filter out
     //  non-existent documents, move MATERIALIZE to the allowed nodes!
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::MUTEX:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:

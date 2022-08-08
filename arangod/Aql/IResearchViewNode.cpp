@@ -67,16 +67,12 @@
 namespace arangodb::iresearch {
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief surrogate root for all queries without a filter
-////////////////////////////////////////////////////////////////////////////////
+// Surrogate root for all queries without a filter
 aql::AstNode const kAll{aql::AstNodeValue{true}};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helpers for std::vector<iresearch::IResearchSort>
-////////////////////////////////////////////////////////////////////////////////
+// Helpers for std::vector<iresearch::IResearchSort>
 void toVelocyPack(velocypack::Builder& builder,
-                  std::vector<Scorer> const& scorers, bool verbose) {
+                  std::vector<SearchFunc> const& scorers, bool verbose) {
   VPackArrayBuilder arrayScope(&builder);
   for (auto const& scorer : scorers) {
     VPackObjectBuilder objectScope(&builder);
@@ -87,8 +83,8 @@ void toVelocyPack(velocypack::Builder& builder,
   }
 }
 
-std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan,
-                                   velocypack::Slice slice) {
+std::vector<SearchFunc> fromVelocyPack(aql::ExecutionPlan& plan,
+                                       velocypack::Slice slice) {
   if (!slice.isArray()) {
     LOG_TOPIC("b50b2", ERR, iresearch::TOPIC)
         << "invalid json format detected while building IResearchViewNode "
@@ -101,7 +97,7 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan,
   auto const* vars = plan.getAst()->variables();
   TRI_ASSERT(vars);
   velocypack::ArrayIterator scorersArray{slice};
-  std::vector<Scorer> scorers;
+  std::vector<SearchFunc> scorers;
   scorers.reserve(scorersArray.size());
   size_t i = 0;
   for (auto const sortSlice : scorersArray) {
@@ -133,9 +129,7 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan,
   return scorers;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helpers for IResearchViewNode::Options
-////////////////////////////////////////////////////////////////////////////////
+// Helpers for IResearchViewNode::Options
 constexpr auto conditionOptimizationTypeMap =
     frozen::make_map<std::string_view, aql::ConditionOptimization>({
         {"auto", aql::ConditionOptimization::Auto},
@@ -477,9 +471,6 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief other helpers
-////////////////////////////////////////////////////////////////////////////////
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref, aql::VarSet& vars) {
@@ -576,41 +567,36 @@ int evaluateVolatility(IResearchViewNode const& node) {
 LogicalView::CollectionVisitor const sEmptyView{
     [](DataSourceId, LogicalView::Indexes*) noexcept { return false; }};
 
-/// @brief Since cluster is not transactional and each distributed
-///        part of a query starts it's own transaction associated
-///        with global query identifier, there is no single place
-///        to store a snapshot and we do the following:
-///
-///   1. Each query part on DB server gets the list of shards
-///      to be included into a query and starts its own transaction
-///
-///   2. Given the list of shards we take view snapshot according
-///      to the list of restricted data sources specified in options
-///      of corresponding IResearchViewNode
-///
-///   3. If waitForSync is specified, we refresh snapshot
-///      of each shard we need and finally put it to transaction
-///      associated to a part of the distributed query. We use
-///      default snapshot key if there are no restricted sources
-///      specified in options or IResearchViewNode address otherwise
-///
-///      Custom key is needed for the following query
-///      (assume 'view' is lined with 'c1' and 'c2' in the example below):
-///           FOR d IN view OPTIONS { collections : [ 'c1' ] }
-///           FOR x IN view OPTIONS { collections : [ 'c2' ] }
-///           RETURN {d, x}
-///
+// Since cluster is not transactional and each distributed
+//        part of a query starts it's own transaction associated
+//        with global query identifier, there is no single place
+//        to store a snapshot and we do the following:
+//
+//   1. Each query part on DB server gets the list of shards
+//      to be included into a query and starts its own transaction
+//
+//   2. Given the list of shards we take view snapshot according
+//      to the list of restricted data sources specified in options
+//      of corresponding IResearchViewNode
+//
+//   3. If waitForSync is specified, we refresh snapshot
+//      of each shard we need and finally put it to transaction
+//      associated to a part of the distributed query. We use
+//      default snapshot key if there are no restricted sources
+//      specified in options or IResearchViewNode address otherwise
+//
+//      Custom key is needed for the following query
+//      (assume 'view' is lined with 'c1' and 'c2' in the example below):
+//           FOR d IN view OPTIONS { collections : [ 'c1' ] }
+//           FOR x IN view OPTIONS { collections : [ 'c2' ] }
+//           RETURN {d, x}
+//
 ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
                                  transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   auto const view = node.view();
   auto const& options = node.options();
-  // TODO We want transactional cluster, now it's not
-  // So we don't make sense to make ViewSnapshotView for restrictSources
-  // and we can use node address as key
-  void const* key = (options.restrictSources || view == nullptr)
-                        ? static_cast<void const*>(&node)
-                        : static_cast<void const*>(view.get());
+  auto* const key = node.getSnapshotKey();
   auto* snapshot = getViewSnapshot(trx, key);
   if (snapshot != nullptr) {
     if (options.forceSync) {
@@ -670,24 +656,24 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
                            view ? view->name() : "", std::move(links))};
 }
 
-/// @brief Since single-server is transactional we do the following:
-///
-///   1. When transaction starts we put index snapshot into it
-///
-///   2. If waitForSync is specified, we refresh snapshot
-///      taken in (1), object itself remains valid
-///
-///   3. If there are no restricted sources in a query, we reuse
-///      snapshot taken in (1),
-///      otherwise we reassemble restricted snapshot based on the
-///      original one taken in (1) and return it
-///
+// Since single-server is transactional we do the following:
+//
+//   1. When transaction starts we put index snapshot into it
+//
+//   2. If waitForSync is specified, we refresh snapshot
+//      taken in (1), object itself remains valid
+//
+//   3. If there are no restricted sources in a query, we reuse
+//      snapshot taken in (1),
+//      otherwise we reassemble restricted snapshot based on the
+//      original one taken in (1) and return it
+//
 ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
                                      transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isSingleServer());
   auto const& view = *node.view();
   auto const& options = node.options();
-  void const* key = static_cast<void const*>(&view);
+  auto* const key = node.getSnapshotKey();
   auto* snapshot = getViewSnapshot(trx, key);
   if (snapshot != nullptr) {
     if (options.forceSync) {
@@ -750,6 +736,7 @@ const char* NODE_DATABASE_PARAM = "database";
 const char* NODE_VIEW_NAME_PARAM = "view";
 const char* NODE_VIEW_ID_PARAM = "viewId";
 const char* NODE_OUT_VARIABLE_PARAM = "outVariable";
+const char* NODE_OUT_SEARCH_DOC_PARAM = "outSearchDocId";
 const char* NODE_OUT_NM_DOC_PARAM = "outNmDocId";
 const char* NODE_OUT_NM_COL_PARAM = "outNmColPtr";
 const char* NODE_CONDITION_PARAM = "condition";
@@ -887,11 +874,24 @@ bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept {
   return filterCondition == &kAll;
 }
 
+IResearchViewNode* IResearchViewNode::getByVar(
+    aql::ExecutionPlan const& plan, aql::Variable const& var) noexcept {
+  auto* varOwner = plan.getVarSetBy(var.id);
+
+  if (!varOwner ||
+      aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW != varOwner->getType()) {
+    return nullptr;
+  }
+
+  return aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
+      varOwner);
+}
+
 IResearchViewNode::IResearchViewNode(
     aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
     std::shared_ptr<const LogicalView> view, aql::Variable const& outVariable,
     aql::AstNode* filterCondition, aql::AstNode* options,
-    std::vector<Scorer>&& scorers)
+    std::vector<SearchFunc>&& scorers)
     : aql::ExecutionNode{&plan, id},
       _vocbase{vocbase},
       _view{std::move(view)},
@@ -921,6 +921,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                                      velocypack::Slice base)
     : aql::ExecutionNode{&plan, base},
       _vocbase{plan.getAst()->query().vocbase()},
+      _outSearchDocId{aql::Variable::varFromVPack(
+          plan.getAst(), base, NODE_OUT_SEARCH_DOC_PARAM, true)},
       _outVariable{aql::Variable::varFromVPack(plan.getAst(), base,
                                                NODE_OUT_VARIABLE_PARAM)},
       _outNonMaterializedDocId{aql::Variable::varFromVPack(
@@ -1212,7 +1214,22 @@ std::pair<bool, bool> IResearchViewNode::volatility(
                         irs::check_bit<1>(_volatilityMask));  // sort
 }
 
-/// @brief doToVelocyPack, for EnumerateViewNode
+void const* IResearchViewNode::getSnapshotKey() const noexcept {
+  if (ServerState::instance()->isDBServer()) {
+    // TODO We want transactional cluster, now it's not
+    // So we don't make sense to make ViewSnapshotView for restrictSources
+    // and we can use node address as key
+    return (_options.restrictSources || _view == nullptr)
+               ? static_cast<void const*>(this)
+               : static_cast<void const*>(_view.get());
+  } else if (ServerState::instance()->isSingleServer()) {
+    return _view.get();
+  }
+
+  TRI_ASSERT(false);
+  return nullptr;
+}
+
 void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
                                        unsigned flags) const {
   // system info
@@ -1226,6 +1243,11 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // our variable
   nodes.add(VPackValue(NODE_OUT_VARIABLE_PARAM));
   _outVariable->toVelocyPack(nodes);
+
+  if (_outSearchDocId != nullptr) {
+    nodes.add(VPackValue(NODE_OUT_SEARCH_DOC_PARAM));
+    _outSearchDocId->toVelocyPack(nodes);
+  }
 
   if (_outNonMaterializedDocId != nullptr) {
     nodes.add(VPackValue(NODE_OUT_NM_DOC_PARAM));
@@ -1371,33 +1393,35 @@ IResearchViewNode::Collections IResearchViewNode::collections() const {
   return viewCollections;
 }
 
-/// @brief clone ExecutionNode recursively
 aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
                                              bool withDependencies,
                                              bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
+  auto* outSearchDocId = _outSearchDocId;
   auto* outNonMaterializedDocId = _outNonMaterializedDocId;
   auto* outNonMaterializedColId = _outNonMaterializedColPtr;
   auto outNonMaterializedViewVars = _outNonMaterializedViewVars;
 
   if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    auto* vars = plan->getAst()->variables();
+    outVariable = vars->createVariable(outVariable);
+    if (outSearchDocId != nullptr) {
+      TRI_ASSERT(_outSearchDocId != nullptr);
+      outSearchDocId = vars->createVariable(outNonMaterializedDocId);
+    }
     if (outNonMaterializedDocId != nullptr) {
       TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
-      outNonMaterializedDocId =
-          plan->getAst()->variables()->createVariable(outNonMaterializedDocId);
+      outNonMaterializedDocId = vars->createVariable(outNonMaterializedDocId);
     }
     if (outNonMaterializedColId != nullptr) {
       TRI_ASSERT(_outNonMaterializedDocId != nullptr);
-      outNonMaterializedColId =
-          plan->getAst()->variables()->createVariable(outNonMaterializedColId);
+      outNonMaterializedColId = vars->createVariable(outNonMaterializedColId);
     }
     for (auto& columnFieldsVars : outNonMaterializedViewVars) {
       for (auto& fieldVar : columnFieldsVars.second) {
-        fieldVar.var =
-            plan->getAst()->variables()->createVariable(fieldVar.var);
+        fieldVar.var = vars->createVariable(fieldVar.var);
       }
     }
   }
@@ -1411,6 +1435,9 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_volatilityMask = _volatilityMask;
   node->_sort = _sort;
   node->_optState = _optState;
+  if (outSearchDocId != nullptr) {
+    node->setSearchDocIdVar(*outSearchDocId);
+  }
   if (outNonMaterializedColId != nullptr &&
       outNonMaterializedDocId != nullptr) {
     node->setLateMaterialized(*outNonMaterializedColId,
@@ -1432,7 +1459,6 @@ bool IResearchViewNode::empty() const noexcept {
   }
 }
 
-/// @brief the cost of an enumerate view node
 aql::CostEstimate IResearchViewNode::estimateCost() const {
   if (_dependencies.empty()) {
     return aql::CostEstimate::empty();
@@ -1469,8 +1495,8 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   return estimate;
 }
 
-/// @brief replaces variables in the internals of the execution node
-/// replacements are { old variable id => new variable }
+// Replaces variables in the internals of the execution node
+// replacements are { old variable id => new variable }.
 void IResearchViewNode::replaceVariables(
     std::unordered_map<aql::VariableId, aql::Variable const*> const&
         replacements) {
@@ -1499,7 +1525,6 @@ void IResearchViewNode::replaceVariables(
   }
 }
 
-/// @brief getVariablesUsedHere, modifying the set in-place
 void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
   auto const outVariableAlreadyInVarSet = vars.contains(_outVariable);
 
@@ -1525,7 +1550,10 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
   if (isLateMaterialized()) {
     reserve += 2;
   } else if (!isNoMaterialization()) {
-    reserve += 1;
+    ++reserve;
+  }
+  if (searchDocIdVar()) {
+    ++reserve;
   }
   vars.reserve(reserve);
 
@@ -1543,6 +1571,9 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
     }
   } else {
     vars.emplace_back(_outVariable);
+  }
+  if (searchDocIdVar()) {
+    vars.emplace_back(_outSearchDocId);
   }
   return vars;
 }
@@ -1641,7 +1672,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         ViewSnapshotPtr reader) {
     // We could be asked to produce only document/collection ids for later
     // materialization or full document body at once
-    aql::RegisterCount numDocumentRegs = 0;
+    aql::RegisterCount numDocumentRegs = uint32_t{_outSearchDocId != nullptr};
     MaterializeType materializeType = MaterializeType::Undefined;
     if (isLateMaterialized()) {
       TRI_ASSERT(!isNoMaterialization());
@@ -1652,7 +1683,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       materializeType = MaterializeType::NotMaterialize;
     } else {
       materializeType = MaterializeType::Materialize;
-      numDocumentRegs += 1;
+      ++numDocumentRegs;
     }
 
     // We have one output register for documents, which is always the first
@@ -1674,9 +1705,15 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // the output register(s) for documents (one or two + vars, depending on
     // late materialization) These must of course fit in the available
     // registers. There may be unused registers reserved for later blocks.
-    auto writableOutputRegisters = aql::RegIdSet{};
+    aql::RegIdSet writableOutputRegisters;
     writableOutputRegisters.reserve(numDocumentRegs + numScoreRegisters +
                                     numViewVarsRegisters);
+
+    aql::RegisterId searchDocRegId{aql::RegisterPlan::MaxRegisterId};
+    if (_outSearchDocId != nullptr) {
+      searchDocRegId = variableToRegisterId(_outSearchDocId);
+      writableOutputRegisters.emplace(searchDocRegId);
+    }
 
     auto const outRegister =
         std::invoke([&]() -> aql::IResearchViewExecutorInfos::OutRegisters {
@@ -1708,8 +1745,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       scoreRegisters.emplace_back(registerId);
     });
 
-    auto const& varInfos =
-        getRegisterPlan()->varInfo;  // TODO remove if not needed
+    // TODO remove if not needed
+    auto const& varInfos = getRegisterPlan()->varInfo;
 
     ViewValuesRegisters outNonMaterializedViewRegs;
 
@@ -1731,7 +1768,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     TRI_ASSERT(_view || _storedValues);
     auto executorInfos = aql::IResearchViewExecutorInfos{
         std::move(reader),
-        outRegister,
+        std::move(outRegister),
+        searchDocRegId,
         std::move(scoreRegisters),
         engine.getQuery(),
         scorers(),
@@ -1741,6 +1779,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         outVariable(),
         filterCondition(),
         volatility(),
+        (_view && _view->type() == ViewType::kView),
         getRegisterPlan()->varInfo,  // ??? do we need this?
         getDepth(),
         std::move(outNonMaterializedViewRegs),
@@ -1751,6 +1790,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
   };
+
   if (ServerState::instance()->isCoordinator()) {
     // coordinator in a cluster: empty view case
     return createNoResultsExecutor(engine);
@@ -1853,7 +1893,7 @@ void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(
 
 IResearchViewNode::ViewVarsInfo
 IResearchViewNode::OptimizationState::replaceViewVariables(
-    std::vector<aql::CalculationNode*> const& calcNodes,
+    std::span<aql::CalculationNode* const> calcNodes,
     containers::HashSet<ExecutionNode*>& toUnlink) {
   TRI_ASSERT(!calcNodes.empty());
   ViewVarsInfo uniqueVariables;

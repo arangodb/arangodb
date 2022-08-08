@@ -213,6 +213,8 @@ inline constexpr std::string_view ForcedParticipantNotInQuorumEnum =
     "ForcedParticipantNotInQuorum";
 inline constexpr std::string_view NonEligibleServerRequiredForQuorumEnum =
     "NonEligibleServerRequiredForQuorum";
+inline constexpr std::string_view FewerParticipantsThanWriteConcernEnum =
+    "FewerParticipantsThanWriteConcern";
 inline constexpr std::string_view WhoFieldName = "who";
 inline constexpr std::string_view CandidatesFieldName = "candidates";
 inline constexpr std::string_view NonEligibleNotAllowedInQuorum =
@@ -404,6 +406,9 @@ auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s)
   } else if (reason == NonEligibleServerRequiredForQuorumEnum) {
     return CommitFailReason{
         std::in_place, NonEligibleServerRequiredForQuorum::fromVelocyPack(s)};
+  } else if (reason == FewerParticipantsThanWriteConcernEnum) {
+    return CommitFailReason{
+        std::in_place, FewerParticipantsThanWriteConcern::fromVelocyPack(s)};
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -505,8 +510,21 @@ auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
 void replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
     toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
+  builder.add(ReasonFieldName,
+              VPackValue(FewerParticipantsThanWriteConcernEnum));
   builder.add(StaticStrings::EffectiveWriteConcern, effectiveWriteConcern);
 }
 
 GlobalLogIdentifier::GlobalLogIdentifier(std::string database, LogId id)
     : database(std::move(database)), id(id) {}
+
+auto replication2::to_string(GlobalLogIdentifier const& gid) -> std::string {
+  VPackBuilder b;
+  velocypack::serialize(b, gid);
+  return b.toJson();
+}
+
+auto replication2::operator<<(std::ostream& os, GlobalLogIdentifier const& gid)
+    -> std::ostream& {
+  return os << to_string(gid);
+}
