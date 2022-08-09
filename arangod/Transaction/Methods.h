@@ -447,6 +447,18 @@ class Methods {
       ReplicationType& replicationType,
       std::shared_ptr<std::vector<ServerID> const>& followers);
 
+  Result determineReplication1TypeAndFollowers(
+      LogicalCollection& collection, std::string_view operationName,
+      velocypack::Slice value, OperationOptions& options,
+      ReplicationType& replicationType,
+      std::shared_ptr<std::vector<ServerID> const>& followers);
+
+  Result determineReplication2TypeAndFollowers(
+      LogicalCollection& collection, std::string_view operationName,
+      velocypack::Slice value, OperationOptions& options,
+      ReplicationType& replicationType,
+      std::shared_ptr<std::vector<ServerID> const>& followers);
+
   void trackWaitForSync(LogicalCollection& collection,
                         OperationOptions& options);
 
