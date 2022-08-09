@@ -104,25 +104,33 @@ LanguageFeature::~LanguageFeature() = default;
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption("--default-language", "ISO-639 language code",
+      ->addOption("--default-language",
+                  "An ISO-639 language code. This option can only be set once, "
+                  "when initializing the database.",
                   new StringParameter(&_defaultLanguage),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(31000);
 
   options
-      ->addOption("--icu-language", "ICU language",
-                  new StringParameter(&_icuLanguage),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+      ->addOption(
+          "--icu-language",
+          "An ICU locale ID to set a language and optionally additional "
+          "properties that affect string comparisons and sorting. This option "
+          "can only be set once, when initializing the database.",
+          new StringParameter(&_icuLanguage),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30901);
 
   options
-      ->addOption("--default-language-check",
-                  "check if default language matches stored language",
-                  new BooleanParameter(&_forceLanguageCheck),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+      ->addOption(
+          "--default-language-check",
+          "Check if `--icu-language` / `--default-language` matches the "
+          "stored language.",
+          new BooleanParameter(&_forceLanguageCheck),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 }
 
