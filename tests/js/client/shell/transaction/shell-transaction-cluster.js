@@ -507,17 +507,27 @@ function transactionReplication2Recovery() {
       syncShardsWithLogs(dbn);
       replicatedLogsHelper.waitFor(
         replicatedStatePredicates.localKeyStatus(
-          replicatedLogsHelper.getServerUrl(leader), dbn, shardId, "foo", true));
+          replicatedLogsHelper.getServerUrl(leader), dbn, shardId, "foo", true), 30, function() {
+          let url = replicatedLogsHelper.getServerUrl(leader);
+
+          let res = request.get({
+            url: `${url}/_db/${db}/_api/replicated-state/${shardId.slice(1)}/local-status`,
+          });
+          require('internal').print("Leader state ", res.json, " log contents\n", replicatedStateHelper.dumpShardLog(shardId));
+        });
 
       // Try another transaction. This time expect it to work on all servers.
       try {
         trx = db._createTransaction({
           collections: {write: c.name()}
         });
+        require('internal').print(trx.id())
         tc = trx.collection(c.name());
         tc.insert({_key: "bar"});
+        require('internal').print("About to commit transaction");
         trx.commit();
       } catch (err) {
+        require('internal').print("log contents\n", replicatedStateHelper.dumpShardLog(shardId));
         fail("Transaction failed with: " + JSON.stringify(err));
       }
 
