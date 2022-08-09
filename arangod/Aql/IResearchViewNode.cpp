@@ -704,31 +704,45 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
   return {ViewSnapshotPtr{}, snapshot};
 }
 
-IResearchSortBase const& primarySort(LogicalView const& view) {
-  if (view.type() == ViewType::kSearch) {
-    auto const& viewImpl = basics::downCast<Search>(view);
-    return viewImpl.primarySort();
+std::shared_ptr<SearchMeta const> getMeta(
+    std::shared_ptr<LogicalView const> const& view) {
+  if (!view || view->type() != ViewType::kSearch) {
+    return {};
   }
-  TRI_ASSERT(view.type() == ViewType::kView);
+  return basics::downCast<Search>(*view).meta();
+}
+
+IResearchSortBase const& primarySort(
+    std::shared_ptr<SearchMeta const> const& meta,
+    std::shared_ptr<LogicalView const> const& view) {
+  if (meta) {
+    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    return meta->primarySort;
+  }
+  TRI_ASSERT(view);
+  TRI_ASSERT(view->type() == ViewType::kView);
   if (ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.primarySort();
   }
-  auto const& viewImpl = basics::downCast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(*view);
   return viewImpl.primarySort();
 }
 
-IResearchViewStoredValues const& storedValues(LogicalView const& view) {
-  if (view.type() == ViewType::kSearch) {
-    auto const& viewImpl = basics::downCast<Search>(view);
-    return viewImpl.storedValues();
+IResearchViewStoredValues const& storedValues(
+    std::shared_ptr<SearchMeta const> const& meta,
+    std::shared_ptr<LogicalView const> const& view) {
+  if (meta) {
+    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    return meta->storedValues;
   }
-  TRI_ASSERT(view.type() == ViewType::kView);
+  TRI_ASSERT(view);
+  TRI_ASSERT(view->type() == ViewType::kView);
   if (ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.storedValues();
   }
-  auto const& viewImpl = basics::downCast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(*view);
   return viewImpl.storedValues();
 }
 
@@ -760,6 +774,87 @@ const char* NODE_VIEW_SCORERS_SORT = "scorersSort";
 const char* NODE_VIEW_SCORERS_SORT_INDEX = "index";
 const char* NODE_VIEW_SCORERS_SORT_ASC = "asc";
 const char* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
+const char* NODE_VIEW_META_FIELDS = "metaFields";
+const char* NODE_VIEW_META_ANALYZER = "metaAnalyzer";
+const char* NODE_VIEW_META_INCLUDE_ALL = "metaIncludeAll";
+
+void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta) {
+  {
+    VPackArrayBuilder arrayScope{&node, NODE_PRIMARY_SORT_PARAM};
+    meta.primarySort.toVelocyPack(node);
+  }
+  {
+    VPackArrayBuilder arrayScope{&node, NODE_STORED_VALUES_PARAM};
+    meta.storedValues.toVelocyPack(node);
+  }
+  node.add(NODE_VIEW_META_INCLUDE_ALL,
+           velocypack::Value{meta.includeAllFields});
+  node.add(NODE_VIEW_META_ANALYZER, velocypack::Value{meta.rootAnalyzer});
+  {
+    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_FIELDS};
+    for (auto const& [field, analyzer] : meta.fieldToAnalyzer) {
+      node.add(velocypack::Value{field});
+      node.add(velocypack::Value{analyzer});
+    }
+  }
+}
+
+void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
+  std::string error;
+  auto slice = node.get(NODE_PRIMARY_SORT_PARAM);
+  auto checkError = [&](std::string_view key) {
+    if (!error.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("Failed to parse 'SearchMeta' ", key, ":",
+                       slice.toString(), ", error: ", error));
+    }
+  };
+  meta.primarySort.fromVelocyPack(slice, error);
+  checkError(NODE_PRIMARY_SORT_PARAM);
+
+  slice = node.get(NODE_STORED_VALUES_PARAM);
+  meta.storedValues.fromVelocyPack(slice, error);
+  checkError(NODE_STORED_VALUES_PARAM);
+
+  slice = node.get(NODE_VIEW_META_INCLUDE_ALL);
+  if (!slice.isBool()) {
+    error = "should be bool";
+    checkError(NODE_VIEW_META_INCLUDE_ALL);
+  }
+  meta.includeAllFields = slice.getBool();
+
+  slice = node.get(NODE_VIEW_META_ANALYZER);
+  if (!slice.isString()) {
+    error = "should be string";
+    checkError(NODE_VIEW_META_ANALYZER);
+  }
+  meta.rootAnalyzer = slice.stringView();
+
+  slice = node.get(NODE_VIEW_META_FIELDS);
+  if (!slice.isArray() || slice.length() % 2 != 0) {
+    error = "should be even array";
+    checkError(NODE_VIEW_META_FIELDS);
+  }
+  velocypack::Slice value;
+  auto checkValue = [&] {
+    if (!value.isString()) {
+      error = "should be array of string";
+      checkError(NODE_VIEW_META_FIELDS);
+    }
+  };
+  for (velocypack::ArrayIterator it{slice}; it.valid();) {
+    value = it.value();
+    checkValue();
+    auto field = value.stringView();
+    ++it;
+    value = it.value();
+    checkValue();
+    auto analyzer = value.stringView();
+    ++it;
+    meta.fieldToAnalyzer.emplace(field, analyzer);
+  }
+}
 
 void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
                       IResearchViewNode::ViewVariable const& fieldVar) {
@@ -954,6 +1049,7 @@ IResearchViewNode::IResearchViewNode(
     : aql::ExecutionNode{&plan, id},
       _vocbase{vocbase},
       _view{std::move(view)},
+      _meta{getMeta(_view)},
       _outVariable{&outVariable},
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
@@ -969,6 +1065,7 @@ IResearchViewNode::IResearchViewNode(
   // FIXME any other way to validate options before object creation???
   std::string error;
   TRI_ASSERT(_view);
+  TRI_ASSERT(_meta || _view->type() != ViewType::kSearch);
   if (!parseOptions(ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -1024,6 +1121,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         absl::StrCat("unable to find ArangoSearch view with id '", viewIdOrName,
                      "'"));
   }
+  _meta = getMeta(_view);
+  TRI_ASSERT(_meta || !_view || _view->type() != ViewType::kSearch);
   // filter condition
   auto const conditionSlice = base.get(NODE_CONDITION_PARAM);
   if (conditionSlice.isObject() && !conditionSlice.isEmptyObject()) {
@@ -1084,76 +1183,36 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
-  // primary sort
-  auto const sortSlice = base.get(NODE_PRIMARY_SORT_PARAM);
-  if (!sortSlice.isNone()) {
-    std::string error;
-    IResearchSortBase vpackSort;
-    if (!vpackSort.fromVelocyPack(sortSlice, error)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          absl::StrCat("failed to parse 'IResearchViewNode' primary sort: ",
-                       sortSlice.toString(), ", error: '", error, "'"));
-    }
-    auto const& sort = *[&]() -> IResearchSortBase const* {
-      if (!_view) {
-        return &vpackSort;
-      }
-      auto& viewSort = primarySort(*_view);
-      if (vpackSort != viewSort) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("primary sort ", sortSlice.toString(),
-                         " for 'IResearchViewNode' doesn't match the one "
-                         "specified in view '",
-                         _view->name(), "'"));
-      }
-      return &viewSort;
-    }();
-    auto sortBuckets = sort.size();
-    if (sortBuckets != 0) {
-      auto const sortBucketsSlice = base.get(NODE_PRIMARY_SORT_BUCKETS_PARAM);
-      if (!sortBucketsSlice.isNone()) {
-        if (!sortBucketsSlice.isNumber()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "invalid vpack format: 'primarySortBuckets' attribute is "
-              "intended to be a number");
-        }
-        sortBuckets = sortBucketsSlice.getNumber<size_t>();
-        if (sortBuckets > sort.size()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              absl::StrCat("invalid vpack format: value of "
-                           "'primarySortBuckets' attribute '",
-                           sortBuckets,
-                           "' is greater than number of buckets specified in "
-                           "'primarySort' attribute '",
-                           sort.size(), "'"));
-        }
-      }
-
-      if (&sort == &vpackSort) {
-        _sortBuckets = sortBuckets;
-        _sort = std::make_shared<IResearchSortBase const>(std::move(vpackSort));
-      } else {
-        setSort(sort, sortBuckets);
-      }
-    }
-  }
-  // stored values
+  // meta
   if (!_view) {
-    auto const valuesSlice = base.get(NODE_STORED_VALUES_PARAM);
-    std::string error;
-    IResearchViewStoredValues vpackValues;
-    if (!vpackValues.fromVelocyPack(valuesSlice, error)) {
+    auto meta = std::make_shared<SearchMeta>();
+    fromVelocyPack(base, *meta);
+    _meta = std::move(meta);
+    TRI_ASSERT(_meta);
+  }
+  // parse sort buckets and set them and sort
+  auto const& sort = primarySort(_meta, _view);
+  auto sortBuckets = sort.size();
+  if (sortBuckets != 0) {
+    auto const sortBucketsSlice = base.get(NODE_PRIMARY_SORT_BUCKETS_PARAM);
+    if (!sortBucketsSlice.isNumber()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
-          absl::StrCat("failed to parse 'IResearchViewNode' stored values: ",
-                       sortSlice.toString(), ", error: '", error, "'"));
+          "invalid vpack format: 'primarySortBuckets' attribute is "
+          "intended to be a number");
     }
-    _storedValues = std::make_shared<IResearchViewStoredValues const>(
-        std::move(vpackValues));
+    sortBuckets = sortBucketsSlice.getNumber<size_t>();
+    if (sortBuckets > sort.size()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("invalid vpack format: value of "
+                       "'primarySortBuckets' attribute '",
+                       sortBuckets,
+                       "' is greater than number of buckets specified in "
+                       "'primarySort' attribute '",
+                       sort.size(), "'"));
+    }
+    setSort(sort, sortBuckets);
   }
 
   auto const noMaterializationSlice = base.get(NODE_VIEW_NO_MATERIALIZATION);
@@ -1294,6 +1353,7 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // system info
   nodes.add(NODE_DATABASE_PARAM, VPackValue(_vocbase.name()));
   TRI_ASSERT(_view);
+  TRI_ASSERT(_meta || _view->type() != ViewType::kSearch);
   // need 'view' field to correctly print view name in JS explanation
   nodes.add(NODE_VIEW_NAME_PARAM, VPackValue(_view->name()));
   absl::AlphaNum viewId{_view->id().id()};
@@ -1334,13 +1394,8 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
 
   // stored values
   {
-    TRI_ASSERT(_view);
-    auto const& values = storedValues(*_view);
-    {
-      VPackArrayBuilder arrayScope{&nodes, NODE_STORED_VALUES_PARAM};
-      values.toVelocyPack(nodes);
-    }
-    auto const& sort = primarySort(*_view);
+    auto const& values = storedValues(_meta, _view);
+    auto const& sort = primarySort(_meta, _view);
     VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VARS);
     std::string fieldName;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
@@ -1417,13 +1472,12 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // volatility mask
   nodes.add(NODE_VOLATILITY_PARAM, VPackValue(_volatilityMask));
 
-  // primarySort
+  // primary sort buckets
   if (_sort && !_sort->empty()) {
-    {
-      VPackArrayBuilder arrayScope{&nodes, NODE_PRIMARY_SORT_PARAM};
-      _sort->toVelocyPack(nodes);
-    }
     nodes.add(NODE_PRIMARY_SORT_BUCKETS_PARAM, VPackValue(_sortBuckets));
+  }
+  if (_meta) {
+    iresearch::toVelocyPack(nodes, *_meta);
   }
 }
 
@@ -1824,7 +1878,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                    numViewVarsRegisters);
     aql::RegisterInfos registerInfos = createRegisterInfos(
         calcInputRegs(), std::move(writableOutputRegisters));
-    TRI_ASSERT(_view || _storedValues);
+    TRI_ASSERT(_view || _meta);
     auto executorInfos = aql::IResearchViewExecutorInfos{
         std::move(reader),
         std::move(outRegister),
@@ -1833,19 +1887,19 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         engine.getQuery(),
         scorers(),
         sort(),
-        _view ? storedValues(*_view) : *_storedValues,
+        storedValues(_meta, _view),
         *plan(),
         outVariable(),
         filterCondition(),
         volatility(),
-        (_view && _view->type() == ViewType::kView),
         getRegisterPlan()->varInfo,  // ??? do we need this?
         getDepth(),
         std::move(outNonMaterializedViewRegs),
         _options.countApproximate,
         filterOptimization(),
         _scorersSort,
-        _scorersSortLimit};
+        _scorersSortLimit,
+        _meta.get()};
     return std::make_tuple(materializeType, std::move(executorInfos),
                            std::move(registerInfos));
   };
