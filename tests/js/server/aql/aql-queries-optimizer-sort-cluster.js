@@ -73,7 +73,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       helper.getCompactPlan(
         AQL_EXPLAIN(query, params)).map(function (node) {
         return node.type;
-      });
+      }));
   };
 
   return {
