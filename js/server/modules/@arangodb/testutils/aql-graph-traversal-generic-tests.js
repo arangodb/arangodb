@@ -2937,14 +2937,15 @@ function testSmallCircleFilterOptimization(testGraph) {
 
   const optimizableConditions = [
     `v.color == "blue"`,
-    `e.color == "blue"`,
+    `"blue" == e.color`,
     `p.edges[1].color == "blue"`,
-    `p.vertices[1].color == "blue"`,
+    `"blue" == p.vertices[1].color`,
     `p.edges[*].color ALL == "blue"`,
     `p.vertices[*].color ALL == "blue"`,
     `DATE_MONTH(v.timestamp) == 11`,
-    `DATE_DAY(e.timestamp) == 25`,
-    `DATE_YEAR(p.vertices[1].timestamp) == 2021`
+    `25 == DATE_DAY(e.timestamp)`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(0, 100, "y"))`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(DOCUMENT("${testGraph.vertex('A')}").timestamp, 1, "y"))`
   ];
 
   // Optimize a single condition
@@ -2971,6 +2972,11 @@ function testSmallCircleFilterOptimization(testGraph) {
 
 
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Still has FilterNode");
+
+    const traversals = findExecutionNodes(plan, "TraversalNode");
+    assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
+    const travNode = traversals[0];
+    assertTrue(travNode.hasOwnProperty("condition"), JSON.stringify(travNode.condition));
   }
 
   // Non optimizable filters
@@ -2978,14 +2984,27 @@ function testSmallCircleFilterOptimization(testGraph) {
     `DOCUMENT(v.docId).color == "blue"`,
     `DOCUMENT(e.docId).color == "blue"`,
     /* ASSSERT has side-effects on false so it should not be optimized */
-    `ASSERT v.color == "blue"`
+    `ASSERT(v.color == "blue", "Color is not blue")`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(p.vertices[0].timestamp, 1, "y"))`
   ];
 
   // This is a pair of FilterCondition and LeftOver non-optimized condition.
   // The FILTER node needs to stay, and needs to cover the non-optimized condition
-  const nonOptFiltersToTest = nonOptimizableFilters.map(f => [`FILTER ${f}`, `${f}`]);
+  const nonOptFiltersToTest = nonOptimizableFilters.map(f => [`FILTER ${f}`, `${f}`, false]);
 
-  for (const [filterCondition, _] of nonOptFiltersToTest) {
+  // More complex test.
+  for (let first = 0; first < nonOptimizableFilters.length; ++first) {
+    for (let second = 0; second < optimizableConditions.length; ++second) {
+      // Add two filter nodes, one can be optimized, one note. The optimizable one should be erased.
+      nonOptFiltersToTest.push([`FILTER ${nonOptimizableFilters[first]} FILTER ${optimizableConditions[second]}`, `${nonOptimizableFilters[first]}`, true]);
+      // Put it into one big condition, where parts can be optimized, parts not
+      // TODO: Reactivate this!!
+      nonOptFiltersToTest.push([`FILTER ${nonOptimizableFilters[first]} && ${optimizableConditions[second]}`, `${nonOptimizableFilters[first]}`, true]);
+      // filtersToTest.push(`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`);
+    }
+  }
+
+  for (const [filterCondition, _, somethingOptimizedInTraversal] of nonOptFiltersToTest) {
     const query = `
       FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH ${testGraph.name()}
         ${filterCondition}
@@ -3000,8 +3019,13 @@ function testSmallCircleFilterOptimization(testGraph) {
     assertEqual(filters.length, 1, query + " Optimized out the FilterNode");
     const filterCalc = findExecutionNodes(plan, "CalculationNode").find(n => n.id === filters[0].dependencies[0]);
     assertNotEqual(filterCalc, undefined);
+
     // TODO it would be nice to analyse that calculation matches the leftOver condition
     // but this would require to reverse-implement node structure.
+    const traversals = findExecutionNodes(plan, "TraversalNode");
+    assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
+    const travNode = traversals[0];
+    assertEqual(travNode.hasOwnProperty("condition"), somethingOptimizedInTraversal, JSON.stringify(travNode.condition));
   }
 
 }
