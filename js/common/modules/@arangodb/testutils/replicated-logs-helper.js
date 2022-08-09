@@ -33,7 +33,7 @@ const db = arangodb.db;
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const helper = require('@arangodb/test-helper');
 
-const waitFor = function (checkFn, maxTries = 240) {
+const waitFor = function (checkFn, maxTries = 240, onErrorCallback = null) {
   let count = 0;
   let result = null;
   while (count < maxTries) {
@@ -49,6 +49,9 @@ const waitFor = function (checkFn, maxTries = 240) {
       console.log(result);
     }
     wait(0.5); // 240 * .5s = 2 minutes
+  }
+  if (onErrorCallback !== null) {
+    onErrorCallback();
   }
   throw result;
 };
