@@ -24,7 +24,7 @@
 #include "RestAdminServerHandler.h"
 
 #include "Actions/RestActionHandler.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"

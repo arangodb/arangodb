@@ -23,7 +23,7 @@
 
 #include "VocbaseInfo.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"

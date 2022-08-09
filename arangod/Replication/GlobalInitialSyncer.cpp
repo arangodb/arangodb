@@ -23,7 +23,7 @@
 
 #include "GlobalInitialSyncer.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"

@@ -23,7 +23,7 @@
 
 #include "DatabasePathFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"

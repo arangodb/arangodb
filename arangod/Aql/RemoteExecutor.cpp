@@ -23,7 +23,7 @@
 
 #include "RemoteExecutor.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/AqlItemBlockManager.h"

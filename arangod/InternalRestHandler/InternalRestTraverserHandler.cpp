@@ -23,7 +23,7 @@
 
 #include "InternalRestTraverserHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"

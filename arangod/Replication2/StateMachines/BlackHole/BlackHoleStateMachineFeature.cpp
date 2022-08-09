@@ -23,7 +23,7 @@
 
 #include "BlackHoleStateMachineFeature.h"
 #include "BlackHoleStateMachine.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 using namespace arangodb;

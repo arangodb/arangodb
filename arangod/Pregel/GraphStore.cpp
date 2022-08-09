@@ -23,7 +23,7 @@
 
 #include "GraphStore.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Projections.h"
 #include "Basics/Common.h"

@@ -23,7 +23,7 @@
 
 #include "RocksDBSstFileMethods.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"

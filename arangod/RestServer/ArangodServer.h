@@ -64,6 +64,7 @@ using ArangodFeatures = TypeList<
     HttpEndpointProvider,
     EngineSelectorFeature,
     EnvironmentFeature,
+    FileSystemFeature,
     FlushFeature,
     FortuneFeature,
     FoxxFeature,

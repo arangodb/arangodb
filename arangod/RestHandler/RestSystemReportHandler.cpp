@@ -25,7 +25,7 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/HttpRequest.h"

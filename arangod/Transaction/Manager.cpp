@@ -23,7 +23,7 @@
 
 #include "Manager.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/ReadLocker.h"

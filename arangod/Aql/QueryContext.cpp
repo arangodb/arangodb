@@ -23,7 +23,7 @@
 
 #include "QueryContext.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Ast.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"

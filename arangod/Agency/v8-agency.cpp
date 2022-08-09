@@ -25,7 +25,7 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "V8/v8-buffer.h"

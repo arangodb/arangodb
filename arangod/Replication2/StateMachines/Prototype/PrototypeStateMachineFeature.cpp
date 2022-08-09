@@ -29,7 +29,7 @@
 
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Cluster/ServerState.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"

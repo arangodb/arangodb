@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "ClusterV8Functions.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"

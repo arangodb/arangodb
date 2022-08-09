@@ -24,7 +24,7 @@
 #include "AgentCallback.h"
 
 #include "Agency/Agent.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Basics/system-functions.h"

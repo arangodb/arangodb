@@ -24,7 +24,7 @@
 #include "Databases.h"
 
 #include "Agency/AgencyComm.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Common.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"

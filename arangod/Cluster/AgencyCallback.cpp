@@ -30,7 +30,7 @@
 #include <velocypack/Slice.h>
 
 #include "Agency/AgencyComm.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"

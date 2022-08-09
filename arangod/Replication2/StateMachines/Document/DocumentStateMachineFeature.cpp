@@ -23,7 +23,7 @@
 
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"

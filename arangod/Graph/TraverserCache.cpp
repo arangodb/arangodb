@@ -23,7 +23,7 @@
 
 #include "TraverserCache.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Basics/StringHeap.h"

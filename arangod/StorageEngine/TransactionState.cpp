@@ -23,7 +23,7 @@
 
 #include "TransactionState.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"

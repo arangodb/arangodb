@@ -26,7 +26,7 @@
 #include <algorithm>
 
 #include "Agency/Supervision.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Conductor.h"

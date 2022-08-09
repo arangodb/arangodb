@@ -23,7 +23,7 @@
 
 #include "RocksDBBackgroundThread.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"

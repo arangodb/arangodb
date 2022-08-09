@@ -23,7 +23,7 @@
 
 #include "RestReplicatedStateHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Agency/AgencyPaths.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"

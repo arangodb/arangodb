@@ -37,7 +37,7 @@
 #include <iostream>
 #include <thread>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"

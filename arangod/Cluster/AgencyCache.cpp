@@ -25,7 +25,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyStrings.h"
 #include "Agency/Node.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/application-exit.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"

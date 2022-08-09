@@ -27,7 +27,7 @@
 
 #include <velocypack/Builder.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"

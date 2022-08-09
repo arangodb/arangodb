@@ -23,7 +23,7 @@
 
 #include "RestPregelHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 
 #include <velocypack/Builder.h>
 

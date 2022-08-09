@@ -23,7 +23,7 @@
 
 #include "RestDatabaseHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Result.h"
 #include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"

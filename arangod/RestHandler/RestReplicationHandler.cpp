@@ -24,7 +24,7 @@
 #include "RestReplicationHandler.h"
 
 #include "Agency/AgencyComm.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"

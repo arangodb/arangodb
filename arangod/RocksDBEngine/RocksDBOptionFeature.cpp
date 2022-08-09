@@ -29,7 +29,7 @@
 
 #include "RocksDBOptionFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"

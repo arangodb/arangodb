@@ -26,7 +26,7 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyPaths.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"

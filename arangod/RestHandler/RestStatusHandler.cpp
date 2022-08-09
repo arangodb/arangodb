@@ -37,7 +37,7 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"

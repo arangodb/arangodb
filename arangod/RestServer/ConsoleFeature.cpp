@@ -25,7 +25,7 @@
 
 #include "ConsoleFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/debugging.h"
 #include "Basics/messages.h"
 #include "Logger/LogMacros.h"

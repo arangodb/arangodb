@@ -29,7 +29,7 @@
 
 #include <memory>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StringUtils.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "IResearch/IResearchCommon.h"

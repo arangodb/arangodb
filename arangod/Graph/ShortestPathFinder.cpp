@@ -23,7 +23,7 @@
 
 #include "ShortestPathFinder.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"

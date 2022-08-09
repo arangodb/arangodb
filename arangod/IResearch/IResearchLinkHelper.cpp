@@ -36,7 +36,7 @@
 #include "IResearchViewCoordinator.h"
 #include "VelocyPackHelper.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterMethods.h"

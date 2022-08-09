@@ -35,7 +35,7 @@
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCache.h"

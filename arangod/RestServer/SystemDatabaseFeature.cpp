@@ -24,7 +24,7 @@
 
 #include "SystemDatabaseFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"

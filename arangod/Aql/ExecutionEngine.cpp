@@ -23,7 +23,7 @@
 
 #include "ExecutionEngine.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/AqlItemBlockManager.h"

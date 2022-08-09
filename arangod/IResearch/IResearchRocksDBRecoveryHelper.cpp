@@ -34,7 +34,7 @@
 
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"

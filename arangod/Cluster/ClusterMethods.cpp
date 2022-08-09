@@ -24,7 +24,7 @@
 
 #include "ClusterMethods.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"

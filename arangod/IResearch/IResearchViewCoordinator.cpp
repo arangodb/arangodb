@@ -29,7 +29,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"

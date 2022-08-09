@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ttl.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTtlMethods.h"

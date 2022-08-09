@@ -23,7 +23,7 @@
 
 #include "CursorRepository.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"

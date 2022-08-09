@@ -33,7 +33,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AsyncAgencyComm.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"

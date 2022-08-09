@@ -34,7 +34,7 @@
 
 #include "Pregel/Status/Status.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/WriteLocker.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"

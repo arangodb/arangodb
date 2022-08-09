@@ -23,7 +23,7 @@
 
 #include "v8-ttl.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Result.h"
 #include "RestServer/TtlFeature.h"
 #include "V8/v8-globals.h"

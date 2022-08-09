@@ -23,7 +23,7 @@
 
 #include "RestAqlUserFunctionsHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/Methods/AqlUserFunctions.h"
 

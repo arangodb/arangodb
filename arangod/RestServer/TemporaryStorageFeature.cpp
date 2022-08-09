@@ -23,7 +23,7 @@
 
 #include "TemporaryStorageFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/QueryOptions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"

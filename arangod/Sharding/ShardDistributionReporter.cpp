@@ -25,7 +25,7 @@
 
 #include <velocypack/Builder.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"

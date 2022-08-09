@@ -23,7 +23,7 @@
 
 #include "IResearchRocksDBInvertedIndex.h"
 #include "IResearchRocksDBEncryption.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"

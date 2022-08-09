@@ -23,7 +23,7 @@
 #include <optional>
 
 #include "Logger/LogMacros.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "UpdateReplicatedStateAction.h"

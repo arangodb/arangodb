@@ -26,7 +26,7 @@
 
 #include "RestServer/AqlFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

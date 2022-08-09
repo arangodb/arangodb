@@ -25,7 +25,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/QueryList.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"

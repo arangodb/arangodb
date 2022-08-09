@@ -24,14 +24,12 @@
 
 #include <absl/strings/str_cat.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
-#include "RestServer/arangod.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"

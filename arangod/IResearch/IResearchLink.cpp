@@ -26,7 +26,7 @@
 #include <index/column_info.hpp>
 #include <utils/singleton.hpp>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"

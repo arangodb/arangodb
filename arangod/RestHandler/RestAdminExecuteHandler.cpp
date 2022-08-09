@@ -23,7 +23,7 @@
 
 #include "RestAdminExecuteHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Basics/Exceptions.h"

@@ -35,7 +35,7 @@
 #include <thread>
 
 #include "Agency/State.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/ClusterQuery.h"
 #include "Aql/ExpressionContext.h"

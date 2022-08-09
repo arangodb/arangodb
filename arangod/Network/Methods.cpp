@@ -23,7 +23,7 @@
 
 #include "Methods.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"

@@ -55,7 +55,7 @@
 #include "search/top_terms_collector.hpp"
 #include "search/wildcard_filter.hpp"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"

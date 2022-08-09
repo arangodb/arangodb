@@ -23,7 +23,7 @@
 
 #include "ReplicatedLogFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/application-exit.h"
 #include "ProgramOptions/Parameters.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"

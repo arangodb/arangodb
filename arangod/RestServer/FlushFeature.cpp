@@ -24,7 +24,7 @@
 
 #include "FlushFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"

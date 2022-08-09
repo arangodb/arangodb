@@ -23,7 +23,7 @@
 
 #include "Queries.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"

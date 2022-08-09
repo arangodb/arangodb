@@ -24,7 +24,7 @@
 
 #include "RocksDBZkdIndex.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Variable.h"
 #include "Containers/Enumerate.h"
 #include "Containers/FlatHashSet.h"

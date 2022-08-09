@@ -28,7 +28,7 @@
 
 #include "ClusterNodes.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/BlocksWithClients.h"

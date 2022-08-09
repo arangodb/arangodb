@@ -30,7 +30,7 @@
 #include <velocypack/Iterator.h>
 
 #include "Agency/Agent.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"

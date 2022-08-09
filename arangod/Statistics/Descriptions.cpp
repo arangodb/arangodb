@@ -23,7 +23,7 @@
 
 #include "Descriptions.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
 #include "Metrics/Counter.h"

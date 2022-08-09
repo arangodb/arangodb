@@ -23,7 +23,7 @@
 
 #include "ClusterSelectivityEstimates.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"

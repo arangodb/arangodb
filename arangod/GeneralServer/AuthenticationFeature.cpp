@@ -23,7 +23,7 @@
 
 #include "AuthenticationFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Auth/Common.h"
 #include "Auth/Handler.h"
 #include "Basics/FileUtils.h"

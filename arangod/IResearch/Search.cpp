@@ -32,7 +32,7 @@
 #pragma warning(disable : 4018)
 #endif
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/QueryCache.h"
 #include "Basics/ScopeGuard.h"

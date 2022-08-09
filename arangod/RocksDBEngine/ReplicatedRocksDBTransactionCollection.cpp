@@ -23,7 +23,7 @@
 
 #include "ReplicatedRocksDBTransactionCollection.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"

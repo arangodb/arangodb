@@ -23,7 +23,7 @@
 
 #include <optional>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/FailureOracleFeature.h"

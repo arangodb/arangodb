@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationMetricsFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
 

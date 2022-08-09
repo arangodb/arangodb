@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"

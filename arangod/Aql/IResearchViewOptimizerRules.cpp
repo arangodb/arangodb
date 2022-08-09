@@ -24,7 +24,7 @@
 
 #include "IResearchViewOptimizerRules.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/ClusterNodes.h"

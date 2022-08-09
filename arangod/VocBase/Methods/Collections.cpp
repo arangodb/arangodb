@@ -23,7 +23,7 @@
 
 #include "Collections.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/Query.h"
 #include "Basics/Common.h"
 #include "Basics/LocalTaskQueue.h"

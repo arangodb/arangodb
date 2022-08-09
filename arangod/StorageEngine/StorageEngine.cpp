@@ -26,7 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <utility>

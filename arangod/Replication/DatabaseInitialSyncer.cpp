@@ -23,7 +23,7 @@
 
 #include "DatabaseInitialSyncer.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/ReadLocker.h"

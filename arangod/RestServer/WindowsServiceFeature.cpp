@@ -28,7 +28,7 @@
 #include <windows.h>
 #include <iostream>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Common.h"
 #include "Basics/win-utils.h"
 #include "ProgramOptions/ProgramOptions.h"

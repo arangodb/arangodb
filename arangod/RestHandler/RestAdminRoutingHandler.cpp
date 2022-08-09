@@ -23,7 +23,7 @@
 
 #include "RestAdminRoutingHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 

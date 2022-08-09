@@ -38,7 +38,7 @@
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"

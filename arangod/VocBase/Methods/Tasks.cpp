@@ -28,7 +28,7 @@
 #include <v8.h>
 #include <velocypack/Builder.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"

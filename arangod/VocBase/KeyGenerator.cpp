@@ -23,7 +23,7 @@
 
 #include "KeyGenerator.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Endian.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"

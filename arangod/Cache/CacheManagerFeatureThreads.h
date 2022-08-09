@@ -32,8 +32,10 @@
 
 namespace arangodb {
 namespace application_features {
-class ApplicationServer;
-}
+
+class ArangodServer;
+
+}  // namespace application_features
 
 class CacheRebalancerThread final : public Thread {
  public:
@@ -54,4 +56,4 @@ class CacheRebalancerThread final : public Thread {
   basics::ConditionVariable _condition;
 };
 
-};  // end namespace arangodb
+};  // namespace arangodb

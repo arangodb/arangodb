@@ -38,7 +38,7 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"

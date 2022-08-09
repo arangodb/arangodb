@@ -31,7 +31,7 @@
 #include "index/norm.hpp"
 #include "utils/hash_utils.hpp"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Containers/FlatHashSet.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ScopeGuard.h"

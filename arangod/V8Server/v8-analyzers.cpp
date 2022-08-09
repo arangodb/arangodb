@@ -28,7 +28,7 @@
 
 #include <velocypack/Parser.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"

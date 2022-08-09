@@ -25,7 +25,7 @@
 
 #include "frozen/map.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchKludge.h"

@@ -41,7 +41,7 @@
 #include <pwd.h>
 #endif
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/conversions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"

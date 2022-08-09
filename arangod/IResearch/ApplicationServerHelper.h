@@ -24,7 +24,8 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include <string>
+#include <string_view>
 
 namespace arangodb {
 

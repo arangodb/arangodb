@@ -23,7 +23,7 @@
 
 #include "RocksDBRestCollectionHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "VocBase/LogicalCollection.h"
 

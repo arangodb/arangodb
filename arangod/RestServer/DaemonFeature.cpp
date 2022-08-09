@@ -31,7 +31,7 @@
 #include <stdexcept>
 #include <thread>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"

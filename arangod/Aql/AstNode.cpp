@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AstNode.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Ast.h"

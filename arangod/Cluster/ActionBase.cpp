@@ -24,7 +24,6 @@
 
 #include "Cluster/ActionBase.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"

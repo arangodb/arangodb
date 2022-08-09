@@ -23,7 +23,7 @@
 #include "FailureOracleFeature.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Basics/TimeString.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-compiler.h"

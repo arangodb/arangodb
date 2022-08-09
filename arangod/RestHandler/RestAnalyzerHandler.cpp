@@ -30,7 +30,7 @@
 #include <velocypack/Parser.h>
 
 #include "Basics/StringUtils.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/ArangodServer.h"
 #include "Cluster/ClusterTypes.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
