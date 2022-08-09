@@ -39,6 +39,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
@@ -473,6 +474,13 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
           self->sendResponse(handler->stealResponse(),
                              self->stealStatistics(messageId));
         });
+    return;
+  }
+
+  if (res.hasValue() && res.get().fail()) {
+    auto& r = res.get();
+    sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
+                      messageId, r.errorNumber(), r.errorMessage());
     return;
   }
 
