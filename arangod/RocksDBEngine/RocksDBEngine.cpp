@@ -687,8 +687,8 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
           << result.errorMessage();
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
     }
-    exit(EXIT_SUCCESS);
   }
+  exit(EXIT_SUCCESS);
 }
 
 void RocksDBEngine::start() {
@@ -774,11 +774,10 @@ void RocksDBEngine::start() {
   if (_verifySst) {
     rocksdb::Options options;
 #ifdef USE_ENTERPRISE
-    configureEnterpriseRocksDBOptions(_dbOptions, createdEngineDir);
+    configureEnterpriseRocksDBOptions(options, createdEngineDir);
 #else
-    _dbOptions.env = rocksdb::Env::Default();
+    options.env = rocksdb::Env::Default();
 #endif
-    options.env = _dbOptions.env;
     verifySstFiles(options);
   }
 
