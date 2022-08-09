@@ -228,7 +228,7 @@ auto DocumentStateTransactionHandler::applyTransaction(DocumentLogEntry doc)
         removeTransaction(doc.tid);
         break;
       case OperationType::kAbortAllOngoingTrx:
-        LOG_DEVEL << "aborting all " << doc.tid;
+        TRI_ASSERT(false); // should never happen as it should be handled above
         break;
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
