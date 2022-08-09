@@ -45,13 +45,17 @@ function ahuacatlQueryOptimizerSortTestSuite () {
   var cn = "UnitTestsAhuacatlOptimizerSort";
   var idx = null;
 
-  var explain = function (query, params) {
-    return
-      helper.getCompactPlan(
-        AQL_EXPLAIN(query, params, {optimizer: {rules: ["-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts"]}})
-      ).map(function (node) {
-        return node.type;
-      }));
+  let explain = function (query, params) {
+    return helper.removeClusterNodes(
+      helper.getCompactPlan(AQL_EXPLAIN(query, params, {
+        optimizer: {
+          rules: [
+            '-all',
+            '+use-index-for-sort',
+            '+use-indexes',
+            '+remove-redundant-sorts'],
+        },
+      })).map(function (node) { return node.type; }));
   };
 
   const generateData = () => {
