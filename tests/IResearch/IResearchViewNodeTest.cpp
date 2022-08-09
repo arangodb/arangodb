@@ -137,7 +137,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
       "    { \"field\": \"my.nested.Fields\", \"asc\": false }, "
       "    { \"field\": \"another.field\", \"asc\": true } ] "
       "}");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_TRUE(logicalView);
 
   // dummy query
@@ -294,7 +294,7 @@ TEST_F(IResearchViewNodeTest, construct) {
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_FALSE(!logicalView);
 
   // dummy query
@@ -902,7 +902,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_FALSE(!logicalView);
 
   // dummy query
@@ -1927,7 +1927,7 @@ TEST_F(IResearchViewNodeTest, clone) {
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_FALSE(!logicalView);
 
   // dummy query
@@ -2535,7 +2535,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_FALSE(!logicalView);
 
   // dummy query
@@ -3122,7 +3122,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"primarySort\" : "
       "[ { \"field\":\"_key\", \"direction\":\"desc\"} ] }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_FALSE(!logicalView);
   auto& viewImpl =
       arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
@@ -3428,7 +3428,7 @@ TEST_F(IResearchViewNodeTest, collections) {
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_FALSE(!logicalView);
 
   // link collections
@@ -3490,7 +3490,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
                         testDBInfo(server.server()));
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_FALSE(!logicalView);
 
   // create collection0
@@ -3638,7 +3638,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
                         testDBInfo(server.server()));
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_FALSE(!logicalView);
 
   // dummy query
@@ -3698,7 +3698,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
                         testDBInfo(server.server(), "testVocbase", 1));
   auto createJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice());
+  auto logicalView = vocbase.createView(createJson->slice(), false);
   ASSERT_TRUE((false == !logicalView));
 
   // dummy query
@@ -3791,7 +3791,7 @@ class IResearchViewVolatitlityTest
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testView0\", \"type\": \"arangosearch\" }");
-      logicalView0 = vocbase->createView(createJson->slice());
+      logicalView0 = vocbase->createView(createJson->slice(), false);
       EXPECT_NE(nullptr, logicalView0);
       auto updateJson = arangodb::velocypack::Parser::fromJson(
           "{ \"links\": {"
@@ -3805,7 +3805,7 @@ class IResearchViewVolatitlityTest
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(
           "{ \"name\": \"testView1\", \"type\": \"arangosearch\" }");
-      logicalView1 = vocbase->createView(createJson->slice());
+      logicalView1 = vocbase->createView(createJson->slice(), false);
       EXPECT_NE(nullptr, logicalView1);
       auto updateJson = arangodb::velocypack::Parser::fromJson(
           "{ \"links\": {"
@@ -4199,7 +4199,7 @@ class IResearchViewBlockTest
     }
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase->createView(createJson->slice());
+    auto logicalView = vocbase->createView(createJson->slice(), false);
     EXPECT_NE(nullptr, logicalView);
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": {"

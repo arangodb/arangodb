@@ -390,7 +390,7 @@ class QueryGeoIntersectsView : public QueryGeoIntersects {
   void createView() {
     auto createJson = velocypack::Parser::fromJson(
         R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
     auto updateJson =
@@ -430,7 +430,7 @@ class QueryGeoIntersectsSearch : public QueryGeoIntersects {
   void createSearch() {
     auto createJson = velocypack::Parser::fromJson(
         R"({ "name": "testView", "type": "search" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
     auto updateJson = velocypack::Parser::fromJson(R"({ "indexes": [

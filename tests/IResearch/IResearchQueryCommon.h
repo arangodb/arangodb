@@ -327,7 +327,7 @@ class QueryTest : public IResearchQueryTest {
   void createView(std::string_view definition1, std::string_view definition2) {
     auto createJson = VPackParser::fromJson(
         R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
     auto updateJson = VPackParser::fromJson(absl::Substitute(
@@ -381,7 +381,7 @@ class QueryTest : public IResearchQueryTest {
   void createSearch() {
     auto createJson =
         VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE(logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
     auto updateJson = VPackParser::fromJson(R"({ "indexes": [

@@ -89,7 +89,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
            \"storedValues\": [] \
         }");
       _view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       EXPECT_TRUE(_view);
 
       // add links to collections
