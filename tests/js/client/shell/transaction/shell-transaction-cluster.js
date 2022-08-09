@@ -281,7 +281,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
   let c = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
-    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: isReplication2 ? "2" : "1"});
 
   return {
     setUpAll,
