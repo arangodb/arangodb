@@ -29,7 +29,6 @@ const request = require('@arangodb/request');
 const helper = require('@arangodb/test-helper');
 const _ = require("lodash");
 
-
 const dbservers = (function () {
   const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
   const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
@@ -106,6 +105,9 @@ function adminLogSuite() {
     },
 
     testPutAdminLogLevelOtherServer: function () {
+      if (dbservers.length === 0) {
+        return;
+      }
       const server = dbservers[0];
       const url = helper.getEndpointById(server);
       const old = request.get(`${url}/_admin/log/level`);
