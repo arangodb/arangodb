@@ -226,8 +226,9 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--log.hostname",
-                  "hostname to use in log message (empty for none, use 'auto' "
-                  "to automatically figure out hostname)",
+                  "The hostname to use in log message. Leave empty for none, "
+                  "use \"auto\" "
+                  "to automatically determine a hostname.",
                   new StringParameter(&_hostname))
       .setIntroducedIn(30800);
 
@@ -251,7 +252,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--log.performance",
-                  "shortcut for '--log.level performance=trace'",
+                  "Shortcut for `--log.level performance=trace`.",
                   new BooleanParameter(&_performance),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
