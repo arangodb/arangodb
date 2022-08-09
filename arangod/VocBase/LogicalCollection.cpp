@@ -35,6 +35,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
@@ -48,6 +49,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
@@ -55,6 +57,10 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
+
+#include <absl/strings/str_cat.h>
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
@@ -188,10 +194,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
 
-  auto res = updateSchema(info.get(StaticStrings::Schema));
-  if (res.fail()) {
+  if (auto res = updateSchema(info.get(StaticStrings::Schema)); res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   _internalValidatorTypes = Helper::getNumericValue<uint64_t>(
       info, StaticStrings::InternalValidatorTypes, 0);
 
@@ -219,7 +225,20 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // create key generator based on keyOptions from slice
   _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
       *this, info.get(StaticStrings::KeyOptions));
+
+  // computed values
+  if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
+      res.fail()) {
+    LOG_TOPIC("4c73f", ERR, Logger::FIXME)
+        << "collection '" << this->vocbase().name() << "/" << name() << ": "
+        << res.errorMessage()
+        << " - disabling computed values for this collection. original value: "
+        << info.get(StaticStrings::ComputedValues).toJson();
+    TRI_ASSERT(_computedValues == nullptr);
+  }
 }
+
+LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
 void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
@@ -228,38 +247,56 @@ void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
 #endif
 
 Result LogicalCollection::updateSchema(VPackSlice schema) {
-  using namespace std::literals::string_literals;
-  if (schema.isNone()) {
-    return {TRI_ERROR_NO_ERROR};
-  }
-  if (schema.isNull()) {
-    schema = VPackSlice::emptyObjectSlice();
-  }
-  if (!schema.isObject()) {
-    return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
-            "Schema description is not an object."};
-  }
-
-  TRI_ASSERT(schema.isObject());
-
-  std::shared_ptr<ValidatorBase> newSchema;
-
-  // delete validators if empty object is given
-  if (!schema.isEmptyObject()) {
-    try {
-      newSchema = std::make_shared<ValidatorJsonSchema>(schema);
-    } catch (std::exception const& ex) {
-      return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
-              "Error when building schema: "s + ex.what()};
+  if (!schema.isNone()) {
+    if (schema.isNull()) {
+      schema = VPackSlice::emptyObjectSlice();
     }
+    if (!schema.isObject()) {
+      return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
+              "Schema description is not an object."};
+    }
+
+    TRI_ASSERT(schema.isObject());
+
+    std::shared_ptr<ValidatorBase> newSchema;
+
+    // schema will be removed if empty object is given
+    if (!schema.isEmptyObject()) {
+      try {
+        newSchema = std::make_shared<ValidatorJsonSchema>(schema);
+      } catch (std::exception const& ex) {
+        return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
+                absl::StrCat("Error when building schema: ", ex.what())};
+      }
+    }
+
+    std::atomic_store_explicit(&_schema, newSchema, std::memory_order_release);
   }
 
-  std::atomic_store_explicit(&_schema, newSchema, std::memory_order_relaxed);
-
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
-LogicalCollection::~LogicalCollection() = default;
+Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
+  auto result =
+      ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
+
+  if (result.fail()) {
+    return result.result();
+  }
+
+  std::atomic_store_explicit(&_computedValues, result.get(),
+                             std::memory_order_release);
+
+  return {};
+}
+
+RevisionId LogicalCollection::newRevisionId() const {
+  if (hasClusterWideUniqueRevs()) {
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    return RevisionId::createClusterWideUnique(ci);
+  }
+  return RevisionId::create();
+}
 
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
@@ -744,9 +781,15 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     return false;
   };
   getIndexesVPack(build, filter);
+
   // Schema
   build.add(VPackValue(StaticStrings::Schema));
   schemaToVelocyPack(build);
+
+  // Computed Values
+  build.add(VPackValue(StaticStrings::ComputedValues));
+  computedValuesToVelocyPack(build);
+
   // Internal CollectionType
   build.add(StaticStrings::InternalValidatorTypes,
             VPackValue(_internalValidatorTypes));
@@ -800,7 +843,7 @@ void LogicalCollection::includeVelocyPackEnterprise(
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
-Result LogicalCollection::properties(velocypack::Slice slice, bool) {
+Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(_sharding != nullptr);
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
@@ -828,6 +871,11 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  res = updateComputedValues(slice.get(StaticStrings::ComputedValues));
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1017,7 +1065,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
 }
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(
-    std::string const& idxName) const {
+    std::string_view idxName) const {
   return getPhysical()->lookupIndex(idxName);
 }
 
@@ -1105,63 +1153,6 @@ Result LogicalCollection::truncate(transaction::Methods& trx,
 /// @brief compact-data operation
 void LogicalCollection::compact() { getPhysical()->compact(); }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a document or edge into the collection
-////////////////////////////////////////////////////////////////////////////////
-
-Result LogicalCollection::insert(transaction::Methods* trx,
-                                 VPackSlice const slice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options) {
-  TRI_IF_FAILURE("LogicalCollection::insert") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-  return getPhysical()->insert(trx, slice, result, options);
-}
-
-/// @brief updates a document or edge in a collection
-Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options,
-                                 ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::update") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-
-  if (!newSlice.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  return getPhysical()->update(trx, newSlice, result, options, previous);
-}
-
-/// @brief replaces a document or edge in a collection
-Result LogicalCollection::replace(transaction::Methods* trx,
-                                  VPackSlice newSlice,
-                                  ManagedDocumentResult& result,
-                                  OperationOptions& options,
-                                  ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::replace") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-  if (!newSlice.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  return getPhysical()->replace(trx, newSlice, result, options, previous);
-}
-
-/// @brief removes a document or edge
-Result LogicalCollection::remove(transaction::Methods& trx,
-                                 velocypack::Slice const slice,
-                                 OperationOptions& options,
-                                 ManagedDocumentResult& previous) {
-  TRI_IF_FAILURE("LogicalCollection::remove") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-  return getPhysical()->remove(trx, slice, previous, options);
-}
-
 /// @brief a method to skip certain documents in AQL write operations,
 /// this is only used in the Enterprise Edition for SmartGraphs
 #ifndef USE_ENTERPRISE
@@ -1171,17 +1162,30 @@ bool LogicalCollection::skipForAqlWrite(velocypack::Slice document,
 }
 #endif
 
+void LogicalCollection::computedValuesToVelocyPack(VPackBuilder& b) const {
+  auto cv = computedValues();
+  if (cv != nullptr) {
+    cv->toVelocyPack(b);
+  } else {
+    b.add(VPackSlice::nullSlice());
+  }
+}
+
+std::shared_ptr<ComputedValues> LogicalCollection::computedValues() const {
+  return std::atomic_load_explicit(&_computedValues, std::memory_order_acquire);
+}
+
 void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
-  if (schema != nullptr) {
-    schema->toVelocyPack(b);
+  auto s = schema();
+  if (s != nullptr) {
+    s->toVelocyPack(b);
   } else {
     b.add(VPackSlice::nullSlice());
   }
 }
 
 std::shared_ptr<ValidatorBase> LogicalCollection::schema() const {
-  return std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  return std::atomic_load_explicit(&_schema, std::memory_order_acquire);
 }
 
 Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
@@ -1205,8 +1209,6 @@ Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
 Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
                                    VPackSlice modifiedDoc, VPackSlice oldDoc,
                                    VPackOptions const* options) const {
-  //  auto schema = std::atomic_load_explicit(&_schema,
-  //  std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(modifiedDoc, oldDoc, false, options);
     if (res.fail()) {
@@ -1278,57 +1280,42 @@ auto LogicalCollection::getDocumentState()
 auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
-  auto leader = stateMachine->getLeader();
-  // TODO improve error handling
-  ADB_PROD_ASSERT(leader != nullptr)
-      << "Cannot get DocumentLeaderState in shard " << name();
-  return leader;
-}
 
-auto LogicalCollection::waitForDocumentStateLeader() -> std::shared_ptr<
-    replication2::replicated_state::document::DocumentLeaderState> {
-  auto replicatedState = getDocumentState();
-  std::optional<replication2::replicated_state::StateStatus> status =
-      std::nullopt;
-  replication2::replicated_state::LeaderStatus const* leaderStatus = nullptr;
+  static constexpr auto throwUnavailable = []<typename... Args>(
+      basics::SourceLocation location, fmt::format_string<Args...> formatString,
+      Args && ... args) {
+    throw basics::Exception(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
+  };
 
-  // TODO find a better way to wait for service availability
-  for (int counter{0}; counter < 30; ++counter) {
-    status = replicatedState->getStatus();
-    if (status) {
-      leaderStatus = status->asLeaderStatus();
-      if (leaderStatus != nullptr &&
-          leaderStatus->managerState.state ==
-              replication2::replicated_state::LeaderInternalState::
-                  kServiceAvailable) {
-        break;
-      }
-    }
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(1s);
+  auto const status = stateMachine->getStatus();
+  if (status == std::nullopt) {
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available, accessed "
+                     "from {}/{}. No status available.",
+                     shardIdToStateId(name()), vocbase().name(), name());
   }
 
+  auto const* const leaderStatus = status->asLeaderStatus();
   if (leaderStatus == nullptr) {
-    if (status.has_value()) {
-      std::stringstream stream;
-      stream << "Could not get leader status, current status is " << *status;
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER, stream.str());
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-          "Could not get any status from replicated state");
-    }
-  }
-  if (leaderStatus->managerState.state !=
-      replication2::replicated_state::LeaderInternalState::kServiceAvailable) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-        "Leader state service is not available, the current status being: " +
-            std::string(to_string(leaderStatus->managerState.state)));
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available as leader, accessed "
+                     "from {}/{}. Status is {}.",
+                     shardIdToStateId(name()), vocbase().name(), name(),
+                     *status);
   }
 
-  return getDocumentStateLeader();
+  auto leader = stateMachine->getLeader();
+  if (leader == nullptr) {
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available as leader, accessed "
+                     "from {}/{}. Status is {}.",
+                     shardIdToStateId(name()), vocbase().name(), name(),
+                     to_string(leaderStatus->managerState.state));
+  }
+
+  return leader;
 }
 
 auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<

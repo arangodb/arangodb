@@ -58,6 +58,7 @@ endif ()
 
 set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
@@ -110,6 +111,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/DateFunctionsTest.cpp
   Aql/FixedOutputExecutionBlockMock.cpp
   Aql/InRangeFunctionTest.cpp
+  Aql/MinHashFunctionsTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
@@ -128,13 +130,14 @@ set(ARANGODB_TESTS_SOURCES
   Aql/IndexNodeTest.cpp
   Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
-  Aql/KShortestPathsExecutorTest.cpp
-  Aql/KShortestPathNodeTest.cpp
+  Aql/EnumeratePathsExecutorTest.cpp
+  Aql/EnumeratePathsNodeTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
   Aql/NgramMatchFunctionTest.cpp
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
+  Aql/NodeWalkerTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryCursorTest.cpp
@@ -250,7 +253,9 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
+  Pregel/DurationTest.cpp
   Pregel/typedbuffer.cpp
+  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
@@ -291,7 +296,7 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES})
+  ${ADDITIONAL_TEST_SOURCES} Cluster/ShardAutoRebalancerTest.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Helper/ModelChecker/Actors.cpp
@@ -305,6 +310,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/FakeFailureOracle.h
   Replication2/Mocks/FakeFollower.cpp
   Replication2/Mocks/FakeFollower.h
+  Replication2/Mocks/FakeLeader.cpp Replication2/Mocks/FakeLeader.h
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
@@ -349,6 +355,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
+  Replication2/ReplicatedState/LeaderResignTest.cpp
   Replication2/ReplicatedState/MaintenanceTest.cpp
   Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
@@ -367,6 +374,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/TestLogSpecification.h
   Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   Replication2/ReplicatedLog/MetricsTest.cpp
+  Replication2/ReplicatedState/FollowerResignTest.cpp
 )
 
 set(ARANGODB_GRAPH_TEST_SOURCES
@@ -377,6 +385,7 @@ set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/GraphMockProviderInstances.cpp
   Graph/GraphTestTools.cpp
   Graph/KPathFinderTest.cpp
+  Graph/AllShortestPathsFinderTest.cpp
   Graph/DFSFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/PathStoreTest.cpp

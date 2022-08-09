@@ -57,6 +57,7 @@
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 #include "StorageEngine/HealthData.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -409,10 +410,11 @@ void Supervision::upgradeBackupKey(VPackBuilder& builder) {
   }
 }
 
-void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
-                            HealthRecord& persisted, HealthRecord& transisted,
-                            std::string const& serverID, uint64_t const& jobId,
-                            std::shared_ptr<VPackBuilder>& envelope) {
+void handleOnStatusDBServer(
+    Agent* agent, Node const& snapshot, HealthRecord& persisted,
+    HealthRecord& transisted, std::string const& serverID,
+    uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
+    std::unordered_set<std::string> const& dbServersInMaintenance) {
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
@@ -438,11 +440,13 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
       persisted.status == Supervision::HEALTH_STATUS_BAD &&
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
-      envelope = std::make_shared<VPackBuilder>();
-      agent->supervision()._supervision_failed_server_counter.operator++();
-      FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
-                   serverID)
-          .create(envelope);
+      if (!dbServersInMaintenance.contains(serverID)) {
+        envelope = std::make_shared<VPackBuilder>();
+        agent->supervision()._supervision_failed_server_counter.operator++();
+        FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
+                     serverID)
+            .create(envelope);
+      }
     }
   }
 }
@@ -507,13 +511,14 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot,
   }
 }
 
-void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
-                    HealthRecord& transisted, std::string const& serverID,
-                    uint64_t const& jobId,
-                    std::shared_ptr<VPackBuilder>& envelope) {
+void handleOnStatus(
+    Agent* agent, Node const& snapshot, HealthRecord& persisted,
+    HealthRecord& transisted, std::string const& serverID,
+    uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
+    std::unordered_set<std::string> const& dbServersInMaintenance) {
   if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID,
-                           jobId, envelope);
+                           jobId, envelope, dbServersInMaintenance);
   } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
@@ -778,7 +783,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
         handleOnStatus(_agent, snapshot(), persist, transist, serverID, _jobId,
-                       envelope);
+                       envelope, _DBServersInMaintenance);
         persist =
             transist;  // Now copy Status, SyncStatus from transient to persited
       } else {
@@ -1015,6 +1020,129 @@ void Supervision::reportStatus(std::string const& status) {
   }
 }
 
+void Supervision::updateDBServerMaintenance() {
+  // This method checks all entries in /arango/Target/MaintenanceDBServers
+  // and makes sure that /arango/Current/MaintenanceDBServers reflects
+  // the state of the Target entries (including potentially run out
+  // timeouts. Furthermore, it updates the set _DBServersInMaintenance,
+  // which will be used for the rest of the supervision run.
+
+  // Algorithm for each entry in Target:
+  //   If Target says maintenance:
+  //     if timeout reached:
+  //       remove entry from Target
+  //       stop
+  //     else:
+  //       if Current entry differs: copy over
+  //       put server in _DBServersInMaintenance
+  // Algorithm for each entry in Current:
+  //   If Current says maintenance:
+  //     if server not in _DBServersInMaintenance:
+  //       remove entry
+
+  auto builder = std::make_shared<Builder>();
+  builder->openArray();
+
+  auto ensureDBServerInCurrent = [&](std::string const& serverId, bool yes) {
+    // This closure will copy the entry
+    // /Target/MaintenanceDBServers/<serverId>
+    // to /Current/MaintenanceDBServers/<serverId> if they differ and `yes`
+    // is `true`. If `yes` is `false`, the entry will be removed.
+    std::string targetPath =
+        std::string(TARGET_MAINTENANCE_DBSERVERS) + "/" + serverId;
+    std::string currentPath =
+        std::string(CURRENT_MAINTENANCE_DBSERVERS) + "/" + serverId;
+    auto current = snapshot().has(currentPath);
+    if (yes == false) {
+      if (current) {
+        {
+          VPackArrayBuilder ab(builder.get());
+          {
+            VPackObjectBuilder ob(builder.get());
+            builder->add(VPackValue("/arango/" + currentPath));
+            {
+              VPackObjectBuilder ob2(builder.get());
+              builder->add("op", "delete");
+            }
+          }
+        }
+      }
+      return;
+    }
+    auto target = snapshot().get(targetPath);
+    if (target.has_value()) {
+      if (!current || target.has_value() != current) {
+        {
+          VPackArrayBuilder ab(builder.get());
+          {
+            VPackObjectBuilder ob(builder.get());
+            builder->add(VPackValue("/arango/" + currentPath));
+            {
+              VPackObjectBuilder ob2(builder.get());
+              builder->add("op", "set");
+              builder->add(VPackValue("new"));
+              target->get().toBuilder(*builder);
+            }
+          }
+        }
+      }
+    }
+  };
+
+  std::unordered_set<std::string> newDBServersInMaintenance;
+  auto target = snapshot().hasAsChildren(TARGET_MAINTENANCE_DBSERVERS);
+  if (target) {
+    // If the key is not there or there is no object there, nobody is in
+    // maintenance.
+    Node::Children const& targetServers = target.value().get();
+    for (auto const& p : targetServers) {
+      std::string const& serverId = p.first;
+      std::shared_ptr<Node> const& entry = p.second;
+      auto mode = entry->hasAsString("Mode");
+      if (mode) {
+        std::string const& modeSt = mode.value();
+        if (modeSt == "maintenance") {
+          // Yes, it says maintenance, now check the timeout:
+          auto timeout = entry->hasAsString("Until");
+          if (timeout) {
+            auto const maintenanceExpires = stringToTimepoint(timeout.value());
+            if (maintenanceExpires < std::chrono::system_clock::now()) {
+              // Need to switch off maintenance mode
+              ensureDBServerInCurrent(serverId, false);
+            } else {
+              // Server is in maintenance mode:
+              newDBServersInMaintenance.insert(serverId);
+              ensureDBServerInCurrent(serverId, true);
+            }
+          }
+        }
+      }
+    }
+  }
+  auto current = snapshot().hasAsChildren(CURRENT_MAINTENANCE_DBSERVERS);
+  if (current) {
+    Node::Children const& currentServers = current.value().get();
+    for (auto const& p : currentServers) {
+      std::string const& serverId = p.first;
+      if (newDBServersInMaintenance.find(serverId) ==
+          newDBServersInMaintenance.end()) {
+        ensureDBServerInCurrent(serverId, false);
+      }
+    }
+  }
+  _DBServersInMaintenance.swap(newDBServersInMaintenance);
+
+  builder->close();
+  if (builder->slice().length() > 0) {
+    write_ret_t res = _agent->write(builder);
+    if (!res.successful()) {
+      LOG_TOPIC("2d6fa", WARN, Logger::SUPERVISION)
+          << "failed to update maintenance servers in agency. Will retry. "
+          << builder->toJson();
+    }
+  }
+}
+
 void Supervision::step() {
   _lock.assertLockedByCurrentThread();
   if (_jobId == 0 || _jobId == _jobIdMax) {
@@ -1051,7 +1179,7 @@ void Supervision::step() {
       }
     } catch (std::exception const& e) {
       LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
-          << "Supervision maintenace key in agency is not a string. "
+          << "Supervision maintenance key in agency is not a string. "
              "This should never happen and will prevent hot backups. "
           << e.what();
       return;
@@ -1062,6 +1190,17 @@ void Supervision::step() {
     reportStatus("Normal");
 
     _haveAborts = false;
+
+    // We now need to check for any changes in DBServer maintenance modes.
+    // Note that if we confirm a switch to maintenance mode from
+    // /arango/Target/MaintenanceDBServers in
+    // /arango/Current/MaintenanceDBServers, then this maintenance mode
+    // must already count for **this** run of the supervision. Therefore,
+    // the following function not only updates the actual place in Current,
+    // but also computes the list of DBServers in maintenance mode in
+    // _DBServersInMaintenance, which can then be used in the rest of the
+    // checks.
+    updateDBServerMaintenance();
 
     if (_agent->leaderFor() > 55 || earlyBird()) {
       // 55 seconds is less than a minute, which fits to the
@@ -1146,7 +1285,13 @@ void Supervision::waitForIndexCommitted(index_t index) {
   }
 }
 
-void Supervision::notify() noexcept { _cv.signal(); }
+void Supervision::notify() noexcept {
+  {
+    CONDITION_LOCKER(guard, _cv);
+    _shouldRunAgain = true;
+  }
+  _cv.signal();
+}
 
 void Supervision::waitForSupervisionNode() {
   // First wait until somebody has initialized the ArangoDB data, before
@@ -1196,40 +1341,47 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
+      _shouldRunAgain =
+          false;  // we start running, no reason to run again, yet.
       try {
         auto lapStart = std::chrono::steady_clock::now();
-
         {
-          MUTEX_LOCKER(locker, _lock);
+          guard.unlock();
+          ScopeGuard scopeGuard([&]() noexcept { guard.lock(); });
 
-          // Only modifiy this condition with extreme care:
-          // Supervision needs to wait until the agent has finished leadership
-          // preparation or else the local agency snapshot might be behind its
-          // last state.
-          if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
-            step();
-          } else {
-            // Once we lose leadership, we need to restart building our snapshot
-            if (_lastUpdateIndex > 0) {
-              _lastUpdateIndex = 0;
+          {
+            MUTEX_LOCKER(locker, _lock);
+
+            // Only modifiy this condition with extreme care:
+            // Supervision needs to wait until the agent has finished leadership
+            // preparation or else the local agency snapshot might be behind its
+            // last state.
+            if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
+              step();
+            } else {
+              // Once we lose leadership, we need to restart building our
+              // snapshot
+              if (_lastUpdateIndex > 0) {
+                _lastUpdateIndex = 0;
+              }
             }
           }
-        }
 
-        // If anything was rafted, we need to wait until it is replicated,
-        // otherwise it is not "committed" in the Raft sense. However, let's
-        // only wait for our changes not for new ones coming in during the wait.
-        if (_agent->leading()) {
-          waitForIndexCommitted(_agent->index());
+          // If anything was rafted, we need to wait until it is replicated,
+          // otherwise it is not "committed" in the Raft sense. However, let's
+          // only wait for our changes not for new ones coming in during the
+          // wait.
+          if (_agent->leading()) {
+            waitForIndexCommitted(_agent->index());
+          }
         }
-
         auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
                            std::chrono::steady_clock::now() - lapStart)
                            .count();
 
         _supervision_runtime_msec.count(lapTime / 1000);
 
-        if (lapTime < 1000000) {
+        if (!_shouldRunAgain && lapTime < 1000000) {
           // wait returns false if timeout was reached
           _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
         }
@@ -2538,12 +2690,26 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
     return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
   }
 
-  auto maybeLog = parseReplicatedLogAgency(snapshot, dbName, idString);
-
+  std::optional<replication2::agency::Log> maybeLog;
+  try {
+    maybeLog = parseReplicatedLogAgency(snapshot, dbName, idString);
+  } catch (std::exception const& err) {
+    LOG_TOPIC("fe14e", ERR, Logger::REPLICATION2)
+        << "Supervision caught exception while parsing replicated log" << dbName
+        << "/" << idString << ": " << err.what();
+    throw;
+  }
   if (maybeLog.has_value()) {
-    auto& log = *maybeLog;
-    return replication2::replicated_log::executeCheckReplicatedLog(
-        dbName, idString, std::move(log), health, std::move(envelope));
+    try {
+      auto& log = *maybeLog;
+      return replication2::replicated_log::executeCheckReplicatedLog(
+          dbName, idString, std::move(log), health, std::move(envelope));
+    } catch (std::exception const& err) {
+      LOG_TOPIC("b6d7d", ERR, Logger::REPLICATION2)
+          << "Supervision caught exception while handling replicated log"
+          << dbName << "/" << idString << ": " << err.what();
+      throw;
+    }
   } else {
     LOG_TOPIC("56a0c", ERR, Logger::REPLICATION2)
         << "Supervision could not parse Target node for replicated log "
@@ -2552,8 +2718,8 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
   }
 } catch (std::exception const& err) {
   LOG_TOPIC("9f7fb", ERR, Logger::REPLICATION2)
-      << "Supervision caught exception while parsing replicated log" << dbName
-      << "/" << idString << ": " << err.what();
+      << "Supervision caught exception while working with replicated log"
+      << dbName << "/" << idString << ": " << err.what();
   return envelope;
 }
 }  // namespace
@@ -2961,7 +3127,8 @@ void arangodb::consensus::enforceReplicationFunctional(
           size_t actualReplicationFactor =
               1 +
               Job::countGoodOrBadServersInList(snapshot, onlyFollowers.slice());
-          // leader plus GOOD or BAD followers (not FAILED)
+          // leader plus GOOD or BAD followers (not FAILED (except maintenance
+          // servers))
           size_t apparentReplicationFactor = shard.slice().length();
 
           if (actualReplicationFactor != replicationFactor ||

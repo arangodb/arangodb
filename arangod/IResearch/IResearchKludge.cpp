@@ -40,6 +40,17 @@ inline void normalizeExpansion(std::string& name) {
   }
 }
 
+constexpr char kTypeDelimiter = '\0';
+constexpr char kAnalyzerDelimiter = '\1';
+#ifdef USE_ENTERPRISE
+constexpr char kNestedDelimiter = '\2';
+#endif
+
+std::string_view constexpr kNullSuffix{"\0_n", 3};
+std::string_view constexpr kBoolSuffix{"\0_b", 3};
+std::string_view constexpr kNumericSuffix{"\0_d", 3};
+std::string_view constexpr kStringSuffix{"\0_s", 3};
+
 }  // namespace
 
 namespace arangodb {
@@ -64,50 +75,90 @@ void syncIndexOnCreate(Index& index) {
 
 namespace arangodb::iresearch::kludge {
 
-const char TYPE_DELIMITER = '\0';
-const char ANALYZER_DELIMITER = '\1';
-
-std::string_view constexpr NULL_SUFFIX("\0_n", 3);
-std::string_view constexpr BOOL_SUFFIX("\0_b", 3);
-std::string_view constexpr NUMERIC_SUFFIX("\0_d", 3);
-std::string_view constexpr STRING_SUFFIX("\0_s", 3);
-
-void mangleType(std::string& name) { name += TYPE_DELIMITER; }
+void mangleType(std::string& name) { name += kTypeDelimiter; }
 
 void mangleAnalyzer(std::string& name) {
   normalizeExpansion(name);
-  name += ANALYZER_DELIMITER;
+  name += kAnalyzerDelimiter;
 }
 
 void mangleNull(std::string& name) {
   normalizeExpansion(name);
-  name.append(NULL_SUFFIX);
+  name.append(kNullSuffix);
 }
 
 void mangleBool(std::string& name) {
   normalizeExpansion(name);
-  name.append(BOOL_SUFFIX);
+  name.append(kBoolSuffix);
 }
 
 void mangleNumeric(std::string& name) {
   normalizeExpansion(name);
-  name.append(NUMERIC_SUFFIX);
+  name.append(kNumericSuffix);
 }
 
 void mangleString(std::string& name) {
   normalizeExpansion(name);
-  name.append(STRING_SUFFIX);
+  name.append(kStringSuffix);
 }
 
-void mangleField(std::string& name, bool isSearchFilter,
+#ifdef USE_ENTERPRISE
+void mangleNested(std::string& name) {
+  normalizeExpansion(name);
+  name += kNestedDelimiter;
+}
+#endif
+
+void mangleField(std::string& name, bool isOldMangling,
                  iresearch::FieldMeta::Analyzer const& analyzer) {
   normalizeExpansion(name);
-  if (isSearchFilter || analyzer._pool->requireMangled()) {
-    name += ANALYZER_DELIMITER;
+  if (isOldMangling || analyzer._pool->requireMangled()) {
+    name += kAnalyzerDelimiter;
     name += analyzer._shortName;
   } else {
-    mangleString(name);
+    name.append(kStringSuffix);
   }
 }
+
+std::string_view demangleType(std::string_view name) noexcept {
+  if (name.empty()) {
+    return {};
+  }
+
+  for (size_t i = name.size() - 1;; --i) {
+    if (name[i] <= kAnalyzerDelimiter) {
+      return {name.data(), i};
+    }
+    if (i == 0) {
+      break;
+    }
+  }
+
+  return name;
+}
+
+#ifdef USE_ENTERPRISE
+std::string_view demangleNested(std::string_view name, std::string& buf) {
+  auto const end = std::end(name);
+  if (end == std::find(std::begin(name), end, kNestedDelimiter)) {
+    return name;
+  }
+
+  auto prev = std::begin(name);
+  auto cur = prev;
+
+  buf.clear();
+
+  for (auto end = std::end(name); cur != end; ++cur) {
+    if (kNestedDelimiter == *cur) {
+      buf.append(prev, cur);
+      prev = cur + 1;
+    }
+  }
+  buf.append(prev, cur);
+
+  return buf;
+}
+#endif
 
 }  // namespace arangodb::iresearch::kludge

@@ -41,6 +41,7 @@
 #include "Utils/ManagedDirectory.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -59,6 +60,14 @@ using namespace std::literals::string_literals;
 /// @brief helper function to determine if a field value is an integer
 /// this function is here to avoid usage of regexes, which are too slow
 namespace {
+
+bool isLineBreakCharacter(char const* c) { return *c == '\r' || *c == '\n'; }
+
+bool isWhitespaceCharacter(char const* c) {
+  return isLineBreakCharacter(c) || *c == ' ' || *c == '\t' || *c == '\f' ||
+         *c == '\b';
+}
+
 bool isInteger(char const* field, size_t fieldLength) {
   char const* end = field + fieldLength;
 
@@ -189,6 +198,7 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
       _keyColumn(-1),
       _onDuplicateAction("error"),
       _collectionName(),
+      _overwriteCollectionPrefix(false),
       _lineBuffer(false),
       _outputBuffer(false),
       _firstLine(""),
@@ -587,6 +597,253 @@ bool ImportHelper::importJson(std::string const& collectionName,
                  _stats._numberIgnored + _stats._numberUpdated;
   _outputBuffer.clear();
   return !_hasError;
+}
+
+bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
+                                         std::string const& pathName,
+                                         bool assumeLinewise) {
+  /**************
+   * This Block is copied over from importJson
+   * If this test works out we should unify them
+   ***************/
+  ManagedDirectory directory(_encryption, TRI_Dirname(pathName), false, false,
+                             true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
+  _collectionName = collectionName;
+  _firstLine = "";
+  _outputBuffer.clear();
+  _errorMessages.clear();
+  _hasError = false;
+
+  if (!checkCreateCollection()) {
+    return false;
+  }
+  if (!collectionExists()) {
+    return false;
+  }
+
+  // read and convert
+  int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
+
+  if (fileName == "-") {
+    // we don't have a filesize
+    totalLength = 0;
+    fd = directory.readableFile(STDIN_FILENO);
+  } else {
+    // read filesize
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd = directory.readableFile(fileName.c_str(), 0);
+
+    if (!fd) {
+      _errorMessages.push_back(TRI_LAST_ERROR_STR);
+      return false;
+    }
+  }
+
+  bool isObject = false;
+  bool checkedFront = false;
+
+  if (assumeLinewise) {
+    checkedFront = true;
+    isObject = false;
+  }
+
+  // progress display control variables
+  double nextProgress = ProgressStep;
+
+  constexpr int BUFFER_SIZE = 1048576;
+  /**************
+   * End of copy
+   **************/
+  arangodb::basics::StringBuffer tmpBuffer;
+  if (tmpBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+    _errorMessages.emplace_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+
+    return false;
+  }
+
+  // read into temporary buffer
+  ssize_t n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+  if (n < 0) {
+    _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
+    return false;
+  } else if (n == 0) {
+    // Importing nothing can be done quite fast
+    _numberLines = 0;
+    return false;
+  }
+  tmpBuffer.increaseLength(n);
+  // DETECT if we are in a single Json-Array case.
+  if (!checkedFront) {
+    // detect the import file format (single lines with individual JSON
+    // objects or a JSON array with all documents)
+    char const* p = tmpBuffer.begin();
+    char const* e = tmpBuffer.end();
+
+    while (p < e && (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t' ||
+                     *p == '\f' || *p == '\b')) {
+      ++p;
+    }
+
+    isObject = (*p == '[');
+    checkedFront = true;
+  }
+
+  reportProgress(totalLength, fd->offset(), nextProgress);
+
+  uint64_t maxUploadSize = getMaxUploadSize();
+  auto doTransformAndOutputOneDoc = [&](VPackSlice document) {
+    auto removed = VPackCollection::remove(document, _removeAttributes);
+    auto serializedObject = removed.toJson();
+    _outputBuffer.appendText(serializedObject.c_str(), serializedObject.size());
+    // add a line-break
+    _outputBuffer.appendChar('\n');
+    if (_outputBuffer.length() > maxUploadSize) {
+      sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), false);
+      waitForSenders();
+      // All send out, clear out buffer
+      _outputBuffer.clear();
+    }
+  };
+  if (isObject) {
+    // Single Array case, we need to read the full file at once
+    if (totalLength > 0) {
+      // We have a given file, we can do shortcuts here
+      if (static_cast<uint64_t>(totalLength) > maxUploadSize) {
+        _errorMessages.push_back(
+            "import file is too big. please increase the value of --batch-size "
+            "(currently " +
+            StringUtils::itoa(maxUploadSize) + ")");
+        return false;
+      }
+    }
+    // Read the remainder of the file, we know that it fits
+    while (n > 0) {
+      n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+      if (n < 0) {
+        _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
+        return false;
+      }
+      if (n == 0) {
+        break;
+      }
+      tmpBuffer.increaseLength(n);
+      // We have a given file, we can do shortcuts here
+      if (totalLength == 0 &&
+          static_cast<uint64_t>(tmpBuffer.length()) > maxUploadSize) {
+        // THe streamed input file is too large.
+        _errorMessages.push_back(
+            "import file is too big. please increase the value of --batch-size "
+            "(currently " +
+            StringUtils::itoa(maxUploadSize) + ")");
+        return false;
+      }
+      reportProgress(totalLength, fd->offset(), nextProgress);
+    }
+
+    // Full file in tmpBuffer, read + parse it
+    auto builder = VPackParser::fromJson(tmpBuffer.begin(), tmpBuffer.length());
+    // We either have an array here, or invalid JSON.
+    // Just make sure we do not crash do bogus stuff in case one of
+    // the above has a bug.
+    ADB_PROD_ASSERT(builder->slice().isArray());
+    for (auto const& doc : VPackArrayIterator(builder->slice())) {
+      doTransformAndOutputOneDoc(doc);
+    }
+  } else {
+    // We are in JSONL format, now "simply" read input line by line.
+    char const* startOfNextLine = tmpBuffer.begin();
+    char const* endOfNextLine = tmpBuffer.end();
+    while (true) {
+      // Move startOfNextLine to first non-whitespace character
+      while (startOfNextLine < tmpBuffer.end() &&
+             isWhitespaceCharacter(startOfNextLine)) {
+        startOfNextLine++;
+      }
+      // endOfNext has to be at least at the start
+      endOfNextLine = startOfNextLine;
+      // Now move forward endOfLine until we reach the first line-break
+      // character, or the end of processable buffer input
+      while (endOfNextLine < tmpBuffer.end() &&
+             !isLineBreakCharacter(endOfNextLine)) {
+        endOfNextLine++;
+      }
+      if (endOfNextLine == tmpBuffer.end()) {
+        // NOT enough input, read more data from file
+        if (startOfNextLine == tmpBuffer.end()) {
+          // We consumed all of our tmp buffer.
+          // Easy case, just clear it and fill it fresh
+          tmpBuffer.clear();
+        } else {
+          // We still need to process pieces of the input
+          // Clear only the front!
+          tmpBuffer.erase_front(
+              std::distance<char const*>(tmpBuffer.begin(), startOfNextLine));
+        }
+
+        n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+        if (n < 0) {
+          _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
+          return false;
+        }
+        if (n == 0) {
+          break;
+        }
+        tmpBuffer.increaseLength(n);
+        reportProgress(totalLength, fd->offset(), nextProgress);
+
+        startOfNextLine = tmpBuffer.begin();
+        endOfNextLine = tmpBuffer.end();
+      } else {
+        // We now have a single line between start and end, let's throw it
+        // through the parsing process
+        try {
+          auto builder = VPackParser::fromJson(
+              startOfNextLine, std::distance(startOfNextLine, endOfNextLine));
+          // We are required to have an object here, otherwise the format is
+          // invalid
+          if (!builder->slice().isObject()) {
+            // Will be ignored in the lines below
+            // We have the option to do a more sophisticated error reporting
+            // here.
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+          }
+          doTransformAndOutputOneDoc(builder->slice());
+        } catch (...) {
+          {
+            // Count the error
+            MUTEX_LOCKER(guard, _stats._mutex);
+            _stats._numberErrors++;
+          }
+          // Produce a log message
+          auto keyLength = std::distance(startOfNextLine, endOfNextLine);
+          LOG_TOPIC("ad69b", WARN, arangodb::Logger::FIXME)
+              << "invalid JSON type: "
+              << std::string_view(startOfNextLine,
+                                  std::min<uint64_t>(keyLength, 255))
+              << (keyLength > 255 ? "..." : "");
+        }
+        // Move the start forward
+        startOfNextLine = endOfNextLine;
+      }
+    }
+  }
+
+  if (!_outputBuffer.empty()) {
+    sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), false);
+    waitForSenders();
+  }
+  reportProgress(totalLength, fd->offset(), nextProgress);
+
+  MUTEX_LOCKER(guard, _stats._mutex);
+  // this is an approximation only. _numberLines is more meaningful for CSV
+  // imports
+  _numberLines = _stats._numberErrors + _stats._numberCreated +
+                 _stats._numberIgnored + _stats._numberUpdated;
+  _outputBuffer.clear();
+  return !_hasError;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1174,7 +1431,9 @@ void ImportHelper::handleCsvBuffer(uint64_t bufferSizeThreshold) {
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
                   StringUtils::urlEncode(_onDuplicateAction) +
-                  "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
+                  "&ignoreMissing=" + (_ignoreMissing ? "true" : "false") +
+                  "&" + StaticStrings::OverwriteCollectionPrefix + "=" +
+                  (_overwriteCollectionPrefix ? "true" : "false"));
 
   if (!_fromCollectionPrefix.empty()) {
     url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
@@ -1210,7 +1469,9 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   // build target url
   std::string url("/_api/import?" + getCollectionUrlPart() +
                   "&details=true&onDuplicate=" +
-                  StringUtils::urlEncode(_onDuplicateAction));
+                  StringUtils::urlEncode(_onDuplicateAction) + "&" +
+                  StaticStrings::OverwriteCollectionPrefix + "=" +
+                  (_overwriteCollectionPrefix ? "true" : "false"));
   if (isObject) {
     url += "&type=array";
   } else {

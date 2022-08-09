@@ -282,6 +282,10 @@ struct OptimizerRule {
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule,
 
+    // moves filters on collection data into EnumerateCollection/Index to
+    // avoid copying large amounts of unneeded documents
+    moveFiltersIntoEnumerateRule,
+
     // remove calculations that are redundant
     // this is hidden and disabled by default version
     // used to cleanup calculation nodes after conditionally
@@ -303,16 +307,12 @@ struct OptimizerRule {
     // optimizations
     applySortLimitRule,
 
-    // try to restrict fragments to a single shard if possible
-    restrictToSingleShardRule,
-
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
 
-    // moves filters on collection data into EnumerateCollection/Index to
-    // avoid copying large amounts of unneeded documents
-    moveFiltersIntoEnumerateRule,
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule,
 
     // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized
     // count
@@ -340,6 +340,12 @@ struct OptimizerRule {
     // needs to take into account query distribution across cluster nodes
     // for arango search view
     lateDocumentMaterializationArangoSearchRule,
+
+#ifdef USE_ENTERPRISE
+    // FIXME(gnusi): when to execute?
+    // handle OFFSET_INFO functions calls
+    hanldeOffsetInfoFunc,
+#endif
 
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule

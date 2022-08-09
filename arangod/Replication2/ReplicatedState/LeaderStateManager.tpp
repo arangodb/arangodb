@@ -21,160 +21,215 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LeaderStateManager.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Metrics/Gauge.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Replication2/MetricsHelper.h"
 
 namespace arangodb::replication2::replicated_state {
 template<typename S>
 void LeaderStateManager<S>::run() noexcept {
-  // 1. wait for leadership established
-  // 1.2. digest available entries into multiplexer
-  // 2. construct leader state
-  // 2.2 apply all log entries of the previous term
-  // 3. make leader state available
+  // Very first thing: Make sure the state is rebuilt on log-resign.
+  beginWaitingForLogLeaderResigned();
 
-  LOG_CTX("53ba0", TRACE, loggerContext)
-      << "LeaderStateManager waiting for leadership to be established";
-  guardedData.getLockedGuard()->updateInternalState(
-      LeaderInternalState::kWaitingForLeadershipEstablished);
-  logLeader->waitForLeadership()
-      .thenValue([weak = this->weak_from_this()](auto&& result) {
-        auto self = weak.lock();
-        if (self == nullptr) {
-          return futures::Future<Result>{
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+  static auto constexpr throwResultOnErrorAsCorrespondingException =
+      [](Result result) {
+        if (result.fail()) {
+          TRI_ASSERT(!result.is(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED));
+          if (result.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
+            throw replicated_log::ParticipantResignedException(
+                std::move(result), ADB_HERE);
+          } else {
+            throw basics::Exception(std::move(result), ADB_HERE);
+          }
         }
-        LOG_CTX("53ba1", TRACE, self->loggerContext)
-            << "LeaderStateManager established";
-        auto f = self->guardedData.doUnderLock([&](GuardedData& data) {
-          TRI_ASSERT(data.internalState ==
-                     LeaderInternalState::kWaitingForLeadershipEstablished);
-          data.updateInternalState(LeaderInternalState::kIngestingExistingLog);
-          auto mux = Multiplexer::construct(self->logLeader);
-          mux->digestAvailableEntries();
-          data.stream = mux->template getStreamById<1>();  // TODO fix stream id
-          return data.stream->waitForIterator(LogIndex{0});
-        });
+      };
 
-        LOG_CTX("53ba2", TRACE, self->loggerContext)
-            << "receiving committed entries for recovery";
-        // TODO we don't have to `waitFor` we can just access the log.
-        //    new entries are not yet written, because the stream is
-        //    not published.
-        return std::move(f).thenValue([weak](
-                                          std::unique_ptr<Iterator>&& result) {
-          auto self = weak.lock();
-          if (self == nullptr) {
-            return futures::Future<Result>{
-                TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
-          }
-          LOG_CTX("53ba0", TRACE, self->loggerContext)
-              << "creating leader instance";
-          auto core = self->guardedData.doUnderLock([&](GuardedData& data) {
-            data.updateInternalState(LeaderInternalState::kRecoveryInProgress,
-                                     result->range());
-            return std::move(data.core);
-          });
-          if (core == nullptr) {
-            LOG_CTX("6d9ee", DEBUG, self->loggerContext) << "core already gone";
-            return futures::Future<Result>{
-                TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
-          }
-          LOG_CTX("5af0d", DEBUG, self->loggerContext)
-              << "starting recovery on range " << result->range();
-          std::shared_ptr<IReplicatedLeaderState<S>> machine =
-              self->factory->constructLeader(std::move(core));
-          return machine->recoverEntries(std::move(result))
-              .then([weak, machine](
-                        futures::Try<Result>&& tryResult) mutable -> Result {
-                auto self = weak.lock();
-                if (self == nullptr) {
-                  return Result{
-                      TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
-                }
-                try {
-                  if (auto result = tryResult.get(); result.ok()) {
-                    LOG_CTX("1a375", DEBUG, self->loggerContext)
-                        << "recovery on leader completed";
-                    auto state = self->guardedData.doUnderLock(
-                        [&](GuardedData& data)
-                            -> std::shared_ptr<IReplicatedLeaderState<S>> {
-                          if (data.token == nullptr) {
-                            LOG_CTX("59a31", DEBUG, self->loggerContext)
-                                << "token already gone";
-                            return nullptr;
-                          }
-                          data.state = machine;
-                          data.token->snapshot.updateStatus(
-                              SnapshotStatus::kCompleted);
-                          data.updateInternalState(
-                              LeaderInternalState::kServiceAvailable);
-                          data.state->_stream = data.stream;
-                          return data.state;
-                        });
+  auto const handleErrors = [weak = this->weak_from_this()](
+                                futures::Try<futures::Unit>&&
+                                    tryResult) noexcept {
+    // TODO Instead of capturing "this", should we capture the loggerContext
+    // instead?
+    if (auto self = weak.lock(); self != nullptr) {
+      try {
+        std::ignore = tryResult.get();
+      } catch (replicated_log::ParticipantResignedException const&) {
+        LOG_CTX("7322d", DEBUG, self->loggerContext)
+            << "Log leader resigned, stopping replicated state machine. Will "
+               "be restarted soon.";
+        return;
+      } catch (basics::Exception const& ex) {
+        LOG_CTX("0dcf7", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state machine: "
+            << ex.message() << " (exception location: " << ex.location() << ")";
+        FATAL_ERROR_EXIT();
+      } catch (std::exception const& ex) {
+        LOG_CTX("506c2", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state machine: "
+            << ex.what();
+        FATAL_ERROR_EXIT();
+      } catch (...) {
+        LOG_CTX("6788b", FATAL, self->loggerContext)
+            << "Caught unhandled exception in replicated state machine.";
+        FATAL_ERROR_EXIT();
+      }
+    }
+  };
 
-                    if (state != nullptr) {
-                      state->onSnapshotCompleted();
-                      self->beginWaitingForParticipantResigned();
-                      return result;
-                    } else {
-                      return Result{
-                          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
-                    }
-                  } else {
-                    LOG_CTX("3fd49", FATAL, self->loggerContext)
-                        << "recovery failed with error: "
-                        << result.errorMessage();
-                    FATAL_ERROR_EXIT();
-                  }
-                } catch (std::exception const& e) {
-                  LOG_CTX("3aaf8", FATAL, self->loggerContext)
-                      << "recovery failed with exception: " << e.what();
-                  FATAL_ERROR_EXIT();
-                } catch (...) {
-                  LOG_CTX("a207d", FATAL, self->loggerContext)
-                      << "recovery failed with unknown exception";
-                  FATAL_ERROR_EXIT();
-                }
-              });
-        });
-      })
-      .thenFinal([weak =
-                      this->weak_from_this()](futures::Try<Result>&& result) {
-        auto self = weak.lock();
-        if (self == nullptr) {
-          return;
-        }
-        try {
-          auto res = result.get();  // throws exceptions
-          if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
-            return;
-          }
-          TRI_ASSERT(res.ok());
-          if (!res.ok()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
-        } catch (arangodb::basics::Exception const& e) {
-          if (e.code() ==
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
-            return;
-          }
-          LOG_CTX("e73bd", FATAL, self->loggerContext)
-              << "Unexpected exception in leader startup procedure: "
-              << e.what();
-          FATAL_ERROR_EXIT();
-        } catch (std::exception const& e) {
-          LOG_CTX("e73bc", FATAL, self->loggerContext)
-              << "Unexpected exception in leader startup procedure: "
-              << e.what();
-          FATAL_ERROR_EXIT();
-        } catch (...) {
-          LOG_CTX("4d2b7", FATAL, self->loggerContext)
-              << "Unexpected exception in leader startup procedure";
-          FATAL_ERROR_EXIT();
-        }
+  auto const transitionTo = [this](LeaderInternalState state) noexcept {
+    return [state, weak = this->weak_from_this()](futures::Unit) noexcept {
+      if (auto self = weak.lock(); self != nullptr) {
+        self->guardedData.getLockedGuard()->updateInternalState(state);
+        self->run();
+      }
+    };
+  };
+
+  auto const toTryUnit = []<typename F>(F&& fn) -> futures::Try<futures::Unit> {
+    try {
+      return futures::Try<futures::Unit>{std::forward<F>(fn)()};
+    } catch (...) {
+      return futures::Try<futures::Unit>{std::current_exception()};
+    }
+  };
+
+  auto const state = guardedData.getLockedGuard()->internalState;
+  switch (state) {
+    case LeaderInternalState::kUninitializedState: {
+      // This transition does nothing except make it visible that run() was
+      // actually called.
+      std::invoke(
+          transitionTo(LeaderInternalState::kWaitingForLeadershipEstablished),
+          futures::Unit());
+    } break;
+    case LeaderInternalState::kWaitingForLeadershipEstablished: {
+      waitForLeadership()
+          .thenValue(transitionTo(LeaderInternalState::kRecoveryInProgress))
+          .thenFinal(handleErrors);
+    } break;
+    case LeaderInternalState::kRecoveryInProgress: {
+      recoverEntries()
+          .thenValue(throwResultOnErrorAsCorrespondingException)
+          .thenValue(transitionTo(LeaderInternalState::kServiceStarting))
+          .thenFinal(handleErrors);
+    } break;
+    case LeaderInternalState::kServiceStarting: {
+      auto tryResult = toTryUnit([this]() -> futures::Unit {
+        auto res = startService();
+        throwResultOnErrorAsCorrespondingException(std::move(res));
+        return {};
       });
+      if (tryResult.hasValue()) {
+        std::invoke(transitionTo(LeaderInternalState::kServiceAvailable),
+                    futures::Unit());
+      } else {
+        handleErrors(std::move(tryResult));
+      }
+    } break;
+    case LeaderInternalState::kServiceAvailable: {
+    } break;
+  }
+}
+
+template<typename S>
+auto LeaderStateManager<S>::waitForLeadership() noexcept
+    -> futures::Future<futures::Unit> try {
+  GaugeScopedCounter counter(metrics->replicatedStateNumberWaitingForLeader);
+  return logLeader->waitForLeadership().thenValue(
+      [counter =
+           std::move(counter)](replicated_log::WaitForResult const&) mutable {
+        counter.fire();
+        return futures::Unit();
+      });
+} catch (...) {
+  return futures::Try<futures::Unit>(std::current_exception());
+}
+
+template<typename S>
+auto LeaderStateManager<S>::recoverEntries() noexcept
+    -> futures::Future<Result> try {
+  LOG_CTX("53ba1", TRACE, loggerContext) << "LeaderStateManager established";
+  auto f = guardedData.doUnderLock([&](GuardedData& data) {
+    TRI_ASSERT(data.internalState == LeaderInternalState::kRecoveryInProgress)
+        << "Unexpected state " << to_string(data.internalState);
+    auto mux = Multiplexer::construct(logLeader);
+    mux->digestAvailableEntries();
+#ifdef _MSC_VER                             // circumventing bug in msvc
+    data.stream = mux->getStreamById<1>();  // TODO fix stream id
+#else
+    data.stream = mux->template getStreamById<1>();  // TODO fix stream id
+#endif
+    return data.stream->waitForIterator(LogIndex{0});
+  });
+
+  if (!f.isReady()) {
+    LOG_CTX("4448d", ERR, loggerContext)
+        << "Logic error: Stream is not ready yet. Will wait for it. "
+           "Please report this error to arangodb.com";
+    TRI_ASSERT(false);
+  }
+  auto&& result = f.get();
+
+  LOG_CTX("53ba2", TRACE, loggerContext)
+      << "receiving committed entries for recovery";
+
+  LOG_CTX("53ba0", TRACE, loggerContext) << "creating leader instance";
+  auto machine = guardedData.doUnderLock([&](GuardedData& data) {
+    data.recoveryRange = result->range();
+
+    auto core = std::move(data.core);
+
+    if (core == nullptr) {
+      LOG_CTX("6d9ee", DEBUG, loggerContext) << "core already gone ";
+      throw replicated_log::ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+    }
+    std::shared_ptr<IReplicatedLeaderState<S>> machine =
+        factory->constructLeader(std::move(core));
+
+    data.state = machine;
+
+    return machine;
+  });
+
+  LOG_CTX("5af0d", DEBUG, loggerContext)
+      << "starting recovery on range " << result->range();
+
+  MeasureTimeGuard timeGuard(metrics->replicatedStateRecoverEntriesRtt);
+  return machine->recoverEntries(std::move(result))
+      .then([guard = std::move(timeGuard)](auto&& res) mutable {
+        guard.fire();
+        return std::move(res.get());
+      });
+} catch (...) {
+  return futures::Try<Result>(std::current_exception());
+}
+
+template<typename S>
+auto LeaderStateManager<S>::startService() -> Result {
+  LOG_CTX("1a375", DEBUG, loggerContext) << "recovery on leader completed";
+  auto state = guardedData.doUnderLock(
+      [&](GuardedData& data) -> std::shared_ptr<IReplicatedLeaderState<S>> {
+        if (data.token == nullptr) {
+          LOG_CTX("59a31", DEBUG, loggerContext) << "token already gone";
+          return nullptr;
+        }
+        data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
+        data.recoveryRange = std::nullopt;
+        TRI_ASSERT(data.state != nullptr);
+        data.state->setStream(data.stream);
+        return data.state;
+      });
+
+  if (state != nullptr) {
+    state->onSnapshotCompleted();
+    return Result{};
+  } else {
+    return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+  }
 }
 
 template<typename S>
@@ -247,24 +302,54 @@ auto LeaderStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-void LeaderStateManager<S>::beginWaitingForParticipantResigned() {
-  logLeader->waitForResign().thenFinal([weak = this->weak_from_this()](auto&&) {
-    if (auto self = weak.lock(); self != nullptr) {
-      if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
-        parentPtr->forceRebuild();
-      }
-    }
-  });
+void LeaderStateManager<S>::beginWaitingForLogLeaderResigned() {
+  logLeader->waitForResign().thenFinal(
+      [weak = this->weak_from_this()](auto&&) noexcept {
+        if (auto self = weak.lock(); self != nullptr) {
+          if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
+            static_assert(noexcept(parentPtr->rebuildMe(self.get())));
+            parentPtr->rebuildMe(self.get());
+          }
+        }
+      });
 }
 
 template<typename S>
 auto LeaderStateManager<S>::getImplementationState()
     -> std::shared_ptr<IReplicatedLeaderState<S>> {
-  return guardedData.getLockedGuard()->state;
+  return guardedData.doUnderLock([](auto& self) -> decltype(self.state) {
+    // The state machine must not be accessible before it is ready.
+    if (self.internalState == LeaderInternalState::kServiceAvailable) {
+      return self.state;
+    } else {
+      return nullptr;
+    }
+  });
 }
 
 template<typename S>
 LeaderStateManager<S>::~LeaderStateManager() {
   metrics->replicatedStateNumberLeaders->fetch_sub(1);
 }
+
+template<typename S>
+LeaderStateManager<S>::GuardedData::GuardedData(
+    LeaderStateManager& self, LeaderInternalState internalState,
+    std::unique_ptr<CoreType> core,
+    std::unique_ptr<ReplicatedStateToken> token) noexcept
+    : self(self),
+      internalState(internalState),
+      core(std::move(core)),
+      token(std::move(token)) {
+  TRI_ASSERT(this->core != nullptr);
+  TRI_ASSERT(this->token != nullptr);
+}
+
+template<typename S>
+void LeaderStateManager<S>::GuardedData::updateInternalState(
+    LeaderInternalState newState) noexcept {
+  internalState = newState;
+  lastInternalStateChange = std::chrono::system_clock::now();
+}
+
 }  // namespace arangodb::replication2::replicated_state

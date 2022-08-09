@@ -47,7 +47,7 @@ function testAlgo(a, p) {
   do {
     internal.sleep(0.2);
     let stats = pregel.status(pid);
-    if (stats.state !== "running" && stats.state !== "storing") {
+    if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
       let attrs = ["totalRuntime", "startupTime", "computationTime"];
@@ -175,38 +175,41 @@ function basicTestSuite() {
     },
 
     // test the PREGEL_RESULT AQL function
-    testPageRankAQLResult: function () {
+    test_AQL_pregel_result_contains_pregel_results_when_they_are_not_stored_in_the_database: function () {
       var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: false });
       var i = 10000;
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
 
+          // pregel results are not written to the database
+
           let vertices = db._collection(vColl);
-          // no result was written to the default result field
           vertices.all().toArray().forEach(d => assertTrue(!d.result));
+
+          // pregel results can be queried with PREGEL_RESULT in AQL
 
           let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
           assertEqual(array.length, 1);
           let results = array[0];
           assertEqual(results.length, 11);
 
-          // verify results
           results.forEach(function (d) {
             let v = vertices.document(d._key);
             assertTrue(v !== null);
             assertTrue(Math.abs(v.pagerank - d.result) < EPS);
           });
 
+          // PREGEL_RESULT(<handle>, true) additionally returns vertex _id for each result
+
           array = db._query("RETURN PREGEL_RESULT(@id, true)", { "id": pid }).toArray();
           assertEqual(array.length, 1);
           results = array[0];
           assertEqual(results.length, 11);
 
-          // verify results
           results.forEach(function (d) {
             let v = vertices.document(d._key);
             assertTrue(v !== null);
@@ -216,12 +219,66 @@ function basicTestSuite() {
             assertEqual(v, v2);
           });
 
-          pregel.cancel(pid); // delete contents
+          // after cancelling the pregel run, PREGEL_RESULT is empty
+
+          pregel.cancel(pid);
           internal.sleep(5.0);
 
           array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
           assertEqual(array.length, 1);
           results = array[0];
+          assertEqual(results.length, 0);
+
+          break;
+        }
+      } while (i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in pregel execution");
+      }
+    },
+
+    test_AQL_pregel_result_is_empty_after_ttl_expires: function () {
+			// set ttl to one second
+      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: false, ttl: 1 });
+      var i = 10000;
+      do {
+        internal.sleep(0.2);
+        var stats = pregel.status(pid);
+        if (stats.state === "done") {
+          assertEqual(stats.vertexCount, 11, stats);
+          assertEqual(stats.edgeCount, 17, stats);
+
+          // garbage collection runs every 20s, therefore we should wait at least that long plus the ttl given
+          internal.sleep(25);
+          let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+          assertEqual(array.length, 1);
+          let results = array[0];
+          assertEqual(results.length, 0);
+
+          break;
+        }
+      } while (i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in pregel execution");
+      }
+    },
+
+    test_AQL_pregel_result_is_empty_when_pregel_results_are_stored_in_database: function () {
+      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: true });
+      var i = 10000;
+      do {
+        internal.sleep(0.2);
+        var stats = pregel.status(pid);
+        if (stats.state === "done") {
+          assertEqual(stats.vertexCount, 11, stats);
+          assertEqual(stats.edgeCount, 17, stats);
+
+          let vertices = db._collection(vColl);
+          vertices.all().toArray().forEach(d => assertTrue(Math.abs(d.pagerank - d.result) < EPS));
+
+          let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+          assertEqual(array.length, 1);
+          let results = array[0];
           assertEqual(results.length, 0);
 
           break;
@@ -266,7 +323,7 @@ function exampleTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(key);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, 4, stats);
           assertEqual(stats.edgeCount, 4, stats);
           break;

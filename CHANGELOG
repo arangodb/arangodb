@@ -1,6 +1,191 @@
 devel
 -----
 
+* Added startup option `--rocksdb.verify-sst` to validate sst files already 
+  present in the database directory on startup. Default: false.
+
+* BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
+  or more SortNodes appeared in the AQL execution plan.
+
+* Updated arangosync to v2.12.0-preview-3.
+
+* Added new AQL function `VALUE` capable of accessing object attribute by a
+  specified path.
+
+* Added OFFSET_INFO function (Enterprise Edition only) to support search results
+  highliting.
+
+* Updated Rclone to v1.59.0.
+
+* Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
+
+* Updated arangosync to v2.12.0-preview-2.
+
+* ArangoSearch nested search feature. (Enterprise Edition): Added ability to index
+  and search nested documents with ArangoSearch views.
+
+* Fixed handling of illegal edges in Enterprise Graphs. Adding an edge to a SmartGraph
+  vertex collection through document API caused incorrect sharding of the edge. Now
+  this edge is rejected as invalid. (BTS-906)
+
+* Removed unused log topics "CLUSTERCOMM", "COLLECTOR" and "PERFORMANCE" from
+  the code.
+
+* Added ALL_SHORTEST_PATHS functionality to find all shortest paths between two
+  given documents.
+
+* Added another test for computedValues attribute keepNull.
+
+* BTS-913: check for proper timezone setup of the system on startup.
+  This will then log errors that else would only occur in AQL-Functions at
+  runtime.
+
+* Changed rocksdb default compression type from snappy to lz4.
+
+* Fixed a potential deadlock in RocksDB compaction.
+  For details see https://github.com/facebook/rocksdb/pull/10355
+
+* Added more specific process exit codes for arangod and all client tools,
+  and changed the executables' exit code for the following situations:
+  
+  - an unknown startup option name is used: previously the exit code was 1.
+    Now the exit code when using an invalid option is 3 (symbolic exit code 
+    name EXIT_INVALID_OPTION_NAME).
+  - an invalid value is used for a startup option (e.g. a number that is 
+    outside the allowed range for the option's underlying value type, or a 
+    string value is used for a numeric option): previously the exit code was
+    1. Now the exit code for these case is 4 (symbolic exit code name
+    EXIT_INVALID_OPTION_VALUE).
+  - a config file is specified that does not exist: previously the exit code
+    was either 1 or 6 (symbolic exit code name EXIT_CONFIG_NOT_FOUND). Now
+    the exit code in this case is always 6 (EXIT_CONFIG_NOT_FOUND).
+  - a structurally invalid config file is used, e.g. the config file contains
+    a line that cannot be parsed: previously the exit code in this situation
+    was 1. Now it is always 6 (symbolic exit code name EXIT_CONFIG_NOT_FOUND).
+
+  Note that this change can affect any custom scripts that check for startup
+  failures using the specific exit code 1. These scripts should be adjusted so
+  that they check for a non-zero exit code. They can opt in to more specific
+  error handling using the additional exit codes mentioned above, in order to
+  distinguish between different kinds of startup errors.
+
+* arangoimport now supports the option --remove-attribute on type JSON as well.
+  Before it was restricted to TSV and CSV only.
+
+* Fixed BTS-851: "Could not fetch the applier state of: undefined".
+
+* Removed internal JavaScript dependencies "expect.js", "media-typer" and
+  "underscore". We recommend always bundling your own copy of third-party
+  modules as all previously included third-party modules are now considered
+  deprecated and may be removed in future versions of ArangoD
+  
+* APM-84: Added option to spill intermediate AQL query results from RAM to
+  disk when their size exceeds certain thresholds. Currently the only AQL
+  operation that can make use of this is the SortExecutor (AQL SORT operation
+  without using a LIMIT). Further AQL executor types will be supported in
+  future releases. 
+
+  Spilling over query results from RAM to disk is off by default and currently
+  in an experimental stage. In order to opt in to the feature, it is required
+  to set the following startup option `--temp.intermediate-results-path`.
+  The directory specified here must not be located underneath the instance's
+  database directory.
+  When this startup option is specified, ArangoDB assumes ownership of that
+  directory and will wipe its contents on startup and shutdown. The directory
+  can be placed on ephemeral storage, as the data stored inside it is there
+  only temporarily, while the instance is running. It does not need to be
+  persisted across instance restarts and does not need to be backed up.
+
+  When a directory is specified via the startup option, the following 
+  additional configuration options can be used to control the threshold
+  values for spilling over data:
+
+  * `--temp.intermediate-results-capacity`: maximum on-disk size (in bytes) 
+    for intermediate results. If set to 0, it means that the on-disk size
+    is not constrained. It can be set to a value other than 0 to restrict the
+    size of the temporary directory. Once the cumulated on-disk size of
+    intermediate results reaches the configured maximum capacity, the
+    query will be aborted with failure "disk capacity limit for intermediate
+    results exceeded".
+  * `--temp.intermediate-results-spillover-threshold-num-rows`: number of
+    result rows from which on a spillover from RAM to disk will happen.
+  * `--temp.intermediate-results-spillover-threshold-memory-usage`: memory
+    usage (in bytes) after which a spillover from RAM to disk will happen.
+  * `--temp.intermediate-results-encryption`: whether or not the on-disk
+    data should be encrypted. This option is only available in the Enterprise
+    Edition.
+  * `--temp.-intermediate-results-encryption-hardware-acceleration`: whether
+    or not to use hardware acceleration for the on-disk encryption. This
+    option is only available in the Enterprise Edition.
+
+  Please note that the feature is currently still experimental and may slightly
+  change in future releases. As mentioned, the only Executor that can make
+  use of spilling data to disk is the SortExecutor (SORT without LIMIT).
+  Also note that the query results will still be built up entirely in RAM
+  on coordinators and single servers for non-streaming queries. In order to
+  avoid the buildup of the entire query result in RAM, a streaming query
+  should be used.
+
+* Enterprise only: Added `MINHASH`, `MINHASH_MATCH`, `MINHASH_ERROR`, 
+  `MINHASH_COUNT` AQL functions.
+
+* Enterprise only: Added `minhash` analyzer.
+
+* BugFix in Pregel's status: When loading the graph into memory,
+  Pregel's state is now 'loading' instead of 'running'. When loading is finished,
+  Pregel's state changes to the 'running' state.
+
+* arangoimport now supports an additional option "--overwrite-collection-prefix".
+  This option will only help while importing edge collections, and if it is used
+  together with "--to-collection-prefix" or "--from-collection-prefix". If there
+  are vertex collection prefixes in the file you want to import (e.g. you just
+  exported an edge collection from ArangoDB) you allow arangoimport to overwrite
+  those with the commandline prefixes. If the option is false (default value)
+  only _from and _to values without a prefix will be prefixed by the handed in
+  values.
+
+* Added startup option `--rocksdb.compaction-style` to configure the compaction
+  style which is used to pick the next file(s) to be compacted. 
+
+* BugFix in Pregel's Label Propagation: the union of three undirected cliques
+  of size at least three connected by an undirected triangle now returns
+  three communities (each clique is a community) instead of two.
+
+* Pregel now reports correct and ongoing runtimes for loading, running, and
+  storing as well as runtimes for the separate global supersteps.
+
+* Fixed parsing of K_SHORTEST_PATHS queries to not allow ranges anymore.
+
+* Updated arangosync to v2.11.0.
+
+* Add log.time-format utc-datestring-micros to make debugging of concurrency
+  bugs easier.
+
+* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
+  explain outputs for AQL queries.
+
+* Pregel SSSP now supports `resultField` as well as `_resultField` as 
+  parameter name to specify the field into which results are stored.
+  The name `_resultField` will be deprecated in future.
+
+* Update Windows CI compiler to Visual Studio 2022.
+
+* Web UI: Fixes a GraphViewer issue related to display issues with node
+  and edge labels. Boolean node or edge values could not be used as label
+  values (ES-1084).
+
+* Made the SortExecutor receive its input incrementally, instead of receiving
+  a whole matrix containing all input at once.
+
+* Optimization for index post-filtering (early pruning): in case an index
+  is used for lookups, and the index covers the IndexNode's post-filter
+  condition, then loading the full document from the storage engine is
+  now deferred until the filter condition is evaluated and it is established
+  that the document matches the filter condition.
+
+* Added a fully functional UI for Views that lets users view, modify mutable
+  properties and delete views from the web UI.
+
 * Fix thread ids and thread names in log output for threads that are not
   started directly by ArangoDB code, but indirectly via library code.
   Previously, the ids of these threads were always reported as "1", and
@@ -15,10 +200,14 @@ devel
       `RETURN [1,2,3][? AT LEAST (3) FILTER CURRENT > 42]`
       `RETURN [1,2,3] AT LEAST (2) IN [1,2,3,4,5]`
 
-* Added a fully functional UI for Views that lets users view, modify mutable
-  properties and delete views from the web UI.
-
 * Changed default macOS CI compiler to LLVM clang-14.
+
+* Added an automatic cluster rebalance api. Use `GET _admin/cluster/rebalance`
+  to receive an analysis of how imbalanced the cluster is. Calling it with
+  `POST _admin/cluster/rebalance` computes a plan of move shard operations to
+  rebalance the cluster. Options are passed via the request body. After
+  reviewing the plan, one can use `POST _admin/cluster/rebalance/execute` to
+  put that plan into action.
 
 * Introduce reading from followers in clusters. This works by offering
   an additional HTTP header "x-arango-allow-dirty-read" for certain
@@ -31,6 +220,12 @@ devel
   not-yet-officially committed data. Use at your own risk if performance
   is more important than correctness or if you know that data does not
   change.
+  The responses which can contain dirty reads will have set the HTTP header
+  "x-arango-potential-dirty-read" set to "true".
+  There are the following new metrics showing the use of this feature:
+    - `arangodb_dirty_read_transactions_total`
+    - `arangodb_potentially_dirty_document_reads_total`
+    - `arangodb_dirty_read_queries_total`
 
 * Changed HTTP response code for error number 1521 from 500 to 400.
 
@@ -242,6 +437,9 @@ devel
 * No good reason to fatal error in agency state, when local database entries
   lack local timestamp (legacy). In that situation, we will record epoch begin
   as local time.
+
+* Very verbose warning from failing to parse GEO JSON in search. Has lead to
+  billions of log lines on deployed services.
 
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
@@ -1877,7 +2075,7 @@ devel
   `--console` argument for upgrading a server.
 
 * Fixed various problems in GEO_INTERSECTS: wrong results, not implemented
-  cases and numerically unstable behaviour. In particular, the case of
+  cases and numerically unstable behavior. In particular, the case of
   the intersection of two polygons in which one is an S2LngLatRect
   is fixed (BTS-475).
 

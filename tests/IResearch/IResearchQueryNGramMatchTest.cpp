@@ -138,10 +138,11 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,
@@ -621,35 +622,32 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     );                                // cache analyzer
     EXPECT_TRUE(res.ok());
   }
+  // 2-gram analyzer in another DB
   {
-    // 2-gram analyzer in another DB
-    {
-      auto& analyzers =
-          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-      TRI_vocbase_t* vocbase2;
-      auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-      dbFeature.createDatabase(testDBInfo(server.server(), "testVocbase2"),
-                               vocbase2);
-      std::shared_ptr<arangodb::LogicalCollection> unused;
-      ASSERT_NE(nullptr, vocbase2);
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
-      arangodb::methods::Collections::createSystem(
-          *vocbase2, options, arangodb::tests::AnalyzerCollectionName, false,
-          unused);
+    TRI_vocbase_t* vocbase2;
+    auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+    dbFeature.createDatabase(testDBInfo(server.server(), "testVocbase2"),
+                             vocbase2);
+    std::shared_ptr<arangodb::LogicalCollection> unused;
+    ASSERT_NE(nullptr, vocbase2);
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(
+        *vocbase2, options, arangodb::tests::AnalyzerCollectionName, false,
+        unused);
 
-      auto res = analyzers.emplace(
-          result, "testVocbase2::myngram", "ngram",
-          VPackParser::fromJson(
-              "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
-              "\"preserveOriginal\":false}")
-              ->slice(),
-          arangodb::iresearch::Features(
-              irs::IndexFeatures::FREQ |
-              irs::IndexFeatures::POS));  // cache analyzer
-      EXPECT_TRUE(res.ok());
-    }
+    auto res = analyzers.emplace(
+        result, "testVocbase2::myngram", "ngram",
+        VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
+                              "\"preserveOriginal\":false}")
+            ->slice(),
+        arangodb::iresearch::Features(
+            irs::IndexFeatures::FREQ |
+            irs::IndexFeatures::POS));  // cache analyzer
+    EXPECT_TRUE(res.ok());
   }
 
   // create collection0
@@ -689,7 +687,6 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
 
     EXPECT_TRUE(trx.commit().ok());
   }
-
   // create view
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
@@ -718,10 +715,11 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
 
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
     std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
-      cids.emplace(cid);
-      return true;
-    });
+    impl->visitCollections(
+        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
+          cids.emplace(cid);
+          return true;
+        });
     EXPECT_EQ(1, cids.size());
     EXPECT_TRUE(
         (arangodb::tests::executeQuery(vocbase,

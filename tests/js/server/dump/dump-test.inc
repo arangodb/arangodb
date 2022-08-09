@@ -452,6 +452,28 @@
       },
 
       ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test computed values
+      ////////////////////////////////////////////////////////////////////////////////
+
+      testComputedValues: function () {
+        const c = db._collection("UnitTestsComputedValues");
+        const p = c.properties();
+
+        assertEqual(p.computedValues.length, 2);
+        assertEqual(p.computedValues[0].name, "value3");
+        assertEqual(p.computedValues[1].name, "value4");
+        assertFalse(p.computedValues[0].overwrite);
+        assertTrue(p.computedValues[1].overwrite);
+        assertEqual(p.computedValues[0].expression, "RETURN CONCAT(@doc.value1, '+', @doc.value2)");
+        assertEqual(p.computedValues[1].expression, "RETURN CONCAT(@doc.value2, ' ', @doc.value1)");
+
+        c.toArray().forEach(el => {
+          assertEqual(el.value3, el.value1 + "+" + el.value2);
+          assertEqual(el.value4, el.value2 + " " + el.value1);
+        });
+      },
+
+      ////////////////////////////////////////////////////////////////////////////////
       /// @brief test autoinc keygen
       ////////////////////////////////////////////////////////////////////////////////
 

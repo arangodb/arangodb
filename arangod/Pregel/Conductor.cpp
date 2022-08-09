@@ -24,6 +24,8 @@
 #include <chrono>
 #include <thread>
 
+#include <fmt/core.h>
+
 #include "Conductor.h"
 
 #include "Pregel/Aggregator.h"
@@ -33,6 +35,8 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Status/Status.h"
+#include "Pregel/Status/ConductorStatus.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
@@ -43,6 +47,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -50,7 +56,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "velocypack/Builder.h"
 
+#include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -60,8 +68,8 @@ using namespace arangodb::basics;
 #define LOG_PREGEL(logId, level) \
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
-const char* arangodb::pregel::ExecutionStateNames[8] = {
-    "none",     "running",  "storing",    "done",
+const char* arangodb::pregel::ExecutionStateNames[9] = {
+    "none",     "loading",  "running",    "storing",    "done",
     "canceled", "in error", "recovering", "fatal error"};
 
 Conductor::Conductor(
@@ -128,6 +136,8 @@ Conductor::Conductor(
   _ttl = std::chrono::seconds(
       VelocyPackHelper::getNumericValue(config, "ttl", ttl));
 
+  _feature.metrics()->pregelConductorsNumber->fetch_add(1);
+
   LOG_PREGEL("00f5f", INFO)
       << "Starting " << _algorithm->name() << " in database '" << vocbase.name()
       << "', ttl: " << _ttl.count() << "s"
@@ -146,22 +156,24 @@ Conductor::~Conductor() {
       // must not throw exception from here
     }
   }
+  _feature.metrics()->pregelConductorsNumber->fetch_sub(1);
 }
 
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _startTimeSecs = TRI_microtime();
-  _computationStartTimeSecs = _startTimeSecs;
-  _finalizationStartTimeSecs = _startTimeSecs;
-  _endTimeSecs = _startTimeSecs;
+  _timing.total.start();
+  _timing.loading.start();
 
   _globalSuperstep = 0;
-  updateState(ExecutionState::RUNNING);
+
+  updateState(ExecutionState::LOADING);
+  _feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
+    _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
     LOG_PREGEL("30171", ERR) << "Not all DBServers started the execution";
   }
 }
@@ -169,6 +181,7 @@ void Conductor::start() {
 // only called by the conductor, is protected by the
 // mutex locked in finishedGlobalStep
 bool Conductor::_startGlobalStep() {
+  updateState(ExecutionState::RUNNING);
   if (_feature.isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -254,15 +267,20 @@ bool Conductor::_startGlobalStep() {
   // TODO make maximum configurable
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     // tells workers to store / discard results
+    _timing.computation.finish();
+    _feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
     if (_storeResults) {
       updateState(ExecutionState::STORING);
+      _feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
+      _timing.storing.start();
       _finalizeWorkers();
     } else {  // just stop the timer
       updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                                 : ExecutionState::DONE);
-      _endTimeSecs = TRI_microtime();
+      _timing.total.finish();
       LOG_PREGEL("9e82c", INFO)
-          << "Done, execution took: " << totalRuntimeSecs() << " s";
+          << "Done, execution took: " << _timing.total.elapsedSeconds().count()
+          << " s";
     }
     return false;
   }
@@ -275,7 +293,6 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_reports = &_reports;
     if (!_masterContext->preGlobalSuperstepWithResult()) {
       updateState(ExecutionState::FATAL_ERROR);
-      _endTimeSecs = TRI_microtime();
       return false;
     }
     _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
@@ -297,8 +314,8 @@ bool Conductor::_startGlobalStep() {
   b.close();
 
   LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
-
-  _stepStartTimeSecs = TRI_microtime();
+  _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
+                                    ._finish = std::nullopt});
 
   // start vertex level operations, does not get a response
   auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
@@ -315,10 +332,27 @@ bool Conductor::_startGlobalStep() {
 }
 
 // ============ Conductor callbacks ===============
+
+// The worker can (and should) periodically call back
+// to update its status
+void Conductor::workerStatusUpdate(VPackSlice const& data) {
+  MUTEX_LOCKER(guard, _callbackMutex);
+  // TODO: for these updates we do not care about uniqueness of responses
+  // _ensureUniqueResponse(data);
+
+  auto update = deserialize<Status>(data.get(Utils::payloadKey));
+  auto sender = data.get(Utils::senderKey).copyString();
+
+  LOG_PREGEL("76632", DEBUG)
+      << fmt::format("Update received {}", data.toJson());
+
+  _status.updateWorkerStatus(sender, std::move(update));
+}
+
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
-  if (_state != ExecutionState::RUNNING) {
+  if (_state != ExecutionState::LOADING) {
     LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
@@ -341,7 +375,11 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     _masterContext->preApplication();
   }
 
-  _computationStartTimeSecs = TRI_microtime();
+  _timing.loading.finish();
+  _timing.computation.start();
+
+  _feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
+  _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
   _startGlobalStep();
 }
 
@@ -390,8 +428,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  LOG_PREGEL("39385", DEBUG) << "Finished gss " << _globalSuperstep << " in "
-                             << (TRI_microtime() - _stepStartTimeSecs) << "s";
+  _timing.gss.back().finish();
+  LOG_PREGEL("39385", DEBUG)
+      << "Finished gss " << _globalSuperstep << " in "
+      << _timing.gss.back().elapsedSeconds().count() << "s";
   //_statistics.debugOutput();
   _globalSuperstep++;
 
@@ -643,6 +683,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
   }
+  _status = ConductorStatus::forWorkers(_dbServers);
   // do not reload all shard id's, this list must stay in the same order
   if (_allShards.size() == 0) {
     _allShards = shardList;
@@ -780,7 +821,6 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 
 ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
-  _finalizationStartTimeSecs = TRI_microtime();
 
   bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
@@ -823,8 +863,10 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                               : ExecutionState::DONE);
     didStore = true;
+    _timing.storing.finish();
+    _feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
+    _timing.total.finish();
   }
-  _endTimeSecs = TRI_microtime();  // offically done
 
   VPackBuilder debugOut;
   debugOut.openObject();
@@ -834,24 +876,20 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   _aggregators->serializeValues(debugOut);
   debugOut.close();
 
-  if (_finalizationStartTimeSecs < _computationStartTimeSecs) {
-    // prevent negative computation times from being reported
-    _finalizationStartTimeSecs = _computationStartTimeSecs;
-  }
-
-  double compTime = _finalizationStartTimeSecs - _computationStartTimeSecs;
-  TRI_ASSERT(compTime >= 0);
-  if (didStore) {
-    _storeTimeSecs = TRI_microtime() - _finalizationStartTimeSecs;
-  }
-
   LOG_PREGEL("063b5", INFO)
-      << "Done. We did " << _globalSuperstep << " rounds"
-      << ". Startup time: " << _computationStartTimeSecs - _startTimeSecs << "s"
-      << ", computation time: " << compTime << "s"
-      << (didStore ? (", storage time: " + std::to_string(_storeTimeSecs) + "s")
+      << "Done. We did " << _globalSuperstep << " rounds."
+      << (_timing.loading.hasStarted()
+              ? fmt::format("Startup time: {}s",
+                            _timing.loading.elapsedSeconds().count())
+              : "")
+      << (_timing.computation.hasStarted()
+              ? fmt::format(", computation time: {}s",
+                            _timing.computation.elapsedSeconds().count())
+              : "")
+      << (didStore ? fmt::format(", storage time: {}s",
+                                 _timing.storing.elapsedSeconds().count())
                    : "")
-      << ", overall: " << totalRuntimeSecs() << "s"
+      << ", overall: " << _timing.total.elapsedSeconds().count() << "s"
       << ", stats: " << debugOut.slice().toJson();
 
   // always try to cleanup
@@ -893,6 +931,10 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
     return;
   }
 
+  if (_storeResults) {
+    return;
+  }
+
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -929,19 +971,35 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.add("ttl", VPackValue(_ttl.count()));
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
-  result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
-  result.add("startupTime",
-             VPackValue(_computationStartTimeSecs - _startTimeSecs));
-  result.add("computationTime", VPackValue(_finalizationStartTimeSecs -
-                                           _computationStartTimeSecs));
-  if (_storeTimeSecs > 0.0) {
-    result.add("storageTime", VPackValue(_storeTimeSecs));
+
+  if (_timing.total.hasStarted()) {
+    result.add("totalRuntime",
+               VPackValue(_timing.total.elapsedSeconds().count()));
+  }
+  if (_timing.loading.hasStarted()) {
+    result.add("startupTime",
+               VPackValue(_timing.loading.elapsedSeconds().count()));
+  }
+  if (_timing.computation.hasStarted()) {
+    result.add("computationTime",
+               VPackValue(_timing.computation.elapsedSeconds().count()));
+  }
+  if (_timing.storing.hasStarted()) {
+    result.add("storageTime",
+               VPackValue(_timing.storing.elapsedSeconds().count()));
+  }
+  {
+    result.add(VPackValue("gssTimes"));
+    VPackArrayBuilder array(&result);
+    for (auto const& gssTime : _timing.gss) {
+      result.add(VPackValue(gssTime.elapsedSeconds().count()));
+    }
   }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
   result.add(VPackValue("reports"));
   _reports.intoBuilder(result);
-  if (_state != ExecutionState::RUNNING) {
+  if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
@@ -954,6 +1012,11 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     _masterContext->serializeValues(result);
   }
   result.add("useMemoryMaps", VPackValue(_useMemoryMaps));
+
+  result.add(VPackValue("detail"));
+  auto conductorStatus = _status.accumulate();
+  serialize(result, conductorStatus);
+
   result.close();
 }
 

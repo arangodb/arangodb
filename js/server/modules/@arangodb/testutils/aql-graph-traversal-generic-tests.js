@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global print */
+/*global print, fail */
 
 "use strict";
 
@@ -30,11 +30,11 @@ const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertException, as
   = jsunity.jsUnity.assertions;
 
 const internal = require("internal");
-const db = internal.db;
-const aql = require("@arangodb").aql;
+const {debugSetFailAt, debugCanUseFailAt, debugRemoveFailAt, db, isEnterprise} = internal;
+const {aql, errors} = require("@arangodb");
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
-const {getCompactStatsNodes, TraversalBlock } = require("@arangodb/testutils/aql-profiler-test-helper");
+const {getCompactStatsNodes, TraversalBlock} = require("@arangodb/testutils/aql-profiler-test-helper");
 
 
 /*
@@ -2558,6 +2558,222 @@ const testSmallCircleWeightedProjectionsVertices = testGraph => testProjectionsU
 const testSmallCircleBFSProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "bfs", true);
 const testSmallCircleDFSProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "dfs", true);
 const testSmallCircleWeightedProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "weighted", true);
+
+const executeParallelQuery = (makeQuery, expectedTotalNumberOfNodes = -1) => {
+  // We are using 10.000 start nodes here, to give all worker threads something to work on.
+  // The input will most likely be split into batches of 1000 nodes each (implementation detail)
+  // so with the above batch-size there should be enough work to distribute on 4 threads.
+  const numberOfStartNodes = 10000;
+
+  const query = makeQuery(true, numberOfStartNodes);
+  const nonParallelQuery = makeQuery(false, numberOfStartNodes);
+  const cursor = db._query(nonParallelQuery);
+  const expectedResults = new Map();
+  while (cursor.hasNext()) {
+    const expected = cursor.next();
+    assertFalse(expectedResults.has(expected), `Test setup error, the initial query produced a duplicate result ${expected}`);
+    expectedResults.set(expected, 0);
+  }
+  assertTrue(expectedResults.size > 0, `Test setup error, non-multithreaded query did not yield any results`);
+
+  // By this time the expected results contains all allowed results, each with an assigend counter of 0.
+  // The target is to assert later, that only those allowed results are seen, and each is seen exactly ${numberOfStartNodes} many times.
+  const res = db._query(query);
+
+  while (res.hasNext()) {
+    const actual = res.next();
+    assertTrue(expectedResults.has(actual), `Found unexpected result in parallel variant ${actual}`);
+    // Increase the counter of seen by one
+    expectedResults.set(actual, expectedResults.get(actual) + 1);
+  }
+
+  if (expectedTotalNumberOfNodes !== -1) {
+    let count = 0;
+    for (const [, counter] of expectedResults) {
+      count += counter;
+    }
+    assertEqual(count, expectedTotalNumberOfNodes);
+  } else {
+    for (const [result, counter] of expectedResults) {
+      assertEqual(counter, numberOfStartNodes, `Have seen incorrect number of result: ${result}`);
+    }
+  }
+};
+
+const makeParallelOptions = (parallel, mode) => {
+  return `OPTIONS {
+          ${parallel ? `parallelism: 8,` : ``}
+          uniqueVertices: "global",
+          uniqueEdges: "none",
+          order: "${mode}" }`;
+};
+
+const testParallelism = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        RETURN v.key
+      `;
+  };
+
+  if (debugCanUseFailAt()) {
+    const query = makeQuery(true, 1001);
+    // Dry run, try to hit the MutexExecutor, a sign that parallelism is triggereds
+    debugSetFailAt("MutexExecutor::distributeBlock");
+    if (isEnterprise()) {
+      try {
+        db._query(query);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_DEBUG.code);
+      }
+    } else {
+      db._query(query);
+    }
+    debugRemoveFailAt("MutexExecutor::distributeBlock");
+  }
+
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismTwoTraversals = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismLimit = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        LET d = DOCUMENT(CONCAT(v._id, "_illegal"))
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        ${parallel ? `LIMIT 42, 637` : ``}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637);
+};
+
+const testParallelismSortLimit = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        LET d = DOCUMENT(CONCAT(v._id, "_illegal"))
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        SORT v2.key
+        ${parallel ? `LIMIT 42` : ``}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 42);
+};
+
+const testParallelismSubqueryOuterLoopFirstTraversal = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('A')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          RETURN CONCAT(v.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismSubqueryOuterLoopSecondTraversal = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('D')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 INBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          ${parallel ? `LIMIT 42, 637` : ``}
+          RETURN CONCAT(v.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637 * 5); // x10 due to SubQueries
+};
+
+const testParallelismSubqueryOuterLoopBothInnerTraversals = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('A')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          ${parallel ? `LIMIT 42, 637` : ``}
+          RETURN CONCAT(v2.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637 * 5); // x5 due to SubQueries
+};
+
+const testSmallCircleBFSParallelism = testGraph => testParallelism(testGraph, "bfs");
+const testSmallCircleBFSParallelismTwoTraversals = testGraph => testParallelismTwoTraversals(testGraph, "bfs");
+const testSmallCircleBFSParallelismLimit = testGraph => testParallelismLimit(testGraph, "bfs");
+const testSmallCircleBFSParallelismSortLimit = testGraph => testParallelismSortLimit(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoop = testGraph => testParallelismSubqueryOuterLoopBothInnerTraversals(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoopFirstTraversal = testGraph => testParallelismSubqueryOuterLoopFirstTraversal(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoopSecondTraversal = testGraph => testParallelismSubqueryOuterLoopSecondTraversal(testGraph, "bfs");
 
 function testSmallCircleShortestPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
@@ -6196,6 +6412,13 @@ const testsByGraph = {
     testSmallCircleBFSProjectionsEdges,
     testSmallCircleDFSProjectionsEdges,
     testSmallCircleWeightedProjectionsEdges,
+    testSmallCircleBFSParallelism,
+    testSmallCircleBFSParallelismTwoTraversals,
+    testSmallCircleBFSParallelismLimit,
+    testSmallCircleBFSParallelismSortLimit,
+    testSmallCircleBFSParallelismSubqueryOuterLoop,
+    testSmallCircleBFSParallelismSubqueryOuterLoopFirstTraversal,
+    testSmallCircleBFSParallelismSubqueryOuterLoopSecondTraversal,
     testSmallCircleShortestPath,
     testSmallCircleKPathsOutbound,
     testSmallCircleKPathsAny,

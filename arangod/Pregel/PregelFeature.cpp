@@ -38,6 +38,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
@@ -51,6 +53,7 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -249,7 +252,11 @@ PregelFeature::PregelFeature(Server& server)
       _maxParallelism(::availableCores()),
       _tempLocationType("temp-directory"),
       _useMemoryMaps(true),
-      _softShutdownOngoing(false) {
+      _softShutdownOngoing(false),
+      _metrics(std::make_shared<PregelMetrics>(
+          server.getFeature<metrics::MetricsFeature>())) {
+  static_assert(
+      Server::isCreatedAfter<PregelFeature, metrics::MetricsFeature>());
   setOptional(true);
   startsAfter<DatabaseFeature>();
   startsAfter<application_features::V8FeaturePhase>();
@@ -343,8 +350,8 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--pregel.memory-mapped-files-custom-path",
-                  "custom path for Pregel's temporary files (only used if "
-                  "`--pregel.memory-mapped-files-location` is 'custom')",
+                  "Custom path for Pregel's temporary files. Only used if "
+                  "`--pregel.memory-mapped-files-location` is \"custom\".",
                   new StringParameter(&_tempLocationCustomPath),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -658,7 +665,9 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
             std::to_string(exeNum));
   }
 
-  if (path == Utils::finishedStartupPath) {
+  if (path == Utils::statusUpdatePath) {
+    co->workerStatusUpdate(body);
+  } else if (path == Utils::finishedStartupPath) {
     co->finishedWorkerStartup(body);
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);
@@ -752,6 +761,7 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
   for (auto const& p : _conductors) {
     std::shared_ptr<Conductor> const& c = p.second.conductor;
     if (c->_state == ExecutionState::DEFAULT ||
+        c->_state == ExecutionState::LOADING ||
         c->_state == ExecutionState::RUNNING ||
         c->_state == ExecutionState::STORING) {
       ++nr;
