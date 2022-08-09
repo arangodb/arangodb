@@ -267,7 +267,6 @@ TEST_F(ComputedValuesTest, createComputedValuesFromObjectSimple) {
   b.close();
   b.close();
 
-  // cannot create ComputedValues from an Object slice
   auto res = ComputedValues::buildInstance(vocbase, shardKeys, b.slice());
   ASSERT_TRUE(res.ok());
   auto cv = res.get();
@@ -861,8 +860,6 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
   auto& vocbase = server->getSystemDatabase();
   auto b = velocypack::Parser::fromJson(
       "{\"name\":\"test\", \"computedValues\": [{\"name\":\"attr\", "
-      "\"expression\":\"RETURN 'insert'\", \"overwrite\": false, "
-      "\"computeOn\":[\"insert\"]}, {\"name\":\"attr\", "
       "\"expression\":\"RETURN 'update'\", \"overwrite\": false, "
       "\"computeOn\":[\"update\"]}]}");
 
