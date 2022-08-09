@@ -666,12 +666,12 @@ bool Conductor::canBeGarbageCollected() const {
          expiration.value() <= std::chrono::system_clock::now();
 }
 
-void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
+auto Conductor::collectAQLResults(bool withId) -> PregelResults {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_storeResults) {
-    return;
+    return PregelResults{.results = VPackBuilder{}};
   }
-  state->getResults(withId, outBuilder);
+  return state->getResults(withId);
 }
 
 void Conductor::toVelocyPack(VPackBuilder& result) const {

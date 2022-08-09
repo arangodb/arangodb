@@ -724,9 +724,8 @@ auto Worker<V, E, M>::_cleanupFinishedEvent() const -> CleanupFinished {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
+auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   MUTEX_LOCKER(guard, _commandMutex);
-  TRI_ASSERT(b.isEmpty());
 
   //  std::vector<ShardID> const& shards = _config.globalShardIDs();
   std::string tmp;
@@ -771,8 +770,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
     result.close();
   }
   result.close();
-  auto pregelResults = PregelResults{.results = result};
-  serialize(b, pregelResults);
+  return PregelResults{.results = result};
 }
 
 template<typename V, typename E, typename M>

@@ -25,6 +25,7 @@
 #include <chrono>
 
 #include "Pregel/Conductor/State.h"
+#include "Pregel/WorkerConductorMessages.h"
 
 namespace arangodb::pregel {
 
@@ -40,7 +41,7 @@ struct Done : State {
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
   auto recover() -> void override{};
-  auto getResults(bool withId, VPackBuilder& out) -> void override;
+  auto getResults(bool withId) -> PregelResults override;
   auto name() const -> std::string override { return "done"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const
