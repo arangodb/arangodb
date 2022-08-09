@@ -230,12 +230,11 @@ auto DocumentStateTransactionHandler::applyTransaction(DocumentLogEntry doc)
         removeTransaction(doc.tid);
         break;
       case OperationType::kAbortAllOngoingTrx:
-        TRI_ASSERT(false); // should never happen as it should be handled above
-        break;
+        TRI_ASSERT(false);  // should never happen as it should be handled above
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }
-    ADB_PROD_ASSERT(fut.isReady()) << doc;
+    TRI_ASSERT(fut.isReady()) << doc;
     return fut.get();
   } catch (basics::Exception& e) {
     return Result{e.code(), e.message()};
