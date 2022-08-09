@@ -76,7 +76,7 @@ auto document::to_string(OperationType op) noexcept -> std::string_view {
     case OperationType::kAbortAllOngoingTrx:
       return String_AbortAllOngoingTrx;
     default:
-      ADB_PROD_ASSERT(false) << "Unexpected operation";
+      ADB_PROD_ASSERT(false) << "Unexpected operation " << static_cast<int>(op);
   }
   return {};  // should never be reached, but compiler complains about missing
               // return

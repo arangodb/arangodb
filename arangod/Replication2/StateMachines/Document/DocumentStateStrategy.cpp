@@ -45,6 +45,8 @@
 
 using namespace arangodb::replication2::replicated_state::document;
 
+// TODO this would do with an AgencyCache, there is no real need for
+// ClusterFeature
 DocumentStateAgencyHandler::DocumentStateAgencyHandler(
     GlobalLogIdentifier gid, ArangodServer& server,
     ClusterFeature& clusterFeature)

@@ -48,8 +48,8 @@ struct DocumentLeaderState
                           ReplicationOptions opts) -> futures::Future<LogIndex>;
 
   LoggerContext const loggerContext;
-  std::string_view shardId;
-  GlobalLogIdentifier gid;
+  std::string_view const shardId;
+  GlobalLogIdentifier const gid;
 
  private:
   struct GuardedData {
