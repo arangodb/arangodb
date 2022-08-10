@@ -169,7 +169,9 @@ class Vertex {
     _key = std::string(key, keyLength);
   }
 
-  uint16_t keyLength() const noexcept { return _key.size(); }
+  uint16_t keyLength() const noexcept {
+    return static_cast<uint16_t>(_key.size());
+  }
 
   std::string_view key() const { return std::string_view(_key); }
   V const& data() const& { return _data; }
