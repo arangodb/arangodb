@@ -17,4 +17,4 @@ jobs:
           fetch-depth: 0
       - name: cppcheck
         run: |
-          util/cppcheck.sh
+          utils/cppcheck.sh
