@@ -554,32 +554,29 @@ bool visitName(std::string_view name, Visitor&& visitor) {
 
   auto begin = std::begin(name);
   auto prev = begin;
-  auto visit = [&]() {
-    if (*prev == NESTING_LIST_OFFSET_PREFIX) {
-      if (ADB_UNLIKELY(begin[-1] != NESTING_LIST_OFFSET_SUFFIX)) {
-        return false;
+
+  for (auto end = std::end(name); begin != end; ++begin) {
+    if (*begin == NESTING_LEVEL_DELIMITER ||
+        *begin == NESTING_LIST_OFFSET_PREFIX) {
+      if (prev != begin) {
+        std::forward<Visitor>(visitor)(std::string_view{prev, begin});
       }
+      prev = begin + 1;
+    } else if (*begin == NESTING_LIST_OFFSET_SUFFIX) {
       size_t idx;
-      if (!absl::SimpleAtoi({prev + 1, begin - 1}, &idx)) {
+      if (!absl::SimpleAtoi({prev, begin}, &idx)) {
         return false;
       }
       std::forward<Visitor>(visitor)(idx);
-    } else {
-      std::forward<Visitor>(visitor)(std::string_view{prev, begin});
-    }
-
-    return true;
-  };
-
-  for (auto end = std::end(name); begin != end; ++begin) {
-    if (*begin == NESTING_LEVEL_DELIMITER) {
-      if (!visit()) {
-        return false;
-      }
       prev = begin + 1;
     }
   }
-  return visit();
+
+  if (prev != begin) {
+    std::forward<Visitor>(visitor)(std::string_view{prev, begin});
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
