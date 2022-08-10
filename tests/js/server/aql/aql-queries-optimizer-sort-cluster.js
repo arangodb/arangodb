@@ -45,18 +45,8 @@ function ahuacatlQueryOptimizerSortTestSuite () {
   var cn = "UnitTestsAhuacatlOptimizerSort";
   var idx = null;
 
-  let explain = function (query, params) {
-    return helper.removeClusterNodes(
-      helper.getCompactPlan(AQL_EXPLAIN(query, params, {
-        optimizer: {
-          rules: [
-            '-all',
-            '+use-index-for-sort',
-            '+use-indexes',
-            '+remove-redundant-sorts'],
-        },
-      })).map(function (node) { return node.type; }));
-  };
+  var explain = function (query, params) {
+      return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; });};
 
   const generateData = () => {
     // Static data we will use in our AQL Queries.
