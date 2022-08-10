@@ -144,6 +144,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
         } else {
           ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
                                                 name.data(), name.size());
+          handled = true;
         }
         if (!handled) {
           VPackBuilder builder;
