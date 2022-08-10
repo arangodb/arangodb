@@ -1,6 +1,19 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed an invalid attribute access in AQL query optimization.
+  Without the fix, a query such as
+
+      LET data = { 
+        "a": [ 
+          ...
+        ], 
+      } 
+      FOR d IN data["a"] 
+        RETURN d
+
+  could fail with error "invalid operand to FOR loop, expecting Array".
+
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 
 * Updated arangosync to v2.11.0.
