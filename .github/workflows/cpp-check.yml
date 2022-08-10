@@ -1,4 +1,4 @@
-name: clang-format
+name: cppcheck
 on:
   pull_request:
     branches: [ devel, staging/replication-2.0 ]
