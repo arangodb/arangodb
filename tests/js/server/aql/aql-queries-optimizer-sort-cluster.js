@@ -46,13 +46,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
   var idx = null;
 
   var explain = function (query, params) {
-    return
-      helper.getCompactPlan(
-        AQL_EXPLAIN(query, params, {optimizer: {rules: ["-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts"]}})
-      ).map(function (node) {
-        return node.type;
-      }));
-  };
+      return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; });};
 
   const generateData = () => {
     // Static data we will use in our AQL Queries.
@@ -69,7 +63,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       helper.getCompactPlan(
         AQL_EXPLAIN(query, params)).map(function (node) {
         return node.type;
-      });
+      }));
   };
 
   return {
