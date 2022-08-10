@@ -22,6 +22,9 @@ devel
 
 * Updated Rclone to v1.59.0.
 
+* Add serverId parameter to _admin/log/level. Allows you to forward the request to
+  other servers.
+
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 
 * Updated arangosync to v2.12.0-preview-2.
