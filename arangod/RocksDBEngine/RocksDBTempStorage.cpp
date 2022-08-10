@@ -135,7 +135,7 @@ RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
       _db(nullptr),
       _comparator(std::make_unique<::KeysComparator>()) {}
 
-RocksDBTempStorage::~RocksDBTempStorage() = default;
+RocksDBTempStorage::~RocksDBTempStorage() { close(); }
 
 Result RocksDBTempStorage::init() {
   // path for temporary files, not managed by RocksDB, but by us.
@@ -258,8 +258,12 @@ Result RocksDBTempStorage::init() {
 }
 
 void RocksDBTempStorage::close() {
-  TRI_ASSERT(_db != nullptr);
-  _db->Close();
+  if (_db != nullptr) {
+    _db->Close();
+
+    delete _db;
+    _db = nullptr;
+  }
 }
 
 std::unique_ptr<RocksDBSortedRowsStorageContext>
