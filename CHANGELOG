@@ -1,6 +1,11 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Improve error handling for passing wrong transaction ids / cursor ids /
+  pregel job ids to request forwarding. Also prevent the error "transaction
+  id not found" in cases when request forwarding was tried to a coordinator
+  that was recently restarted.
+
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 
 * Updated arangosync to v2.11.0.
