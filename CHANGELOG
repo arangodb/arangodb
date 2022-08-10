@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added startup option `--rocksdb.verify-sst` to validate sst files already 
+  present in the database directory on startup. Default: false.
+
 * BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
   or more SortNodes appeared in the AQL execution plan.
 
@@ -13,6 +16,9 @@ devel
   highliting.
 
 * Updated Rclone to v1.59.0.
+
+* Add serverId parameter to _admin/log/level. Allows you to forward the request to
+  other servers.
 
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 
