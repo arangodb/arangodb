@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global assertTrue, assertEqual, arango, fail */
+/* global assertTrue, assertEqual, assertMatch, arango, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -59,24 +59,26 @@ function testSuite() {
     return res.status;
   };
 
-  let checkAvailability = function (servers, expectedCode) {
-    require("console").warn("checking (un)availability of " + servers.map((s) => s.url).join(", "));
-    servers.forEach(function(server) {
-      let res = request({ method: "get", url: server.url + "/_api/version", timeout: 3 });
-      assertEqual(expectedCode, res.status);
-    });
-  };
+  let sendRequest = function (method, endpoint, body, headers) {
+    const envelope = {
+      json: true,
+      method,
+      url: endpoint,
+      headers,
+    };
+    if (method !== 'GET') {
+      envelope.body = body;
+    }
+    let res = request(envelope);
 
-  let suspend = function (servers) {
-    servers.forEach(function(server) {
-      server.suspend();
-    });
-  };
-  
-  let resume = function (servers) {
-    servers.forEach(function(server) {
-      server.resume();
-    });
+    if (typeof res.body === "string") {
+      if (res.body === "") {
+        res.body = {};
+      } else {
+        res.body = JSON.parse(res.body);
+      }
+    }
+    return res;
   };
 
   return {
@@ -92,7 +94,7 @@ function testSuite() {
       let trx = db._createTransaction({ 
         collections: { write: cn }
       });
-       
+
       let tc = trx.collection(cn);
       tc.insert({ _key: "test1" });
 
@@ -122,8 +124,14 @@ function testSuite() {
       } catch (err) {
         assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
       }
+   
+      // contact all coordinators - all the requests must fail everywhere
+      for (let i = 0; i < coordinators.length; ++i) {
+        let result = sendRequest('PUT', coordinators[i].url + "/_api/transaction/" + encodeURIComponent(trx._id), {}, {});
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+      }
       
-
       // we should be able to start a new transaction, however
       trx = db._createTransaction({ 
         collections: { write: cn }
@@ -134,6 +142,14 @@ function testSuite() {
         tc.insert({ _key: "test1" });
 
         assertEqual(1, tc.count()); 
+      
+        // contact all coordinators - all these requests must succeed
+        for (let i = 0; i < coordinators.length; ++i) {
+          let result = sendRequest('POST', coordinators[i].url + "/_api/document/" + encodeURIComponent(cn), { _key: "coord" + i }, { "x-arango-trx-id" : trx._id });
+          assertEqual(202, result.status);
+        }
+        
+        assertEqual(1 + coordinators.length, tc.count()); 
       } finally {
         trx.abort();
       }
