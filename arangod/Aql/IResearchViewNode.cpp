@@ -861,12 +861,67 @@ constexpr Executor kExecutors[] = {
           aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
               aql::ExecutionTraits<copyStored, true, false, materializeType>>>>(
           engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+    },
+    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos)
+        -> std::unique_ptr<aql::ExecutionBlock> {
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewExecutor<
+              aql::ExecutionTraits<copyStored, false, true, materializeType>>>>(
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+    },
+    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos)
+        -> std::unique_ptr<aql::ExecutionBlock> {
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewExecutor<
+              aql::ExecutionTraits<copyStored, true, true, materializeType>>>>(
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+    },
+    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos)
+        -> std::unique_ptr<aql::ExecutionBlock> {
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<
+              aql::ExecutionTraits<copyStored, false, true, materializeType>>>>(
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+    },
+    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos)
+        -> std::unique_ptr<aql::ExecutionBlock> {
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<
+              aql::ExecutionTraits<copyStored, true, true, materializeType>>>>(
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+    },
+    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos)
+        -> std::unique_ptr<aql::ExecutionBlock> {
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
+              aql::ExecutionTraits<copyStored, false, true, materializeType>>>>(
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+    },
+    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos)
+        -> std::unique_ptr<aql::ExecutionBlock> {
+      return std::make_unique<
+          aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
+              aql::ExecutionTraits<copyStored, true, true, materializeType>>>>(
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     }};
 
-constexpr size_t getExecutorIndex(bool sorted, bool ordered, bool heapsort) {
+constexpr size_t getExecutorIndex(bool sorted, bool ordered, bool heapsort,
+                                  bool emitSearchDoc) {
   TRI_ASSERT(!sorted || !heapsort);
-  auto index = static_cast<size_t>(ordered) + 2 * static_cast<size_t>(sorted) +
-               static_cast<size_t>(heapsort) * 4;
+  auto const index = size_t{ordered} + 2 * size_t{sorted} +
+                     4 * size_t{heapsort} + 6 * size_t{emitSearchDoc};
   TRI_ASSERT(index <
              std::size((kExecutors<false, MaterializeType::Materialize>)));
   return index;
@@ -1713,7 +1768,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     writableOutputRegisters.reserve(numDocumentRegs + numScoreRegisters +
                                     numViewVarsRegisters);
 
-    aql::RegisterId searchDocRegId{aql::RegisterPlan::MaxRegisterId};
+    aql::RegisterId searchDocRegId{aql::RegisterId::makeInvalid()};
     if (_outSearchDocId != nullptr) {
       searchDocRegId = variableToRegisterId(_outSearchDocId);
       writableOutputRegisters.emplace(searchDocRegId);
@@ -1812,6 +1867,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   bool const ordered = !_scorers.empty();
   bool const sorted = _sort != nullptr;
   bool const heapsort = !_scorersSort.empty();
+  bool const emitSearchDoc = executorInfos.searchDocIdRegId().isValid();
 #ifdef USE_ENTERPRISE
   auto& engineSelectorFeature =
       _vocbase.server().getFeature<EngineSelectorFeature>();
@@ -1820,51 +1876,45 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       engineSelectorFeature.engine<RocksDBEngine>().isEncryptionEnabled();
 #endif
 
+  const auto executorIdx =
+      getExecutorIndex(sorted, ordered, heapsort, emitSearchDoc);
+
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
-      return kExecutors<false,
-                        MaterializeType::NotMaterialize>[getExecutorIndex(
-          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                      std::move(executorInfos));
+      return kExecutors<false, MaterializeType::NotMaterialize>[executorIdx](
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize:
-      return kExecutors<false,
-                        MaterializeType::LateMaterialize>[getExecutorIndex(
-          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                      std::move(executorInfos));
+      return kExecutors<false, MaterializeType::LateMaterialize>[executorIdx](
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::Materialize:
-      return kExecutors<false, MaterializeType::Materialize>[getExecutorIndex(
-          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                      std::move(executorInfos));
+      return kExecutors<false, MaterializeType::Materialize>[executorIdx](
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
       if (encrypted) {
-        return kExecutors<
-            true, MaterializeType::NotMaterialize |
-                      MaterializeType::UseStoredValues>[getExecutorIndex(
-            sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                        std::move(executorInfos));
+        return kExecutors<true,
+                          MaterializeType::NotMaterialize |
+                              MaterializeType::UseStoredValues>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
 #endif
       return kExecutors<false,
                         MaterializeType::NotMaterialize |
-                            MaterializeType::UseStoredValues>[getExecutorIndex(
-          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                      std::move(executorInfos));
+                            MaterializeType::UseStoredValues>[executorIdx](
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
       if (encrypted) {
-        return kExecutors<
-            true, MaterializeType::LateMaterialize |
-                      MaterializeType::UseStoredValues>[getExecutorIndex(
-            sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                        std::move(executorInfos));
+        return kExecutors<true,
+                          MaterializeType::LateMaterialize |
+                              MaterializeType::UseStoredValues>[executorIdx](
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
 #endif
       return kExecutors<false,
                         MaterializeType::LateMaterialize |
-                            MaterializeType::UseStoredValues>[getExecutorIndex(
-          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                      std::move(executorInfos));
+                            MaterializeType::UseStoredValues>[executorIdx](
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     default:
       ADB_UNREACHABLE;
   }
