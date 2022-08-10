@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 1
       - name: Install cppcheck
-        run: apt-get install -y cppcheck
+        run: sudo apt-get install -y cppcheck
       - name: cppcheck
         run: |
           utils/cppcheck.sh
