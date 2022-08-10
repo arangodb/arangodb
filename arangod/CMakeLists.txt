@@ -251,65 +251,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   RestHandler/RestGraphHandler.cpp
 )
 
-set(LIB_ARANGO_PREGEL_AIR_SOURCES
-  Pregel/Algos/AIR/AIR.cpp
-  Pregel/Algos/AIR/AbstractAccumulator.cpp
-  Pregel/Algos/AIR/AccumulatorOptions.cpp
-  Pregel/Algos/AIR/Accumulators.cpp
-  Pregel/Algos/AIR/EdgeData.cpp
-  Pregel/Algos/AIR/GraphFormat.cpp
-  Pregel/Algos/AIR/MasterContext.cpp
-  Pregel/Algos/AIR/MessageData.cpp
-  Pregel/Algos/AIR/MessageFormat.cpp
-  Pregel/Algos/AIR/VertexComputation.cpp
-  Pregel/Algos/AIR/VertexData.cpp
-  Pregel/Algos/AIR/WorkerContext.cpp
-)
-
-set(LIB_ARANGO_PREGEL_SOURCES
-  Pregel/AggregatorHandler.cpp
-  Pregel/AlgoRegistry.cpp
-  Pregel/Algos/AsyncSCC.cpp
-  Pregel/Algos/ConnectedComponents.cpp
-  Pregel/Algos/DMID/DMID.cpp
-  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
-  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
-  Pregel/Algos/HITS.cpp
-  Pregel/Algos/LabelPropagation.cpp
-  Pregel/Algos/LineRank.cpp
-  Pregel/Algos/PageRank.cpp
-  Pregel/Algos/RecoveringPageRank.cpp
-  Pregel/Algos/SCC.cpp
-  Pregel/Algos/SLPA.cpp
-  Pregel/Algos/SSSP.cpp
-  Pregel/Algos/ShortestPath.cpp
-  Pregel/Algos/WCC.cpp
-  Pregel/Conductor.cpp
-  Pregel/GraphStore.cpp
-  Pregel/IncomingCache.cpp
-  Pregel/IndexHelpers.cpp
-  Pregel/OutgoingCache.cpp
-  Pregel/PregelFeature.cpp
-  Pregel/PregelMetrics.cpp
-  Pregel/Recovery.cpp
-  Pregel/Reports.cpp
-  Pregel/Reports.h
-  Pregel/Utils.cpp
-  Pregel/Worker.cpp
-  Pregel/WorkerConfig.cpp
-  Pregel/Conductor/InitialState.cpp
-  Pregel/Conductor/LoadingState.cpp
-  Pregel/Conductor/ComputingState.cpp
-  Pregel/Conductor/StoringState.cpp
-  Pregel/Conductor/CanceledState.cpp
-  Pregel/Conductor/DoneState.cpp
-  Pregel/Conductor/InErrorState.cpp
-  Pregel/Conductor/RecoveringState.cpp
-  Pregel/Conductor/FatalErrorState.cpp
-  RestHandler/RestControlPregelHandler.cpp
-  RestHandler/RestPregelHandler.cpp
-)
-
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AqlCall.cpp
@@ -967,11 +908,6 @@ add_library(arango_graph STATIC
   ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
 )
 
-add_library(arango_pregel STATIC
-  ${LIB_ARANGO_PREGEL_SOURCES}
-  ${LIB_ARANGO_PREGEL_AIR_SOURCES}
-)
-
 add_library(arango_aql STATIC
   ${LIB_ARANGO_AQL_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
@@ -1147,12 +1083,6 @@ target_link_libraries(arango_network arango::validation)
 target_link_libraries(arango_network arango_replication2)
 target_link_libraries(arango_network immer)
 
-target_link_libraries(arango_pregel arango)
-target_link_libraries(arango_pregel arango_agency)
-target_link_libraries(arango_pregel arango_greenspun)
-target_link_libraries(arango_pregel boost_boost)
-target_link_libraries(arango_pregel boost_system)
-
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_replication arango_vocbase)
@@ -1306,7 +1236,6 @@ foreach(TARGET
   arango_iresearch
   arango_metrics
   arango_network
-  arango_pregel
   arango_replication
   arango_replication2
   arango_rocksdb
@@ -1355,3 +1284,5 @@ install_command_alias(${BIN_ARANGOD}
 )
 
 install_config(arango-init-database)
+
+add_subdirectory(Pregel)
