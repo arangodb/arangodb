@@ -62,6 +62,8 @@ enum class TraversalProfileLevel : uint8_t {
 struct QueryOptions {
   QueryOptions();
   explicit QueryOptions(arangodb::velocypack::Slice);
+  QueryOptions(QueryOptions&&) noexcept = default;
+  QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice slice);
