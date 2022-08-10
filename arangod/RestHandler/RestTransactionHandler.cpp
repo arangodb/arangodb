@@ -410,6 +410,11 @@ RestTransactionHandler::forwardingTarget() {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
+  if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "write") {
+    // no request forwarding for stopping write transactions
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
