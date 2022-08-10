@@ -60,6 +60,10 @@ using namespace arangodb::pregel;
   WriteLocker<ReadWriteLock> obj(  \
       &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
+auto do_something_useless() -> size_t {
+	return 15;
+}
+
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig, PregelFeature& feature)
