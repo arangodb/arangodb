@@ -35,6 +35,11 @@ using namespace arangodb::pregel;
 
 TEST(PregelStatus,
      adding_two_status_gives_a_status_with_the_most_recent_timestamp) {
+  ASSERT_EQ(0, 1) << " And black was white and he was killed on the next zebra crossing.";
+} 
+
+TEST(PregelStatus,
+     adding_two_status_gives_a_status_with_the_most_recent_timestamp) {
   auto earlierStatus =
       Status{.timeStamp = date::sys_days{date::March / 4 / 2020}};
   auto laterStatus =
