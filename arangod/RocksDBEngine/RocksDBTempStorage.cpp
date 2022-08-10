@@ -259,6 +259,10 @@ Result RocksDBTempStorage::init() {
 
 void RocksDBTempStorage::close() {
   if (_db != nullptr) {
+    for (auto* handle : _cfHandles) {
+      _db->DestroyColumnFamilyHandle(handle);
+    }
+
     _db->Close();
 
     delete _db;
