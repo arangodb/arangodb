@@ -543,6 +543,46 @@ bool nameFromAttributeAccess(
     std::span<InvertedIndexField const>* subFields = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief visit name produced by nameFromAttributeAccess
+/// @returns true on success, false otherwise
+////////////////////////////////////////////////////////////////////////////////
+template<typename Visitor>
+bool visitName(std::string_view name, Visitor&& visitor) {
+  if (name.empty()) {
+    return true;
+  }
+
+  auto begin = std::begin(name);
+  auto prev = begin;
+  auto visit = [&]() {
+    if (*prev == NESTING_LIST_OFFSET_PREFIX) {
+      if (ADB_UNLIKELY(begin[-1] != NESTING_LIST_OFFSET_SUFFIX)) {
+        return false;
+      }
+      size_t idx;
+      if (!absl::SimpleAtoi({prev + 1, begin - 1}, &idx)) {
+        return false;
+      }
+      std::forward<Visitor>(visitor)(idx);
+    } else {
+      std::forward<Visitor>(visitor)(std::string_view{prev, begin});
+    }
+
+    return true;
+  };
+
+  for (auto end = std::end(name); begin != end; ++begin) {
+    if (*begin == NESTING_LEVEL_DELIMITER) {
+      if (!visit()) {
+        return false;
+      }
+      prev = begin + 1;
+    }
+  }
+  return visit();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the specified node is correct attribute access node,
 ///        treats node of type NODE_TYPE_REFERENCE as invalid
 /// @returns the specified node on success, nullptr otherwise
