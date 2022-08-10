@@ -39,7 +39,6 @@ const errors = require("internal").errors;
 
 const {
   getCtrlCoordinators,
-  getCtrlDBServers
 } = require('@arangodb/test-helper');
 
 const cn = "UnitTestsCollection";
@@ -89,27 +88,7 @@ function testSuite() {
       db._drop(cn);
     },
 
-    tearDownAll : function() {
-      /*
-      // Need to restart without authentication for other tests to succeed:
-      let coordinators = getCtrlCoordinators();
-      let coordinator = coordinators[0];
-      coordinator.exitStatus = null;
-      coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
-      coordinator.pid = null;
-      console.warn("Cleaning up and restarting coordinator without authentication...", coordinator.getStructure());
-      coordinator.exitStatus = null;
-
-      coordinator.restartOneInstance({
-        "server.authentication": "false"
-      });
-      let aliveStatus = waitForAlive(30, coordinator.url, {});
-      assertEqual(200, aliveStatus);
-      */
-    },
-
-    testRestartCoordinatorNormal : function() {
+    testRestartCoordinatorsDuringTransaction : function() {
       let trx = db._createTransaction({ 
         collections: { write: cn }
       });
@@ -118,20 +97,23 @@ function testSuite() {
       tc.insert({ _key: "test1" });
 
       let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-      coordinator.shutdownArangod(false);
-      coordinator.waitForInstanceShutdown(30);
-      coordinator.exitStatus = null;
-      coordinator.pid = null;
-      console.warn("Restarting coordinator...", coordinator.getStructure());
+      assertTrue(coordinators.length > 1);
 
-      coordinator.restartOneInstance({
-        "server.authentication": "false"
-      });
+      for (let i = 0; i < coordinators.length; ++i) {
+        let coordinator = coordinators[i];
+        coordinator.shutdownArangod(false);
+        coordinator.waitForInstanceShutdown(30);
+        coordinator.exitStatus = null;
+        coordinator.pid = null;
+        console.warn("Restarting coordinator...", coordinator.getStructure());
+
+        coordinator.restartOneInstance({
+          "server.authentication": "false"
+        });
         
-      waitForAlive(30, coordinator.url, {});
-       
+        waitForAlive(30, coordinator.url, {});
+      }
+      
       // will fail, because the coordinator owning the
       // transaction got restarted
       try {
