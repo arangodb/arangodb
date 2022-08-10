@@ -1,6 +1,10 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Updated warning messages raised for non accepted query OPTIONS, 
+  distinguishing between when the OPTIONS attribute is correct, but the value 
+  is in incorrect format, and when the OPTIONS attribute itself is incorrect.
+
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 
 * Updated arangosync to v2.11.0.
