@@ -277,6 +277,7 @@ const replicatedLogReplicationCompleted = function (database, logId) {
     }
     const status = LH.getLocalStatus(database, logId, result.leader);
     const local = status.local;
+    print(status);
 
     for (const [pid, follower] of Object.entries(status.follower)) {
       if (follower.spearhead < local.spearhead || follower.commitIndex < local.commitIndex) {
