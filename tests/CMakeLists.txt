@@ -253,9 +253,6 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
-  Pregel/DurationTest.cpp
-  Pregel/typedbuffer.cpp
-  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
@@ -446,6 +443,7 @@ if (USE_SEPARATE_GRAPH_TESTS_BINARY)
 endif()
 
 
+
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
@@ -595,3 +593,5 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
     )
   endif()
 endforeach()
+
+add_subdirectory(Pregel)
