@@ -361,7 +361,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
                           // once `preparePlan` has run and can be queried
                           // until the query object is gone!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _wasDestroy{false};
+  bool _wasDestroyed{false};
 #endif
 };
 
