@@ -1,10 +1,10 @@
 devel
 -----
 
-* Improve error handling for passing wrong transaction ids / cursor ids /
-  pregel job ids to request forwarding. Also prevent the error "transaction
-  id not found" in cases when request forwarding was tried to a coordinator
-  that was recently restarted.
+* Improve error handling for passing wrong transaction ids / cursor ids / pregel
+  job ids to request forwarding. Also prevent the error "transaction id not
+  found" in cases when request forwarding was tried to a coordinator that was
+  recently restarted.
 
 * Added startup option `--rocksdb.verify-sst` to validate sst files already 
   present in the database directory on startup. Default: false.
