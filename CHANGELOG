@@ -1,9 +1,30 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Improve error handling for passing wrong transaction ids / cursor ids / pregel
+  job ids to request forwarding. Also prevent the error "transaction id not
+  found" in cases when request forwarding was tried to a coordinator that was
+  recently restarted.
+
+* Fixed an invalid attribute access in AQL query optimization.
+  Without the fix, a query such as
+
+      LET data = { 
+        "a": [ 
+          ...
+        ], 
+      } 
+      FOR d IN data["a"] 
+        RETURN d
+
+  could fail with error "invalid operand to FOR loop, expecting Array".
+
 * Added support for AT LEAST quantifier for SEARCH.
 
 * Fixed BTS-335 Ranges parsing fixed for nested queries.
+
+* BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
+  or more SortNodes appeared in the AQL execution plan.
 
 * Updated arangosync to v2.12.0-preview-3.
 

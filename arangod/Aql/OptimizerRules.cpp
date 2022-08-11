@@ -1346,6 +1346,7 @@ void arangodb::aql::removeRedundantSortsRule(
           auto other =
               ExecutionNode::castTo<SortNode*>(current)->getSortInformation();
 
+          bool canContinueSearch = true;
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
               // different sort criteria
@@ -1355,20 +1356,25 @@ void arangodb::aql::removeRedundantSortsRule(
 
                 if (!other.isDeterministic) {
                   // if the sort is non-deterministic, we must not remove it
+                  canContinueSearch = false;
                   break;
                 }
 
                 if (sortNode->isStable()) {
-                  // we should not optimize predecessors of a stable sort (used
-                  // in a COLLECT node)
+                  // we should not optimize predecessors of a stable sort
+                  // (used in a COLLECT node)
                   // the stable sort is for a reason, and removing any
-                  // predecessors sorts might
-                  // change the result
+                  // predecessors sorts might change the result.
+                  // We're not allowed to continue our search for further
+                  // redundant SORTS in this iteration.
+                  canContinueSearch = false;
                   break;
                 }
 
                 // remove sort that is a direct predecessor of a sort
                 toUnlink.emplace(current);
+              } else {
+                canContinueSearch = false;
               }
               break;
             }
@@ -1381,7 +1387,9 @@ void arangodb::aql::removeRedundantSortsRule(
             case SortInformation::ourselvesLessAccurate: {
               // the sort at the start of the pipeline makes the sort at the end
               // superfluous, so we'll remove it
+              // Related to: BTS-937
               toUnlink.emplace(n);
+              canContinueSearch = false;
               break;
             }
 
@@ -1391,6 +1399,9 @@ void arangodb::aql::removeRedundantSortsRule(
               toUnlink.emplace(current);
               break;
             }
+          }
+          if (!canContinueSearch) {
+            break;
           }
         } else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
