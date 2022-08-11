@@ -189,7 +189,9 @@ Query::~Query() {
 }
 
 void Query::destroy() {
-  TRI_ASSERT(!std::exchange(_wasDestroy, true));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!std::exchange(_wasDestroyed, true));
+#endif
 
   unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
