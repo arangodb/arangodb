@@ -33,9 +33,9 @@
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
 
-using absl::make_unique;
 using s2builderutil::IdentitySnapFunction;
 using s2builderutil::IntLatLngSnapFunction;
+using absl::make_unique;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -269,6 +269,13 @@ TEST(S2WindingOperation, SymmetricDifferenceDegeneracies) {
        "0:0, 0:3, 3:3, 3:0", "1:1", "4:4", "5:5"},  // Geometry 2
       "10:10", 0, WindingRule::ODD,
       "", "2:2; 5:5");
+}
+
+TEST(S2WindingOperationOptions, SetGetSnapFunction) {
+  // Prevent these from being detected as dead code.
+  S2WindingOperation::Options opts;
+  opts.set_snap_function(IdentitySnapFunction());
+  EXPECT_EQ(opts.snap_function().snap_radius(), S1Angle::Zero());
 }
 
 }  // namespace

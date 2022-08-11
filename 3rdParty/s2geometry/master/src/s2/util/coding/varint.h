@@ -291,11 +291,11 @@ inline const char* Varint::Parse32WithLimit(const char* p, const char* l,
 
  inline const char* Varint::Parse64(const char* p, uint64* OUTPUT) {
 #if defined(__x86_64__)
-   auto ptr = reinterpret_cast<const int8*>(p);
-   int64 byte = *ptr;
-   if (byte >= 0) {
-     *OUTPUT = static_cast<uint64>(byte);
-     return reinterpret_cast<const char*>(ptr) + 1;
+  auto ptr = reinterpret_cast<const int8*>(p);
+  int64 byte = *ptr;
+  if (byte >= 0) {
+    *OUTPUT = static_cast<uint64>(byte);
+    return reinterpret_cast<const char*>(ptr) + 1;
   } else {
     auto tmp = Parse64FallbackPair(p, byte);
     if (ABSL_PREDICT_TRUE(tmp.first)) *OUTPUT = tmp.second;

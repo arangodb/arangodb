@@ -18,6 +18,7 @@
 #include "s2/s2builderutil_get_snapped_winding_delta.h"
 
 #include <iostream>
+#include <memory>
 
 #include <gtest/gtest.h>
 #include "absl/memory/memory.h"

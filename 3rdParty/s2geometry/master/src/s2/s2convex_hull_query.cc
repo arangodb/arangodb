@@ -25,6 +25,8 @@
 
 #include "s2/s2convex_hull_query.h"
 
+#include <memory>
+
 #include "absl/memory/memory.h"
 
 #include "s2/s2edge_distances.h"

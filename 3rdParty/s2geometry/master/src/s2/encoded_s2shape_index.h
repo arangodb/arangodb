@@ -18,6 +18,8 @@
 #ifndef S2_ENCODED_S2SHAPE_INDEX_H_
 #define S2_ENCODED_S2SHAPE_INDEX_H_
 
+#include <memory>
+
 #include "s2/encoded_s2cell_id_vector.h"
 #include "s2/encoded_string_vector.h"
 #include "s2/mutable_s2shape_index.h"

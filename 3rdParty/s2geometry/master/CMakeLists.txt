@@ -18,8 +18,9 @@ endif()
 # s2geometry needs to use the same C++ standard that absl used to avoid
 # undefined symbol errors since ABSL_HAVE_STD_STRING_VIEW etc will
 # end up defined differently.  There is probably a better way to achieve
-# this than assuming what absl used.
-set(CMAKE_CXX_STANDARD 17)
+# this than assuming what absl used. 
+# Using CACHE allows the user to override the default.
+set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ standard to build with")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # No compiler-specific extensions, i.e. -std=c++11, not -std=gnu++11.
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -67,6 +68,7 @@ if (WITH_GFLAGS)
     add_definitions(-DS2_USE_GFLAGS)
 endif()
 
+find_package(absl REQUIRED)
 find_package(OpenSSL REQUIRED)
 # pthreads isn't used directly, but this is still required for std::thread.
 find_package(Threads REQUIRED)
@@ -154,6 +156,7 @@ add_library(s2
             src/s2/s2edge_distances.cc
             src/s2/s2edge_tessellator.cc
             src/s2/s2furthest_edge_query.cc
+            src/s2/s2hausdorff_distance_query.cc
             src/s2/s2latlng.cc
             src/s2/s2latlng_rect.cc
             src/s2/s2latlng_rect_bounder.cc
@@ -188,6 +191,7 @@ add_library(s2
             src/s2/s2shape_index_buffered_region.cc
             src/s2/s2shape_index_measures.cc
             src/s2/s2shape_measures.cc
+            src/s2/s2shape_nesting_query.cc
             src/s2/s2shapeutil_build_polygon_boundaries.cc
             src/s2/s2shapeutil_coding.cc
             src/s2/s2shapeutil_contains_brute_force.cc
@@ -201,7 +205,6 @@ add_library(s2
             src/s2/s2winding_operation.cc
             src/s2/strings/serialize.cc
             src/s2/util/bits/bit-interleave.cc
-            src/s2/util/bits/bits.cc
             src/s2/util/coding/coder.cc
             src/s2/util/coding/varint.cc
             src/s2/util/math/exactfloat/exactfloat.cc
@@ -241,7 +244,7 @@ target_link_libraries(
     ${CMAKE_THREAD_LIBS_INIT})
 
 if (GTEST_ROOT)
-    target_link_libraries(
+  target_link_libraries(
       s2testing
       ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES}
       absl::memory
@@ -322,6 +325,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2edge_vector_shape.h
               src/s2/s2error.h
               src/s2/s2furthest_edge_query.h
+              src/s2/s2hausdorff_distance_query.h
               src/s2/s2latlng.h
               src/s2/s2latlng_rect.h
               src/s2/s2latlng_rect_bounder.h
@@ -362,6 +366,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2shape_index_buffered_region.h
               src/s2/s2shape_index_region.h
               src/s2/s2shape_measures.h
+              src/s2/s2shape_nesting_query.h
               src/s2/s2shapeutil_build_polygon_boundaries.h
               src/s2/s2shapeutil_coding.h
               src/s2/s2shapeutil_contains_brute_force.h
@@ -391,6 +396,8 @@ install(FILES src/s2/base/casts.h
               src/s2/base/port.h
               src/s2/base/spinlock.h
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/base")
+install(FILES src/s2/util/bitmap/bitmap.h
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/bitmap")
 install(FILES src/s2/util/bits/bits.h
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/bits")
 install(FILES src/s2/util/coding/coder.h
@@ -417,9 +424,9 @@ install(FILES src/s2/util/units/length-units.h
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/units")
 
 if (GTEST_ROOT)
-    set(S2_TARGETS s2 s2testing)
+  set(S2_TARGETS s2 s2testing)
 else()
-    set(S2_TARGETS s2)
+  set(S2_TARGETS s2)
 endif()
 
 install(TARGETS ${S2_TARGETS}
@@ -486,6 +493,7 @@ if (GTEST_ROOT)
       src/s2/s2edge_vector_shape_test.cc
       src/s2/s2error_test.cc
       src/s2/s2furthest_edge_query_test.cc
+      src/s2/s2hausdorff_distance_query_test.cc
       src/s2/s2latlng_test.cc
       src/s2/s2latlng_rect_bounder_test.cc
       src/s2/s2latlng_rect_test.cc
@@ -523,6 +531,7 @@ if (GTEST_ROOT)
       src/s2/s2shape_index_region_test.cc
       src/s2/s2shape_index_test.cc
       src/s2/s2shape_measures_test.cc
+      src/s2/s2shape_nesting_query_test.cc
       src/s2/s2shapeutil_build_polygon_boundaries_test.cc
       src/s2/s2shapeutil_coding_test.cc
       src/s2/s2shapeutil_contains_brute_force_test.cc

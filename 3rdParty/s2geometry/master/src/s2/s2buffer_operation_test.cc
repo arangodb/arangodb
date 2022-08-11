@@ -142,6 +142,16 @@ TEST(S2BufferOperation, EmptyShapeIndex) {
     });
 }
 
+TEST(S2BufferOperation, Options) {
+  // Provide test coverage for `options()`.
+  S2BufferOperation::Options options(S1Angle::Radians(1e-12));
+  S2LaxPolygonShape output;
+  S2BufferOperation op(
+      make_unique<s2builderutil::LaxPolygonLayer>(&output),
+      options);
+  EXPECT_EQ(options.buffer_radius(), op.options().buffer_radius());
+}
+
 TEST(S2BufferOperation, PoorlyNormalizedPoint) {
   // Verify that debugging assertions are not triggered when an input point is
   // not unit length (but within the limits guaranteed by S2Point::Normalize).
@@ -212,6 +222,7 @@ TEST(S2BufferOperation, SetCircleSegments) {
   S2BufferOperation::Options options(S1Angle::Radians(1e-12));
   for (int circle_segments = 3; circle_segments <= 20; ++circle_segments) {
     options.set_circle_segments(circle_segments);
+    EXPECT_FLOAT_EQ(circle_segments, options.circle_segments());
     auto output = DoBuffer([](S2BufferOperation* op) {
         op->AddPoint(S2Point(1, 0, 0));
       }, options);

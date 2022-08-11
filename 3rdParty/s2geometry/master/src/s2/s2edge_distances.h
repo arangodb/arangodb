@@ -207,11 +207,6 @@ S2Point GetPointOnRay(const S2Point& origin, const S2Point& dir,
 constexpr S1Angle kGetPointOnRayPerpendicularError = S1Angle::Radians(
     3 * s2pred::DBL_ERR);
 
-ABSL_DEPRECATED("Inline the implementation")
-inline S2Point Interpolate(double t, const S2Point& a, const S2Point& b) {
-  return Interpolate(a, b, t);
-}
-
 /////////////////////////////////////////////////////////////////////////////
 ///////////////            (edge, edge) functions             ///////////////
 

@@ -61,15 +61,6 @@
 
 using absl::StrAppend;
 using absl::StrCat;
-using absl::make_unique;
-using std::cout;
-using std::endl;
-using std::make_pair;
-using std::min;
-using std::pair;
-using std::string;
-using std::unique_ptr;
-using std::vector;
 using s2builderutil::GraphClone;
 using s2builderutil::IdentitySnapFunction;
 using s2builderutil::IntLatLngSnapFunction;
@@ -81,6 +72,15 @@ using s2builderutil::S2PolylineVectorLayer;
 using s2textformat::MakePointOrDie;
 using s2textformat::MakePolygonOrDie;
 using s2textformat::MakePolylineOrDie;
+using std::cout;
+using std::endl;
+using std::make_pair;
+using absl::make_unique;
+using std::min;
+using std::pair;
+using std::string;
+using std::unique_ptr;
+using std::vector;
 using EdgeType = S2Builder::EdgeType;
 using InputEdgeId = S2Builder::Graph::InputEdgeId;
 using Graph = S2Builder::Graph;
@@ -93,9 +93,10 @@ namespace {
 
 void ExpectPolygonsEqual(const S2Polygon& expected,
                          const S2Polygon& actual) {
-  EXPECT_TRUE(expected.Equals(&actual))
-      << "\nExpected:\n" << s2textformat::ToString(expected)
-      << "\nActual:\n" << s2textformat::ToString(actual);
+  EXPECT_TRUE(expected.Equals(actual))
+      << "\nExpected:\n"
+      << s2textformat::ToString(expected) << "\nActual:\n"
+      << s2textformat::ToString(actual);
 }
 
 void ExpectPolygonsApproxEqual(const S2Polygon& expected,
@@ -109,9 +110,10 @@ void ExpectPolygonsApproxEqual(const S2Polygon& expected,
 
 void ExpectPolylinesEqual(const S2Polyline& expected,
                           const S2Polyline& actual) {
-  EXPECT_TRUE(expected.Equals(&actual))
-      << "\nExpected:\n" << s2textformat::ToString(expected)
-      << "\nActual:\n" << s2textformat::ToString(actual);
+  EXPECT_TRUE(expected.Equals(actual))
+      << "\nExpected:\n"
+      << s2textformat::ToString(expected) << "\nActual:\n"
+      << s2textformat::ToString(actual);
 }
 
 TEST(S2Builder, AddShape) {
@@ -619,8 +621,8 @@ TEST(S2Builder, S2CellIdSnappingAtAllLevels) {
     // within the ApproxContains implementation.)
     S1Angle tolerance = min(2 * snap_function.snap_radius(),
                             snap_function.kMaxSnapRadius());
-    EXPECT_TRUE(output.ApproxContains(input.get(), tolerance));
-    EXPECT_TRUE(input->ApproxContains(&output, tolerance));
+    EXPECT_TRUE(output.ApproxContains(*input.get(), tolerance));
+    EXPECT_TRUE(input->ApproxContains(output, tolerance));
   }
 }
 
@@ -1009,7 +1011,7 @@ TEST(S2Builder, SimplifyPreservesTopology) {
   ASSERT_TRUE(builder.Build(&error)) << error;
   for (int j = 0; j < kNumLoops; ++j) {
     EXPECT_TRUE(output[j]->BoundaryNear(*input[j], kSnapRadius));
-    if (j > 0) EXPECT_TRUE(output[j]->Contains(output[j - 1].get()));
+    if (j > 0) EXPECT_TRUE(output[j]->Contains(*output[j - 1].get()));
   }
 }
 
@@ -1712,6 +1714,13 @@ TEST(S2Builder, IncorrectSeparationSiteBug) {
       S2Point(1, 2.2603503297237029e-320, 4.7729929394856619e-65));
   S2Error error;
   ASSERT_TRUE(builder.Build(&error)) << error;
+}
+
+TEST(S2Builder, PushPopLabel) {
+  // TODO(b/232074544): Test more thoroughly.
+  S2Builder builder;
+  builder.push_label(S2Builder::Label{1});
+  builder.pop_label();
 }
 
 }  // namespace

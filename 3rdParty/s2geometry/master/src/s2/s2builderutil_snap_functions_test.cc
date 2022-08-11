@@ -33,6 +33,7 @@
 #include <set>
 #include <utility>
 #include <vector>
+
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
 #include <gtest/gtest.h>

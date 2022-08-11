@@ -43,10 +43,10 @@
 #include "absl/strings/str_cat.h"
 #include "s2/util/coding/coder.h"
 
-using absl::make_unique;
 using absl::StrCat;
 using s2builderutil::S2CellIdSnapFunction;
 using std::fabs;
+using absl::make_unique;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -63,7 +63,7 @@ unique_ptr<S2Polyline> MakePolyline(absl::string_view str,
   Decoder decoder(encoder.base(), encoder.length());
   auto decoded_polyline = make_unique<S2Polyline>();
   decoded_polyline->set_s2debug_override(debug_override);
-  decoded_polyline->Decode(&decoder);
+  S2_CHECK(decoded_polyline->Decode(&decoder)) << str;
   return decoded_polyline;
 }
 
@@ -309,13 +309,13 @@ TEST(S2Polyline, IsOnRight) {
 TEST(S2Polyline, IntersectsEmptyPolyline) {
   unique_ptr<S2Polyline> line1(MakePolyline("1:1, 4:4"));
   S2Polyline empty_polyline;
-  EXPECT_FALSE(empty_polyline.Intersects(line1.get()));
+  EXPECT_FALSE(empty_polyline.Intersects(*line1.get()));
 }
 
 TEST(S2Polyline, IntersectsOnePointPolyline) {
   unique_ptr<S2Polyline> line1(MakePolyline("1:1, 4:4"));
   unique_ptr<S2Polyline> line2(MakePolyline("1:1"));
-  EXPECT_FALSE(line1->Intersects(line2.get()));
+  EXPECT_FALSE(line1->Intersects(*line2.get()));
 }
 
 TEST(S2Polyline, Intersects) {
@@ -324,17 +324,17 @@ TEST(S2Polyline, Intersects) {
   unique_ptr<S2Polyline> small_noncrossing(MakePolyline("1:2, 2:3"));
   unique_ptr<S2Polyline> big_crossing(MakePolyline("1:2, 2:3, 4:3"));
 
-  EXPECT_TRUE(line1->Intersects(small_crossing.get()));
-  EXPECT_FALSE(line1->Intersects(small_noncrossing.get()));
-  EXPECT_TRUE(line1->Intersects(big_crossing.get()));
+  EXPECT_TRUE(line1->Intersects(*small_crossing.get()));
+  EXPECT_FALSE(line1->Intersects(*small_noncrossing.get()));
+  EXPECT_TRUE(line1->Intersects(*big_crossing.get()));
 }
 
 TEST(S2Polyline, IntersectsAtVertex) {
   unique_ptr<S2Polyline> line1(MakePolyline("1:1, 4:4, 4:6"));
   unique_ptr<S2Polyline> line2(MakePolyline("1:1, 1:2"));
   unique_ptr<S2Polyline> line3(MakePolyline("5:1, 4:4, 2:2"));
-  EXPECT_TRUE(line1->Intersects(line2.get()));
-  EXPECT_TRUE(line1->Intersects(line3.get()));
+  EXPECT_TRUE(line1->Intersects(*line2.get()));
+  EXPECT_TRUE(line1->Intersects(*line3.get()));
 }
 
 TEST(S2Polyline, IntersectsVertexOnEdge)  {
@@ -342,14 +342,14 @@ TEST(S2Polyline, IntersectsVertexOnEdge)  {
   unique_ptr<S2Polyline> vertical_bottom_to_top(MakePolyline("-1:2, 0:2, 1:2"));
   unique_ptr<S2Polyline> horizontal_right_to_left(MakePolyline("0:3, 0:1"));
   unique_ptr<S2Polyline> vertical_top_to_bottom(MakePolyline("1:2, 0:2, -1:2"));
-  EXPECT_TRUE(horizontal_left_to_right->Intersects(
-      vertical_bottom_to_top.get()));
-  EXPECT_TRUE(horizontal_left_to_right->Intersects(
-      vertical_top_to_bottom.get()));
-  EXPECT_TRUE(horizontal_right_to_left->Intersects(
-      vertical_bottom_to_top.get()));
-  EXPECT_TRUE(horizontal_right_to_left->Intersects(
-      vertical_top_to_bottom.get()));
+  EXPECT_TRUE(
+      horizontal_left_to_right->Intersects(*vertical_bottom_to_top.get()));
+  EXPECT_TRUE(
+      horizontal_left_to_right->Intersects(*vertical_top_to_bottom.get()));
+  EXPECT_TRUE(
+      horizontal_right_to_left->Intersects(*vertical_bottom_to_top.get()));
+  EXPECT_TRUE(
+      horizontal_right_to_left->Intersects(*vertical_top_to_bottom.get()));
 }
 
 TEST(S2Polyline, SpaceUsedEmptyPolyline)  {

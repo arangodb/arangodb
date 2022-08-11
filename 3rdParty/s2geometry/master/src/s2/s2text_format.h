@@ -255,7 +255,7 @@ ABSL_MUST_USE_RESULT bool MakeIndex(
 std::string ToString(const S2Point& point);
 std::string ToString(const S2LatLng& latlng);
 std::string ToString(const S2LatLngRect& rect);
-std::string ToString(const S2CellId& cell_id);
+std::string ToString(const S2CellId cell_id);
 std::string ToString(const S2CellUnion& cell_union);
 std::string ToString(const S2Loop& loop);
 std::string ToString(const S2Polyline& polyline);

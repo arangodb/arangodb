@@ -33,7 +33,9 @@
 #define S2_S2BUILDERUTIL_LAX_POLYGON_LAYER_H_
 
 #include <memory>
+#include <utility>
 #include <vector>
+
 #include "s2/base/logging.h"
 #include "absl/memory/memory.h"
 #include "s2/id_set_lexicon.h"

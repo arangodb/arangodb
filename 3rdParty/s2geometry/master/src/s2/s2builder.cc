@@ -107,9 +107,9 @@
 #include "s2/s2text_format.h"
 #include "s2/util/gtl/dense_hash_set.h"
 
-using absl::make_unique;
 using gtl::compact_array;
 using gtl::dense_hash_set;
+using absl::make_unique;
 using std::max;
 using std::pair;
 using std::unique_ptr;

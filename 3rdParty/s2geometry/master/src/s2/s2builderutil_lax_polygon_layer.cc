@@ -19,6 +19,8 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
+
 #include "absl/memory/memory.h"
 #include "s2/s2builderutil_find_polygon_degeneracies.h"
 #include "s2/s2debug.h"

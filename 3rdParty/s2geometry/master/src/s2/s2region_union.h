@@ -34,7 +34,19 @@ class S2Cell;
 class S2LatLngRect;
 
 // An S2RegionUnion represents a union of possibly overlapping regions.
-// It is convenient for computing a covering of a set of regions.
+// It is convenient for computing a covering of a set of regions.  However, note
+// that currently, using S2RegionCoverer to compute coverings of S2RegionUnions
+// may produce coverings with considerably less than the requested number of
+// cells in cases of overlapping or tiling regions.  This occurs because the
+// current S2RegionUnion.Contains implementation for S2Cells only returns
+// true if the cell is fully contained by one of the regions.  So, cells along
+// internal boundaries in the region union will be subdivided by the coverer
+// even though this is unnecessary, using up the maxSize cell budget.  Then,
+// when the coverer normalizes the covering, groups of 4 sibling cells along
+// these internal borders will be replaced by parents, resulting in coverings
+// that may have significantly fewer than maxSize cells, and so are less
+// accurate.  This is not a concern for unions of disjoint regions.
+//
 class S2RegionUnion final : public S2Region {
  public:
   // Create an empty region.  Can be made non-empty by calling Init() or Add().
@@ -69,6 +81,9 @@ class S2RegionUnion final : public S2Region {
   S2Cap GetCapBound() const override;
   S2LatLngRect GetRectBound() const override;
   bool Contains(const S2Point& p) const override;
+
+  // The current implementation only returns true if one of the regions in the
+  // union fully contains the cell.
   bool Contains(const S2Cell& cell) const override;
   bool MayIntersect(const S2Cell& cell) const override;
 

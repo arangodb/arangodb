@@ -26,6 +26,8 @@
 #include "s2/s2shape_index_region.h"
 #include "s2/s2text_format.h"
 
+using absl::make_unique;
+
 //////////////////   Point Target   ////////////////////
 
 // This method returns an S2Cap that bounds the antipode of the target.  (This
@@ -154,8 +156,7 @@ bool S2MaxDistanceCellTarget::VisitContainingShapes(
 
 S2MaxDistanceShapeIndexTarget::S2MaxDistanceShapeIndexTarget(
     const S2ShapeIndex* index)
-    : index_(index), query_(absl::make_unique<S2FurthestEdgeQuery>(index)) {
-}
+    : index_(index), query_(make_unique<S2FurthestEdgeQuery>(index)) {}
 
 S2MaxDistanceShapeIndexTarget::~S2MaxDistanceShapeIndexTarget() {
 }

@@ -79,12 +79,13 @@ class S2Region {
   virtual void GetCellUnionBound(std::vector<S2CellId> *cell_ids) const;
 
   // Returns true if the region completely contains the given cell, otherwise
-  // returns false.
+  // either the region does not contain the cell or the containment relationship
+  // could not be determined.
   virtual bool Contains(const S2Cell& cell) const = 0;
 
   // If this method returns false, the region does not intersect the given
-  // cell.  Otherwise, either region intersects the cell, or the intersection
-  // relationship could not be determined.
+  // cell.  Otherwise, either the region intersects the cell, or the
+  // intersection relationship could not be determined.
   //
   // Note that there is currently exactly one implementation of this method
   // (S2LatLngRect::MayIntersect) that takes advantage of the semantics above

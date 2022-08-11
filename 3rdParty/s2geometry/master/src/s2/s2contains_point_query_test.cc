@@ -18,6 +18,7 @@
 #include "s2/s2contains_point_query.h"
 
 #include <memory>
+
 #include "s2/base/casts.h"
 #include <gtest/gtest.h>
 #include "absl/memory/memory.h"

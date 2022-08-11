@@ -22,6 +22,15 @@ import pywraps2 as s2
 
 class PyWrapS2TestCase(unittest.TestCase):
 
+  def testS2PointFromRawToNamedCorrectly(self):
+      x = 1.0
+      y = 2.0
+      z = 3.0
+      point = s2.S2Point_FromRaw(x, y, z)
+      self.assertEqual(x, point.x())
+      self.assertEqual(y, point.y())
+      self.assertEqual(z, point.z())
+
   def testContainsIsWrappedCorrectly(self):
     london = s2.S2LatLngRect(s2.S2LatLng.FromDegrees(51.3368602, 0.4931979),
                              s2.S2LatLng.FromDegrees(51.7323965, 0.1495211))
@@ -778,6 +787,44 @@ class PyWrapS2TestCase(unittest.TestCase):
     radius_m = s2.S2Earth.RadiansToMeters(angle.radians())
     self.assertEqual(radius_m, 12340.0)
 
+  def testS2Point_ToFromRaw(self):
+    p = s2.S2Point_FromRaw(1.0, 1.0, 1.0)
+    p = p.Normalize()
+    p_raw = s2.S2Point_ToRaw(p)
+    self.assertAlmostEqual(p_raw[0], 0.57735027)
+    self.assertAlmostEqual(p_raw[1], 0.57735027)
+    self.assertAlmostEqual(p_raw[2], 0.57735027)
+
+  def testS2Interpolate(self):
+    p1 = s2.S2LatLng.FromDegrees(3.0, 4.0).ToPoint()
+    p2 = s2.S2LatLng.FromDegrees(4.0, 5.0).ToPoint()
+
+    p3 = s2.Interpolate(p1, p2, 0.5)
+    self.assertEqual("3.500133,4.499733", s2.S2LatLng(p3).ToStringInDegrees())
+
+  def testS2predOrderedCCW(self):
+    pC = s2.S2LatLng.FromDegrees(3.0, 4.0).ToPoint()
+    p1 = s2.S2LatLng.FromDegrees(3.0, 5.0).ToPoint()
+    p2 = s2.S2LatLng.FromDegrees(2.7, 3.0).ToPoint()
+    p3 = s2.S2LatLng.FromDegrees(3.3, 3.0).ToPoint()
+
+    self.assertFalse(s2.OrderedCCW(p1, p2, p3, pC))
+    self.assertTrue(s2.OrderedCCW(p2, p1, p3, pC))
+    self.assertTrue(s2.OrderedCCW(p1, p3, p2, pC))
+    self.assertTrue(s2.OrderedCCW(p3, p2, p1, pC))
+
+  def testS2UpdateMinDistance(self):
+    pC = s2.S2LatLng.FromDegrees(3.0, 4.0).ToPoint()
+    p1 = s2.S2LatLng.FromDegrees(3.0, 5.0).ToPoint()
+    p2 = s2.S2LatLng.FromDegrees(2.7, 3.0).ToPoint()
+
+    md = s2.S1ChordAngle.Infinity()
+    self.assertTrue(s2.UpdateMinDistance(pC, p1, p2, md))
+    self.assertAlmostEqual(0.1478883, md.degrees())
+
+    pC = s2.S2LatLng.FromDegrees(3.0, 40.0).ToPoint()
+    self.assertFalse(s2.UpdateMinDistance(pC, p1, p2, md))
+    self.assertAlmostEqual(0.1478883, md.degrees())
 
 class RegionTermIndexerTest(unittest.TestCase):
   def _randomCaps(self, query_type, **indexer_options):
@@ -950,6 +997,227 @@ class RegionTermIndexerTest(unittest.TestCase):
     cell = s2.S2CellId.FromDebugString("5/31200")
     self.assertTrue(cell.is_valid())
     self.assertEqual("5/31200", cell.ToString())
+
+class S2PolygonTestCase(unittest.TestCase):
+  def testInitToUnionSame(self):
+    cell1 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    polygon1 = s2.S2Polygon(cell1)
+
+    cell2 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    polygon2 = s2.S2Polygon(cell2)
+
+    polygon3 = s2.S2Polygon()
+    polygon3.InitToUnion(polygon1, polygon2)
+
+    self.assertEqual(1, polygon3.num_loops())
+    loop = polygon3.loop(0)
+    self.assertEqual(4, loop.num_vertices())
+
+  def testInitToUnionDistinct(self):
+    cell1 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    polygon1 = s2.S2Polygon(cell1)
+
+    cell2 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(13.0, 4.0)).parent(8))
+    polygon2 = s2.S2Polygon(cell2)
+
+    polygon3 = s2.S2Polygon()
+    polygon3.InitToUnion(polygon1, polygon2)
+
+    self.assertEqual(2, polygon3.num_loops())
+    loop = polygon3.loop(0)
+    self.assertEqual(4, loop.num_vertices())
+    loop = polygon3.loop(1)
+    self.assertEqual(4, loop.num_vertices())
+
+class S2ChordAngleTest(unittest.TestCase):
+  def testBasic(self):
+    ca = s2.S1ChordAngle(s2.S1Angle_Degrees(100))
+    self.assertAlmostEqual(100, ca.degrees())
+
+  def testArithmetic(self):
+    ca1 = s2.S1ChordAngle(s2.S1Angle_Degrees(10))
+    ca2 = s2.S1ChordAngle(s2.S1Angle_Degrees(20))
+    ca3 = ca1 + ca2
+    self.assertAlmostEqual(30, ca3.degrees())
+    ca4 = ca2 - ca1
+    self.assertAlmostEqual(10, ca4.degrees())
+
+  def testComparison(self):
+    ca1 = s2.S1ChordAngle(s2.S1Angle_Degrees(10))
+    ca2 = s2.S1ChordAngle(s2.S1Angle_Degrees(20))
+    self.assertTrue(ca1 < ca2)
+    self.assertTrue(ca2 > ca1)
+    self.assertFalse(ca1 > ca2)
+    self.assertFalse(ca2 < ca1)
+
+    ca3 = s2.S1ChordAngle(s2.S1Angle_Degrees(10))
+    self.assertTrue(ca1 == ca3)
+    self.assertFalse(ca1 == ca2)
+    self.assertFalse(ca1 != ca3)
+    self.assertTrue(ca1 != ca2)
+
+  def testInfinity(self):
+    ca1 = s2.S1ChordAngle(s2.S1Angle_Degrees(179))
+    ca2 = s2.S1ChordAngle.Infinity()
+    self.assertTrue(ca2 > ca1)
+
+  def testCopy(self):
+    ca1 = s2.S1ChordAngle(s2.S1Angle_Degrees(100))
+    ca2 = s2.S1ChordAngle(ca1)
+    self.assertAlmostEqual(100, ca2.degrees())
+
+class S2BufferOperationTest(unittest.TestCase):
+  def setUp(self):
+    self.opts = s2.S2BufferOperationOptions()
+    self.result = s2.S2Polygon()
+    self.layer = s2.S2PolygonLayer(self.result)
+
+  def testDefaults(self):
+    op = s2.S2BufferOperation(self.layer, self.opts)
+
+    cell1 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    op.AddPolygon(s2.S2Polygon(cell1))
+    op.Build()
+
+    self.assertEqual(1, self.result.num_loops())
+    loop = self.result.loop(0)
+    self.assertEqual(4, loop.num_vertices())
+
+  def testRadius(self):
+    self.opts.set_buffer_radius(s2.S1Angle_Degrees(0.001))
+    op = s2.S2BufferOperation(self.layer, self.opts)
+
+    cell1 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    op.AddPolygon(s2.S2Polygon(cell1))
+    op.Build()
+
+    self.assertEqual(1, self.result.num_loops())
+    loop = self.result.loop(0)
+    self.assertEqual(20, loop.num_vertices())
+
+  def testRadiusAndError(self):
+    self.opts.set_buffer_radius(s2.S1Angle_Degrees(0.001))
+    self.opts.set_error_fraction(0.1)
+    op = s2.S2BufferOperation(self.layer, self.opts)
+
+    cell1 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    op.AddPolygon(s2.S2Polygon(cell1))
+    op.Build()
+
+    self.assertEqual(1, self.result.num_loops())
+    loop = self.result.loop(0)
+    self.assertEqual(12, loop.num_vertices())
+
+  def testPoint(self):
+    self.opts.set_buffer_radius(s2.S1Angle_Degrees(0.001))
+    op = s2.S2BufferOperation(self.layer, self.opts)
+
+    op.AddPoint(s2.S2LatLng.FromDegrees(14.0, 15.0).ToPoint())
+    op.Build()
+
+    self.assertEqual(1, self.result.num_loops())
+    loop = self.result.loop(0)
+    self.assertEqual(16, loop.num_vertices())
+
+class S2BooleanOperationTest(unittest.TestCase):
+  def setUp(self):
+    self.index1 = s2.MutableS2ShapeIndex()
+    self.index2 = s2.MutableS2ShapeIndex()
+
+  def operate(self):
+    poly = s2.S2Polygon()
+    layer = s2.S2PolygonLayer(poly)
+    op = s2.S2BooleanOperation(s2.S2BooleanOperation.OpType_UNION,
+                               layer)
+    op.Build(self.index1, self.index2)
+    return poly
+
+  def testUnionSame(self):
+    cell1 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    self.index1.Add(s2.S2Polygon(cell1))
+
+    cell2 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    self.index2.Add(s2.S2Polygon(cell2))
+
+    result = self.operate()
+    self.assertEqual(1, result.num_loops())
+    loop = result.loop(0)
+    self.assertEqual(4, loop.num_vertices())
+
+  def testUnionDistinct(self):
+    cell1 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(3.0, 4.0)).parent(8))
+    self.index1.Add(s2.S2Polygon(cell1))
+
+    cell2 = s2.S2Cell(s2.S2CellId(s2.S2LatLng.FromDegrees(13.0, 4.0)).parent(8))
+    self.index2.Add(s2.S2Polygon(cell2))
+
+    result = self.operate()
+    self.assertEqual(2, result.num_loops())
+    loop = result.loop(0)
+    self.assertEqual(4, loop.num_vertices())
+    loop = result.loop(1)
+    self.assertEqual(4, loop.num_vertices())
+
+class S2BuilderTest(unittest.TestCase):
+  def setUp(self):
+    self.p1 = s2.S2LatLng.FromDegrees(10.0, 10.0).ToPoint()
+    self.p2 = s2.S2LatLng.FromDegrees(10.0, 11.0).ToPoint()
+    self.p3 = s2.S2LatLng.FromDegrees(11.0, 10.0).ToPoint()
+    self.p4 = s2.S2LatLng.FromDegrees(11.0, 11.0).ToPoint()
+
+  def testSquareDirected(self):
+    opts = s2.S2PolygonLayerOptions()
+    opts.set_edge_type(s2.S2Builder.EdgeType_DIRECTED)
+
+    result = s2.S2Polygon()
+    b = s2.S2Builder()
+    b.StartLayer(s2.S2PolygonLayer(result, opts))
+
+    b.AddEdge(self.p1, self.p2)
+    b.AddEdge(self.p2, self.p4)
+    b.AddEdge(self.p4, self.p3)
+    b.AddEdge(self.p3, self.p1)
+
+    b.Build()
+
+    self.assertEqual(1, result.num_loops())
+    loop = result.loop(0)
+    self.assertEqual(4, loop.num_vertices())
+
+  def testSquareUndirected(self):
+    opts = s2.S2PolygonLayerOptions()
+    opts.set_edge_type(s2.S2Builder.EdgeType_UNDIRECTED)
+
+    result = s2.S2Polygon()
+    b = s2.S2Builder()
+    b.StartLayer(s2.S2PolygonLayer(result, opts))
+
+    b.AddEdge(self.p1, self.p2)
+    b.AddEdge(self.p1, self.p3)
+    b.AddEdge(self.p2, self.p4)
+    b.AddEdge(self.p3, self.p4)
+
+    b.Build()
+
+    self.assertEqual(1, result.num_loops())
+    loop = result.loop(0)
+    self.assertEqual(4, loop.num_vertices())
+
+  def testException(self):
+    opts = s2.S2PolygonLayerOptions()
+    opts.set_edge_type(s2.S2Builder.EdgeType_DIRECTED)
+
+    result = s2.S2Polygon()
+    b = s2.S2Builder()
+    b.StartLayer(s2.S2PolygonLayer(result, opts))
+
+    b.AddEdge(self.p1, self.p2)
+    b.AddEdge(self.p1, self.p3)
+    b.AddEdge(self.p2, self.p4)
+    b.AddEdge(self.p3, self.p4)
+
+    with self.assertRaises(ValueError):
+      b.Build()
 
 if __name__ == "__main__":
   unittest.main()

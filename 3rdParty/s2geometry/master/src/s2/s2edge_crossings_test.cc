@@ -17,6 +17,7 @@
 
 #include "s2/s2edge_crossings.h"
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <vector>
@@ -161,7 +162,8 @@ void TestRobustCrossProd(const S2Point& a, const S2Point& b,
                          Precision expected_prec) {
   EXPECT_EQ(s2pred::Sign(a, b, expected_result), 1);
   EXPECT_EQ(S2::RobustCrossProd(a, b).Normalize(), expected_result);
-  EXPECT_EQ(TestRobustCrossProdError(a, b), expected_prec);
+  EXPECT_EQ(TestRobustCrossProdError(a, b), expected_prec)
+      << "a: " << a << " b: " << b;
 }
 
 TEST(S2, RobustCrossProdCoverage) {
@@ -176,12 +178,16 @@ TEST(S2, RobustCrossProdCoverage) {
                       S2Point(0, 0, 1), DOUBLE);
   TestRobustCrossProd(S2Point(20 * DBL_ERR, 1, 0), S2Point(0, 1, 0),
                       S2Point(0, 0, 1), DOUBLE);
+  // If `long double` is the same as `double`, such as on armv7, we'll
+  // get `EXACT` instead of `LONG_DOUBLE`.
+  constexpr Precision kLongDoublePrecision =
+      s2pred::kHasLongDouble ? LONG_DOUBLE : EXACT;
   TestRobustCrossProd(S2Point(16 * DBL_ERR, 1, 0), S2Point(0, 1, 0),
-                      S2Point(0, 0, 1), LONG_DOUBLE);
+                      S2Point(0, 0, 1), kLongDoublePrecision);
 
   // The following bounds hold for both 80-bit and "double double" precision.
   TestRobustCrossProd(S2Point(5 * LD_ERR, 1, 0), S2Point(0, 1, 0),
-                      S2Point(0, 0, 1), LONG_DOUBLE);
+                      S2Point(0, 0, 1), kLongDoublePrecision);
   TestRobustCrossProd(S2Point(4 * LD_ERR, 1, 0), S2Point(0, 1, 0),
                       S2Point(0, 0, 1), EXACT);
 

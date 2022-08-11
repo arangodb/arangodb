@@ -28,6 +28,8 @@
 #include "s2/s2edge_distances.h"
 #include "s2/s2shape_index_region.h"
 
+using absl::make_unique;
+
 S2Cap S2MinDistancePointTarget::GetCapBound() {
   return S2Cap(point_, S1ChordAngle::Zero());
 }
@@ -128,7 +130,7 @@ bool S2MinDistanceCellTarget::VisitContainingShapes(
 S2MinDistanceCellUnionTarget::S2MinDistanceCellUnionTarget(
     S2CellUnion cell_union)
     : cell_union_(std::move(cell_union)),
-      query_(absl::make_unique<S2ClosestCellQuery>(&index_)) {
+      query_(make_unique<S2ClosestCellQuery>(&index_)) {
   for (S2CellId cell_id : cell_union_) {
     index_.Add(cell_id, 0);
   }
@@ -197,8 +199,7 @@ bool S2MinDistanceCellUnionTarget::VisitContainingShapes(
 
 S2MinDistanceShapeIndexTarget::S2MinDistanceShapeIndexTarget(
     const S2ShapeIndex* index)
-    : index_(index), query_(absl::make_unique<S2ClosestEdgeQuery>(index)) {
-}
+    : index_(index), query_(make_unique<S2ClosestEdgeQuery>(index)) {}
 
 S2MinDistanceShapeIndexTarget::~S2MinDistanceShapeIndexTarget() {
 }

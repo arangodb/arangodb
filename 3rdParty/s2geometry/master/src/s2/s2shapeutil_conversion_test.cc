@@ -17,6 +17,8 @@
 
 #include "s2/s2shapeutil_conversion.h"
 
+#include <memory>
+
 #include <gtest/gtest.h>
 #include "s2/s2lax_polygon_shape.h"
 #include "s2/s2lax_polyline_shape.h"

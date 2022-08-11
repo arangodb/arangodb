@@ -17,6 +17,7 @@
 
 #include "s2/s2lax_polyline_shape.h"
 
+#include <memory>
 #include <utility>
 
 #include <gtest/gtest.h>
@@ -46,21 +47,32 @@ TEST(S2LaxPolylineShape, OneVertex) {
   EXPECT_FALSE(shape.is_full());
 }
 
-TEST(S2LaxPolylineShape, MoveConstructor) {
-  std::unique_ptr<S2LaxPolylineShape> original =
-      s2textformat::MakeLaxPolylineOrDie("1:1, 4:4");
-  S2LaxPolylineShape moved(std::move(*original));
-  ASSERT_EQ(0, original->num_vertices());
-  ASSERT_EQ(2, moved.num_vertices());
-}
+TEST(S2LaxPolylineShape, Move) {
+  // Construct a shape to use as the correct answer and a second identical shape
+  // to be moved.
+  const std::vector<S2Point> vertices =
+      s2textformat::ParsePointsOrDie("1:1, 4:4, 2:2, 3:3");
+  const S2LaxPolylineShape correct(vertices);
+  S2LaxPolylineShape to_move(vertices);
 
-TEST(S2LaxPolylineShape, MoveAssignmentOperator) {
-  std::unique_ptr<S2LaxPolylineShape> original =
-      s2textformat::MakeLaxPolylineOrDie("1:1, 4:4");
-  S2LaxPolylineShape moved;
-  moved = std::move(*original);
-  ASSERT_EQ(0, original->num_vertices());
-  ASSERT_EQ(2, moved.num_vertices());
+  // Test the move constructor.
+  S2LaxPolylineShape move1(std::move(to_move));
+  s2testing::ExpectEqual(correct, move1);
+  EXPECT_EQ(correct.id(), move1.id());
+  ASSERT_EQ(vertices.size(), move1.num_vertices());
+  for (int i = 0; i < move1.num_vertices(); ++i) {
+    ASSERT_EQ(vertices[i], move1.vertex(i));
+  }
+
+  // Test the move-assignment operator.
+  S2LaxPolylineShape move2;
+  move2 = std::move(move1);
+  s2testing::ExpectEqual(correct, move2);
+  EXPECT_EQ(correct.id(), move2.id());
+  ASSERT_EQ(vertices.size(), move2.num_vertices());
+  for (int i = 0; i < move2.num_vertices(); ++i) {
+    ASSERT_EQ(vertices[i], move2.vertex(i));
+  }
 }
 
 TEST(S2LaxPolylineShape, EdgeAccess) {
@@ -89,12 +101,12 @@ TEST(EncodedS2LaxPolylineShape, RoundtripEncoding) {
   shape.Encode(&encoder, s2coding::CodingHint::COMPACT);
   Decoder a_decoder(encoder.base(), encoder.length());
   EncodedS2LaxPolylineShape a_shape;
-  a_shape.Init(&a_decoder);
+  ASSERT_TRUE(a_shape.Init(&a_decoder));
 
   Encoder b_encoder;
   a_shape.Encode(&b_encoder, s2coding::CodingHint::COMPACT);
   Decoder b_decoder(b_encoder.base(), b_encoder.length());
   EncodedS2LaxPolylineShape b_shape;
-  b_shape.Init(&b_decoder);
+  ASSERT_TRUE(b_shape.Init(&b_decoder));
   s2testing::ExpectEqual(shape, b_shape);
 }

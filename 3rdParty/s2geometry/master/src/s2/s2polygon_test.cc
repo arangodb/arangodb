@@ -72,9 +72,9 @@
 #include "s2/util/math/matrix3x3.h"
 
 using absl::StrCat;
-using absl::make_unique;
 using s2builderutil::IntLatLngSnapFunction;
 using s2builderutil::S2PolygonLayer;
+using absl::make_unique;
 using std::max;
 using std::min;
 using std::numeric_limits;
@@ -201,13 +201,13 @@ class S2PolygonTestBase : public testing::Test {
   const unique_ptr<const S2Polygon> far_H_south_H_;
 };
 
-static bool TestEncodeDecode(const S2Polygon* src) {
+static bool TestEncodeDecode(const S2Polygon& src) {
   Encoder encoder;
-  src->Encode(&encoder);
+  src.Encode(&encoder);
   Decoder decoder(encoder.base(), encoder.length());
   S2Polygon dst;
-  dst.Decode(&decoder);
-  return src->Equals(&dst);
+  S2_CHECK(dst.Decode(&decoder));
+  return src.Equals(dst);
 }
 
 static unique_ptr<S2Polygon> MakePolygon(const string& str) {
@@ -215,12 +215,12 @@ static unique_ptr<S2Polygon> MakePolygon(const string& str) {
 
   // Check that InitToSnapped() is idempotent.
   S2Polygon snapped1, snapped2;
-  snapped1.InitToSnapped(polygon.get());
-  snapped2.InitToSnapped(&snapped1);
-  EXPECT_TRUE(snapped1.Equals(&snapped2));
+  snapped1.InitToSnapped(*polygon);
+  snapped2.InitToSnapped(snapped1);
+  EXPECT_TRUE(snapped1.Equals(snapped2));
 
   // Check that Decode(Encode(x)) is the identity function.
-  EXPECT_TRUE(TestEncodeDecode(polygon.get()));
+  EXPECT_TRUE(TestEncodeDecode(*polygon));
   return polygon;
 }
 
@@ -229,7 +229,7 @@ static void CheckContains(const string& a_str, const string& b_str) {
   unique_ptr<S2Polygon> b = MakePolygon(b_str);
   EXPECT_TRUE(a->Contains(b.get()));
   EXPECT_TRUE(a->ApproxContains(b.get(), S1Angle::Radians(1e-15)));
-  EXPECT_FALSE(a->ApproxDisjoint(b.get(), S1Angle::Radians(1e-15)));
+  EXPECT_FALSE(a->ApproxDisjoint(*b, S1Angle::Radians(1e-15)));
 }
 
 static void CheckContainsPoint(const string& a_str, const string& b_str) {
@@ -366,7 +366,7 @@ static void CheckEqual(const S2Polygon& a, const S2Polygon& b,
 
 static void CheckComplementary(const S2Polygon& a, const S2Polygon& b) {
   S2Polygon b1;
-  b1.InitToComplement(&b);
+  b1.InitToComplement(b);
   CheckEqual(a, b1);
 }
 
@@ -392,7 +392,7 @@ TEST(S2Polygon, TestApproxContainsAndDisjoint) {
     // be contained by A or B.  Similarly, the intersection may slightly
     // overlap an adjacent disjoint polygon C.
     S2Polygon intersection;
-    intersection.InitToIntersection(&parent_polygon, &child_polygon);
+    intersection.InitToIntersection(parent_polygon, child_polygon);
     if (parent_polygon.Contains(&intersection)) {
       ++exact_contains;
     }
@@ -403,8 +403,8 @@ TEST(S2Polygon, TestApproxContainsAndDisjoint) {
     if (!adjacent_polygon.Intersects(&intersection)) {
       ++exact_disjoint;
     }
-    EXPECT_TRUE(adjacent_polygon.ApproxDisjoint(
-        &intersection, S2::kIntersectionMergeRadius));
+    EXPECT_TRUE(adjacent_polygon.ApproxDisjoint(intersection,
+                                                S2::kIntersectionMergeRadius));
   }
   // All of the approximate results are true, so we check that at least some
   // of the exact results are false in order to make sure that this test
@@ -443,17 +443,17 @@ static void TestOneNestedPair(const S2Polygon& a, const S2Polygon& b) {
   EXPECT_EQ(!b.is_empty(), b.Intersects(&a));
 
   S2Polygon c, d, e, f, g;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   CheckEqual(c, a);
 
-  d.InitToIntersection(&a, &b);
+  d.InitToIntersection(a, b);
   CheckEqual(d, b);
 
-  e.InitToDifference(&b, &a);
+  e.InitToDifference(b, a);
   EXPECT_TRUE(e.is_empty());
 
-  f.InitToDifference(&a, &b);
-  g.InitToSymmetricDifference(&a, &b);
+  f.InitToDifference(a, b);
+  g.InitToSymmetricDifference(a, b);
   CheckEqual(f, g);
 }
 
@@ -473,19 +473,19 @@ static void TestOneDisjointPair(const S2Polygon& a, const S2Polygon& b) {
   S2Error error;
   ASSERT_TRUE(builder.Build(&error)) << error;
 
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   CheckEqual(c, ab);
 
-  d.InitToIntersection(&a, &b);
+  d.InitToIntersection(a, b);
   EXPECT_TRUE(d.is_empty());
 
-  e.InitToDifference(&a, &b);
+  e.InitToDifference(a, b);
   CheckEqual(e, a);
 
-  f.InitToDifference(&b, &a);
+  f.InitToDifference(b, a);
   CheckEqual(f, b);
 
-  g.InitToSymmetricDifference(&a, &b);
+  g.InitToSymmetricDifference(a, b);
   CheckEqual(g, ab);
 }
 
@@ -496,7 +496,7 @@ static void TestOneCoveringPair(const S2Polygon& a, const S2Polygon& b) {
   EXPECT_EQ(b.is_full(), b.Contains(&a));
 
   S2Polygon c, d, e, f;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   EXPECT_TRUE(c.is_full());
 }
 
@@ -509,18 +509,18 @@ static void TestOneOverlappingPair(const S2Polygon& a, const S2Polygon& b) {
   EXPECT_TRUE(a.Intersects(&b));
 
   S2Polygon c, d, e, f, g, h;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   EXPECT_FALSE(c.is_full());
 
-  d.InitToIntersection(&a, &b);
+  d.InitToIntersection(a, b);
   EXPECT_FALSE(d.is_empty());
 
-  e.InitToDifference(&b, &a);
+  e.InitToDifference(b, a);
   EXPECT_FALSE(e.is_empty());
 
-  f.InitToDifference(&a, &b);
-  g.InitToUnion(&e, &f);
-  h.InitToSymmetricDifference(&a, &b);
+  f.InitToDifference(a, b);
+  g.InitToUnion(e, f);
+  h.InitToSymmetricDifference(a, b);
   CheckEqual(g, h);
 }
 
@@ -528,8 +528,8 @@ static void TestOneOverlappingPair(const S2Polygon& a, const S2Polygon& b) {
 // involving A, B, and their complements.
 static void TestNestedPair(const S2Polygon& a, const S2Polygon& b) {
   S2Polygon a1, b1;
-  a1.InitToComplement(&a);
-  b1.InitToComplement(&b);
+  a1.InitToComplement(a);
+  b1.InitToComplement(b);
 
   TestOneNestedPair(a, b);
   TestOneNestedPair(b1, a1);
@@ -541,8 +541,8 @@ static void TestNestedPair(const S2Polygon& a, const S2Polygon& b) {
 // involving A, B, and their complements.
 static void TestDisjointPair(const S2Polygon& a, const S2Polygon& b) {
   S2Polygon a1, b1;
-  a1.InitToComplement(&a);
-  b1.InitToComplement(&b);
+  a1.InitToComplement(a);
+  b1.InitToComplement(b);
 
   TestOneDisjointPair(a, b);
   TestOneCoveringPair(a1, b1);
@@ -554,8 +554,8 @@ static void TestDisjointPair(const S2Polygon& a, const S2Polygon& b) {
 // and its complement, test various identities involving these four polygons.
 static void TestOverlappingPair(const S2Polygon& a, const S2Polygon& b) {
   S2Polygon a1, b1;
-  a1.InitToComplement(&a);
-  b1.InitToComplement(&b);
+  a1.InitToComplement(a);
+  b1.InitToComplement(b);
 
   TestOneOverlappingPair(a, b);
   TestOneOverlappingPair(a1, b1);
@@ -571,9 +571,9 @@ static void TestOneComplementPair(const S2Polygon& a, const S2Polygon& a1,
   // test the various combinations of complements.
 
   S2Polygon a1_or_b, a_and_b1, a_minus_b;
-  a_and_b1.InitToIntersection(&a, &b1);
-  a1_or_b.InitToUnion(&a1, &b);
-  a_minus_b.InitToDifference(&a, &b);
+  a_and_b1.InitToIntersection(a, b1);
+  a1_or_b.InitToUnion(a1, b);
+  a_minus_b.InitToDifference(a, b);
 
   CheckComplementary(a1_or_b, a_and_b1);
   CheckEqual(a_minus_b, a_and_b1);
@@ -583,8 +583,8 @@ static void TestOneComplementPair(const S2Polygon& a, const S2Polygon& a1,
 // complements.
 static void TestComplements(const S2Polygon& a, const S2Polygon& b) {
   S2Polygon a1, b1;
-  a1.InitToComplement(&a);
-  b1.InitToComplement(&b);
+  a1.InitToComplement(a);
+  b1.InitToComplement(b);
 
   TestOneComplementPair(a, a1, b, b1);
   TestOneComplementPair(a1, a, b, b1);
@@ -594,14 +594,14 @@ static void TestComplements(const S2Polygon& a, const S2Polygon& b) {
   // There is a lot of redundancy if we do this test for each complementary
   // pair, so we just do it once instead.
   S2Polygon a_xor_b1, a1_xor_b;
-  a_xor_b1.InitToSymmetricDifference(&a, &b1);
-  a1_xor_b.InitToSymmetricDifference(&a1, &b);
+  a_xor_b1.InitToSymmetricDifference(a, b1);
+  a1_xor_b.InitToSymmetricDifference(a1, b);
   CheckEqual(a_xor_b1, a1_xor_b);
 }
 
 static void TestDestructiveUnion(const S2Polygon& a, const S2Polygon& b) {
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   vector<unique_ptr<S2Polygon>> polygons;
   polygons.emplace_back(a.Clone());
   polygons.emplace_back(b.Clone());
@@ -718,6 +718,41 @@ TEST_F(S2PolygonTestBase, EmptyAndFull) {
   TestNestedPair(*full_, *full_);
 }
 
+TEST_F(S2PolygonTestBase, ValidAfterMove) {
+  {
+    S2Polygon polygon;
+    polygon.Copy(*near_10_);
+    S2_CHECK(polygon.IsValid());
+
+    S2Polygon moved(std::move(polygon));
+    S2_CHECK(!moved.is_empty());
+    EXPECT_TRUE(moved.IsValid());
+  }
+
+  {
+    S2Polygon polygon;
+    polygon.Copy(*near_10_);
+    S2_CHECK(polygon.IsValid());
+
+    S2Polygon moved;
+    moved = std::move(polygon);
+    S2_CHECK(!moved.is_empty());
+    EXPECT_TRUE(moved.IsValid());
+  }
+
+  {
+    S2Polygon polygon;
+    S2Polygon moved(std::move(polygon));
+    EXPECT_TRUE(moved.is_empty());
+  }
+
+  {
+    S2Polygon polygon;
+    S2Polygon moved = std::move(polygon);
+    EXPECT_TRUE(moved.is_empty());
+  }
+}
+
 struct TestCase {
   const char* a;
   const char* b;
@@ -828,7 +863,7 @@ TestCase test_cases[] = {
 
 TEST_F(S2PolygonTestBase, Operations) {
   S2Polygon far_south;
-  far_south.InitToIntersection(far_H_.get(), south_H_.get());
+  far_south.InitToIntersection(*far_H_, *south_H_);
   CheckEqual(far_south, *far_H_south_H_, S1Angle::Radians(1e-15));
 
   int i = 0;
@@ -857,14 +892,14 @@ TEST_F(S2PolygonTestBase, Operations) {
     static const S1Angle kMaxError = S1Angle::Radians(1e-4);
 
     S2Polygon a_and_b, a_or_b, a_minus_b, a_xor_b;
-    a_and_b.InitToIntersection(a.get(), b.get());
+    a_and_b.InitToIntersection(*a, *b);
     CheckEqual(a_and_b, *expected_a_and_b, kMaxError);
-    a_or_b.InitToUnion(a.get(), b.get());
+    a_or_b.InitToUnion(*a, *b);
     CheckEqual(a_or_b, *expected_a_or_b, kMaxError);
     TestDestructiveUnion(*a, *b);
-    a_minus_b.InitToDifference(a.get(), b.get());
+    a_minus_b.InitToDifference(*a, *b);
     CheckEqual(a_minus_b, *expected_a_minus_b, kMaxError);
-    a_xor_b.InitToSymmetricDifference(a.get(), b.get());
+    a_xor_b.InitToSymmetricDifference(*a, *b);
     CheckEqual(a_xor_b, *expected_a_xor_b, kMaxError);
   }
 }
@@ -884,7 +919,7 @@ TEST(S2Polygon, IntersectionPreservesLoopOrder) {
   unique_ptr<S2Polygon> a = MakePolygon("0:0, 0:10, 10:10, 10:0");
   unique_ptr<S2Polygon> b = MakePolygon("1:1, 1:9, 9:5; 2:2, 2:8, 8:5");
   S2Polygon actual;
-  actual.InitToIntersection(a.get(), b.get());
+  actual.InitToIntersection(*a, *b);
   EXPECT_EQ(s2textformat::ToString(*b), s2textformat::ToString(actual));
 }
 
@@ -898,7 +933,7 @@ TEST(S2Polygon, EmptyIntersectionClearsResult) {
   // Initialize the result polygon to be non-empty, then verify that computing
   // the intersection clears the result.
   unique_ptr<S2Polygon> result = MakePolygon("0:0, 0:1, 1:0");
-  result->InitToIntersection(a.get(), b.get());
+  result->InitToIntersection(*a, *b);
   EXPECT_TRUE(result->is_empty());
 
   // Repeat with the version of InitToIntersection that allows error reporting.
@@ -971,7 +1006,7 @@ TEST(S2Polygon, Bug1) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Given edges do not form loops (indegree != outdegree)
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -998,7 +1033,7 @@ TEST(S2Polygon, Bug2) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Given edges do not form loops (indegree != outdegree)
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1041,7 +1076,7 @@ TEST(S2Polygon, Bug3) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Given edges do not form loops (indegree != outdegree)
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1080,7 +1115,7 @@ TEST(S2Polygon, Bug4) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Loop 1: Edge 1 crosses edge 3
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1115,7 +1150,7 @@ TEST(S2Polygon, Bug5) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Loop 0 edge 8 crosses loop 1 edge 0
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1150,7 +1185,7 @@ TEST(S2Polygon, Bug6) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Loop 0 edge 0 crosses loop 1 edge 4
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1232,7 +1267,7 @@ TEST(S2Polygon, Bug7) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Loop 0: Edge 33 crosses edge 35
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1269,7 +1304,7 @@ TEST(S2Polygon, Bug8) {
   S2_VLOG(1) << "\nS2Polygon: " << s2textformat::ToString(a);
   S2_VLOG(1) << "\nS2Polygon: " << s2textformat::ToString(b);
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   //  Loop 1: Edge 1 crosses edge 3
   S2_VLOG(1) << "\nS2Polygon: " << s2textformat::ToString(c);
 }
@@ -1294,7 +1329,7 @@ TEST(S2Polygon, Bug9) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Given edges do not form loops (indegree != outdegree)
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1418,7 +1453,7 @@ TEST(S2Polygon, Bug10) {
   S2_VLOG(1) << "\nS2Polygon: " << s2textformat::ToString(a);
   S2_VLOG(1) << "\nS2Polygon: " << s2textformat::ToString(b);
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Inconsistent loop orientations detected
   S2_VLOG(1) << "\nS2Polygon: " << s2textformat::ToString(c);
 }
@@ -1488,7 +1523,7 @@ TEST(S2Polygon, Bug11) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Given edges do not form loops (indegree != outdegree)
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1515,7 +1550,7 @@ TEST(S2Polygon, Bug12) {
   S2Polygon a(MakeLoops(a_vertices));
   S2Polygon b(MakeLoops(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   // Given edges do not form loops (indegree != outdegree)
   EXPECT_FALSE(c.is_empty())
       << "\nS2Polygon: " << s2textformat::ToString(a)
@@ -1692,7 +1727,7 @@ static void SplitAndAssemble(const S2Polygon& polygon) {
       S2Cell cell(cell_id);
       S2Polygon window(cell);
       auto piece = make_unique<S2Polygon>();
-      piece->InitToIntersection(&polygon, &window);
+      piece->InitToIntersection(polygon, window);
       S2_VLOG(4) << "\nPiece " << i++ << ":\n  Window: "
               << s2textformat::ToString(window)
               << "\n  Piece: " << s2textformat::ToString(*piece);
@@ -1711,7 +1746,7 @@ static void SplitAndAssemble(const S2Polygon& polygon) {
       unique_ptr<S2Polygon> a(ChoosePiece(&pieces));
       unique_ptr<S2Polygon> b(ChoosePiece(&pieces));
       auto c = make_unique<S2Polygon>();
-      c->InitToUnion(a.get(), b.get());
+      c->InitToUnion(*a, *b);
       S2_VLOG(4) << "\nJoining piece a: " << s2textformat::ToString(*a)
               << "\n  With piece b: " << s2textformat::ToString(*b)
               << "\n  To get piece c: " << s2textformat::ToString(*c);
@@ -1819,14 +1854,14 @@ TEST(S2Polygon, UnionWithAmbgiuousCrossings) {
   S2Polygon a(make_unique<S2Loop>(a_vertices));
   S2Polygon b(make_unique<S2Loop>(b_vertices));
   S2Polygon c;
-  c.InitToUnion(&a, &b);
+  c.InitToUnion(a, b);
   EXPECT_FALSE(c.is_empty());
 }
 
 TEST(S2Polygon, InitToSloppySupportsEmptyPolygons) {
   S2Polygon empty_polygon;
   S2Polygon polygon;
-  polygon.InitToSnapped(&empty_polygon);
+  polygon.InitToSnapped(empty_polygon);
   // InitToSloppy is further tested by SnapSplitsPolygon.
 }
 
@@ -1839,7 +1874,7 @@ TEST(S2Polygon, InitToSnappedDoesNotRotateVertices) {
       "49.9311087:-124.8327042, 49.9318176:-124.8312621, "
       "49.9318866:-124.8334451"));
   S2Polygon polygon2, polygon3;
-  polygon2.InitToSnapped(polygon.get());
+  polygon2.InitToSnapped(*polygon);
 
   // Check that the first vertex is the same when converted to E7.
   EXPECT_EQ(S2LatLng::Latitude(polygon->loop(0)->vertex(0)).e7(),
@@ -1848,8 +1883,8 @@ TEST(S2Polygon, InitToSnappedDoesNotRotateVertices) {
             S2LatLng::Longitude(polygon2.loop(0)->vertex(0)).e7());
 
   // Check that snapping twice doesn't rotate the vertices.
-  polygon3.InitToSnapped(&polygon2);
-  EXPECT_TRUE(polygon2.Equals(&polygon3));
+  polygon3.InitToSnapped(polygon2);
+  EXPECT_TRUE(polygon2.Equals(polygon3));
 }
 
 TEST(S2Polygon, InitToSnappedWithSnapLevel) {
@@ -1857,7 +1892,7 @@ TEST(S2Polygon, InitToSnappedWithSnapLevel) {
       s2textformat::MakePolygonOrDie("0:0, 0:2, 2:0; 0:0, 0:-2, -2:-2, -2:0"));
   for (int level = 0; level <= S2CellId::kMaxLevel; ++level) {
     S2Polygon snapped_polygon;
-    snapped_polygon.InitToSnapped(polygon.get(), level);
+    snapped_polygon.InitToSnapped(*polygon, level);
     EXPECT_TRUE(snapped_polygon.IsValid());
     S1Angle merge_radius = min(S1Angle::Radians(S2::kMaxDiag.GetValue(level)),
                                S2Builder::SnapFunction::kMaxSnapRadius());
@@ -1874,7 +1909,7 @@ TEST(S2Polygon, InitToSnappedIsValid_A) {
   EXPECT_TRUE(poly->IsValid());
   S2Polygon poly_snapped;
   poly_snapped.set_s2debug_override(S2Debug::DISABLE);
-  poly_snapped.InitToSnapped(poly.get());
+  poly_snapped.InitToSnapped(*poly);
   S2_LOG(INFO) << "\nSnapped: " << s2textformat::ToString(poly_snapped);
   S2Error error;
   EXPECT_FALSE(poly_snapped.FindValidationError(&error)) << error;
@@ -1899,7 +1934,7 @@ TEST(S2Polygon, InitToSnappedIsValid_B) {
   EXPECT_TRUE(poly->IsValid());
   S2Polygon poly_snapped;
   poly_snapped.set_s2debug_override(S2Debug::DISABLE);
-  poly_snapped.InitToSnapped(poly.get());
+  poly_snapped.InitToSnapped(*poly);
   S2_LOG(INFO) << "\nSnapped: " << s2textformat::ToString(poly_snapped);
   S2Error error;
   EXPECT_FALSE(poly_snapped.FindValidationError(&error)) << error;
@@ -1918,7 +1953,7 @@ TEST(S2Polygon, InitToSnappedIsValid_C) {
   EXPECT_TRUE(poly->IsValid());
   S2Polygon poly_snapped;
   poly_snapped.set_s2debug_override(S2Debug::DISABLE);
-  poly_snapped.InitToSnapped(poly.get());
+  poly_snapped.InitToSnapped(*poly);
   S2_LOG(INFO) << "\nSnapped: " << s2textformat::ToString(poly_snapped);
   S2Error error;
   EXPECT_FALSE(poly_snapped.FindValidationError(&error)) << error;
@@ -1933,7 +1968,7 @@ TEST(S2Polygon, InitToSnappedIsValid_D) {
   EXPECT_TRUE(poly->IsValid());
   S2Polygon poly_snapped;
   poly_snapped.set_s2debug_override(S2Debug::DISABLE);
-  poly_snapped.InitToSnapped(poly.get());
+  poly_snapped.InitToSnapped(*poly);
   S2_LOG(INFO) << "\nSnapped: " << s2textformat::ToString(poly_snapped);
   S2Error error;
   EXPECT_FALSE(poly_snapped.FindValidationError(&error)) << error;
@@ -1971,13 +2006,13 @@ TEST_F(S2PolygonTestBase, TestSimpleEncodeDecode) {
   Decoder decoder(encoder.base(), encoder.length());
   S2Polygon decoded_polygon;
   ASSERT_TRUE(decoded_polygon.Decode(&decoder));
-  EXPECT_TRUE(cross1_->BoundaryEquals(&decoded_polygon));
+  EXPECT_TRUE(cross1_->BoundaryEquals(decoded_polygon));
   EXPECT_EQ(cross1_->GetRectBound(), decoded_polygon.GetRectBound());
 }
 
 TEST(S2Polygon, TestEncodeDecodeDefaultPolygon) {
   S2Polygon polygon;
-  EXPECT_TRUE(TestEncodeDecode(&polygon));
+  EXPECT_TRUE(TestEncodeDecode(polygon));
 }
 
 TEST(S2Polygon, CompressedEmptyPolygonRequires3Bytes) {
@@ -1985,7 +2020,7 @@ TEST(S2Polygon, CompressedEmptyPolygonRequires3Bytes) {
   Encoder encoder;
 
   S2Polygon snapped_empty_polygon;
-  snapped_empty_polygon.InitToSnapped(&empty_polygon);
+  snapped_empty_polygon.InitToSnapped(empty_polygon);
 
   snapped_empty_polygon.Encode(&encoder);
   // 1 byte for version, 1 for the level, 1 for the length.
@@ -2000,7 +2035,7 @@ TEST(S2Polygon, CompressedEncodedPolygonRequires69Bytes) {
       s2textformat::MakePolygonOrDie("0:0, 0:2, 2:0; 0:0, 0:-2, -2:-2, -2:0"));
 
   S2Polygon snapped_polygon;
-  snapped_polygon.InitToSnapped(polygon.get());
+  snapped_polygon.InitToSnapped(*polygon);
 
   Encoder encoder;
   snapped_polygon.Encode(&encoder);
@@ -2019,7 +2054,7 @@ TEST(S2Polygon, CompressedEncodedPolygonRequires69Bytes) {
 TEST_F(S2PolygonTestBase, CompressedEncodedPolygonDecodesApproxEqual) {
   // To compare the boundaries, etc we want to snap first.
   S2Polygon snapped;
-  snapped.InitToSnapped(near_30_.get());
+  snapped.InitToSnapped(*near_30_);
   ASSERT_EQ(2, snapped.num_loops());
   EXPECT_EQ(0, snapped.loop(0)->depth());
   EXPECT_EQ(1, snapped.loop(1)->depth());
@@ -2032,7 +2067,7 @@ TEST_F(S2PolygonTestBase, CompressedEncodedPolygonDecodesApproxEqual) {
   S2Polygon decoded_polygon;
   ASSERT_TRUE(decoded_polygon.Decode(&decoder));
   ASSERT_TRUE(decoded_polygon.IsValid());
-  EXPECT_TRUE(snapped.BoundaryEquals(&decoded_polygon));
+  EXPECT_TRUE(snapped.BoundaryEquals(decoded_polygon));
   EXPECT_EQ(snapped.GetRectBound(), decoded_polygon.GetRectBound());
   EXPECT_EQ(snapped.num_vertices(), decoded_polygon.num_vertices());
   EXPECT_EQ(2, decoded_polygon.num_loops());
@@ -2051,7 +2086,7 @@ TEST(S2Polygon, TestS2CellConstructorAndContains) {
   S2Polygon cell_as_polygon(cell);
   S2Polygon empty;
   S2Polygon polygon_copy;
-  polygon_copy.InitToUnion(&cell_as_polygon, &empty);
+  polygon_copy.InitToUnion(cell_as_polygon, empty);
   EXPECT_TRUE(polygon_copy.Contains(&cell_as_polygon));
   EXPECT_TRUE(cell_as_polygon.Contains(&polygon_copy));
 }
@@ -2623,8 +2658,8 @@ TEST(InitToSimplifiedInCell, PointsOnCellBoundaryKept) {
                               s2builderutil::IdentitySnapFunction(tolerance));
   EXPECT_TRUE(simplified.is_empty());
   S2Polygon simplified_in_cell;
-  simplified_in_cell.InitToSimplifiedInCell(polygon.get(), cell, tolerance);
-  EXPECT_TRUE(simplified_in_cell.BoundaryEquals(polygon.get()));
+  simplified_in_cell.InitToSimplifiedInCell(*polygon, cell, tolerance);
+  EXPECT_TRUE(simplified_in_cell.BoundaryEquals(*polygon));
   EXPECT_EQ(3, simplified_in_cell.num_vertices());
   EXPECT_EQ(-1, simplified.GetSnapLevel());
 }
@@ -2637,7 +2672,7 @@ TEST(InitToSimplifiedInCell, PointsInsideCellSimplified) {
   S1Angle tolerance =
       S1Angle(polygon->loop(0)->vertex(0), polygon->loop(0)->vertex(1)) * 1.1;
   S2Polygon simplified;
-  simplified.InitToSimplifiedInCell(polygon.get(), cell, tolerance);
+  simplified.InitToSimplifiedInCell(*polygon, cell, tolerance);
   EXPECT_TRUE(simplified.BoundaryNear(*polygon, S1Angle::Radians(1e-15)));
   EXPECT_EQ(4, simplified.num_vertices());
   EXPECT_EQ(-1, simplified.GetSnapLevel());
@@ -2648,7 +2683,7 @@ TEST(InitToSimplifiedInCell, CellCornerKept) {
   auto input = MakeCellPolygon(cell, {"1:0, 1:0.05, 0.99:0"});
   S1Angle tolerance = 0.02 * S1Angle(cell.GetVertex(0), cell.GetVertex(1));
   S2Polygon simplified;
-  simplified.InitToSimplifiedInCell(input.get(), cell, tolerance);
+  simplified.InitToSimplifiedInCell(*input, cell, tolerance);
   EXPECT_TRUE(simplified.BoundaryNear(*input, S1Angle::Radians(1e-15)));
 }
 
@@ -2657,7 +2692,7 @@ TEST(InitToSimplifiedInCell, NarrowStripRemoved) {
   auto input = MakeCellPolygon(cell, {"0.9:0, 0.91:0, 0.91:1, 0.9:1"});
   S1Angle tolerance = 0.02 * S1Angle(cell.GetVertex(0), cell.GetVertex(1));
   S2Polygon simplified;
-  simplified.InitToSimplifiedInCell(input.get(), cell, tolerance);
+  simplified.InitToSimplifiedInCell(*input, cell, tolerance);
   EXPECT_TRUE(simplified.is_empty());
 }
 
@@ -2668,7 +2703,7 @@ TEST(InitToSimplifiedInCell, NarrowGapRemoved) {
   auto expected = MakeCellPolygon(cell, {"0.7:0, 0.8:0, 0.8:1, 0.7:1"});
   S1Angle tolerance = 0.02 * S1Angle(cell.GetVertex(0), cell.GetVertex(1));
   S2Polygon simplified;
-  simplified.InitToSimplifiedInCell(input.get(), cell, tolerance);
+  simplified.InitToSimplifiedInCell(*input, cell, tolerance);
   EXPECT_TRUE(simplified.BoundaryNear(*expected, S1Angle::Radians(1e-15)));
 }
 
@@ -2678,7 +2713,7 @@ TEST(InitToSimplifiedInCell, CloselySpacedEdgeVerticesKept) {
       cell, {"0:0.303, 0:0.302, 0:0.301, 0:0.3, 0.1:0.3, 0.1:0.4"});
   S1Angle tolerance = 0.02 * S1Angle(cell.GetVertex(0), cell.GetVertex(1));
   S2Polygon simplified;
-  simplified.InitToSimplifiedInCell(input.get(), cell, tolerance);
+  simplified.InitToSimplifiedInCell(*input, cell, tolerance);
   EXPECT_TRUE(simplified.BoundaryApproxEquals(*input, S1Angle::Radians(1e-15)));
 }
 
@@ -2694,7 +2729,7 @@ TEST(InitToSimplifiedInCell, PolylineAssemblyBug) {
   S1Angle tolerance = S1Angle::Radians(2.138358e-05);  // 136.235m
   S1Angle max_dist = S1Angle::Radians(2.821947e-09);  // 18mm
   S2Polygon simplified_in_cell;
-  simplified_in_cell.InitToSimplifiedInCell(polygon.get(), cell, tolerance,
+  simplified_in_cell.InitToSimplifiedInCell(*polygon, cell, tolerance,
                                             max_dist);
   EXPECT_FALSE(simplified_in_cell.is_empty());
 }
@@ -2712,7 +2747,7 @@ TEST(InitToSimplifiedInCell, InteriorEdgesSnappedToBoundary) {
       s2builderutil::IntLatLngSnapFunction::MinSnapRadiusForExponent(7);
   S2Polygon simplified_polygon;
   simplified_polygon.set_s2debug_override(S2Debug::DISABLE);
-  simplified_polygon.InitToSimplifiedInCell(polygon.get(), cell, snap_radius,
+  simplified_polygon.InitToSimplifiedInCell(*polygon, cell, snap_radius,
                                             boundary_tolerance);
   S2Error error;
   EXPECT_FALSE(simplified_polygon.FindValidationError(&error)) << error;
@@ -2802,12 +2837,14 @@ class S2PolygonDecodeTest : public ::testing::Test {
     return random_.Uniform(1000);
   }
 
-  bool Test() {
+  void Test() {
     decoder_.reset(data_array_.data(), encoder_.length());
     encoder_.clear();
     S2Polygon polygon;
     polygon.set_s2debug_override(S2Debug::DISABLE);
-    return polygon.Decode(&decoder_);
+    // This is expected to fail sometimes, and we don't know when,
+    // so we don't check the return value.
+    static_cast<void>(polygon.Decode(&decoder_));
   }
 
   // Random number generator.
@@ -2838,6 +2875,8 @@ TEST_F(S2PolygonDecodeTest, FuzzUncompressedEncoding) {
 #endif
 }
 
+#ifndef __EMSCRIPTEN__
+// TODO(b/231695412): Investigate further.
 TEST_F(S2PolygonDecodeTest, FuzzCompressedEncoding) {
   // Some parts of the S2 library S2_DCHECK on invalid data, even if we set
   // FLAGS_s2debug to false or use S2Polygon::set_s2debug_override. So we
@@ -2849,6 +2888,7 @@ TEST_F(S2PolygonDecodeTest, FuzzCompressedEncoding) {
   }
 #endif
 }
+#endif
 
 TEST_F(S2PolygonDecodeTest, FuzzEverything) {
   // Some parts of the S2 library S2_DCHECK on invalid data, even if we set

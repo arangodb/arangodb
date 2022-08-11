@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <memory>
 #include <utility>
 
 #include "s2/base/casts.h"
@@ -27,6 +28,7 @@
 #include "s2/base/spinlock.h"
 #include "absl/base/attributes.h"
 #include "absl/flags/flag.h"
+#include "absl/utility/utility.h"
 #include "s2/encoded_s2cell_id_vector.h"
 #include "s2/encoded_string_vector.h"
 #include "s2/r1interval.h"
@@ -43,6 +45,7 @@
 #include "s2/s2shapeutil_contains_brute_force.h"
 #include "s2/util/math/mathutil.h"
 
+using absl::make_unique;
 using std::fabs;
 using std::make_pair;
 using std::max;
@@ -193,7 +196,7 @@ const S2ShapeIndexCell* MutableS2ShapeIndex::Iterator::GetCell() const {
 
 unique_ptr<MutableS2ShapeIndex::IteratorBase>
 MutableS2ShapeIndex::Iterator::Clone() const {
-  return absl::make_unique<Iterator>(*this);
+  return make_unique<Iterator>(*this);
 }
 
 void MutableS2ShapeIndex::Iterator::Copy(const IteratorBase& other)  {
@@ -445,6 +448,33 @@ MutableS2ShapeIndex::MutableS2ShapeIndex(const Options& options) {
   Init(options);
 }
 
+MutableS2ShapeIndex::MutableS2ShapeIndex(MutableS2ShapeIndex&& b)
+    : S2ShapeIndex(std::move(b)),
+      shapes_(std::move(b.shapes_)),
+      cell_map_(std::move(b.cell_map_)),
+      options_(std::move(b.options_)),
+      pending_additions_begin_(absl::exchange(b.pending_additions_begin_, 0)),
+      pending_removals_(std::move(b.pending_removals_)),
+      index_status_(b.index_status_.exchange(FRESH, std::memory_order_relaxed)),
+      mem_tracker_(std::move(b.mem_tracker_)) {}
+
+MutableS2ShapeIndex& MutableS2ShapeIndex::operator=(MutableS2ShapeIndex&& b) {
+  // We need to delegate to our parent move-assignment operator since we can't
+  // move any of its private state.  This is a little odd since b is in a
+  // half-moved state after calling but is ultimately safe.
+  S2ShapeIndex::operator=(static_cast<S2ShapeIndex&&>(b));
+  shapes_ = std::move(b.shapes_);
+  cell_map_ = std::move(b.cell_map_);
+  options_ = std::move(b.options_);
+  pending_additions_begin_ = absl::exchange(b.pending_additions_begin_, 0);
+  pending_removals_ = std::move(b.pending_removals_);
+  index_status_.store(
+      b.index_status_.exchange(FRESH, std::memory_order_relaxed),
+      std::memory_order_relaxed);
+  mem_tracker_ = std::move(b.mem_tracker_);
+  return *this;
+}
+
 void MutableS2ShapeIndex::Init(const Options& options) {
   S2_DCHECK(shapes_.empty());
   options_ = options;
@@ -514,7 +544,7 @@ unique_ptr<S2Shape> MutableS2ShapeIndex::Release(int shape_id) {
         Minimize();
         return shape;
       }
-      pending_removals_ = absl::make_unique<vector<RemovedShape>>();
+      pending_removals_ = make_unique<vector<RemovedShape>>();
     }
     RemovedShape removed;
     removed.shape_id = shape->id();
@@ -573,7 +603,7 @@ void MutableS2ShapeIndex::ApplyUpdatesThreadSafe() {
     // and this saves an extra lock and unlock step; (3) even in the rare case
     // where there is contention, the main side effect is that some other
     // thread will burn a few CPU cycles rather than sleeping.
-    update_state_ = absl::make_unique<UpdateState>();
+    update_state_ = make_unique<UpdateState>();
     // lock_.Lock wait_mutex *before* calling Unlock() to ensure that all other
     // threads will block on it.
     update_state_->wait_mutex.Lock();

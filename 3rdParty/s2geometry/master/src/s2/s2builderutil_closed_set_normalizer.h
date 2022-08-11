@@ -18,6 +18,7 @@
 #ifndef S2_S2BUILDERUTIL_CLOSED_SET_NORMALIZER_H_
 #define S2_S2BUILDERUTIL_CLOSED_SET_NORMALIZER_H_
 
+#include <memory>
 #include <vector>
 
 #include "s2/id_set_lexicon.h"

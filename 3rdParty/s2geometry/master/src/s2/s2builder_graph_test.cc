@@ -31,11 +31,11 @@
 #include "s2/s2lax_polyline_shape.h"
 #include "s2/s2text_format.h"
 
-using absl::make_unique;
 using s2builderutil::GraphClone;
 using s2builderutil::GraphCloningLayer;
 using s2textformat::MakeLaxPolylineOrDie;
 using s2textformat::ParsePointsOrDie;
+using absl::make_unique;
 using std::vector;
 
 using EdgeType = S2Builder::EdgeType;

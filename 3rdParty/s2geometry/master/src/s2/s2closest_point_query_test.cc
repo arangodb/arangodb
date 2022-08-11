@@ -17,6 +17,7 @@
 
 #include "s2/s2closest_point_query.h"
 
+#include <cmath>
 #include <memory>
 #include <vector>
 

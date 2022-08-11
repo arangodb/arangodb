@@ -18,6 +18,7 @@
 #ifndef S2_S2POINT_VECTOR_SHAPE_H_
 #define S2_S2POINT_VECTOR_SHAPE_H_
 
+#include <utility>
 #include <vector>
 
 #include "s2/encoded_s2point_vector.h"
@@ -37,6 +38,10 @@ class S2PointVectorShape : public S2Shape {
 
   // Constructs an empty point vector.
   S2PointVectorShape() {}
+
+  S2PointVectorShape(S2PointVectorShape&& other) = default;
+
+  S2PointVectorShape& operator=(S2PointVectorShape&& other) = default;
 
   // Constructs an S2PointVectorShape from a vector of points.
   explicit S2PointVectorShape(std::vector<S2Point> points) {

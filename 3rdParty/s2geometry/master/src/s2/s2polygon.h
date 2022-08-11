@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <atomic>
 #include <cstddef>
-#include <map>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -156,6 +155,9 @@ class S2Polygon final : public S2Region {
   // empty loops at all.
   explicit S2Polygon(std::unique_ptr<S2Loop> loop,
                      S2Debug override = S2Debug::ALLOW);
+
+  S2Polygon(S2Polygon&&);
+  S2Polygon& operator=(S2Polygon&&);
 
   // Create a polygon from a set of hierarchically nested loops.  The polygon
   // interior consists of the points contained by an odd number of loops.
@@ -423,10 +425,6 @@ class S2Polygon final : public S2Region {
   ABSL_DEPRECATED("Inline the implementation")
   bool Intersects(const S2Polygon* b) const { return Intersects(*b); }
   ABSL_DEPRECATED("Inline the implementation")
-  bool ApproxDisjoint(const S2Polygon* b, S1Angle tolerance) const {
-    return ApproxDisjoint(*b, tolerance);
-  }
-  ABSL_DEPRECATED("Inline the implementation")
   void InitToIntersection(const S2Polygon* a, const S2Polygon* b) {
     return InitToIntersection(*a, *b);
   }
@@ -437,10 +435,6 @@ class S2Polygon final : public S2Region {
   ABSL_DEPRECATED("Inline the implementation")
   void InitToDifference(const S2Polygon* a, const S2Polygon* b) {
     return InitToDifference(*a, *b);
-  }
-  ABSL_DEPRECATED("Inline the implementation")
-  void InitToSymmetricDifference(const S2Polygon* a, const S2Polygon* b) {
-    return InitToSymmetricDifference(*a, *b);
   }
 #endif
 
@@ -524,14 +518,6 @@ class S2Polygon final : public S2Region {
                      int snap_level = S2CellId::kMaxLevel) {
     return InitToSnapped(*polygon, snap_level);
   }
-  ABSL_DEPRECATED("Inline the implementation")
-  void InitToSimplifiedInCell(
-      const S2Polygon* a, const S2Cell& cell, S1Angle snap_radius,
-      S1Angle boundary_tolerance = S1Angle::Radians(1e-15)) {
-    return InitToSimplifiedInCell(*a, cell, snap_radius, boundary_tolerance);
-  }
-  ABSL_DEPRECATED("Inline the implementation")
-  void InitToComplement(const S2Polygon* a) { return InitToComplement(*a); }
 #endif
 
   // Invert the polygon (replace it by its complement).
@@ -687,8 +673,6 @@ class S2Polygon final : public S2Region {
   bool ApproxEquals(const S2Polygon* b, S1Angle tolerance) const {
     return ApproxEquals(*b, tolerance);
   }
-  ABSL_DEPRECATED("Inline the implementation")
-  bool BoundaryEquals(const S2Polygon* b) const { return BoundaryEquals(*b); }
 #endif
 
   // Return true if two polygons have the same boundary except for vertex
@@ -774,6 +758,9 @@ class S2Polygon final : public S2Region {
   // Note that unlike S2Polygon, the edges of S2Polygon::Shape are directed
   // such that the polygon interior is always on the left.
   class Shape : public S2Shape {
+    // To update `polygon_` in `S2Polygon` move constructor/assignment.
+    friend class S2Polygon;
+
    public:
     // Define as enum so we don't have to declare storage.
     // TODO(user, b/210097200): Use static constexpr when C++17 is
@@ -953,12 +940,6 @@ class S2Polygon final : public S2Region {
   // order of loop vertices.  This function is used to choose which loop to
   // invert in the case where several loops have exactly the same area.
   static int CompareLoops(const S2Loop& a, const S2Loop& b);
-#ifndef SWIG
-  ABSL_DEPRECATED("Inline the implementation")
-  static int CompareLoops(const S2Loop* a, const S2Loop* b) {
-    return CompareLoops(*a, *b);
-  }
-#endif
 
   std::vector<std::unique_ptr<S2Loop> > loops_;
 
@@ -1028,10 +1009,10 @@ inline S2Shape::ChainPosition S2Polygon::Shape::chain_position(int e) const {
     }
   } else {
     i = prev_loop_.load(std::memory_order_relaxed);
-    if (e >= static_cast<int>(start[i]) && e < static_cast<int>(start[i + 1])) {
+    if (e >= start[i] && e < start[i + 1]) {
       // This edge belongs to the same loop as the previous call.
     } else {
-      if (e == static_cast<int>(start[i + 1])) {
+      if (e == start[i + 1]) {
         // This edge immediately follows the loop from the previous call.
         // Note that S2Polygon does not allow empty loops.
         ++i;

@@ -113,7 +113,7 @@ S2RegionTermIndexer::S2RegionTermIndexer(S2RegionTermIndexer&&) = default;
 S2RegionTermIndexer& S2RegionTermIndexer::operator=(S2RegionTermIndexer&&) =
                                                    default;
 
-string S2RegionTermIndexer::GetTerm(TermType term_type, const S2CellId& id,
+string S2RegionTermIndexer::GetTerm(TermType term_type, const S2CellId id,
                                     string_view prefix) const {
   // There are generally more ancestor terms than covering terms, so we add
   // the extra "marker" character to the covering terms to distinguish them.

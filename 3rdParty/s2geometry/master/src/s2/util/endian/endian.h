@@ -33,55 +33,22 @@
 #include "s2/base/logging.h"
 #include "s2/base/port.h"
 #include "absl/base/casts.h"
+#include "absl/base/config.h"
+#include "absl/base/internal/endian.h"
 #include "absl/base/port.h"
 #include "absl/numeric/int128.h"
 
-// Use compiler byte-swapping intrinsics if they are available.  32-bit
-// and 64-bit versions are available in Clang and GCC as of GCC 4.3.0.
-// The 16-bit version is available in Clang and GCC only as of GCC 4.8.0.
-// For simplicity, we enable them all only for GCC 4.8.0 or later.
-#if defined(__clang__) || \
-    (defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 8) || \
-                           __GNUC__ >= 5))
-
 inline uint64 gbswap_64(uint64 host_int) {
-  return __builtin_bswap64(host_int);
+  return absl::gbswap_64(host_int);
 }
+
 inline uint32 gbswap_32(uint32 host_int) {
-  return __builtin_bswap32(host_int);
+  return absl::gbswap_32(host_int);
 }
+
 inline uint16 gbswap_16(uint16 host_int) {
-  return __builtin_bswap16(host_int);
+  return absl::gbswap_16(host_int);
 }
-
-#else
-
-inline uint64 gbswap_64(uint64 host_int) {
-#if defined(__GNUC__) && defined(__x86_64__) && \
-    !(defined(__APPLE__) && defined(__MACH__))
-  // Adapted from /usr/include/byteswap.h.  Not available on Mac.
-  if (__builtin_constant_p(host_int)) {
-    return __bswap_constant_64(host_int);
-  } else {
-    uint64 result;
-    __asm__("bswap %0" : "=r" (result) : "0" (host_int));
-    return result;
-  }
-#elif defined(bswap_64)
-  return bswap_64(host_int);
-#else
-  return static_cast<uint64>(bswap_32(static_cast<uint32>(host_int >> 32))) |
-    (static_cast<uint64>(bswap_32(static_cast<uint32>(host_int))) << 32);
-#endif  // bswap_64
-}
-inline uint32 gbswap_32(uint32 host_int) {
-  return bswap_32(host_int);
-}
-inline uint16 gbswap_16(uint16 host_int) {
-  return bswap_16(host_int);
-}
-
-#endif  // intrinics available
 
 inline absl::uint128 gbswap_128(absl::uint128 host_int) {
   return absl::MakeUint128(gbswap_64(absl::Uint128Low64(host_int)),

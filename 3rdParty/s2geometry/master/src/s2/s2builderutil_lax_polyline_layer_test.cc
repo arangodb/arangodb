@@ -17,6 +17,7 @@
 
 #include "s2/s2builderutil_lax_polyline_layer.h"
 
+#include <memory>
 #include <string>
 
 #include "s2/base/casts.h"
@@ -26,10 +27,10 @@
 #include "s2/s2builderutil_snap_functions.h"
 #include "s2/s2text_format.h"
 
-using absl::make_unique;
 using s2builderutil::IndexedLaxPolylineLayer;
 using s2builderutil::LaxPolylineLayer;
 using s2textformat::MakeLaxPolylineOrDie;
+using absl::make_unique;
 using std::string;
 using std::vector;
 

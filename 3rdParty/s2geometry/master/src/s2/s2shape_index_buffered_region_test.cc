@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <memory>
+
 #include <gtest/gtest.h>
 #include "absl/memory/memory.h"
 #include "s2/mutable_s2shape_index.h"
@@ -30,10 +31,10 @@
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
 
-using absl::make_unique;
 using s2textformat::MakeIndexOrDie;
 using s2textformat::MakePointOrDie;
 using std::cout;
+using absl::make_unique;
 using std::string;
 
 TEST(S2ShapeIndexBufferedRegion, EmptyIndex) {
@@ -41,6 +42,18 @@ TEST(S2ShapeIndexBufferedRegion, EmptyIndex) {
   MutableS2ShapeIndex index;
   S1ChordAngle radius(S1Angle::Degrees(2));
   S2ShapeIndexBufferedRegion region(&index, radius);
+  S2RegionCoverer coverer;
+  S2CellUnion covering = coverer.GetCovering(region);
+  EXPECT_TRUE(covering.empty());
+}
+
+TEST(S2ShapeIndexBufferedRegion, InitEmptyIndex) {
+  // As above, but with Init().  This is mainly to prevent Init() from being
+  // detected as dead code.
+  MutableS2ShapeIndex index;
+  S1ChordAngle radius(S1Angle::Degrees(2));
+  S2ShapeIndexBufferedRegion region;
+  region.Init(&index, radius);
   S2RegionCoverer coverer;
   S2CellUnion covering = coverer.GetCovering(region);
   EXPECT_TRUE(covering.empty());

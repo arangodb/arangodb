@@ -17,9 +17,10 @@
 
 #include "s2/s2builderutil_testing.h"
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
+
 #include <gtest/gtest.h>
 #include "absl/strings/str_format.h"
 #include "s2/s2builder.h"

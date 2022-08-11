@@ -21,6 +21,8 @@
 #ifndef S2_S2SHAPEUTIL_CONVERSION_H_
 #define S2_S2SHAPEUTIL_CONVERSION_H_
 
+#include <memory>
+
 #include "s2/s2point.h"
 #include "s2/s2polygon.h"
 #include "s2/s2polyline.h"

@@ -15,6 +15,7 @@
 
 #include "s2/s2polyline_alignment.h"
 
+#include <memory>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -29,6 +30,7 @@
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
 
+using absl::make_unique;
 using std::string;
 
 namespace s2polyline_alignment {
@@ -390,31 +392,33 @@ std::vector<std::unique_ptr<S2Polyline>> GenPolylines(
       pts.push_back(
           S2Testing::SamplePoint(S2Cap(loop[j], perturbation_radius)));
     }
-    polylines.push_back(absl::make_unique<S2Polyline>(pts));
+    polylines.push_back(make_unique<S2Polyline>(pts));
   }
   return polylines;
 }
 
-TEST(S2PolylineAlignmentTest, ExactLengthZeroInputs) {
+#if GTEST_HAS_DEATH_TEST
+TEST(S2PolylineAlignmentDeathTest, ExactLengthZeroInputs) {
   const auto a = s2textformat::MakePolylineOrDie("");
   const auto b = s2textformat::MakePolylineOrDie("");
   const WarpPath correct_path = {};
   EXPECT_DEATH(VerifyPath(*a, *b, correct_path), "");
 }
 
-TEST(S2PolylineAlignmentTest, ExactLengthZeroInputA) {
+TEST(S2PolylineAlignmentDeathTest, ExactLengthZeroInputA) {
   const auto a = s2textformat::MakePolylineOrDie("");
   const auto b = s2textformat::MakePolylineOrDie("0:0, 1:1, 2:2");
   const WarpPath correct_path = {};
   EXPECT_DEATH(VerifyPath(*a, *b, correct_path), "");
 }
 
-TEST(S2PolylineAlignmentTest, ExactLengthZeroInputB) {
+TEST(S2PolylineAlignmentDeathTest, ExactLengthZeroInputB) {
   const auto a = s2textformat::MakePolylineOrDie("0:0, 1:1, 2:2");
   const auto b = s2textformat::MakePolylineOrDie("");
   const WarpPath correct_path = {};
   EXPECT_DEATH(VerifyPath(*a, *b, correct_path), "");
 }
+#endif
 
 TEST(S2PolylineAlignmentTest, ExactLengthOneInputs) {
   const auto a = s2textformat::MakePolylineOrDie("1:1");
@@ -465,11 +469,13 @@ TEST(S2PolylineAlignmentTest, FuzzedWithBruteForce) {
 // TESTS FOR TRAJECTORY CONSENSUS ALGORITHMS
 
 // Tests for GetMedoidPolyline
-TEST(S2PolylineAlignmentTest, MedoidPolylineNoPolylines) {
+#if GTEST_HAS_DEATH_TEST
+TEST(S2PolylineAlignmentDeathTest, MedoidPolylineNoPolylines) {
   std::vector<std::unique_ptr<S2Polyline>> polylines;
   const MedoidOptions default_opts;
   EXPECT_DEATH(GetMedoidPolyline(polylines, default_opts), "");
 }
+#endif
 
 TEST(S2PolylineAlignmentTest, MedoidPolylineOnePolyline) {
   std::vector<std::unique_ptr<S2Polyline>> polylines;
@@ -572,11 +578,13 @@ TEST(S2PolylineAlignmentTest, MedoidPolylineFewLargePolylines) {
 }
 
 // Tests for GetConsensusPolyline
-TEST(S2PolylineAlignmentTest, ConsensusPolylineNoPolylines) {
+#if GTEST_HAS_DEATH_TEST
+TEST(S2PolylineAlignmentDeathTest, ConsensusPolylineNoPolylines) {
   std::vector<std::unique_ptr<S2Polyline>> polylines;
   const ConsensusOptions default_opts;
   EXPECT_DEATH(GetConsensusPolyline(polylines, default_opts), "");
 }
+#endif
 
 TEST(S2PolylineAlignmentTest, ConsensusPolylineOnePolyline) {
   std::vector<std::unique_ptr<S2Polyline>> polylines;

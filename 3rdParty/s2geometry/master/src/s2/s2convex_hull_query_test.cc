@@ -19,6 +19,7 @@
 
 #include <cmath>
 #include <memory>
+#include <utility>
 
 #include <gtest/gtest.h>
 #include "s2/s2testing.h"
@@ -56,7 +57,7 @@ TEST(S2ConvexHullQuery, OnePoint) {
   query.AddPoint(p);
   query.AddPoint(p);
   unique_ptr<S2Loop> result2(query.GetConvexHull());
-  EXPECT_TRUE(result2->Equals(result.get()));
+  EXPECT_TRUE(result2->Equals(*result.get()));
 }
 
 TEST(S2ConvexHullQuery, TwoPoints) {
@@ -75,7 +76,7 @@ TEST(S2ConvexHullQuery, TwoPoints) {
   query.AddPoint(p);
   query.AddPoint(p);
   unique_ptr<S2Loop> result2(query.GetConvexHull());
-  EXPECT_TRUE(result2->Equals(result.get()));
+  EXPECT_TRUE(result2->Equals(*result.get()));
 }
 
 TEST(S2ConvexHullQuery, TwoAntipodalPoints) {
@@ -134,7 +135,7 @@ TEST(S2ConvexHullQuery, SimplePolyline) {
   unique_ptr<S2Loop> result(query.GetConvexHull());
   unique_ptr<S2Loop> expected_result(
       s2textformat::MakeLoopOrDie("0:1, 0:9, 3:10, 4:10, 5:5, 4:0, 3:0"));
-  EXPECT_TRUE(result->BoundaryEquals(expected_result.get()));
+  EXPECT_TRUE(result->BoundaryEquals(*expected_result.get()));
 }
 
 TEST(S2ConvexHullQuery, CapBoundExpandedToHemisphere) {
@@ -163,7 +164,7 @@ void TestNorthPoleLoop(S1Angle radius, int num_vertices) {
   if (radius > S1Angle::Radians(M_PI_2)) {
     EXPECT_TRUE(result->is_full());
   } else {
-    EXPECT_TRUE(result->BoundaryEquals(loop.get()));
+    EXPECT_TRUE(result->BoundaryEquals(*loop.get()));
   }
 }
 
@@ -223,7 +224,7 @@ TEST(S2ConvexHullQuery, PointsInsideHull) {
     }
     // Finally, build a new convex hull and check that it hasn't changed.
     unique_ptr<S2Loop> hull2(query.GetConvexHull());
-    EXPECT_TRUE(hull2->BoundaryEquals(hull.get())) << "Iteration: " << iter;
+    EXPECT_TRUE(hull2->BoundaryEquals(*hull.get())) << "Iteration: " << iter;
   }
 }
 

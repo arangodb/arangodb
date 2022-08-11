@@ -17,6 +17,7 @@
 
 #include "s2/s2builderutil_find_polygon_degeneracies.h"
 
+#include <algorithm>
 #include <iosfwd>
 #include <memory>
 #include <vector>

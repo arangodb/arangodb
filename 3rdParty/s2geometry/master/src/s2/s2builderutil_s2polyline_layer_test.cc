@@ -17,7 +17,9 @@
 
 #include "s2/s2builderutil_s2polyline_layer.h"
 
+#include <memory>
 #include <string>
+
 #include "s2/base/casts.h"
 #include "s2/base/integral_types.h"
 #include <gtest/gtest.h>
@@ -26,10 +28,10 @@
 #include "s2/s2debug.h"
 #include "s2/s2text_format.h"
 
-using absl::make_unique;
 using s2builderutil::IndexedS2PolylineLayer;
 using s2builderutil::S2PolylineLayer;
 using s2textformat::MakePolylineOrDie;
+using absl::make_unique;
 using std::string;
 using std::vector;
 

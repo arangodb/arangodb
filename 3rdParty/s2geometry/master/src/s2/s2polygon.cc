@@ -21,6 +21,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <memory>
 #include <stack>
 #include <utility>
 #include <vector>
@@ -71,13 +72,13 @@
 #include "s2/util/coding/coder.h"
 
 using absl::flat_hash_set;
-using absl::make_unique;
 using s2builderutil::IdentitySnapFunction;
 using s2builderutil::S2CellIdSnapFunction;
 using s2builderutil::S2PolygonLayer;
 using s2builderutil::S2PolylineLayer;
 using s2builderutil::S2PolylineVectorLayer;
 using std::fabs;
+using absl::make_unique;
 using std::pair;
 using std::sqrt;
 using std::unique_ptr;
@@ -123,6 +124,53 @@ S2Polygon::S2Polygon(const S2Cell& cell)
   Init(make_unique<S2Loop>(cell));
 }
 
+S2Polygon::S2Polygon(S2Polygon&& b)
+    : S2Region(std::move(b)),
+      loops_(std::move(b.loops_)),
+      s2debug_override_(std::move(b.s2debug_override_)),
+      error_inconsistent_loop_orientations_(
+          absl::exchange(b.error_inconsistent_loop_orientations_, 0)),
+      num_vertices_(absl::exchange(b.num_vertices_, 0)),
+      unindexed_contains_calls_(
+          b.unindexed_contains_calls_.exchange(0, std::memory_order_relaxed)),
+      bound_(std::move(b.bound_)),
+      subregion_bound_(std::move(b.subregion_bound_)),
+      index_(std::move(b.index_)) {
+  // `index_` has a pointer to an S2Polygon::Shape which points to S2Polygon.
+  // But, we've moved to a new address, so get the Shape back out of the index
+  // and update it to point to our new location.
+  if (index_.begin() != index_.end()) {
+    down_cast<Shape*>(*index_.begin())->polygon_ = this;
+  }
+}
+
+S2Polygon& S2Polygon::operator=(S2Polygon&& b) {
+  // We need to delegate to our parent move-assignment operator since we can't
+  // move any of its private state.  This is a little odd since b is in a
+  // half-moved state after calling but is ultimately safe.
+  S2Region::operator=(static_cast<S2Region&&>(b));
+  loops_ = std::move(b.loops_);
+  s2debug_override_ = std::move(b.s2debug_override_);
+  error_inconsistent_loop_orientations_ =
+      absl::exchange(b.error_inconsistent_loop_orientations_, 0);
+  num_vertices_ = absl::exchange(b.num_vertices_, 0);
+  unindexed_contains_calls_.store(
+      b.unindexed_contains_calls_.exchange(0, std::memory_order_relaxed),
+      std::memory_order_relaxed);
+  bound_ = std::move(b.bound_);
+  subregion_bound_ = std::move(b.subregion_bound_);
+  index_ = std::move(b.index_);
+
+  // `index_` has a pointer to an S2Polygon::Shape which points to S2Polygon.
+  // But, we've moved to a new address, so get the Shape back out of the index
+  // and update it to point to our new location.
+  if (index_.begin() != index_.end()) {
+    down_cast<Shape*>(*index_.begin())->polygon_ = this;
+  }
+
+  return *this;
+}
+
 void S2Polygon::set_s2debug_override(S2Debug override) {
   s2debug_override_ = override;
 }
@@ -148,7 +196,7 @@ void S2Polygon::Copy(const S2Polygon& src) {
 
 S2Polygon* S2Polygon::Clone() const {
   S2Polygon* result = new S2Polygon;
-  result->Copy(this);
+  result->Copy(*this);
   return result;
 }
 
@@ -238,7 +286,7 @@ bool S2Polygon::FindLoopNestingError(S2Error* error) const {
       if (i == j) continue;
       bool nested = (j >= i + 1) && (j <= last);
       const bool reverse_b = false;
-      if (loop(i)->ContainsNonCrossingBoundary(loop(j), reverse_b) != nested) {
+      if (loop(i)->ContainsNonCrossingBoundary(*loop(j), reverse_b) != nested) {
         error->Init(S2Error::POLYGON_INVALID_LOOP_NESTING,
                     "Invalid nesting: loop %d should %scontain loop %d",
                     i, nested ? "" : "not ", j);
@@ -256,7 +304,7 @@ void S2Polygon::InsertLoop(S2Loop* new_loop, S2Loop* parent,
     children = &(*loop_map)[parent];
     done = true;
     for (S2Loop* child : *children) {
-      if (child->ContainsNested(new_loop)) {
+      if (child->ContainsNested(*new_loop)) {
         parent = child;
         done = false;
         break;
@@ -269,7 +317,7 @@ void S2Polygon::InsertLoop(S2Loop* new_loop, S2Loop* parent,
   vector<S2Loop*>* new_children = &(*loop_map)[new_loop];
   for (int i = 0; i < children->size(); ) {
     S2Loop* child = (*children)[i];
-    if (new_loop->ContainsNested(child)) {
+    if (new_loop->ContainsNested(*child)) {
       new_children->push_back(child);
       children->erase(children->begin() + i);
     } else {
@@ -826,7 +874,7 @@ void S2Polygon::Invert() {
         // We break ties deterministically in order to avoid having the output
         // depend on the input order of the loops.
         if (angle < best_angle ||
-            (angle == best_angle && CompareLoops(loop(i), loop(best)) < 0)) {
+            (angle == best_angle && CompareLoops(*loop(i), *loop(best)) < 0)) {
           best = i;
           best_angle = angle;
         }
@@ -1336,7 +1384,7 @@ bool S2Polygon::Equals(const S2Polygon& b) const {
   for (int i = 0; i < num_loops(); ++i) {
     const S2Loop* a_loop = loop(i);
     const S2Loop* b_loop = b.loop(i);
-    if ((b_loop->depth() != a_loop->depth()) || !b_loop->Equals(a_loop)) {
+    if ((b_loop->depth() != a_loop->depth()) || !b_loop->Equals(*a_loop)) {
       return false;
     }
   }
@@ -1352,7 +1400,7 @@ bool S2Polygon::BoundaryEquals(const S2Polygon& b) const {
     for (int j = 0; j < num_loops(); ++j) {
       const S2Loop* b_loop = b.loop(j);
       if ((b_loop->depth() == a_loop->depth()) &&
-          b_loop->BoundaryEquals(a_loop)) {
+          b_loop->BoundaryEquals(*a_loop)) {
         success = true;
         break;
       }

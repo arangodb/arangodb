@@ -33,6 +33,7 @@ void TestEncodedStringVector(const vector<string>& input,
   Encoder encoder;
   StringVectorEncoder::Encode(input, &encoder);
   EXPECT_EQ(expected_bytes, encoder.length());
+
   Decoder decoder(encoder.base(), encoder.length());
   EncodedStringVector actual;
   ASSERT_TRUE(actual.Init(&decoder));
@@ -41,6 +42,13 @@ void TestEncodedStringVector(const vector<string>& input,
     expected.push_back(string_view(str));
   }
   EXPECT_EQ(actual.Decode(), expected);
+
+  // Check that `EncodedStringVector::Encode` produces the same result as
+  // `StringVectorEncoder::Encode`, as documented.
+  Encoder reencoder;
+  actual.Encode(&reencoder);
+  EXPECT_EQ(string_view(encoder.base(), encoder.length()),
+            string_view(reencoder.base(), reencoder.length()));
 }
 
 TEST(EncodedStringVectorTest, Empty) {

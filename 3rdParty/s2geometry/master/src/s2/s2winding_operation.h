@@ -18,6 +18,8 @@
 #ifndef S2_S2WINDING_OPERATION_H_
 #define S2_S2WINDING_OPERATION_H_
 
+#include <memory>
+
 #include "s2/s2builder.h"
 #include "s2/s2builder_graph.h"
 

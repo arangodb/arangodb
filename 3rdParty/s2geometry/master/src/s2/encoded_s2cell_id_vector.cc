@@ -19,6 +19,7 @@
 
 #include <algorithm>
 
+#include "absl/numeric/bits.h"
 #include "s2/util/bits/bits.h"
 
 using absl::Span;
@@ -84,12 +85,14 @@ void EncodeS2CellIdVector(Span<const S2CellId> v, Encoder* encoder) {
     uint64 e_bytes = ~0ULL;  // Best encoding size so far.
     for (int len = 0; len < 8; ++len) {
       // "t_base" is the base value being tested (first "len" bytes of v_min).
-      // "t_max_delta_msb" is the most-significant bit position of the largest
-      // delta (or zero if there are no deltas, i.e. if v.size() == 0).
-      // "t_bytes" is the total size of the variable portion of the encoding.
+      // "t_max_delta_msb" is the most-significant bit position (i.e. bit-width
+      // minus one) of the largest delta (or zero if there are no deltas, i.e.
+      // if v.size() == 0).  "t_bytes" is the total size of the variable
+      // portion of the encoding.
       uint64 t_base = v_min & ~(~0ULL >> (8 * len));
-      int t_max_delta_msb =
-          max(0, Bits::Log2Floor64((v_max - t_base) >> e_shift));
+      int t_max_delta_msb = max(
+          0,
+          static_cast<int>(absl::bit_width((v_max - t_base) >> e_shift)) - 1);
       uint64 t_bytes = len + v.size() * ((t_max_delta_msb >> 3) + 1);
       if (t_bytes < e_bytes) {
         e_base = t_base;

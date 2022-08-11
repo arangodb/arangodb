@@ -19,7 +19,9 @@
 #define S2_S2BUILDERUTIL_S2POLYLINE_VECTOR_LAYER_H_
 
 #include <memory>
+#include <utility>
 #include <vector>
+
 #include "s2/base/logging.h"
 #include "absl/memory/memory.h"
 #include "s2/id_set_lexicon.h"

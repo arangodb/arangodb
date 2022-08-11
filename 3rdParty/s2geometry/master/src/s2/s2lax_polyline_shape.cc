@@ -22,18 +22,21 @@
 #include <utility>
 
 #include "s2/base/logging.h"
+#include "absl/memory/memory.h"
 #include "absl/utility/utility.h"
 #include "s2/s2polyline.h"
 
-using absl::make_unique;
 using absl::MakeSpan;
 using absl::Span;
+using absl::make_unique;
 
-S2LaxPolylineShape::S2LaxPolylineShape(S2LaxPolylineShape&& other) :
-  num_vertices_(absl::exchange(other.num_vertices_, 0)),
-  vertices_(std::move(other.vertices_)) {}
+S2LaxPolylineShape::S2LaxPolylineShape(S2LaxPolylineShape&& other)
+    : S2Shape(std::move(other)),
+      num_vertices_(absl::exchange(other.num_vertices_, 0)),
+      vertices_(std::move(other.vertices_)) {}
 
 S2LaxPolylineShape& S2LaxPolylineShape::operator=(S2LaxPolylineShape&& other) {
+  S2Shape::operator=(static_cast<S2Shape&&>(other));
   num_vertices_ = absl::exchange(other.num_vertices_, 0);
   vertices_ = std::move(other.vertices_);
   return *this;

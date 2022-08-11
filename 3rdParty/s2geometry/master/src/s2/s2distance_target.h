@@ -18,6 +18,8 @@
 #ifndef S2_S2DISTANCE_TARGET_H_
 #define S2_S2DISTANCE_TARGET_H_
 
+#include <functional>
+
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
 #include "s2/s2shape_index.h"

@@ -30,8 +30,8 @@
 #include "s2/s2polyline.h"
 #include "s2/s2wrapped_shape.h"
 
-using absl::make_unique;
 using std::make_shared;
+using absl::make_unique;
 using std::unique_ptr;
 using std::vector;
 

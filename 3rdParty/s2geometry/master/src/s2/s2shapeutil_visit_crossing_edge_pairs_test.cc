@@ -17,7 +17,9 @@
 
 #include "s2/s2shapeutil_visit_crossing_edge_pairs.h"
 
+#include <algorithm>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>

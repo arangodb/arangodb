@@ -21,6 +21,8 @@
 
 #include "s2/s2shape_index_measures.h"
 
+#include <memory>
+
 #include <gtest/gtest.h>
 #include "absl/memory/memory.h"
 #include "s2/mutable_s2shape_index.h"
@@ -30,8 +32,8 @@
 #include "s2/s2pointutil.h"
 #include "s2/s2text_format.h"
 
-using absl::make_unique;
 using s2textformat::MakeIndexOrDie;
+using absl::make_unique;
 
 namespace {
 

@@ -7,10 +7,16 @@
 #include <sstream>
 #include <string>
 
+#include "s2/s2boolean_operation.h"
+#include "s2/s2buffer_operation.h"
+#include "s2/s2builder.h"
+#include "s2/s2builder_layer.h"
+#include "s2/s2builderutil_s2polygon_layer.h"
 #include "s2/s2cell_id.h"
 #include "s2/s2region.h"
 #include "s2/s2cap.h"
 #include "s2/s2edge_crossings.h"
+#include "s2/s2edge_distances.h"
 #include "s2/s2earth.h"
 #include "s2/s2latlng.h"
 #include "s2/s2latlng_rect.h"
@@ -19,10 +25,40 @@
 #include "s2/s2pointutil.h"
 #include "s2/s2polygon.h"
 #include "s2/s2polyline.h"
+#include "s2/s2predicates.h"
 #include "s2/s2region_coverer.h"
 #include "s2/s2region_term_indexer.h"
 #include "s2/s2cell.h"
 #include "s2/s2cell_union.h"
+#include "s2/s2shape_index.h"
+#include "s2/mutable_s2shape_index.h"
+
+// Wrapper for S2BufferOperation::Options to work around the inability
+// to handle nested classes in SWIG.
+class S2BufferOperationOptions {
+public:
+  S2BufferOperation::Options opts;
+
+  void set_buffer_radius(S1Angle buffer_radius) {
+    opts.set_buffer_radius(buffer_radius);
+  }
+
+  void set_error_fraction(double error_fraction) {
+    opts.set_error_fraction(error_fraction);
+  }
+};
+
+// Wrapper for S2PolygonLayer::Options to work around the inability to
+// handle nested classes in SWIG.
+class S2PolygonLayerOptions {
+public:
+  s2builderutil::S2PolygonLayer::Options opts;
+
+  void set_edge_type(S2Builder::EdgeType edge_type) {
+    opts.set_edge_type(edge_type);
+  }
+};
+
 %}
 
 %inline %{
@@ -71,6 +107,20 @@
 
 %apply S2CellId *OUTPUT_ARRAY_4 {S2CellId neighbors[4]};
 
+// Convert an S2Error into a Python exception. This requires two
+// typemaps: the first declares a local variable of type S2Error and
+// passes a pointer to it into the called function, and the second
+// inspects the S2Error variable after the call and throws an
+// exception if its ok() method returns false.
+%typemap(in, numinputs=0) S2Error * (S2Error err) {
+  $1 = &err;
+}
+
+%typemap(argout) S2Error * {
+  if(!$1->ok())
+    SWIG_exception(SWIG_ValueError, $1->text().c_str());
+}
+
 // This overload shadows the one the takes vector<uint64>&, and it
 // does not work anyway.
 %ignore S2CellUnion::Init(std::vector<S2CellId> const& cell_ids);
@@ -102,6 +152,8 @@
 %apply int *OUTPUT {int *pj};
 %apply int *OUTPUT {int *orientation};
 %apply SWIGTYPE *DISOWN {S2Loop *loop_disown};
+%apply SWIGTYPE *DISOWN {S2Builder::Layer *layer_disown};
+%apply SWIGTYPE *DISOWN {S2Polygon *polygon_disown};
 
 %typemap(in) std::vector<S2Loop *> * (std::vector<S2Loop *> loops){
   PyObject *element(nullptr);
@@ -157,12 +209,19 @@ std::vector<S2Polyline *> *out(std::vector<S2Polyline *> temp) {
     return SWIG_NewPointerObj(new S2Point(x, y, z), SWIGTYPE_p_S2Point,
                               SWIG_POINTER_OWN);
   }
+
+  static PyObject *S2Point_ToRaw(const S2Point& p) {
+    return Py_BuildValue("ddd", p[0], p[1], p[2]);
+  }
 %}
 
 // We provide our own definition of S2Point, because the real one is too
 // difficult to wrap correctly.
 class S2Point {
  public:
+  double x();
+  double y();
+  double z();
   double Norm();
   S2Point Normalize();
   ~S2Point();
@@ -238,6 +297,83 @@ class S2Point {
       out->push_back(polyline.release());
     }
   }
+}
+
+%extend S2Builder {
+ public:
+  void StartLayer(S2Builder::Layer* layer_disown) {
+    $self->StartLayer(std::unique_ptr<S2Builder::Layer>(layer_disown));
+  }
+}
+
+class S2PolygonLayerOptions {
+public:
+  s2builderutil::S2PolygonLayer::Options opts;
+  void set_edge_type(S2Builder::EdgeType);
+};
+
+// S2PolygonLayer's constructor takes a pointer to an S2Polygon. We
+// need to ensure that the S2Polygon is not destroyed while the
+// S2PolygonLayer still references it. To do this, save a reference to
+// the polygon in the Python wrapper object.
+%pythonprepend s2builderutil::S2PolygonLayer::S2PolygonLayer %{
+  self._incref = args[0]
+%}
+
+%extend s2builderutil::S2PolygonLayer {
+ public:
+  S2PolygonLayer(S2Polygon* layer,
+                 const S2PolygonLayerOptions& options) {
+   return new s2builderutil::S2PolygonLayer(layer, options.opts);
+  }
+}
+
+%extend MutableS2ShapeIndex {
+ public:
+  void Add(S2Polygon* polygon_disown) {
+    auto polygon = std::unique_ptr<S2Polygon>(polygon_disown);
+    $self->Add(std::unique_ptr<S2Shape>(new S2Polygon::OwningShape(std::move(polygon))));
+  }
+}
+
+%extend S2BooleanOperation {
+ public:
+ S2BooleanOperation(OpType op_type,
+                              S2Builder::Layer* layer_disown) {
+   S2BooleanOperation::Options options;
+   auto layer = std::unique_ptr<S2Builder::Layer>(layer_disown);
+   return new S2BooleanOperation(op_type, std::move(layer), options);
+  }
+}
+
+class S2BufferOperationOptions {
+public:
+  S2BufferOperation::Options opts;
+  void set_buffer_radius(S1Angle);
+  void set_error_fraction(double);
+};
+
+%extend S2BufferOperation {
+ public:
+  S2BufferOperation(S2Builder::Layer* layer_disown) {
+   auto layer = std::unique_ptr<S2Builder::Layer>(layer_disown);
+   return new S2BufferOperation(std::move(layer));
+  }
+
+  S2BufferOperation(S2Builder::Layer* layer_disown,
+                    const S2BufferOperationOptions& options) {
+   auto layer = std::unique_ptr<S2Builder::Layer>(layer_disown);
+   return new S2BufferOperation(std::move(layer), options.opts);
+  }
+
+ void AddPolygon(S2Polygon* polygon_disown) {
+   auto polygon = std::unique_ptr<S2Polygon>(polygon_disown);
+   $self->AddShape(S2Polygon::OwningShape(std::move(polygon)));
+ }
+
+ void AddPoint(S2Point& point) {
+   $self->AddPoint(point);
+ }
 }
 
 // Expose Options functions on S2RegionCoverer until we figure out
@@ -319,6 +455,8 @@ class S2Point {
   }
 }
 
+%copyctor S1ChordAngle;
+
 // Raise ValueError for any functions that would trigger a S2_CHECK/S2_DCHECK.
 %pythonprepend S2CellId::child %{
   if not self.is_valid():
@@ -372,6 +510,9 @@ class S2Point {
 
 %ignoreall
 
+%unignore MutableS2ShapeIndex;
+%unignore MutableS2ShapeIndex::~MutableS2ShapeIndex;
+%unignore MutableS2ShapeIndex::Add(S2Shape*);
 %unignore R1Interval;
 %ignore R1Interval::operator[];
 %unignore R1Interval::GetLength;
@@ -393,14 +534,49 @@ class S2Point {
 %unignore S1Angle::radians;
 %unignore S1ChordAngle;
 %unignore S1ChordAngle::ToAngle;
+%unignore S1ChordAngle::degrees;
+%unignore S1ChordAngle::Infinity;
 %unignore S1Interval;
 %ignore S1Interval::operator[];
 %unignore S1Interval::GetLength;
 %unignore S2;
 %unignore S2::CrossingSign;
 %unignore S2::GetIntersection;
+%unignore S2::Interpolate;
 %unignore S2::Rotate;
 %unignore S2::TurnAngle;
+%unignore S2::UpdateMinDistance;
+%unignore S2BooleanOperation;
+%unignore S2BooleanOperation::Build;
+%unignore S2BooleanOperation::OpType;
+%unignore S2BooleanOperation::OpType::UNION;
+%unignore S2BooleanOperation::OpType::INTERSECTION;
+%unignore S2BooleanOperation::OpType::DIFFERENCE;
+%unignore S2BooleanOperation::OpType::SYMMETRIC_DIFFERENCE;
+%unignore S2BooleanOperation::S2BooleanOperation(OpType, S2Builder::Layer*, const Options&);
+%ignore S2BooleanOperation::S2BooleanOperation(OpType, std::unique_ptr<S2Builder::Layer>, const Options&);
+%ignore S2BooleanOperation::S2BooleanOperation(OpType, std::unique_ptr<S2Builder::Layer>);
+%unignore S2BufferOperation;
+%unignore S2BufferOperation::Build;
+%unignore S2BufferOperation::Options;
+%unignore S2BufferOperation::S2BufferOperation(S2Builder::Layer*);
+%ignore S2BufferOperation::S2BufferOperation(std::unique_ptr<S2Builder::Layer>);
+%ignore S2BufferOperation::S2BufferOperation(std::unique_ptr<S2Builder::Layer>, const Options&);
+%unignore S2BufferOperationOptions;
+%unignore S2BufferOperationOptions::set_buffer_radius;
+%unignore S2BufferOperationOptions::set_error_fraction;
+%unignore S2Builder;
+%unignore S2Builder::Layer;
+%unignore S2Builder::S2Builder;
+%unignore S2Builder::StartLayer(S2Builder::Layer*);
+%unignore S2Builder::AddEdge;
+%unignore S2Builder::Build;
+%unignore S2Builder::EdgeType;
+%unignore S2Builder::EdgeType::DIRECTED;
+%unignore S2Builder::EdgeType::UNDIRECTED;
+%unignore s2builderutil;
+%unignore s2builderutil::S2PolygonLayer;
+%unignore s2builderutil::S2PolygonLayer::S2PolygonLayer(S2Polygon*);
 %unignore S2Cap;
 %unignore S2Cap::S2Cap;
 %unignore S2Cap::~S2Cap;
@@ -651,6 +827,7 @@ class S2Point {
 %unignore S2Polygon::GetRectBound;
 %unignore S2Polygon::Init;
 %unignore S2Polygon::InitNested;
+%unignore S2Polygon::InitToUnion;
 %unignore S2Polygon::Intersects;
 %unignore S2Polygon::IntersectWithPolyline;
 %unignore S2Polygon::IsValid;
@@ -686,6 +863,8 @@ class S2Point {
 %unignore S2Polyline::UnInterpolate;
 %unignore S2Polyline::num_vertices;
 %unignore S2Polyline::vertex;
+%unignore s2pred;
+%unignore s2pred::OrderedCCW;
 %unignore S2RegionCoverer;
 %unignore S2RegionCoverer::S2RegionCoverer;
 %unignore S2RegionCoverer::~S2RegionCoverer;
@@ -705,13 +884,20 @@ class S2Point {
                                              absl::string_view);
 %unignore S2RegionTermIndexer::GetQueryTermsForCanonicalCovering(
     const S2CellUnion&, absl::string_view);
+%unignore S2ShapeIndex;
 
 %include "s2/r1interval.h"
 %include "s2/s1angle.h"
 %include "s2/s1chord_angle.h"
 %include "s2/s1interval.h"
+%include "s2/s2boolean_operation.h"
+%include "s2/s2buffer_operation.h"
+%include "s2/s2builder.h"
+%include "s2/s2builder_layer.h"
+%include "s2/s2builderutil_s2polygon_layer.h"
 %include "s2/s2cell_id.h"
 %include "s2/s2edge_crossings.h"
+%include "s2/s2edge_distances.h"
 %include "s2/s2earth.h"
 %include "s2/s2region.h"
 %include "s2/s2cap.h"
@@ -722,10 +908,13 @@ class S2Point {
 %include "s2/s2pointutil.h"
 %include "s2/s2polygon.h"
 %include "s2/s2polyline.h"
+%include "s2/s2predicates.h"
 %include "s2/s2region_coverer.h"
 %include "s2/s2region_term_indexer.h"
 %include "s2/s2cell.h"
 %include "s2/s2cell_union.h"
+%include "s2/s2shape_index.h"
+%include "s2/mutable_s2shape_index.h"
 
 %unignoreall
 
@@ -742,11 +931,11 @@ class S2Point {
 %define USE_EQUALS_FN_FOR_EQ_AND_NE(type)
   %extend type {
     bool __eq__(const type& other) {
-      return $self->Equals(&other);
+      return $self->Equals(other);
     }
 
     bool __ne__(const type& other) {
-      return !$self->Equals(&other);
+      return !$self->Equals(other);
     }
   }
 %enddef
@@ -775,6 +964,18 @@ class S2Point {
   }
 %enddef
 
+%define USE_ARITHMETIC_FOR_ADD_AND_SUB(type)
+  %extend type {
+    type __add__(const type& other) {
+      return *$self + other;
+    }
+
+    type __sub__(const type& other) {
+      return *$self - other;
+    }
+  }
+%enddef
+
 %define USE_HASH_FOR_TYPE(type, hash_type)
   %extend type {
     size_t __hash__() {
@@ -796,6 +997,10 @@ USE_HASH_FOR_TYPE(S2CellId, S2CellIdHash)
 
 USE_EQUALS_FOR_EQ_AND_NE(S1Angle)
 USE_COMPARISON_FOR_LT_AND_GT(S1Angle)
+
+USE_EQUALS_FOR_EQ_AND_NE(S1ChordAngle)
+USE_COMPARISON_FOR_LT_AND_GT(S1ChordAngle)
+USE_ARITHMETIC_FOR_ADD_AND_SUB(S1ChordAngle)
 
 USE_EQUALS_FN_FOR_EQ_AND_NE(S2Loop)
 USE_EQUALS_FN_FOR_EQ_AND_NE(S2Polygon)

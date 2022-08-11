@@ -18,6 +18,7 @@
 #include "s2/s2earth.h"
 
 #include <cmath>
+#include <string>
 
 #include <gtest/gtest.h>
 #include "s2/util/units/physical-units.h"

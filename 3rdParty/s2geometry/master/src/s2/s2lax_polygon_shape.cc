@@ -17,15 +17,18 @@
 
 #include "s2/s2lax_polygon_shape.h"
 
+#include <memory>
+#include <utility>
+
 #include "absl/memory/memory.h"
 #include "absl/meta/type_traits.h"
 
 #include "s2/util/coding/varint.h"
 #include "s2/s2shapeutil_get_reference_point.h"
 
-using absl::make_unique;
 using absl::MakeSpan;
 using absl::Span;
+using absl::make_unique;
 using std::vector;
 using ChainPosition = S2Shape::ChainPosition;
 
@@ -54,6 +57,30 @@ S2LaxPolygonShape::S2LaxPolygonShape(Span<const Span<const S2Point>> loops) {
 
 S2LaxPolygonShape::S2LaxPolygonShape(const S2Polygon& polygon) {
   Init(polygon);
+}
+
+S2LaxPolygonShape::S2LaxPolygonShape(S2LaxPolygonShape&& b)
+    : S2Shape(std::move(b)),
+      num_loops_(absl::exchange(b.num_loops_, 0)),
+      prev_loop_(b.prev_loop_.exchange(0, std::memory_order_relaxed)),
+      num_vertices_(absl::exchange(b.num_vertices_, 0)),
+      vertices_(std::move(b.vertices_)),
+      loop_starts_(std::move(b.loop_starts_)) {}
+
+S2LaxPolygonShape& S2LaxPolygonShape::operator=(S2LaxPolygonShape&& b) {
+  using std::memory_order_relaxed;
+
+  // We need to delegate to our parent move-assignment operator since we can't
+  // move any of its private state.  This is a little odd since b is in a
+  // half-moved state after calling but is ultimately safe.
+  S2Shape::operator=(static_cast<S2Shape&&>(b));
+  num_loops_ = absl::exchange(b.num_loops_, 0);
+  prev_loop_.store(b.prev_loop_.exchange(0, memory_order_relaxed),
+                   memory_order_relaxed);
+  num_vertices_ = absl::exchange(b.num_vertices_, 0);
+  vertices_ = std::move(b.vertices_);
+  loop_starts_ = std::move(b.loop_starts_);
+  return *this;
 }
 
 void S2LaxPolygonShape::Init(const vector<S2LaxPolygonShape::Loop>& loops) {
@@ -99,7 +126,7 @@ void S2LaxPolygonShape::Init(Span<const Span<const S2Point>> loops) {
     // since "new T[]" stores its own copy of the array size.
     //
     // Note that even absl::make_unique_for_overwrite<> and c++20's
-    // std::make_unique_for_overwrite<T[]> default-construct all elements when
+    // absl::make_unique_for_overwrite<T[]> default-construct all elements when
     // T is a class type.
     vertices_ = make_unique<S2Point[]>(num_vertices_);
     std::copy(loops[0].begin(), loops[0].end(), vertices_.get());
@@ -118,9 +145,6 @@ void S2LaxPolygonShape::Init(Span<const Span<const S2Point>> loops) {
                 vertices_.get() + loop_starts_[i]);
     }
   }
-}
-
-S2LaxPolygonShape::~S2LaxPolygonShape() {
 }
 
 int S2LaxPolygonShape::num_loop_vertices(int i) const {
@@ -204,6 +228,27 @@ S2Shape::Chain S2LaxPolygonShape::chain(int i) const {
     int start = loop_starts_[i];
     return Chain(start, loop_starts_[i + 1] - start);
   }
+}
+
+EncodedS2LaxPolygonShape::EncodedS2LaxPolygonShape(EncodedS2LaxPolygonShape&& b)
+    : S2Shape(std::move(b)),
+      num_loops_(absl::exchange(b.num_loops_, 0)),
+      prev_loop_(b.prev_loop_.exchange(0, std::memory_order_relaxed)),
+      vertices_(std::move(b.vertices_)),
+      loop_starts_(std::move(b.loop_starts_)) {}
+
+EncodedS2LaxPolygonShape& EncodedS2LaxPolygonShape::operator=(
+    EncodedS2LaxPolygonShape&& b) {
+  // We need to delegate to our parent move-assignment operator since we can't
+  // move any of its private state.  This is a little odd since b is in a
+  // half-moved state after calling but is ultimately safe.
+  S2Shape::operator=(static_cast<S2Shape&&>(b));
+  num_loops_ = absl::exchange(b.num_loops_, 0);
+  prev_loop_.store(b.prev_loop_.exchange(0, std::memory_order_relaxed),
+                   std::memory_order_relaxed);
+  vertices_ = std::move(b.vertices_);
+  loop_starts_ = std::move(b.loop_starts_);
+  return *this;
 }
 
 bool EncodedS2LaxPolygonShape::Init(Decoder* decoder) {

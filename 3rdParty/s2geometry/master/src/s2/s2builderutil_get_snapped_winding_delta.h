@@ -18,6 +18,8 @@
 #ifndef S2_S2BUILDERUTIL_GET_SNAPPED_WINDING_DELTA_H_
 #define S2_S2BUILDERUTIL_GET_SNAPPED_WINDING_DELTA_H_
 
+#include <functional>
+
 #include "absl/types/span.h"
 #include "s2/s2builder.h"
 #include "s2/s2builder_graph.h"

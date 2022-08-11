@@ -18,6 +18,7 @@
 #ifndef S2_S2BUFFER_OPERATION_H_
 #define S2_S2BUFFER_OPERATION_H_
 
+#include <memory>
 #include <vector>
 
 #include "s2/s1angle.h"
@@ -215,9 +216,11 @@ class S2BufferOperation {
   // Default constructor; requires Init() to be called.
   S2BufferOperation();
 
+#ifndef SWIG
   // Convenience constructor that calls Init().
   explicit S2BufferOperation(std::unique_ptr<S2Builder::Layer> result_layer,
                              const Options& options = Options{});
+#endif
 
   // Starts a buffer operation that sends the output polygon to the given
   // S2Builder layer.  This method may be called more than once.

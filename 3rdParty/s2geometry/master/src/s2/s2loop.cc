@@ -22,6 +22,7 @@
 #include <bitset>
 #include <cfloat>
 #include <cmath>
+#include <memory>
 #include <set>
 #include <utility>
 #include <vector>
@@ -29,11 +30,11 @@
 #include "absl/flags/flag.h"
 #include "absl/memory/memory.h"
 #include "absl/types/span.h"
+#include "absl/utility/utility.h"
 
 #include "s2/base/commandlineflags.h"
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
-#include "s2/util/coding/coder.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/r1interval.h"
 #include "s2/s1angle.h"
@@ -59,12 +60,11 @@
 #include "s2/s2shapeutil_visit_crossing_edge_pairs.h"
 #include "s2/s2wedge_relations.h"
 #include "s2/util/coding/coder.h"
-#include "s2/util/coding/coder.h"
 #include "s2/util/math/matrix3x3.h"
 
-using absl::make_unique;
 using absl::MakeSpan;
 using absl::Span;
+using absl::make_unique;
 using std::pair;
 using std::set;
 using std::vector;
@@ -96,6 +96,44 @@ enum CompressedLoopProperty {
 S2Loop::S2Loop() {
   // The loop is not valid until Init() is called.
 }
+
+#ifndef SWIG
+S2Loop::S2Loop(S2Loop&& b)
+    : S2Region(std::move(b)),
+      depth_(absl::exchange(b.depth_, 0)),
+      num_vertices_(absl::exchange(b.num_vertices_, 0)),
+      vertices_(absl::exchange(b.vertices_, nullptr)),
+      owns_vertices_(absl::exchange(b.owns_vertices_, false)),
+      s2debug_override_(std::move(b.s2debug_override_)),
+      origin_inside_(std::move(b.origin_inside_)),
+      unindexed_contains_calls_(
+          b.unindexed_contains_calls_.exchange(0, std::memory_order_relaxed)),
+      bound_(std::move(b.bound_)),
+      subregion_bound_(std::move(b.subregion_bound_)),
+      index_(std::move(b.index_)) {}
+
+S2Loop& S2Loop::operator=(S2Loop&& b) {
+  if (owns_vertices_) {
+    delete[] vertices_;
+  }
+
+  S2Region::operator=(static_cast<S2Region&&>(b));
+  depth_ = absl::exchange(b.depth_, 0);
+  num_vertices_ = absl::exchange(b.num_vertices_, 0);
+  vertices_ = absl::exchange(b.vertices_, nullptr);
+  owns_vertices_ = absl::exchange(b.owns_vertices_, false);
+  s2debug_override_ = std::move(b.s2debug_override_);
+  origin_inside_ = std::move(b.origin_inside_);
+  unindexed_contains_calls_.store(
+      b.unindexed_contains_calls_.exchange(0, std::memory_order_relaxed),
+      std::memory_order_relaxed);
+  bound_ = std::move(b.bound_);
+  subregion_bound_ = std::move(b.subregion_bound_);
+  index_ = std::move(b.index_);
+
+  return *this;
+}
+#endif
 
 S2Loop::S2Loop(Span<const S2Point> vertices)
   : S2Loop(vertices, S2Debug::ALLOW) {}

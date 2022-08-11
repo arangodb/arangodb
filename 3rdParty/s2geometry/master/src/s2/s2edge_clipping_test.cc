@@ -65,6 +65,13 @@ void TestFaceClipping(const S2Point& a_raw, const S2Point& b_raw) {
   EXPECT_LE(b.Angle(S2::FaceUVtoXYZ(segments[n-1].face, segments[n-1].b)),
             kErrorRadians);
 
+  // Similarly, in UV space.
+  R2Point a_uv, b_uv;
+  EXPECT_TRUE(S2::FaceXYZtoUV(segments[0].face, a, &a_uv));
+  EXPECT_TRUE(S2::FaceXYZtoUV(segments[n-1].face, b, &b_uv));
+  EXPECT_LE((a_uv - segments[0].a).Norm(), S2::kFaceClipErrorUVDist);
+  EXPECT_LE((b_uv - segments[n-1].b).Norm(), S2::kFaceClipErrorUVDist);
+
   S2Point norm = S2::RobustCrossProd(a, b).Normalize();
   S2Point a_tangent = norm.CrossProd(a);
   S2Point b_tangent = b.CrossProd(norm);

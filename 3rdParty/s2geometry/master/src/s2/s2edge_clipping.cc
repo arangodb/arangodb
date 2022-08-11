@@ -17,6 +17,7 @@
 
 #include "s2/s2edge_clipping.h"
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 

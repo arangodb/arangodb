@@ -39,6 +39,10 @@ class S2EdgeVectorShape : public S2Shape {
   // Constructs an empty edge vector.
   S2EdgeVectorShape() {}
 
+  S2EdgeVectorShape(S2EdgeVectorShape&& other) = default;
+
+  S2EdgeVectorShape& operator=(S2EdgeVectorShape&& other) = default;
+
   // Constructs an S2EdgeVectorShape from a vector of edges.
   explicit S2EdgeVectorShape(std::vector<std::pair<S2Point, S2Point>> edges) {
     edges_ = std::move(edges);

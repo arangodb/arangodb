@@ -171,6 +171,9 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
 
   ~MutableS2ShapeIndex() override;
 
+  MutableS2ShapeIndex(MutableS2ShapeIndex&&);
+  MutableS2ShapeIndex& operator=(MutableS2ShapeIndex&&);
+
   // Initialize a MutableS2ShapeIndex with the given options.  This method may
   // only be called when the index is empty (i.e. newly created or Clear() has
   // just been called).  May be called before or after set_memory_tracker().
@@ -568,12 +571,14 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
 
   S2MemoryTracker::Client mem_tracker_;
 
+#ifndef SWIG
   // Documented in the .cc file.
   void UnlockAndSignal() ABSL_UNLOCK_FUNCTION(lock_)
       ABSL_UNLOCK_FUNCTION(update_state_->wait_mutex);
+#endif
 
   MutableS2ShapeIndex(const MutableS2ShapeIndex&) = delete;
-  void operator=(const MutableS2ShapeIndex&) = delete;
+  MutableS2ShapeIndex& operator=(const MutableS2ShapeIndex&) = delete;
 };
 
 // The following flag can be used to limit the amount of temporary memory used

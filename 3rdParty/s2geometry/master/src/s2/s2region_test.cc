@@ -16,6 +16,8 @@
 
 #include "s2/s2region.h"
 
+#include <memory>
+
 #include <gtest/gtest.h>
 
 #include "absl/container/fixed_array.h"
@@ -201,7 +203,7 @@ class S2RegionEncodeDecodeTest : public testing::Test {
     EXPECT_EQ(golden, HexEncodeStr(string(encoder.base(), encoder.length())));
 
     Decoder decoder(encoder.base(), encoder.length());
-    dst->Decode(&decoder);
+    ASSERT_TRUE(dst->Decode(&decoder));
   }
 };
 
@@ -284,11 +286,11 @@ TEST_F(S2RegionEncodeDecodeTest, S2Loop) {
   unique_ptr<S2Loop> loop_cross = s2textformat::MakeLoopOrDie(kCross1);
 
   TestEncodeDecode(kEncodedLoopEmpty, loop_empty, &loop);
-  EXPECT_TRUE(loop_empty.Equals(&loop));
+  EXPECT_TRUE(loop_empty.Equals(loop));
   TestEncodeDecode(kEncodedLoopFull, loop_full, &loop);
-  EXPECT_TRUE(loop_full.Equals(&loop));
+  EXPECT_TRUE(loop_full.Equals(loop));
   TestEncodeDecode(kEncodedLoopCross, *loop_cross, &loop);
-  EXPECT_TRUE(loop_cross->Equals(&loop));
+  EXPECT_TRUE(loop_cross->Equals(loop));
 }
 
 
@@ -314,13 +316,13 @@ TEST_F(S2RegionEncodeDecodeTest, S2Polygon) {
       s2textformat::MakePolygonOrDie(kCross1 + ";" + kCrossCenterHole);
 
   TestEncodeDecode(kEncodedPolygonEmpty, *polygon_empty, &polygon);
-  EXPECT_TRUE(polygon_empty->Equals(&polygon));
+  EXPECT_TRUE(polygon_empty->Equals(polygon));
   TestEncodeDecode(kEncodedPolygonFull, *polygon_full, &polygon);
-  EXPECT_TRUE(polygon_full->Equals(&polygon));
+  EXPECT_TRUE(polygon_full->Equals(polygon));
   TestEncodeDecode(kEncodedPolygon1Loops, *polygon_cross, &polygon);
-  EXPECT_TRUE(polygon_cross->Equals(&polygon));
+  EXPECT_TRUE(polygon_cross->Equals(polygon));
   TestEncodeDecode(kEncodedPolygon2Loops, *polygon_cross_hole, &polygon);
-  EXPECT_TRUE(polygon_cross_hole->Equals(&polygon));
+  EXPECT_TRUE(polygon_cross_hole->Equals(polygon));
 }
 
 TEST_F(S2RegionEncodeDecodeTest, S2Polyline) {
@@ -335,11 +337,11 @@ TEST_F(S2RegionEncodeDecodeTest, S2Polyline) {
       s2textformat::MakePolylineOrDie("0:0, 0:10, 10:20, 20:30");
 
   TestEncodeDecode(kEncodedPolylineEmpty, polyline_empty, &polyline);
-  EXPECT_TRUE(polyline_empty.Equals(&polyline));
+  EXPECT_TRUE(polyline_empty.Equals(polyline));
   TestEncodeDecode(kEncodedPolylineSemiEquator, polyline_semi, &polyline);
-  EXPECT_TRUE(polyline_semi.Equals(&polyline));
+  EXPECT_TRUE(polyline_semi.Equals(polyline));
   TestEncodeDecode(kEncodedPolyline3Segments, *polyline_3segments, &polyline);
-  EXPECT_TRUE(polyline_3segments->Equals(&polyline));
+  EXPECT_TRUE(polyline_3segments->Equals(polyline));
 }
 
 // TODO(user): When the remaining types implement Encode/Decode, add their

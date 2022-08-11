@@ -678,7 +678,7 @@ TEST(S2Cell, EncodeDecode) {
 
   S2Cell decoded_cell(S2LatLng::FromDegrees(51.494987, -0.146585));
   Decoder decoder(encoder.base(), encoder.length());
-  decoded_cell.Decode(&decoder);
+  ASSERT_TRUE(decoded_cell.Decode(&decoder));
 
   EXPECT_EQ(orig_cell, decoded_cell);
   EXPECT_EQ(orig_cell.face(), decoded_cell.face());

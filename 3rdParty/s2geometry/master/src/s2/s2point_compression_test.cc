@@ -305,7 +305,7 @@ TEST_F(S2PointCompressionTest, FirstPointOnFaceEdge) {
   S2EncodePointsCompressed(points, 8, &encoder);
   Decoder decoder(encoder.base(), encoder.length());
   S2Point result[2];
-  S2DecodePointsCompressed(&decoder, 8, result);
+  ASSERT_TRUE(S2DecodePointsCompressed(&decoder, 8, result));
   S2_CHECK(result[0] == points[0].xyz);
   S2_CHECK(result[1] == points[1].xyz);
 }

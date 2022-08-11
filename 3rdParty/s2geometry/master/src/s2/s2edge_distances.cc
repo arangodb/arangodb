@@ -17,6 +17,7 @@
 
 #include "s2/s2edge_distances.h"
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 

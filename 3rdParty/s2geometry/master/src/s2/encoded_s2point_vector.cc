@@ -20,6 +20,7 @@
 #include <algorithm>
 
 #include "absl/base/internal/unaligned_access.h"
+#include "absl/numeric/bits.h"
 #include "s2/util/bits/bits.h"
 #include "s2/s2cell_id.h"
 #include "s2/s2coords.h"
@@ -174,8 +175,8 @@ void EncodeS2PointVectorFast(Span<const S2Point> points, Encoder* encoder) {
 bool EncodedS2PointVector::InitUncompressedFormat(Decoder* decoder) {
 #if !defined(IS_LITTLE_ENDIAN) || defined(__arm__) || \
   defined(ABSL_INTERNAL_NEED_ALIGNED_LOADS)
-  // TODO(ericv): Make this work on platforms that don't support unaligned
-  // 64-bit little-endian reads, e.g. by falling back to
+  // TODO(b/231674214): Make this work on platforms that don't support
+  // unaligned 64-bit little-endian reads, e.g. by falling back to
   //
   //   bit_cast<double>(little_endian::Load64()).
   //
@@ -639,8 +640,8 @@ uint64 ChooseBase(const vector<uint64>& values, int level, bool have_exceptions,
   // 2. The format only allows us to represent up to 7 bytes (56 bits) of
   // "base", so we need to ensure that "base" conforms to this requirement.
   int min_delta_bits = (have_exceptions || values.size() == 1) ? 8 : 4;
-  int excluded_bits = max(Bits::Log2Floor64(v_min ^ v_max) + 1,
-                          max(min_delta_bits, BaseShift(level, 56)));
+  int excluded_bits = max<int>(absl::bit_width(v_min ^ v_max),
+                               max(min_delta_bits, BaseShift(level, 56)));
   uint64 base = v_min & ~BitMask(excluded_bits);
 
   // Determine how many bytes are needed to represent this prefix.
@@ -741,7 +742,8 @@ BlockCode GetBlockCode(Span<const uint64> values, uint64 base,
   //
   // It is possible to show that this last example is the worst case, i.e.  we
   // do not need to consider increasing delta_bits or overlap_bits further.
-  int delta_bits = (max(1, Bits::Log2Floor64(b_max - b_min)) + 3) & ~3;
+  int delta_bits =
+      (max(1, static_cast<int>(absl::bit_width(b_max - b_min)) - 1) + 3) & ~3;
   int overlap_bits = 0;
   if (!CanEncode(b_min, b_max, delta_bits, 0, have_exceptions)) {
     if (CanEncode(b_min, b_max, delta_bits, 4, have_exceptions)) {

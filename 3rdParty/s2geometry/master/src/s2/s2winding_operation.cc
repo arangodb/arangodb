@@ -18,6 +18,7 @@
 
 #include "s2/s2winding_operation.h"
 
+#include <memory>
 #include <utility>
 
 #include "s2/mutable_s2shape_index.h"

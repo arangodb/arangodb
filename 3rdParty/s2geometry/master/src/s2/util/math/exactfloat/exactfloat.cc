@@ -25,6 +25,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <string>
 
 #include <openssl/bn.h>
 #include <openssl/crypto.h>  // for OPENSSL_free
@@ -141,7 +142,7 @@ inline static uint64 BN_ext_get_uint64(const BIGNUM* bn) {
 #ifdef IS_LITTLE_ENDIAN
   S2_CHECK_EQ(BN_bn2lebinpad(bn, reinterpret_cast<unsigned char*>(&r),
               sizeof(r)), sizeof(r));
-#elif IS_BIG_ENDIAN
+#elif defined(IS_BIG_ENDIAN)
   S2_CHECK_EQ(BN_bn2binpad(bn, reinterpret_cast<unsigned char*>(&r),
               sizeof(r)), sizeof(r));
 #else

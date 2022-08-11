@@ -17,6 +17,7 @@
 
 #include "s2/s2edge_tessellator.h"
 
+#include <algorithm>
 #include <iostream>
 
 #include <gtest/gtest.h>

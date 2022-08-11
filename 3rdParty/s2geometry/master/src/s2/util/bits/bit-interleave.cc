@@ -24,6 +24,17 @@
 //       gcc-4.3.1-glibc-2.3.6-grte-k8.
 //     TODO(user): Inlining InterleaveUint32 yields a measurable speedup (5
 //     ns vs. 8 ns). Consider cost/benefit of moving implementations inline.
+//  2022-04-21: nywang@google.com microbenchmarked DeinterleaveUint32/16/8 with
+//     Lut and table-free implementations. DeinterleaveUint32/8 would benefit
+//     from table-free implementations with 3% - 8% performance improvement on a
+//     Xeon E5 2690 V3, while DeinterleaveUint16 has 6% performance regression
+//     with table-free implementations.
+//     Some client of this lib like util/geometry/s2point_compression.cc even
+//     see up to 28% performance improvment by adopting the table-free
+//     DeinterleaveUint32 implementation.
+//     TODO(user): As of 2022, Xeon E5 2690 V3 is also an ancient
+//     architecture(Haswell). We need to consider benchmarking it on more
+//     recent architectures.
 
 #include "s2/util/bits/bit-interleave.h"
 
@@ -91,81 +102,58 @@ uint64 InterleaveUint32(const uint32 val0, const uint32 val1) {
          (static_cast<uint64>(kInterleaveLut[val1 >> 24]) << 49);
 }
 
-// The lookup table below can convert a sequence of interleaved 8 bits into
-// non-interleaved 4 bits. The table can convert both odd and even bits at the
-// same time, and lut[x & 0x55] converts the even bits (bits 0, 2, 4 and 6),
-// while lut[x & 0xaa] converts the odd bits (bits 1, 3, 5 and 7).
-//
-// The lookup table below was generated using the following python code:
-//
-// def deinterleave(bits):
-//   if bits == 0: return 0
-//   if bits < 4: return 1
-//   return deinterleave(bits / 4) * 2 + deinterleave(bits & 3)
-//
-// for i in range(256): print "0x%x," % deinterleave(i),
-//
-static const uint8 kDeinterleaveLut[256] = {
-    0x0, 0x1, 0x1, 0x1, 0x2, 0x3, 0x3, 0x3, 0x2, 0x3, 0x3, 0x3, 0x2,
-    0x3, 0x3, 0x3, 0x4, 0x5, 0x5, 0x5, 0x6, 0x7, 0x7, 0x7, 0x6, 0x7,
-    0x7, 0x7, 0x6, 0x7, 0x7, 0x7, 0x4, 0x5, 0x5, 0x5, 0x6, 0x7, 0x7,
-    0x7, 0x6, 0x7, 0x7, 0x7, 0x6, 0x7, 0x7, 0x7, 0x4, 0x5, 0x5, 0x5,
-    0x6, 0x7, 0x7, 0x7, 0x6, 0x7, 0x7, 0x7, 0x6, 0x7, 0x7, 0x7,
-
-    0x8, 0x9, 0x9, 0x9, 0xa, 0xb, 0xb, 0xb, 0xa, 0xb, 0xb, 0xb, 0xa,
-    0xb, 0xb, 0xb, 0xc, 0xd, 0xd, 0xd, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf,
-    0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xc, 0xd, 0xd, 0xd, 0xe, 0xf, 0xf,
-    0xf, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xc, 0xd, 0xd, 0xd,
-    0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf,
-
-    0x8, 0x9, 0x9, 0x9, 0xa, 0xb, 0xb, 0xb, 0xa, 0xb, 0xb, 0xb, 0xa,
-    0xb, 0xb, 0xb, 0xc, 0xd, 0xd, 0xd, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf,
-    0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xc, 0xd, 0xd, 0xd, 0xe, 0xf, 0xf,
-    0xf, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xc, 0xd, 0xd, 0xd,
-    0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf,
-
-    0x8, 0x9, 0x9, 0x9, 0xa, 0xb, 0xb, 0xb, 0xa, 0xb, 0xb, 0xb, 0xa,
-    0xb, 0xb, 0xb, 0xc, 0xd, 0xd, 0xd, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf,
-    0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xc, 0xd, 0xd, 0xd, 0xe, 0xf, 0xf,
-    0xf, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xc, 0xd, 0xd, 0xd,
-    0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf, 0xe, 0xf, 0xf, 0xf,
-};
+// Extracting the even bits (bit 0, 2, ...).
+inline uint8 ExtractEvenBits(uint16 bits) {
+  bits &= 0x5555;
+  bits |= bits >> 1;
+  bits &= 0x3333;
+  bits |= bits >> 2;
+  bits &= 0x0f0f;
+  bits |= bits >> 4;
+  return static_cast<uint8>(bits);
+}
 
 void DeinterleaveUint8(uint16 val, uint8 *val0, uint8 *val1) {
-  *val0 = ((kDeinterleaveLut[val & 0x55]) |
-           (kDeinterleaveLut[(val >> 8) & 0x55] << 4));
-  *val1 = ((kDeinterleaveLut[val & 0xaa]) |
-           (kDeinterleaveLut[(val >> 8) & 0xaa] << 4));
+  *val0 = ExtractEvenBits(val);
+  *val1 = ExtractEvenBits(val >> 1);
+}
+
+// Extracting the even bits (bit 0, 2, ...).
+inline uint16 ExtractEvenBits(uint32 bits) {
+  bits &= 0x55555555;
+  bits |= bits >> 1;
+  bits &= 0x33333333;
+  bits |= bits >> 2;
+  bits &= 0x0f0f0f0f;
+  bits |= bits >> 4;
+  bits &= 0x00ff00ff;
+  bits |= bits >> 8;
+  return static_cast<uint16>(bits);
 }
 
 void DeinterleaveUint16(uint32 code, uint16 *val0, uint16 *val1) {
-  *val0 = ((kDeinterleaveLut[code & 0x55]) |
-           (kDeinterleaveLut[(code >> 8) & 0x55] << 4) |
-           (kDeinterleaveLut[(code >> 16) & 0x55] << 8) |
-           (kDeinterleaveLut[(code >> 24) & 0x55] << 12));
-  *val1 = ((kDeinterleaveLut[code & 0xaa]) |
-           (kDeinterleaveLut[(code >> 8) & 0xaa] << 4) |
-           (kDeinterleaveLut[(code >> 16) & 0xaa] << 8) |
-           (kDeinterleaveLut[(code >> 24) & 0xaa] << 12));
+  *val0 = ExtractEvenBits(code);
+  *val1 = ExtractEvenBits(code >> 1);
+}
+
+// Extracting the even bits (bit 0, 2, ...).
+inline uint32 ExtractEvenBits(uint64 bits) {
+  bits &= 0x5555555555555555;
+  bits |= bits >> 1;
+  bits &= 0x3333333333333333;
+  bits |= bits >> 2;
+  bits &= 0x0f0f0f0f0f0f0f0f;
+  bits |= bits >> 4;
+  bits &= 0x00ff00ff00ff00ff;
+  bits |= bits >> 8;
+  bits &= 0x0000ffff0000ffff;
+  bits |= bits >> 16;
+  return static_cast<uint32>(bits);
 }
 
 void DeinterleaveUint32(uint64 code, uint32 *val0, uint32 *val1) {
-  *val0 = ((kDeinterleaveLut[code & 0x55]) |
-           (kDeinterleaveLut[(code >> 8) & 0x55] << 4) |
-           (kDeinterleaveLut[(code >> 16) & 0x55] << 8) |
-           (kDeinterleaveLut[(code >> 24) & 0x55] << 12) |
-           (kDeinterleaveLut[(code >> 32) & 0x55] << 16) |
-           (kDeinterleaveLut[(code >> 40) & 0x55] << 20) |
-           (kDeinterleaveLut[(code >> 48) & 0x55] << 24) |
-           (kDeinterleaveLut[(code >> 56) & 0x55] << 28));
-  *val1 = ((kDeinterleaveLut[code & 0xaa]) |
-           (kDeinterleaveLut[(code >> 8) & 0xaa] << 4) |
-           (kDeinterleaveLut[(code >> 16) & 0xaa] << 8) |
-           (kDeinterleaveLut[(code >> 24) & 0xaa] << 12) |
-           (kDeinterleaveLut[(code >> 32) & 0xaa] << 16) |
-           (kDeinterleaveLut[(code >> 40) & 0xaa] << 20) |
-           (kDeinterleaveLut[(code >> 48) & 0xaa] << 24) |
-           (kDeinterleaveLut[(code >> 56) & 0xaa] << 28));
+  *val0 = ExtractEvenBits(code);
+  *val1 = ExtractEvenBits(code >> 1);
 }
 
 // Derivation of the multiplication based interleave algorithm:

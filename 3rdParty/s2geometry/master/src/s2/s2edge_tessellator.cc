@@ -18,6 +18,7 @@
 #include "s2/s2edge_tessellator.h"
 
 #include <cmath>
+
 #include "s2/s2edge_distances.h"
 #include "s2/s2latlng.h"
 #include "s2/s2pointutil.h"

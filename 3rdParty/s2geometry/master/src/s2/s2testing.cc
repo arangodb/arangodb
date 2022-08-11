@@ -27,6 +27,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 
 #include "s2/base/commandlineflags.h"

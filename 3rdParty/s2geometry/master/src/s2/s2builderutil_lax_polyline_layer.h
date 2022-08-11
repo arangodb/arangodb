@@ -19,6 +19,7 @@
 #define S2_S2BUILDERUTIL_LAX_POLYLINE_LAYER_H_
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "s2/base/logging.h"

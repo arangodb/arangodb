@@ -104,17 +104,18 @@ class S2Point_PointerRep {
   const S2Point* p_;
 };
 
-class S2Point_ValueRep : public S2Point {
+class S2Point_ValueRep {
  public:
   using T = const S2Point &;
-  S2Point_ValueRep() : S2Point{} {}
-  explicit S2Point_ValueRep(const S2Point& p) : S2Point{p} {}
-  S2Point_ValueRep& operator=(const S2Point& p) {
-    static_cast<S2Point&>(*this) = p;
-    return *this;
-  }
-  const S2Point& operator*() const { return *this; }
-  const S2Point* operator->() const { return this; }
+  S2Point_ValueRep() : p_() {}
+  explicit S2Point_ValueRep(const S2Point& p) : p_(p) {}
+  S2Point_ValueRep& operator=(const S2Point& p) { p_ = p; return *this; }
+  operator const S2Point&() const { return p_; }  // Conversion operator.
+  const S2Point& operator*() const { return p_; }
+  const S2Point* operator->() const { return &p_; }
+
+ private:
+  S2Point p_;
 };
 
 }  // namespace internal

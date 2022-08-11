@@ -18,6 +18,7 @@
 #include "s2/s2lax_loop_shape.h"
 
 #include <memory>
+#include <utility>
 
 #include "absl/memory/memory.h"
 #include "s2/s2loop.h"
@@ -26,6 +27,18 @@
 using absl::make_unique;
 using absl::Span;
 using ReferencePoint = S2Shape::ReferencePoint;
+
+S2LaxLoopShape::S2LaxLoopShape(S2LaxLoopShape&& other)
+    : S2Shape(std::move(other)),
+      num_vertices_(absl::exchange(other.num_vertices_, 0)),
+      vertices_(std::move(other.vertices_)) {}
+
+S2LaxLoopShape& S2LaxLoopShape::operator=(S2LaxLoopShape&& other) {
+  S2Shape::operator=(static_cast<S2Shape&&>(other));
+  num_vertices_ = absl::exchange(other.num_vertices_, 0);
+  vertices_ = std::move(other.vertices_);
+  return *this;
+}
 
 S2LaxLoopShape::S2LaxLoopShape(Span<const S2Point> vertices) {
   Init(vertices);
@@ -70,6 +83,21 @@ S2Shape::Edge S2LaxLoopShape::chain_edge(int i, int j) const {
 
 S2Shape::ReferencePoint S2LaxLoopShape::GetReferencePoint() const {
   return s2shapeutil::GetReferencePoint(*this);
+}
+
+S2VertexIdLaxLoopShape::S2VertexIdLaxLoopShape(S2VertexIdLaxLoopShape&& other)
+    : S2Shape(std::move(other)),
+      num_vertices_(absl::exchange(other.num_vertices_, 0)),
+      vertex_ids_(std::move(other.vertex_ids_)),
+      vertex_array_(std::move(other.vertex_array_)) {}
+
+S2VertexIdLaxLoopShape& S2VertexIdLaxLoopShape::operator=(
+    S2VertexIdLaxLoopShape&& other) {
+  S2Shape::operator=(static_cast<S2Shape&&>(other));
+  num_vertices_ = absl::exchange(other.num_vertices_, 0);
+  vertex_ids_ = std::move(other.vertex_ids_);
+  vertex_array_ = std::move(other.vertex_array_);
+  return *this;
 }
 
 S2VertexIdLaxLoopShape::S2VertexIdLaxLoopShape(Span<const int32> vertex_ids,

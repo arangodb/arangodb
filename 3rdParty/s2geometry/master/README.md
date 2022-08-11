@@ -16,6 +16,17 @@ introduction to the [basic types](http://s2geometry.io/devguide/basic_types).
 
 S2 documentation can be found on [s2geometry.io](http://s2geometry.io).
 
+## API/ABI Stability
+
+Note that all [releases](https://github.com/google/s2geometry/releases) are
+version 0.x, so there are
+[no API or ABI stability guarantees](https://semver.org/#spec-item-4).
+Starting with 1.0 we will adhere to [SemVer](https://semver.org/).
+
+The Python API is particularly unstable, and it is planned that the SWIGged
+API will be replaced by a pybind11 version with more Pythonic names and more
+complete functionality.
+
 ## Requirements for End Users
 
 * [CMake](http://www.cmake.org/)
@@ -85,7 +96,7 @@ cd s2geometry
 
 First, [install Abseil](https://github.com/abseil/abseil-cpp/blob/master/CMake/README.md#traditional-cmake-set-up).
 It must be configured with `-DCMAKE_POSITION_INDEPENDENT_CODE=ON`.
-s2geometry must be configured to use the came C++ version that
+s2geometry must be configured to use the same C++ version that
 abseil uses.  The easiest way to achieve this is to pass
 `-DCMAKE_CXX_STANDARD=11` (or `-DCMAKE_CXX_STANDARD=17`) to `cmake`
 when compiling both abseil and s2geometry.

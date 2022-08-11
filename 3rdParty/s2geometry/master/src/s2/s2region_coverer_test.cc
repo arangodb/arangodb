@@ -417,10 +417,10 @@ TEST(IsCanonical, Normalized) {
        "1/1130", "1/1131", "1/1132", "1/1133"}, options));
 }
 
-void TestCanonicalizeCovering(
-    const vector<string>& input_str,
-    const vector<string>& expected_str,
-    const S2RegionCoverer::Options& options) {
+void TestCanonicalizeCovering(const vector<string>& input_str,
+                              const vector<string>& expected_str,
+                              const S2RegionCoverer::Options& options,
+                              const bool test_cell_union = true) {
   vector<S2CellId> actual, expected;
   for (const auto& str : input_str) {
     actual.push_back(S2CellId::FromDebugString(str));
@@ -430,6 +430,24 @@ void TestCanonicalizeCovering(
   }
   S2RegionCoverer coverer(options);
   EXPECT_FALSE(coverer.IsCanonical(actual));
+
+  if (test_cell_union) {
+    // Test version taking and returning an `S2CellUnion`; this must be done
+    // first, since we use `actual` here and the other version modifies its
+    // argument.
+    const S2CellUnion input_union(actual);
+    // Non-canonical input may become canonical after (or vice versa) after
+    // converting to S2CellUnion, so don't test whether or not the input is
+    // canonical.
+    const S2CellUnion actual_union = coverer.CanonicalizeCovering(input_union);
+    EXPECT_EQ(expected, actual_union.cell_ids());
+    EXPECT_TRUE(coverer.IsCanonical(actual_union.cell_ids()));
+    EXPECT_TRUE(coverer.IsCanonical(actual_union));
+    // `actual` didn't change.
+    EXPECT_FALSE(coverer.IsCanonical(actual));
+  }
+
+  // Test modifying version.
   coverer.CanonicalizeCovering(&actual);
   EXPECT_TRUE(coverer.IsCanonical(actual));
   vector<string> actual_str;
@@ -475,8 +493,10 @@ TEST(CanonicalizeCovering, DenormalizedCellUnion) {
   options.set_level_mod(2);
   TestCanonicalizeCovering(
       {"0/", "1/130", "1/131", "1/132", "1/133"},
-      {"0/0", "0/1", "0/2", "0/3", "1/130", "1/131", "1/132", "1/133"},
-      options);
+      {"0/0", "0/1", "0/2", "0/3", "1/130", "1/131", "1/132", "1/133"}, options,
+      // Denormalized input will be changed by the `S2CellUnion` variants,
+      // so don't test it.
+      /*test_cell_union=*/false);
 }
 
 TEST(CanonicalizeCovering, MaxCellsMergesSmallest) {

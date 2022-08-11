@@ -772,6 +772,32 @@ TEST_F(MutableS2ShapeIndexTest, LongIndexEntriesBound) {
   EXPECT_EQ(sum, 366);
 }
 
+// Test move-construct and move-assign functionality of `S2Shape`.  It has an id
+// value which is set when it's added to an index.  So we can create two
+// `S2LaxPolygonShape`s, add them to an index, then
+TEST(MutableS2ShapeIndex, ShapeIdSwaps) {
+  MutableS2ShapeIndex index;
+  index.Add(s2textformat::MakeLaxPolylineOrDie("1:1, 2:2"));
+  index.Add(s2textformat::MakeLaxPolylineOrDie("3:3, 4:4"));
+  index.Add(s2textformat::MakeLaxPolylineOrDie("5:5, 6:6"));
+
+  S2LaxPolylineShape& a = *down_cast<S2LaxPolylineShape*>(index.shape(1));
+  S2LaxPolylineShape& b = *down_cast<S2LaxPolylineShape*>(index.shape(2));
+  EXPECT_EQ(a.id(), 1);
+  EXPECT_EQ(b.id(), 2);
+
+  // Verify move construction moves the id value.
+  S2LaxPolylineShape c(std::move(a));
+  EXPECT_EQ(c.id(), 1);
+  s2testing::ExpectEqual(c, *s2textformat::MakeLaxPolylineOrDie("3:3, 4:4"));
+
+  // Verify move assignment moves the id value.
+  S2LaxPolylineShape d;
+  d = std::move(b);
+  EXPECT_EQ(d.id(), 2);
+  s2testing::ExpectEqual(d, *s2textformat::MakeLaxPolylineOrDie("5:5, 6:6"));
+}
+
 TEST(S2Shape, user_data) {
   struct MyData {
     int x, y;

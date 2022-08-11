@@ -58,15 +58,15 @@ namespace {
 using absl::ByAnyChar;
 using absl::SkipEmpty;
 using absl::StrContains;
-using absl::StrSplit;
-using absl::make_unique;
 using absl::string_view;
+using absl::StrSplit;
 using s2builderutil::IndexMatchingLayer;
 using s2builderutil::LaxPolygonLayer;
 using s2shapeutil::ContainsBruteForce;
+using absl::make_unique;
 using std::pair;
-using std::unique_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 using EdgeType = S2Builder::EdgeType;

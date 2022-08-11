@@ -305,14 +305,28 @@ class S2Shape {
   virtual const void* user_data() const { return nullptr; }
   virtual void* mutable_user_data() { return nullptr; }
 
+ protected:
+  // S2Shape has some state used by the S2ShapeIndex classes.  If we want to be
+  // able to move or copy derived classes, we need to have those operations
+  // available on S2Shape as well.  Having them defined however presents the
+  // risk of accidental slicing as in:
+  //
+  //     S2Shape& a = S2LaxPolygon(...);
+  //     S2Shape& b = S2LaxPolygon(...);
+  //     a = b; // <-- Does not call S2LaxPolygon's copy assignment.
+  //
+  // So we make these protected to allow Derived classes to decide on their
+  // own move/copy semantics without exposing them to broader use.
+  S2Shape(S2Shape&&) = default;
+  S2Shape(const S2Shape&) = default;
+  S2Shape& operator=(const S2Shape&) = default;
+  S2Shape& operator=(S2Shape&&) = default;
+
  private:
   friend class EncodedS2ShapeIndex;
   friend class MutableS2ShapeIndex;
 
   int id_;  // Assigned by S2ShapeIndex when the shape is added.
-
-  S2Shape(const S2Shape&) = delete;
-  void operator=(const S2Shape&) = delete;
 };
 
 #endif  // S2_S2SHAPE_H_

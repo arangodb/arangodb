@@ -17,10 +17,12 @@
 
 #include "s2/s2point_vector_shape.h"
 
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
 #include "absl/flags/flag.h"
+#include "s2/s2shapeutil_testing.h"
 #include "s2/s2testing.h"
 
 TEST(S2PointVectorShape, Empty) {
@@ -56,4 +58,27 @@ TEST(S2PointVectorShape, ConstructionAndAccess) {
     EXPECT_EQ(pt, edge.v0);
     EXPECT_EQ(pt, edge.v1);
   }
+}
+
+TEST(S2PointVectorShape, Move) {
+  // Construct a shape to use as the correct answer and a second identical shape
+  // to be moved.
+  std::vector<S2Point> points;
+  const int kNumPoints = 100;
+  for (int i = 0; i < kNumPoints; ++i) {
+    points.push_back(S2Testing::RandomPoint());
+  }
+  const S2PointVectorShape correct{points};
+  S2PointVectorShape to_move{points};
+
+  // Test the move constructor.
+  S2PointVectorShape move1(std::move(to_move));
+  s2testing::ExpectEqual(correct, move1);
+  EXPECT_EQ(correct.id(), move1.id());
+
+  // Test the move-assignment operator.
+  S2PointVectorShape move2;
+  move2 = std::move(move1);
+  s2testing::ExpectEqual(correct, move2);
+  EXPECT_EQ(correct.id(), move2.id());
 }

@@ -463,6 +463,7 @@ class S2BooleanOperation {
     S2MemoryTracker* memory_tracker_ = nullptr;
   };
 
+#ifndef SWIG
   // Specifies that the output boundary edges should be sent to a single
   // S2Builder layer.  This version can be used when the dimension of the
   // output geometry is known (e.g., intersecting two polygons to yield a
@@ -492,6 +493,7 @@ class S2BooleanOperation {
   S2BooleanOperation(OpType op_type,
                      std::vector<std::unique_ptr<S2Builder::Layer>> layers,
                      const Options& options = Options());
+#endif
 
   OpType op_type() const { return op_type_; }
   const Options& options() const { return options_; }

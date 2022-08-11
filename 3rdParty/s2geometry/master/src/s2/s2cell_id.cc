@@ -32,6 +32,7 @@
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
 #include "s2/util/bits/bits.h"
+#include "s2/util/coding/coder.h"
 #include "s2/r1interval.h"
 #include "s2/s2coords.h"
 #include "s2/s2latlng.h"

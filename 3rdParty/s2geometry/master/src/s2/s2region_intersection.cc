@@ -16,6 +16,7 @@
 
 #include "s2/s2region_intersection.h"
 
+#include <memory>
 #include <utility>
 
 #include "s2/s2cap.h"

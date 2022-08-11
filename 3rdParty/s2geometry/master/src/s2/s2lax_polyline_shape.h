@@ -45,11 +45,9 @@ class S2LaxPolylineShape : public S2Shape {
   // Constructs an empty polyline.
   S2LaxPolylineShape() : num_vertices_(0) {}
 
-  // Move constructor.
-  S2LaxPolylineShape(S2LaxPolylineShape&&);
+  S2LaxPolylineShape(S2LaxPolylineShape&& other);
 
-  // Move-assignment operator.
-  S2LaxPolylineShape& operator=(S2LaxPolylineShape&&);
+  S2LaxPolylineShape& operator=(S2LaxPolylineShape&& other);
 
   // Constructs an S2LaxPolylineShape with the given vertices.
   explicit S2LaxPolylineShape(absl::Span<const S2Point> vertices);

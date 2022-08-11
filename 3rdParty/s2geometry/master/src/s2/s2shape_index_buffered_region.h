@@ -19,6 +19,7 @@
 #define S2_S2SHAPE_INDEX_BUFFERED_REGION_H_
 
 #include <vector>
+
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
 #include "s2/s2cell_union.h"

@@ -116,6 +116,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <ostream>
 #include <string>
 
 #include <openssl/bn.h>

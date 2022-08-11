@@ -69,13 +69,13 @@
 #include "s2/s2shapeutil_contains_brute_force.h"
 #include "s2/util/math/mathutil.h"
 
-using absl::make_unique;
 using s2pred::DBL_ERR;
 using std::ceil;
+using absl::make_unique;
 using std::max;
 using std::min;
-using std::vector;
 using std::unique_ptr;
+using std::vector;
 
 // The errors due to buffering can be categorized as follows:
 //

@@ -15,7 +15,9 @@
 
 #include "s2/s2text_format.h"
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/memory/memory.h"
@@ -36,8 +38,8 @@
 #include "s2/s2polyline.h"
 
 using absl::Span;
-using absl::make_unique;
 using absl::string_view;
+using absl::make_unique;
 using std::pair;
 using std::string;
 using std::unique_ptr;
@@ -349,7 +351,7 @@ string ToString(const S2LatLngRect& rect) {
   return out;
 }
 
-string ToString(const S2CellId& cell_id) {
+string ToString(const S2CellId cell_id) {
   return cell_id.ToString();
 }
 

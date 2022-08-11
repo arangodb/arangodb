@@ -50,7 +50,6 @@ namespace internal_vector {
 // CRTP base class for all Vector templates.
 template <template <typename> class VecTemplate, typename T, std::size_t N>
 class BasicVector {
- public:
   using D = VecTemplate<T>;
 
  protected:
@@ -98,15 +97,21 @@ class BasicVector {
     return static_cast<const D&>(*this).Data()[b];
   }
 
-  bool operator<(const D& b) const {
-    const T* ap = static_cast<const D&>(*this).Data();
-    const T* bp = b.Data();
+  // TODO(user): Relationals should be nonmembers.
+  bool operator==(const BasicVector& b) const {
+    const T* ap = AsD().Data();
+    return std::equal(ap, ap + this->Size(), b.AsD().Data());
+  }
+  bool operator!=(const BasicVector& b) const { return !(*this == b); }
+  bool operator<(const BasicVector& b) const {
+    const T* ap = AsD().Data();
+    const T* bp = b.AsD().Data();
     return std::lexicographical_compare(ap, ap + this->Size(), bp,
                                         bp + b.Size());
   }
-  bool operator>(const D& b) const { return b < AsD(); }
-  bool operator<=(const D& b) const { return !(AsD() > b); }
-  bool operator>=(const D& b) const { return !(AsD() < b); }
+  bool operator>(const BasicVector& b) const { return b < *this; }
+  bool operator<=(const BasicVector& b) const { return !(*this > b); }
+  bool operator>=(const BasicVector& b) const { return !(*this < b); }
 
   D& operator+=(const D& b) {
     PlusEq(static_cast<D&>(*this).Data(), b.Data(), IdxSeqN{});
@@ -328,23 +333,6 @@ class BasicVector {
     Ignore({(a[Is] /= b, true)...});
   }
 };
-
-template<typename T, template<typename> class VecTemplate, std::size_t N>
-bool operator==(const BasicVector<VecTemplate, T, N>& lhs,
-                const BasicVector<VecTemplate, T, N>& rhs) {
-  auto& vector1 =
-      static_cast<const typename BasicVector<VecTemplate, T, N>::D&>(lhs);
-  auto& vector2 =
-      static_cast<const typename BasicVector<VecTemplate, T, N>::D&>(rhs);
-  return std::equal(vector1.Data(), vector1.Data() + vector1.Size(),
-                    vector2.Data(), vector2.Data() + vector2.Size());
-}
-
-template<typename T, template<typename> class VecTemplate, std::size_t N>
-bool operator!=(const BasicVector<VecTemplate, T, N>& lhs,
-                const BasicVector<VecTemplate, T, N>& rhs) {
-  return !(lhs == rhs);
-}
 
 // These templates must be defined outside of BasicVector so that the
 // template specialization match algorithm must deduce 'a'. See the review

@@ -290,7 +290,7 @@ class S2RegionTermIndexer {
  private:
   enum TermType { ANCESTOR, COVERING };
 
-  std::string GetTerm(TermType term_type, const S2CellId& id,
+  std::string GetTerm(TermType term_type, const S2CellId id,
                       absl::string_view prefix) const;
 
   Options options_;

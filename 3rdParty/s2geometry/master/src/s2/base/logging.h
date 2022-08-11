@@ -62,7 +62,7 @@ class S2LogMessage {
     : severity_(severity), stream_(stream) {
     if (enabled()) {
       stream_ << file << ":" << line << " "
-              << absl::LogSeverityName(severity_) << " ";
+              << absl::LogSeverityName(severity) << " ";
     }
   }
   ~S2LogMessage() { if (enabled()) stream_ << std::endl; }

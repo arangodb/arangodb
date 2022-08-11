@@ -226,7 +226,7 @@ T GetSurfaceIntegral(S2PointLoopSpan loop,
   if (loop.size() < 3) return sum;
 
   S2Point origin = loop[0];
-  for (int i = 1; i + 1 < static_cast<int>(loop.size()); ++i) {
+  for (int i = 1; i + 1 < loop.size(); ++i) {
     // Let V_i be loop[i], let O be the current origin, and let length(A, B)
     // be the length of edge (A, B).  At the start of each loop iteration, the
     // "leading edge" of the triangle fan is (O, V_i), and we want to extend

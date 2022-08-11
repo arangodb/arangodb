@@ -18,6 +18,7 @@
 #include "s2/s2builderutil_s2polyline_vector_layer.h"
 
 #include <memory>
+#include <utility>
 
 using std::unique_ptr;
 using std::vector;

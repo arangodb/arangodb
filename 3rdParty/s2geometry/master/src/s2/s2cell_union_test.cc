@@ -659,4 +659,3 @@ TEST(S2CellUnion, IntersectionOneInputNormalized) {
   S2CellUnion intersection = parent.Intersection(children);
   EXPECT_EQ(intersection, children);
 }
-

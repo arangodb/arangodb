@@ -18,6 +18,7 @@
 #ifndef S2_S2CLOSEST_EDGE_QUERY_TESTING_H_
 #define S2_S2CLOSEST_EDGE_QUERY_TESTING_H_
 
+#include <memory>
 #include <vector>
 
 #include "s2/mutable_s2shape_index.h"

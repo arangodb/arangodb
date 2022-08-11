@@ -15,8 +15,10 @@
 
 #include "s2/s2furthest_edge_query.h"
 
+#include <algorithm>
 #include <memory>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -58,6 +60,8 @@ TEST(S2FurthestEdgeQuery, NoEdges) {
   EXPECT_EQ(S1ChordAngle::Negative(), edge.distance());
   EXPECT_EQ(-1, edge.edge_id());
   EXPECT_EQ(-1, edge.shape_id());
+  EXPECT_FALSE(edge.is_interior());
+  EXPECT_TRUE(edge.is_empty());
   EXPECT_EQ(S1ChordAngle::Negative(), query.GetDistance(&target));
 }
 
@@ -80,6 +84,24 @@ TEST(S2FurthestEdgeQuery, OptionsNotModified) {
   EXPECT_EQ(options.max_results(), query.options().max_results());
   EXPECT_EQ(options.min_distance(), query.options().min_distance());
   EXPECT_EQ(options.max_error(), query.options().max_error());
+}
+
+TEST(S2FurthestEdgeQuery, OptionsS1AngleSetters) {
+  // Verify that the S1Angle and S1ChordAngle versions do the same thing.
+  // This is mainly to prevent the (so far unused) S1Angle versions from
+  // being detected as dead code.
+  S2FurthestEdgeQuery::Options angle_options, chord_angle_options;
+  angle_options.set_min_distance(S1Angle::Degrees(1));
+  chord_angle_options.set_min_distance(S1ChordAngle::Degrees(1));
+  EXPECT_EQ(chord_angle_options.min_distance(), angle_options.min_distance());
+
+  angle_options.set_inclusive_min_distance(S1Angle::Degrees(1));
+  chord_angle_options.set_inclusive_min_distance(S1ChordAngle::Degrees(1));
+  EXPECT_EQ(chord_angle_options.min_distance(), angle_options.min_distance());
+
+  angle_options.set_conservative_min_distance(S1Angle::Degrees(1));
+  chord_angle_options.set_conservative_min_distance(S1ChordAngle::Degrees(1));
+  EXPECT_EQ(chord_angle_options.min_distance(), angle_options.min_distance());
 }
 
 // In furthest edge queries, the following distance computation is used when
@@ -159,6 +181,8 @@ TEST(S2FurthestEdgeQuery, AntipodalPointInsideIndexedPolygon) {
   EXPECT_EQ(1, results[0].shape_id());
   // Should find the interior, so no specific edge id.
   EXPECT_EQ(-1, results[0].edge_id());
+  EXPECT_TRUE(results[0].is_interior());
+  EXPECT_FALSE(results[0].is_empty());
 
   // Next check that with include_interiors set to false, the distance is less
   // than 180 for the same target and index.
@@ -168,7 +192,14 @@ TEST(S2FurthestEdgeQuery, AntipodalPointInsideIndexedPolygon) {
   EXPECT_LE(results[0].distance(), S1ChordAngle::Straight());
   EXPECT_EQ(1, results[0].shape_id());
   // Found a specific edge, so id should be positive.
-  EXPECT_NE(-1, results[0].edge_id());
+  EXPECT_EQ(3, results[0].edge_id());
+  EXPECT_FALSE(results[0].is_interior());
+  EXPECT_FALSE(results[0].is_empty());
+  S2Shape::Edge e0 = query.GetEdge(results[0]);
+  EXPECT_TRUE(S2::ApproxEquals(e0.v0, S2LatLng::FromDegrees(5, 10).ToPoint()))
+      << S2LatLng(e0.v0);
+  EXPECT_TRUE(S2::ApproxEquals(e0.v1, S2LatLng::FromDegrees(0, 10).ToPoint()))
+      << S2LatLng(e0.v1);
 }
 
 TEST(S2FurthestEdgeQuery, AntipodalPointOutsideIndexedPolygon) {

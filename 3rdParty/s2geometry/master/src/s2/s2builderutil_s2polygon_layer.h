@@ -35,6 +35,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include "s2/base/logging.h"
 #include "absl/container/btree_map.h"
 #include "absl/memory/memory.h"

@@ -18,6 +18,7 @@
 #ifndef S2_S2CROSSING_EDGE_QUERY_H_
 #define S2_S2CROSSING_EDGE_QUERY_H_
 
+#include <functional>
 #include <type_traits>
 #include <vector>
 

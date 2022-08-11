@@ -18,6 +18,7 @@
 #ifndef S2_S2BUILDERUTIL_TESTING_H_
 #define S2_S2BUILDERUTIL_TESTING_H_
 
+#include <memory>
 #include <vector>
 
 #include "absl/memory/memory.h"

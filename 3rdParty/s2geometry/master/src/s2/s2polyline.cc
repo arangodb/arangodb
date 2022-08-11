@@ -51,10 +51,10 @@
 #include "s2/util/coding/coder.h"
 #include "s2/util/math/matrix3x3.h"
 
-using absl::make_unique;
 using absl::Span;
 using s2builderutil::S2CellIdSnapFunction;
 using s2builderutil::S2PolylineLayer;
+using absl::make_unique;
 using std::max;
 using std::min;
 using std::set;
@@ -142,7 +142,7 @@ void S2Polyline::InitToSimplified(
 
 void S2Polyline::InitFromBuilder(const S2Polyline& polyline,
                                  S2Builder* builder) {
-  builder->StartLayer(absl::make_unique<S2PolylineLayer>(this));
+  builder->StartLayer(make_unique<S2PolylineLayer>(this));
   builder->AddPolyline(polyline);
   S2Error error;
   S2_CHECK(builder->Build(&error)) << "Could not build polyline: " << error;

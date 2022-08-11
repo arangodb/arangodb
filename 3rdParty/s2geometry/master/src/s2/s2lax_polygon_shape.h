@@ -84,6 +84,10 @@ class S2LaxPolygonShape : public S2Shape {
   // Constructs an empty polygon.
   S2LaxPolygonShape() : num_loops_(0), num_vertices_(0) {}
 
+  S2LaxPolygonShape(const S2LaxPolygonShape&) = delete;
+  S2LaxPolygonShape(S2LaxPolygonShape&& b);
+  S2LaxPolygonShape& operator=(S2LaxPolygonShape&& b);
+
   // Constructs an S2LaxPolygonShape from the given vertex loops.
   using Loop = std::vector<S2Point>;
   explicit S2LaxPolygonShape(const std::vector<Loop>& loops);
@@ -95,8 +99,6 @@ class S2LaxPolygonShape : public S2Shape {
   // Constructs an S2LaxPolygonShape from an S2Polygon, by copying its data.
   // Full and empty S2Polygons are supported.
   explicit S2LaxPolygonShape(const S2Polygon& polygon);
-
-  ~S2LaxPolygonShape() override;
 
   // Initializes an S2LaxPolygonShape from the given vertex loops.
   void Init(const std::vector<Loop>& loops);
@@ -151,7 +153,8 @@ class S2LaxPolygonShape : public S2Shape {
 
   // The loop that contained the edge returned by the previous call to the
   // edge() method.  This is used as a hint to speed up edge location when
-  // there are many loops.
+  // there are many loops.  Benchmarks indicate that the improved locality
+  // this provides can speed up chain position lookup by 1.7-4.7x.
   mutable std::atomic<int> prev_loop_{0};
 
   int32 num_vertices_;
@@ -173,6 +176,9 @@ class EncodedS2LaxPolygonShape : public S2Shape {
 
   // Constructs an uninitialized object; requires Init() to be called.
   EncodedS2LaxPolygonShape() {}
+
+  EncodedS2LaxPolygonShape(EncodedS2LaxPolygonShape&&);
+  EncodedS2LaxPolygonShape& operator=(EncodedS2LaxPolygonShape&&);
 
   // Initializes an EncodedS2LaxPolygonShape.
   //
