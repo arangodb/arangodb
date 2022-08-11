@@ -1,6 +1,19 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed an invalid attribute access in AQL query optimization.
+  Without the fix, a query such as
+
+      LET data = { 
+        "a": [ 
+          ...
+        ], 
+      } 
+      FOR d IN data["a"] 
+        RETURN d
+
+  could fail with error "invalid operand to FOR loop, expecting Array".
+
 * Added support for AT LEAST quantifier for SEARCH.
 
 * Fixed BTS-335 Ranges parsing fixed for nested queries.
