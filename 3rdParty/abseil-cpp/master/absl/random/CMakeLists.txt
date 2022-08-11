@@ -223,8 +223,8 @@ absl_cc_library(
   LINKOPTS
     ${ABSL_DEFAULT_LINKOPTS}
   DEPS
+    absl::config
     absl::inlined_vector
-    absl::random_internal_nonsecure_base
     absl::random_internal_pool_urbg
     absl::random_internal_salted_seed_seq
     absl::random_internal_seed_material
@@ -569,7 +569,7 @@ absl_cc_library(
     ${ABSL_DEFAULT_COPTS}
   LINKOPTS
     ${ABSL_DEFAULT_LINKOPTS}
-    $<$<BOOL:${MINGW}>:"bcrypt">
+    $<$<BOOL:${MINGW}>:-lbcrypt>
   DEPS
     absl::core_headers
     absl::optional
@@ -727,7 +727,7 @@ absl_cc_library(
     ${ABSL_DEFAULT_LINKOPTS}
   DEPS
     absl::core_headers
-    absl::optional
+    absl::inlined_vector
     absl::random_internal_pool_urbg
     absl::random_internal_salted_seed_seq
     absl::random_internal_seed_material

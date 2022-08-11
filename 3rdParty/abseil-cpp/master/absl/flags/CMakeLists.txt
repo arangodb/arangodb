@@ -87,6 +87,7 @@ absl_cc_library(
     absl::config
     absl::core_headers
     absl::log_severity
+    absl::optional
     absl::strings
     absl::str_format
 )
@@ -465,5 +466,5 @@ absl_cc_test(
     absl::flags_reflection
     absl::flags_usage
     absl::strings
-    GTest::gtest
+    GTest::gmock
 )

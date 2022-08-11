@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     graphcycles_internal
@@ -32,6 +33,7 @@ absl_cc_library(
     absl::raw_logging_internal
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     kernel_timeout_internal
@@ -125,6 +127,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     thread_pool
@@ -133,8 +136,9 @@ absl_cc_library(
   COPTS
     ${ABSL_DEFAULT_COPTS}
   DEPS
-    absl::synchronization
+    absl::any_invocable
     absl::core_headers
+    absl::synchronization
   TESTONLY
 )
 
@@ -159,6 +163,20 @@ absl_cc_test(
 
 absl_cc_test(
   NAME
+    mutex_method_pointer_test
+  SRCS
+    "mutex_method_pointer_test.cc"
+  COPTS
+    ${ABSL_TEST_COPTS}
+  DEPS
+    absl::base
+    absl::config
+    absl::synchronization
+    GTest::gmock_main
+)
+
+absl_cc_test(
+  NAME
     notification_test
   SRCS
     "notification_test.cc"
@@ -170,6 +188,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     per_thread_sem_test_common

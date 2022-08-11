@@ -13,22 +13,21 @@ list(APPEND ABSL_CLANG_CL_FLAGS
 )
 
 list(APPEND ABSL_CLANG_CL_TEST_FLAGS
-    "-Wno-c99-extensions"
     "-Wno-deprecated-declarations"
-    "-Wno-missing-noreturn"
+    "-Wno-implicit-int-conversion"
     "-Wno-missing-prototypes"
     "-Wno-missing-variable-declarations"
-    "-Wno-null-conversion"
     "-Wno-shadow"
-    "-Wno-shift-sign-overflow"
+    "-Wno-shorten-64-to-32"
     "-Wno-sign-compare"
+    "-Wno-sign-conversion"
+    "-Wno-unreachable-code-loop-increment"
     "-Wno-unused-function"
     "-Wno-unused-member-function"
     "-Wno-unused-parameter"
     "-Wno-unused-private-field"
     "-Wno-unused-template"
     "-Wno-used-but-marked-unused"
-    "-Wno-zero-as-null-pointer-constant"
     "-Wno-gnu-zero-variadic-macro-arguments"
 )
 
@@ -51,7 +50,6 @@ list(APPEND ABSL_GCC_FLAGS
 )
 
 list(APPEND ABSL_GCC_TEST_FLAGS
-    "-Wno-conversion-null"
     "-Wno-deprecated-declarations"
     "-Wno-missing-declarations"
     "-Wno-sign-compare"
@@ -80,6 +78,7 @@ list(APPEND ABSL_LLVM_FLAGS
     "-Wshadow-all"
     "-Wstring-conversion"
     "-Wtautological-overlap-compare"
+    "-Wtautological-unsigned-zero-compare"
     "-Wundef"
     "-Wuninitialized"
     "-Wunreachable-code"
@@ -91,30 +90,26 @@ list(APPEND ABSL_LLVM_FLAGS
     "-Wno-float-conversion"
     "-Wno-implicit-float-conversion"
     "-Wno-implicit-int-float-conversion"
-    "-Wno-implicit-int-conversion"
-    "-Wno-shorten-64-to-32"
-    "-Wno-sign-conversion"
     "-Wno-unknown-warning-option"
     "-DNOMINMAX"
 )
 
 list(APPEND ABSL_LLVM_TEST_FLAGS
-    "-Wno-c99-extensions"
     "-Wno-deprecated-declarations"
-    "-Wno-missing-noreturn"
+    "-Wno-implicit-int-conversion"
     "-Wno-missing-prototypes"
     "-Wno-missing-variable-declarations"
-    "-Wno-null-conversion"
     "-Wno-shadow"
-    "-Wno-shift-sign-overflow"
+    "-Wno-shorten-64-to-32"
     "-Wno-sign-compare"
+    "-Wno-sign-conversion"
+    "-Wno-unreachable-code-loop-increment"
     "-Wno-unused-function"
     "-Wno-unused-member-function"
     "-Wno-unused-parameter"
     "-Wno-unused-private-field"
     "-Wno-unused-template"
     "-Wno-used-but-marked-unused"
-    "-Wno-zero-as-null-pointer-constant"
     "-Wno-gnu-zero-variadic-macro-arguments"
 )
 

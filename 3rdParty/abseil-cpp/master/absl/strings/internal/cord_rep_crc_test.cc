@@ -27,13 +27,10 @@ namespace {
 
 using ::absl::cordrep_testing::MakeFlat;
 using ::testing::Eq;
+using ::testing::IsNull;
 using ::testing::Ne;
 
 #if !defined(NDEBUG) && GTEST_HAS_DEATH_TEST
-
-TEST(CordRepCrc, NewWithNullPtr) {
-  EXPECT_DEATH(CordRepCrc::New(nullptr, 0), "");
-}
 
 TEST(CordRepCrc, RemoveCrcWithNullptr) {
   EXPECT_DEATH(RemoveCrcNode(nullptr), "");
@@ -46,7 +43,7 @@ TEST(CordRepCrc, NewDestroy) {
   CordRepCrc* crc = CordRepCrc::New(rep, 12345);
   EXPECT_TRUE(crc->refcount.IsOne());
   EXPECT_THAT(crc->child, Eq(rep));
-  EXPECT_THAT(crc->crc, Eq(12345));
+  EXPECT_THAT(crc->crc, Eq(12345u));
   EXPECT_TRUE(rep->refcount.IsOne());
   CordRepCrc::Destroy(crc);
 }
@@ -58,7 +55,7 @@ TEST(CordRepCrc, NewExistingCrcNotShared) {
   EXPECT_THAT(new_crc, Eq(crc));
   EXPECT_TRUE(new_crc->refcount.IsOne());
   EXPECT_THAT(new_crc->child, Eq(rep));
-  EXPECT_THAT(new_crc->crc, Eq(54321));
+  EXPECT_THAT(new_crc->crc, Eq(54321u));
   EXPECT_TRUE(rep->refcount.IsOne());
   CordRepCrc::Destroy(new_crc);
 }
@@ -75,11 +72,21 @@ TEST(CordRepCrc, NewExistingCrcShared) {
   EXPECT_FALSE(rep->refcount.IsOne());
   EXPECT_THAT(crc->child, Eq(rep));
   EXPECT_THAT(new_crc->child, Eq(rep));
-  EXPECT_THAT(crc->crc, Eq(12345));
-  EXPECT_THAT(new_crc->crc, Eq(54321));
+  EXPECT_THAT(crc->crc, Eq(12345u));
+  EXPECT_THAT(new_crc->crc, Eq(54321u));
 
   CordRep::Unref(crc);
   CordRep::Unref(new_crc);
+}
+
+TEST(CordRepCrc, NewEmpty) {
+  CordRepCrc* crc = CordRepCrc::New(nullptr, 12345);
+  EXPECT_TRUE(crc->refcount.IsOne());
+  EXPECT_THAT(crc->child, IsNull());
+  EXPECT_THAT(crc->length, Eq(0u));
+  EXPECT_THAT(crc->crc, Eq(12345u));
+  EXPECT_TRUE(crc->refcount.IsOne());
+  CordRepCrc::Destroy(crc);
 }
 
 TEST(CordRepCrc, RemoveCrcNotCrc) {

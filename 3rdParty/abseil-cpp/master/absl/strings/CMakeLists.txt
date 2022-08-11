@@ -21,7 +21,9 @@ absl_cc_library(
     "ascii.h"
     "charconv.h"
     "escaping.h"
+    "internal/damerau_levenshtein_distance.h"
     "internal/string_constant.h"
+    "internal/has_absl_stringify.h"
     "match.h"
     "numbers.h"
     "str_cat.h"
@@ -39,8 +41,11 @@ absl_cc_library(
     "internal/charconv_bigint.h"
     "internal/charconv_parse.cc"
     "internal/charconv_parse.h"
+    "internal/damerau_levenshtein_distance.cc"
     "internal/memutil.cc"
     "internal/memutil.h"
+    "internal/stringify_sink.h"
+    "internal/stringify_sink.cc"
     "internal/stl_type_traits.h"
     "internal/str_join_internal.h"
     "internal/str_split_internal.h"
@@ -68,6 +73,7 @@ absl_cc_library(
   PUBLIC
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     strings_internal
@@ -128,6 +134,19 @@ absl_cc_test(
   DEPS
     absl::strings
     absl::core_headers
+    GTest::gmock_main
+)
+
+absl_cc_test(
+  NAME
+    damerau_levenshtein_distance_test
+  SRCS
+    "internal/damerau_levenshtein_distance_test.cc"
+  COPTS
+    ${ABSL_TEST_COPTS}
+  DEPS
+    absl::strings
+    absl::base
     GTest::gmock_main
 )
 
@@ -280,6 +299,7 @@ absl_cc_test(
     ${ABSL_TEST_COPTS}
   DEPS
     absl::strings
+    absl::str_format
     absl::core_headers
     GTest::gmock_main
 )
@@ -385,6 +405,7 @@ absl_cc_library(
   PUBLIC
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     str_format_internal
@@ -412,6 +433,7 @@ absl_cc_library(
     absl::core_headers
     absl::numeric_representation
     absl::type_traits
+    absl::utility
     absl::int128
     absl::span
 )
@@ -492,6 +514,7 @@ absl_cc_test(
   DEPS
     absl::strings
     absl::str_format_internal
+    absl::core_headers
     absl::raw_logging_internal
     absl::int128
     GTest::gmock_main
@@ -523,6 +546,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     pow10_helper
@@ -550,6 +574,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cord_internal
@@ -588,6 +613,7 @@ absl_cc_library(
     absl::type_traits
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cordz_update_tracker
@@ -614,6 +640,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cordz_functions
@@ -642,6 +669,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cordz_statistics
@@ -656,6 +684,7 @@ absl_cc_library(
     absl::synchronization
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cordz_handle
@@ -689,6 +718,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cordz_info
@@ -756,6 +786,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cordz_sample_token
@@ -794,6 +825,7 @@ absl_cc_test(
     GTest::gmock_main
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cordz_update_scope
@@ -832,10 +864,12 @@ absl_cc_library(
     cord
   HDRS
     "cord.h"
+    "cord_buffer.h"
   SRCS
     "cord.cc"
     "cord_analysis.cc"
     "cord_analysis.h"
+    "cord_buffer.cc"
   COPTS
     ${ABSL_DEFAULT_COPTS}
   DEPS
@@ -859,6 +893,7 @@ absl_cc_library(
   PUBLIC
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cord_rep_test_util
@@ -887,8 +922,10 @@ absl_cc_library(
     absl::cord_internal
     absl::strings
   TESTONLY
+  PUBLIC
 )
 
+# Internal-only target, do not depend on directly.
 absl_cc_library(
   NAME
     cordz_test_helpers

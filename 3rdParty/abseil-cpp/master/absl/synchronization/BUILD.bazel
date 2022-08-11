@@ -34,7 +34,9 @@ cc_library(
     hdrs = [
         "internal/graphcycles.h",
     ],
-    copts = ABSL_DEFAULT_COPTS,
+    copts = ABSL_DEFAULT_COPTS + select({
+        "//conditions:default": [],
+    }),
     linkopts = ABSL_DEFAULT_LINKOPTS,
     visibility = [
         "//absl:__subpackages__",
@@ -95,8 +97,8 @@ cc_library(
     deps = [
         ":graphcycles_internal",
         ":kernel_timeout_internal",
-        "//absl/base",
         "//absl/base:atomic_hook",
+        "//absl/base",
         "//absl/base:base_internal",
         "//absl/base:config",
         "//absl/base:core_headers",
@@ -106,7 +108,9 @@ cc_library(
         "//absl/debugging:stacktrace",
         "//absl/debugging:symbolize",
         "//absl/time",
-    ],
+    ] + select({
+        "//conditions:default": [],
+    }),
 )
 
 cc_test(
@@ -115,6 +119,9 @@ cc_test(
     srcs = ["barrier_test.cc"],
     copts = ABSL_TEST_COPTS,
     linkopts = ABSL_DEFAULT_LINKOPTS,
+    tags = [
+        "no_test_wasm",
+    ],
     deps = [
         ":synchronization",
         "//absl/time",
@@ -128,6 +135,9 @@ cc_test(
     srcs = ["blocking_counter_test.cc"],
     copts = ABSL_TEST_COPTS,
     linkopts = ABSL_DEFAULT_LINKOPTS,
+    tags = [
+        "no_test_wasm",
+    ],
     deps = [
         ":synchronization",
         "//absl/time",
@@ -190,6 +200,7 @@ cc_library(
     deps = [
         ":synchronization",
         "//absl/base:core_headers",
+        "//absl/functional:any_invocable",
     ],
 )
 
@@ -209,6 +220,18 @@ cc_test(
         "//absl/base:raw_logging_internal",
         "//absl/memory",
         "//absl/time",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "mutex_method_pointer_test",
+    srcs = ["mutex_method_pointer_test.cc"],
+    copts = ABSL_TEST_COPTS,
+    linkopts = ABSL_DEFAULT_LINKOPTS,
+    deps = [
+        ":synchronization",
+        "//absl/base:config",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -249,6 +272,7 @@ cc_test(
     srcs = ["notification_test.cc"],
     copts = ABSL_TEST_COPTS,
     linkopts = ABSL_DEFAULT_LINKOPTS,
+    tags = ["no_test_lexan"],
     deps = [
         ":synchronization",
         "//absl/time",
@@ -275,9 +299,12 @@ cc_library(
 
 cc_test(
     name = "per_thread_sem_test",
-    size = "medium",
+    size = "large",
     copts = ABSL_TEST_COPTS,
     linkopts = ABSL_DEFAULT_LINKOPTS,
+    tags = [
+        "no_test_wasm",
+    ],
     deps = [
         ":per_thread_sem_test_common",
         ":synchronization",
@@ -294,7 +321,10 @@ cc_test(
     ],
     copts = ABSL_TEST_COPTS,
     linkopts = ABSL_DEFAULT_LINKOPTS,
-    tags = ["no_test_ios_x86_64"],
+    tags = [
+        "no_test_ios_x86_64",
+        "no_test_wasm",
+    ],
     deps = [
         ":synchronization",
         "//absl/base:core_headers",

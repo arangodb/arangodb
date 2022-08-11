@@ -23,27 +23,12 @@
 #ifndef ABSL_STRINGS_NUMBERS_H_
 #define ABSL_STRINGS_NUMBERS_H_
 
-#ifdef __SSE4_2__
-#if defined(_MSC_VER)
-/* Microsoft C/C++-compatible compiler */
-#include <intrin.h>
-#elif defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
-/* GCC-compatible compiler, targeting x86/x86-64 */
-#include <x86intrin.h>
-#elif defined(__GNUC__) && defined(__ARM_NEON__)
-/* GCC-compatible compiler, targeting ARM with NEON */
-#include <arm_neon.h>
-#elif defined(__GNUC__) && defined(__IWMMXT__)
-/* GCC-compatible compiler, targeting ARM with WMMX */
-#include <mmintrin.h>
-#elif (defined(__GNUC__) || defined(__xlC__)) && \
-    (defined(__VEC__) || defined(__ALTIVEC__))
-/* XLC or GCC-compatible compiler, targeting PowerPC with VMX/VSX */
-#include <altivec.h>
-#elif defined(__GNUC__) && defined(__SPE__)
-/* GCC-compatible compiler, targeting PowerPC with SPE */
-#include <spe.h>
+#ifdef __SSSE3__
+#include <tmmintrin.h>
 #endif
+
+#ifdef _MSC_VER
+#include <intrin.h>
 #endif
 
 #include <cstddef>
@@ -55,14 +40,7 @@
 #include <type_traits>
 
 #include "absl/base/config.h"
-#ifdef __SSE4_2__
-// TODO(jorg): Remove this when we figure out the right way
-// to swap bytes on SSE 4.2 that works with the compilers
-// we claim to support.  Also, add tests for the compiler
-// that doesn't support the Intel _bswap64 intrinsic but
-// does support all the SSE 4.2 intrinsics
 #include "absl/base/internal/endian.h"
-#endif
 #include "absl/base/macros.h"
 #include "absl/base/port.h"
 #include "absl/numeric/bits.h"
@@ -265,7 +243,7 @@ ABSL_MUST_USE_RESULT bool safe_strtoi_base(absl::string_view s, int_type* out,
 // Returns the number of non-pad digits of the output (it can never be zero
 // since 0 has one digit).
 inline size_t FastHexToBufferZeroPad16(uint64_t val, char* out) {
-#ifdef __SSE4_2__
+#ifdef ABSL_INTERNAL_HAVE_SSSE3
   uint64_t be = absl::big_endian::FromHost64(val);
   const auto kNibbleMask = _mm_set1_epi8(0xf);
   const auto kHexDigits = _mm_setr_epi8('0', '1', '2', '3', '4', '5', '6', '7',

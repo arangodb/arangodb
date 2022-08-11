@@ -17,22 +17,21 @@ MSVC_BIG_WARNING_FLAGS = [
 ]
 
 LLVM_TEST_DISABLE_WARNINGS_FLAGS = [
-    "-Wno-c99-extensions",
     "-Wno-deprecated-declarations",
-    "-Wno-missing-noreturn",
+    "-Wno-implicit-int-conversion",
     "-Wno-missing-prototypes",
     "-Wno-missing-variable-declarations",
-    "-Wno-null-conversion",
     "-Wno-shadow",
-    "-Wno-shift-sign-overflow",
+    "-Wno-shorten-64-to-32",
     "-Wno-sign-compare",
+    "-Wno-sign-conversion",
+    "-Wno-unreachable-code-loop-increment",
     "-Wno-unused-function",
     "-Wno-unused-member-function",
     "-Wno-unused-parameter",
     "-Wno-unused-private-field",
     "-Wno-unused-template",
     "-Wno-used-but-marked-unused",
-    "-Wno-zero-as-null-pointer-constant",
     # gtest depends on this GNU extension being offered.
     "-Wno-gnu-zero-variadic-macro-arguments",
 ]
@@ -68,7 +67,6 @@ COPT_VARS = {
         "-DNOMINMAX",
     ],
     "ABSL_GCC_TEST_FLAGS": [
-        "-Wno-conversion-null",
         "-Wno-deprecated-declarations",
         "-Wno-missing-declarations",
         "-Wno-sign-compare",
@@ -96,6 +94,7 @@ COPT_VARS = {
         "-Wshadow-all",
         "-Wstring-conversion",
         "-Wtautological-overlap-compare",
+        "-Wtautological-unsigned-zero-compare",
         "-Wundef",
         "-Wuninitialized",
         "-Wunreachable-code",
@@ -109,9 +108,6 @@ COPT_VARS = {
         "-Wno-float-conversion",
         "-Wno-implicit-float-conversion",
         "-Wno-implicit-int-float-conversion",
-        "-Wno-implicit-int-conversion",
-        "-Wno-shorten-64-to-32",
-        "-Wno-sign-conversion",
         # Disable warnings on unknown warning flags (when warning flags are
         # unknown on older compiler versions)
         "-Wno-unknown-warning-option",

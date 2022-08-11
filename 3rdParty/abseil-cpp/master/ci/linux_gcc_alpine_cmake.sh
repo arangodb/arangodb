@@ -23,7 +23,7 @@ fi
 source "${ABSEIL_ROOT}/ci/cmake_common.sh"
 
 if [[ -z ${ABSL_CMAKE_CXX_STANDARDS:-} ]]; then
-  ABSL_CMAKE_CXX_STANDARDS="11 14 17"
+  ABSL_CMAKE_CXX_STANDARDS="14 17"
 fi
 
 if [[ -z ${ABSL_CMAKE_BUILD_TYPES:-} ]]; then
@@ -58,6 +58,7 @@ for std in ${ABSL_CMAKE_CXX_STANDARDS}; do
             -DCMAKE_CXX_STANDARD=${std} \
             -DCMAKE_MODULE_LINKER_FLAGS=\"-Wl,--no-undefined\" && \
           make -j$(nproc) && \
+          TZDIR=/abseil-cpp/absl/time/internal/cctz/testdata/zoneinfo \
           ctest -j$(nproc) --output-on-failure"
     done
   done
