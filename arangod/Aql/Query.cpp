@@ -185,11 +185,15 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
 Query::~Query() {
   // In the most derived class needs to explicitly call 'destroy()'
   // because otherwise we have potential data races on the vptr
-  TRI_ASSERT(_wasDestroy);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_wasDestroyed);
+#endif
 }
 
 void Query::destroy() {
-  TRI_ASSERT(!std::exchange(_wasDestroy, true));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!std::exchange(_wasDestroyed, true));
+#endif
 
   unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
