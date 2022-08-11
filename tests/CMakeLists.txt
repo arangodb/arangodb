@@ -288,11 +288,12 @@ set(ARANGODB_TESTS_SOURCES
   V8Server/V8AnalyzersTest.cpp
   V8Server/V8UsersTest.cpp
   V8Server/V8ViewsTest.cpp
-  VocBase/VocbaseTest.cpp
+  VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
+  VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
