@@ -26,13 +26,6 @@ endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
-message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
-  set(BUILDING_FOR_ARM64 ON)
-else()
-  set(BUILDING_FOR_ARM64 OFF)
-endif()
-
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -720,6 +713,7 @@ endif ()
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
+set(BUILDING_FOR_ARM64 OFF)
 if (NOT WINDOWS)
   include(TargetArch)
 
@@ -734,6 +728,12 @@ if (NOT WINDOWS)
     set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
   endif ()
 
+  if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL CMAKE_TARGET_ARCHITECTURE_CODE)
+    # Probably we are cross-compiling or CMAKE_SYSTEM_PROCESSOR is an empty string.
+    message(WARNING "Changing CMAKE_SYSTEM_PROCESSOR from ${CMAKE_SYSTEM_PROCESSOR} to ${CMAKE_TARGET_ARCHITECTURES}")
+    set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_TARGET_ARCHITECTURES}")
+  endif()
+
   include(VcMacros)
 
   # Detect target architecture properties. This honors
@@ -747,6 +747,14 @@ if (NOT WINDOWS)
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+  set(BUILDING_FOR_ARM64 ON)
+else()
+  set(BUILDING_FOR_ARM64 OFF)
+endif()
+
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
 
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
