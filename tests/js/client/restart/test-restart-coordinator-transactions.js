@@ -115,6 +115,14 @@ function testSuite() {
         
         waitForAlive(30, coordinator.url, {});
       }
+
+      // connection to server was closed, so next request may fail.
+      try {
+        // issue a dummy request to the server. if that fails because of
+        // a broken connection, we don't care.
+        tc.count();
+        // all following requests should be fine again
+      } catch (err) {}
       
       // will fail, because the coordinator owning the
       // transaction got restarted
