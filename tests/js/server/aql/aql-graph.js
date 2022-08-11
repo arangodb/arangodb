@@ -1843,7 +1843,6 @@ function ShortestPathErrorTestSuite() {
 
       const result = db._query(query);
       const extra = result.getExtra();
-      print(extra);
       assertEqual(1, extra.warnings.length);
       assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
       assertTrue(extra.warnings[0].message.includes('in SHORTEST_PATH statement'));
@@ -1862,7 +1861,6 @@ function ShortestPathErrorTestSuite() {
 
       const result = db._query(query);
       const extra = result.getExtra();
-      print(extra);
       assertEqual(1, extra.warnings.length);
       assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
       assertTrue(extra.warnings[0].message.includes('in K_PATHS statement'));
@@ -1881,7 +1879,6 @@ function ShortestPathErrorTestSuite() {
 
       const result = db._query(query);
       const extra = result.getExtra();
-      print(extra);
       assertEqual(1, extra.warnings.length);
       assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
       assertTrue(extra.warnings[0].message.includes('in K_SHORTEST_PATHS statement'));
@@ -1900,7 +1897,6 @@ function ShortestPathErrorTestSuite() {
 
       const result = db._query(query);
       const extra = result.getExtra();
-      print(extra);
       assertEqual(1, extra.warnings.length);
       assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
       assertTrue(extra.warnings[0].message.includes('in ALL_SHORTEST_PATHS statement'));
