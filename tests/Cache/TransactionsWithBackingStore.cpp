@@ -348,7 +348,7 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   auto writeWaitInterval = std::chrono::milliseconds(50);
   std::uint32_t storeBias;
 
-  bool doneRebalancing = false;
+  std::atomic_bool doneRebalancing = false;
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
     while (!doneRebalancing) {
       auto status = rebalancer.rebalance();
