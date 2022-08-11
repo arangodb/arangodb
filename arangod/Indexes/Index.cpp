@@ -261,6 +261,17 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
   }
 }
 
+/// @brief validate fields that start or end with ":"
+void Index::validateFieldsWithSpecialCase(VPackSlice const& fields) {
+  for (VPackSlice name : VPackArrayIterator(fields)) {
+    if (name.toString().starts_with(":") || name.toString().ends_with(":")) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                     "field names starting with \":\" or "
+                                     "ending with \":\" are disallowed");
+    }
+  }
+}
+
 /// @brief validate fields from slice
 void Index::validateFields(VPackSlice slice) {
   std::string_view type =
@@ -285,15 +296,6 @@ void Index::validateFields(VPackSlice slice) {
     if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                      "invalid index description");
-    }
-
-    if (ServerState::instance()->isSingleServer() ||
-        ServerState::instance()->isCoordinator()) {
-      if (name.toString().starts_with(":") || name.toString().ends_with(":")) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                       "field names starting with \":\" or "
-                                       "ending with \":\" are disallowed");
-      }
     }
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
     TRI_ParseAttributeString(name.copyString(), parsedAttributes,
