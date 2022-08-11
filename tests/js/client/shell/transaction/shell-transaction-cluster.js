@@ -43,6 +43,7 @@ const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-pr
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
 const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
 const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
+const request = require('@arangodb/request');
 
 /**
  * TODO this function is here temporarily and is will be removed once we have a better solution.
@@ -65,6 +66,7 @@ const syncShardsWithLogs = function(dbn) {
 
   const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
   replicatedLogsHelper.waitFor(function() {
+    return true;
     const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
     if (currentVersion > waitForCurrent) {
       return true;
@@ -459,6 +461,9 @@ function transactionReplication2Recovery() {
       const followers = participants.slice(1);
       let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
       let newTerm = term + 2;
+
+      internal.print(`stopping server ${leader}`);
+
       stopServerWait(leader);
       replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
         dbn, logId, newTerm, followers));
@@ -497,12 +502,14 @@ function transactionReplication2Recovery() {
 
       let servers = Object.assign({}, ...followers.map(
         (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
-      for (const [_, endpoint] of Object.entries(servers)) {
+      for (const [key, endpoint] of Object.entries(servers)) {
+        internal.print(`Checking server ${key}, ${endpoint}`);
         replicatedLogsHelper.waitFor(
           replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "foo", true));
       }
 
       // Resume the dead server. Expect to read "foo" from it.
+      internal.print('Continue old leader');
       continueServerWait(leader);
       syncShardsWithLogs(dbn);
       replicatedLogsHelper.waitFor(
@@ -511,9 +518,9 @@ function transactionReplication2Recovery() {
           let url = replicatedLogsHelper.getServerUrl(leader);
 
           let res = request.get({
-            url: `${url}/_db/${db}/_api/replicated-state/${shardId.slice(1)}/local-status`,
+            url: `${url}/_db/${dbn}/_api/replicated-state/${shardId.slice(1)}/local-status`,
           });
-          require('internal').print("Leader state ", res.json, " log contents\n", replicatedStateHelper.dumpShardLog(shardId));
+          require('internal').print("Leader state ", res.json, " log contents\n", replicatedLogsHelper.dumpShardLog(shardId));
         });
 
       // Try another transaction. This time expect it to work on all servers.
@@ -524,10 +531,9 @@ function transactionReplication2Recovery() {
         require('internal').print(trx.id())
         tc = trx.collection(c.name());
         tc.insert({_key: "bar"});
-        require('internal').print("About to commit transaction");
         trx.commit();
       } catch (err) {
-        require('internal').print("log contents\n", replicatedStateHelper.dumpShardLog(shardId));
+        require('internal').print("log contents\n", replicatedLogsHelper.dumpShardLog(shardId));
         fail("Transaction failed with: " + JSON.stringify(err));
       }
 
