@@ -1,6 +1,22 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
+  same collection. The requirements were:
+  - cluster deployment
+  - needs at least two collections (source and target), and the target
+    collection must have more than one shard and must use a custom shard key.
+  - inserting documents into the target collection must have happened via an
+    AQL query like `FOR doc IN source INSERT doc INTO target`.
+  In this particular combination, the document keys (`_key` attribute) from 
+  the source collection were used as-is for insertion into the target 
+  collection. However, as the target collection is not sharded by `_key` and
+  uses a custom shard key, it is actually not allowed to specify user-defined 
+  values for `_key`. That check was missing since 3.8 in this particular
+  combination and has now been added back. AQL queries attempting to insert 
+  documents into a collection like this will now fail with the error "must not
+  specifiy _key for this collection", as they used to do before 3.8.
+
 * Updated arangosync to v2.12.0-preview-4.
 
 * Improve error handling for passing wrong transaction ids / cursor ids / pregel
