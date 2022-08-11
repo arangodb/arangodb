@@ -43,6 +43,7 @@ using namespace arangodb::replication2::replicated_state::prototype;
 using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 namespace {
 struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
@@ -123,6 +124,8 @@ struct PrototypeStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockPrototypeNetworkInterface>();
   std::shared_ptr<MockPrototypeStorageInterface> storageMock =
       std::make_shared<MockPrototypeStorageInterface>();
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
 };
 
 TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
@@ -137,7 +140,8 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog));
+          feature->createReplicatedState("prototype-state", leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
@@ -149,7 +153,8 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog));
+          feature->createReplicatedState("prototype-state", followerLog,
+                                         statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
@@ -195,7 +200,8 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog));
+          feature->createReplicatedState("prototype-state", leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
@@ -207,7 +213,8 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog));
+          feature->createReplicatedState("prototype-state", followerLog,
+                                         statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
@@ -350,7 +357,8 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog));
+          feature->createReplicatedState("prototype-state", leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
@@ -362,7 +370,8 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog));
+          feature->createReplicatedState("prototype-state", followerLog,
+                                         statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);

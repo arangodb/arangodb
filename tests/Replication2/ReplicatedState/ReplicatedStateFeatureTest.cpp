@@ -33,13 +33,17 @@
 #include "StateMachines/MyStateMachine.h"
 
 #include "Basics/Exceptions.h"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::test;
 
-struct ReplicatedStateFeatureTest : ReplicatedLogTest {};
+struct ReplicatedStateFeatureTest : ReplicatedLogTest {
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
+};
 
 TEST_F(ReplicatedStateFeatureTest, create_feature) {
   auto feature = std::make_shared<ReplicatedStateFeature>();
@@ -55,7 +59,8 @@ TEST_F(ReplicatedStateFeatureTest, create_state_machine) {
   feature->registerStateType<MyState>("my-state");
 
   auto log = makeReplicatedLog(LogId{1});
-  auto instance = feature->createReplicatedState("my-state", log);
+  auto instance =
+      feature->createReplicatedState("my-state", log, statePersistor);
 }
 
 TEST_F(ReplicatedStateFeatureTest, create_non_existing_state_machine) {
@@ -64,7 +69,10 @@ TEST_F(ReplicatedStateFeatureTest, create_non_existing_state_machine) {
 
   auto log = makeReplicatedLog(LogId{1});
   ASSERT_THROW(
-      { auto instance = feature->createReplicatedState("FOOBAR", log); },
+      {
+        auto instance =
+            feature->createReplicatedState("FOOBAR", log, statePersistor);
+      },
       basics::Exception);
 }
 

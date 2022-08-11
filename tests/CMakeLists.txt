@@ -375,7 +375,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   Replication2/ReplicatedLog/MetricsTest.cpp
   Replication2/ReplicatedState/FollowerResignTest.cpp
-)
+        Replication2/Mocks/MockStatePersistorInterface.cpp Replication2/Mocks/MockStatePersistorInterface.h)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp

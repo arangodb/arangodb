@@ -37,6 +37,7 @@ using namespace arangodb::replication2::replicated_state::document;
 using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 struct MockDocumentStateAgencyHandler : IDocumentStateAgencyHandler {
   auto getCollectionPlan(std::string const& collectionId)
@@ -168,6 +169,8 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
                                               factory);
   }
 
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
   std::shared_ptr<MockDocumentStateAgencyHandler> agencyHandler =
@@ -196,7 +199,8 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
@@ -212,7 +216,8 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, followerLog));
+          feature->createReplicatedState(DocumentState::NAME, followerLog,
+                                         statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);

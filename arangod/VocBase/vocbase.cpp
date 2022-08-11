@@ -109,12 +109,30 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace {
+struct VocbaseStatePersistor
+    : replication2 ::replicated_state::StatePersistorInterface {
+  explicit VocbaseStatePersistor(TRI_vocbase_t& vocbase) : vocbase(vocbase) {}
+  void updateStateInformation(
+      replication2::replicated_state::PersistedStateInfo const& info) noexcept
+      override {
+    StorageEngine& engine =
+        vocbase.server().getFeature<EngineSelectorFeature>().engine();
+    engine.updateReplicatedState(vocbase, info);
+  }
+
+  TRI_vocbase_t& vocbase;
+};
+}  // namespace
+
 struct arangodb::VocBaseLogManager {
-  explicit VocBaseLogManager(ArangodServer& server, DatabaseID database)
-      : _server(server),
+  explicit VocBaseLogManager(TRI_vocbase_t& vocbase, DatabaseID database)
+      : _server(vocbase.server()),
+        _vocbase(vocbase),
         _logContext(
             LoggerContext{Logger::REPLICATION2}.with<logContextKeyDatabaseName>(
-                std::move(database))) {}
+                std::move(database))),
+        _statePersistor(std::make_shared<VocbaseStatePersistor>(vocbase)) {}
 
   [[nodiscard]] auto getReplicatedLogById(replication2::LogId id) const
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog const> {
@@ -284,7 +302,7 @@ struct arangodb::VocBaseLogManager {
                 replication2::replicated_state::ReplicatedStateBase>> {
           auto state = data.buildReplicatedState(
               id, type, userData, feature,
-              _logContext.withTopic(Logger::REPLICATED_STATE));
+              _logContext.withTopic(Logger::REPLICATED_STATE), _statePersistor);
           LOG_CTX("2bf8d", DEBUG, _logContext)
               << "Created replicated state " << id << " impl = " << type
               << " data = " << userData.toJson();
@@ -310,7 +328,7 @@ struct arangodb::VocBaseLogManager {
 
           auto state = data.buildReplicatedState(
               id, type, userData, feature,
-              _logContext.withTopic(Logger::REPLICATED_STATE));
+              _logContext.withTopic(Logger::REPLICATED_STATE), _statePersistor);
           LOG_CTX("2bf5d", DEBUG, _logContext)
               << "Created replicated state " << id << " impl = " << type
               << " data = " << userData.toJson();
@@ -320,7 +338,9 @@ struct arangodb::VocBaseLogManager {
   }
 
   ArangodServer& _server;
+  TRI_vocbase_t& _vocbase;
   LoggerContext const _logContext;
+  std::shared_ptr<VocbaseStatePersistor> const _statePersistor;
 
   struct GuardedData {
     std::unordered_map<
@@ -337,7 +357,9 @@ struct arangodb::VocBaseLogManager {
         replication2::LogId id, std::string_view type,
         velocypack::Slice userData,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
-        LoggerContext const& logContext)
+        LoggerContext const& logContext,
+        std::shared_ptr<replication2::replicated_state::StatePersistorInterface>
+            persistor)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>> {
       auto iter = states.find(id);
@@ -350,8 +372,8 @@ struct arangodb::VocBaseLogManager {
         return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
       }
 
-      auto state =
-          feature.createReplicatedState(type, logIter->second, logContext);
+      auto state = feature.createReplicatedState(
+          type, logIter->second, std::move(persistor), logContext);
       states.emplace(id, state);
       return state;
     }
@@ -1915,7 +1937,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
   _deadCollections.reserve(32);
 
   _cacheData = std::make_unique<arangodb::DatabaseJavaScriptCache>();
-  _logManager = std::make_shared<VocBaseLogManager>(_info.server(), name());
+  _logManager = std::make_shared<VocBaseLogManager>(*this, name());
 }
 
 /// @brief destroy a vocbase object
@@ -2209,7 +2231,8 @@ void TRI_vocbase_t::registerReplicatedState(
   auto guard = _logManager->_guardedData.getLockedGuard();
   auto result = guard->buildReplicatedState(
       info.stateId, info.specification.type, VPackSlice::noneSlice(), feature,
-      _logManager->_logContext.withTopic(Logger::REPLICATED_STATE));
+      _logManager->_logContext.withTopic(Logger::REPLICATED_STATE),
+      _logManager->_statePersistor);
   if (result.ok()) {
     auto state = result.get();
     auto token = std::make_unique<ReplicatedStateToken>(

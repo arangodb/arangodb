@@ -19,30 +19,20 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/StateCommon.h"
+#include <mutex>
+#include <optional>
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 
-namespace arangodb::replication2::replicated_state {
+namespace arangodb::replication2::test {
 
-struct PersistedStateInfo {
-  LogId stateId;
-  SnapshotInfo snapshot;
-  StateGeneration generation;
-  agency::ImplementationSpec specification;
+struct MockStatePersistorInterface : replicated_state::StatePersistorInterface {
+  void updateStateInformation(
+      const replicated_state::PersistedStateInfo& info) noexcept override;
+
+  std::mutex _mutex;
+  std::optional<replicated_state::PersistedStateInfo> _info;
 };
 
-template<class Inspector>
-auto inspect(Inspector& f, PersistedStateInfo& x) {
-  return f.object(x).fields(f.field("stateId", x.stateId),
-                            f.field("snapshot", x.snapshot),
-                            f.field("generation", x.generation),
-                            f.field("specification", x.specification));
-}
-
-struct StatePersistorInterface {
-  virtual ~StatePersistorInterface() = default;
-  virtual void updateStateInformation(PersistedStateInfo const&) noexcept = 0;
-};
-
-}  // namespace arangodb::replication2::replicated_state
+}  // namespace arangodb::replication2::test

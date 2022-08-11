@@ -54,6 +54,7 @@ struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
+struct StatePersistorInterface;
 struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
@@ -101,7 +102,8 @@ struct ReplicatedState final
   explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
                            std::shared_ptr<Factory> factory,
                            LoggerContext loggerContext,
-                           std::shared_ptr<ReplicatedStateMetrics>);
+                           std::shared_ptr<ReplicatedStateMetrics>,
+                           std::shared_ptr<StatePersistorInterface>);
   ~ReplicatedState() override;
 
   /**
@@ -154,6 +156,7 @@ struct ReplicatedState final
     return getFollower();
   }
 
+  std::shared_ptr<StatePersistorInterface> const persistor{nullptr};
   std::shared_ptr<Factory> const factory;
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
 

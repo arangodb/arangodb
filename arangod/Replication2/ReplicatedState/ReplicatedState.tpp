@@ -36,6 +36,7 @@
 #include "Replication2/ReplicatedState/LeaderStateManager.h"
 #include "Replication2/ReplicatedState/FollowerStateManager.h"
 #include "Replication2/ReplicatedState/UnconfiguredStateManager.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
@@ -94,13 +95,16 @@ template<typename S>
 ReplicatedState<S>::ReplicatedState(
     std::shared_ptr<replicated_log::ReplicatedLog> log,
     std::shared_ptr<Factory> factory, LoggerContext loggerContext,
-    std::shared_ptr<ReplicatedStateMetrics> metrics)
-    : factory(std::move(factory)),
+    std::shared_ptr<ReplicatedStateMetrics> metrics,
+    std::shared_ptr<StatePersistorInterface> persistor)
+    : persistor(std::move(persistor)),
+      factory(std::move(factory)),
       log(std::move(log)),
       guardedData(*this),
       loggerContext(std::move(loggerContext)),
       metrics(std::move(metrics)) {
   TRI_ASSERT(this->metrics != nullptr);
+  TRI_ASSERT(this->persistor != nullptr);
   this->metrics->replicatedStateNumber->fetch_add(1);
 }
 
@@ -174,6 +178,7 @@ template<typename S>
 void ReplicatedState<S>::start(
     std::unique_ptr<ReplicatedStateToken> token,
     std::optional<velocypack::SharedSlice> const& coreParameter) {
+  // persistor->updateStateInformation({});
   auto core = buildCore(coreParameter);
   auto deferred =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
