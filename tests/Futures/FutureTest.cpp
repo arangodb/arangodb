@@ -99,20 +99,6 @@ TEST(FutureTest, requires_only_move_ctor) {
     auto v = std::move(f).get();
     ASSERT_TRUE(v.id_ == 42);
   }
-  {
-    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
-    ASSERT_TRUE(f.valid());
-    ASSERT_TRUE(f.isReady());
-    auto v = std::move(f).get(std::chrono::milliseconds(10));
-    ASSERT_TRUE(v.id_ == 42);
-  }
-  {
-    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
-    ASSERT_TRUE(f.valid());
-    ASSERT_TRUE(f.isReady());
-    auto v = std::move(f).get(std::chrono::milliseconds(10));
-    ASSERT_TRUE(v.id_ == 42);
-  }
 }
 
 TEST(FutureTest, ctor_post_condition) {
@@ -211,7 +197,6 @@ TEST(FutureTest, hasPreconditionValid) {
   DOIT(f.isReady());
   DOIT(f.result());
   DOIT(std::move(f).get());
-  DOIT(std::move(f).get(std::chrono::milliseconds(10)));
   DOIT(f.result());
   DOIT(f.hasValue());
   DOIT(f.hasException());
@@ -298,7 +283,6 @@ TEST(FutureTest, lacksPostconditionValid) {
   // DOIT(makeValid(), swallow(std::move(f).wait()));
   // DOIT(makeValid(), swallow(std::move(f.wait())));
   DOIT(makeValid(), swallow(std::move(f).get()));
-  DOIT(makeValid(), swallow(std::move(f).get(std::chrono::milliseconds(10))));
   // DOIT(makeValid(), swallow(std::move(f).semi()));
 
 #undef DOIT
