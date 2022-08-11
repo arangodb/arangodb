@@ -565,7 +565,9 @@ class Ast {
                                 ValidateAndOptimizeOptions const& options);
 
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-  AstNode* optimizeIndexedAccess(AstNode*);
+  AstNode* optimizeIndexedAccess(
+      AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                         variableDefinitions);
 
   /// @brief optimizes the FILTER statement
   AstNode* optimizeFilter(AstNode*);
