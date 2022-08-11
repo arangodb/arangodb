@@ -183,10 +183,13 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 Query::~Query() {
-  // In the most derived class needs to explicitly call '_queryProfile.reset()'
-  // in order to unregister the query from the query list,
+  // In the most derived class needs to explicitly call 'destroy()'
   // because otherwise we have potential data races on the vptr
-  TRI_ASSERT(_queryProfile == nullptr);
+  TRI_ASSERT(_wasDestroy);
+}
+
+void Query::destroy() {
+  TRI_ASSERT(!std::exchange(_wasDestroy, true));
 
   unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
@@ -218,6 +221,8 @@ Query::~Query() {
     // unfortunately we cannot do anything here, as we are in the destructor
   }
 
+  _queryProfile.reset();
+
   unregisterSnippets();
 
   exitV8Context();
@@ -246,10 +251,10 @@ std::shared_ptr<Query> Query::create(
                 std::move(bindParameters), std::move(options)} {}
 
     ~MakeSharedQuery() final {
-      // Unregister this query from the query list, otherwise it's still
-      // accessible via this list while the query is being destructed,
+      // Destroy this query, otherwise it's still
+      // accessible while the query is being destructed,
       // which can result in a data race on the vptr
-      _queryProfile.reset();
+      destroy();
     }
   };
   TRI_ASSERT(ctx != nullptr);
