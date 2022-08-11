@@ -276,8 +276,9 @@ void Index::validateFields(VPackSlice slice) {
   for (VPackSlice name : VPackArrayIterator(fields)) {
     if (fieldIsObject) {
       if (!name.isObject()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                       "invered index: field is not an object");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+            "inverted index: field is not an object");
       }
       name = name.get("name");
     }
@@ -286,6 +287,14 @@ void Index::validateFields(VPackSlice slice) {
                                      "invalid index description");
     }
 
+    if (ServerState::instance()->isSingleServer() ||
+        ServerState::instance()->isCoordinator()) {
+      if (name.toString().starts_with(":") || name.toString().ends_with(":")) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                       "field names starting with \":\" or "
+                                       "ending with \":\" are disallowed");
+      }
+    }
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
     TRI_ParseAttributeString(name.copyString(), parsedAttributes,
                              allowExpansion);

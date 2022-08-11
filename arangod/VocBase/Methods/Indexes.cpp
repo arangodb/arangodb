@@ -424,10 +424,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
         // unique index, now check if fields and shard keys match
         auto flds = indexDef.get(arangodb::StaticStrings::IndexFields);
 
-        bool isEdgeCol = collection->type() == TRI_COL_TYPE_EDGE;
-
-        if (flds.isArray() && (collection->numberOfShards() > 1 ||
-                               (collection->isSmart() && isEdgeCol))) {
+        if (flds.isArray() && collection->numberOfShards() > 1) {
           std::vector<std::string> const& shardKeys = collection->shardKeys();
           std::unordered_set<std::string> indexKeys;
           size_t n = static_cast<size_t>(flds.length());
@@ -450,19 +447,6 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
               return Result(
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "shard key '" + it + "' must be present in unique index");
-            }
-          }
-          if ((collection->isSmart() ||
-               !collection->smartJoinAttribute().empty()) &&
-              (collection->numberOfShards() > 1 || isEdgeCol)) {
-            // edge collection can't create index on field ":_key"
-            // both edge and vertex can't create index on field "_key:"
-            bool field1 = indexKeys.contains("_key:");
-            bool field2 = isEdgeCol && indexKeys.contains(":_key");
-            if (field1 || field2) {
-              std::string fieldName(field2 ? ":_key" : "_key:");
-              return Result(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                            "field name " + fieldName + " not allowed");
             }
           }
         }
