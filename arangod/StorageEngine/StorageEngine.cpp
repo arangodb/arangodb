@@ -119,6 +119,12 @@ void StorageEngine::registerReplicatedLog(
   vocbase.registerReplicatedLog(id, std::move(log));
 }
 
+void StorageEngine::registerReplicatedState(
+    TRI_vocbase_t& vocbase,
+    arangodb::replication2::replicated_state::PersistedStateInfo const& info) {
+  vocbase.registerReplicatedState(info);
+}
+
 std::string_view StorageEngine::typeName() const { return _typeName; }
 
 void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}

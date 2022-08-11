@@ -174,24 +174,7 @@ template<typename S>
 void ReplicatedState<S>::start(
     std::unique_ptr<ReplicatedStateToken> token,
     std::optional<velocypack::SharedSlice> const& coreParameter) {
-  auto core = std::invoke([&]() {
-    if constexpr (std::is_void_v<typename S::CoreParameterType>) {
-      return factory->constructCore(log->getGlobalLogId());
-    } else {
-      if (!coreParameter.has_value()) {
-        auto const& gid = log->getGlobalLogId();
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            fmt::format("Cannot find core parameter for replicated state with "
-                        "ID {}, created in database {}, for {} state",
-                        gid.id, gid.database, S::NAME));
-      }
-      auto params = velocypack::deserialize<typename S::CoreParameterType>(
-          coreParameter->slice());
-      return factory->constructCore(log->getGlobalLogId(), std::move(params));
-    }
-  });
-
+  auto core = buildCore(coreParameter);
   auto deferred =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
   // execute *after* the lock has been released
@@ -201,6 +184,26 @@ void ReplicatedState<S>::start(
 template<typename S>
 ReplicatedState<S>::~ReplicatedState() {
   metrics->replicatedStateNumber->fetch_sub(1);
+}
+
+template<typename S>
+auto ReplicatedState<S>::buildCore(
+    const std::optional<velocypack::SharedSlice>& coreParameter) {
+  if constexpr (std::is_void_v<typename S::CoreParameterType>) {
+    return factory->constructCore(log->getGlobalLogId());
+  } else {
+    if (!coreParameter.has_value()) {
+      auto const& gid = log->getGlobalLogId();
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          fmt::format("Cannot find core parameter for replicated state with "
+                      "ID {}, created in database {}, for {} state",
+                      gid.id, gid.database, S::NAME));
+    }
+    auto params = velocypack::deserialize<typename S::CoreParameterType>(
+        coreParameter->slice());
+    return factory->constructCore(log->getGlobalLogId(), std::move(params));
+  }
 }
 
 template<typename S>

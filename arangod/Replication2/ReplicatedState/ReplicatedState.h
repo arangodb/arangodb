@@ -145,6 +145,7 @@ struct ReplicatedState final
   };
 
  private:
+  auto buildCore(std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
     return getLeader();
   }

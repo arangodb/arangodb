@@ -71,6 +71,10 @@ namespace rest {
 class RestHandlerFactory;
 }
 
+namespace replication2::replicated_state {
+struct PersistedStateInfo;
+}
+
 namespace transaction {
 
 class Context;
@@ -213,6 +217,13 @@ class StorageEngine : public ArangodFeature {
       std::shared_ptr<
           arangodb::replication2::replicated_log::PersistedLog> const&)
       -> Result = 0;
+
+  virtual auto updateReplicatedState(
+      TRI_vocbase_t&, replication2::replicated_state::PersistedStateInfo const&)
+      -> Result = 0;
+
+  virtual auto dropReplicatedState(TRI_vocbase_t&,
+                                   arangodb::replication2::LogId) -> Result = 0;
 
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
@@ -361,6 +372,10 @@ class StorageEngine : public ArangodFeature {
       TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
       std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
           log);
+
+  static void registerReplicatedState(
+      TRI_vocbase_t& vocbase,
+      arangodb::replication2::replicated_state::PersistedStateInfo const& info);
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;

@@ -346,6 +346,14 @@ class StorageEngineMock : public arangodb::StorageEngine {
           arangodb::replication2::replicated_log::PersistedLog> const& ptr)
       -> arangodb::Result override;
 
+  auto updateReplicatedState(
+      TRI_vocbase_t& vocbase,
+      const arangodb::replication2::replicated_state::PersistedStateInfo& info)
+      -> arangodb::Result override;
+  auto dropReplicatedState(TRI_vocbase_t& vocbase,
+                           arangodb::replication2::LogId id)
+      -> arangodb::Result override;
+
  private:
   TRI_voc_tick_t _releasedTick;
 };

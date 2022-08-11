@@ -598,6 +598,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/AgencyMethods.cpp
   Replication2/Exceptions/ParticipantResignedException.h
   Replication2/Methods.cpp
+  Replication2/MetricsHelper.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
   Replication2/ReplicatedLog/AgencySpecificationInspectors.cpp
   Replication2/ReplicatedLog/Algorithms.cpp
@@ -617,19 +618,20 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
   Replication2/ReplicatedLog/Supervision.cpp
   Replication2/ReplicatedLog/SupervisionAction.cpp
-  Replication2/ReplicatedLog/WaitForBag.cpp Replication2/ReplicatedLog/WaitForBag.h
+  Replication2/ReplicatedLog/WaitForBag.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/AgencySpecification.cpp
-  Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
-  Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
-  Replication2/ReplicatedState/UnconfiguredStateManager.tpp Replication2/ReplicatedState/UnconfiguredStateManager.h
-  Replication2/ReplicatedState/ReplicatedStateToken.cpp
+  Replication2/ReplicatedState/FollowerStateManager.tpp
+  Replication2/ReplicatedState/LeaderStateManager.tpp
+  Replication2/ReplicatedState/PersistedStateInfo.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/ReplicatedStateMetrics.cpp
+  Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
   Replication2/ReplicatedState/Supervision.cpp
   Replication2/ReplicatedState/SupervisionAction.cpp
+  Replication2/ReplicatedState/UnconfiguredStateManager.tpp
   Replication2/ReplicatedState/UpdateReplicatedState.cpp
   Replication2/ReplicatedState/UpdateReplicatedState.h
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
@@ -641,18 +643,17 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/StateMachines/Document/DocumentStateMachine.cpp
   Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
   Replication2/StateMachines/Document/DocumentStateStrategy.cpp
-  Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
-  Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
   Replication2/StateMachines/Prototype/PrototypeCore.cpp
   Replication2/StateMachines/Prototype/PrototypeFollowerState.cpp
+  Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
+  Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
   Replication2/StateMachines/Prototype/PrototypeStateMachine.cpp
   Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.cpp
   Replication2/StateMachines/Prototype/PrototypeStateMethods.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-  RestHandler/RestPrototypeStateHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
-  Replication2/MetricsHelper.cpp
+  RestHandler/RestPrototypeStateHandler.cpp
 )
 
 set (LIB_ARANGO_METRICS_SOURCES

@@ -73,6 +73,7 @@ struct ReplicatedLog;
 namespace replicated_state {
 struct ReplicatedStateBase;
 struct StateStatus;
+struct PersistedStateInfo;
 }  // namespace replicated_state
 }  // namespace replication2
 namespace velocypack {
@@ -497,9 +498,9 @@ struct TRI_vocbase_t {
   void registerReplicatedLog(
       arangodb::replication2::LogId,
       std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
-
-  /// @brief removes the replicated log with the given id
-  void unregisterReplicatedLog(arangodb::replication2::LogId);
+  /// @brief adds a new replicated log with given log id
+  void registerReplicatedState(
+      arangodb::replication2::replicated_state::PersistedStateInfo const& info);
 };
 
 /// @brief sanitize an object, given as slice, builder must contain an
