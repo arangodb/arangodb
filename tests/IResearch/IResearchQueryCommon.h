@@ -349,7 +349,7 @@ class QueryTest : public IResearchQueryTest {
     // testIndex0
     {
       bool created = false;
-      // TODO remove fields, also see SEARCH-334
+      // TODO kSearch remove fields, also see SEARCH-334
       auto createJson = VPackParser::fromJson(absl::Substitute(
           R"({ "name": "testIndex0", "type": "inverted",
                "version": $0, $1
@@ -364,7 +364,7 @@ class QueryTest : public IResearchQueryTest {
     // testIndex1
     {
       bool created = false;
-      // TODO remove fields, also see SEARCH-334
+      // TODO kSearch remove fields, also see SEARCH-334
       auto createJson = VPackParser::fromJson(absl::Substitute(
           R"({ "name": "testIndex1", "type": "inverted",
                "version": $0, $1

@@ -552,11 +552,12 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
-      viewNode.filterCondition(), {false, false}, true,
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
+      nullptr);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -632,11 +633,12 @@ TEST_F(IResearchViewCountApproximateTest,
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
-      viewNode.filterCondition(), {false, false}, true,
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
+      nullptr);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -714,11 +716,12 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
-      viewNode.filterCondition(), {false, false}, true,
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Cost,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
+      nullptr);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
