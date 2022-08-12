@@ -105,6 +105,7 @@ class ShardingStrategyHashBase : public ShardingStrategy {
   std::vector<ShardID> _shards;
   bool _usesDefaultShardKeys;
   std::atomic<bool> _shardsSet;
+  Mutex _shardsSetMutex;
 };
 
 /// @brief old version of the sharding used in the Community Edition

@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
@@ -306,8 +307,14 @@ ErrorCode ShardingStrategyHashBase::getResponsibleShard(
 }
 
 void ShardingStrategyHashBase::determineShards() {
-  if (!_shardsSet.load(std::memory_order_relaxed) &&
-      !_shardsSet.exchange(true, std::memory_order_relaxed)) {
+  if (!_shardsSet.load(std::memory_order_relaxed)) {
+    MUTEX_LOCKER(mutex, _shardsSetMutex);
+
+    if (_shardsSet.load(std::memory_order_relaxed)) {
+      TRI_ASSERT(!_shards.empty());
+      return;
+    }
+
     // determine all available shards (which will stay const afterwards)
     auto& ci = _sharding->collection()
                    ->vocbase()
@@ -317,12 +324,13 @@ void ShardingStrategyHashBase::determineShards() {
     auto shards =
         ci.getShardList(std::to_string(_sharding->collection()->id().id()));
 
-    _shards = *shards;
-
-    if (_shards.empty()) {
+    if (shards->empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid shard count");
     }
+
+    _shards = *shards;
+    _shardsSet.store(true, std::memory_order_release);
   }
 
   TRI_ASSERT(!_shards.empty());
