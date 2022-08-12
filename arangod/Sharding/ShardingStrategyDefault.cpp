@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
@@ -133,7 +132,7 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
 
 template<bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice,
-                              std::vector<std::string> const& attributes,
+                              std::span<std::string const> attributes,
                               bool docComplete, ErrorCode& error,
                               std::string_view key) {
   uint64_t hashval = TRI_FnvHashBlockInitial();
@@ -228,7 +227,7 @@ ShardingStrategyNone::ShardingStrategyNone() : ShardingStrategy() {
 /// calling getResponsibleShard on this class will always throw an exception
 ErrorCode ShardingStrategyNone::getResponsibleShard(
     arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, std::string_view const& key) {
+    bool& usesDefaultShardKeys, std::string_view key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "unexpected invocation of ShardingStrategyNone");
 }
@@ -245,7 +244,7 @@ ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(
 /// is only available in the Enterprise Edition
 ErrorCode ShardingStrategyOnlyInEnterprise::getResponsibleShard(
     arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, std::string_view const& key) {
+    bool& usesDefaultShardKeys, std::string_view key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ONLY_ENTERPRISE,
       std::string("sharding strategy '") + _name +
@@ -276,63 +275,62 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
 
 ErrorCode ShardingStrategyHashBase::getResponsibleShard(
     arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, std::string_view const& key) {
-  static constexpr char const* magicPhrase =
-      "Foxx you have stolen the goose, give she back again!";
-  static constexpr size_t magicLength = 52;
-
+    bool& usesDefaultShardKeys, std::string_view key) {
   determineShards();
   TRI_ASSERT(!_shards.empty());
 
   TRI_ASSERT(!_sharding->shardKeys().empty());
 
-  auto res = TRI_ERROR_NO_ERROR;
   usesDefaultShardKeys = _usesDefaultShardKeys;
-  // calls virtual "hashByAttributes" function
+  // calls virtual "hashByAttributes" function.
+  // note: we even need to call this in case we only have a single shard,
+  // because hashByAttributes can set `res` to an error
+  auto res = TRI_ERROR_NO_ERROR;
+  uint64_t hashval = hashByAttributes(slice, std::span(_sharding->shardKeys()),
+                                      docComplete, res, key);
 
-  uint64_t hashval =
-      hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
-  // To improve our hash function result:
-  hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
-  shardID = _shards[hashval % _shards.size()];
+  if (_shards.size() == 1) {
+    // only a single shard. this is easy. avoid modulo computation for
+    // this simple case
+    shardID = _shards[0];
+  } else {
+    static constexpr char const* magicPhrase =
+        "Foxx you have stolen the goose, give she back again!";
+    static constexpr size_t magicLength = 52;
+
+    // To improve our hash function result:
+    hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
+    shardID = _shards[hashval % _shards.size()];
+  }
   return res;
 }
 
 void ShardingStrategyHashBase::determineShards() {
-  if (_shardsSet) {
-    TRI_ASSERT(!_shards.empty());
-    return;
-  }
+  if (!_shardsSet.load(std::memory_order_relaxed) &&
+      !_shardsSet.exchange(true, std::memory_order_relaxed)) {
+    // determine all available shards (which will stay const afterwards)
+    auto& ci = _sharding->collection()
+                   ->vocbase()
+                   .server()
+                   .getFeature<ClusterFeature>()
+                   .clusterInfo();
+    auto shards =
+        ci.getShardList(std::to_string(_sharding->collection()->id().id()));
 
-  MUTEX_LOCKER(mutex, _shardsSetMutex);
-  if (_shardsSet) {
-    TRI_ASSERT(!_shards.empty());
-    return;
-  }
+    _shards = *shards;
 
-  // determine all available shards (which will stay const afterwards)
-  auto& ci = _sharding->collection()
-                 ->vocbase()
-                 .server()
-                 .getFeature<ClusterFeature>()
-                 .clusterInfo();
-  auto shards =
-      ci.getShardList(std::to_string(_sharding->collection()->id().id()));
-
-  _shards = *shards;
-
-  if (_shards.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "invalid shard count");
+    if (_shards.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid shard count");
+    }
   }
 
   TRI_ASSERT(!_shards.empty());
-  _shardsSet = true;
 }
 
 uint64_t ShardingStrategyHashBase::hashByAttributes(
-    VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, ErrorCode& error, std::string_view const& key) {
+    VPackSlice slice, std::span<std::string const> attributes, bool docComplete,
+    ErrorCode& error, std::string_view key) {
   return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error,
                                        key);
 }
@@ -381,8 +379,8 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(
 /// we leave the differences in place, because making any changes here
 /// will affect the data distribution, which we want to avoid
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
-    VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, ErrorCode& error, std::string_view const& key) {
+    VPackSlice slice, std::span<std::string const> attributes, bool docComplete,
+    ErrorCode& error, std::string_view key) {
   return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error,
                                       key);
 }
