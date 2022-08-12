@@ -460,7 +460,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
   msg.reserve(128);
   msg.append(prefix);
   if (!spec.shardId.empty()) {
-    msg.append("shard '").append(spec.shardId).append("' from ");
+    msg.append("shard '").append(spec.shardId).append("' on ");
   }
   msg.append("cluster node '").append(spec.serverId).append("': ");
 
