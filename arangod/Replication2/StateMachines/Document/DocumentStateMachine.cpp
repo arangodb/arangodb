@@ -26,7 +26,6 @@
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>

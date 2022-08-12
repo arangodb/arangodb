@@ -20,36 +20,44 @@
 ///
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
-#include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Utils/OperationResult.h"
+
+#include <memory>
+
+namespace arangodb::transaction {
+class Methods;
+}
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct IDocumentStateAgencyHandler;
-struct IDocumentStateShardHandler;
+struct IDocumentStateTransaction {
+  virtual ~IDocumentStateTransaction() = default;
 
-struct DocumentCore {
-  explicit DocumentCore(
-      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-      LoggerContext loggerContext);
+  [[nodiscard]] virtual auto apply(DocumentLogEntry const& entry)
+      -> futures::Future<OperationResult> = 0;
+  [[nodiscard]] virtual auto commit() -> futures::Future<Result> = 0;
+  [[nodiscard]] virtual auto abort() -> futures::Future<Result> = 0;
+};
 
-  LoggerContext const loggerContext;
-
-  auto getShardId() -> std::string_view;
-  auto getGid() -> GlobalLogIdentifier;
+class DocumentStateTransaction
+    : public IDocumentStateTransaction,
+      public std::enable_shared_from_this<DocumentStateTransaction> {
+ public:
+  explicit DocumentStateTransaction(
+      std::unique_ptr<transaction::Methods> methods);
+  auto apply(DocumentLogEntry const& entry)
+      -> futures::Future<OperationResult> override;
+  auto commit() -> futures::Future<Result> override;
+  auto abort() -> futures::Future<Result> override;
 
  private:
-  GlobalLogIdentifier _gid;
-  DocumentCoreParameters _params;
-  ShardID _shardId;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  std::unique_ptr<transaction::Methods> _methods;
 };
+
 }  // namespace arangodb::replication2::replicated_state::document

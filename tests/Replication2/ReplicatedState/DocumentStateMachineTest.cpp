@@ -28,7 +28,11 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -73,10 +77,10 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
   explicit MockDocumentStateTransaction(TransactionId tid) : tid(tid) {}
 
   auto apply(DocumentLogEntry const& entry)
-      -> futures::Future<Result> override {
+      -> futures::Future<OperationResult> override {
     TRI_ASSERT(!applied);
     applied = true;
-    return Result{};
+    return OperationResult{Result{}, {}};
   }
 
   auto commit() -> futures::Future<Result> override {
@@ -100,7 +104,7 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
 };
 
 struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
-  auto applyTransaction(DocumentLogEntry doc) -> Result override {
+  auto applyEntry(DocumentLogEntry doc) -> Result override {
     auto fut = futures::Future<Result>{Result{}};
     auto trx = ensureTransaction(doc);
     TRI_ASSERT(trx != nullptr);
@@ -110,7 +114,7 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
       case OperationType::kReplace:
       case OperationType::kRemove:
       case OperationType::kTruncate:
-        fut = trx->apply(doc);
+        fut = trx->apply(doc).get().result;
         break;
       case OperationType::kCommit:
         fut = trx->commit();

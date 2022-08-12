@@ -25,6 +25,8 @@
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
@@ -59,10 +61,12 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-    auto res = transactionHandler->applyTransaction(doc);
+    auto res = transactionHandler->applyEntry(doc);
     if (res.fail()) {
+      LOG_DEVEL << "recoverEntries failed for " << doc << " with error " << res;
       return res;
     }
+    LOG_DEVEL << "recoverEntries for " << doc << " returned " << res;
   }
 
   auto doc = DocumentLogEntry{std::string(shardId),

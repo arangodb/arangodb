@@ -31,7 +31,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 

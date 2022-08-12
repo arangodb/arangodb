@@ -20,36 +20,42 @@
 ///
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-
-#include "Replication2/LoggerContext.h"
+#include "Basics/ResultT.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+
+#include <velocypack/Builder.h>
+
+#include <string>
+#include <memory>
+
+namespace arangodb {
+class MaintenanceFeature;
+}
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct IDocumentStateAgencyHandler;
-struct IDocumentStateShardHandler;
+struct IDocumentStateShardHandler {
+  virtual ~IDocumentStateShardHandler() = default;
+  virtual auto createLocalShard(
+      std::string const& collectionId,
+      std::shared_ptr<velocypack::Builder> const& properties)
+      -> ResultT<std::string> = 0;
+};
 
-struct DocumentCore {
-  explicit DocumentCore(
-      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-      LoggerContext loggerContext);
-
-  LoggerContext const loggerContext;
-
-  auto getShardId() -> std::string_view;
-  auto getGid() -> GlobalLogIdentifier;
+class DocumentStateShardHandler : public IDocumentStateShardHandler {
+ public:
+  explicit DocumentStateShardHandler(GlobalLogIdentifier gid,
+                                     MaintenanceFeature& maintenanceFeature);
+  static auto stateIdToShardId(LogId logId) -> std::string;
+  auto createLocalShard(std::string const& collectionId,
+                        std::shared_ptr<velocypack::Builder> const& properties)
+      -> ResultT<std::string> override;
 
  private:
   GlobalLogIdentifier _gid;
-  DocumentCoreParameters _params;
-  ShardID _shardId;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  MaintenanceFeature& _maintenanceFeature;
 };
+
 }  // namespace arangodb::replication2::replicated_state::document

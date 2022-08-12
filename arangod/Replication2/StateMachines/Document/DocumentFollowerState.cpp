@@ -24,7 +24,8 @@
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
 #include "Replication2/StateMachines/Document/DocumentCore.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
@@ -37,6 +38,8 @@ DocumentFollowerState::DocumentFollowerState(
     : _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
       _guardedData(std::move(core)) {}
+
+DocumentFollowerState::~DocumentFollowerState() = default;
 
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
@@ -58,8 +61,9 @@ auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-    auto res = _transactionHandler->applyTransaction(doc);
+    auto res = _transactionHandler->applyEntry(doc);
     if (res.fail()) {
+      LOG_DEVEL << "applyEntries failed for " << doc << " with error " << res;
       return res;
     }
   }

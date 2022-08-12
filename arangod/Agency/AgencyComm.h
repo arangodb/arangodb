@@ -36,7 +36,6 @@
 #include <velocypack/Slice.h>
 
 #include "Agency/PathComponent.h"
-#include "AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Network/types.h"

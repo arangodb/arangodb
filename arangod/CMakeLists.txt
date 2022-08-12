@@ -638,9 +638,13 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/StateMachines/Document/DocumentFollowerState.cpp
   Replication2/StateMachines/Document/DocumentLeaderState.cpp
   Replication2/StateMachines/Document/DocumentLogEntry.cpp
+  Replication2/StateMachines/Document/DocumentStateAgencyHandler.cpp
+  Replication2/StateMachines/Document/DocumentStateHandlersFactory.cpp
   Replication2/StateMachines/Document/DocumentStateMachine.cpp
   Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
-  Replication2/StateMachines/Document/DocumentStateStrategy.cpp
+  Replication2/StateMachines/Document/DocumentStateShardHandler.cpp
+  Replication2/StateMachines/Document/DocumentStateTransaction.cpp
+  Replication2/StateMachines/Document/DocumentStateTransactionHandler.cpp
   Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
   Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
   Replication2/StateMachines/Prototype/PrototypeCore.cpp
