@@ -23,6 +23,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
+#include "Basics/voc-errors.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/ReplicatedContext.h"
@@ -44,8 +45,6 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
 
 auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
     -> Result {
-  auto fut = futures::Future<Result>{Result{}};
-
   if (doc.operation == OperationType::kAbortAllOngoingTrx) {
     _transactions.clear();
     return Result{};
@@ -59,24 +58,36 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       case OperationType::kUpdate:
       case OperationType::kReplace:
       case OperationType::kRemove:
-      case OperationType::kTruncate:
-        fut = trx->apply(doc).get().result;  // TODO
-        break;
-      case OperationType::kCommit:
-        fut = trx->commit();
+      case OperationType::kTruncate: {
+        auto res = trx->apply(doc);
+        if (res.result.ok()) {
+          if (!res.countErrorCodes.empty()) {
+            // TODO - handle errors that happen when applying entries better
+            // At least during recovery we will have to ignore some errors, so
+            // we will need a way to differentiate them.
+            return {TRI_ERROR_TRANSACTION_INTERNAL};
+          }
+          return {};
+        } else {
+          return res.result;
+        }
+      }
+      case OperationType::kCommit: {
+        auto res = trx->commit();
         removeTransaction(doc.tid);
-        break;
-      case OperationType::kAbort:
-        fut = trx->abort();
+        return res;
+      }
+      case OperationType::kAbort: {
+        auto res = trx->abort();
         removeTransaction(doc.tid);
-        break;
+        return res;
+      }
       case OperationType::kAbortAllOngoingTrx:
         TRI_ASSERT(false);  // should never happen as it should be handled above
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }
-    TRI_ASSERT(fut.isReady()) << doc;
-    return fut.get();
+
   } catch (basics::Exception& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception& e) {

@@ -32,7 +32,7 @@ DocumentStateTransaction::DocumentStateTransaction(
     : _methods(std::move(methods)) {}
 
 auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
-    -> futures::Future<OperationResult> {
+    -> OperationResult {
   // TODO revisit checkUniqueConstraintsInPreflight and waitForSync
   auto opOptions = OperationOptions();
   opOptions.silent = true;
@@ -43,26 +43,18 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
   opOptions.waitForSync = false;
   opOptions.indexOperationMode = IndexOperationMode::internal;
 
-  auto fut =
-      futures::Future<OperationResult>{std::in_place, Result{}, opOptions};
   switch (entry.operation) {
     case OperationType::kInsert:
-      fut = _methods->insertAsync(entry.shardId, entry.data.slice(), opOptions);
-      break;
+      return _methods->insert(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kUpdate:
-      fut = _methods->updateAsync(entry.shardId, entry.data.slice(), opOptions);
-      break;
+      return _methods->update(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kReplace:
-      fut =
-          _methods->replaceAsync(entry.shardId, entry.data.slice(), opOptions);
-      break;
+      return _methods->replace(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kRemove:
-      fut = _methods->removeAsync(entry.shardId, entry.data.slice(), opOptions);
-      break;
+      return _methods->remove(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kTruncate:
       // TODO Think about correctness and efficiency.
-      fut = _methods->truncateAsync(entry.shardId, opOptions);
-      break;
+      return _methods->truncate(entry.shardId, opOptions);
     default:
       return OperationResult{
           Result{TRI_ERROR_TRANSACTION_INTERNAL,
@@ -71,17 +63,10 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
                      to_string(entry.operation), entry.tid.id())},
           opOptions};
   }
-
-  TRI_ASSERT(fut.isReady()) << entry;
-  return std::move(fut).get();
 }
 
-auto DocumentStateTransaction::commit() -> futures::Future<Result> {
-  return _methods->commitAsync();
-}
+auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
 
-auto DocumentStateTransaction::abort() -> futures::Future<Result> {
-  return _methods->abortAsync();
-}
+auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }
 
 }  // namespace arangodb::replication2::replicated_state::document

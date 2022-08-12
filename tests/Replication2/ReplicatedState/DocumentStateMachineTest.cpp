@@ -76,20 +76,19 @@ struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
 struct MockDocumentStateTransaction : IDocumentStateTransaction {
   explicit MockDocumentStateTransaction(TransactionId tid) : tid(tid) {}
 
-  auto apply(DocumentLogEntry const& entry)
-      -> futures::Future<OperationResult> override {
+  auto apply(DocumentLogEntry const& entry) -> OperationResult override {
     TRI_ASSERT(!applied);
     applied = true;
     return OperationResult{Result{}, {}};
   }
 
-  auto commit() -> futures::Future<Result> override {
+  auto commit() -> Result override {
     TRI_ASSERT(!committed);
     committed = true;
     return Result{};
   }
 
-  auto abort() -> futures::Future<Result> override {
+  auto abort() -> Result override {
     TRI_ASSERT(!aborted);
     aborted = true;
     return Result{};
@@ -105,7 +104,6 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
 
 struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
   auto applyEntry(DocumentLogEntry doc) -> Result override {
-    auto fut = futures::Future<Result>{Result{}};
     auto trx = ensureTransaction(doc);
     TRI_ASSERT(trx != nullptr);
     switch (doc.operation) {
@@ -113,23 +111,37 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
       case OperationType::kUpdate:
       case OperationType::kReplace:
       case OperationType::kRemove:
-      case OperationType::kTruncate:
-        fut = trx->apply(doc).get().result;
-        break;
-      case OperationType::kCommit:
-        fut = trx->commit();
+      case OperationType::kTruncate: {
+        auto res = trx->apply(doc);
+        if (res.result.ok()) {
+          if (!res.countErrorCodes.empty()) {
+            // TODO - handle errors that happen when applying entries better
+            // At least during recovery we will have to ignore some errors, so
+            // we will need a way to differentiate them.
+            return {TRI_ERROR_TRANSACTION_INTERNAL};
+          }
+          return {};
+        } else {
+          return res.result;
+        }
+      }
+      case OperationType::kCommit: {
+        auto res = trx->commit();
         removeTransaction(doc.tid);
-        break;
-      case OperationType::kAbort:
-        fut = trx->abort();
+        return res;
+      }
+      case OperationType::kAbort: {
+        auto res = trx->abort();
         removeTransaction(doc.tid);
-        break;
+        return res;
+      }
       case OperationType::kAbortAllOngoingTrx:
         // do nothing
         break;
+      default:
+        TRI_ASSERT(false);
     }
-    TRI_ASSERT(fut.isReady()) << doc;
-    return fut.get();
+    return {};
   }
 
   auto ensureTransaction(DocumentLogEntry doc)

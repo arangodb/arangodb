@@ -25,7 +25,6 @@
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 
 #include "Basics/Result.h"
-#include "Futures/Future.h"
 #include "Utils/OperationResult.h"
 
 #include <memory>
@@ -40,9 +39,9 @@ struct IDocumentStateTransaction {
   virtual ~IDocumentStateTransaction() = default;
 
   [[nodiscard]] virtual auto apply(DocumentLogEntry const& entry)
-      -> futures::Future<OperationResult> = 0;
-  [[nodiscard]] virtual auto commit() -> futures::Future<Result> = 0;
-  [[nodiscard]] virtual auto abort() -> futures::Future<Result> = 0;
+      -> OperationResult = 0;
+  [[nodiscard]] virtual auto commit() -> Result = 0;
+  [[nodiscard]] virtual auto abort() -> Result = 0;
 };
 
 class DocumentStateTransaction
@@ -51,10 +50,9 @@ class DocumentStateTransaction
  public:
   explicit DocumentStateTransaction(
       std::unique_ptr<transaction::Methods> methods);
-  auto apply(DocumentLogEntry const& entry)
-      -> futures::Future<OperationResult> override;
-  auto commit() -> futures::Future<Result> override;
-  auto abort() -> futures::Future<Result> override;
+  auto apply(DocumentLogEntry const& entry) -> OperationResult override;
+  auto commit() -> Result override;
+  auto abort() -> Result override;
 
  private:
   std::unique_ptr<transaction::Methods> _methods;
