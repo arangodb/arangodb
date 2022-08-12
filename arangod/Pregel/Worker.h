@@ -32,6 +32,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 #include "Reports.h"
@@ -112,8 +113,8 @@ class Worker : public IWorker {
   // where new vertices were inserted
   size_t _preRecoveryTotal = 0;
 
-  std::shared_ptr<AggregatorHandler> _conductorAggregators;
-  std::shared_ptr<AggregatorHandler> _workerAggregators;
+  std::unique_ptr<AggregatorHandler> _conductorAggregators;
+  std::unique_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
@@ -159,8 +160,9 @@ class Worker : public IWorker {
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
-  void _createGssFinishedEvent(VPackBuilder& b);
-  void _createExecutionFinishedEvent(VPackBuilder& b);
+  auto _gssFinishedEvent() const -> GssFinished;
+  auto _cleanupFinishedEvent() const -> CleanupFinished;
+  auto _recoveryFinishedEvent() const -> RecoveryFinished;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,

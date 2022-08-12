@@ -25,6 +25,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <cstdint>
 
 #include "Pregel/Utils.h"
 #include "Logger/LogMacros.h"
@@ -87,11 +88,9 @@ struct StatsManager {
     }
   }
 
-  void accumulateMessageStats(VPackSlice data) {
-    VPackSlice sender = data.get(Utils::senderKey);
-    if (sender.isString()) {
-      _serverStats[sender.copyString()].accumulate(data);
-    }
+  void accumulateMessageStats(std::string const& senderId, VPackSlice data) {
+    // inserts senderId into map if it does not exist
+    _serverStats[senderId].accumulate(data);
   }
 
   void serializeValues(VPackBuilder& b) const {

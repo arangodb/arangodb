@@ -99,7 +99,7 @@ auto Recovering::receive(Message const& message) -> void {
 
   conductor._ensureUniqueResponse(finishedMessage.senderId);
   // the recovery mechanism might be gathering state information
-  conductor._aggregators = finishedMessage.aggregators.aggregators;
+  conductor._aggregators->aggregateValues(finishedMessage.aggregators.slice());
   if (conductor._respondedServers.size() != conductor._dbServers.size()) {
     return;
   }
@@ -136,9 +136,14 @@ auto Recovering::receive(Message const& message) -> void {
     conductor._masterContext->preCompensation();
   }
 
+  VPackBuilder aggregators;
+  {
+    VPackObjectBuilder ob(&aggregators);
+    conductor._aggregators->serializeValues(aggregators);
+  }
   auto continueRecoveryCommand =
       ContinueRecovery{.executionNumber = conductor._executionNumber,
-                       .aggregators = {conductor._aggregators}};
+                       .aggregators = std::move(aggregators)};
   VPackBuilder command;
   serialize(command, continueRecoveryCommand);
   // first allow all workers to run worker level operations

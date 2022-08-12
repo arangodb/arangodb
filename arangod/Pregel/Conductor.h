@@ -30,6 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Reports.h"
 #include "Pregel/Statistics.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -110,7 +111,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
       _edgeCollectionRestrictions;
 
   // initialized on startup
-  std::shared_ptr<AggregatorHandler> _aggregators;
+  std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
   /// an unique response, not necessarily during the async mode
@@ -150,7 +151,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(std::string const& body);
-  void _createStartGssCommand(VPackBuilder& b, bool activateAll);
+  auto _startGssEvent(bool activateAll) const -> StartGss;
 
   // === REST callbacks ===
   void workerStatusUpdate(VPackSlice const& data);

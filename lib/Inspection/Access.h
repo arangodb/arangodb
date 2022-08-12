@@ -35,6 +35,7 @@
 #include <velocypack/Value.h>
 
 #include "Inspection/detail/traits.h"
+#include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 
 namespace arangodb::inspection {
@@ -306,6 +307,24 @@ struct Access<std::monostate> : AccessBase<std::monostate> {
     } else {
       f.builder().add(VPackSlice::emptyObjectSlice());
       return Status::Success{};
+    }
+  }
+};
+
+template<>
+struct Access<VPackBuilder> : AccessBase<VPackBuilder> {
+  template<class Inspector>
+  static auto apply(Inspector& f, VPackBuilder& x) {
+    if constexpr (Inspector::isLoading) {
+      x.clear();
+      x.add(f.slice());
+      return Status{};
+    } else {
+      if (!x.isClosed()) {
+        return Status{"Expected closed VPackBuilder"};
+      }
+      f.builder().add(x.slice());
+      return Status{};
     }
   }
 };
