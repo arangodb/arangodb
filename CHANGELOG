@@ -17,6 +17,8 @@ devel
   documents into a collection like this will now fail with the error "must not
   specifiy _key for this collection", as they used to do before 3.8.
 
+* Updated ArangoDB Starter to 0.15.5-preview-1.
+
 * Updated arangosync to v2.12.0-preview-4.
 
 * Improve error handling for passing wrong transaction ids / cursor ids / pregel
