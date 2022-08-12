@@ -541,11 +541,8 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
       _isInitialized(false) {
   if constexpr (ExecutionTraits::EmitSearchDoc) {
     TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
-    auto filterCookie = std::make_unique<FilterCookie>();
-    _filterCookie = &filterCookie->filter;
-    [[maybe_unused]] auto const old =
-        _trx.state()->cookie(&infos.outVariable(), std::move(filterCookie));
-    TRI_ASSERT(!old);
+    auto const* key = &infos.outVariable();
+    _filterCookie = &ensureFilterCookie(_trx, key).filter;
   }
 }
 
