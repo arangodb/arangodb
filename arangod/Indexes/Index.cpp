@@ -263,6 +263,9 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
 
 /// @brief validate fields that start or end with ":"
 void Index::validateFieldsWithSpecialCase(VPackSlice const& fields) {
+  if (!fields.isArray()) {
+    return;
+  }
   for (VPackSlice name : VPackArrayIterator(fields)) {
     if (name.toString().starts_with(":") || name.toString().ends_with(":")) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
