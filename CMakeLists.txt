@@ -1517,3 +1517,6 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 add_custom_target(arangodb
         DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
+
+# Add a target that runs cppcheck on the ArangoDB code
+include(custom/CppCheckTarget)
