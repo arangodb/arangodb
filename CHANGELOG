@@ -6,6 +6,8 @@ devel
   coordinator. This only happens for index creation, so already existing
   indexes that might have such conditions will remain as they are.
 
+* Updated ArangoDB Starter to 0.15.5-preview-1.
+
 * Updated arangosync to v2.12.0-preview-4.
 
 * Improve error handling for passing wrong transaction ids / cursor ids / pregel
