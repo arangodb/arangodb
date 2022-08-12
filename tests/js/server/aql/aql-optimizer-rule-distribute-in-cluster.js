@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, assertMatch, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -28,45 +28,40 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require("@arangodb").db;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
+const db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
-  var ruleName = "distribute-in-cluster";
+  const ruleName = "distribute-in-cluster";
   // various choices to control the optimizer: 
-  var rulesNone        = { optimizer: { rules: [ "-all" ] } };
-  var rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather" ] } };
-  var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather", "-" + ruleName ] } };
-  var maxPlans         = { optimizer: { rules: [ "-all" ] }, maxNumberOfPlans: 1 };
+  const rulesNone        = { optimizer: { rules: [ "-all" ] } };
+  const rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather" ] } };
+  const thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  const thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather", "-" + ruleName ] } };
+  const maxPlans         = { optimizer: { rules: [ "-all" ] }, maxNumberOfPlans: 1 };
 
-  var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
-  var cn2 = "UnitTestsAqlOptimizerRuleUndist2";
-  var c1, c2;
+  const cn1 = "UnitTestsAqlOptimizerRuleUndist1";
+  const cn2 = "UnitTestsAqlOptimizerRuleUndist2";
+  let c1, c2;
   
-  var explain = function (result) {
+  const explain = function (result) {
     return helper.getCompactPlan(result).map(function(node) 
         { return node.type; });
   };
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
     setUpAll : function () {
-      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:9});
       c2 = db._create(cn2, {numberOfShards:9, shardKeys:["a","b"]});
-      for (i = 0; i < 10; i++) { 
+      for (let i = 0; i < 10; ++i) { 
         c1.insert({Hallo1:i});
         c2.insert({Hallo2:i});
       }
@@ -79,6 +74,81 @@ function optimizerRuleTestSuite () {
     tearDownAll : function () {
       db._drop(cn1);
       db._drop(cn2);
+    },
+    
+    testKeyGenerationOnInsertDefaultShardKey : function () {
+      const temp = "UnitTestsTarget";
+
+      let queries = [
+        // [ query string, must have calculation node ],
+        [ "FOR d IN " + cn1 + " INSERT d IN " + temp, false ],
+        [ "FOR d IN " + cn1 + " INSERT { _key: d._key } IN " + temp, true ],
+        [ "FOR d IN " + cn1 + " INSERT d._key IN " + temp, true ],
+        [ "FOR d IN 1..10 INSERT { _key: CONCAT('test', d) } IN " + temp, true ],
+        [ "FOR d IN 1..10 LET doc = { _key: CONCAT('test', d) } INSERT NOOPT(doc) IN " + temp, true ],
+        [ "FOR d IN " + cn1 + " INSERT UNSET(d, ['_key']) IN " + temp, true ],
+        [ "FOR d IN " + cn1 + " INSERT { fuchs: d._key } IN " + temp, true ],
+      ];
+
+      for (let i = 1; i <= 3; ++i) {
+        let c = db._create(temp, { numberOfShards: i });
+        try {
+          queries.forEach(function(query) {
+            let result = AQL_EXPLAIN(query[0], {}, thisRuleEnabled);
+            assertNotEqual(-1, explain(result).indexOf("DistributeNode"));
+            if (query[1]) {
+              assertMatch(/MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/, JSON.stringify(result.plan.nodes));
+            }
+            
+            c.truncate();
+
+            // the execute command must not fail
+            AQL_EXECUTE(query[0], {}, thisRuleEnabled);
+          });
+        } finally {
+          db._drop(temp);
+        }
+      }
+    },
+    
+    testKeyGenerationOnInsertCustomShardKey : function () {
+      const temp = "UnitTestsTarget";
+
+      let queries = [
+        // [ query string, query will execute successfully ]
+        [ "FOR d IN " + cn1 + " INSERT d IN " + temp, false ],
+        [ "FOR d IN " + cn1 + " INSERT { _key: d._key } IN " + temp, false ],
+        [ "FOR d IN " + cn1 + " INSERT d._key IN " + temp, false ],
+        [ "FOR d IN 1..10 INSERT { _key: CONCAT('test', d) } IN " + temp, false ],
+        [ "FOR d IN 1..10 LET doc = { _key: CONCAT('test', d) } INSERT NOOPT(doc) IN " + temp, false ],
+
+        [ "FOR d IN " + cn1 + " INSERT UNSET(d, ['_key']) IN " + temp, true ],
+        [ "FOR d IN " + cn1 + " INSERT { fuchs: d._key } IN " + temp, true ],
+      ];
+
+      for (let i = 1; i <= 3; ++i) {
+        let c = db._create(temp, { numberOfShards: i, shardKeys: ["testi"] });
+        try {
+          queries.forEach(function(query) {
+            let result = AQL_EXPLAIN(query[0], {}, thisRuleEnabled);
+            assertNotEqual(-1, explain(result).indexOf("DistributeNode"));
+            assertMatch(/MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/, JSON.stringify(result.plan.nodes));
+
+            c.truncate();
+            let success = true;
+            try {
+              // the execute command can fail for some of the queries
+              AQL_EXECUTE(query[0], {}, thisRuleEnabled);
+            } catch (err) {
+              success = false;
+            }
+
+            assertEqual(query[1], success, query);
+          });
+        } finally {
+          db._drop(temp);
+        }
+      }
     },
     
     ////////////////////////////////////////////////////////////////////////////////
@@ -215,6 +285,7 @@ function optimizerRuleTestSuite () {
                               "EnumerateCollectionNode", 
                               "RemoteNode", 
                               "GatherNode",
+                              "CalculationNode",
                               "DistributeNode",
                               "RemoteNode",
                               "InsertNode",
@@ -393,6 +464,7 @@ function optimizerRuleTestSuite () {
                               "EnumerateCollectionNode", 
                               "RemoteNode", 
                               "GatherNode", 
+                              "CalculationNode",
                               "DistributeNode", 
                               "RemoteNode", 
                               "InsertNode", 
@@ -488,6 +560,7 @@ function optimizerRuleTestSuite () {
                               "EnumerateCollectionNode", 
                               "RemoteNode", 
                               "GatherNode", 
+                              "CalculationNode",
                               "DistributeNode", 
                               "RemoteNode", 
                               "InsertNode", 
@@ -584,6 +657,7 @@ function optimizerRuleTestSuite () {
                               "EnumerateCollectionNode", 
                               "RemoteNode", 
                               "GatherNode", 
+                              "CalculationNode",
                               "DistributeNode", 
                               "RemoteNode", 
                               "InsertNode", 
@@ -1216,6 +1290,7 @@ function interactionOtherRulesTestSuite () {
     }
   };
 }
+
 jsunity.run(optimizerRuleTestSuite);
 jsunity.run(interactionOtherRulesTestSuite);
 
