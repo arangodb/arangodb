@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global getOptions, assertTrue, assertFalse, arango, assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -30,7 +30,7 @@ const fs = require('fs');
 
 if (getOptions === true) {
   return {
-    'log.use-json-format': 'true',
+    'log.use-json-format': 'false',
     'log.hostname': 'delorean',
     'log.process': 'false',
     'log.ids': 'false',
@@ -50,13 +50,12 @@ function EscapeControlSuite() {
 
   return {
     testEscapeControlFalse: function() {
-      const visibleControlChars = ['\n', '\r', '\b', '\t'];
       const escapeCharsLength = 31;
-      const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
+      const res = arango.POST("/_admin/execute", `
      
     require('console').log("testmann: start");
     for (let i = 1; i <= 31; ++i) {
-      require('console').log("testmann: testi" + String.fromCharCode(i));
+      require('console').log("testmann: testi" + String.fromCharCode(i) + "meow");
     }
     require('console').log("testmann: done");
     return require('internal').options()["log.output"];
@@ -88,26 +87,12 @@ function EscapeControlSuite() {
 
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
-        let msg = JSON.parse(filtered[i]);
-        print("message 1 " + msg.message);
-        assertTrue(msg.hasOwnProperty("time"), msg);
-        assertFalse(msg.hasOwnProperty("pid"), msg);
-        assertTrue(msg.hasOwnProperty("level"), msg);
-        assertTrue(msg.hasOwnProperty("topic"), msg);
-        assertFalse(msg.hasOwnProperty("id"), msg);
-        assertTrue(msg.hasOwnProperty("hostname"), msg);
-        assertEqual("delorean", msg.hostname, msg);
-        assertTrue(msg.hasOwnProperty("role"), msg);
-        assertTrue(msg.hasOwnProperty("tid"), msg);
-        assertTrue(msg.hasOwnProperty("message"), msg);
+        let msg = filtered[i];
+        print("message 1 " + msg);
         const hexCode = i.toString(16);
         const padding = hexCode.length === 1 ? "0" : "";
         const charCode = "0x" + padding + hexCode;
-        const foundIdx = visibleControlChars.indexOf(String.fromCharCode(charCode));
-        if (foundIdx !== -1) {
-          assertEqual("testmann: testi" + visibleControlChars[foundIdx], msg.message, msg);
-        }
-        assertEqual("testmann: testi" + String.fromCharCode(charCode), msg.message, msg);
+        assertMatch(/testmann: testi meow/, msg);
       }
       assertTrue(filtered[escapeCharsLength + 1].match(/testmann: done/));
 
