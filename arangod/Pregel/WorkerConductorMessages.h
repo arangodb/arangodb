@@ -164,6 +164,63 @@ auto inspect(Inspector& f, StatusUpdated& x) {
       f.field("status", x.status));
 }
 
+// worker -> conductor as immediate answer
+
+struct GssPrepared {
+  std::string senderId;
+  uint64_t activeCount;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  VPackBuilder messages;
+  VPackBuilder aggregators;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GssPrepared& x) {
+  return f.object(x).fields(
+      f.field(Utils::senderKey, x.senderId),
+      f.field("activeCount", x.activeCount),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("messages", x.messages), f.field("aggregators", x.aggregators));
+}
+
+struct PregelResults {
+  VPackBuilder results;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PregelResults& x) {
+  return f.object(x).fields(f.field("results", x.results));
+}
+
+struct GssStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, GssStarted& x) {
+  return f.object(x).fields();
+}
+
+struct CleanupStarted {};
+template<typename Inspector>
+auto inspect(Inspector& f, CleanupStarted& x) {
+  return f.object(x).fields();
+}
+
+struct GssCanceled {};
+template<typename Inspector>
+auto inspect(Inspector& f, GssCanceled& x) {
+  return f.object(x).fields();
+}
+
+struct RecoveryFinalized {};
+template<typename Inspector>
+auto inspect(Inspector& f, RecoveryFinalized& x) {
+  return f.object(x).fields();
+}
+
+struct RecoveryContinued {};
+template<typename Inspector>
+auto inspect(Inspector& f, RecoveryContinued& x) {
+  return f.object(x).fields();
+}
+
 // ------ commands sent from conductor to worker -------
 
 struct PrepareGss {
@@ -214,14 +271,14 @@ auto inspect(Inspector& f, CancelGss& x) {
       f.field(Utils::globalSuperstepKey, x.gss));
 }
 
-struct FinalizeExecution {
+struct StartCleanup {
   uint64_t executionNumber;
   uint64_t gss;
   bool withStoring;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, FinalizeExecution& x) {
+auto inspect(Inspector& f, StartCleanup& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),

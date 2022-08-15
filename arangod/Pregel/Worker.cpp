@@ -26,6 +26,7 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Conductor/State.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
@@ -267,22 +268,28 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   VPackBuilder messageToMaster;
   // only place where is makes sense to call this, since startGlobalSuperstep
   // might not be called again
-  if (_workerContext && gss > 0) {
-    _workerContext->postGlobalSuperstep(gss - 1);
-    _workerContext->postGlobalSuperstepMasterMessage(messageToMaster);
+  {
+    VPackObjectBuilder ob(&messageToMaster);
+    if (_workerContext && gss > 0) {
+      _workerContext->postGlobalSuperstep(gss - 1);
+      _workerContext->postGlobalSuperstepMasterMessage(messageToMaster);
+    }
   }
 
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
-  response.openObject();
-  response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  response.add(Utils::activeCountKey, VPackValue(_activeCount));
-  response.add(Utils::vertexCountKey,
-               VPackValue(_graphStore->localVertexCount()));
-  response.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
-  response.add(Utils::workerToMasterMessagesKey, messageToMaster.slice());
-  _workerAggregators->serializeValues(response);
-  response.close();
+  VPackBuilder aggregators;
+  {
+    VPackObjectBuilder ob(&aggregators);
+    _workerAggregators->serializeValues(aggregators);
+  }
+  auto gssPrepared = GssPrepared{.senderId = ServerState::instance()->getId(),
+                                 .activeCount = _activeCount,
+                                 .vertexCount = _graphStore->localVertexCount(),
+                                 .edgeCount = _graphStore->localEdgeCount(),
+                                 .messages = std::move(messageToMaster),
+                                 .aggregators = aggregators};
+  serialize(response, gssPrepared);
 }
 
 template<typename V, typename E, typename M>
@@ -674,7 +681,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
 
-  auto const command = deserialize<FinalizeExecution>(body);
+  auto const command = deserialize<StartCleanup>(body);
 
   auto const doStore = command.withStoring;
   auto cleanup = [self = shared_from_this(), this, doStore, cb] {
@@ -724,7 +731,8 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   //  std::vector<ShardID> const& shards = _config.globalShardIDs();
   std::string tmp;
 
-  b.openArray(/*unindexed*/ true);
+  VPackBuilder result;
+  result.openArray(/*unindexed*/ true);
   auto it = _graphStore->vertexIterator();
   for (; it.hasMore(); ++it) {
     Vertex<V, E> const* vertexEntry = *it;
@@ -732,7 +740,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
 
-    b.openObject(/*unindexed*/ true);
+    result.openObject(/*unindexed*/ true);
 
     if (withId) {
       std::string const& cname = _config.shardIDToCollectionName(shardId);
@@ -741,27 +749,30 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
         tmp.append(cname);
         tmp.push_back('/');
         tmp.append(vertexEntry->key().data(), vertexEntry->key().size());
-        b.add(StaticStrings::IdString, VPackValue(tmp));
+        result.add(StaticStrings::IdString, VPackValue(tmp));
       }
     }
 
-    b.add(StaticStrings::KeyString,
-          VPackValuePair(vertexEntry->key().data(), vertexEntry->key().size(),
-                         VPackValueType::String));
+    result.add(
+        StaticStrings::KeyString,
+        VPackValuePair(vertexEntry->key().data(), vertexEntry->key().size(),
+                       VPackValueType::String));
 
     V const& data = vertexEntry->data();
     // bool store =
-    if (auto res =
-            _graphStore->graphFormat()->buildVertexDocumentWithResult(b, &data);
+    if (auto res = _graphStore->graphFormat()->buildVertexDocumentWithResult(
+            result, &data);
         res.fail()) {
       LOG_PREGEL("37fde", ERR)
           << "failed to build vertex document: " << res.error().toString();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR,
                                      res.error().toString());
     }
-    b.close();
+    result.close();
   }
-  b.close();
+  result.close();
+  auto pregelResults = PregelResults{.results = result};
+  serialize(b, pregelResults);
 }
 
 template<typename V, typename E, typename M>

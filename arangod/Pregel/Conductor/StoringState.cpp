@@ -28,14 +28,15 @@ auto Storing::run() -> void {
 
   LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
 
-  auto finalizeExecutionCommand =
-      FinalizeExecution{.executionNumber = conductor._executionNumber,
-                        .gss = conductor._globalSuperstep,
-                        .withStoring = true};
-  VPackBuilder command;
-  serialize(command, finalizeExecutionCommand);
-
-  conductor._sendToAllDBServers(Utils::finalizeExecutionPath, command);
+  auto startCleanupCommand =
+      StartCleanup{.executionNumber = conductor._executionNumber,
+                   .gss = conductor._globalSuperstep,
+                   .withStoring = true};
+  auto response = conductor._sendToAllDBServers<CleanupStarted>(
+      Utils::finalizeExecutionPath, startCleanupCommand);
+  if (response.fail()) {
+    LOG_PREGEL_CONDUCTOR("f382d", ERR) << "Cleanup could not be started";
+  }
 }
 
 auto Storing::receive(Message const& message) -> void {

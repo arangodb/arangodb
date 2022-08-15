@@ -59,10 +59,12 @@
 #include "IResearch/IResearchPDP.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/Index.h"
+#include "Inspection/VPack.h"
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -8701,7 +8703,11 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
-    worker->aqlResult(builder, withId);
+    VPackBuilder response;
+    worker->aqlResult(response, withId);
+    builder.openArray();
+    builder.add(VPackArrayIterator(response.slice().get("results")));
+    builder.close();
   }
 
   if (builder.isEmpty()) {

@@ -25,9 +25,11 @@
 #include <memory>
 #include <string_view>
 #include <thread>
+#include <variant>
 
 #include <fmt/core.h>
 
+#include "Basics/voc-errors.h"
 #include "Conductor.h"
 
 #include "Pregel/AggregatorHandler.h"
@@ -187,8 +189,6 @@ bool Conductor::_startGlobalStep() {
                                       .gss = _globalSuperstep,
                                       .vertexCount = _totalVerticesCount,
                                       .edgeCount = _totalEdgesCount};
-  VPackBuilder command;
-  serialize(command, prepareGssCommand);
 
   /// collect the aggregators
   _aggregators->resetValues();
@@ -196,29 +196,21 @@ bool Conductor::_startGlobalStep() {
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
 
+  auto response = _sendToAllDBServers<GssPrepared>(Utils::prepareGSSPath,
+                                                   prepareGssCommand);
+  if (response.fail()) {
+    LOG_PREGEL("04189", ERR)
+        << "Seems there is at least one worker out of order";
+    changeState(conductor::StateType::InError);
+    return false;
+  }
   VPackBuilder messagesFromWorkers;
-
-  {
-    VPackArrayBuilder guard(&messagesFromWorkers);
-    // we are explicitly expecting a response containing the aggregated
-    // values as well as the count of active vertices
-    auto res = _sendToAllDBServers(
-        Utils::prepareGSSPath, command, [&](VPackSlice const& payload) {
-          _aggregators->aggregateValues(payload);
-
-          messagesFromWorkers.add(
-              payload.get(Utils::workerToMasterMessagesKey));
-          _statistics.accumulateActiveCounts(payload);
-          _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
-          _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
-        });
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_PREGEL("04189", ERR)
-          << "Seems there is at least one worker out of order";
-      changeState(conductor::StateType::InError);
-      return false;
-    }
+  for (auto const& message : response.get()) {
+    _aggregators->aggregateValues(message.aggregators.slice());
+    messagesFromWorkers.add(message.messages.slice());
+    _statistics.accumulateActiveCounts(message.senderId, message.activeCount);
+    _totalVerticesCount += message.vertexCount;
+    _totalEdgesCount += message.edgeCount;
   }
 
   // workers are done if all messages were processed and no active vertices
@@ -283,16 +275,17 @@ bool Conductor::_startGlobalStep() {
   }
 
   auto startGssCommand = _startGssEvent(activateAll);
+
   VPackBuilder startCommand;
   serialize(startCommand, startGssCommand);
-
   LOG_PREGEL("d98de", DEBUG)
       << "Initiate starting GSS: " << startCommand.slice().toJson();
   _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
                                     ._finish = std::nullopt});
 
-  auto res = _sendToAllDBServers(Utils::startGSSPath, startCommand);
-  if (res != TRI_ERROR_NO_ERROR) {
+  auto startResponse =
+      _sendToAllDBServers<GssStarted>(Utils::startGSSPath, startGssCommand);
+  if (startResponse.fail()) {
     LOG_PREGEL("f34bb", ERR)
         << "Conductor could not start GSS " << _globalSuperstep;
     changeState(conductor::StateType::InError);
@@ -744,46 +737,36 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.close();
 }
 
-ErrorCode Conductor::_sendToAllDBServers(std::string const& path,
-                                         VPackBuilder const& message) {
-  return _sendToAllDBServers(path, message, std::function<void(VPackSlice)>());
-}
-
-ErrorCode Conductor::_sendToAllDBServers(
-    std::string const& path, VPackBuilder const& message,
-    std::function<void(VPackSlice)> handle) {
+// currently: returns immediate - blocking - messages
+template<typename OutType, typename InType>
+auto Conductor::_sendToAllDBServers(std::string const& path,
+                                    InType const& message)
+    -> ResultT<std::vector<OutType>> {
   _callbackMutex.assertLockedByCurrentThread();
   _respondedServers.clear();
 
+  VPackBuilder in;
+  serialize(in, message);
+
   // to support the single server case, we handle it without optimizing it
   if (!ServerState::instance()->isRunningInCluster()) {
-    if (handle) {
-      VPackBuilder response;
-      _feature.handleWorkerRequest(_vocbaseGuard.database(), path,
-                                   message.slice(), response);
-      handle(response.slice());
-    } else {
-      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message,
-                                                   self = shared_from_this()] {
-        TRI_vocbase_t& vocbase = _vocbaseGuard.database();
-        VPackBuilder response;
-        _feature.handleWorkerRequest(vocbase, path, message.slice(), response);
-      });
-    }
-    return TRI_ERROR_NO_ERROR;
+    // blocking at the moment
+    VPackBuilder out;
+    _feature.handleWorkerRequest(_vocbaseGuard.database(), path, in.slice(),
+                                 out);
+    auto result = deserialize<OutType>(out.slice());
+    return {{result}};
   }
 
   if (_dbServers.empty()) {
     LOG_PREGEL("a14fa", WARN) << "No servers registered";
-    return TRI_ERROR_FAILED;
+    return Result{TRI_ERROR_FAILED, "No servers registered"};
   }
 
   std::string base = Utils::baseUrl(Utils::workerPrefix);
 
   VPackBuffer<uint8_t> buffer;
-  buffer.append(message.slice().begin(), message.slice().byteSize());
+  buffer.append(in.slice().begin(), in.slice().byteSize());
 
   network::RequestOptions reqOpts;
   reqOpts.database = _vocbaseGuard.database().name();
@@ -801,24 +784,30 @@ ErrorCode Conductor::_sendToAllDBServers(
         reqOpts));
   }
 
-  size_t nrGood = 0;
-
+  std::vector<OutType> workerResponses;
   futures::collectAll(responses)
       .thenValue([&](auto results) {
         for (auto const& tryRes : results) {
-          network::Response const& res =
-              tryRes.get();  // throws exceptions upwards
+          network::Response const& res = tryRes.get();
           if (res.ok() && res.statusCode() < 400) {
-            nrGood++;
-            if (handle) {
-              handle(res.slice());
+            try {
+              auto response = deserialize<OutType>(res.slice());
+              workerResponses.emplace_back(response);
+            } catch (Exception& e) {
+              LOG_PREGEL("56187", ERR)
+                  << "Conductor received unknown message: " << e.message();
             }
           }
         }
+        return workerResponses;
       })
       .wait();
 
-  return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
+  if (workerResponses.size() != responses.size()) {
+    return Result{TRI_ERROR_FAILED, "Not all workers responded"};
+  }
+
+  return {workerResponses};
 }
 
 void Conductor::_ensureUniqueResponse(std::string const& sender) {
@@ -884,3 +873,27 @@ auto Conductor::changeState(conductor::StateType name) -> void {
   };
   run();
 }
+
+template auto Conductor::_sendToAllDBServers(std::string const& path,
+                                             PrepareGss const& message)
+    -> ResultT<std::vector<GssPrepared>>;
+template auto Conductor::_sendToAllDBServers(
+    std::string const& path, CollectPregelResults const& message)
+    -> ResultT<std::vector<PregelResults>>;
+
+template auto Conductor::_sendToAllDBServers(std::string const& path,
+                                             StartGss const& message)
+    -> ResultT<std::vector<GssStarted>>;
+
+template auto Conductor::_sendToAllDBServers(std::string const& path,
+                                             StartCleanup const& message)
+    -> ResultT<std::vector<CleanupStarted>>;
+template auto Conductor::_sendToAllDBServers(std::string const& path,
+                                             CancelGss const& message)
+    -> ResultT<std::vector<GssCanceled>>;
+template auto Conductor::_sendToAllDBServers(std::string const& path,
+                                             FinalizeRecovery const& message)
+    -> ResultT<std::vector<RecoveryFinalized>>;
+template auto Conductor::_sendToAllDBServers(std::string const& path,
+                                             ContinueRecovery const& message)
+    -> ResultT<std::vector<RecoveryContinued>>;

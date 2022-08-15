@@ -4,6 +4,8 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -54,19 +56,17 @@ auto Done::receive(Message const& message) -> void {
 auto Done::getResults(bool withId, VPackBuilder& out) -> void {
   auto collectPregelResultsCommand = CollectPregelResults{
       .executionNumber = conductor._executionNumber, .withId = withId};
-  VPackBuilder message;
-  serialize(message, collectPregelResultsCommand);
-
-  // merge results from DBServers
-  out.openArray();
-  auto res = conductor._sendToAllDBServers(
-      Utils::aqlResultsPath, message, [&](VPackSlice const& payload) {
-        if (payload.isArray()) {
-          out.add(VPackArrayIterator(payload));
-        }
-      });
-  out.close();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
+  auto response = conductor._sendToAllDBServers<PregelResults>(
+      Utils::aqlResultsPath, collectPregelResultsCommand);
+  if (response.fail()) {
+    THROW_ARANGO_EXCEPTION(response.errorNumber());
+  }
+  {
+    VPackArrayBuilder ab(&out);
+    for (auto const& message : response.get()) {
+      if (message.results.slice().isArray()) {
+        out.add(VPackArrayIterator(message.results.slice()));
+      }
+    }
   }
 }
