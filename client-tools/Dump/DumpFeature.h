@@ -153,7 +153,7 @@ class DumpFeature final : public ArangoDumpFeature {
   Options _options;
   Stats _stats;
   Mutex _workerErrorLock;
-  std::queue<Result> _workerErrors;
+  std::vector<Result> _workerErrors;
   std::unique_ptr<maskings::Maskings> _maskings;
 
   Result runClusterDump(httpclient::SimpleHttpClient& client,
