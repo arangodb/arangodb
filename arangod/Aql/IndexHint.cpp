@@ -149,7 +149,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
         if (!handled) {
           VPackBuilder builder;
           child->getMember(0)->toVelocyPackValue(builder);
-          std::string msg = "invalid value " + builder.toString() + " in ";
+          std::string msg = "invalid value " + builder.toJson() + " in ";
           ExecutionPlan::invalidOptionAttribute(query, msg.data(), "FOR",
                                                 name.data(), name.size());
         }
