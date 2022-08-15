@@ -759,8 +759,6 @@ const char* NODE_SHARDS_PARAM = "shards";
 const char* NODE_INDEXES_PARAM = "indexes";
 const char* NODE_OPTIONS_PARAM = "options";
 const char* NODE_VOLATILITY_PARAM = "volatility";
-const char* NODE_PRIMARY_SORT_PARAM = "primarySort";
-const char* NODE_STORED_VALUES_PARAM = "storedValues";
 const char* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
 const char* NODE_VIEW_VALUES_VARS = "viewValuesVars";
 const char* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
@@ -777,14 +775,17 @@ const char* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
 const char* NODE_VIEW_META_FIELDS = "metaFields";
 const char* NODE_VIEW_META_ANALYZER = "metaAnalyzer";
 const char* NODE_VIEW_META_INCLUDE_ALL = "metaIncludeAll";
+const char* NODE_VIEW_META_SORT = "metaSort";
+const char* NODE_VIEW_META_STORED = "metaStored";
 
-void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta) {
-  {
-    VPackArrayBuilder arrayScope{&node, NODE_PRIMARY_SORT_PARAM};
+void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
+                  bool needSort) {
+  if (needSort) {
+    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_SORT};
     meta.primarySort.toVelocyPack(node);
   }
   {
-    VPackArrayBuilder arrayScope{&node, NODE_STORED_VALUES_PARAM};
+    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
     meta.storedValues.toVelocyPack(node);
   }
   node.add(NODE_VIEW_META_INCLUDE_ALL,
@@ -801,7 +802,7 @@ void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta) {
 
 void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
   std::string error;
-  auto slice = node.get(NODE_PRIMARY_SORT_PARAM);
+  auto slice = node.get(NODE_VIEW_META_SORT);
   auto checkError = [&](std::string_view key) {
     if (!error.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -810,12 +811,14 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
                        slice.toString(), ", error: ", error));
     }
   };
-  meta.primarySort.fromVelocyPack(slice, error);
-  checkError(NODE_PRIMARY_SORT_PARAM);
+  if (!slice.isNone()) {
+    meta.primarySort.fromVelocyPack(slice, error);
+    checkError(NODE_VIEW_META_SORT);
+  }
 
-  slice = node.get(NODE_STORED_VALUES_PARAM);
+  slice = node.get(NODE_VIEW_META_STORED);
   meta.storedValues.fromVelocyPack(slice, error);
-  checkError(NODE_STORED_VALUES_PARAM);
+  checkError(NODE_VIEW_META_STORED);
 
   slice = node.get(NODE_VIEW_META_INCLUDE_ALL);
   if (!slice.isBool()) {
@@ -1097,32 +1100,38 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                      "' attribute should be consistent with '",
                      NODE_OUT_NM_COL_PARAM, "' attribute"));
   }
+  auto const viewNameSlice = base.get(NODE_VIEW_NAME_PARAM);
+  auto const viewName =
+      viewNameSlice.isNone() ? "" : viewNameSlice.stringView();
   auto const viewIdSlice = base.get(NODE_VIEW_ID_PARAM);
-  if (!viewIdSlice.isString()) {
+  if (viewIdSlice.isNone()) {  // handle search-alias view
+    auto meta = std::make_shared<SearchMeta>();
+    fromVelocyPack(base, *meta);
+    _meta = std::move(meta);
+  } else if (!viewIdSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         absl::StrCat("invalid vpack format, '", NODE_VIEW_ID_PARAM,
                      "' attribute is intended to be a string"));
-  }
-  auto const viewIdOrName = viewIdSlice.stringView();
-  if (ServerState::instance()->isSingleServer()) {
-    uint64_t viewId = 0;
-    if (absl::SimpleAtoi(viewIdOrName, &viewId)) {
-      _view = _vocbase.lookupView(DataSourceId{viewId});
+  } else {  // handle arangosearch view
+    auto const viewIdOrName = viewIdSlice.stringView();
+    if (ServerState::instance()->isSingleServer()) {
+      uint64_t viewId = 0;
+      if (absl::SimpleAtoi(viewIdOrName, &viewId)) {
+        _view = _vocbase.lookupView(DataSourceId{viewId});
+      }
+    } else {
+      // need cluster wide view
+      auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+      _view = ci.getView(_vocbase.name(), viewIdOrName);
     }
-  } else {
-    // need cluster wide view
-    auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-    _view = ci.getView(_vocbase.name(), viewIdOrName);
+    if (!_view) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat("unable to find ArangoSearch view with id '",
+                       viewIdOrName, "'"));
+    }
   }
-  if (!ServerState::instance()->isDBServer() && !_view) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        absl::StrCat("unable to find ArangoSearch view with id '", viewIdOrName,
-                     "'"));
-  }
-  _meta = getMeta(_view);
-  TRI_ASSERT(_meta || !_view || _view->type() != ViewType::kSearch);
   // filter condition
   auto const conditionSlice = base.get(NODE_CONDITION_PARAM);
   if (conditionSlice.isObject() && !conditionSlice.isEmptyObject()) {
@@ -1141,15 +1150,20 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       if (!shard) {
         LOG_TOPIC("6fba2", ERR, iresearch::TOPIC)
             << "unable to lookup shard '" << shardId << "' for the view '"
-            << (_view ? _view->name() : "") << "'";
+            << viewName << "'";
         continue;
       }
       _shards[shard->name()];
     }
-    auto const indexesSlice = base.get(NODE_INDEXES_PARAM);
-    if (indexesSlice.isArray()) {
+    if (_meta) {  // handle search-alias view
+      auto const indexesSlice = base.get(NODE_INDEXES_PARAM);
+      if (!indexesSlice.isArray() || indexesSlice.length() % 2 != 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "invalid 'IResearchViewNode' json format: unable to find 'indexes' "
+            "even array");
+      }
       velocypack::ArrayIterator indexIt{indexesSlice};
-      TRI_ASSERT(indexIt.size() % 2 == 0);
       for (; indexIt.valid(); ++indexIt) {
         auto const indexId = (*indexIt).getNumber<uint64_t>();
         auto const shardIndex = (*++indexIt).getNumber<uint64_t>();
@@ -1160,10 +1174,6 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         }
         _shards[shard->name()].emplace_back(indexId);
       }
-    } else if (!_view || _view->type() == ViewType::kSearch) {
-      LOG_TOPIC("a48f5", ERR, iresearch::TOPIC)
-          << "invalid 'IResearchViewNode' json format: unable to find "
-             "'indexes' array";
     }
   } else {
     LOG_TOPIC("a48f3", ERR, iresearch::TOPIC)
@@ -1183,25 +1193,17 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
-  // meta
-  if (!_view) {
-    auto meta = std::make_shared<SearchMeta>();
-    fromVelocyPack(base, *meta);
-    _meta = std::move(meta);
-    TRI_ASSERT(_meta);
-  }
   // parse sort buckets and set them and sort
-  auto const& sort = primarySort(_meta, _view);
-  auto sortBuckets = sort.size();
-  if (sortBuckets != 0) {
-    auto const sortBucketsSlice = base.get(NODE_PRIMARY_SORT_BUCKETS_PARAM);
-    if (!sortBucketsSlice.isNumber()) {
+  auto const sortBucketsSlice = base.get(NODE_PRIMARY_SORT_BUCKETS_PARAM);
+  if (!sortBucketsSlice.isNone()) {
+    auto const& sort = primarySort(_meta, _view);
+    if (!sortBucketsSlice.isNumber<size_t>()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "invalid vpack format: 'primarySortBuckets' attribute is "
           "intended to be a number");
     }
-    sortBuckets = sortBucketsSlice.getNumber<size_t>();
+    auto const sortBuckets = sortBucketsSlice.getNumber<size_t>();
     if (sortBuckets > sort.size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -1356,8 +1358,10 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   TRI_ASSERT(_meta || _view->type() != ViewType::kSearch);
   // need 'view' field to correctly print view name in JS explanation
   nodes.add(NODE_VIEW_NAME_PARAM, VPackValue(_view->name()));
-  absl::AlphaNum viewId{_view->id().id()};
-  nodes.add(NODE_VIEW_ID_PARAM, VPackValue(viewId.Piece()));
+  if (!_meta) {
+    absl::AlphaNum viewId{_view->id().id()};
+    nodes.add(NODE_VIEW_ID_PARAM, VPackValue(viewId.Piece()));
+  }
 
   // our variable
   nodes.add(VPackValue(NODE_OUT_VARIABLE_PARAM));
@@ -1473,11 +1477,12 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   nodes.add(NODE_VOLATILITY_PARAM, VPackValue(_volatilityMask));
 
   // primary sort buckets
-  if (_sort && !_sort->empty()) {
+  bool const needSort = _sort && !_sort->empty();
+  if (needSort) {
     nodes.add(NODE_PRIMARY_SORT_BUCKETS_PARAM, VPackValue(_sortBuckets));
   }
   if (_meta) {
-    iresearch::toVelocyPack(nodes, *_meta);
+    iresearch::toVelocyPack(nodes, *_meta, needSort);
   }
 }
 

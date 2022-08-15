@@ -155,8 +155,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "true, \"collections\":[42] }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
-        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
-        "false},  { \"field\": \"another.field\", \"asc\":true } ] }");
+        "\"primarySortBuckets\": 2 }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -203,8 +202,6 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "true, \"collections\":[42] }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
-        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
-        "false},  { \"field\": \"another.field\", \"asc\":true } ], "
         "\"primarySortBuckets\": 1 }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -252,8 +249,6 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
-        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
-        "false},  { \"field\": \"another.field\", \"asc\":true } ], "
         "\"primarySortBuckets\": false }");
 
     try {
@@ -274,8 +269,6 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
-        "\"primarySort\": [ { \"field\": \"my.nested.Fields\", \"asc\": "
-        "false},  { \"field\": \"another.field\", \"asc\":true } ], "
         "\"primarySortBuckets\": 3 }");
 
     try {
@@ -964,7 +957,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     }
   }
 
-  // invalid 'primarySort' specified
+  // invalid 'primarySortBuckets' specified
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
@@ -972,7 +965,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
-        "\", \"primarySort\": false }");
+        "\", \"primarySortBuckets\": false }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1107,51 +1100,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id().id()) + "\", \"primarySort\": [] }");
-
-    arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
-                                                json->slice());
-
-    EXPECT_TRUE(node.empty());                // view has no links
-    EXPECT_TRUE(node.collections().empty());  // view has no links
-    EXPECT_TRUE(node.shards().empty());
-    EXPECT_FALSE(node.sort().first);   // primary sort is not set by default
-    EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
-
-    EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-              node.getType());
-    EXPECT_EQ(outVariable.id, node.outVariable().id);
-    EXPECT_EQ(outVariable.name, node.outVariable().name);
-    EXPECT_EQ(query.plan(), node.plan());
-    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
-    EXPECT_EQ(logicalView, node.view());
-    EXPECT_TRUE(node.scorers().empty());
-    EXPECT_FALSE(node.volatility().first);   // filter volatility
-    EXPECT_FALSE(node.volatility().second);  // sort volatility
-    arangodb::aql::VarSet usedHere;
-    node.getVariablesUsedHere(usedHere);
-    EXPECT_TRUE(usedHere.empty());
-    auto const setHere = node.getVariablesSetHere();
-    EXPECT_EQ(1, setHere.size());
-    EXPECT_EQ(outVariable.id, setHere[0]->id);
-    EXPECT_EQ(outVariable.name, setHere[0]->name);
-    EXPECT_FALSE(node.options().forceSync);
-
-    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
-    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(node.options().countApproximate,
-              arangodb::iresearch::CountApproximate::Exact);
-  }
-
-  // no options, ignore 'primarySortBuckets'
-  {
-    auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id().id()) +
-        "\", \"primarySort\": [], \"primarySortBuckets\": false }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -1194,8 +1143,50 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
-        std::to_string(logicalView->id().id()) +
-        "\", \"primarySort\": [], \"primarySortBuckets\": 42 }");
+        std::to_string(logicalView->id().id()) + "\" } ");
+
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                json->slice());
+
+    EXPECT_TRUE(node.empty());                // view has no links
+    EXPECT_TRUE(node.collections().empty());  // view has no links
+    EXPECT_TRUE(node.shards().empty());
+    EXPECT_FALSE(node.sort().first);   // primary sort is not set by default
+    EXPECT_EQ(0, node.sort().second);  // primary sort is not set by default
+
+    EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+              node.getType());
+    EXPECT_EQ(outVariable.id, node.outVariable().id);
+    EXPECT_EQ(outVariable.name, node.outVariable().name);
+    EXPECT_EQ(query.plan(), node.plan());
+    EXPECT_EQ(arangodb::aql::ExecutionNodeId{42}, node.id());
+    EXPECT_EQ(logicalView, node.view());
+    EXPECT_TRUE(node.scorers().empty());
+    EXPECT_FALSE(node.volatility().first);   // filter volatility
+    EXPECT_FALSE(node.volatility().second);  // sort volatility
+    arangodb::aql::VarSet usedHere;
+    node.getVariablesUsedHere(usedHere);
+    EXPECT_TRUE(usedHere.empty());
+    auto const setHere = node.getVariablesSetHere();
+    EXPECT_EQ(1, setHere.size());
+    EXPECT_EQ(outVariable.id, setHere[0]->id);
+    EXPECT_EQ(outVariable.name, setHere[0]->name);
+    EXPECT_FALSE(node.options().forceSync);
+
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
+    EXPECT_EQ(node.options().countApproximate,
+              arangodb::iresearch::CountApproximate::Exact);
+  }
+
+  // no options
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -1333,7 +1324,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
-        std::to_string(logicalView->id().id()) + "\", \"primarySort\": [] }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -1676,7 +1667,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     }
   }
 
-  // invalid option 'primarySort'
+  // invalid option 'primarySortBuckets'
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
@@ -1686,7 +1677,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "{}}, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
-        "\"primarySort\": true }");
+        "\"primarySortBuckets\": true }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
@@ -1707,9 +1698,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"name\":\"variable\", \"id\":0 }, \"options\": { "
         "\"conditionOptimization\" : "
         "\"invalid\"}, \"viewId\": \"" +
-        std::to_string(logicalView->id().id()) +
-        "\", "
-        "\"primarySort\": true }");
+        std::to_string(logicalView->id().id()) + "\" }");
 
     try {
       arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
