@@ -2941,11 +2941,7 @@ function testSmallCircleFilterOptimization(testGraph) {
     `p.edges[1].color == "blue"`,
     `"blue" == p.vertices[1].color`,
     `p.edges[*].color ALL == "blue"`,
-    `p.vertices[*].color ALL == "blue"`,
-    `DATE_MONTH(v.timestamp) == 11`,
-    `25 == DATE_DAY(e.timestamp)`,
-    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(0, 100, "y"))`,
-    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(DOCUMENT("${testGraph.vertex('A')}").timestamp, 1, "y"))`
+    `p.vertices[*].color ALL == "blue"`
   ];
 
   // Optimize a single condition
@@ -2955,9 +2951,6 @@ function testSmallCircleFilterOptimization(testGraph) {
     for (let second = first + 1; second < optimizableConditions.length; ++second) {
       // Optimize two filter nodes, and erase the filter nodes
       filtersToTest.push(`FILTER ${optimizableConditions[first]} FILTER ${optimizableConditions[second]}`);
-      // Optimize a single more complex condition
-      // TODO: Reactivate this!!
-      // filtersToTest.push(`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`);
     }
   }
 
@@ -2967,7 +2960,6 @@ function testSmallCircleFilterOptimization(testGraph) {
         ${filterCondition}
         return v
     `;
-    db._explain(query);
     const plan = AQL_EXPLAIN(query, {});
 
 
@@ -2985,12 +2977,35 @@ function testSmallCircleFilterOptimization(testGraph) {
     `DOCUMENT(e.docId).color == "blue"`,
     /* ASSSERT has side-effects on false so it should not be optimized */
     `ASSERT(v.color == "blue", "Color is not blue")`,
-    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(p.vertices[0].timestamp, 1, "y"))`
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(p.vertices[0].timestamp, 1, "y"))`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(DOCUMENT("${testGraph.vertex('A')}").timestamp, 1, "y"))`
+  ];
+
+  /* Note: this set has a chance to be optimized, we cannot reliably detect methods yet
+  * therefore the FILTER node will stay in place, but the Methods is already moved into the Traversal
+  */
+  const optimizedButFilterIsKept = [
+    `DATE_MONTH(v.timestamp) == 11`,
+    `25 == DATE_DAY(e.timestamp)`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(0, 100, "y"))`,
   ];
 
   // This is a pair of FilterCondition and LeftOver non-optimized condition.
   // The FILTER node needs to stay, and needs to cover the non-optimized condition
   const nonOptFiltersToTest = nonOptimizableFilters.map(f => [`FILTER ${f}`, `${f}`, false]);
+
+  for (const c of optimizedButFilterIsKept.map(f => [`FILTER ${f}`, `${f}`, true])) {
+    nonOptFiltersToTest.push(c);
+  }
+
+  // NOTE: we only detect one of the two AND branches to be covered.
+  // Actually both are covered, our optimizer does not detect this yet.
+  // NOTE: We only iterate up to 2 as the following all cover Path only conditions which are optimized
+  for (let first = 0; first < 2; ++first) {
+    for (let second = first + 1; second < optimizableConditions.length; ++second) {
+      nonOptFiltersToTest.push([`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`, `${optimizableConditions[first]}`, true]);
+    }
+  }
 
   // More complex test.
   for (let first = 0; first < nonOptimizableFilters.length; ++first) {
@@ -2998,9 +3013,7 @@ function testSmallCircleFilterOptimization(testGraph) {
       // Add two filter nodes, one can be optimized, one note. The optimizable one should be erased.
       nonOptFiltersToTest.push([`FILTER ${nonOptimizableFilters[first]} FILTER ${optimizableConditions[second]}`, `${nonOptimizableFilters[first]}`, true]);
       // Put it into one big condition, where parts can be optimized, parts not
-      // TODO: Reactivate this!!
       nonOptFiltersToTest.push([`FILTER ${nonOptimizableFilters[first]} && ${optimizableConditions[second]}`, `${nonOptimizableFilters[first]}`, true]);
-      // filtersToTest.push(`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`);
     }
   }
 
@@ -3010,8 +3023,6 @@ function testSmallCircleFilterOptimization(testGraph) {
         ${filterCondition}
         return v
     `;
-    require("internal").print(query);
-    db._explain(query);
     const plan = AQL_EXPLAIN(query, {});
 
     const filters = findExecutionNodes(plan, "FilterNode");
