@@ -30,7 +30,6 @@ const fs = require('fs');
 
 if (getOptions === true) {
   return {
-    'log.use-json-format': 'true',
     'log.hostname': 'delorean',
     'log.process': 'false',
     'log.ids': 'false',
@@ -88,6 +87,7 @@ function EscapeControlSuite() {
       }
       assertEqual(escapeCharsLength + 2, filtered.length);
 
+      print(filtered);
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
         let msg = JSON.parse(filtered[i]);
