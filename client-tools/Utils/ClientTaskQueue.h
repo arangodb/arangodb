@@ -110,6 +110,16 @@ class ClientTaskQueue {
   bool isQueueEmpty() const noexcept;
 
   /**
+   * @brief Determines if the job queue is currently empty and all workers
+   * are idle
+   *
+   * Thread-safe.
+   *
+   * @return `true` if queue is empty and all workers are idle
+   */
+  bool isQueueEmptyAndAllWorkersIdle() const noexcept;
+
+  /**
    * @brief Determines the number of currently queued jobs, the number
    * of total workers and the number of busy workers
    *
@@ -194,12 +204,12 @@ class ClientTaskQueue {
 
   JobProcessor _processJob;
 
-  Mutex mutable _jobsLock;
-  basics::ConditionVariable _jobsCondition;
+  // protects _jobs
+  mutable basics::ConditionVariable _jobsCondition;
   std::queue<std::unique_ptr<JobData>> _jobs;
 
-  Mutex mutable _workersLock;
-  basics::ConditionVariable _workersCondition;
+  // protects _workers
+  mutable basics::ConditionVariable _workersCondition;
   std::vector<std::unique_ptr<Worker>> _workers;
 
   friend class Worker;
@@ -227,7 +237,7 @@ inline bool ClientTaskQueue<JobData>::spawnWorkers(
     ClientManager& manager, uint32_t const& numWorkers) noexcept {
   uint32_t spawned = 0;
   try {
-    MUTEX_LOCKER(lock, _workersLock);
+    CONDITION_LOCKER(lock, _workersCondition);
     for (; spawned < numWorkers; spawned++) {
       auto client = manager.getConnectedClient(false, false, true, spawned);
       auto worker = std::make_unique<Worker>(_server, *this, std::move(client));
@@ -241,13 +251,27 @@ inline bool ClientTaskQueue<JobData>::spawnWorkers(
 
 template<typename JobData>
 inline bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
-  bool isEmpty = false;
-  try {
-    MUTEX_LOCKER(lock, _jobsLock);
-    isEmpty = _jobs.empty();
-  } catch (...) {
+  CONDITION_LOCKER(lock, _jobsCondition);
+  return _jobs.empty();
+}
+
+template<typename JobData>
+inline bool ClientTaskQueue<JobData>::isQueueEmptyAndAllWorkersIdle()
+    const noexcept {
+  // acquire both locks here, so we can avoid data races
+  CONDITION_LOCKER(lock1, _jobsCondition);
+  CONDITION_LOCKER(lock2, _workersCondition);
+
+  if (!_jobs.empty()) {
+    return false;
   }
-  return isEmpty;
+  for (auto const& worker : _workers) {
+    if (!worker->isIdle()) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 template<typename JobData>
@@ -255,8 +279,9 @@ inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics()
     const noexcept {
   size_t busy = 0;
   size_t workers = 0;
-  MUTEX_LOCKER(lock, _jobsLock);
-  for (auto& worker : _workers) {
+
+  CONDITION_LOCKER(lock, _workersCondition);
+  for (auto const& worker : _workers) {
     ++workers;
     if (worker->isIdle()) {
       ++busy;
@@ -267,28 +292,24 @@ inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics()
 
 template<typename JobData>
 inline bool ClientTaskQueue<JobData>::allWorkersBusy() const noexcept {
-  try {
-    MUTEX_LOCKER(lock, _workersLock);
-    for (auto& worker : _workers) {
-      if (worker->isIdle()) {
-        return false;
-      }
+  CONDITION_LOCKER(lock, _workersCondition);
+
+  for (auto const& worker : _workers) {
+    if (worker->isIdle()) {
+      return false;
     }
-  } catch (...) {
   }
   return true;
 }
 
 template<typename JobData>
 inline bool ClientTaskQueue<JobData>::allWorkersIdle() const noexcept {
-  try {
-    MUTEX_LOCKER(lock, _workersLock);
-    for (auto& worker : _workers) {
-      if (!worker->isIdle()) {
-        return false;
-      }
+  CONDITION_LOCKER(lock, _workersCondition);
+
+  for (auto const& worker : _workers) {
+    if (!worker->isIdle()) {
+      return false;
     }
-  } catch (...) {
   }
   return true;
 }
@@ -297,8 +318,10 @@ template<typename JobData>
 inline bool ClientTaskQueue<JobData>::queueJob(
     std::unique_ptr<JobData>&& job) noexcept {
   try {
-    MUTEX_LOCKER(lock, _jobsLock);
-    _jobs.emplace(std::move(job));
+    {
+      CONDITION_LOCKER(lock, _jobsCondition);
+      _jobs.emplace(std::move(job));
+    }
     _jobsCondition.signal();
     return true;
   } catch (...) {
@@ -308,43 +331,33 @@ inline bool ClientTaskQueue<JobData>::queueJob(
 
 template<typename JobData>
 inline void ClientTaskQueue<JobData>::clearQueue() noexcept {
-  try {
-    MUTEX_LOCKER(lock, _jobsLock);
-    while (!_jobs.empty()) {
-      _jobs.pop();
-    }
-  } catch (...) {
+  CONDITION_LOCKER(lock, _jobsCondition);
+  while (!_jobs.empty()) {
+    _jobs.pop();
   }
 }
 
 template<typename JobData>
 inline void ClientTaskQueue<JobData>::waitForIdle() noexcept {
-  try {
-    while (true) {
-      if (isQueueEmpty() && allWorkersIdle()) {
-        break;
-      }
-
-      CONDITION_LOCKER(lock, _workersCondition);
-      lock.wait(std::chrono::milliseconds(100));
+  while (true) {
+    if (isQueueEmptyAndAllWorkersIdle()) {
+      break;
     }
-  } catch (...) {
+
+    CONDITION_LOCKER(lock, _workersCondition);
+    lock.wait(std::chrono::milliseconds(100));
   }
 }
 
 template<typename JobData>
 inline std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob() noexcept {
-  std::unique_ptr<JobData> job(nullptr);
+  std::unique_ptr<JobData> job;
 
-  try {
-    MUTEX_LOCKER(lock, _jobsLock);
-    if (_jobs.empty()) {
-      return job;
-    }
+  CONDITION_LOCKER(lock, _jobsCondition);
 
+  if (!_jobs.empty()) {
     job = std::move(_jobs.front());
     _jobs.pop();
-  } catch (...) {
   }
 
   return job;
@@ -352,23 +365,18 @@ inline std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob() noexcept {
 
 template<typename JobData>
 inline void ClientTaskQueue<JobData>::waitForWork() noexcept {
-  try {
-    if (!isQueueEmpty()) {
-      return;
-    }
+  CONDITION_LOCKER(lock, _jobsCondition);
 
-    CONDITION_LOCKER(lock, _jobsCondition);
-    lock.wait(std::chrono::milliseconds(500));
-  } catch (...) {
+  if (!_jobs.empty()) {
+    return;
   }
+
+  lock.wait(std::chrono::milliseconds(500));
 }
 
 template<typename JobData>
 inline void ClientTaskQueue<JobData>::notifyIdle() noexcept {
-  try {
-    _workersCondition.signal();
-  } catch (...) {
-  }
+  _workersCondition.signal();
 }
 
 template<typename JobData>
