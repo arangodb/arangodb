@@ -542,7 +542,7 @@ const replicatedStateRecoverySuite = function () {
         }
         return entry.payload[1].operation === "AbortAllOngoingTrx";
       });
-      assertTrue(abortAllEntryFound);
+      assertTrue(abortAllEntryFound, `Log contents for ${shardId}: ${JSON.stringify(logContents)}`);
 
       // Try a new transaction.
       servers = Object.assign({}, ...followers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
