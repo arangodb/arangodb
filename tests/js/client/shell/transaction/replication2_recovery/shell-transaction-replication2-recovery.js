@@ -64,7 +64,6 @@ const syncShardsWithLogs = function(dbn) {
 
   const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
   replicatedLogsHelper.waitFor(function() {
-    return true;
     const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
     if (currentVersion > waitForCurrent) {
       return true;
@@ -124,8 +123,6 @@ function transactionReplication2Recovery() {
       let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
       let newTerm = term + 2;
 
-      internal.print(`stopping server ${leader}`);
-
       stopServerWait(leader);
       replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
         dbn, logId, newTerm, followers));
@@ -165,13 +162,11 @@ function transactionReplication2Recovery() {
       let servers = Object.assign({}, ...followers.map(
         (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
       for (const [key, endpoint] of Object.entries(servers)) {
-        internal.print(`Checking server ${key}, ${endpoint}`);
         replicatedLogsHelper.waitFor(
           replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "foo", true));
       }
 
       // Resume the dead server. Expect to read "foo" from it.
-      internal.print('Continue old leader');
       continueServerWait(leader);
       syncShardsWithLogs(dbn);
       replicatedLogsHelper.waitFor(
@@ -182,7 +177,6 @@ function transactionReplication2Recovery() {
           let res = request.get({
             url: `${url}/_db/${dbn}/_api/replicated-state/${shardId.slice(1)}/local-status`,
           });
-          require('internal').print("Leader state ", res.json, " log contents\n", replicatedLogsHelper.dumpShardLog(shardId));
         });
 
       // Try another transaction. This time expect it to work on all servers.
@@ -190,12 +184,10 @@ function transactionReplication2Recovery() {
         trx = db._createTransaction({
           collections: {write: c.name()}
         });
-        require('internal').print(trx.id())
         tc = trx.collection(c.name());
         tc.insert({_key: "bar"});
         trx.commit();
       } catch (err) {
-        require('internal').print("log contents\n", replicatedLogsHelper.dumpShardLog(shardId));
         fail("Transaction failed with: " + JSON.stringify(err));
       }
 
