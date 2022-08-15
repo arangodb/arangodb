@@ -64,10 +64,6 @@ function EscapeControlSuite() {
     return require('internal').options()["log.output"];
   `);
 
-      const response = arango.GET("/_admin/log");
-      print(response);
-
-
       assertTrue(Array.isArray(res));
       assertTrue(res.length > 0);
 
@@ -91,7 +87,6 @@ function EscapeControlSuite() {
         require("internal").sleep(0.5);
       }
       assertEqual(escapeCharsLength + 2, filtered.length);
-      print(filtered);
 
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
