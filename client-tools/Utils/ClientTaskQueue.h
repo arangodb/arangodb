@@ -404,11 +404,18 @@ inline bool ClientTaskQueue<JobData>::Worker::isIdle() const noexcept {
 template<typename JobData>
 inline void ClientTaskQueue<JobData>::Worker::run() {
   while (!isStopping()) {
+    // we must unconditionally report as busy here, regardless of if there is
+    // actually a job on the queue or not. this is because otherwise there can
+    // be a race between
+    // - this thread popping a job from the queue and only after that reporting
+    // busy.
+    // - someone checking if there are no jobs left and all workers being idle.
+    //
+    _idle.store(false);
+
     std::unique_ptr<JobData> job = _queue.fetchJob();
 
     if (job) {
-      _idle.store(false);
-
       try {
         _queue._processJob(*_client, *job);
       } catch (...) {
@@ -416,6 +423,8 @@ inline void ClientTaskQueue<JobData>::Worker::run() {
 
       _idle.store(true);
       _queue.notifyIdle();
+    } else {
+      _idle.store(true);
     }
 
     _queue.waitForWork();
