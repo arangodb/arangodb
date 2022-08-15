@@ -153,10 +153,17 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
                                                   name.data(), name.size());
           }
           handled = true;
+        } else {
+          ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
+                                                name.data(), name.size());
+          handled = true;
         }
 
         if (!handled) {
-          ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
+          VPackBuilder builder;
+          child->getMember(0)->toVelocyPackValue(builder);
+          std::string msg = "invalid value " + builder.toString() + " in ";
+          ExecutionPlan::invalidOptionAttribute(query, msg.data(), "FOR",
                                                 name.data(), name.size());
         }
       }
