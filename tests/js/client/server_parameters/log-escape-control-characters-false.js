@@ -50,7 +50,7 @@ function EscapeControlSuite() {
 
   return {
     testEscapeControlFalse: function() {
-      const visibleControlChars = ['\n', '\r', '\b', '\t', '\v', '\f'];
+      const visibleControlChars = ['\n', '\r', '\b', '\t'];
       const escapeCharsLength = 31;
       const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
      
