@@ -43,7 +43,8 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
   return it->second;
 }
 
-auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
+auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc,
+                                                 bool ignoreRecoveryErrors)
     -> Result {
   if (doc.operation == OperationType::kAbortAllOngoingTrx) {
     _transactions.clear();
@@ -60,17 +61,10 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       case OperationType::kRemove:
       case OperationType::kTruncate: {
         auto res = trx->apply(doc);
-        if (res.result.ok()) {
-          if (!res.countErrorCodes.empty()) {
-            // TODO - handle errors that happen when applying entries better
-            // At least during recovery we will have to ignore some errors, so
-            // we will need a way to differentiate them.
-            return {TRI_ERROR_TRANSACTION_INTERNAL};
-          }
-          return {};
-        } else {
-          return res.result;
+        if (ignoreRecoveryErrors && res.fail() && res.ignoreDuringRecovery()) {
+          return Result{};
         }
+        return res.result();
       }
       case OperationType::kCommit: {
         auto res = trx->commit();

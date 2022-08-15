@@ -35,11 +35,25 @@ class Methods;
 
 namespace arangodb::replication2::replicated_state::document {
 
+class DocumentStateTransactionResult {
+ public:
+  explicit DocumentStateTransactionResult(TransactionId tid,
+                                          OperationResult opRes);
+  [[nodiscard]] auto ok() const noexcept -> bool;
+  [[nodiscard]] auto fail() const noexcept -> bool;
+  [[nodiscard]] auto ignoreDuringRecovery() const noexcept -> bool;
+  [[nodiscard]] auto result() const noexcept -> Result;
+
+ private:
+  TransactionId _tid;
+  OperationResult _opRes;
+};
+
 struct IDocumentStateTransaction {
   virtual ~IDocumentStateTransaction() = default;
 
   [[nodiscard]] virtual auto apply(DocumentLogEntry const& entry)
-      -> OperationResult = 0;
+      -> DocumentStateTransactionResult = 0;
   [[nodiscard]] virtual auto commit() -> Result = 0;
   [[nodiscard]] virtual auto abort() -> Result = 0;
 };
@@ -50,7 +64,8 @@ class DocumentStateTransaction
  public:
   explicit DocumentStateTransaction(
       std::unique_ptr<transaction::Methods> methods);
-  auto apply(DocumentLogEntry const& entry) -> OperationResult override;
+  auto apply(DocumentLogEntry const& entry)
+      -> DocumentStateTransactionResult override;
   auto commit() -> Result override;
   auto abort() -> Result override;
 

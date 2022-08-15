@@ -60,3 +60,10 @@ DocumentCore::DocumentCore(
 auto DocumentCore::getShardId() -> std::string_view { return _shardId; }
 
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
+
+auto DocumentCore::getLastIndex() -> LogIndex { return _lastIndex; };
+
+void DocumentCore::updateLastIndex(LogIndex index) {
+  TRI_ASSERT(index > _lastIndex);
+  _lastIndex = index;
+}

@@ -57,16 +57,12 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
   auto transactionHandler = _handlersFactory->createTransactionHandler(gid);
 
-  // TODO TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED
-
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-    auto res = transactionHandler->applyEntry(doc);
+    auto res = transactionHandler->applyEntry(doc, true);
     if (res.fail()) {
-      LOG_DEVEL << "recoverEntries failed for " << doc << " with error " << res;
       return res;
     }
-    LOG_DEVEL << "recoverEntries for " << doc << " returned " << res;
   }
 
   auto doc = DocumentLogEntry{std::string(shardId),
@@ -74,7 +70,9 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                               {},
                               TransactionId{0}};
   auto stream = getStream();
-  stream->insert(doc);
+  auto idx = stream->insert(doc);
+  _guardedData.doUnderLock(
+      [idx](auto& data) { data.core->updateLastIndex(idx); });
 
   // TODO Add a tombstone to the TransactionManager
   return {TRI_ERROR_NO_ERROR};
@@ -89,6 +87,8 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                 std::move(payload), transactionId};
   auto stream = getStream();
   auto idx = stream->insert(entry);
+  _guardedData.doUnderLock(
+      [idx](auto& data) { data.core->updateLastIndex(idx); });
 
   if (opts.waitForCommit) {
     return stream->waitFor(idx).thenValue(

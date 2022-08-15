@@ -59,13 +59,20 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
+  auto lastAppliedIndex = _guardedData.doUnderLock(
+      [](auto& data) { return data.core->getLastIndex(); });
   while (auto entry = ptr->next()) {
+    auto idx = entry->first;
     auto doc = entry->second;
-    auto res = _transactionHandler->applyEntry(doc);
+    auto res = _transactionHandler->applyEntry(doc, idx <= lastAppliedIndex);
     if (res.fail()) {
-      LOG_DEVEL << "applyEntries failed for " << doc << " with error " << res;
       return res;
     }
+    _guardedData.doUnderLock([idx](auto& data) {
+      if (idx > data.core->getLastIndex()) {
+        data.core->updateLastIndex(idx);
+      }
+    });
   }
   return {TRI_ERROR_NO_ERROR};
 }
