@@ -107,7 +107,7 @@ function EscapeControlSuite() {
         assertTrue(msg.hasOwnProperty("role"), msg);
         assertTrue(msg.hasOwnProperty("tid"), msg);
         assertTrue(msg.hasOwnProperty("message"), msg);
-        assertEqual("testmann: testi", msg.message, msg);
+        assertEqual("testmann: testi ", msg.message, msg);
       }
       assertTrue(filtered[escapeCharsLength + 1].match(/testmann: done/));
 
