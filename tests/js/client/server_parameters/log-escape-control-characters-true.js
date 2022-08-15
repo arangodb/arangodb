@@ -52,22 +52,18 @@ function EscapeControlSuite() {
     testEscapeControlTrue: function() {
       const visibleControlChars = ['\n', '\r', '\b', '\t'];
       const escapeCharsLength = 31;
-      const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
+      const res = arango.POST("/_admin/execute", `
      
     require('console').log("testmann: start");
     for (let i = 1; i <= 31; ++i) {
         const hexCode = i.toString(16);
         const padding = hexCode.length === 1 ? "0" : "";
         const charCode = "0x" + padding + hexCode;
-        const charUnicode = "\\u" + 00 + padding + hexCode;
         require('console').log("testmann: testi" + String.fromCharCode(charCode));
     }
     require('console').log("testmann: done");
     return require('internal').options()["log.output"];
   `);
-
-      const response = arango.GET("/_admin/log");
-      print(response);
 
 
       assertTrue(Array.isArray(res));
@@ -98,7 +94,6 @@ function EscapeControlSuite() {
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
         let msg = JSON.parse(filtered[i]);
-        print("message 1 " + msg);
         assertTrue(msg.hasOwnProperty("time"), msg);
         assertFalse(msg.hasOwnProperty("pid"), msg);
         assertTrue(msg.hasOwnProperty("level"), msg);
@@ -113,7 +108,6 @@ function EscapeControlSuite() {
         const padding = hexCode.length === 1 ? "0" : "";
         const charCode = "0x" + padding + hexCode;
         const foundIdx = visibleControlChars.indexOf(String.fromCharCode(charCode));
-        print("foundIdx ", foundIdx);
         if (foundIdx !== -1) {
           assertEqual("testmann: testi" + visibleControlChars[foundIdx], msg.message, msg);
         }
