@@ -53,7 +53,7 @@ function EscapeUnicodeSuite() {
     testEscapeUnicodeTrue: function() {
       const unicodeChars = ["°", "ç", "ã", "maçã", "犬"];
 
-      const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
+      const res = arango.POST("/_admin/execute", `
      
     require('console').log("testmann: start");
     const unicodeChars = ["°", "ç", "ã", "maçã", "犬"];
@@ -109,7 +109,7 @@ function EscapeUnicodeSuite() {
         assertTrue(msg.hasOwnProperty("role"), msg);
         assertTrue(msg.hasOwnProperty("tid"), msg);
         assertTrue(msg.hasOwnProperty("message"), msg);
-        assertEqual("testmann: testi " + unicodeChars.charCodeAt(i - 1), msg.message, msg);
+        assertEqual("testmann: testi " + unicodeChars[i - 1].charCodeAt(0), msg.message, msg);
       }
       assertTrue(filtered[unicodeChars.length + 1].match(/testmann: done/));
 

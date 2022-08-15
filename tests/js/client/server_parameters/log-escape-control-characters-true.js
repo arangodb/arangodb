@@ -49,7 +49,7 @@ function EscapeControlSuite() {
   'use strict';
 
   return {
-    testEscapeControlFalse: function() {
+    testEscapeControlTrue: function() {
       const visibleControlChars = ['\n', '\r', '\b', '\t'];
       const escapeCharsLength = 31;
       const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
@@ -60,10 +60,10 @@ function EscapeControlSuite() {
         const padding = hexCode.length === 1 ? "0" : "";
         const charCode = "0x" + padding + hexCode;
         const charUnicode = "\\u" + 00 + padding + hexCode;
-         equire('console').log("testmann: testi" + charUnicode);
+        require('console').log("testmann: testi" + String.fromCharCode(charCode));
     }
     require('console').log("testmann: done");
-  return require('internal').options()["log.output"];
+    return require('internal').options()["log.output"];
   `);
 
       const response = arango.GET("/_admin/log");
