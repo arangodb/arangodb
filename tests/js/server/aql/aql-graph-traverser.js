@@ -2862,15 +2862,16 @@ function complexFilteringSuite() {
       };
       let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
       });
-      assertTrue(foundExtraLet);
+      // We cannot find an extra LET, as the PruneCondition can be optimized into the Traversal and be transformed into a local
+      assertFalse(foundExtraLet);
     },
 
     testStorePruneConditionVertexInVariableExplainLogicalOrWithOptions: function () {
@@ -2882,18 +2883,19 @@ function complexFilteringSuite() {
       };
       let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
-        if(node.type === "TraversalNode") {
+        if (node.type === "TraversalNode") {
           assertEqual(node["options"]["order"], "bfs");
         }
       });
-      assertTrue(foundExtraLet);
+      // We cannot find an extra LET, as the PruneCondition can be optimized into the Traversal and be transformed into a local
+      assertFalse(foundExtraLet);
     },
 
     testStorePruneConditionEdgeInVariableExplain: function () {
@@ -2905,15 +2907,16 @@ function complexFilteringSuite() {
       };
       let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
       });
-      assertTrue(foundExtraLet);
+      // We cannot find an extra LET, as the PruneCondition can be optimized into the Traversal and be transformed into a local
+      assertFalse(foundExtraLet);
     },
 
     testStorePruneConditionEdgeInVariableExplainWithOptions: function () {
@@ -2925,18 +2928,19 @@ function complexFilteringSuite() {
       };
       let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
-        if(node.type === "TraversalNode") {
+        if (node.type === "TraversalNode") {
           assertEqual(node["options"]["order"], "bfs");
         }
       });
-      assertTrue(foundExtraLet);
+      // We cannot find an extra LET, as the PruneCondition can be optimized into the Traversal and be transformed into a local
+      assertFalse(foundExtraLet);
     },
 
     testStorePruneConditionPathInVariableExplain: function () {
