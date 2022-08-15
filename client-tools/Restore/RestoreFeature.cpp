@@ -2260,7 +2260,7 @@ void RestoreFeature::reportError(Result const& error) {
   try {
     {
       MUTEX_LOCKER(lock, _workerErrorLock);
-      _workerErrors.emplace(error);
+      _workerErrors.emplace_back(error);
     }
     _clientTaskQueue.clearQueue();
   } catch (...) {

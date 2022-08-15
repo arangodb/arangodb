@@ -36,6 +36,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace arangodb {
 namespace httpclient {

@@ -183,6 +183,7 @@ class ClientTaskQueue {
   std::unique_ptr<JobData> fetchJob(Worker& worker) noexcept;
   void notifyIdle() noexcept;
   void waitForWork() noexcept;
+  void clearQueue(basics::ConditionLocker& lock) noexcept;
 
   application_features::ApplicationServer& _server;
 
@@ -213,9 +214,9 @@ ClientTaskQueue<JobData>::~ClientTaskQueue() {
     for (auto& worker : _workers) {
       worker->beginShutdown();
     }
+    clearQueue(lock);
   }
 
-  clearQueue();
   _queueCondition.broadcast();
 }
 
@@ -301,6 +302,13 @@ inline bool ClientTaskQueue<JobData>::queueJob(
 template<typename JobData>
 inline void ClientTaskQueue<JobData>::clearQueue() noexcept {
   CONDITION_LOCKER(lock, _queueCondition);
+  clearQueue(lock);
+}
+
+template<typename JobData>
+inline void ClientTaskQueue<JobData>::clearQueue(
+    basics::ConditionLocker& lock) noexcept {
+  TRI_ASSERT(lock.isLocked());
 
   while (!_jobs.empty()) {
     _jobs.pop();
