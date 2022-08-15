@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improved optimization of functions to be covered by Traversals. Now more functions
+  should be optimized into the traversal, and some that are not valid should not be optimized
+  anymore. Fixes #16589.
+
 * ArangoSearch nested search feature. (Enterprise Edition): Added ability to index
   and search nested documents with ArangoSearch views.
 
