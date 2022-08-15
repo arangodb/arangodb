@@ -37,7 +37,6 @@ struct Storing : State {
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
   auto recover() -> void override{};
-  auto getResults(bool withId, VPackBuilder& out) -> void override{};
   auto name() const -> std::string override { return "storing"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

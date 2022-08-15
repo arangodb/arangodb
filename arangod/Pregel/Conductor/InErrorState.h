@@ -40,7 +40,6 @@ struct InError : State {
   auto run() -> void override{};
   auto receive(Message const& message) -> void override;
   auto recover() -> void override;
-  auto getResults(bool withId, VPackBuilder& out) -> void override{};
   auto name() const -> std::string override { return "in error"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const

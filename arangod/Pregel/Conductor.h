@@ -174,7 +174,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void start();
   void cancel();
   void startRecovery();
-  void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
+  auto collectAQLResults(bool withId) -> PregelResults;
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
   bool canBeGarbageCollected() const;

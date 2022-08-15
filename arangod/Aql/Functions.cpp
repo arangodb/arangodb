@@ -80,6 +80,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Validators.h"
+#include "velocypack/Builder.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartGraphSchema.h"
@@ -8695,19 +8696,22 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
-    c->collectAQLResults(builder, withId);
-
+    auto results = c->collectAQLResults(withId);
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(results.results.slice()));
+    }
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature.worker(execNr);
     if (!worker) {
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
-    VPackBuilder response;
-    worker->aqlResult(response, withId);
-    builder.openArray();
-    builder.add(VPackArrayIterator(response.slice().get("results")));
-    builder.close();
+    auto results = worker->aqlResult(withId);
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(results.results.slice()));
+    }
   }
 
   if (builder.isEmpty()) {

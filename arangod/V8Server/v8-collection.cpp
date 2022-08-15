@@ -1900,8 +1900,12 @@ static void JS_PregelAQLResult(
       TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
     }
 
+    auto results = c->collectAQLResults(withId);
     VPackBuilder docs;
-    c->collectAQLResults(docs, withId);
+    {
+      VPackArrayBuilder ab(&docs);
+      docs.add(VPackArrayIterator(results.results.slice()));
+    }
     if (docs.isEmpty()) {
       TRI_V8_RETURN_NULL();
     }

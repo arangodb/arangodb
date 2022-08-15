@@ -4,6 +4,7 @@
 
 #include "Pregel/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
+#include "velocypack/Builder.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -22,7 +23,7 @@ auto FatalError::receive(Message const& message) -> void {
                                       << static_cast<int>(message.type());
 }
 
-auto FatalError::getResults(bool withId, VPackBuilder& out) -> void {
+auto FatalError::getResults(bool withId) -> PregelResults {
   auto collectPregelResultsCommand = CollectPregelResults{
       .executionNumber = conductor._executionNumber, .withId = withId};
   auto response = conductor._sendToAllDBServers<PregelResults>(
@@ -30,12 +31,14 @@ auto FatalError::getResults(bool withId, VPackBuilder& out) -> void {
   if (response.fail()) {
     THROW_ARANGO_EXCEPTION(response.errorNumber());
   }
+  VPackBuilder results;
   {
-    VPackArrayBuilder ab(&out);
+    VPackArrayBuilder ab(&results);
     for (auto const& message : response.get()) {
       if (message.results.slice().isArray()) {
-        out.add(VPackArrayIterator(message.results.slice()));
+        results.add(VPackArrayIterator(message.results.slice()));
       }
     }
   }
+  return PregelResults{.results = results};
 }
