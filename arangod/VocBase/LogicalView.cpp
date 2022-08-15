@@ -20,6 +20,7 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "LogicalView.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -27,6 +28,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
