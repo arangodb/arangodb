@@ -2989,7 +2989,7 @@ function testSmallCircleFilterOptimization(testGraph) {
 
   for (const filterCondition of filtersToTest) {
     const query = `
-      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH ${testGraph.name()}
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
         ${filterCondition}
         return v
     `;
@@ -3052,7 +3052,7 @@ function testSmallCircleFilterOptimization(testGraph) {
 
   for (const [filterCondition, _, somethingOptimizedInTraversal] of nonOptFiltersToTest) {
     const query = `
-      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH ${testGraph.name()}
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
         ${filterCondition}
         return v
     `;
