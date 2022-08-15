@@ -2256,8 +2256,10 @@ ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
 
 void RestoreFeature::reportError(Result const& error) {
   try {
-    MUTEX_LOCKER(lock, _workerErrorLock);
-    _workerErrors.emplace(error);
+    {
+      MUTEX_LOCKER(lock, _workerErrorLock);
+      _workerErrors.emplace(error);
+    }
     _clientTaskQueue.clearQueue();
   } catch (...) {
   }

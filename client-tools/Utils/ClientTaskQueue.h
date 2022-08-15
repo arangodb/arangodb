@@ -229,6 +229,8 @@ ClientTaskQueue<JobData>::~ClientTaskQueue() {
   for (auto& worker : _workers) {
     worker->beginShutdown();
   }
+
+  clearQueue();
   _jobsCondition.broadcast();
 }
 
