@@ -86,7 +86,7 @@ function EscapeControlSuite() {
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
         const msg = filtered[i];
-        assertMatch(/testmann: testi  abc123/, msg);
+        assertTrue(msg.endsWith("testmann: testi  abc123"));
       }
       assertTrue(filtered[escapeCharsLength + 1].match(/testmann: done/));
 
