@@ -48,6 +48,8 @@
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/QueryCache.h"
+#include "Aql/QueryProfile.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/VelocyPackHelper.h"
@@ -106,9 +108,16 @@ class IResearchViewNodeTest
 struct MockQuery final : arangodb::aql::Query {
   MockQuery(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::aql::QueryString const& queryString)
-      : arangodb::aql::Query(ctx, queryString, nullptr) {}
+      : arangodb::aql::Query{ctx, queryString, nullptr, {}} {}
 
-  arangodb::transaction::Methods& trxForOptimization() override {
+  ~MockQuery() final {
+    // Destroy this query, otherwise it's still
+    // accessible while the query is being destructed,
+    // which can result in a data race on the vptr
+    destroy();
+  }
+
+  arangodb::transaction::Methods& trxForOptimization() final {
     // original version contains an assertion
     return *_trx;
   }
@@ -3608,12 +3617,14 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     {
       auto block = node.createBlock(engine, EMPTY);
       EXPECT_NE(nullptr, block);
-      EXPECT_NE(nullptr,
-                (dynamic_cast<arangodb::aql::ExecutionBlockImpl<
-                     arangodb::aql::IResearchViewExecutor<
-                         false, false,
-                         arangodb::iresearch::MaterializeType::Materialize>>*>(
-                    block.get())));
+      EXPECT_NE(
+          nullptr,
+          (dynamic_cast<arangodb::aql::ExecutionBlockImpl<
+               arangodb::aql::IResearchViewExecutor<
+                   arangodb::aql::ExecutionTraits<
+                       false, false, false,
+                       arangodb::iresearch::MaterializeType::Materialize>>>*>(
+              block.get())));
     }
   }
 }

@@ -122,12 +122,21 @@ ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
   return basics::downCast<ViewSnapshotCookie>(state.cookie(key));
 }
 
-FilterCookie* getFilterCookie(transaction::Methods& trx,
-                              void const* key) noexcept {
+FilterCookie& ensureFilterCookie(transaction::Methods& trx, void const* key) {
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
-  return basics::downCast<FilterCookie>(state.cookie(key));
+
+  if (auto* cookie = state.cookie(key); !cookie) {
+    auto filterCookie = std::make_unique<FilterCookie>();
+    auto* p = filterCookie.get();
+    [[maybe_unused]] auto const old =
+        state.cookie(key, std::move(filterCookie));
+    TRI_ASSERT(!old);
+    return *p;
+  } else {
+    return *basics::downCast<FilterCookie>(cookie);
+  }
 }
 
 void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {

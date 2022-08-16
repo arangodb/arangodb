@@ -2601,7 +2601,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
 
     // indexed access, e.g. a[0] or a['foo']
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-      return this->optimizeIndexedAccess(node);
+      return this->optimizeIndexedAccess(node, ctx->variableDefinitions);
     }
 
     // LET
@@ -3836,7 +3836,9 @@ AstNode* Ast::optimizeFunctionCall(
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
+AstNode* Ast::optimizeIndexedAccess(
+    AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                       variableDefinitions) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS);
   TRI_ASSERT(node->numMembers() == 2);
@@ -3854,8 +3856,9 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
       // we have to be careful with numeric values here...
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
-      return createNodeAttributeAccess(node->getMember(0),
-                                       index->getStringView());
+      return this->optimizeAttributeAccess(
+          createNodeAttributeAccess(node->getMember(0), indexValue),
+          variableDefinitions);
     }
   }
 

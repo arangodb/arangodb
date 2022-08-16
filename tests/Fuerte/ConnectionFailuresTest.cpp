@@ -51,7 +51,7 @@ static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
                           [&](f::Error, std::unique_ptr<f::Request>,
                               std::unique_ptr<f::Response>) {});
 
-  auto success = wg.wait_for(std::chrono::seconds(5));
+  auto success = wg.wait_for(std::chrono::seconds(50));
   ASSERT_TRUE(success);
 }
 
