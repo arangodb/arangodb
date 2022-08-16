@@ -541,6 +541,14 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       }
       return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
     }
+    if (auto const& ctx = ExecContext::current(); !ctx.isSuperuser()) {
+      if (!ctx.canUseCollection(vocbase().name(), collection->name(),
+                                auth::Level::RO)) {
+        return {TRI_ERROR_FORBIDDEN,
+                absl::StrCat("Current user cannot use collection '",
+                             collection->name(), "'")};
+      }
+    }
     auto const cid = collection->id();
     auto operationSlice = value.get("operation");
     auto const operation =
