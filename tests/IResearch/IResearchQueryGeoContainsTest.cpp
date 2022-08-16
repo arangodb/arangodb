@@ -149,51 +149,8 @@ class QueryGeoContains : public QueryTest {
     } else {
       ASSERT_TRUE(false);
     }
-    // test missing analyzer
-    {
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
-          [37.602682, 55.706853],
-          [37.613025, 55.706853],
-          [37.613025, 55.711906],
-          [37.602682, 55.711906],
-          [37.602682, 55.706853]
-        ])
-        FOR d IN testView
-        SEARCH GEO_CONTAINS(d.geometry, box)
-        RETURN d)",
-                           empty));
-    }
-    // test missing analyzer
-    {
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
-          [37.602682, 55.706853],
-          [37.613025, 55.706853],
-          [37.613025, 55.711906],
-          [37.602682, 55.711906],
-          [37.602682, 55.706853]
-        ])
-        FOR d IN testView
-        SEARCH GEO_CONTAINS(box, d.geometry)
-        RETURN d)",
-                           empty));
-    }
-  }
-
-  void queryTestsGeoJson() {
-    // EXISTS will also work
-    {
-      EXPECT_TRUE(runQuery(R"(FOR d IN testView
-        SEARCH EXISTS(d.geometry)
-        RETURN d)"));
-    }
-    // EXISTS will also work
-    {
-      EXPECT_TRUE(runQuery(R"(FOR d IN testView
-        SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson")
-        RETURN d)"));
-    }
     // test missing field
-    {
+    if (type() == ViewType::kView) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
@@ -207,7 +164,7 @@ class QueryGeoContains : public QueryTest {
                            empty));
     }
     // test missing field
-    {
+    if (type() == ViewType::kView) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
@@ -219,6 +176,58 @@ class QueryGeoContains : public QueryTest {
         SEARCH ANALYZER(GEO_CONTAINS(box, d.missing), 'mygeojson')
         RETURN d)",
                            empty));
+    }
+  }
+
+  void queryTestsGeoJson() {
+    // test missing analyzer
+    {
+      std::vector<velocypack::Slice> expected;
+      if (type() == ViewType::kSearch) {
+        expected = {_insertedDocs[28].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+          [37.602682, 55.706853],
+          [37.613025, 55.706853],
+          [37.613025, 55.711906],
+          [37.602682, 55.711906],
+          [37.602682, 55.706853]
+        ])
+        FOR d IN testView
+        SEARCH GEO_CONTAINS(d.geometry, box)
+        RETURN d)",
+                           expected));
+    }
+    // test missing analyzer
+    {
+      std::vector<velocypack::Slice> expected;
+      if (type() == ViewType::kSearch) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                    _insertedDocs[28].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+          [37.602682, 55.706853],
+          [37.613025, 55.706853],
+          [37.613025, 55.711906],
+          [37.602682, 55.711906],
+          [37.602682, 55.706853]
+        ])
+        FOR d IN testView
+        SEARCH GEO_CONTAINS(box, d.geometry)
+        RETURN d)",
+                           expected));
+    }
+    // EXISTS will also work
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry)
+        RETURN d)"));
+    }
+    // EXISTS will also work
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson")
+        RETURN d)"));
     }
     //
     {
@@ -336,6 +345,25 @@ class QueryGeoContains : public QueryTest {
   }
 
   void queryTestsGeoCentroid() {
+    // test missing analyzer
+    {
+      std::vector<velocypack::Slice> expected;
+      if (type() == ViewType::kSearch) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                    _insertedDocs[28].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+          [37.602682, 55.706853],
+          [37.613025, 55.706853],
+          [37.613025, 55.711906],
+          [37.602682, 55.711906],
+          [37.602682, 55.706853]
+        ])
+        FOR d IN testView
+        SEARCH GEO_CONTAINS(box, d.geometry)
+        RETURN d)",
+                           expected));
+    }
     // EXISTS will also work
     {
       EXPECT_TRUE(runQuery(R"(FOR d IN testView
@@ -391,6 +419,24 @@ class QueryGeoContains : public QueryTest {
   }
 
   void queryTestsGeoPoint() {
+    // test missing analyzer
+    {
+      std::vector<velocypack::Slice> expected;
+      if (type() == ViewType::kSearch) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+          [37.602682, 55.706853],
+          [37.613025, 55.706853],
+          [37.613025, 55.711906],
+          [37.602682, 55.711906],
+          [37.602682, 55.706853]
+        ])
+        FOR d IN testView
+        SEARCH GEO_CONTAINS(box, d.geometry)
+        RETURN d)",
+                           expected));
+    }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
@@ -528,7 +574,7 @@ class QueryGeoContainsView : public QueryGeoContains {
   void createView() {
     auto createJson = VPackParser::fromJson(
         R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
     auto updateJson = VPackParser::fromJson(absl::Substitute(R"({ "links": {
@@ -566,7 +612,7 @@ class QueryGeoContainsSearch : public QueryGeoContains {
   void createSearch() {
     auto createJson =
         VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
     auto updateJson = VPackParser::fromJson(R"({ "indexes": [

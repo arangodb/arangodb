@@ -30,6 +30,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
@@ -53,7 +54,8 @@ class LogicalCollection;
 
 namespace iresearch {
 struct SearchFunc;
-}
+struct SearchMeta;
+}  // namespace iresearch
 
 namespace aql {
 struct AqlCall;
@@ -92,12 +94,12 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan, Variable const& outVariable,
       aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
-      bool isOldMangling, VarInfoMap const& varInfoMap, int depth,
+      VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
-      std::vector<std::pair<size_t, bool>> scorersSort,
-      size_t scorersSortLimit);
+      std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit,
+      iresearch::SearchMeta const* meta);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
@@ -141,6 +143,8 @@ class IResearchViewExecutorInfos {
 
   size_t scoreRegistersCount() const noexcept { return _scoreRegistersCount; }
 
+  auto const* meta() const noexcept { return _meta; }
+
  private:
   aql::RegisterId _searchDocOutReg;
   aql::RegisterId _documentOutReg;
@@ -157,7 +161,6 @@ class IResearchViewExecutorInfos {
   aql::AstNode const& _filterCondition;
   bool const _volatileSort;
   bool const _volatileFilter;
-  bool const _isOldMangling;
   VarInfoMap const& _varInfoMap;
   int const _depth;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
@@ -166,6 +169,7 @@ class IResearchViewExecutorInfos {
   iresearch::FilterOptimization _filterOptimization;
   std::vector<std::pair<size_t, bool>> _scorersSort;
   size_t _scorersSortLimit;
+  iresearch::SearchMeta const* _meta;
 };
 
 class IResearchViewStats {
@@ -560,6 +564,9 @@ class IResearchViewExecutorBase {
   std::vector<ColumnIterator> _storedValuesReaders;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized;
+
+  // new mangling only:
+  iresearch::AnalyzerProvider _provider;
 };
 
 template<typename ExecutionTraits>

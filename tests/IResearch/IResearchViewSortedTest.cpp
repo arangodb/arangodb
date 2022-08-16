@@ -180,7 +180,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
   EXPECT_FALSE(view->primarySort().empty());
   EXPECT_EQ(1, view->primarySort().size());
@@ -486,7 +486,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
   EXPECT_FALSE(view->primarySort().empty());
   EXPECT_EQ(4, view->primarySort().size());

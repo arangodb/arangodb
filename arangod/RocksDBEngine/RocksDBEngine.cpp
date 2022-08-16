@@ -2673,7 +2673,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         TRI_ASSERT(!it.get("id").isNone());
 
         LogicalView::ptr view;
-        auto res = LogicalView::instantiate(view, *vocbase, it);
+        auto res = LogicalView::instantiate(view, *vocbase, it, false);
 
         if (!res.ok()) {
           THROW_ARANGO_EXCEPTION(res);
