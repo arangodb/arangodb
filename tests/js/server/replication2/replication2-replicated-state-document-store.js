@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual, assertNotNull*/
+/*global assertTrue, assertEqual, assertNotNull, print*/
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,15 +63,19 @@ const syncShardsWithLogs = function(dbn) {
       }
     }
   }
-  helper.agency.increaseVersion(`Plan/Version`);
 
   const waitForCurrent  = lh.readAgencyValueAt("Current/Version");
-  lh.waitFor(function() {
+  helper.agency.increaseVersion(`Plan/Version`);
+
+  lh.waitFor(() => {
     const currentVersion  = lh.readAgencyValueAt("Current/Version");
     if (currentVersion > waitForCurrent) {
       return true;
     }
     return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
+  }, 30, (e) => {
+    // We ignore this and continue. Most probably current was increased before we could observe it.
+    print(e.message);
   });
 };
 

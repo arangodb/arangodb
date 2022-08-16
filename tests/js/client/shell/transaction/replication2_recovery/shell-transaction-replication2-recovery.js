@@ -1,4 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
+/* global print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -60,15 +61,19 @@ const syncShardsWithLogs = function(dbn) {
       }
     }
   }
-  helper.agency.increaseVersion(`Plan/Version`);
 
   const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
-  replicatedLogsHelper.waitFor(function() {
+  helper.agency.increaseVersion(`Plan/Version`);
+
+  replicatedLogsHelper.waitFor(() => {
     const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
     if (currentVersion > waitForCurrent) {
       return true;
     }
     return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
+  }, 30, (e) => {
+    // We ignore this and continue. Most probably current was increased before we could observe it.
+    print(e.message);
   });
 };
 

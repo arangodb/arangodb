@@ -51,9 +51,10 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback = null) {
     wait(0.5); // 240 * .5s = 2 minutes
   }
   if (onErrorCallback !== null) {
-    onErrorCallback();
+    onErrorCallback(result);
+  } else {
+    throw result;
   }
-  throw result;
 };
 
 const readAgencyValueAt = function (key) {
