@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added unit tests for `--log.escape-control-chars` and 
+* Added integration tests for `--log.escape-control-chars` and 
  `--log.escape-unicode-chars`.
 
 * Updated warning messages raised for non accepted query OPTIONS,
