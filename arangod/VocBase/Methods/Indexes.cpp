@@ -39,6 +39,7 @@
 #include "Indexes/IndexFactory.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -477,7 +478,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
         res.reset(code);
       } else {
         // flush estimates
-        collection->flushClusterIndexEstimates();
+        collection->getPhysical()->flushClusterIndexEstimates();
 
         // the cluster won't set a proper id value
         std::string iid = tmp.slice().get(StaticStrings::IndexId).copyString();
@@ -699,7 +700,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
     }
 
     // flush estimates
-    collection->flushClusterIndexEstimates();
+    collection->getPhysical()->flushClusterIndexEstimates();
 
 #ifdef USE_ENTERPRISE
     res = Indexes::dropCoordinatorEE(collection, iid);

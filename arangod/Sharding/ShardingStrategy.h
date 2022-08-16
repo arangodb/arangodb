@@ -26,6 +26,10 @@
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 
+#include <functional>
+#include <string>
+#include <string_view>
+
 namespace arangodb {
 class ShardingInfo;
 
@@ -51,7 +55,7 @@ class ShardingStrategy {
 
   virtual bool usesDefaultShardKeys() const noexcept = 0;
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  virtual void toVelocyPack(velocypack::Builder& result) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find the shard that is responsible for a document, which is given
@@ -71,10 +75,10 @@ class ShardingStrategy {
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
+  virtual ErrorCode getResponsibleShard(velocypack::Slice slice,
                                         bool docComplete, ShardID& shardID,
                                         bool& usesDefaultShardKeys,
-                                        std::string_view const& key) = 0;
+                                        std::string_view key) = 0;
 };
 
 }  // namespace arangodb
