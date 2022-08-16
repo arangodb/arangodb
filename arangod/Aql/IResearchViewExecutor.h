@@ -384,12 +384,23 @@ class IndexReadBuffer {
   ResourceUsageScope _memoryTracker;
 };
 
+template<bool copyStored, bool ordered, bool emitSearchDoc,
+         iresearch::MaterializeType materializeType>
+struct ExecutionTraits {
+  static constexpr bool EmitSearchDoc = emitSearchDoc;
+  static constexpr bool Ordered = ordered;
+  static constexpr bool CopyStored = copyStored;
+  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+};
+
 template<typename Impl>
 struct IResearchViewExecutorTraits;
 
-template<typename Impl, typename Traits = IResearchViewExecutorTraits<Impl>>
+template<typename Impl, typename ExecutionTraits>
 class IResearchViewExecutorBase {
  public:
+  struct Traits : ExecutionTraits, IResearchViewExecutorTraits<Impl> {};
+
   struct Properties {
     // even with "ordered = true", this block preserves the order; it just
     // writes scorer information in additional register for a following sort
@@ -494,9 +505,15 @@ class IResearchViewExecutorBase {
   IResearchViewExecutorBase(Fetcher& fetcher, Infos&);
   ~IResearchViewExecutorBase() = default;
 
-  Infos const& infos() const noexcept;
+  Infos const& infos() const noexcept { return _infos; }
 
-  void fillScores(irs::score const& score);
+  void fillScores(irs::score const& score) {
+    TRI_ASSERT(Traits::Ordered);
+
+    // Scorer registers are placed right before document output register.
+    // Allocate block for scores (registerId's are sequential) and fill it.
+    score(_indexReadBuffer.pushNoneScores(infos().scoreRegistersCount()));
+  }
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry,
                 LocalDocumentId const& documentId,
@@ -545,14 +562,13 @@ class IResearchViewExecutorBase {
   bool _isInitialized;
 };
 
-template<bool copyStored, bool ordered,
-         iresearch::MaterializeType materializeType>
+template<typename ExecutionTraits>
 class IResearchViewExecutor
-    : public IResearchViewExecutorBase<
-          IResearchViewExecutor<copyStored, ordered, materializeType>> {
+    : public IResearchViewExecutorBase<IResearchViewExecutor<ExecutionTraits>,
+                                       ExecutionTraits> {
  public:
-  using Base = IResearchViewExecutorBase<
-      IResearchViewExecutor<copyStored, ordered, materializeType>>;
+  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ExecutionTraits>,
+                                         ExecutionTraits>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -596,29 +612,24 @@ class IResearchViewExecutor
   size_t _numScores;
 };  // IResearchViewExecutor
 
-template<bool copyStored, bool ordered,
-         iresearch::MaterializeType materializeType>
-struct IResearchViewExecutorTraits<
-    IResearchViewExecutor<copyStored, ordered, materializeType>> {
+template<typename ExecutionTraits>
+struct IResearchViewExecutorTraits<IResearchViewExecutor<ExecutionTraits>> {
   using IndexBufferValueType = LocalDocumentId;
-  static constexpr bool Ordered = ordered;
-  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
-  static constexpr bool CopyStored = copyStored;
   static constexpr bool ExplicitScanned = false;
 };
 
-template<bool copyStored, bool ordered,
-         iresearch::MaterializeType materializeType>
+template<typename ExecutionTraits>
 class IResearchViewMergeExecutor
     : public IResearchViewExecutorBase<
-          IResearchViewMergeExecutor<copyStored, ordered, materializeType>> {
+          IResearchViewMergeExecutor<ExecutionTraits>, ExecutionTraits> {
  public:
-  using Base = IResearchViewExecutorBase<
-      IResearchViewMergeExecutor<copyStored, ordered, materializeType>>;
+  using Base =
+      IResearchViewExecutorBase<IResearchViewMergeExecutor<ExecutionTraits>,
+                                ExecutionTraits>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
-  static constexpr bool Ordered = ordered;
+  static constexpr bool Ordered = ExecutionTraits::Ordered;
 
   IResearchViewMergeExecutor(IResearchViewMergeExecutor&&) = default;
   IResearchViewMergeExecutor(Fetcher& fetcher, Infos&);
@@ -684,28 +695,24 @@ class IResearchViewMergeExecutor
  private:
   std::vector<Segment> _segments;
   irs::ExternalHeapIterator<MinHeapContext> _heap_it;
-};  // IResearchViewMergeExecutor
+};
 
-template<bool copyStored, bool ordered,
-         iresearch::MaterializeType materializeType>
+template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
-    IResearchViewMergeExecutor<copyStored, ordered, materializeType>> {
+    IResearchViewMergeExecutor<ExecutionTraits>> {
   using IndexBufferValueType =
       std::pair<LocalDocumentId, LogicalCollection const*>;
-  static constexpr bool Ordered = ordered;
-  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
-  static constexpr bool CopyStored = copyStored;
   static constexpr bool ExplicitScanned = false;
 };
 
-template<bool copyStored, bool ordered,
-         iresearch::MaterializeType materializeType>
+template<typename ExecutionTraits>
 class IResearchViewHeapSortExecutor
     : public IResearchViewExecutorBase<
-          IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>> {
+          IResearchViewHeapSortExecutor<ExecutionTraits>, ExecutionTraits> {
  public:
-  using Base = IResearchViewExecutorBase<
-      IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>>;
+  using Base =
+      IResearchViewExecutorBase<IResearchViewHeapSortExecutor<ExecutionTraits>,
+                                ExecutionTraits>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -800,16 +807,27 @@ static_assert(sizeof(HeapSortExecutorValue) <= 16,
               "HeapSortExecutorValue size is not optimal");
 #endif
 
-template<bool copyStored, bool ordered,
-         iresearch::MaterializeType materializeType>
+template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
-    IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>> {
+    IResearchViewHeapSortExecutor<ExecutionTraits>> {
   using IndexBufferValueType = HeapSortExecutorValue;
-  static constexpr bool Ordered = ordered;
-  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
-  static constexpr bool CopyStored = copyStored;
   static constexpr bool ExplicitScanned = true;
 };
+
+template<typename T>
+struct IsSearchExecutor : std::false_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewExecutor<ExecutionTraits>>
+    : std::true_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewMergeExecutor<ExecutionTraits>>
+    : std::true_type {};
+
+template<typename ExecutionTraits>
+struct IsSearchExecutor<IResearchViewHeapSortExecutor<ExecutionTraits>>
+    : std::true_type {};
 
 }  // namespace aql
 }  // namespace arangodb
