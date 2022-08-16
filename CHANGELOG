@@ -1,6 +1,10 @@
 devel
 -----
 
+* Updated warning messages raised for non accepted query OPTIONS,
+  distinguishing between when the OPTIONS attribute is correct, but the value
+  is in incorrect format, and when the OPTIONS attribute itself is incorrect.
+
 * Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
   same collection. The requirements were:
   - cluster deployment
