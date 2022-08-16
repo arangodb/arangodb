@@ -2090,11 +2090,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
     void operator()() {
       ++*count;
 
-      {
-        auto scopedLock = irs::make_lock_guard(*mutex);
-        feature->queue(arangodb::iresearch::ThreadGroup::_1, 10000ms, *this);
-      }
-
+      auto scopedLock = irs::make_lock_guard(*mutex);
+      feature->queue(arangodb::iresearch::ThreadGroup::_1, 10000ms, *this);
       cond->notify_all();
     }
 
