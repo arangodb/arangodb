@@ -3001,7 +3001,7 @@ function testSmallCircleFilterOptimization(testGraph) {
     const traversals = findExecutionNodes(plan, "TraversalNode");
     assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
     const travNode = traversals[0];
-    assertTrue(travNode.hasOwnProperty("condition"), JSON.stringify(travNode.condition));
+    assertTrue(travNode.hasOwnProperty("condition"));
   }
 
   // Non optimizable filters
