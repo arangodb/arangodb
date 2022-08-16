@@ -1527,7 +1527,7 @@
         assertEqual(oColl.count(), 100);
 
         for (const edge of eColl.toArray()) {
-          assertTrue(!!edge._key)
+          assertTrue(!!edge._key);
           assertTrue(!!edge._from);
           assertTrue(!!edge._to);
 
