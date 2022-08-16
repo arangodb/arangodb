@@ -249,63 +249,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   RestHandler/RestGraphHandler.cpp
 )
 
-set(LIB_ARANGO_PREGEL_AIR_SOURCES
-  Pregel/Algos/AIR/AIR.cpp
-  Pregel/Algos/AIR/AbstractAccumulator.cpp
-  Pregel/Algos/AIR/AccumulatorOptions.cpp
-  Pregel/Algos/AIR/Accumulators.cpp
-  Pregel/Algos/AIR/EdgeData.cpp
-  Pregel/Algos/AIR/GraphFormat.cpp
-  Pregel/Algos/AIR/MasterContext.cpp
-  Pregel/Algos/AIR/MessageData.cpp
-  Pregel/Algos/AIR/MessageFormat.cpp
-  Pregel/Algos/AIR/VertexComputation.cpp
-  Pregel/Algos/AIR/VertexData.cpp
-  Pregel/Algos/AIR/WorkerContext.cpp
-)
-
-set(LIB_ARANGO_PREGEL_SOURCES
-  Pregel/AggregatorHandler.cpp
-  Pregel/AlgoRegistry.cpp
-  Pregel/Algos/AsyncSCC.cpp
-  Pregel/Algos/ConnectedComponents.cpp
-  Pregel/Algos/DMID/DMID.cpp
-  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
-  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
-  Pregel/Algos/HITS.cpp
-  Pregel/Algos/HITSKleinberg.cpp
-  Pregel/Algos/LabelPropagation.cpp
-  Pregel/Algos/LineRank.cpp
-  Pregel/Algos/PageRank.cpp
-  Pregel/Algos/RecoveringPageRank.cpp
-  Pregel/Algos/SCC.cpp
-  Pregel/Algos/SLPA.cpp
-  Pregel/Algos/SSSP.cpp
-  Pregel/Algos/ShortestPath.cpp
-  Pregel/Algos/WCC.cpp
-  Pregel/Conductor.cpp
-  Pregel/GraphStore.cpp
-  Pregel/IncomingCache.cpp
-  Pregel/IndexHelpers.cpp
-  Pregel/OutgoingCache.cpp
-  Pregel/PregelFeature.cpp
-  Pregel/PregelMetrics.cpp
-  Pregel/Recovery.cpp
-  Pregel/Reports.cpp
-  Pregel/Reports.h
-  Pregel/Utils.cpp
-  Pregel/Worker.cpp
-  Pregel/WorkerConfig.cpp
-  RestHandler/RestControlPregelHandler.cpp
-  RestHandler/RestPregelHandler.cpp
-)
-
-if (USE_MAINTAINER_MODE)
-  set(LIB_ARANGO_PREGEL_SOURCES ${LIB_ARANGO_PREGEL_SOURCES}
-    Pregel/Algos/ReadWrite.cpp
-  )
-endif()
-
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AqlCall.cpp
@@ -966,11 +909,6 @@ add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
 )
 
-add_library(arango_pregel STATIC
-  ${LIB_ARANGO_PREGEL_SOURCES}
-  ${LIB_ARANGO_PREGEL_AIR_SOURCES}
-)
-
 add_library(arango_aql STATIC
   ${LIB_ARANGO_AQL_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
@@ -1142,12 +1080,6 @@ target_link_libraries(arango_network arango::validation)
 target_link_libraries(arango_network arango_replication2)
 target_link_libraries(arango_network immer)
 
-target_link_libraries(arango_pregel arango)
-target_link_libraries(arango_pregel arango_agency)
-target_link_libraries(arango_pregel arango_greenspun)
-target_link_libraries(arango_pregel boost_boost)
-target_link_libraries(arango_pregel boost_system)
-
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_replication arango_vocbase)
@@ -1266,6 +1198,18 @@ if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
 endif ()
 
+# TODO move CMAKE_DEPRECATE_OPTIONS to presets
+if (USE_FAIL_ON_WARNINGS)
+  if (MSVC)
+    list(APPEND ${CMAKE_DEPRECATE_OPTIONS} /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+      # There's a warning about /MP being unused if compiling only a single file
+      list(APPEND ${CMAKE_DEPRECATE_OPTIONS} -Wno-unused-command-line-argument)
+    endif()
+  else ()
+    list(APPEND ${CMAKE_DEPRECATE_OPTIONS} -Werror -Wno-error=deprecated-declarations)
+  endif ()
+endif ()
 foreach(TARGET
   arango_agency
   arango_aql
@@ -1279,7 +1223,6 @@ foreach(TARGET
   arango_iresearch
   arango_metrics
   arango_network
-  arango_pregel
   arango_replication
   arango_replication2
   arango_rocksdb
@@ -1294,17 +1237,8 @@ foreach(TARGET
   target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_include_directories(${TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-  if (USE_FAIL_ON_WARNINGS)
-    if (MSVC)
-      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-        # There's a warning about /MP being unused if compiling only a single file
-        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
-      endif()
-    else ()
-      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
-    endif ()
-  endif ()
+  target_compile_options(${TARGET} PRIVATE
+	  ${CMAKE_DEPRECATE_OPTION})
 endforeach()
 
 ################################################################################
@@ -1328,3 +1262,5 @@ install_command_alias(${BIN_ARANGOD}
 )
 
 install_config(arango-init-database)
+
+add_subdirectory(Pregel)
