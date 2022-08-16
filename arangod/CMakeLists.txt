@@ -418,39 +418,6 @@ set (LIB_ARANGO_METRICS_SOURCES
   RestHandler/RestMetricsHandler.cpp
   )
 
-set(LIB_ARANGO_AGENCY_SOURCES
-  Agency/ActiveFailoverJob.cpp
-  Agency/AddFollower.cpp
-  Agency/AgencyComm.cpp
-  Agency/AgencyFeature.cpp
-  Agency/AgencyPaths.cpp
-  Agency/Agent.cpp
-  Agency/AgentCallback.cpp
-  Agency/AgentConfiguration.cpp
-  Agency/AsyncAgencyComm.cpp
-  Agency/CleanOutServer.cpp
-  Agency/Compactor.cpp
-  Agency/Constituent.cpp
-  Agency/FailedFollower.cpp
-  Agency/FailedLeader.cpp
-  Agency/FailedServer.cpp
-  Agency/Helpers.cpp
-  Agency/Inception.cpp
-  Agency/Job.cpp
-  Agency/JobContext.cpp
-  Agency/MoveShard.cpp
-  Agency/Node.cpp
-  Agency/PathComponent.cpp
-  Agency/RemoveFollower.cpp
-  Agency/ResignLeadership.cpp
-  Agency/RestAgencyHandler.cpp
-  Agency/RestAgencyPrivHandler.cpp
-  Agency/State.cpp
-  Agency/Store.cpp
-  Agency/Supervision.cpp
-  Agency/v8-agency.cpp
-)
-
 set(LIB_ARANGO_V8SERVER_SOURCES
   Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
@@ -754,10 +721,6 @@ add_library(arango_metrics STATIC
   ${LIB_ARANGO_METRICS_SOURCES}
 )
 
-add_library(arango_agency STATIC
-  ${LIB_ARANGO_AGENCY_SOURCES}
-)
-
 add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
 )
@@ -805,11 +768,6 @@ add_library(arango_cluster_methods STATIC
 # does not work, either, because
 # C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include\atldef.h(94): fatal error C1189: #error:  ATL does not support compilation with /J or _CHAR_UNSIGNED flag enabled [C:\vm04-windows\oskar\work\ArangoDB\build\lib\arango.vcxproj]
 # .
-
-target_link_libraries(arango_agency arango)
-target_link_libraries(arango_agency arango_health)
-target_link_libraries(arango_agency arango_iresearch)
-target_link_libraries(arango_agency arango_metrics)
 
 target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
@@ -995,7 +953,6 @@ if (USE_FAIL_ON_WARNINGS)
 endif ()
 
 foreach(TARGET
-  arango_agency
   arango_cluster_engine
   arango_cluster_methods
   arango_common_rest_handler
@@ -1045,6 +1002,7 @@ install_command_alias(${BIN_ARANGOD}
 
 install_config(arango-init-database)
 
+add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)
 add_subdirectory(Pregel)
