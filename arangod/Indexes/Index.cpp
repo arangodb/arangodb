@@ -269,8 +269,7 @@ void Index::validateFieldsWithSpecialCase(VPackSlice fields) {
   for (VPackSlice name : VPackArrayIterator(fields)) {
     if (name.stringView().starts_with(":") || name.stringView().ends_with(":")) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                     "field names starting with \":\" or "
-                                     "ending with \":\" are disallowed");
+                                     "field names starting or ending with \":\"are disallowed in indexes");
     }
   }
 }
