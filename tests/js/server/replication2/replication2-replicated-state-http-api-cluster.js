@@ -37,20 +37,7 @@ const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "replication2_replicated_state_http_api_db";
 
-const setLeader = (database, logId, newLeader) => {
-  const url = lh.getServerUrl(_.sample(lh.coordinators));
-  const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
-  lh.checkRequestResult(res);
-  const {json: {result}} = res;
-  return result;
-};
-const unsetLeader = (database, logId) => {
-  const url = lh.getServerUrl(_.sample(lh.coordinators));
-  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}/leader`);
-  lh.checkRequestResult(res);
-  const {json: {result}} = res;
-  return result;
-};
+const { setLeader, unsetLeader } = lh;
 const dropState = (database, logId) => {
   const url = lh.getServerUrl(_.sample(lh.coordinators));
   const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}`);

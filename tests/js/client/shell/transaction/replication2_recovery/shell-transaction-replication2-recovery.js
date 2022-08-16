@@ -86,14 +86,14 @@ function transactionReplication2Recovery() {
   let shardId = null;
   let logId = null;
 
-  const {setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd} =
-    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
+  const { setUpAll, tearDownAll, stopServerWait, continueServerWait, setUpAnd, tearDownAnd } =
+    replicatedLogsHelper.testHelperFunctions(dbn, { replicationVersion: "2" });
 
   return {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      c = db._create(cn, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      c = db._create(cn, { "numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3 });
       shards = c.shards();
       shardId = shards[0];
       logId = shardId.slice(1);
@@ -108,11 +108,11 @@ function transactionReplication2Recovery() {
     testFailoverDuringTransaction: function () {
       // Start a transaction.
       let trx = db._createTransaction({
-        collections: {write: c.name()}
+        collections: { write: c.name() }
       });
       let tc = trx.collection(c.name());
-      tc.insert({_key: 'test1', value: 1});
-      tc.insert({_key: 'test2', value: 2});
+      tc.insert({ _key: 'test1', value: 1 });
+      tc.insert({ _key: 'test2', value: 2 });
 
       // Stop the leader. This triggers a failover.
       const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
@@ -122,6 +122,8 @@ function transactionReplication2Recovery() {
       const followers = participants.slice(1);
       let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
       let newTerm = term + 2;
+
+      replicatedLogsHelper.unsetLeader(dbn, logId);
 
       stopServerWait(leader);
       replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
@@ -139,7 +141,7 @@ function transactionReplication2Recovery() {
 
       // Expect further transaction operations to fail.
       try {
-        tc.insert({_key: 'test3', value: 3});
+        tc.insert({ _key: 'test3', value: 3 });
         fail('Insert was expected to fail due to transaction abort.');
       } catch (ex) {
         assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum);
@@ -150,17 +152,17 @@ function transactionReplication2Recovery() {
       // Try a new transaction, this time expecting it to work.
       try {
         trx = db._createTransaction({
-          collections: {write: c.name()}
+          collections: { write: c.name() }
         });
         tc = trx.collection(c.name());
-        tc.insert({_key: "foo"});
+        tc.insert({ _key: "foo" });
         trx.commit();
       } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       }
 
       let servers = Object.assign({}, ...followers.map(
-        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
+        (serverId) => ({ [serverId]: replicatedLogsHelper.getServerUrl(serverId) })));
       for (const [key, endpoint] of Object.entries(servers)) {
         replicatedLogsHelper.waitFor(
           replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "foo", true));
@@ -171,28 +173,22 @@ function transactionReplication2Recovery() {
       syncShardsWithLogs(dbn);
       replicatedLogsHelper.waitFor(
         replicatedStatePredicates.localKeyStatus(
-          replicatedLogsHelper.getServerUrl(leader), dbn, shardId, "foo", true), 30, function() {
-          let url = replicatedLogsHelper.getServerUrl(leader);
-
-          let res = request.get({
-            url: `${url}/_db/${dbn}/_api/replicated-state/${shardId.slice(1)}/local-status`,
-          });
-        });
+          replicatedLogsHelper.getServerUrl(leader), dbn, shardId, "foo", true), 30);
 
       // Try another transaction. This time expect it to work on all servers.
       try {
         trx = db._createTransaction({
-          collections: {write: c.name()}
+          collections: { write: c.name() }
         });
         tc = trx.collection(c.name());
-        tc.insert({_key: "bar"});
+        tc.insert({ _key: "bar" });
         trx.commit();
       } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       }
 
       servers = Object.assign({}, ...participants.map(
-        (serverId) => ({[serverId]: replicatedLogsHelper.getServerUrl(serverId)})));
+        (serverId) => ({ [serverId]: replicatedLogsHelper.getServerUrl(serverId) })));
       for (const [_, endpoint] of Object.entries(servers)) {
         replicatedLogsHelper.waitFor(
           replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "bar", true));

@@ -554,6 +554,22 @@ const dumpShardLog = function (shardId, limit=1000) {
   return log.head(limit);
 };
 
+const setLeader = (database, logId, newLeader) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
+  checkRequestResult(res);
+  const { json: { result } } = res;
+  return result;
+};
+
+const unsetLeader = (database, logId) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}/leader`);
+  checkRequestResult(res);
+  const { json: { result } } = res;
+  return result;
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
@@ -596,3 +612,5 @@ exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
 exports.shardIdToLogId = shardIdToLogId;
 exports.dumpShardLog = dumpShardLog;
+exports.setLeader = setLeader;
+exports.unsetLeader = unsetLeader;
