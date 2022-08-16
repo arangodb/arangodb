@@ -188,6 +188,11 @@ const G6JsGraph = () => {
     setGraphData(newGraphData);
   }
 
+  const removeDrawnEdge = () => {
+    // reset to previous saved data
+    setGraphData({...graphData});
+  }
+
   const updateGraphDataNodes = (newNodes) => {
     const currentEdges = graphData.edges;
     const newGraphData = {
@@ -527,8 +532,9 @@ const G6JsGraph = () => {
         <AddEdgeModal
           edgeModelToAdd={edgeModelToAdd}
           shouldShow={showEdgeToAddModal}
-          onRequestClose={() => {
+          onRequestClose={(isTriggeredOnSave) => {
             setShowEdgeToAddModal(false);
+            !isTriggeredOnSave && removeDrawnEdge();
           }}
           edgeCollections={edgeCollections}
           editorContent={'edgeToEdit'}
@@ -541,6 +547,9 @@ const G6JsGraph = () => {
           edgeData={{}}
           graphName={graphName}
           graphData={graphData}
+          onEdgeCreationCancellation={() => {
+            removeDrawnEdge();
+          }}
         >
           <strong>Add edge</strong>
         </AddEdgeModal>
