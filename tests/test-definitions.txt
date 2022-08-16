@@ -127,13 +127,10 @@ ldapsecondldap !windows single full ldap weight=2000 -- --ldapHost $LDAPHOST --l
 authentication full cluster weight=500 buckets=3 -- --dumpAgencyOnError true
 chaos full cluster weight=9600 -- --dumpAgencyOnError true --skipNightly false
 client_resilience full cluster weight=500 -- --dumpAgencyOnError true
-resilience_analyzers full cluster weight=500 -- --dumpAgencyOnError true
-resilience_failover full cluster weight=750 -- --dumpAgencyOnError true
 resilience_failover_failure full cluster weight=500 -- --dumpAgencyOnError true
 resilience_failover_view full cluster weight=500 -- --dumpAgencyOnError true
 resilience_move_view full cluster weight=750 -- --dumpAgencyOnError true
 resilience_repair full cluster weight=500 -- --dumpAgencyOnError true
-resilience_sharddist full cluster weight=500 -- --dumpAgencyOnError true
 resilience_transactions full cluster weight=500 -- --dumpAgencyOnError true
 shell_client_aql full cluster weight=2500 -- --dumpAgencyOnError true
 wal_cleanup full cluster weight=2500 -- --dumpAgencyOnError true
