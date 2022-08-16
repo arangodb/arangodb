@@ -1330,7 +1330,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
       nodeObj = {
         id: node._id,
         label: nodeLabel,
-        size: nodeSize || 40,
+        size: nodeSize || 24,
         sizeCategory: sizeCategory || '',
         style: {
           fill: calculatedNodeColor,
@@ -1441,7 +1441,9 @@ authRouter.get('/g6graph/:name', function (req, res) {
             label: edgeLabel,
             target: edge._to,
             style: {
-              stroke: calculatedEdgeColor,
+              //stroke: calculatedEdgeColor,
+              stroke: '#f8a310',
+              whatever: 'info',
             }
           };
 

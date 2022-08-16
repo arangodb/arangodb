@@ -161,6 +161,7 @@ const G6JsGraph = () => {
   }, [fetchEdgeCollections]);
 
   const updateGraphDataWithNode = (newNode) => {
+    console.log("newNode: ", newNode);
     const currentEdges = graphData.edges;
     const newGraphData = {
       nodes: [
@@ -457,6 +458,7 @@ const G6JsGraph = () => {
   return (
     <div>
       <UrlParametersContext.Provider value={[urlParameters, setUrlParameters, vertexCollectionsColors]}>
+        {JSON.stringify(urlParameters)}
 
         <EditNodeModal
           shouldShow={showEditNodeModal}

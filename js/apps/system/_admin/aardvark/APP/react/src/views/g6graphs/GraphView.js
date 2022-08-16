@@ -125,9 +125,10 @@ export class GraphView extends React.Component {
       },
       defaultNode: {
         type: 'circle',
-        size: 40,
+        size: 20,
         style: {
-          fill: '#' + this.props.nodeColor,
+          //fill: '#' + this.props.nodeColor,
+          //fill: '#f00',
           stroke: '#' + this.props.nodeColor,
           lineWidth: 8,
           cursor: 'pointer',
@@ -177,7 +178,7 @@ export class GraphView extends React.Component {
           autoRotate: true,
           refY: 10,
           style: {
-            fill: '#1D2A12',
+            fill: '#' + this.props.edgeColor,
             fontStyle: 'regular',
             fontFamily: 'Roboto',
             fontSize: 12
@@ -185,6 +186,7 @@ export class GraphView extends React.Component {
         },
         style: {
           stroke: '#' + this.props.edgeColor,
+          //stroke: '#f95fff',
           cursor: 'pointer',
         },
       },
@@ -295,6 +297,7 @@ export class GraphView extends React.Component {
 
     this.graph.on('node:mouseenter', (evt) => {
       const node = evt.item;
+      console.log("node: ", node);
       this.graph.setItemState(node, 'hover', true);
     });
 
@@ -305,6 +308,7 @@ export class GraphView extends React.Component {
 
     this.graph.on('edge:mouseenter', (evt) => {
       const edge = evt.item;
+      console.log("edge: ", edge);
       this.graph.setItemState(edge, 'hover', true);
     });
 
@@ -315,10 +319,33 @@ export class GraphView extends React.Component {
 
     this.graph.on('aftercreateedge', (e) => {
       const id = (Math.random() + 1).toString(36).substring(7);
+      /*
+      {
+        type: this.props.edgeType,
+        labelCfg: {
+          autoRotate: true,
+          refY: 10,
+          style: {
+            fill: '#' + this.props.edgeColor,
+            fontStyle: 'regular',
+            fontFamily: 'Roboto',
+            fontSize: 12
+          },
+        },
+        style: {
+          stroke: '#' + this.props.edgeColor,
+          cursor: 'pointer',
+        },
+      },
+      */
       const edgeModel = {
         id: id,
         source: e.edge._cfg.model.source,
-        target: e.edge._cfg.model.target
+        target: e.edge._cfg.model.target,
+        style: {
+          stroke: '#f00',
+          cursor: 'pointer',
+        }
       };
       
       this.graph.addItem('edge', edgeModel);

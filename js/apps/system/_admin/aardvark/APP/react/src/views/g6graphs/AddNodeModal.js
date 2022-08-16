@@ -60,6 +60,7 @@ const StyledButton = styled.button`
           label: response.vertex._key,
         };
         openNotificationWithIcon(response.vertex._id);
+        console.log("nodeModel (addNode): ", nodeModel);
         onNodeCreation(nodeModel);
         onRequestClose();
       },
