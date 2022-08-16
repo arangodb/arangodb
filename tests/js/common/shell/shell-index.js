@@ -273,7 +273,7 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalidField: function() {
-      const indexTypes = ["geo", "fulltext", "persistent", "hash"];
+      const indexTypes = ["geo", "fulltext", "persistent"];
       const isUnique = [true, false];
       const invalidFields = [":value", "value:"];
 
