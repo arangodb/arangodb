@@ -178,14 +178,14 @@ A message created for this error.
   graph._drop("myGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
 
-@EXAMPLE_ARANGOSH_RUN{HttpGharialCreate2}
+@EXAMPLE_ARANGOSH_RUN{HttpGharialCreateSmart}
   var graph = require("@arangodb/general-graph");
-| if (graph._exists("myGraph")) {
-|    graph._drop("myGraph", true);
+| if (graph._exists("smartGraph")) {
+|    graph._drop("smartGraph", true);
   }
   var url = "/_api/gharial";
   body = {
-    name: "myGraph",
+    name: "smartGraph",
     edgeDefinitions: [{
       collection: "edges",
       from: [ "startVertices" ],
@@ -206,7 +206,129 @@ A message created for this error.
 
   logJsonResponse(response);
 
-  graph._drop("myGraph", true);
+  graph._drop("smartGraph", true);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{HttpGharialCreateDisjointSmart}
+var graph = require("@arangodb/general-graph");
+| if (graph._exists("disjointSmartGraph")) {
+|    graph._drop("disjointSmartGraph", true);
+}
+var url = "/_api/gharial";
+body = {
+name: "disjointSmartGraph",
+edgeDefinitions: [{
+collection: "edges",
+from: [ "startVertices" ],
+to: [ "endVertices" ]
+}],
+orphanCollections: [ "orphanVertices" ],
+isSmart: true,
+options: {
+isDisjoint: true,
+replicationFactor: 2,
+numberOfShards: 9,
+smartGraphAttribute: "region"
+}
+};
+
+var response = logCurlRequest('POST', url, body);
+
+assert(response.code === 202);
+
+logJsonResponse(response);
+
+graph._drop("disjointSmartGraph", true);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{HttpGharialCreateSmartWithSatellites}
+var graph = require("@arangodb/general-graph");
+| if (graph._exists("smartGraph")) {
+|    graph._drop("smartGraph", true);
+}
+var url = "/_api/gharial";
+body = {
+name: "smartGraph",
+edgeDefinitions: [{
+collection: "edges",
+from: [ "startVertices" ],
+to: [ "endVertices" ]
+}],
+orphanCollections: [ "orphanVertices" ],
+isSmart: true,
+options: {
+replicationFactor: 2,
+numberOfShards: 9,
+smartGraphAttribute: "region",
+satellites: [ "endVertices" ]
+}
+};
+
+var response = logCurlRequest('POST', url, body);
+
+assert(response.code === 202);
+
+logJsonResponse(response);
+
+graph._drop("smartGraph", true);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{HttpGharialCreateEnterprise}
+var graph = require("@arangodb/general-graph");
+| if (graph._exists("enterpriseGraph")) {
+|    graph._drop("enterpriseGraph", true);
+}
+var url = "/_api/gharial";
+body = {
+name: "enterpriseGraph",
+edgeDefinitions: [{
+collection: "edges",
+from: [ "startVertices" ],
+to: [ "endVertices" ]
+}],
+orphanCollections: [ ],
+isSmart: true,
+options: {
+replicationFactor: 2,
+numberOfShards: 9,
+}
+};
+
+var response = logCurlRequest('POST', url, body);
+
+assert(response.code === 202);
+
+logJsonResponse(response);
+
+graph._drop("enterpriseGraph", true);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{HttpGharialCreateSatellite}
+var graph = require("@arangodb/general-graph");
+| if (graph._exists("satelliteGraph")) {
+|    graph._drop("satelliteGraph", true);
+}
+var url = "/_api/gharial";
+body = {
+name: "satelliteGraph",
+edgeDefinitions: [{
+collection: "edges",
+from: [ "startVertices" ],
+to: [ "endVertices" ]
+}],
+orphanCollections: [ ],
+options: {
+replicationFactor: "satellite"
+}
+};
+
+var response = logCurlRequest('POST', url, body);
+
+assert(response.code === 202);
+
+logJsonResponse(response);
+
+graph._drop("satelliteGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
