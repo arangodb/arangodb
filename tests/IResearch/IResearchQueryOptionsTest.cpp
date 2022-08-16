@@ -84,7 +84,7 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
 
   // add link to collection
@@ -777,7 +777,7 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
 
   // add link to collection
@@ -1012,7 +1012,7 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
 
   // add link to collection
