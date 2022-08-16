@@ -2,9 +2,9 @@ devel
 -----
 
 * Disallowed index creation that covers fields in which the field's name starts
-  or ends with `:` for single server or cluster when the instance is
-  coordinator. This only happens for index creation, so already existing
-  indexes that might have such conditions will remain as they are.
+  or ends with `:` for single server or cluster when the instance is a
+  coordinator or single server. This validation only happens for index creation, 
+  so already existing indexes that might use such field names will remain as they are.
 
 * Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
   same collection. The requirements were:
