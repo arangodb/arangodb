@@ -212,6 +212,18 @@ Result GraphOperations::checkEdgeCollectionAvailability(
 
 Result GraphOperations::checkVertexCollectionAvailability(
     std::string const& vertexCollectionName) {
+  // first check whether the collection is part of the graph
+  bool found = false;
+  if (_graph.vertexCollections().contains(vertexCollectionName) ||
+      _graph.orphanCollections().contains(vertexCollectionName)) {
+    found = true;
+  }
+
+  if (!found) {
+    return Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED);
+  }
+
+  // check if the collection is available
   std::shared_ptr<LogicalCollection> def =
       GraphManager::getCollectionByName(_vocbase, vertexCollectionName);
 
@@ -795,7 +807,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
   OperationOptions options(ExecContext::current());
 
-  if (fromStringSlice.isNone() || toStringSlice.isNone()) {
+  if (!fromStringSlice.isString() || !toStringSlice.isString()) {
     if (isUpdate) {
       return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR, options),
                             false);
@@ -804,6 +816,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
         OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, options),
         false);
   }
+
   std::string fromString = fromStringSlice.copyString();
   std::string toString = toStringSlice.copyString();
 
@@ -858,6 +871,13 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
 OperationResult GraphOperations::createEdge(const std::string& definitionName,
                                             VPackSlice document,
                                             bool waitForSync, bool returnNew) {
+  // check if edgeCollection is available in the graph definition
+  OperationOptions options(ExecContext::current());
+  Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
+  if (checkEdgeRes.fail()) {
+    return OperationResult(checkEdgeRes, options);
+  }
+
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
     return std::move(res);
@@ -916,6 +936,13 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
                                               VPackSlice document,
                                               bool waitForSync,
                                               bool returnNew) {
+  // check if the vertex collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
+  if (checkVertexRes.fail()) {
+    return OperationResult(checkVertexRes, options);
+  }
+
   transaction::Options trxOptions;
 
   std::vector<std::string> writeCollections;
