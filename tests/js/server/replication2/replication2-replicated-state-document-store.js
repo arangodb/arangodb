@@ -524,6 +524,11 @@ const replicatedStateRecoverySuite = function () {
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, true);
 
+
+      // We unset the leader here so that once the old leader node is resumed we
+      // do not move leadership back to that node.
+      lh.unsetLeader(database, logId);
+
       // Stop the leader. This triggers a failover.
       let leader = participants[0];
       let followers = participants.slice(1);
