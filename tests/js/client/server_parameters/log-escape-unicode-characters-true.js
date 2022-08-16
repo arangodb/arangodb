@@ -3,10 +3,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,17 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
 
 if (getOptions === true) {
   return {
-    'log.use-json-format': 'true',
     'log.hostname': 'delorean',
     'log.process': 'false',
     'log.ids': 'false',
@@ -50,26 +48,20 @@ function EscapeUnicodeSuite() {
 
 
   return {
-    testEscapeUnicodeTrue: function() {
-      const unicodeChars = ["°", "ç", "ã", "maçã", "犬"];
+    testEscapeUnicodelFalse: function() {
+      const testValues = ["°", "mötör", "maçã", "犬"];
+      const expectedValues = ['\\u00B0', 'm\\u00F6t\\u00F6r', 'ma\\u00E7\\u00E3', '\\u72AC'];
 
       const res = arango.POST("/_admin/execute", `
      
-    require('console').log("testmann: start");
-    const unicodeChars = ["°", "ç", "ã", "maçã", "犬"];
-    unicodeChars.forEach(unicodeChar => {
-         require('console').log("testmann: testi " + unicodeChar);
-    });
-    require('console').log("testmann: done");
-  return require('internal').options()["log.output"];
-  `);
-
-      print("response ", res);
-
-
-      const response = arango.GET("/_admin/log");
-      print(response);
-
+        require('console').log("testmann: start");
+        const testValues = ["°", "mötör", "maçã", "犬"];
+        testValues.forEach(testValue => {
+          require('console').log("testmann: testi "  + testValue + " abc123");
+        });
+        require('console').log("testmann: done");
+        return require('internal').options()["log.output"];
+      `);
 
       assertTrue(Array.isArray(res));
       assertTrue(res.length > 0);
@@ -80,38 +72,27 @@ function EscapeUnicodeSuite() {
       let tries = 0;
       let filtered = [];
       while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
+        let content = fs.readFileSync(logfile, 'utf-8');
         let lines = content.split('\n');
 
         filtered = lines.filter((line) => {
           return line.match(/testmann: /);
         });
 
-        if (filtered.length === unicodeChars.length + 2) {
+        if (filtered.length === testValues.length + 2) {
           break;
         }
 
         require("internal").sleep(0.5);
       }
-      assertEqual(unicodeChars.length + 2, filtered.length);
-      print(filtered);
+      assertEqual(testValues.length + 2, filtered.length);
 
       assertTrue(filtered[0].match(/testmann: start/));
-      for (let i = 1; i < unicodeChars.length + 1; ++i) {
-        let msg = JSON.parse(filtered[i]);
-        assertTrue(msg.hasOwnProperty("time"), msg);
-        assertFalse(msg.hasOwnProperty("pid"), msg);
-        assertTrue(msg.hasOwnProperty("level"), msg);
-        assertTrue(msg.hasOwnProperty("topic"), msg);
-        assertFalse(msg.hasOwnProperty("id"), msg);
-        assertTrue(msg.hasOwnProperty("hostname"), msg);
-        assertEqual("delorean", msg.hostname, msg);
-        assertTrue(msg.hasOwnProperty("role"), msg);
-        assertTrue(msg.hasOwnProperty("tid"), msg);
-        assertTrue(msg.hasOwnProperty("message"), msg);
-        assertEqual("testmann: testi " + unicodeChars[i - 1].charCodeAt(0), msg.message, msg);
+      for (let i = 1; i < testValues.length + 1; ++i) {
+        const msg = filtered[i];
+        assertTrue(msg.endsWith("testmann: testi " + expectedValues[i - 1] + " abc123"));
       }
-      assertTrue(filtered[unicodeChars.length + 1].match(/testmann: done/));
+      assertTrue(filtered[testValues.length + 1].match(/testmann: done/));
 
     },
 
