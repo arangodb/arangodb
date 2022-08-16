@@ -4,12 +4,12 @@ v3.8.8 (XXXX-XX-XX)
 * Fixed an invalid attribute access in AQL query optimization.
   Without the fix, a query such as
 
-      LET data = { 
-        "a": [ 
+      LET data = {
+        "a": [
           ...
-        ], 
-      } 
-      FOR d IN data["a"] 
+        ],
+      }
+      FOR d IN data["a"]
         RETURN d
 
   could fail with error "invalid operand to FOR loop, expecting Array".
