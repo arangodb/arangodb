@@ -119,15 +119,6 @@ function testSuite() {
       });
         
       waitForAlive(30, coordinator.url, {});
-
-      // connection to server was closed, so next request may fail.
-      try {
-        // issue a dummy request to the server. if that fails because of
-        // a broken connection, we don't care.
-        db._collection(vn).count();
-        // all following requests should be fine again
-      } catch (err) {}
-
       
       // vertex collection
       c = db._collection(vn);

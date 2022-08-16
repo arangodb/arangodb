@@ -78,19 +78,14 @@ static std::string const UNKNOWN = "UNKNOWN";
 class DefaultLogGroup final : public LogGroup {
   std::size_t id() const override { return 0; }
 };
-
 DefaultLogGroup defaultLogGroupInstance;
 
 }  // namespace
 
 LogMessage::LogMessage(char const* function, char const* file, int line,
                        LogLevel level, size_t topicId, std::string&& message,
-                       uint32_t offset, bool shrunk)
-
-    noexcept
-    :
-
-      _function(function),
+                       uint32_t offset, bool shrunk) noexcept
+    : _function(function),
       _file(file),
       _line(line),
       _level(level),
@@ -382,7 +377,6 @@ void Logger::setUseControlEscaped(bool value) {
   }
   _useControlEscaped = value;
 }
-
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseUnicodeEscaped(bool value) {
   if (_active) {
@@ -443,9 +437,7 @@ void Logger::setUseJson(bool value) {
 }
 
 bool Logger::translateLogLevel(std::string const& l, bool isGeneral,
-                               LogLevel& level)
-
-    noexcept {
+                               LogLevel& level) noexcept {
   if (l == "fatal") {
     level = LogLevel::FATAL;
   } else if (l == "error" || l == "err") {
@@ -458,11 +450,7 @@ bool Logger::translateLogLevel(std::string const& l, bool isGeneral,
     level = LogLevel::DEBUG;
   } else if (l == "trace") {
     level = LogLevel::TRACE;
-  } else if (!isGeneral && (l.
-
-                            empty()
-
-                            || l == "default")) {
+  } else if (!isGeneral && (l.empty() || l == "default")) {
     level = LogLevel::DEFAULT;
   } else {
     return false;
@@ -471,9 +459,7 @@ bool Logger::translateLogLevel(std::string const& l, bool isGeneral,
   return true;
 }
 
-std::string const& Logger::translateLogLevel(LogLevel level)
-
-    noexcept {
+std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
   switch (level) {
     case LogLevel::ERR:
       return ERR;
@@ -665,8 +651,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
       if (maxMessageLength > message.size()) {
         maxMessageLength = message.size();
       }
-
-      out.append("\"" + message + "\"");
+      dumper.appendString(message.c_str(), maxMessageLength);
 
       // this tells the logger to not shrink our (potentially already
       // shrunk) message once more - if it would shrink the message again,
@@ -945,9 +930,7 @@ void Logger::shutdown() {
 /// @brief tries to flush the logging
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::flush()
-
-    noexcept {
+void Logger::flush() noexcept {
   if (!_active.load(std::memory_order_acquire)) {
     // logging not (or not yet) initialized
     return;
@@ -955,8 +938,6 @@ void Logger::flush()
 
   ThreadRef loggingThread;
   if (loggingThread) {
-    loggingThread->
-
-        flush();
+    loggingThread->flush();
   }
 }
