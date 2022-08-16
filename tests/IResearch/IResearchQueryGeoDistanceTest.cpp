@@ -147,19 +147,27 @@ class QueryGeoDistance : public QueryTest {
     }
     // test missing analyzer
     {
+      std::vector<VPackSlice> expected;
+      if (type() == ViewType::kSearch) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
-        SEARCH GEO_DISTANCE(d.missing, origin) < 300
+        SEARCH GEO_DISTANCE(d.geometry, origin) < 300
         RETURN d)",
-                           empty));
+                           expected));
     }
     // test missing analyzer
     {
+      std::vector<VPackSlice> expected;
+      if (type() == ViewType::kSearch) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
-        SEARCH GEO_DISTANCE(origin, d.missing) < 300
+        SEARCH GEO_DISTANCE(origin, d.geometry) < 300
         RETURN d)",
-                           empty));
+                           expected));
     }
   }
 
@@ -220,7 +228,7 @@ class QueryGeoDistance : public QueryTest {
           R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson") RETURN d)"));
     }
     // test missing field
-    {
+    if (type() == ViewType::kView) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_DISTANCE(d.missing, origin) < 300, 'mygeojson')
@@ -228,7 +236,7 @@ class QueryGeoDistance : public QueryTest {
                            empty));
     }
     // test missing field
-    {
+    if (type() == ViewType::kView) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_DISTANCE(origin, d.missing) < 300, 'mygeojson')
@@ -474,7 +482,7 @@ class QueryGeoDistanceView : public QueryGeoDistance {
   void createView() {
     auto createJson = VPackParser::fromJson(
         R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
     auto updateJson = VPackParser::fromJson(absl::Substitute(R"({ "links": {
@@ -512,7 +520,7 @@ class QueryGeoDistanceSearch : public QueryGeoDistance {
   void createSearch() {
     auto createJson =
         VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
     auto updateJson = VPackParser::fromJson(R"({ "indexes": [

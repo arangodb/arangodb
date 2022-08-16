@@ -1769,7 +1769,7 @@ class QueryJoinSearch : public QueryJoin {
     auto createSearchName = [&](std::string_view name) {
       auto createJson = velocypack::Parser::fromJson(
           absl::Substitute(R"({ "name": "$0_view", "type": "search" })", name));
-      auto logicalView = _vocbase.createView(createJson->slice());
+      auto logicalView = _vocbase.createView(createJson->slice(), false);
       ASSERT_FALSE(!logicalView);
       auto& implView = basics::downCast<iresearch::Search>(*logicalView);
       auto updateJson = velocypack::Parser::fromJson(absl::Substitute(

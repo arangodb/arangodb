@@ -72,9 +72,9 @@ bool equalPartial(IResearchViewMeta const& lhs, IResearchViewMeta const& rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
 ////////////////////////////////////////////////////////////////////////////////
-struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
+struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
   Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                VPackSlice definition, bool isUserRequest) const override {
+                VPackSlice definition, bool isUserRequest) const final {
     auto& server = vocbase.server();
     if (!server.hasFeature<ClusterFeature>()) {
       return {TRI_ERROR_INTERNAL,
@@ -94,7 +94,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
       return r;
     }
     LogicalView::ptr impl;
-    r = cluster_helper::construct(impl, vocbase, definition);
+    r = cluster_helper::construct(impl, vocbase, definition, isUserRequest);
     if (!r.ok()) {
       return r;
     }
@@ -140,7 +140,8 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   }
 
   Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                     velocypack::Slice definition) const override {
+                     velocypack::Slice definition,
+                     bool /*isUserRequest*/) const final {
     std::string error;
     // TODO make_shared instead of new
     auto impl = std::shared_ptr<IResearchViewCoordinator>(

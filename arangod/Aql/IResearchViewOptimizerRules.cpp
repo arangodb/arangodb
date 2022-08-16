@@ -62,32 +62,39 @@ using namespace arangodb::basics;
 
 namespace {
 
-inline IResearchSortBase const& primarySort(arangodb::LogicalView const& view) {
-  if (view.type() == ViewType::kSearch) {
-    auto const& viewImpl = basics::downCast<Search>(view);
+// TODO deduplicate these functions with IResearchViewNode
+
+IResearchSortBase const& primarySort(
+    std::shared_ptr<SearchMeta const> const& meta,
+    std::shared_ptr<LogicalView const> const& view) {
+  if (meta) {
+    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    return meta->primarySort;
+  }
+  TRI_ASSERT(view);
+  TRI_ASSERT(view->type() == ViewType::kView);
+  if (ServerState::instance()->isCoordinator()) {
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.primarySort();
   }
-  TRI_ASSERT(view.type() == ViewType::kView);
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
-    return viewImpl.primarySort();
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(*view);
   return viewImpl.primarySort();
 }
 
-inline IResearchViewStoredValues const& storedValues(
-    arangodb::LogicalView const& view) {
-  if (view.type() == ViewType::kSearch) {
-    auto const& viewImpl = basics::downCast<Search>(view);
+IResearchViewStoredValues const& storedValues(
+    std::shared_ptr<SearchMeta const> const& meta,
+    std::shared_ptr<LogicalView const> const& view) {
+  if (meta) {
+    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    return meta->storedValues;
+  }
+  TRI_ASSERT(view);
+  TRI_ASSERT(view->type() == ViewType::kView);
+  if (ServerState::instance()->isCoordinator()) {
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.storedValues();
   }
-  TRI_ASSERT(view.type() == ViewType::kView);
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
-    return viewImpl.storedValues();
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(*view);
   return viewImpl.storedValues();
 }
 
@@ -214,8 +221,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
         .trx = &query.trxForOptimization(),
         .ref = &viewNode.outVariable(),
         .isSearchQuery = true,
-        .isOldMangling =
-            (viewNode.view() && viewNode.view()->type() == ViewType::kView)};
+        .isOldMangling = (viewNode.meta() == nullptr)};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
@@ -333,8 +339,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 }
 
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
-  TRI_ASSERT(viewNode.view());
-  auto const& primarySort = ::primarySort(*viewNode.view());
+  auto const& primarySort = ::primarySort(viewNode.meta(), viewNode.view());
 
   if (primarySort.empty()) {
     // use system sort
@@ -473,8 +478,8 @@ void keepReplacementViewVariables(std::span<ExecutionNode* const> calcNodes,
     TRI_ASSERT(vNode &&
                ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
-    auto const& primarySort = ::primarySort(*viewNode.view());
-    auto const& storedValues = ::storedValues(*viewNode.view());
+    auto const& primarySort = ::primarySort(viewNode.meta(), viewNode.view());
+    auto const& storedValues = ::storedValues(viewNode.meta(), viewNode.view());
     if (primarySort.empty() && storedValues.empty()) {
       // neither primary sort nor stored values
       continue;

@@ -337,7 +337,7 @@ TEST_F(IResearchViewDBServerTest, test_make) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -364,7 +364,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -395,7 +395,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -745,7 +745,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -801,7 +801,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -854,7 +854,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -890,7 +890,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -934,7 +934,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -1749,7 +1749,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -1777,7 +1777,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
