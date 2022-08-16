@@ -4,6 +4,11 @@ devel
 * Added integration tests for `--log.escape-control-chars` and 
  `--log.escape-unicode-chars`.
 
+* When using `SHORTEST_PATH`, `K_SHORTEST_PATHS`, `ALL_SHORTEST_PATHS`, or
+  `K_PATHS` in an AQL Query and the query itself produced warnings during
+  execution, the type has been wrongly reported. It reported always with
+  `SHORTEST_PATH` and not the specific used one.
+
 * Updated warning messages raised for non accepted query OPTIONS,
   distinguishing between when the OPTIONS attribute is correct, but the value
   is in incorrect format, and when the OPTIONS attribute itself is incorrect.
