@@ -651,7 +651,13 @@ void Logger::log(char const* logid, char const* function, char const* file,
       if (maxMessageLength > message.size()) {
         maxMessageLength = message.size();
       }
-      dumper.appendString(message.c_str(), maxMessageLength);
+
+      out.append("\"");
+      out.append(message);
+      out.append("\"");
+
+
+      //    dumper.appendString(message.c_str(), maxMessageLength);
 
       // this tells the logger to not shrink our (potentially already
       // shrunk) message once more - if it would shrink the message again,

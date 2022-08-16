@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -29,6 +29,7 @@ const fs = require('fs');
 
 if (getOptions === true) {
   return {
+    'log.use-json-format': 'true',
     'log.hostname': 'delorean',
     'log.process': 'false',
     'log.ids': 'false',
@@ -37,26 +38,23 @@ if (getOptions === true) {
     'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
-    'log.escape-unicode-chars': 'false',
+    'log.escape-control-chars': 'false',
   };
 }
 
 const jsunity = require('jsunity');
 
-function EscapeUnicodeFalseSuite() {
+function EscapeControlFalseJsonSuite() {
   'use strict';
 
-
   return {
-    testEscapeUnicodeFalse: function() {
-      const testValues = ["°", "mötör", "maçã", "犬"];
-
-      const res = arango.POST("/_admin/execute", `
+    testEscapeControlFalseJson: function() {
+      const escapeCharsLength = 31;
+      const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
         require('console').log("testmann: start");
-        const testValues = ["°", "mötör", "maçã", "犬"];
-        testValues.forEach(testValue => {
-          require('console').log("testmann: testi "  + testValue + " abc123");
-        });
+        for (let i = 1; i <= 31; ++i) {
+          require('console').log("testmann: testi" + String.fromCharCode(i) + " abc123");
+        }
         require('console').log("testmann: done");
         return require('internal').options()["log.output"];
       `);
@@ -70,33 +68,34 @@ function EscapeUnicodeFalseSuite() {
       let tries = 0;
       let filtered = [];
       while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'utf-8');
+        let content = fs.readFileSync(logfile, 'ascii');
         let lines = content.split('\n');
 
         filtered = lines.filter((line) => {
           return line.match(/testmann: /);
         });
 
-        if (filtered.length === testValues.length + 2) {
+        if (filtered.length === escapeCharsLength + 2) {
           break;
         }
 
         require("internal").sleep(0.5);
       }
-      assertEqual(testValues.length + 2, filtered.length);
+      assertEqual(escapeCharsLength + 2, filtered.length);
 
       assertTrue(filtered[0].match(/testmann: start/));
-      for (let i = 1; i < testValues.length + 1; ++i) {
-        const msg = filtered[i];
-        assertTrue(msg.endsWith("testmann: testi " + testValues[i - 1] + " abc123"));
+      for (let i = 1; i < escapeCharsLength + 1; ++i) {
+        const msg = JSON.parse(filtered[i]);
+        assertTrue(msg.hasOwnProperty("message"), msg);
+        assertEqual(msg["message"], "testmann: testi  abc123");
       }
-      assertTrue(filtered[testValues.length + 1].match(/testmann: done/));
-
+      const msg = JSON.parse(filtered[escapeCharsLength + 1]);
+      assertEqual(msg["message"], "testmann: done");
     },
 
   };
 }
 
 
-jsunity.run(EscapeUnicodeFalseSuite);
+jsunity.run(EscapeControlFalseJsonSuite);
 return jsunity.done();

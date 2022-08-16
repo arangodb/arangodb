@@ -29,6 +29,7 @@ const fs = require('fs');
 
 if (getOptions === true) {
   return {
+    'log.use-json-format': 'true',
     'log.hostname': 'delorean',
     'log.process': 'false',
     'log.ids': 'false',
@@ -37,21 +38,21 @@ if (getOptions === true) {
     'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
-    'log.escape-unicode-chars': 'false',
+    'log.escape-unicode-chars': 'true',
   };
 }
 
 const jsunity = require('jsunity');
 
-function EscapeUnicodeFalseSuite() {
+function EscapeUnicodeTrueJsonSuite() {
   'use strict';
 
-
   return {
-    testEscapeUnicodeFalse: function() {
+    testEscapeUnicodeTrueJson: function() {
       const testValues = ["°", "mötör", "maçã", "犬"];
+      const expectedValues = ['\\u00B0', 'm\\u00F6t\\u00F6r', 'ma\\u00E7\\u00E3', '\\u72AC'];
 
-      const res = arango.POST("/_admin/execute", `
+      const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
         require('console').log("testmann: start");
         const testValues = ["°", "mötör", "maçã", "犬"];
         testValues.forEach(testValue => {
@@ -88,7 +89,7 @@ function EscapeUnicodeFalseSuite() {
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < testValues.length + 1; ++i) {
         const msg = filtered[i];
-        assertTrue(msg.endsWith("testmann: testi " + testValues[i - 1] + " abc123"));
+        assertTrue(msg.endsWith("testmann: testi " + expectedValues[i - 1] + " abc123\"}"));
       }
       assertTrue(filtered[testValues.length + 1].match(/testmann: done/));
 
@@ -98,5 +99,5 @@ function EscapeUnicodeFalseSuite() {
 }
 
 
-jsunity.run(EscapeUnicodeFalseSuite);
+jsunity.run(EscapeUnicodeTrueJsonSuite);
 return jsunity.done();

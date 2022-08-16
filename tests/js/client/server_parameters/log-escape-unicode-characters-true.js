@@ -43,17 +43,16 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 
-function EscapeUnicodeSuite() {
+function EscapeUnicodeTrueSuite() {
   'use strict';
 
 
   return {
-    testEscapeUnicodelFalse: function() {
+    testEscapeUnicodeTrue: function() {
       const testValues = ["°", "mötör", "maçã", "犬"];
       const expectedValues = ['\\u00B0', 'm\\u00F6t\\u00F6r', 'ma\\u00E7\\u00E3', '\\u72AC'];
 
       const res = arango.POST("/_admin/execute", `
-     
         require('console').log("testmann: start");
         const testValues = ["°", "mötör", "maçã", "犬"];
         testValues.forEach(testValue => {
@@ -100,5 +99,5 @@ function EscapeUnicodeSuite() {
 }
 
 
-jsunity.run(EscapeUnicodeSuite);
+jsunity.run(EscapeUnicodeTrueSuite);
 return jsunity.done();

@@ -43,7 +43,7 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 
-function EscapeControlSuite() {
+function EscapeControlTrueSuite() {
   'use strict';
 
   return {
@@ -51,15 +51,14 @@ function EscapeControlSuite() {
       const visibleCharCodes = ['\x0a', '\x0d', '\x09'];
       const visibleChars = ['\\n', '\\r', '\\t'];
       const escapeCharsLength = 31;
-      const res = arango.POST("/_admin/execute", `
-     
-    require('console').log("testmann: start");
-    for (let i = 1; i <= 31; ++i) {
-      require('console').log("testmann: testi" + String.fromCharCode(i) + " abc123");
-    }
-    require('console').log("testmann: done");
-    return require('internal').options()["log.output"];
-  `);
+      const res = arango.POST("/_admin/execute", `   
+        require('console').log("testmann: start");
+        for (let i = 1; i <= 31; ++i) {
+          require('console').log("testmann: testi" + String.fromCharCode(i) + " abc123");
+        }
+        require('console').log("testmann: done");
+        return require('internal').options()["log.output"];
+      `);
 
       assertTrue(Array.isArray(res));
       assertTrue(res.length > 0);
@@ -108,5 +107,5 @@ function EscapeControlSuite() {
 }
 
 
-jsunity.run(EscapeControlSuite);
+jsunity.run(EscapeControlTrueSuite);
 return jsunity.done();

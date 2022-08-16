@@ -29,6 +29,7 @@ const fs = require('fs');
 
 if (getOptions === true) {
   return {
+    'log.use-json-format': 'true',
     'log.hostname': 'delorean',
     'log.process': 'false',
     'log.ids': 'false',
@@ -43,15 +44,15 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 
-function EscapeUnicodeFalseSuite() {
+function EscapeUnicodeFalseJsonSuite() {
   'use strict';
 
 
   return {
-    testEscapeUnicodeFalse: function() {
+    testEscapeUnicodeFalseJson: function() {
       const testValues = ["°", "mötör", "maçã", "犬"];
 
-      const res = arango.POST("/_admin/execute", `
+      const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
         require('console').log("testmann: start");
         const testValues = ["°", "mötör", "maçã", "犬"];
         testValues.forEach(testValue => {
@@ -87,16 +88,17 @@ function EscapeUnicodeFalseSuite() {
 
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < testValues.length + 1; ++i) {
-        const msg = filtered[i];
-        assertTrue(msg.endsWith("testmann: testi " + testValues[i - 1] + " abc123"));
+        const msg = JSON.parse(filtered[i]);
+        assertTrue(msg.hasOwnProperty("message"), msg);
+        assertEqual(msg["message"], "testmann: testi " + testValues[i - 1] + " abc123");
       }
-      assertTrue(filtered[testValues.length + 1].match(/testmann: done/));
-
+      const msg = JSON.parse(filtered[testValues.length + 1]);
+      assertEqual(msg["message"], "testmann: done");
     },
 
   };
 }
 
 
-jsunity.run(EscapeUnicodeFalseSuite);
+jsunity.run(EscapeUnicodeFalseJsonSuite);
 return jsunity.done();
