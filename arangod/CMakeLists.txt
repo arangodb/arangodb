@@ -249,183 +249,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   RestHandler/RestGraphHandler.cpp
 )
 
-set(LIB_ARANGO_AQL_SOURCES
-  Aql/Aggregator.cpp
-  Aql/AqlCall.cpp
-  Aql/AqlCallList.cpp
-  Aql/AqlCallSet.cpp
-  Aql/AqlCallStack.cpp
-  Aql/AqlExecuteResult.cpp
-  Aql/AqlFunctionFeature.cpp
-  Aql/AqlFunctionsInternalCache.cpp
-  Aql/AqlItemBlock.cpp
-  Aql/AqlItemBlockInputRange.cpp
-  Aql/AqlItemBlockManager.cpp
-  Aql/AqlItemBlockUtils.cpp
-  Aql/AqlItemMatrix.cpp
-  Aql/AqlTransaction.cpp
-  Aql/AqlValue.cpp
-  Aql/AqlValueGroup.cpp
-  Aql/AqlValueMaterializer.cpp
-  Aql/Arithmetic.cpp
-  Aql/Ast.cpp
-  Aql/AstHelper.cpp
-  Aql/AstNode.cpp
-  Aql/AstResources.cpp
-  Aql/AsyncExecutor.cpp
-  Aql/AttributeAccessor.cpp
-  Aql/AttributeNamePath.cpp
-  Aql/BindParameters.cpp
-  Aql/BlocksWithClients.cpp
-  Aql/CalculationExecutor.cpp
-  Aql/CalculationNodeVarFinder.cpp
-  Aql/ClusterNodes.cpp
-  Aql/CollectNode.cpp
-  Aql/CollectOptions.cpp
-  Aql/Collection.cpp
-  Aql/CollectionAccess.cpp
-  Aql/CollectionAccessingNode.cpp
-  Aql/Collections.cpp
-  Aql/Condition.cpp
-  Aql/ConditionFinder.cpp
-  Aql/ConstFetcher.cpp
-  Aql/ConstrainedSortExecutor.cpp
-  Aql/CostEstimate.cpp
-  Aql/CountCollectExecutor.cpp
-  Aql/DependencyProxy.cpp
-  Aql/DistinctCollectExecutor.cpp
-  Aql/DistributeClientBlock.cpp
-  Aql/DistributeConsumerNode.cpp
-  Aql/DistributeExecutor.cpp
-  Aql/DocumentExpressionContext.cpp
-  Aql/DocumentProducingHelper.cpp
-  Aql/DocumentProducingNode.cpp
-  Aql/EnumeratePathsNode.cpp
-  Aql/ClusterQuery.cpp
-  Aql/EngineInfoContainerCoordinator.cpp
-  Aql/EngineInfoContainerDBServerServerBased.cpp
-  Aql/EnumerateCollectionExecutor.cpp
-  Aql/EnumerateListExecutor.cpp
-  Aql/EnumeratePathsExecutor.cpp
-  Aql/ExecutionBlock.cpp
-  Aql/ExecutionEngine.cpp
-  Aql/ExecutionNode.cpp
-  Aql/ExecutionNodeId.cpp
-  Aql/ExecutionPlan.cpp
-  Aql/ExecutionState.cpp
-  Aql/ExecutionStats.cpp
-  Aql/ExecutorExpressionContext.cpp
-  Aql/Expression.cpp
-  Aql/FilterExecutor.cpp
-  Aql/FixedVarExpressionContext.cpp
-  Aql/Function.cpp
-  Aql/Functions.cpp
-  Aql/GraphNode.cpp
-  Aql/Graphs.cpp
-  Aql/HashedCollectExecutor.cpp
-  Aql/IResearchViewExecutor.cpp
-  Aql/IResearchViewNode.cpp
-  Aql/IResearchViewOptimizerRules.cpp
-  Aql/IdExecutor.cpp
-  Aql/InAndOutRowExpressionContext.cpp
-  Aql/IndexExecutor.cpp
-  Aql/IndexHint.cpp
-  Aql/IndexNode.cpp
-  Aql/IndexNodeOptimizerRules.cpp
-  Aql/InputAqlItemRow.cpp
-  Aql/InsertModifier.cpp
-  Aql/LateMaterializedExpressionContext.cpp
-  Aql/LateMaterializedOptimizerRulesCommon.cpp
-  Aql/LimitExecutor.cpp
-  Aql/LimitStats.cpp
-  Aql/MaterializeExecutor.cpp
-  Aql/ModificationExecutor.cpp
-  Aql/ModificationExecutorHelpers.cpp
-  Aql/ModificationExecutorInfos.cpp
-  Aql/ModificationNodes.cpp
-  Aql/ModificationOptions.cpp
-  Aql/MultiAqlItemBlockInputRange.cpp
-  Aql/MultiDependencySingleRowFetcher.cpp
-  Aql/MutexExecutor.cpp
-  Aql/MutexNode.cpp
-  Aql/NodeFinder.cpp
-  Aql/NonConstExpression.cpp
-  Aql/NonConstExpressionContainer.cpp
-  Aql/NoResultsExecutor.cpp
-  Aql/Optimizer.cpp
-  Aql/OptimizerRules.cpp
-  Aql/OptimizerRulesCluster.cpp
-  Aql/OptimizerRulesFeature.cpp
-  Aql/OptimizerRulesReplaceFunctions.cpp
-  Aql/OptimizerUtils.cpp
-  Aql/OutputAqlItemRow.cpp
-  Aql/ParallelUnsortedGatherExecutor.cpp
-  Aql/Parser.cpp
-  Aql/Projections.cpp
-  Aql/Quantifier.cpp
-  Aql/Query.cpp
-  Aql/QueryCache.cpp
-  Aql/QueryContext.cpp
-  Aql/QueryExecutionState.cpp
-  Aql/QueryExpressionContext.cpp
-  Aql/QueryList.cpp
-  Aql/QueryOptions.cpp
-  Aql/QueryProfile.cpp
-  Aql/QueryRegistry.cpp
-  Aql/QuerySnippet.cpp
-  Aql/QueryString.cpp
-  Aql/QueryWarnings.cpp
-  Aql/Range.cpp
-  Aql/RegisterId.cpp
-  Aql/RegisterInfos.cpp
-  Aql/RegisterPlan.cpp
-  Aql/RemoteExecutor.cpp
-  Aql/RemoveModifier.cpp
-  Aql/RestAqlHandler.cpp
-  Aql/ReturnExecutor.cpp
-  Aql/ScatterExecutor.cpp
-  Aql/Scopes.cpp
-  Aql/ShadowAqlItemRow.cpp
-  Aql/ShardLocking.cpp
-  Aql/SharedAqlItemBlockPtr.cpp
-  Aql/SharedQueryState.cpp
-  Aql/ShortStringStorage.cpp
-  Aql/ShortestPathExecutor.cpp
-  Aql/ShortestPathNode.cpp
-  Aql/SimpleModifier.cpp
-  Aql/SingleRemoteModificationExecutor.cpp
-  Aql/SingleRowFetcher.cpp
-  Aql/SkipResult.cpp
-  Aql/SortCondition.cpp
-  Aql/SortExecutor.cpp
-  Aql/SortNode.cpp
-  Aql/SortRegister.cpp
-  Aql/SortedCollectExecutor.cpp
-  Aql/SortedRowsStorageBackendMemory.cpp
-  Aql/SortedRowsStorageBackendStaged.cpp
-  Aql/SortingGatherExecutor.cpp
-  Aql/SubqueryEndExecutionNode.cpp
-  Aql/SubqueryEndExecutor.cpp
-  Aql/SubqueryStartExecutionNode.cpp
-  Aql/SubqueryStartExecutor.cpp
-  Aql/Timing.cpp
-  Aql/TraversalConditionFinder.cpp
-  Aql/TraverserEngineShardLists.cpp
-  Aql/TraversalExecutor.cpp
-  Aql/TraversalNode.cpp
-  Aql/UnsortedGatherExecutor.cpp
-  Aql/UpdateReplaceModifier.cpp
-  Aql/UpsertModifier.cpp
-  Aql/V8Executor.cpp
-  Aql/VarUsageFinder.cpp
-  Aql/Variable.cpp
-  Aql/VariableGenerator.cpp
-  Aql/WindowNode.cpp
-  Aql/WindowExecutor.cpp
-  Aql/grammar.cpp
-  Aql/tokens.cpp
-)
-
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryCursor.cpp
@@ -909,11 +732,6 @@ add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
 )
 
-add_library(arango_aql STATIC
-  ${LIB_ARANGO_AQL_SOURCES}
-  ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
-)
-
 add_library(arango_health STATIC
   ${LIB_ARANGO_HEALTH_SOURCES}
 )
@@ -1016,13 +834,6 @@ target_link_libraries(arango_agency arango)
 target_link_libraries(arango_agency arango_health)
 target_link_libraries(arango_agency arango_iresearch)
 target_link_libraries(arango_agency arango_metrics)
-
-target_link_libraries(arango_aql arango_geo)
-target_link_libraries(arango_aql arango_graph)
-target_link_libraries(arango_aql arango_indexes)
-target_link_libraries(arango_aql arango_iresearch)
-target_link_libraries(arango_aql arango_network)
-target_link_libraries(arango_aql immer)
 
 target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache arango::validation)
@@ -1210,9 +1021,9 @@ if (USE_FAIL_ON_WARNINGS)
     list(APPEND ${CMAKE_DEPRECATE_OPTIONS} -Werror -Wno-error=deprecated-declarations)
   endif ()
 endif ()
+
 foreach(TARGET
   arango_agency
-  arango_aql
   arango_cache
   arango_cluster_engine
   arango_cluster_methods
@@ -1263,4 +1074,5 @@ install_command_alias(${BIN_ARANGOD}
 
 install_config(arango-init-database)
 
+add_subdirectory(Aql)
 add_subdirectory(Pregel)
