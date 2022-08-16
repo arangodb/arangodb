@@ -105,7 +105,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
            \"type\": \"arangosearch\" \
         }");
       view1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view1);
 
       // add links to collections
@@ -122,7 +122,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
             \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}] \
          }");
       view2 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view2);
 
       // add links to collections
