@@ -273,7 +273,7 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalidField: function() {
-      const indexTypes = ["geo", "fulltext", "persistent"];
+      const indexTypes = ["geo", "fulltext", "persistent", "inverted"];
       const isUnique = [true, false];
       const invalidFields = [":value", "value:"];
 
@@ -283,7 +283,11 @@ function IndexSuite() {
         isUnique.forEach(isUnique => {
           invalidFields.forEach(invalidField => {
             try {
-              collection.ensureIndex({type: indexType, unique: isUnique, fields: [invalidField]});
+              if (indexType === "inverted") {
+                collection.ensureIndex({type: indexType, unique: isUnique, fields: [{"name": invalidField}]});
+              } else {
+                collection.ensureIndex({type: indexType, unique: isUnique, fields: [invalidField]});
+              }
               fail();
             } catch (err) {
               assertEqual(errors.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED.code, err.errorNum);
