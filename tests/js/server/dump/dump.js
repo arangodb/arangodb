@@ -69,27 +69,30 @@ jsunity.run(function dump_single_testsuite() {
       "testHiddenCollectionsOmitted",
       "testShadowCollectionsOmitted",
       "testEEEdges",
-      "testEdgesAqlRead",
-      "testEdgesAqlInsert",
-      "testAqlGraphQueryOutbound",
-      "testAqlGraphQueryAny",
-      "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
-      "testSmartGraphAttribute",
+        "testEdgesAqlRead",
+        "testEdgesAqlInsert",
+        "testAqlGraphQueryOutbound",
+        "testAqlGraphQueryAny",
+        "testSmartGraphSharding",
+        "testViewOnSmartEdgeCollection",
+        "testSmartGraphAttribute",
 
-      // enterprise sharded graphs on single server tests
-      "testEmptySmartGraph",
-      "testEmptySatelliteGraph",
-      "testEmptyDisjointGraph",
-      "testSmartGraphWithoutData",
-      "testSmartGraphSingleServer",
-      "testSatelliteSmartGraphSingleServer",
-      "testDisjointGraphSingleServer",
-      "testHybridSmartGraphSingleServer",
-      "testHybridDisjointSmartGraphSingleServer",
+        // enterprise sharded graphs on single server tests
+        "testEmptySmartGraph",
+        "testEmptyEnterpriseGraph",
+        "testEmptySatelliteGraph",
+        "testEmptyDisjointGraph",
+        "testSmartGraphWithoutData",
+        "testEnterpriseGraphWithoutData",
+        "testSmartGraphSingleServer",
+        "testEnterpriseGraphSingleServer",
+        "testSatelliteSmartGraphSingleServer",
+        "testDisjointGraphSingleServer",
+        "testHybridSmartGraphSingleServer",
+        "testHybridDisjointSmartGraphSingleServer",
 
-      // Hotbackup tests:
-      "testLatestId"
+        // Hotbackup tests:
+        "testLatestId"
     ]
   );
 

@@ -98,6 +98,14 @@
       assertEqual(graph.smartGraphAttribute, 'value');
     }
 
+    function assertCommonEnterpriseGraphProperties(graph) {
+      assertTrue(graph.isSmart);
+      assertFalse(graph.isSatellite);
+      assertEqual(graph.replicationFactor, 2);
+      assertEqual(graph.numberOfShards, 5);
+      assertFalse(graph.smartGraphAttribute);
+    }
+
     function assertCommonSatelliteGraphProperties(graph) {
       assertTrue(graph.isSatellite);
       assertFalse(graph.isSmart);
@@ -127,6 +135,45 @@
         assertTrue(properties.isSmart);
         assertEqual(properties.isDisjoint, isDisjoint);
         assertEqual(properties.smartGraphAttribute, 'value');
+        assertEqual(properties.numberOfShards, 5);
+        assertEqual(properties.replicationFactor, 2);
+        if (isCluster) {
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        }
+      }
+
+      const eColl = db._collection(edgeCollName);
+      const properties = eColl.properties();
+
+      assertTrue(properties.isSmart);
+      assertEqual(properties.isDisjoint, isDisjoint);
+
+      assertEqual(properties.replicationFactor, 2);
+      if (isCluster) {
+        assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+        assertEqual(properties.numberOfShards, 0);
+      } else {
+        assertEqual(properties.numberOfShards, 5);
+      }
+    }
+
+    function assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
+      assertEqual(graph.edgeDefinitions, [
+        {
+          "collection": edgeCollName,
+          "from": [vertexCollName],
+          "to": [vertexCollName]
+        }
+      ]);
+      assertEqual(graph.orphanCollections, [orphanCollName]);
+
+      for (const collName of [vertexCollName, orphanCollName]) {
+        const vColl = db._collection(collName);
+        const properties = vColl.properties();
+
+        assertTrue(properties.isSmart);
+        assertEqual(properties.isDisjoint, isDisjoint);
+        assertFalse(properties.smartGraphAttribute);
         assertEqual(properties.numberOfShards, 5);
         assertEqual(properties.replicationFactor, 2);
         if (isCluster) {
@@ -1350,6 +1397,18 @@
         assertEqual(graph.orphanCollections.length, 0);
       },
 
+      testEmptyEnterpriseGraph: function () {
+        const enterpriseGraphName = "UnitTestsDumpEmptyEnterpriseGraph";
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(enterpriseGraphName));
+
+        const graph = graphsColl.document(enterpriseGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonEnterpriseGraphProperties(graph);
+        assertEqual(graph.edgeDefinitions.length, 0);
+        assertEqual(graph.orphanCollections.length, 0);
+      },
+
       testEmptySatelliteGraph: function () {
         const smartGraphName = "UnitTestsDumpEmptySatelliteGraph";
         const graphsColl = db._collection('_graphs');
@@ -1387,6 +1446,21 @@
         assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
       },
 
+      testEnterpriseGraphWithoutData: function () {
+        const enterpriseGraphName = "UnitTestDumpEnterpriseGraphWithoutData";
+        const vertexCollName = 'UnitTestDumpEnterpriseVerticesWithoutData';
+        const edgeCollName = 'UnitTestDumpEnterpriseEdgesWithoutData';
+        const orphanCollName = 'UnitTestDumpEnterpriseOrphansWithoutData';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(enterpriseGraphName));
+
+        const graph = g.document(enterpriseGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonSmartGraphProperties(graph);
+        assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
+      },
+
       testSmartGraphSingleServer: function () {
         const smartGraphName = "UnitTestDumpSmartGraphSingleServer";
         const vertexCollName = 'UnitTestDumpSmartVerticesSingleServer';
@@ -1400,6 +1474,35 @@
         assertFalse(graph.isDisjoint);
         assertCommonSmartGraphProperties(graph);
         assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
+
+        const vColl = db._collection(vertexCollName);
+        const eColl = db._collection(edgeCollName);
+        const oColl = db._collection(orphanCollName);
+
+        assertEqual(eColl.count(), 300);
+        assertEqual(vColl.count(), 100);
+        assertEqual(oColl.count(), 100);
+
+        for (const edge of eColl.toArray()) {
+          assertTrue(!!edge._from);
+          assertTrue(!!edge._to);
+        }
+      },
+
+      testEnterpriseGraphSingleServer: function () {
+        const enterpriseGraphName = "UnitTestDumpEnterpriseGraphSingleServer";
+        const vertexCollName = 'UnitTestDumpEnterpriseVerticesSingleServer';
+        const edgeCollName = 'UnitTestDumpEnterpriseEdgesSingleServer';
+        const orphanCollName = 'UnitTestDumpEnterpriseOrphansSingleServer';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(enterpriseGraphName));
+
+        const graph = g.document(enterpriseGraphName);
+        assertFalse(graph.isDisjoint);
+        assertFalse(graph.smartGraphAttribute);
+        assertCommonSmartGraphProperties(graph);
+        assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
 
         const vColl = db._collection(vertexCollName);
         const eColl = db._collection(edgeCollName);
