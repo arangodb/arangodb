@@ -10,6 +10,7 @@ import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
 import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterEdgeLabel from "./ParameterEdgeLabel";
+import { HelpModal } from "./HelpModal";
 import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
 import ParameterEdgeColorAttribute from "./ParameterEdgeColorAttribute";
 import ParameterNodeColor from "./ParameterNodeColor";
@@ -26,6 +27,7 @@ import LoadingSpinner from './LoadingSpinner.js';
 export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
   
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const { TabPane } = Tabs;
 
   const enterFullscreen = (element) => {
@@ -90,6 +92,13 @@ const screenshotMenu = (
 
   return (
     <>
+      <HelpModal
+        shouldShow={showHelpModal}
+        onRequestClose={() => {
+          setShowHelpModal(false);
+        }}
+      >
+      </HelpModal>
       <PageHeader
         id="headerinfo"
         className="site-page-header-responsive"
@@ -117,6 +126,14 @@ const screenshotMenu = (
                 onClick={() => {
                   window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
                 }}><RollbackOutlined />
+              </Button>
+            </Tooltip>
+
+            <Tooltip placement="left" title={"Get instructions and support on how to use the graph viewer"} overlayClassName='graph-border-box' >
+              <Button key="5"
+                onClick={() => {
+                  setShowHelpModal(true);
+                }}><i class="fa fa-question-circle" style={{ 'fontSize': '18px', 'marginTop': '1px' }}></i>
               </Button>
             </Tooltip>
           </>
