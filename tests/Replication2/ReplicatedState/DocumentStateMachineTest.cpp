@@ -76,10 +76,12 @@ struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
 struct MockDocumentStateTransaction : IDocumentStateTransaction {
   explicit MockDocumentStateTransaction(TransactionId tid) : tid(tid) {}
 
-  auto apply(DocumentLogEntry const& entry) -> OperationResult override {
+  auto apply(DocumentLogEntry const& entry)
+      -> DocumentStateTransactionResult override {
     TRI_ASSERT(!applied);
     applied = true;
-    return OperationResult{Result{}, {}};
+    return DocumentStateTransactionResult{TransactionId{1},
+                                          OperationResult{Result{}, {}}};
   }
 
   auto commit() -> Result override {
@@ -103,7 +105,8 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
 };
 
 struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
-  auto applyEntry(DocumentLogEntry doc) -> Result override {
+  auto applyEntry(DocumentLogEntry doc, bool ignoreRecoveryErrors)
+      -> Result override {
     auto trx = ensureTransaction(doc);
     TRI_ASSERT(trx != nullptr);
     switch (doc.operation) {
@@ -113,17 +116,7 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
       case OperationType::kRemove:
       case OperationType::kTruncate: {
         auto res = trx->apply(doc);
-        if (res.result.ok()) {
-          if (!res.countErrorCodes.empty()) {
-            // TODO - handle errors that happen when applying entries better
-            // At least during recovery we will have to ignore some errors, so
-            // we will need a way to differentiate them.
-            return {TRI_ERROR_TRANSACTION_INTERNAL};
-          }
-          return {};
-        } else {
-          return res.result;
-        }
+        return res.result();
       }
       case OperationType::kCommit: {
         auto res = trx->commit();
