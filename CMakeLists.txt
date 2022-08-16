@@ -593,10 +593,11 @@ set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base librar
 
 include(CheckCompilerVersion)
 
-set(GCC_VERSION 11.2)
-set(CLANG_VERSION 14.0)
-set(MSVC_VERSION 19.32)
-CheckCompilerVersion(${GCC_VERSION} ${CLANG_VERSION} ${MSVC_VERSION})
+CheckCompilerVersion(
+  11.2 # GCC
+  14.0 # Clang
+  1932 # MSVC
+)
 
 if (MSVC)
   set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
