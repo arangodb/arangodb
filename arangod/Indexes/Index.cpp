@@ -262,7 +262,7 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
 }
 
 /// @brief validate fields that start or end with ":"
-void Index::validateFieldsWithSpecialCase(VPackSlice const& fields) {
+void Index::validateFieldsWithSpecialCase(VPackSlice fields) {
   if (!fields.isArray()) {
     return;
   }
