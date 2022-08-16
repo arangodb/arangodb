@@ -669,7 +669,9 @@ bool Conductor::canBeGarbageCollected() const {
 auto Conductor::collectAQLResults(bool withId) -> PregelResults {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_storeResults) {
-    return PregelResults{.results = VPackBuilder{}};
+    VPackBuilder results;
+    { VPackArrayBuilder ab(&results); }
+    return PregelResults{.results = results};
   }
   return state->getResults(withId);
 }
