@@ -43,11 +43,15 @@ auto DocumentStateTransactionResult::ignoreDuringRecovery() const noexcept
     -> bool {
   if (_opRes.fail() &&
       _opRes.isNot(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
+      // TODO - should not be necessary once we cancel transactions when we
+      // loose leadership
       _opRes.isNot(TRI_ERROR_ARANGO_CONFLICT)) {
     return false;
   }
   for (auto const& it : _opRes.countErrorCodes) {
     if (it.first == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+        // TODO - should not be necessary once we cancel transactions when we
+        // loose leadership
         it.first == TRI_ERROR_ARANGO_CONFLICT) {
       continue;
     }

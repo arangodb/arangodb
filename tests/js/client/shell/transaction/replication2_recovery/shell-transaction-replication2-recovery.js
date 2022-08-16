@@ -123,6 +123,8 @@ function transactionReplication2Recovery() {
       let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
       let newTerm = term + 2;
 
+      // We unset the leader here so that once the old leader node is resumed we
+      // do not move leadership back to that node.
       replicatedLogsHelper.unsetLeader(dbn, logId);
 
       stopServerWait(leader);
