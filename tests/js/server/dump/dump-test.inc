@@ -1457,7 +1457,7 @@
 
         const graph = g.document(enterpriseGraphName);
         assertFalse(graph.isDisjoint);
-        assertCommonSmartGraphProperties(graph);
+        assertCommonEnterpriseGraphProperties(graph);
         assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
       },
 
@@ -1483,9 +1483,23 @@
         assertEqual(vColl.count(), 100);
         assertEqual(oColl.count(), 100);
 
+        const getFromOrToSmartValue = (str) => {
+          return str.substring(
+            str.indexOf("/") + 1, str.lastIndexOf(":")
+          );
+        };
+
         for (const edge of eColl.toArray()) {
           assertTrue(!!edge._from);
           assertTrue(!!edge._to);
+
+          // Check that a well-formatted enterprise key exists (example: <fromSmart>:12345:<toSmart>);
+          const fromSmartValue = getFromOrToSmartValue(edge._from);
+          const toSmartValue = getFromOrToSmartValue(edge._to);
+          const keySplit = edge._key.split(':');
+          assertEqual(keySplit.length, 3);
+          assertEqual(keySplit[0], fromSmartValue);
+          assertEqual(keySplit[2], toSmartValue);
         }
       },
 
@@ -1501,7 +1515,7 @@
         const graph = g.document(enterpriseGraphName);
         assertFalse(graph.isDisjoint);
         assertFalse(graph.smartGraphAttribute);
-        assertCommonSmartGraphProperties(graph);
+        assertCommonEnterpriseGraphProperties(graph);
         assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
 
         const vColl = db._collection(vertexCollName);
@@ -1513,8 +1527,15 @@
         assertEqual(oColl.count(), 100);
 
         for (const edge of eColl.toArray()) {
+          assertTrue(!!edge._key)
           assertTrue(!!edge._from);
           assertTrue(!!edge._to);
+
+          // Check that a well-formatted enterprise key exists (example: abc:12345:xyz)
+          const keySplit = edge._key.split(':');
+          assertEqual(keySplit.length, 3);
+          assertEqual(keySplit[0].length, 5);
+          assertEqual(keySplit[2].length, 5);
         }
       },
 
