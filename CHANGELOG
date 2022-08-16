@@ -1,10 +1,23 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
-* Improve error handling for passing wrong transaction ids / cursor ids /
-  pregel job ids to request forwarding. Also prevent the error "transaction
-  id not found" in cases when request forwarding was tried to a coordinator
-  that was recently restarted.
+* Improve error handling for passing wrong transaction ids / cursor ids / pregel
+  job ids to request forwarding. Also prevent the error "transaction id not
+  found" in cases when request forwarding was tried to a coordinator that was
+  recently restarted.
+
+* Fixed an invalid attribute access in AQL query optimization.
+  Without the fix, a query such as
+
+      LET data = {
+        "a": [
+          ...
+        ],
+      }
+      FOR d IN data["a"]
+        RETURN d
+
+  could fail with error "invalid operand to FOR loop, expecting Array".
 
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 
