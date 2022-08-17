@@ -68,11 +68,11 @@ IResearchSortBase const& primarySort(
     std::shared_ptr<SearchMeta const> const& meta,
     std::shared_ptr<LogicalView const> const& view) {
   if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
     return meta->primarySort;
   }
   TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kView);
+  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
   if (ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.primarySort();
@@ -85,11 +85,11 @@ IResearchViewStoredValues const& storedValues(
     std::shared_ptr<SearchMeta const> const& meta,
     std::shared_ptr<LogicalView const> const& view) {
   if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
     return meta->storedValues;
   }
   TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kView);
+  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
   if (ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.storedValues();

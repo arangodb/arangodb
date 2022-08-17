@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.21)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -355,11 +355,7 @@ set(INSTALL_CONFIGFILES_LIST)
 # update files containing VERSION information
 # ------------------------------------------------------------------------------
 
-if (${CMAKE_MAJOR_VERSION} EQUAL 2)
-  set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
-else ()
-  string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-endif ()
+string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -591,6 +587,14 @@ set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ fl
 set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
 set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 
+include(CheckCompilerVersion)
+
+CheckCompilerVersion(
+  11.2 # GCC
+  14.0 # Clang
+  1932 # MSVC
+)
+
 if (MSVC)
   set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
@@ -604,6 +608,7 @@ if (MSVC)
   endif()
 endif ()
 
+# FIXME: refactor/cleanup check below
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
     message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")

@@ -195,7 +195,7 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
   if (!logical) {
     return {};
   }
-  if (logical->type() != ViewType::kView) {
+  if (logical->type() != ViewType::kArangoSearch) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             "error finding view: '" + _viewGuid + "' for link '" +
                 std::to_string(_id.id()) + "' : no such view"};
@@ -429,7 +429,8 @@ Result IResearchLink::properties(velocypack::Builder& builder,
   builder.add(arangodb::StaticStrings::IndexId,
               velocypack::Value(std::to_string(_id.id())));
   builder.add(arangodb::StaticStrings::IndexType,
-              velocypack::Value(arangodb::iresearch::StaticStrings::ViewType));
+              velocypack::Value(
+                  arangodb::iresearch::StaticStrings::ViewArangoSearchType));
   builder.add(StaticStrings::ViewIdField, velocypack::Value(_viewGuid));
 
   return {};
@@ -440,7 +441,9 @@ Index::IndexType IResearchLink::type() {
   return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
 }
 
-char const* IResearchLink::typeName() { return StaticStrings::ViewType.data(); }
+char const* IResearchLink::typeName() {
+  return StaticStrings::ViewArangoSearchType.data();
+}
 
 bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
   TRI_ASSERT(!name.empty());

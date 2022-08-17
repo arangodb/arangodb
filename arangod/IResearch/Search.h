@@ -57,7 +57,7 @@ class Search final : public LogicalView {
 
  public:
   static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
-    return {ViewType::kSearch, StaticStrings::SearchType};
+    return {ViewType::kSearchAlias, StaticStrings::ViewSearchAliasType};
   }
 
   //////////////////////////////////////////////////////////////////////////////
