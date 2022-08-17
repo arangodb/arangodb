@@ -59,6 +59,9 @@ struct PlanCollection {
   uint64_t writeConcern;
   std::string distributeShardsLike;
   std::string smartJoinAttribute;
+  std::string shardingStrategy;
+
+  std::vector<std::string> shardKeys;
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
@@ -104,7 +107,24 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               .fallback(""),
           f.field("smartJoinAttribute", planCollection.smartJoinAttribute)
               .fallback(""),
-
+          f.field("shardingStrategy", planCollection.shardingStrategy)
+              .fallback("hash")
+              .invariant([](auto const& strat) -> inspection::Status {
+                // Note we may be better off with a lookup list here
+                // Hash is first on purpose (default)
+                if (strat == "hash" || strat == "enterprise-hash-smart-edge" ||
+                    strat == "community-compat" ||
+                    strat == "enterprise-compat" ||
+                    strat == "enterprise-smart-edge-compat") {
+                  return inspection::Status::Success{};
+                }
+                return {
+                    "Please use 'hash' or remove, advanced users please "
+                    "pick a strategy from the documentation, " +
+                    strat + " is not allowed."};
+              }),
+          f.field("shardKeys", planCollection.shardKeys)
+              .fallback(std::vector<std::string>{StaticStrings::KeyString}),
           f.field("type", planCollection.type)
               .fallback(TRI_col_type_e::TRI_COL_TYPE_DOCUMENT)
               .invariant([](auto t) -> inspection::Status {
