@@ -1,6 +1,10 @@
 devel
 -----
 
+* BTS-428: Added function DATE_ISOWEEKYEAR that retrieves the number of the
+  week counting from when the year started in ISO calendar and also the year
+  it's in.
+
 * When using `SHORTEST_PATH`, `K_SHORTEST_PATHS`, `ALL_SHORTEST_PATHS`, or
   `K_PATHS` in an AQL Query and the query itself produced warnings during
   execution, the type has been wrongly reported. It reported always with
