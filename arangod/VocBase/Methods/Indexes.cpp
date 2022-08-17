@@ -404,7 +404,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
   // starting from where the character ":" of the string is reached, and it
   // doesn't happen for index fields. We don't disallow this usage for dbservers
   // because this check must be only done for indexes that will be created, not
-  // for indexes that already exist. Example for shardKeys: {"value:"}, if the
+  // for indexes that already exist. Example for shardKeys: ["value:"], if the
   // document has an attribute {"value": "123:abc"}, the shard key would cover
   // "123", which is the substring read until we reach a ":"
   if (create && (ServerState::instance()->isSingleServer() ||
