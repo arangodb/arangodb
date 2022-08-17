@@ -36,10 +36,11 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/PregelMetrics.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
-#include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
@@ -56,7 +57,7 @@ class PregelFeature final : public ArangodFeature {
   explicit PregelFeature(Server& server);
   ~PregelFeature();
 
-  std::pair<Result, uint64_t> startExecution(
+  std::pair<Result, ExecutionNumber> startExecution(
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
       std::vector<std::string> const& edgeCollections,
@@ -74,17 +75,18 @@ class PregelFeature final : public ArangodFeature {
 
   bool isStopping() const noexcept;
 
-  uint64_t createExecutionNumber();
-  void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
-  std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
+  auto createExecutionNumber() -> ExecutionNumber;
+  void addConductor(std::shared_ptr<Conductor>&&,
+                    ExecutionNumber executionNumber);
+  std::shared_ptr<Conductor> conductor(ExecutionNumber executionNumber);
 
   void garbageCollectConductors();
 
-  void addWorker(std::shared_ptr<IWorker>&&, uint64_t executionNumber);
-  std::shared_ptr<IWorker> worker(uint64_t executionNumber);
+  void addWorker(std::shared_ptr<IWorker>&&, ExecutionNumber executionNumber);
+  std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);
 
-  void cleanupConductor(uint64_t executionNumber);
-  void cleanupWorker(uint64_t executionNumber);
+  void cleanupConductor(ExecutionNumber executionNumber);
+  void cleanupWorker(ExecutionNumber executionNumber);
 
   RecoveryManager* recoveryManager() {
     return _recoveryManagerPtr.load(std::memory_order_acquire);
@@ -156,8 +158,9 @@ class PregelFeature final : public ArangodFeature {
     std::shared_ptr<Conductor> conductor;
   };
 
-  std::unordered_map<uint64_t, ConductorEntry> _conductors;
-  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
+  std::unordered_map<ExecutionNumber, ConductorEntry> _conductors;
+  std::unordered_map<ExecutionNumber,
+                     std::pair<std::string, std::shared_ptr<IWorker>>>
       _workers;
 
   std::atomic<bool> _softShutdownOngoing;

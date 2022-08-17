@@ -32,26 +32,26 @@
 #include "Basics/voc-errors.h"
 #include "Conductor.h"
 
-#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Aggregator.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/Conductor/LoadingState.h"
-#include "Pregel/Conductor/ComputingState.h"
-#include "Pregel/Conductor/StoringState.h"
 #include "Pregel/Conductor/CanceledState.h"
+#include "Pregel/Conductor/ComputingState.h"
 #include "Pregel/Conductor/DoneState.h"
-#include "Pregel/Conductor/InErrorState.h"
-#include "Pregel/Conductor/RecoveringState.h"
 #include "Pregel/Conductor/FatalErrorState.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Conductor/InErrorState.h"
+#include "Pregel/Conductor/LoadingState.h"
+#include "Pregel/Conductor/RecoveringState.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/Conductor/StoringState.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
-#include "Pregel/Utils.h"
-#include "Pregel/Status/Status.h"
 #include "Pregel/Status/ConductorStatus.h"
+#include "Pregel/Status/Status.h"
+#include "Pregel/Utils.h"
+#include "Pregel/WorkerConductorMessages.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
@@ -62,8 +62,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Metrics/Gauge.h"
 #include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -75,16 +75,18 @@
 
 #include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
+#include <fmt/core.h>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-#define LOG_PREGEL(logId, level) \
-  LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+      << fmt::format("[job {}]", executionNumber)
 
 Conductor::Conductor(
-    uint64_t executionNumber, TRI_vocbase_t& vocbase,
+    ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
     std::vector<CollectionID> const& vertexCollections,
     std::vector<CollectionID> const& edgeCollections,
     std::unordered_map<std::string, std::vector<std::string>> const&
@@ -515,7 +517,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
     VPackBuffer<uint8_t> buffer;
     VPackBuilder b(buffer);
     b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
     b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
     b.add(Utils::algorithmKey, VPackValue(_algorithm->name()));
     b.add(Utils::userParametersKey, _userParams.slice());
@@ -680,7 +682,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   result.openObject();
-  result.add("id", VPackValue(std::to_string(_executionNumber)));
+  result.add("id", VPackValue(std::to_string(_executionNumber.value)));
   result.add("database", VPackValue(_vocbaseGuard.database().name()));
   if (_algorithm != nullptr) {
     result.add("algorithm", VPackValue(_algorithm->name()));

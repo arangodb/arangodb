@@ -24,6 +24,7 @@
 
 #include "Pregel/Aggregator.h"
 #include "Pregel/AggregatorHandler.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "VocBase/Methods/Tasks.h"
@@ -51,11 +52,11 @@ struct Message {
 
 struct GraphLoaded : Message {
   std::string senderId;
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   uint64_t vertexCount;
   uint64_t edgeCount;
   GraphLoaded(){};
-  GraphLoaded(std::string const& senderId, uint64_t executionNumber,
+  GraphLoaded(std::string const& senderId, ExecutionNumber executionNumber,
               uint64_t vertexCount, uint64_t edgeCount)
       : senderId{senderId},
         executionNumber{executionNumber},
@@ -74,13 +75,13 @@ auto inspect(Inspector& f, GraphLoaded& x) {
 
 struct GssFinished : Message {
   std::string senderId;
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   uint64_t gss;
   VPackBuilder reports;
   VPackBuilder messageStats;
   VPackBuilder aggregators;
   GssFinished(){};
-  GssFinished(std::string const& senderId, uint64_t executionNumber,
+  GssFinished(std::string const& senderId, ExecutionNumber executionNumber,
               uint64_t gss, VPackBuilder reports, VPackBuilder messageStats,
               VPackBuilder aggregators)
       : senderId{senderId},
@@ -104,10 +105,10 @@ auto inspect(Inspector& f, GssFinished& x) {
 
 struct CleanupFinished : Message {
   std::string senderId;
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   VPackBuilder reports;
   CleanupFinished(){};
-  CleanupFinished(std::string const& senderId, uint64_t executionNumber,
+  CleanupFinished(std::string const& senderId, ExecutionNumber executionNumber,
                   VPackBuilder reports)
       : senderId{senderId},
         executionNumber{executionNumber},
@@ -126,11 +127,11 @@ auto inspect(Inspector& f, CleanupFinished& x) {
 
 struct RecoveryFinished : Message {
   std::string senderId;
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   uint64_t gss;
   VPackBuilder aggregators;
   RecoveryFinished(){};
-  RecoveryFinished(std::string const& senderId, uint64_t executionNumber,
+  RecoveryFinished(std::string const& senderId, ExecutionNumber executionNumber,
                    uint64_t gss, VPackBuilder aggregators)
       : senderId{senderId},
         executionNumber{executionNumber},
@@ -152,7 +153,7 @@ auto inspect(Inspector& f, RecoveryFinished& x) {
 
 struct StatusUpdated {
   std::string senderId;
-  uint64_t executionNumer;
+  ExecutionNumber executionNumer;
   Status status;
 };
 
@@ -224,7 +225,7 @@ auto inspect(Inspector& f, RecoveryContinued& x) {
 // ------ commands sent from conductor to worker -------
 
 struct PrepareGss {
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
   uint64_t edgeCount;
@@ -239,7 +240,7 @@ auto inspect(Inspector& f, PrepareGss& x) {
 }
 
 struct StartGss {
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
   uint64_t edgeCount;
@@ -260,7 +261,7 @@ auto inspect(Inspector& f, StartGss& x) {
 }
 
 struct CancelGss {
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   uint64_t gss;
 };
 
@@ -272,7 +273,7 @@ auto inspect(Inspector& f, CancelGss& x) {
 }
 
 struct StartCleanup {
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   uint64_t gss;
   bool withStoring;
 };
@@ -286,7 +287,7 @@ auto inspect(Inspector& f, StartCleanup& x) {
 }
 
 struct ContinueRecovery {
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   VPackBuilder aggregators;
 };
 
@@ -298,7 +299,7 @@ auto inspect(Inspector& f, ContinueRecovery& x) {
 }
 
 struct FinalizeRecovery {
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   uint64_t gss;
 };
 
@@ -310,7 +311,7 @@ auto inspect(Inspector& f, FinalizeRecovery& x) {
 }
 
 struct CollectPregelResults {
-  uint64_t executionNumber;
+  ExecutionNumber executionNumber;
   bool withId;
 };
 

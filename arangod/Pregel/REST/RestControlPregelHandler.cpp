@@ -184,7 +184,7 @@ void RestControlPregelHandler::startExecution() {
   }
 
   VPackBuilder builder;
-  builder.add(VPackValue(std::to_string(res.second)));
+  builder.add(VPackValue(std::to_string(res.second.value)));
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -209,7 +209,8 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
-  uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  auto executionNumber = pregel::ExecutionNumber(
+      arangodb::basics::StringUtils::uint64(suffixes[0]));
   auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {
@@ -231,7 +232,8 @@ void RestControlPregelHandler::cancelExecution() {
     return;
   }
 
-  uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  auto executionNumber = pregel::ExecutionNumber(
+      arangodb::basics::StringUtils::uint64(suffixes[0]));
   auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {

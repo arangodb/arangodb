@@ -34,18 +34,19 @@
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
-#include "Pregel/Status/ConductorStatus.h"
-#include "Pregel/Status/ExecutionStatus.h"
-#include "Pregel/Conductor/State.h"
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/Conductor/CanceledState.h"
+#include "Pregel/Conductor/ComputingState.h"
+#include "Pregel/Conductor/DoneState.h"
+#include "Pregel/Conductor/FatalErrorState.h"
+#include "Pregel/Conductor/InErrorState.h"
 #include "Pregel/Conductor/InitialState.h"
 #include "Pregel/Conductor/LoadingState.h"
-#include "Pregel/Conductor/ComputingState.h"
-#include "Pregel/Conductor/StoringState.h"
-#include "Pregel/Conductor/CanceledState.h"
-#include "Pregel/Conductor/DoneState.h"
-#include "Pregel/Conductor/InErrorState.h"
 #include "Pregel/Conductor/RecoveringState.h"
-#include "Pregel/Conductor/FatalErrorState.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/Conductor/StoringState.h"
+#include "Pregel/Status/ConductorStatus.h"
+#include "Pregel/Status/ExecutionStatus.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
@@ -93,7 +94,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::chrono::system_clock::time_point _created;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
   const DatabaseGuard _vocbaseGuard;
-  const uint64_t _executionNumber;
+  const ExecutionNumber _executionNumber;
   VPackBuilder _userParams;
   std::unique_ptr<IAlgorithm> _algorithm;
   mutable Mutex
@@ -161,7 +162,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
  public:
-  Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
+  Conductor(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
             std::vector<CollectionID> const& vertexCollections,
             std::vector<CollectionID> const& edgeCollections,
             std::unordered_map<std::string, std::vector<std::string>> const&
@@ -179,7 +180,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   bool canBeGarbageCollected() const;
 
-  uint64_t executionNumber() const { return _executionNumber; }
+  ExecutionNumber executionNumber() const { return _executionNumber; }
 
  private:
   void updateState(ExecutionState state);
