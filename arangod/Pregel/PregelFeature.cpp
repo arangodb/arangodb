@@ -723,6 +723,8 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     if (path == Utils::finalizeExecutionPath) {
       // except this is a cleanup call, and cleanup has already happened
       // because of garbage collection
+      auto response = CleanupStarted{};
+      serialize(outBuilder, response);
       return;
     }
     LOG_TOPIC("41788", WARN, Logger::PREGEL)
