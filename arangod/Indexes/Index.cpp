@@ -346,7 +346,7 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "zkd") {
     return TRI_IDX_TYPE_ZKD_INDEX;
   }
-  if (type == iresearch::StaticStrings::ViewType) {
+  if (type == iresearch::StaticStrings::ViewArangoSearchType) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
   if (type == "noaccess") {
@@ -388,7 +388,7 @@ char const* Index::oldtypeName(Index::IndexType type) {
     case TRI_IDX_TYPE_GEO_INDEX:
       return "geo";
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-      return iresearch::StaticStrings::ViewType.data();
+      return iresearch::StaticStrings::ViewArangoSearchType.data();
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_ZKD_INDEX:

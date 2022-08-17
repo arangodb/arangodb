@@ -117,7 +117,7 @@ class QueryGeoIntersects : public QueryTest {
     auto view = _vocbase.lookupView("testView");
     ASSERT_TRUE(view);
     auto links = [&] {
-      if (view->type() == ViewType::kSearch) {
+      if (view->type() == ViewType::kSearchAlias) {
         auto& impl = basics::downCast<iresearch::Search>(*view);
         return impl.getLinks();
       }
@@ -164,7 +164,7 @@ class QueryGeoIntersects : public QueryTest {
         RETURN d)"));
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(FOR d IN testView
         SEARCH EXISTS(d.geometry, 'string')
         RETURN d)"));
@@ -176,7 +176,7 @@ class QueryGeoIntersects : public QueryTest {
         RETURN d)"));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
@@ -190,7 +190,7 @@ class QueryGeoIntersects : public QueryTest {
                            empty));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
@@ -206,7 +206,7 @@ class QueryGeoIntersects : public QueryTest {
     // test missing analyzer
     {
       std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
                     _insertedDocs[28].slice()};
       }
@@ -225,7 +225,7 @@ class QueryGeoIntersects : public QueryTest {
     // test missing analyzer
     {
       std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
                     _insertedDocs[28].slice()};
       }
@@ -308,7 +308,7 @@ class QueryGeoIntersects : public QueryTest {
 
 class QueryGeoIntersectsView : public QueryGeoIntersects {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView() {
     auto createJson = velocypack::Parser::fromJson(
@@ -332,7 +332,7 @@ class QueryGeoIntersectsView : public QueryGeoIntersects {
 
 class QueryGeoIntersectsSearch : public QueryGeoIntersects {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createIndexes() {
     bool created = false;
@@ -352,7 +352,7 @@ class QueryGeoIntersectsSearch : public QueryGeoIntersects {
 
   void createSearch() {
     auto createJson = velocypack::Parser::fromJson(
-        R"({ "name": "testView", "type": "search" })");
+        R"({ "name": "testView", "type": "search-alias" })");
     auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE(logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
