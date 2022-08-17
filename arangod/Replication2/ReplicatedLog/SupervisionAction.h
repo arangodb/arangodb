@@ -112,6 +112,7 @@ struct AddLogToPlanAction {
         [&](LogCurrentSupervision& currentSupervision) {
           currentSupervision.assumedWriteConcern =
               _config.effectiveWriteConcern;
+          currentSupervision.assumedWaitForSync = _config.waitForSync;
         });
   }
 };

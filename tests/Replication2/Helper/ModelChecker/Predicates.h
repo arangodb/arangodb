@@ -203,4 +203,18 @@ static inline auto isPlannedWriteConcern(bool concern) {
   });
 }
 
+static inline auto isAssumedWaitForSyncFalse() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->current &&
+        state.replicatedLog->current->supervision) {
+      return false ==
+             state.replicatedLog->current->supervision->assumedWaitForSync;
+    }
+    // This is intentional as it's ok for current to not exist, and we
+    // want to make sure that assumedWaitForSync is never *set* to *true*
+    return true;
+  });
+}
+
 }  // namespace arangodb::test::mcpreds
