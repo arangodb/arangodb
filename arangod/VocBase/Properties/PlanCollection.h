@@ -22,7 +22,14 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+
+#include <string>
+
 namespace arangodb {
+namespace inspection {
+struct Status;
+}
 namespace velocypack {
 class Slice;
 }
@@ -31,6 +38,30 @@ struct PlanCollection {
   PlanCollection();
 
   static PlanCollection fromCreateAPIBody(arangodb::velocypack::Slice input);
+
+  std::string name;
+  bool waitForSync;
+  bool isSystem;
+  // TODO: This can be optimized into it's own struct.
+  // Did a short_cut here to avoid concatenated changes
+  arangodb::velocypack::Builder schema;
+
+  // TODO: This can be optimized into it's own struct.
+  // Did a short_cut here to avoid concatenated changes
+  arangodb::velocypack::Builder keyOptions;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, PlanCollection& planCollection) {
+  return f.object(planCollection)
+      .fields(
+          f.field("name", planCollection.name),
+          f.field("waitForSync", planCollection.waitForSync).fallback(false),
+          f.field("isSystem", planCollection.isSystem).fallback(false),
+          f.field("schema", planCollection.schema)
+              .fallback(VPackSlice::emptyObjectSlice()),
+          f.field("keyOptions", planCollection.keyOptions)
+              .fallback(VPackSlice::emptyObjectSlice()));
+}
 
 }  // namespace arangodb

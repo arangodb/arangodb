@@ -22,14 +22,39 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/Exceptions.h"
 #include "VocBase/Properties/PlanCollection.h"
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace tests {
 
-class PlanCollectionUserAPITest :  public ::testing::Test {
+class PlanCollectionUserAPITest : public ::testing::Test {};
 
-};
+TEST_F(PlanCollectionUserAPITest, test_requires_some_input) {
+  VPackBuilder body;
+  { VPackObjectBuilder guard(&body); }
+  EXPECT_THROW(PlanCollection::fromCreateAPIBody(body.slice()),
+               arangodb::basics::Exception);
+}
 
+TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
+  std::string colName = "test";
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    body.add("name", VPackValue(colName));
+  }
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+  EXPECT_EQ(testee.name, colName);
+  // Test Default values
+  EXPECT_FALSE(testee.waitForSync);
+  EXPECT_FALSE(testee.isSystem);
 
+  // TODO: this is just rudimentary
+  // does not test internals yet
+  EXPECT_TRUE(testee.schema.slice().isObject());
+  EXPECT_TRUE(testee.keyOptions.slice().isObject());
+}
+}  // namespace tests
 }  // namespace arangodb

@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PlanCollection.h"
+#include "Inspection/VPack.h"
 
 #include <velocypack/Slice.h>
 
@@ -29,5 +30,5 @@ using namespace arangodb;
 PlanCollection::PlanCollection() {}
 
 PlanCollection PlanCollection::fromCreateAPIBody(VPackSlice input) {
-  return PlanCollection{};
+  return arangodb::velocypack::deserialize<PlanCollection>(input);
 }
