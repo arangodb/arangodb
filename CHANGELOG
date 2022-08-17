@@ -1,6 +1,11 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Improve error handling for passing wrong transaction ids / cursor ids / pregel
+  job ids to request forwarding. Also prevent the error "transaction id not
+  found" in cases when request forwarding was tried to a coordinator that was
+  recently restarted.
+
 * BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
   or more SortNodes appeared in the AQL execution plan.
 
