@@ -384,7 +384,8 @@ class LogicalCollection : public LogicalDataSource {
   uint64_t getInternalValidatorTypes() const noexcept;
 
  private:
-  void initializeSmartAttributes(velocypack::Slice info);
+  void initializeSmartAttributesBefore(velocypack::Slice info);
+  void initializeSmartAttributesAfter(velocypack::Slice info);
 
   void prepareIndexes(velocypack::Slice indexesSlice);
 

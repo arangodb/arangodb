@@ -403,6 +403,14 @@ void ShardingInfo::distributeShardsLike(std::string const& cid,
     // other collection has a different sharding strategy
     // adjust our sharding so it uses the same strategy as the other
     // collection
+
+    /* TODO CLEANUP LATER
+    LOG_DEVEL << "BEFORE";
+    LOG_DEVEL << "Our (local) Sharding is: " << this->shardingStrategyName() <<
+    " (" << collection()->name() << ")"; LOG_DEVEL << "The (other) Sharding is:
+    " << other->shardingStrategyName() << " (" << other->collection()->name() <<
+    ")";
+     */
     _shardingStrategy = shr.create(other->shardingStrategyName(), this);
   }
 

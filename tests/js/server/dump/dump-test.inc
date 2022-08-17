@@ -130,15 +130,15 @@
 
       for (const collName of [vertexCollName, orphanCollName]) {
         const vColl = db._collection(collName);
-        const properties = vColl.properties();
+        const vCollProperties = vColl.properties();
 
-        assertTrue(properties.isSmart);
-        assertEqual(properties.isDisjoint, isDisjoint);
-        assertEqual(properties.smartGraphAttribute, 'value');
-        assertEqual(properties.numberOfShards, 5);
-        assertEqual(properties.replicationFactor, 2);
+        assertTrue(vCollProperties.isSmart);
+        assertEqual(vCollProperties.isDisjoint, isDisjoint);
+        assertEqual(vCollProperties.smartGraphAttribute, 'value');
+        assertEqual(vCollProperties.numberOfShards, 5);
+        assertEqual(vCollProperties.replicationFactor, 2);
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(vCollProperties.shardingStrategy, 'hash');
         }
       }
 
@@ -150,8 +150,18 @@
 
       assertEqual(properties.replicationFactor, 2);
       if (isCluster) {
-        assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+        assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
         assertEqual(properties.numberOfShards, 0);
+
+        const eCollNameLocal = `_local_${edgeCollName}`;
+        const eCollNameFrom = `_from_${edgeCollName}`;
+        const eCollNameTo = `_to_${edgeCollName}`;
+        assertEqual(db._collection(eCollNameLocal).properties().shardingStrategy, 'hash');
+        if (!isDisjoint) {
+          assertEqual(db._collection(eCollNameFrom).properties().shardingStrategy, 'hash');
+          assertEqual(db._collection(eCollNameTo).properties().shardingStrategy, 'hash');
+        }
+
       } else {
         assertEqual(properties.numberOfShards, 5);
       }
@@ -191,6 +201,15 @@
       if (isCluster) {
         assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
         assertEqual(properties.numberOfShards, 0);
+
+        const eCollNameLocal = `_local_${edgeCollName}`;
+        const eCollNameFrom = `_from_${edgeCollName}`;
+        const eCollNameTo = `_to_${edgeCollName}`;
+        assertEqual(db._collection(eCollNameLocal).properties().shardingStrategy, 'hash');
+        if (!isDisjoint) {
+          assertEqual(db._collection(eCollNameFrom).properties().shardingStrategy, 'hash');
+          assertEqual(db._collection(eCollNameTo).properties().shardingStrategy, 'hash');
+        }
       } else {
         assertEqual(properties.numberOfShards, 5);
       }
@@ -215,7 +234,7 @@
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(properties.shardingStrategy, 'hash');
         }
       }
 
@@ -227,7 +246,7 @@
       assertEqual(properties.numberOfShards, 1);
       assertEqual(properties.replicationFactor, 'satellite');
       if (isCluster) {
-        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        assertEqual(properties.shardingStrategy, 'hash');
       }
     }
 
@@ -1593,6 +1612,8 @@
           assertTrue(!!edge._from);
           assertTrue(!!edge._to);
         }
+
+        // TODO: Add a non-disjoint edge to verify that the Graph is properly created as a Disjoint
       },
 
       testHybridSmartGraphSingleServer: function () {
@@ -1631,7 +1652,7 @@
           assertEqual(properties.numberOfShards, 1);
           assertEqual(properties.replicationFactor, 2);
           if (isCluster) {
-            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+            assertEqual(properties.shardingStrategy, 'hash');
           }
         }
 
@@ -1645,7 +1666,7 @@
           assertEqual(properties.numberOfShards, 1);
           assertEqual(properties.replicationFactor, 'satellite');
           if (isCluster) {
-            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+            assertEqual(properties.shardingStrategy, 'hash');
           }
         }
 
@@ -1719,28 +1740,29 @@
         assertEqual(graph.orphanCollections, [orphans]);
 
         // check properties of vertex collections
-        const verticesANonSatProps = db._collection(verticesANonSat).properties();
-        const verticesBNonSatProps = db._collection(verticesBNonSat).properties();
-        const verticesSatProps = db._collection(verticesSat).properties();
-        const orphansProps = db._collection(orphans).properties();
+        const verticesANonSatCol = db._collection(verticesANonSat);
+        const verticesBNonSatCol = db._collection(verticesBNonSat);
+        const verticesSatCol = db._collection(verticesSat);
+        const orphansCol = db._collection(orphans);
 
         // properties common for all vertex collections (smart & satellite)
-        for (const properties of [verticesANonSatProps, verticesBNonSatProps, verticesSatProps, orphansProps]) {
-          assertEqual(properties.numberOfShards, 1);
+        for (const collection of [verticesANonSatCol, verticesBNonSatCol, verticesSatCol, orphansCol]) {
+          assertEqual(collection.properties().numberOfShards, 1);
           if (isCluster) {
-            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+            assertEqual(collection.properties().shardingStrategy, 'hash', `Failed for collection: "${collection.name()}".`);
           }
         }
 
         // properties common for all vertex non-satellite collection
-        for (const properties of [verticesANonSatProps, verticesBNonSatProps, orphansProps]) {
-          assertTrue(properties.isSmart);
-          assertTrue(properties.isDisjoint);
-          assertEqual(verticesANonSatProps.smartGraphAttribute, 'value');
-          assertEqual(properties.replicationFactor, 2);
+        for (const collection of [verticesANonSatCol, verticesBNonSatCol, orphansCol]) {
+          assertTrue(collection.properties().isSmart);
+          assertTrue(collection.properties().isDisjoint);
+          assertEqual(collection.properties().smartGraphAttribute, 'value');
+          assertEqual(collection.properties().replicationFactor, 2);
         }
 
         // properties only for verticesSatProps (satellite collection)
+        const verticesSatProps = verticesSatCol.properties();
         assertFalse(verticesSatProps.isSmart);
         assertFalse(verticesSatProps.isDisjoint);
         assertEqual(verticesSatProps.smartGraphAttribute, undefined);
@@ -1755,7 +1777,7 @@
 
           if (isCluster) {
             assertEqual(properties.numberOfShards, 0);
-            assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+            assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
           } else {
             assertEqual(properties.numberOfShards, 1);
           }

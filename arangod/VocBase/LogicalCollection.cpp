@@ -206,9 +206,18 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
-  _sharding = std::make_unique<ShardingInfo>(info, this);
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesBefore(info);
 
-  initializeSmartAttributes(info);
+  // TODO CLEANUP LATER LOG_DEVEL_IF(name() ==
+  // "UnitTestDumpEnterpriseVerticesSingleServer") << "LOGICALCOLL CONSTRUCTOR";
+  _sharding = std::make_unique<ShardingInfo>(info, this);
+  // TODO CLEANUP LATER LOG_DEVEL_IF(name() ==
+  // "UnitTestDumpEnterpriseVerticesSingleServer") << "SET SHARDINGINFO to: " <<
+  // _sharding->shardingStrategyName();
+
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesAfter(info);
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -441,6 +450,12 @@ bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
 
 #ifdef USE_ENTERPRISE
+  /* TODO CLEANUP LATER
+  LOG_DEVEL_IF(this->name() == "UnitTestDumpEnterpriseEdgesSingleServer") <<
+  "must create key check"; LOG_DEVEL_IF(this->name() ==
+  "UnitTestDumpEnterpriseEdgesSingleServer") << "Sharding Stra: " <<
+  _sharding->shardingStrategyName();
+  */
   if (_sharding->shardingStrategyName() ==
       ShardingStrategyEnterpriseHexSmartVertex::NAME) {
     TRI_ASSERT(isSmart());

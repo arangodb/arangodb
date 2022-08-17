@@ -170,10 +170,43 @@ std::string ShardingFeature::getDefaultShardingStrategy(
 
   // no sharding strategy found in collection meta data
 #ifdef USE_ENTERPRISE
+  /*
+   * Default Sharding Strategy for:
+   */
+
+  TRI_ASSERT(sharding != nullptr);
+  // SmartGraph, Edge
   if (sharding->collection()->isSmart() &&
       sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
-    return ShardingStrategyEnterpriseSmartEdgeCompat::NAME;
+    return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+    // return ShardingStrategyEnterpriseSmartEdgeCompat::NAME; // TODO: tripple
+    // check(!)
+  }
+
+  // SmartGraph, Vertex
+  if (sharding->collection()->isSmart() &&
+      sharding->collection()->type() == TRI_COL_TYPE_DOCUMENT &&
+      !sharding->collection()->smartGraphAttribute().empty()) {
+    return ShardingStrategyHash::NAME;
+  }
+
+  // EnterpriseGraph, Vertex
+  if (sharding->collection()->isSmart() &&
+      sharding->collection()->type() == TRI_COL_TYPE_DOCUMENT &&
+      sharding->collection()->smartGraphAttribute().empty()) {
+    return ShardingStrategyEnterpriseHexSmartVertex::NAME;
+  }
+
+  /* TODO Check: EnterpriseGraph, Edge
+  if (sharding->collection()->isSmart() &&
+      sharding->collection()->type() == TRI_COL_TYPE_DOCUMENT) {
+  }*/
+
+  if (sharding->replicationFactor() == 0) {
+    // TODO: Cannot access isSatellite, as inner _sharding is not set in this
+    // case.
+    return ShardingStrategyHash::NAME;
   }
 
   return ShardingStrategyEnterpriseCompat::NAME;
