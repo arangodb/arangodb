@@ -570,7 +570,9 @@ class Ast {
   AstNode* optimizeReference(AstNode*);
 
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-  AstNode* optimizeIndexedAccess(AstNode*);
+  AstNode* optimizeIndexedAccess(
+      AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                         variableDefinitions);
 
   /// @brief optimizes the LET statement
   AstNode* optimizeLet(AstNode*);
