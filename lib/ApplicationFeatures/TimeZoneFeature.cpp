@@ -100,7 +100,7 @@ void TimeZoneFeature::prepareTimeZoneData(std::string const& binaryPath,
   }
 
   if (!gotTZ) {
-    LOG_TOPIC("67bde", ERROR, arangodb::Logger::STARTUP)
+    LOG_TOPIC("67bde", ERR, arangodb::Logger::STARTUP)
         << "Could not get current timezone from " << tz_path
         << ". Functionality using timezones may missbehave!";
   }
