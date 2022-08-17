@@ -39,7 +39,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -473,12 +472,16 @@ DatabaseFeature::~DatabaseFeature() {
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "database options");
 
-  options->addOption(
-      "--database.default-replication-version",
-      "default replication version, can be overwritten "
-      "when creating a new database",
-      new replication::ReplicationVersionParameter(&_defaultReplicationVersion),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--database.default-replication-version",
+                  "default replication version, can be overwritten "
+                  "when creating a new database, possible values: 1, 2",
+                  new replication::ReplicationVersionParameter(
+                      &_defaultReplicationVersion),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31100);
 
   options->addOption(
       "--database.wait-for-sync",
