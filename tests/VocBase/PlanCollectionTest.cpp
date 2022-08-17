@@ -90,6 +90,9 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_EQ(testee.replicationFactor, 1);
   EXPECT_EQ(testee.writeConcern, 1);
 
+  EXPECT_EQ(testee.distributeShardsLike, "");
+  EXPECT_EQ(testee.smartJoinAttribute, "");
+
   // TODO: this is just rudimentary
   // does not test internals yet
   EXPECT_TRUE(testee.computedValues.slice().isEmptyArray());
@@ -200,6 +203,30 @@ GenerateBoolAttributeTest(cacheEnabled);
 GenerateIntegerAttributeTest(numberOfShards);
 GenerateIntegerAttributeTest(replicationFactor);
 GenerateIntegerAttributeTest(writeConcern);
+
+#define GenerateStringAttributeTest(attributeName)                             \
+  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
+                                   std::string expected) {                     \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice());           \
+      EXPECT_EQ(testee.attributeName, expected)                                \
+          << "Parsing error in " << body.toJson();                             \
+    };                                                                         \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
+                        "test");                                               \
+    shouldBeEvaluatedTo(                                                       \
+        createMinimumBodyWithOneValue(#attributeName, "unknown"), "unknown");  \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 2));     \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 4.5));   \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, true));  \
+    assertParsingThrows(createMinimumBodyWithOneValue(                         \
+        #attributeName, VPackSlice::emptyObjectSlice()));                      \
+    assertParsingThrows(createMinimumBodyWithOneValue(                         \
+        #attributeName, VPackSlice::emptyArraySlice()));                       \
+  }
+
+GenerateStringAttributeTest(distributeShardsLike);
+GenerateStringAttributeTest(smartJoinAttribute);
 
 }  // namespace tests
 }  // namespace arangodb

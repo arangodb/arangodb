@@ -47,8 +47,8 @@ struct PlanCollection {
   arangodb::velocypack::Builder toCollectionsCreate();
 
   std::string name;
-  bool waitForSync;
   std::underlying_type_t<TRI_col_type_e> type;
+  bool waitForSync;
   bool isSystem;
   bool allowSystem;
   bool doCompact;
@@ -57,6 +57,8 @@ struct PlanCollection {
   uint64_t numberOfShards;
   uint64_t replicationFactor;
   uint64_t writeConcern;
+  std::string distributeShardsLike;
+  std::string smartJoinAttribute;
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
@@ -98,6 +100,11 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("replicationFactor", planCollection.replicationFactor)
               .fallback(1ULL),
           f.field("writeConcern", planCollection.writeConcern).fallback(1ULL),
+          f.field("distributeShardsLike", planCollection.distributeShardsLike)
+              .fallback(""),
+          f.field("smartJoinAttribute", planCollection.smartJoinAttribute)
+              .fallback(""),
+
           f.field("type", planCollection.type)
               .fallback(TRI_col_type_e::TRI_COL_TYPE_DOCUMENT)
               .invariant([](auto t) -> inspection::Status {
