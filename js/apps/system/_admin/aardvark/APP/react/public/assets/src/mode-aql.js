@@ -101,7 +101,7 @@ var AqlHighlightRules = function() {
         "near|within|within_rectangle|is_in_polygon|distance|fulltext|stddev_sample|stddev_population|stddev|" +
         "slice|nth|position|contains_array|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value|remove_values|" +
         "remove_nth|replace_nth|date_now|date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
-        "date_minute|date_second|date_millisecond|date_dayofyear|date_isoweek|date_leapyear|date_quarter|date_days_in_month|date_trunc|date_round|" +
+        "date_minute|date_second|date_millisecond|date_dayofyear|date_isoweek|date_isoweekyear|date_leapyear|date_quarter|date_days_in_month|date_trunc|date_round|" +
         "date_add|date_subtract|date_diff|date_compare|date_format|date_utctolocal|date_localtoutc|date_timezone|date_timezones|" +
         "fail|passthru|v8|sleep|schema_get|schema_validate|shard_id|call_greenspun|version|noopt|noeval|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|collection_count|pregel_result|" +
