@@ -135,10 +135,10 @@ class QueryGeoContains : public QueryTest {
               .result.ok());
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {
+    if (type() == ViewType::kArangoSearch) {
       EXPECT_TRUE(runQuery(
           R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)"));
-    } else if (type() == ViewType::kSearch) {
+    } else if (type() == ViewType::kSearchAlias) {
       // Because for search/inverted-index
       // we consider strings can be found as normal fields,
       // so them all have suffix \0_s,
@@ -150,7 +150,7 @@ class QueryGeoContains : public QueryTest {
       ASSERT_TRUE(false);
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
@@ -164,7 +164,7 @@ class QueryGeoContains : public QueryTest {
                            empty));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
@@ -183,7 +183,7 @@ class QueryGeoContains : public QueryTest {
     // test missing analyzer
     {
       std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[28].slice()};
       }
       EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
@@ -201,7 +201,7 @@ class QueryGeoContains : public QueryTest {
     // test missing analyzer
     {
       std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
                     _insertedDocs[28].slice()};
       }
@@ -348,7 +348,7 @@ class QueryGeoContains : public QueryTest {
     // test missing analyzer
     {
       std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
                     _insertedDocs[28].slice()};
       }
@@ -422,7 +422,7 @@ class QueryGeoContains : public QueryTest {
     // test missing analyzer
     {
       std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
       }
       EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
@@ -478,7 +478,7 @@ class QueryGeoContains : public QueryTest {
       auto view = _vocbase.lookupView("testView");
       ASSERT_TRUE(view);
       auto links = [&] {
-        if (view->type() == ViewType::kSearch) {
+        if (view->type() == ViewType::kSearchAlias) {
           auto& impl = basics::downCast<iresearch::Search>(*view);
           return impl.getLinks();
         }
@@ -569,7 +569,7 @@ class QueryGeoContains : public QueryTest {
 
 class QueryGeoContainsView : public QueryGeoContains {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView() {
     auto createJson = VPackParser::fromJson(
@@ -592,7 +592,7 @@ class QueryGeoContainsView : public QueryGeoContains {
 
 class QueryGeoContainsSearch : public QueryGeoContains {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createIndexes(std::string_view analyzer) {
     bool created = false;
@@ -610,8 +610,8 @@ class QueryGeoContainsSearch : public QueryGeoContains {
   }
 
   void createSearch() {
-    auto createJson =
-        VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "search-alias" })");
     auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
