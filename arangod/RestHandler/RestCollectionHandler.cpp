@@ -43,6 +43,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Properties/PlanCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>

@@ -34,6 +34,8 @@ class PlanCollectionUserAPITest : public ::testing::Test {
  protected:
   /// @brief this generates the minimal required body, only exchanging one
   /// attribute with the given value should work on all basic types
+  /// if your attribute is "name" you will get a body back only with the name,
+  /// otherwise there will be a body with a valid name + your given value.
   template<typename T>
   VPackBuilder createMinimumBodyWithOneValue(std::string const& attributeName,
                                              T const& attributeValue) {
@@ -41,7 +43,9 @@ class PlanCollectionUserAPITest : public ::testing::Test {
     VPackBuilder body;
     {
       VPackObjectBuilder guard(&body);
-      body.add("name", VPackValue(colName));
+      if (attributeName != "name") {
+        body.add("name", VPackValue(colName));
+      }
       if constexpr (std::is_same_v<T, VPackSlice>) {
         body.add(attributeName, attributeValue);
       } else {
@@ -53,7 +57,8 @@ class PlanCollectionUserAPITest : public ::testing::Test {
 
   void assertParsingThrows(VPackBuilder const& body) {
     EXPECT_THROW(PlanCollection::fromCreateAPIBody(body.slice()),
-                 arangodb::basics::Exception);
+                 arangodb::basics::Exception)
+        << " On body " << body.toJson();
   }
 };
 
@@ -75,16 +80,34 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   // Test Default values
   EXPECT_FALSE(testee.waitForSync);
   EXPECT_FALSE(testee.isSystem);
+  EXPECT_FALSE(testee.allowSystem);
+  EXPECT_FALSE(testee.doCompact);
+  EXPECT_FALSE(testee.isVolatile);
+  EXPECT_FALSE(testee.cacheEnabled);
   EXPECT_EQ(testee.type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
 
   // TODO: this is just rudimentary
   // does not test internals yet
-  EXPECT_TRUE(testee.schema.slice().isObject());
-  EXPECT_TRUE(testee.keyOptions.slice().isObject());
+  EXPECT_TRUE(testee.computedValues.slice().isEmptyArray());
+  EXPECT_TRUE(testee.schema.slice().isEmptyObject());
+  EXPECT_TRUE(testee.keyOptions.slice().isEmptyObject());
+}
+
+TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
+  // The empty string
+  assertParsingThrows(createMinimumBodyWithOneValue("name", ""));
+
+  // Non String types
+  assertParsingThrows(createMinimumBodyWithOneValue("name", 0));
+  assertParsingThrows(
+      createMinimumBodyWithOneValue("name", VPackSlice::emptyObjectSlice()));
+  assertParsingThrows(
+      createMinimumBodyWithOneValue("name", VPackSlice::emptyArraySlice()));
 }
 
 TEST_F(PlanCollectionUserAPITest, test_collection_type) {
-  auto shouldBeEvaluatedToType = [&](VPackBuilder body, TRI_col_type_e type) {
+  auto shouldBeEvaluatedToType = [&](VPackBuilder const& body,
+                                     TRI_col_type_e type) {
     auto testee = PlanCollection::fromCreateAPIBody(body.slice());
     EXPECT_EQ(testee.type, type) << "Parsing error in " << body.toJson();
   };
@@ -111,6 +134,35 @@ TEST_F(PlanCollectionUserAPITest, test_collection_type) {
   assertParsingThrows(
       createMinimumBodyWithOneValue("type", VPackSlice::emptyArraySlice()));
 }
+
+// This macro generates a basic bool value test, checking if we get true/false
+// through and other basic types are rejected.
+
+#define GenerateBoolAttributeTest(attributeName)                              \
+  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, bool expected) { \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
+      EXPECT_EQ(testee.attributeName, expected)                               \
+          << "Parsing error in " << body.toJson();                            \
+    };                                                                        \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, true),  \
+                        true);                                                \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, false), \
+                        false);                                               \
+    assertParsingThrows(                                                      \
+        createMinimumBodyWithOneValue(#attributeName, "test"));               \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 1));    \
+    assertParsingThrows(createMinimumBodyWithOneValue(                        \
+        #attributeName, VPackSlice::emptyObjectSlice()));                     \
+    assertParsingThrows(createMinimumBodyWithOneValue(                        \
+        #attributeName, VPackSlice::emptyArraySlice()));                      \
+  }
+
+GenerateBoolAttributeTest(waitForSync);
+GenerateBoolAttributeTest(doCompact);
+GenerateBoolAttributeTest(isSystem);
+GenerateBoolAttributeTest(isVolatile);
+GenerateBoolAttributeTest(cacheEnabled);
 
 }  // namespace tests
 }  // namespace arangodb

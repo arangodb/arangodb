@@ -32,3 +32,9 @@ PlanCollection::PlanCollection() {}
 PlanCollection PlanCollection::fromCreateAPIBody(VPackSlice input) {
   return arangodb::velocypack::deserialize<PlanCollection>(input);
 }
+
+arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {
+  arangodb::velocypack::Builder builder;
+  arangodb::velocypack::serialize(builder, *this);
+  return builder;
+}

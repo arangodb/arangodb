@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Basics/StaticStrings.h"
+#include "Inspection/Status.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -42,12 +44,21 @@ struct PlanCollection {
   static PlanCollection fromCreateAPIBody(arangodb::velocypack::Slice input);
 
   // Temporary method to handOver information from
-  std::shared_ptr<arangodb::velocypack::Builder> toCollectionsCreate();
+  arangodb::velocypack::Builder toCollectionsCreate();
 
   std::string name;
   bool waitForSync;
   std::underlying_type_t<TRI_col_type_e> type;
   bool isSystem;
+  bool allowSystem;
+  bool doCompact;
+  bool isVolatile;
+  bool cacheEnabled;
+
+  // TODO: This can be optimized into it's own struct.
+  // Did a short_cut here to avoid concatenated changes
+  arangodb::velocypack::Builder computedValues;
+
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
   arangodb::velocypack::Builder schema;
@@ -55,25 +66,47 @@ struct PlanCollection {
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
   arangodb::velocypack::Builder keyOptions;
+
+  // TODO: Maybe this is better off with a transformator Uint -> col_type_e
+  [[nodiscard]] TRI_col_type_e getType() const noexcept {
+    return TRI_col_type_e(type);
+  }
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, PlanCollection& planCollection) {
   return f.object(planCollection)
       .fields(
-          f.field("name", planCollection.name),
+          f.field("name", planCollection.name)
+              .invariant([](auto const& n) -> inspection::Status {
+                if (n.empty()) {
+                  return {"Name cannot be empty."};
+                }
+                return inspection::Status::Success{};
+              }),
           f.field("waitForSync", planCollection.waitForSync).fallback(false),
           f.field("isSystem", planCollection.isSystem).fallback(false),
+          f.field("allowSystem", planCollection.allowSystem).fallback(false),
+          f.field("doCompact", planCollection.doCompact).fallback(false),
+          f.field("cacheEnabled", planCollection.cacheEnabled).fallback(false),
+          f.field("isVolatile", planCollection.isVolatile).fallback(false),
           f.field("type", planCollection.type)
               .fallback(TRI_col_type_e::TRI_COL_TYPE_DOCUMENT)
-              .invariant([](auto t) {
-                return t == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT ||
-                       t == TRI_col_type_e::TRI_COL_TYPE_EDGE;
+              .invariant([](auto t) -> inspection::Status {
+                if (t == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT ||
+                    t == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+                  return inspection::Status::Success{};
+                }
+                return {"Only 2 (document) and 3 (edge) are allowed."};
               }),
+          f.field(StaticStrings::DataSourceSystem, planCollection.allowSystem)
+              .fallback(false),
           f.field("schema", planCollection.schema)
               .fallback(VPackSlice::emptyObjectSlice()),
           f.field("keyOptions", planCollection.keyOptions)
-              .fallback(VPackSlice::emptyObjectSlice()));
+              .fallback(VPackSlice::emptyObjectSlice()),
+          f.field("computedValues", planCollection.computedValues)
+              .fallback(VPackSlice::emptyArraySlice()));
 }
 
 }  // namespace arangodb
