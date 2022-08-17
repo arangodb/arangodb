@@ -256,7 +256,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   Options _options;
   Stats _stats;
   Mutex mutable _workerErrorLock;
-  std::queue<Result> _workerErrors;
+  std::vector<Result> _workerErrors;
 
   Mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;

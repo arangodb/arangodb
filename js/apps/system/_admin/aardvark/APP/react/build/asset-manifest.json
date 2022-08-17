@@ -1,7 +1,13 @@
 {
+<<<<<<< HEAD
   "main.css": "static/css/main.ce06309e.chunk.css",
   "main.js": "static/js/main.6fc433b0.chunk.js",
   "main.js.map": "static/js/main.6fc433b0.chunk.js.map",
+=======
+  "main.css": "static/css/main.8a91b37b.chunk.css",
+  "main.js": "static/js/main.d0be22db.chunk.js",
+  "main.js.map": "static/js/main.d0be22db.chunk.js.map",
+>>>>>>> devel
   "runtime~main.js": "static/js/runtime~main.b7f3a89c.js",
   "runtime~main.js.map": "static/js/runtime~main.b7f3a89c.js.map",
   "static/css/2.6397c9c0.chunk.css": "static/css/2.6397c9c0.chunk.css",
@@ -9,6 +15,7 @@
   "static/js/2.c064c3b5.chunk.js.map": "static/js/2.c064c3b5.chunk.js.map",
   "index.html": "index.html",
   "index.html.gz": "index.html.gz",
+<<<<<<< HEAD
   "precache-manifest.6dd1b34b5850a4ff409a6d748213b2a1.js": "precache-manifest.6dd1b34b5850a4ff409a6d748213b2a1.js",
   "precache-manifest.6dd1b34b5850a4ff409a6d748213b2a1.js.gz": "precache-manifest.6dd1b34b5850a4ff409a6d748213b2a1.js.gz",
   "service-worker.js": "service-worker.js",
@@ -27,6 +34,26 @@
   "static/js/main.6fc433b0.chunk.js.LICENSE.txt.gz": "static/js/main.6fc433b0.chunk.js.LICENSE.txt.gz",
   "static/js/main.6fc433b0.chunk.js.gz": "static/js/main.6fc433b0.chunk.js.gz",
   "static/js/main.6fc433b0.chunk.js.map.gz": "static/js/main.6fc433b0.chunk.js.map.gz",
+=======
+  "precache-manifest.b29d559d4fa9351b80bcc3d9426c8cb1.js": "precache-manifest.b29d559d4fa9351b80bcc3d9426c8cb1.js",
+  "precache-manifest.b29d559d4fa9351b80bcc3d9426c8cb1.js.gz": "precache-manifest.b29d559d4fa9351b80bcc3d9426c8cb1.js.gz",
+  "service-worker.js": "service-worker.js",
+  "service-worker.js.gz": "service-worker.js.gz",
+  "static/css/2.60b30edd.chunk.css.gz": "static/css/2.60b30edd.chunk.css.gz",
+  "static/css/2.60b30edd.chunk.css.map": "static/css/2.60b30edd.chunk.css.map",
+  "static/css/2.60b30edd.chunk.css.map.gz": "static/css/2.60b30edd.chunk.css.map.gz",
+  "static/css/main.8a91b37b.chunk.css.gz": "static/css/main.8a91b37b.chunk.css.gz",
+  "static/css/main.8a91b37b.chunk.css.map": "static/css/main.8a91b37b.chunk.css.map",
+  "static/css/main.8a91b37b.chunk.css.map.gz": "static/css/main.8a91b37b.chunk.css.map.gz",
+  "static/js/2.ae2f3770.chunk.js.LICENSE.txt": "static/js/2.ae2f3770.chunk.js.LICENSE.txt",
+  "static/js/2.ae2f3770.chunk.js.LICENSE.txt.gz": "static/js/2.ae2f3770.chunk.js.LICENSE.txt.gz",
+  "static/js/2.ae2f3770.chunk.js.gz": "static/js/2.ae2f3770.chunk.js.gz",
+  "static/js/2.ae2f3770.chunk.js.map.gz": "static/js/2.ae2f3770.chunk.js.map.gz",
+  "static/js/main.d0be22db.chunk.js.LICENSE.txt": "static/js/main.d0be22db.chunk.js.LICENSE.txt",
+  "static/js/main.d0be22db.chunk.js.LICENSE.txt.gz": "static/js/main.d0be22db.chunk.js.LICENSE.txt.gz",
+  "static/js/main.d0be22db.chunk.js.gz": "static/js/main.d0be22db.chunk.js.gz",
+  "static/js/main.d0be22db.chunk.js.map.gz": "static/js/main.d0be22db.chunk.js.map.gz",
+>>>>>>> devel
   "static/js/runtime~main.b7f3a89c.js.gz": "static/js/runtime~main.b7f3a89c.js.gz",
   "static/js/runtime~main.b7f3a89c.js.map.gz": "static/js/runtime~main.b7f3a89c.js.map.gz",
   "static/media/style.scss": "static/media/fontawesome-webfont.e6cf7c6e.woff2",

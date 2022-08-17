@@ -39,6 +39,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
@@ -176,9 +177,12 @@ CommTask::Flow CommTask::prepareExecution(
   // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
   std::string const& path = req.requestPath();
 
+  bool allowEarlyConnections = _server.allowEarlyConnections();
+
   switch (mode) {
     case ServerState::Mode::STARTUP: {
-      if (_auth->isActive() && !req.authenticated()) {
+      if (!allowEarlyConnections ||
+          (_auth->isActive() && !req.authenticated())) {
         if (req.authenticationMethod() == rest::AuthenticationMethod::BASIC) {
           // HTTP basic authentication is not supported during the startup
           // phase, as we do not have any access to the database data. However,
@@ -198,7 +202,7 @@ CommTask::Flow CommTask::prepareExecution(
       }
 
       // passed authentication!
-
+      TRI_ASSERT(allowEarlyConnections);
       if (path == "/_api/version" || path == "/_admin/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
           path.starts_with("/_admin/debug/") ||
@@ -215,6 +219,15 @@ CommTask::Flow CommTask::prepareExecution(
     }
 
     case ServerState::Mode::MAINTENANCE: {
+      if (allowEarlyConnections &&
+          (path == "/_api/version" || path == "/_admin/version" ||
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+           path.starts_with("/_admin/debug/") ||
+#endif
+           path == "/_admin/status")) {
+        return Flow::Continue;
+      }
+
       // In the bootstrap phase, we would like that coordinators answer the
       // following endpoints, but not yet others:
       if ((!ServerState::instance()->isCoordinator() &&
@@ -461,6 +474,13 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
           self->sendResponse(handler->stealResponse(),
                              self->stealStatistics(messageId));
         });
+    return;
+  }
+
+  if (res.hasValue() && res.get().fail()) {
+    auto& r = res.get();
+    sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
+                      messageId, r.errorNumber(), r.errorMessage());
     return;
   }
 

@@ -21,7 +21,11 @@
 /// @author Andrey Abramov
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "IResearchFeature.h"
+
 #include "Basics/DownCast.h"
+#include "Basics/StaticStrings.h"
 
 // otherwise define conflict between 3rdParty\date\include\date\date.h and
 // 3rdParty\iresearch\core\shared.hpp
@@ -55,7 +59,6 @@
 #include "Containers/SmallVector.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -63,6 +66,7 @@
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/Search.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -92,15 +96,24 @@ class Query;
 namespace arangodb::iresearch {
 namespace {
 
-aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const& node,
-                              std::span<aql::AqlValue const>) {
+aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
+                        std::span<aql::AqlValue const>) {
   THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter function '%s' "
-      " is designed to be used only within a corresponding SEARCH statement "
-      "of ArangoSearch view."
-      " Please ensure function signature is correct.",
+      "ArangoSearch function '%s' is designed to be used only within a "
+      "corresponding SEARCH statement of ArangoSearch view. Please ensure "
+      "function signature is correct.",
       getFunctionName(node).data());
+}
+
+aql::AqlValue offsetInfoFunc(aql::ExpressionContext* ctx,
+                             aql::AstNode const& node,
+                             std::span<aql::AqlValue const> args) {
+#ifdef USE_ENTERPRISE
+  return dummyFunc(ctx, node, args);
+#else
+  return aql::functions::NotImplementedEE(ctx, node, args);
+#endif
 }
 
 // Function body for ArangoSearch context functions ANALYZER/BOOST.
@@ -216,10 +229,7 @@ aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const& node,
       aql::getFunctionName(node).data());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class IResearchLogTopic
-/// @brief Log topic implementation for IResearch
-////////////////////////////////////////////////////////////////////////////////
+// Log topic implementation for IResearch
 class IResearchLogTopic final : public LogTopic {
  public:
   explicit IResearchLogTopic(std::string const& name)
@@ -268,7 +278,7 @@ class IResearchLogTopic final : public LogTopic {
     irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
     irs::logger::output_le(irsLevel, log_appender, nullptr);
   }
-};  // IResearchLogTopic
+};
 
 uint32_t computeIdleThreadsCount(uint32_t idleThreads,
                                  uint32_t threads) noexcept {
@@ -282,8 +292,8 @@ uint32_t computeIdleThreadsCount(uint32_t idleThreads,
 uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit,
                              uint32_t div) noexcept {
   TRI_ASSERT(div);
-  constexpr uint32_t MAX_THREADS =
-      8;  // arbitrary limit on the upper bound of threads in pool
+  // arbitrary limit on the upper bound of threads in pool
+  constexpr uint32_t MAX_THREADS = 8;
   constexpr uint32_t MIN_THREADS = 1;  // at least one thread is required
 
   return std::max(
@@ -545,8 +555,7 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 
   // (attribute, ["analyzer"|"type"|"string"|"numeric"|"bool"|"null"]).
   // cannot be used in analyzers!
-  addFunction(functions,
-              {"EXISTS", ".|.,.", flagsNoAnalyzer, &dummyFilterFunc});
+  addFunction(functions, {"EXISTS", ".|.,.", flagsNoAnalyzer, &dummyFunc});
 
   // (attribute, [ '[' ] prefix [, prefix, ... ']' ] [,
   // scoring-limit|min-match-count ] [, scoring-limit ])
@@ -554,8 +563,7 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 
   // (attribute, input [, offset, input... ] [, analyzer])
   // cannot be used in analyzers!
-  addFunction(functions,
-              {"PHRASE", ".,.|.+", flagsNoAnalyzer, &dummyFilterFunc});
+  addFunction(functions, {"PHRASE", ".,.|.+", flagsNoAnalyzer, &dummyFunc});
 
   // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &minMatchFunc});
@@ -590,7 +598,19 @@ void registerSingleFactory(
     }
   }
 }
+
 }  // namespace
+
+void registerFunctions(aql::AqlFunctionFeature& functions) {
+  arangodb::iresearch::addFunction(
+      functions,
+      {"OFFSET_INFO", ".,.",
+       aql::Function::makeFlags(aql::Function::Flags::Deterministic,
+                                aql::Function::Flags::Cacheable,
+                                aql::Function::Flags::CanRunOnDBServerCluster,
+                                aql::Function::Flags::CanRunOnDBServerOneShard),
+       &offsetInfoFunc});
+}
 
 void registerIndexFactory(
     std::map<std::type_index, std::shared_ptr<IndexTypeFactory>>& m,
@@ -695,32 +715,37 @@ void registerUpgradeTasks(ArangodServer& server) {
 }
 
 void registerViewFactory(ArangodServer& server) {
-  static_assert(IResearchView::typeInfo() ==
-                IResearchViewCoordinator::typeInfo());
-  constexpr std::string_view kViewType{IResearchView::typeInfo().second};
-
-  Result res;
-
+  Result r;
+  auto check = [&] {
+    if (!r.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          r.errorNumber(),
+          absl::StrCat("failure registering arangosearch view factory: ",
+                       r.errorMessage()));
+    }
+  };
   // DB server in custer or single-server
-  if (auto& viewTypes = server.getFeature<ViewTypesFeature>();
-      ServerState::instance()->isCoordinator()) {
-    res = viewTypes.emplace(kViewType, IResearchViewCoordinator::factory());
-  } else if (ServerState::instance()->isDBServer() ||
-             ServerState::instance()->isSingleServer()) {
-    res = viewTypes.emplace(kViewType, IResearchView::factory());
+  auto& viewTypes = server.getFeature<ViewTypesFeature>();
+  if (ServerState::instance()->isCoordinator()) {
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
+                          IResearchViewCoordinator::factory());
+    check();
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::SearchType,
+                          Search::factory());
+  } else if (ServerState::instance()->isSingleServer()) {
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
+                          IResearchView::factory());
+    check();
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::SearchType,
+                          Search::factory());
+  } else if (ServerState::instance()->isDBServer()) {
+    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
+                          IResearchView::factory());
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FAILED,
-        std::string("Invalid role for arangosearch view creation."));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "Invalid role for view creation.");
   }
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res.errorNumber(),
-        basics::StringUtils::concatT(
-            "failure registering arangosearch view factory: ",
-            res.errorMessage()));
-  }
+  check();
 }
 
 Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
@@ -739,13 +764,14 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
     return {TRI_ERROR_INTERNAL};
   }
 
-  if (ViewType::kSearch != view->type()) {
-    return {};  // not a search view
+  if (view->type() == ViewType::kSearch) {
+    auto& impl = basics::downCast<Search>(*view);
+    return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
+  } else if (view->type() == ViewType::kView) {
+    auto& impl = basics::downCast<IResearchView>(*view);
+    return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
   }
-
-  // TODO FIXME find a better way to look up an IResearch View
-  auto& impl = basics::downCast<IResearchView>(*view);
-  return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
+  return {};  // not a needed view
 }
 
 void registerTransactionDataSourceRegistrationCallback() {
@@ -819,7 +845,7 @@ class IResearchAsync {
 };  // IResearchAsync
 
 bool isFilter(aql::Function const& func) noexcept {
-  return func.implementation == &dummyFilterFunc ||
+  return func.implementation == &dummyFunc ||
          func.implementation == &contextFunc ||
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
@@ -836,6 +862,12 @@ bool isFilter(aql::Function const& func) noexcept {
 bool isScorer(aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
+
+#ifdef USE_ENTERPRISE
+bool isOffsetInfo(aql::Function const& func) noexcept {
+  return func.implementation == &offsetInfoFunc;
+}
+#endif
 
 IResearchFeature::IResearchFeature(Server& server)
     : ArangodFeature{server, *this},
@@ -965,6 +997,7 @@ void IResearchFeature::prepare() {
     auto& functions = server().getFeature<aql::AqlFunctionFeature>();
     registerFilters(functions);
     registerScorers(functions);
+    registerFunctions(functions);
   } else {
     LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature 'AQLFunctions' while registering "

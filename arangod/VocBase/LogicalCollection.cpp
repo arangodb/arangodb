@@ -35,6 +35,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
@@ -58,11 +59,11 @@
 #endif
 
 #include <absl/strings/str_cat.h>
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
-
-#include <span>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
@@ -228,7 +229,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // computed values
   if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
       res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+    LOG_TOPIC("4c73f", ERR, Logger::FIXME)
+        << "collection '" << this->vocbase().name() << "/" << name() << ": "
+        << res.errorMessage()
+        << " - disabling computed values for this collection. original value: "
+        << info.get(StaticStrings::ComputedValues).toJson();
+    TRI_ASSERT(_computedValues == nullptr);
   }
 }
 
@@ -271,39 +277,15 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 }
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
-  if (!computedValues.isNone()) {
-    if (computedValues.isNull()) {
-      computedValues = VPackSlice::emptyArraySlice();
-    }
-    if (!computedValues.isArray()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Computed values description is not an array."};
-    }
+  auto result =
+      ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
 
-    TRI_ASSERT(computedValues.isArray());
-
-    std::shared_ptr<ComputedValues> newValue;
-
-    // computed values will be removed if empty array is given
-    if (!computedValues.isEmptyArray()) {
-      auto const& sk = shardKeys();
-      try {
-        newValue =
-            std::make_shared<ComputedValues>(vocbase()
-                                                 .server()
-                                                 .getFeature<DatabaseFeature>()
-                                                 .getCalculationVocbase(),
-                                             std::span(sk), computedValues);
-      } catch (std::exception const& ex) {
-        return {
-            TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("Error when validating computedValues: ", ex.what())};
-      }
-    }
-
-    std::atomic_store_explicit(&_computedValues, newValue,
-                               std::memory_order_release);
+  if (result.fail()) {
+    return result.result();
   }
+
+  std::atomic_store_explicit(&_computedValues, result.get(),
+                             std::memory_order_release);
 
   return {};
 }
@@ -552,15 +534,6 @@ bool LogicalCollection::determineSyncByRevision() const {
     }
   }
   return false;
-}
-
-IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating,
-                                                     TransactionId tid) {
-  return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
-}
-
-void LogicalCollection::flushClusterIndexEstimates() {
-  getPhysical()->flushClusterIndexEstimates();
 }
 
 std::vector<std::shared_ptr<Index>> LogicalCollection::getIndexes() const {
@@ -1083,7 +1056,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
 }
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(
-    std::string const& idxName) const {
+    std::string_view idxName) const {
   return getPhysical()->lookupIndex(idxName);
 }
 
@@ -1298,57 +1271,42 @@ auto LogicalCollection::getDocumentState()
 auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
-  auto leader = stateMachine->getLeader();
-  // TODO improve error handling
-  ADB_PROD_ASSERT(leader != nullptr)
-      << "Cannot get DocumentLeaderState in shard " << name();
-  return leader;
-}
 
-auto LogicalCollection::waitForDocumentStateLeader() -> std::shared_ptr<
-    replication2::replicated_state::document::DocumentLeaderState> {
-  auto replicatedState = getDocumentState();
-  std::optional<replication2::replicated_state::StateStatus> status =
-      std::nullopt;
-  replication2::replicated_state::LeaderStatus const* leaderStatus = nullptr;
+  static constexpr auto throwUnavailable = []<typename... Args>(
+      basics::SourceLocation location, fmt::format_string<Args...> formatString,
+      Args && ... args) {
+    throw basics::Exception(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
+  };
 
-  // TODO find a better way to wait for service availability
-  for (int counter{0}; counter < 30; ++counter) {
-    status = replicatedState->getStatus();
-    if (status) {
-      leaderStatus = status->asLeaderStatus();
-      if (leaderStatus != nullptr &&
-          leaderStatus->managerState.state ==
-              replication2::replicated_state::LeaderInternalState::
-                  kServiceAvailable) {
-        break;
-      }
-    }
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(1s);
+  auto const status = stateMachine->getStatus();
+  if (status == std::nullopt) {
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available, accessed "
+                     "from {}/{}. No status available.",
+                     shardIdToStateId(name()), vocbase().name(), name());
   }
 
+  auto const* const leaderStatus = status->asLeaderStatus();
   if (leaderStatus == nullptr) {
-    if (status.has_value()) {
-      std::stringstream stream;
-      stream << "Could not get leader status, current status is " << *status;
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER, stream.str());
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-          "Could not get any status from replicated state");
-    }
-  }
-  if (leaderStatus->managerState.state !=
-      replication2::replicated_state::LeaderInternalState::kServiceAvailable) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-        "Leader state service is not available, the current status being: " +
-            std::string(to_string(leaderStatus->managerState.state)));
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available as leader, accessed "
+                     "from {}/{}. Status is {}.",
+                     shardIdToStateId(name()), vocbase().name(), name(),
+                     *status);
   }
 
-  return getDocumentStateLeader();
+  auto leader = stateMachine->getLeader();
+  if (leader == nullptr) {
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available as leader, accessed "
+                     "from {}/{}. Status is {}.",
+                     shardIdToStateId(name()), vocbase().name(), name(),
+                     to_string(leaderStatus->managerState.state));
+  }
+
+  return leader;
 }
 
 auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<

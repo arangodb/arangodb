@@ -92,6 +92,8 @@ class Ast {
     // most use cases, but we cannot activate this for computed values, as
     // we need a freshly calculated value every time.
     bool optimizeNonCacheable = true;
+    // whether or not to optimize function calls
+    bool optimizeFunctionCalls = true;
   };
 
   // frees all data
@@ -563,7 +565,9 @@ class Ast {
                                 ValidateAndOptimizeOptions const& options);
 
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-  AstNode* optimizeIndexedAccess(AstNode*);
+  AstNode* optimizeIndexedAccess(
+      AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                         variableDefinitions);
 
   /// @brief optimizes the FILTER statement
   AstNode* optimizeFilter(AstNode*);

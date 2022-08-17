@@ -168,6 +168,7 @@ class IResearchLink : public IResearchDataStore {
   std::string const& getDbName() const;
   std::string const& getShardName() const noexcept;
   std::string getCollectionName() const;
+  bool hasNested() const noexcept;
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////

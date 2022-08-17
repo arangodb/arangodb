@@ -13,6 +13,7 @@
     smartGraphName: "SmartGraph",
     enterpriseGraphName: "EnterpriseGraph",
     currentGraphCreationType: (frontendConfig.isEnterprise ? 'enterprise' : 'community'),
+    currentGraphEditType: null,
 
     dropdownVisible: false,
 
@@ -114,9 +115,13 @@
       }
     },
 
-    isEnterpriseOnlyGraphOrIsDefaultIsEnterprise: function () {
-      const graphCreationType = this.getCurrentCreationGraphType();
-      if (graphCreationType === 'smart' || graphCreationType === 'enterprise' || graphCreationType === 'satellite') {
+    isEnterpriseOnlyGraphOrIsDefaultIsEnterprise: function (editType) {
+      if (editType && editType === 'community') {
+        return false;
+      }
+
+      const graphCreationType = editType || this.getCurrentCreationGraphType();
+      if (this.isEnterpriseOnlyGraph(graphCreationType)) {
         return true;
       }
 
@@ -137,12 +142,12 @@
       return false;
     },
 
-    buildAutoCompletionLists: function (type) {
+    buildAutoCompletionLists: function (type, editGraphType) {
       // Supported type is either: "edges" or "vertices"
 
       let collections = [];
 
-      const graphCreationType = this.getCurrentCreationGraphType();
+      const graphCreationType = editGraphType || this.getCurrentCreationGraphType();
       if (this.isEnterpriseOnlyGraph(graphCreationType)) {
         // In that case, all collections need to be newly created. Therefore, we cannot provide any
         // auto-completion feature.
@@ -186,25 +191,30 @@
       return collections.sort(sorter);
     },
 
-    getVerticesAutoCompletionList: function () {
-      return this.buildAutoCompletionLists('vertices');
+    getVerticesAutoCompletionList: function (editGraph) {
+      return this.buildAutoCompletionLists('vertices', editGraph);
     },
 
-    getEdgesAutoCompletionList: function () {
-      return this.buildAutoCompletionLists('edges');
+    getEdgesAutoCompletionList: function (editGraph) {
+      return this.buildAutoCompletionLists('edges', editGraph);
     },
 
-    setGeneralGraphRows: function (forget) {
-      this.setCacheModeState(forget);
+    setGeneralGraphRows: function (forget, editGraph) {
+      if (!editGraph) {
+        this.setCacheModeState(forget);
+      }
+
       this.hideSmartGraphRows();
       _.each(this.generalGraphRows, function (rowId) {
         $('#' + rowId).show();
       });
     },
 
-    setSatelliteGraphRows: function (cache) {
+    setSatelliteGraphRows: function (cache, editGraph) {
       $('#createGraph').addClass('active');
-      this.setCacheModeState(cache);
+      if (!editGraph) {
+        this.setCacheModeState(cache);
+      }
 
       this.showGeneralGraphRows();
       this.hideSmartGraphRows();
@@ -238,9 +248,9 @@
       });
     },
 
-    setSmartGraphRows: function (cache, id) {
+    setSmartGraphRows: function (cache, id, editGraph) {
       $('#createGraph').addClass('active');
-      if (cache) {
+      if (!editGraph && cache) {
         this.setCacheModeState(cache);
       }
 
@@ -609,7 +619,7 @@
       const getAllCurrentEdgeDefinitionNames = () => {
         let edgeDefNames = [];
         for (let i = 0; i <= this.counter; i++) {
-          let name = _.pluck($('#s2id_newEdgeDefinitions' + i).select2('data'), 'text')[0];
+          let name = _.get($('#s2id_newEdgeDefinitions' + i).select2('data'), [0, 'text']);
           if (name) {
             // might be undefined as we do not have the state of all real "counter" values
             edgeDefNames.push(name);
@@ -619,7 +629,12 @@
       };
 
       const toFindDuplicates = (arr) => {
-        return arr.filter((item, index) => arr.indexOf(item) !== index);
+        const itemCounts = arr.reduce((acc, item) => {
+          acc[item] = (acc[item] || 0) + 1;
+          return acc;
+        }, {});
+
+        return _.chain(arr).filter(item => itemCounts[item] > 1).uniq().value();
       };
 
       // This area checks whether new user defined EdgeDefinitions are being used twice - which is not valid.
@@ -629,12 +644,11 @@
         const duplicateEdgeDefinitions = toFindDuplicates(allAvailableEdgeDefinitionNames);
 
         if (duplicateEdgeDefinitions.indexOf(currentEdgeDefinitionName) !== -1) {
-          console.warn("Already added: " + JSON.stringify(e.added));
           id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
           $('input[id*="newEdgeDefinitions' + id + '"]').select2('val', null);
           arangoHelper.arangoError(
             "Graph Creation",
-            `The EdgeDefinition name "${e.added.id}" is already used being used. Please choose another name.`
+            `The EdgeDefinition name "${e.added.id}" is already being used. Please choose another name.`
           );
 
           // Please keep this line - we might need it later (during refactor)
@@ -1117,14 +1131,18 @@
           }
           if (!isEnterpriseGraph) {
             title = 'Edit SmartGraph';
+            this.currentGraphEditType = 'smart';
           } else {
             // If smartGraphAttribute not available, it must be an EnterpriseGraph
             title = 'Edit EnterpriseGraph';
+            this.currentGraphEditType = 'enterprise';
           }
         } else if (isSatellite) {
           title = 'Edit SatelliteGraph';
+          this.currentGraphEditType = 'satellite';
         } else {
           title = 'Edit Graph';
+          this.currentGraphEditType = 'community';
         }
 
         name = graph.get('_key');
@@ -1215,7 +1233,7 @@
               self.getEdgesAutoCompletionList(),
               null, // style
               null, // cssClass
-              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(this.currentGraphEditType)
             )
           );
         }
@@ -1230,6 +1248,8 @@
           window.modalView.createSuccessButton('Save', this.saveEditedGraph.bind(this))
         );
       } else {
+        this.currentGraphEditType = undefined;
+
         // create graph section
         title = 'Create Graph';
 
@@ -1398,7 +1418,7 @@
         );
       }
 
-      const createEdgeDefinitionEntry = (counter, edgeDefinition) => {
+      const createEdgeDefinitionEntry = (counter, edgeDefinition, graph) => {
         let id = null;
         let isMandatory = true;
         let addDelete = false;
@@ -1428,10 +1448,10 @@
             addDelete,
             addAdd,
             1,
-            self.getEdgesAutoCompletionList(),
+            self.getEdgesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
             undefined, /*style*/
             'first', /*cssClass*/
-            self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
+            self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
           )
         );
       };
@@ -1439,7 +1459,7 @@
       edgeDefinitions.forEach(
         function (edgeDefinition) {
           // EdgeDefinition MAIN entry
-          createEdgeDefinitionEntry(self.counter, edgeDefinition);
+          createEdgeDefinitionEntry(self.counter, edgeDefinition, graph);
           // EdgeDefinition FROM entry
           tableContent.push(
             window.modalView.createSelect2Entry(
@@ -1452,10 +1472,10 @@
               false,
               false,
               null,
-              self.getEdgesAutoCompletionList(),
+              self.getVerticesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
               undefined, /*style*/
               'middle', /*cssClass*/
-              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
             )
           );
           // EdgeDefinition TO entry
@@ -1470,10 +1490,10 @@
               false,
               false,
               null,
-              self.getVerticesAutoCompletionList(),
+              self.getVerticesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
               undefined, /*style*/
               'last', /*cssClass*/
-              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
             )
           );
           self.counter++;
@@ -1491,10 +1511,10 @@
           false,
           false,
           null,
-          self.getVerticesAutoCompletionList(),
+          self.getVerticesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
           undefined,
           undefined,
-          self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
+          self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
         )
       );
 
@@ -1519,13 +1539,13 @@
       if (graph) {
         // Means we're in the editGraph state.
         if (isCommunity) {
-          this.setGeneralGraphRows(false);
+          this.setGeneralGraphRows(false, true);
         } else if (isSatellite) {
-          this.setSatelliteGraphRows(false);
+          this.setSatelliteGraphRows(false, true);
         } else if (isEnterpriseGraph) {
-          this.setSmartGraphRows(false, 'enterpriseGraph');
+          this.setSmartGraphRows(false, 'enterpriseGraph', true);
         } else if (isSmart) {
-          this.setSmartGraphRows(false, 'smartGraph');
+          this.setSmartGraphRows(false, 'smartGraph', true);
         }
 
         $('.modal-body table').css('border-collapse', 'separate');
@@ -1567,9 +1587,13 @@
     buildSelect2Options: function (type) {
       let collections = [];
       if (type === 'edge') {
-        collections = this.getEdgesAutoCompletionList();
+        collections = this.getEdgesAutoCompletionList(
+          this.currentGraphEditType ? this.currentGraphEditType : undefined
+        );
       } else if (type === 'vertex') {
-        collections = this.getVerticesAutoCompletionList();
+        collections = this.getVerticesAutoCompletionList(
+          this.currentGraphEditType ? this.currentGraphEditType : undefined
+        );
       }
 
       let options = {
@@ -1583,7 +1607,9 @@
         options.maximumSelectionSize =  1;
       }
 
-      if (this.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()) {
+      if (this.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(
+        this.currentGraphEditType ? this.currentGraphEditType : undefined)
+      ) {
         options.language = {};
         options.language.noMatches = function () {
           return "Please enter a new and valid collection name.";

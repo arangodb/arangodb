@@ -452,7 +452,6 @@ TEST_F(CHashesTest, tst_crc32_simple) {
   std::string buffer;
 
   buffer = "";
-  EXPECT_TRUE(0ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(0ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(0ULL ==
@@ -460,7 +459,6 @@ TEST_F(CHashesTest, tst_crc32_simple) {
                                             strlen(buffer.c_str()))));
 
   buffer = " ";
-  EXPECT_TRUE(1925242255ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1925242255ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(1925242255ULL ==
@@ -468,7 +466,6 @@ TEST_F(CHashesTest, tst_crc32_simple) {
                                             strlen(buffer.c_str()))));
 
   buffer = "  ";
-  EXPECT_TRUE(2924943886ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(2924943886ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(2924943886ULL ==
@@ -476,7 +473,6 @@ TEST_F(CHashesTest, tst_crc32_simple) {
                                             strlen(buffer.c_str()))));
 
   buffer = "a";
-  EXPECT_TRUE(3251651376ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(3251651376ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(3251651376ULL ==
@@ -484,72 +480,58 @@ TEST_F(CHashesTest, tst_crc32_simple) {
                                             strlen(buffer.c_str()))));
 
   buffer = "A";
-  EXPECT_TRUE(3782069742ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(3782069742ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = " a";
-  EXPECT_TRUE(491226289ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(491226289ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = " a ";
-  EXPECT_TRUE(849570753ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(849570753ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "a ";
-  EXPECT_TRUE(1122124925ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1122124925ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "A ";
-  EXPECT_TRUE(1030334335ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1030334335ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = " A";
-  EXPECT_TRUE(1039796847ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1039796847ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = " A ";
-  EXPECT_TRUE(1294502083ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1294502083ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "0";
-  EXPECT_TRUE(1654528736ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1654528736ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "1";
-  EXPECT_TRUE(2432014819ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(2432014819ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "11";
-  EXPECT_TRUE(1610954644ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1610954644ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "111";
-  EXPECT_TRUE(3316119516ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(3316119516ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "2";
-  EXPECT_TRUE(2208655895ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(2208655895ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "3";
-  EXPECT_TRUE(1909385492ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1909385492ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
 
   buffer = "the quick brown fox jumped over the lazy dog";
-  EXPECT_TRUE(3928504206ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(3928504206ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(3928504206ULL ==
@@ -557,7 +539,6 @@ TEST_F(CHashesTest, tst_crc32_simple) {
                                             strlen(buffer.c_str()))));
 
   buffer = "The Quick Brown Fox Jumped Over The Lazy Dog";
-  EXPECT_TRUE(4053635637ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(4053635637ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(4053635637ULL ==
@@ -594,7 +575,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
       "は初来日でいきなり武道館での公演を行うなど、爆発的な人気を誇ったが、英国"
       "ではなかなか人気が出ず、初期は典型的な「ビッグ・イン・ジャパン」状態であ"
       "った。";
-  EXPECT_TRUE(4191893375ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(4191893375ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(4191893375ULL ==
@@ -606,7 +586,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
       "회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | "
       "스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 "
       "전체보기";
-  EXPECT_TRUE(4065546148ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(4065546148ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(4065546148ULL ==
@@ -617,7 +596,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
       "中华网以中国的市场为核心，致力为当地用户提供流动增值服务、网上娱乐及互联"
       "网服务。本公司亦推出网上游戏，及透过其门户网站提供包罗万有的网上产品及服"
       "务。";
-  EXPECT_TRUE(1577296531ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1577296531ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(1577296531ULL ==
@@ -632,7 +610,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
       "ולפגוש אנשים מרתקים מרחבי העולם. לטובת מי שנוסע לממלכה בחודשים הקרובים, "
       "הגרדיאן הבריטי קיבץ את עשרת ה-B&B המומלצים ביותר בלונדון. כל שנותר הוא "
       "לבחור, ולהזמין מראש";
-  EXPECT_TRUE(3810256208ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(3810256208ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(3810256208ULL ==
@@ -643,7 +620,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
       "بان يأسف لمقتل لاجئين سوريين بتركيا المرزوقي يندد بعنف الأمن التونسي "
       "تنديد بقتل الجيش السوري مصورا تلفزيونيا 14 قتيلا وعشرات الجرحى بانفجار "
       "بالصومال";
-  EXPECT_TRUE(2844487215ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(2844487215ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(2844487215ULL ==
@@ -653,7 +629,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
   buffer =
       "Голкипер мадридского «Реала» Икер Касильяс призвал своих партнеров "
       "сосредоточить все мысли на предстоящем дерби с «Атлетико»";
-  EXPECT_TRUE(1905918845ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1905918845ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(1905918845ULL ==
@@ -661,7 +636,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
                                             strlen(buffer.c_str()))));
 
   buffer = "   ";
-  EXPECT_TRUE(1824561399ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1824561399ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(1824561399ULL ==
@@ -671,7 +645,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
   buffer =
       "अ आ इ ई उ ऊ ऋ ॠ ऌ ॡ ए ऐ ओ औ क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ "
       "ब भ म य र ल व श ष स ह";
-  EXPECT_TRUE(3232493769ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(3232493769ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(3232493769ULL ==
@@ -682,7 +655,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
       "tɜt kɐː mɔj ŋɨɜj siŋ za ɗew ɗɨɜk tɨɰ zɔ vɐː ɓiŋ ɗɐŋ vej ɲɜn fɜm vɐː "
       "kɨɜn. mɔj kɔn ŋɨɜj ɗeu ɗɨɜk tɐːw huɜ ɓɐːn cɔ li ci vɐː lɨɜŋ tɜm vɐː kɜn "
       "fɐːj ɗoj sɨ vɜj ɲɐw cɔŋ tiŋ ɓɐŋ hɨw.";
-  EXPECT_TRUE(193365419ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(193365419ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(193365419ULL ==
@@ -690,7 +662,6 @@ TEST_F(CHashesTest, tst_crc32_utf8) {
                                             strlen(buffer.c_str()))));
 
   buffer = "äöüßÄÖÜ€µ";
-  EXPECT_TRUE(1426740181ULL == TRI_Crc32HashString(buffer.c_str()));
   EXPECT_TRUE(1426740181ULL ==
               TRI_Crc32HashPointer(buffer.c_str(), strlen(buffer.c_str())));
   EXPECT_TRUE(1426740181ULL ==

@@ -75,7 +75,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
 
   // add link to collection

@@ -21,12 +21,13 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentFollowerState.h"
-#include "DocumentLeaderState.h"
-#include "DocumentStateMachine.h"
-#include "Logger/LogContextKeys.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
 #include <Futures/Future.h>
+#include <Logger/LogContextKeys.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 

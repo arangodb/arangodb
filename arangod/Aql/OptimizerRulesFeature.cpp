@@ -58,8 +58,9 @@ void OptimizerRulesFeature::collectOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options) {
   options
       ->addOption("--query.optimizer-rules",
-                  "enable or disable specific optimizer rules (use rule name "
-                  "prefixed with '-' for disabling, '+' for enabling)",
+                  "Enable or disable specific optimizer rules by default. "
+                  "Specify the rule name prefixed with `-` for disabling, or "
+                  "`+` for enabling.",
                   new arangodb::options::VectorParameter<
                       arangodb::options::StringParameter>(&_optimizerRules),
                   arangodb::options::makeDefaultFlags(
@@ -312,7 +313,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeFiltersCoveredByTraversal,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // move filters and sort conditions into views
+  // move search and scorers into views
   registerRule(
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
       OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
@@ -482,6 +483,13 @@ void OptimizerRulesFeature::addRules() {
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
+#ifdef USE_ENTERPRISE
+  // apply late materialization for view queries
+  registerRule("handle-offset-info", arangodb::iresearch::handleOffsetInfo,
+               OptimizerRule::hanldeOffsetInfoFunc,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::EnterpriseOnly));
+#endif
 
   // apply late materialization for view queries
   registerRule("late-document-materialization-arangosearch",

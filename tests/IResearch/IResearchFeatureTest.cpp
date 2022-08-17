@@ -1897,7 +1897,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
                         testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(logicalCollection, nullptr);
-  auto logicalView0 = vocbase.createView(viewJson->slice());
+  auto logicalView0 = vocbase.createView(viewJson->slice(), false);
   // logicalView0->guid();
   ASSERT_NE(logicalView0, nullptr);
   bool created = false;
@@ -2006,7 +2006,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
                         testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
-  auto logicalView0 = vocbase.createView(viewJson->slice());
+  auto logicalView0 = vocbase.createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView0);
   bool created;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
@@ -2090,11 +2090,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
     void operator()() {
       ++*count;
 
-      {
-        auto scopedLock = irs::make_lock_guard(*mutex);
-        feature->queue(arangodb::iresearch::ThreadGroup::_1, 10000ms, *this);
-      }
-
+      auto scopedLock = irs::make_lock_guard(*mutex);
+      feature->queue(arangodb::iresearch::ThreadGroup::_1, 10000ms, *this);
       cond->notify_all();
     }
 
@@ -2775,7 +2772,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
                         testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
-  auto logicalView = vocbase.createView(viewJson->slice());
+  auto logicalView = vocbase.createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView);
   auto* view =
       dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -2875,7 +2872,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
                         testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
-  auto logicalView = vocbase.createView(viewJson->slice());
+  auto logicalView = vocbase.createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView);
   auto* view =
       dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -2988,7 +2985,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   auto logicalCollection =
       vocbase->createCollection(VPackParser::fromJson(collectionJson)->slice());
 
-  auto logicalView = vocbase->createView(viewJson->slice());
+  auto logicalView = vocbase->createView(viewJson->slice(), false);
   ASSERT_FALSE(!logicalView);
   auto* view =
       dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
