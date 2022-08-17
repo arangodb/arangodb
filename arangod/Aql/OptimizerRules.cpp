@@ -8618,9 +8618,15 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     if (setter == nullptr || // this can happen for $smartHandOver
         setter->getType() == EN::ENUMERATE_COLLECTION ||
         setter->getType() == EN::INDEX) {
-      // If our input variable is set by a collection/index enumeration, it is guaranteed to be an object
-      // with a _key attribute, so we don't need to do anything.
-      return;
+      // If our input variable is set by a collection/index enumeration, it is
+      // guaranteed to be an object with a _key attribute, so we don't need to
+      // do anything.
+      if (!createKeys || collection->usesDefaultSharding()) {
+        // no need to insert an extra calculation node in this case.
+        return;
+      }
+      // in case we have a collection that is not sharded by _key,
+      // the keys need to be created/validated by the coordinator.
     }
     
     // We insert an additional calculation node to create the input for our distribute node.
