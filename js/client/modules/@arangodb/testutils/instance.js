@@ -514,6 +514,13 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   readAssertLogLines () {
+    if (fs.size(this.logFile) > 500000) {
+      // File bigger 500k? this needs to be a bug in the tests.
+      let err=`ERROR: ${this.logFile} is bigger than 500kB!`;
+      this.assertLines.push(err);
+      print(RED + err + RESET);
+      return;
+    }
     try {
       const buf = fs.readBuffer(this.logFile);
       let lineStart = 0;
@@ -535,8 +542,9 @@ class instance {
         }
       }
     } catch (ex) {
-      print("failed to read " + this.logFile + " -> " + ex);
-      this.assertLines.push("failed to read " + this.logFile + " -> " + ex);
+      let err="failed to read " + this.logFile + " -> " + ex;
+      this.assertLines.push(err);
+      print(RED+err+RESET);
     }
   }
   terminateInstance() {
