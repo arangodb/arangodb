@@ -1,6 +1,10 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* BTS-913: check for proper timezone setup of the system on startup.
+  This will then log errors that else would only occur in AQL-Functions at
+  runtime.
+
 * Fixed BTS-851: "Could not fetch the applier state of: undefined".
 
 * Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
