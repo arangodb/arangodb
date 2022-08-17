@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "VocBase/voc-types.h"
+
 #include <velocypack/Builder.h>
 
 #include <string>
@@ -39,8 +41,12 @@ struct PlanCollection {
 
   static PlanCollection fromCreateAPIBody(arangodb::velocypack::Slice input);
 
+  // Temporary method to handOver information from
+  std::shared_ptr<arangodb::velocypack::Builder> toCollectionsCreate();
+
   std::string name;
   bool waitForSync;
+  std::underlying_type_t<TRI_col_type_e> type;
   bool isSystem;
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
@@ -58,6 +64,12 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("name", planCollection.name),
           f.field("waitForSync", planCollection.waitForSync).fallback(false),
           f.field("isSystem", planCollection.isSystem).fallback(false),
+          f.field("type", planCollection.type)
+              .fallback(TRI_col_type_e::TRI_COL_TYPE_DOCUMENT)
+              .invariant([](auto t) {
+                return t == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT ||
+                       t == TRI_col_type_e::TRI_COL_TYPE_EDGE;
+              }),
           f.field("schema", planCollection.schema)
               .fallback(VPackSlice::emptyObjectSlice()),
           f.field("keyOptions", planCollection.keyOptions)
