@@ -342,7 +342,31 @@ void RestCollectionHandler::handleCommandPost() {
     events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
+  bool waitForSyncReplication = _request->parsedValue(
+      "waitForSyncReplication", cluster.createWaitsForSyncReplication());
 
+  bool enforceReplicationFactor =
+      _request->parsedValue("enforceReplicationFactor", true);
+
+#if true
+  auto planCollection = PlanCollection::fromCreateAPIBody(body);
+  auto parameters = planCollection.toCollectionsCreate();
+  std::shared_ptr<LogicalCollection> coll;
+  OperationOptions options(_context);
+
+  Result res = methods::Collections::create(
+      _vocbase,  // collection vocbase
+      options,
+      planCollection.name,       // colection name
+      planCollection.getType(),  // collection type
+      parameters.slice(),        // collection properties
+      waitForSyncReplication,    // replication wait flag
+      enforceReplicationFactor,  // replication factor flag
+      /*isNewDatabase*/ false,   // here always false
+      coll, planCollection.allowSystem);
+
+#else
   VPackSlice nameSlice;
   if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
       nameSlice.getStringLength() == 0) {
@@ -351,13 +375,6 @@ void RestCollectionHandler::handleCommandPost() {
                              TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return;
   }
-
-  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
-  bool waitForSyncReplication = _request->parsedValue(
-      "waitForSyncReplication", cluster.createWaitsForSyncReplication());
-
-  bool enforceReplicationFactor =
-      _request->parsedValue("enforceReplicationFactor", true);
 
   TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   VPackSlice typeSlice = body.get("type");
@@ -400,7 +417,7 @@ void RestCollectionHandler::handleCommandPost() {
       enforceReplicationFactor,  // replication factor flag
       /*isNewDatabase*/ false,   // here always false
       coll, allowSystem);
-
+#endif
   if (res.ok()) {
     TRI_ASSERT(coll);
     collectionRepresentation(coll->name(),
