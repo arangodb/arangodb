@@ -6,6 +6,18 @@ v3.9.3 (XXXX-XX-XX)
   found" in cases when request forwarding was tried to a coordinator that was
   recently restarted.
 
+* Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
+  to take the user to the collections view).
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
+
+* BTS-913: check for proper timezone setup of the system on startup.
+  This will then log errors that else would only occur in AQL-Functions at
+  runtime.
+
+* Fixed BTS-851: "Could not fetch the applier state of: undefined".
+
 * Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
   same collection. The requirements were:
   - cluster deployment
