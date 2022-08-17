@@ -1,6 +1,9 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
+
 * BTS-913: check for proper timezone setup of the system on startup.
   This will then log errors that else would only occur in AQL-Functions at
   runtime.
