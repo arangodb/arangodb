@@ -86,6 +86,10 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_FALSE(testee.cacheEnabled);
   EXPECT_EQ(testee.type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
 
+  EXPECT_EQ(testee.numberOfShards, 1);
+  EXPECT_EQ(testee.replicationFactor, 1);
+  EXPECT_EQ(testee.writeConcern, 1);
+
   // TODO: this is just rudimentary
   // does not test internals yet
   EXPECT_TRUE(testee.computedValues.slice().isEmptyArray());
@@ -135,6 +139,8 @@ TEST_F(PlanCollectionUserAPITest, test_collection_type) {
       createMinimumBodyWithOneValue("type", VPackSlice::emptyArraySlice()));
 }
 
+// Basic test makros for the parser
+
 // This macro generates a basic bool value test, checking if we get true/false
 // through and other basic types are rejected.
 
@@ -163,6 +169,37 @@ GenerateBoolAttributeTest(doCompact);
 GenerateBoolAttributeTest(isSystem);
 GenerateBoolAttributeTest(isVolatile);
 GenerateBoolAttributeTest(cacheEnabled);
+
+// This macro generates a basic integer value test, checking if we get 2 and 42
+// through and other basic types are rejected.
+// NOTE: we also test 4.5 (double) right now this passes the validator, need to
+// discuss if this is correct
+
+#define GenerateIntegerAttributeTest(attributeName)                           \
+  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                  \
+                                   uint64_t expected) {                       \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
+      EXPECT_EQ(testee.attributeName, expected)                               \
+          << "Parsing error in " << body.toJson();                            \
+    };                                                                        \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2); \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),    \
+                        42);                                                  \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),   \
+                        4);                                                   \
+    assertParsingThrows(                                                      \
+        createMinimumBodyWithOneValue(#attributeName, "test"));               \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, true)); \
+    assertParsingThrows(createMinimumBodyWithOneValue(                        \
+        #attributeName, VPackSlice::emptyObjectSlice()));                     \
+    assertParsingThrows(createMinimumBodyWithOneValue(                        \
+        #attributeName, VPackSlice::emptyArraySlice()));                      \
+  }
+
+GenerateIntegerAttributeTest(numberOfShards);
+GenerateIntegerAttributeTest(replicationFactor);
+GenerateIntegerAttributeTest(writeConcern);
 
 }  // namespace tests
 }  // namespace arangodb

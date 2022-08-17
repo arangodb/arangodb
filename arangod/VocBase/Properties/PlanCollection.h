@@ -54,6 +54,9 @@ struct PlanCollection {
   bool doCompact;
   bool isVolatile;
   bool cacheEnabled;
+  uint64_t numberOfShards;
+  uint64_t replicationFactor;
+  uint64_t writeConcern;
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
@@ -90,6 +93,11 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("doCompact", planCollection.doCompact).fallback(false),
           f.field("cacheEnabled", planCollection.cacheEnabled).fallback(false),
           f.field("isVolatile", planCollection.isVolatile).fallback(false),
+          f.field("numberOfShards", planCollection.numberOfShards)
+              .fallback(1ULL),
+          f.field("replicationFactor", planCollection.replicationFactor)
+              .fallback(1ULL),
+          f.field("writeConcern", planCollection.writeConcern).fallback(1ULL),
           f.field("type", planCollection.type)
               .fallback(TRI_col_type_e::TRI_COL_TYPE_DOCUMENT)
               .invariant([](auto t) -> inspection::Status {
