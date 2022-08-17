@@ -37,13 +37,13 @@ const time = require("internal").time;
 const db = require("internal").db;
 const errors = require("internal").errors;
 
-const {
-  getCtrlCoordinators,
-} = require('@arangodb/test-helper');
-
 const cn = "UnitTestsCollection";
 
 function testSuite() {
+  let getServers = function (role) {
+    return global.instanceInfo.arangods.filter((instance) => instance.role === role);
+  };
+
   let waitForAlive = function (timeout, baseurl, data) {
     let tries = 0, res;
     let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" }); 
@@ -98,22 +98,27 @@ function testSuite() {
       let tc = trx.collection(cn);
       tc.insert({ _key: "test1" });
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 1);
+      
+      let instanceInfo = global.instanceInfo;
 
       for (let i = 0; i < coordinators.length; ++i) {
         let coordinator = coordinators[i];
-        coordinator.shutdownArangod(false);
-        coordinator.waitForInstanceShutdown(30);
-        coordinator.exitStatus = null;
+        let newInstanceInfo = {
+          arangods: [ coordinator ],
+          endpoint: instanceInfo.endpoint,
+        };
+        let options = global.testOptions;
+        let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
         coordinator.pid = null;
-        console.warn("Restarting coordinator...", coordinator.getStructure());
-
-        coordinator.restartOneInstance({
+        console.warn("Restarting coordinator...", coordinator);
+        let extraOptions = {
           "server.authentication": "false"
-        });
-        
-        waitForAlive(30, coordinator.url, {});
+        };
+        pu.reStartInstance(options, instanceInfo, extraOptions);
+        let aliveStatus = waitForAlive(30, coordinator.url, {});
+        assertEqual(200, aliveStatus);
       }
 
       // connection to server was closed, so next request may fail.
