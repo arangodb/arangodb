@@ -294,24 +294,6 @@ set(LIB_ARANGO_UTILS_SOURCES
   ${ENTERPRISE_FILES}
 )
 
-set(LIB_ARANGO_HEALTH_SOURCES
-  StorageEngine/HealthData.cpp
-)
-
-set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
-  StorageEngine/EngineSelectorFeature.cpp
-  StorageEngine/HotBackup.cpp
-  StorageEngine/PhysicalCollection.cpp
-  StorageEngine/TransactionCollection.cpp
-  StorageEngine/TransactionState.cpp
-  StorageEngine/StorageEngine.cpp
-)
-
-set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
-  StorageEngine/ReplicationIterator.cpp
-  StorageEngine/WalAccess.cpp
-)
-
 set(LIB_ARANGO_INDEXES_SOURCES
   GeoIndex/Index.cpp
   GeoIndex/Covering.cpp
@@ -679,10 +661,6 @@ add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
 )
 
-add_library(arango_health STATIC
-  ${LIB_ARANGO_HEALTH_SOURCES}
-)
-
 add_library(arango_vocbase STATIC
   ${LIB_ARANGO_VOCBASE_SOURCES}
 )
@@ -693,16 +671,6 @@ add_library(arango_v8server STATIC
 
 add_library(arango_utils STATIC
   ${LIB_ARANGO_UTILS_SOURCES}
-)
-
-add_library(arango_storage_engine STATIC
-  ${LIB_ARANGO_STORAGE_ENGINE_SOURCES}
-)
-
-# arango_storage_engine uses arango_rocksdb.
-# In turn, arango_storage_engine_common provides something for both.
-add_library(arango_storage_engine_common STATIC
-  ${LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES}
 )
 
 add_library(arango_indexes STATIC
@@ -794,8 +762,6 @@ target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
 target_link_libraries(arango_graph boost_boost)
 
-target_link_libraries(arango_health arango)
-
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
 target_link_libraries(arango_indexes arango::validation)
@@ -842,23 +808,12 @@ target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango::validation)
 target_link_libraries(arango_rocksdb arango_restart_action)
 
-target_link_libraries(arango_storage_engine_common arango::validation)
-target_link_libraries(arango_storage_engine_common arango_replication2)
-target_link_libraries(arango_storage_engine_common immer)
-
 if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
   target_include_directories(arango_rocksdb
     PUBLIC ${IRESEARCH_INCLUDE}
   )
 endif()
-
-target_link_libraries(arango_storage_engine arango_cluster_engine)
-target_link_libraries(arango_storage_engine arango_cluster_methods)
-target_link_libraries(arango_storage_engine arango_rocksdb)
-target_link_libraries(arango_storage_engine arango::validation)
-target_link_libraries(arango_storage_engine arango_replication2)
-target_link_libraries(arango_storage_engine immer)
 
 target_link_libraries(arango_utils boost_boost)
 target_link_libraries(arango_utils arango::validation)
@@ -957,7 +912,6 @@ foreach(TARGET
   arango_cluster_methods
   arango_common_rest_handler
   arango_graph
-  arango_health
   arango_indexes
   arango_iresearch
   arango_metrics
@@ -965,8 +919,6 @@ foreach(TARGET
   arango_replication
   arango_replication2
   arango_rocksdb
-  arango_storage_engine
-  arango_storage_engine_common
   arango_utils
   arango_v8server
   arango_vocbase
@@ -1006,3 +958,4 @@ add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)
 add_subdirectory(Pregel)
+add_subdirectory(StorageEngine)
