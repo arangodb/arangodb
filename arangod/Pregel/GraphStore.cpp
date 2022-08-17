@@ -64,13 +64,14 @@
 #include <memory>
 
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
-  << fmt::format("[job {}"], _executionNumber)
+      << fmt::format("[job {}]", _executionNumber)
 
 auto DocumentId::create(std::string_view documentId) -> ResultT<DocumentId> {
   auto separatorPosition = documentId.find('/');

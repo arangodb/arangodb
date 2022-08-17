@@ -36,6 +36,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/ResultT.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelMetrics.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -57,7 +58,7 @@ class PregelFeature final : public ArangodFeature {
   explicit PregelFeature(Server& server);
   ~PregelFeature();
 
-  std::pair<Result, ExecutionNumber> startExecution(
+  ResultT<ExecutionNumber> startExecution(
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
       std::vector<std::string> const& edgeCollections,

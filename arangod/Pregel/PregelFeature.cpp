@@ -33,6 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -40,6 +41,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "ExecutionNumber.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -48,6 +50,7 @@
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
@@ -100,7 +103,9 @@ network::Headers buildHeaders() {
 
 }  // namespace
 
-std::pair<Result, ExecutionNumber> PregelFeature::startExecution(
+using namespace arangodb;
+
+ResultT<ExecutionNumber> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
     std::vector<std::string> const& vertexCollections,
     std::vector<std::string> const& edgeCollections,
@@ -108,9 +113,8 @@ std::pair<Result, ExecutionNumber> PregelFeature::startExecution(
         edgeCollectionRestrictions,
     VPackSlice const& params) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
-    return std::make_pair(
-        Result{TRI_ERROR_SHUTTING_DOWN, "pregel system not available"},
-        ExecutionNumber());
+    return ResultT<ExecutionNumber>::error(TRI_ERROR_SHUTTING_DOWN,
+                                           "pregel system not available");
   }
 
   ServerState* ss = ServerState::instance();
@@ -125,14 +129,14 @@ std::pair<Result, ExecutionNumber> PregelFeature::startExecution(
       bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
       bool canRead = exec.canUseCollection(vc, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, ExecutionNumber());
+        return ResultT<ExecutionNumber>::error(TRI_ERROR_FORBIDDEN);
       }
     }
     for (std::string const& ec : edgeCollections) {
       bool canWrite = exec.canUseCollection(ec, auth::Level::RW);
       bool canRead = exec.canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, ExecutionNumber());
+        return ResultT<ExecutionNumber>::error(TRI_ERROR_FORBIDDEN);
       }
     }
   }
@@ -144,33 +148,29 @@ std::pair<Result, ExecutionNumber> PregelFeature::startExecution(
         auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
-          return std::make_pair(
-              Result{TRI_ERROR_BAD_PARAMETER,
-                     "Cannot use pregel on system collection"},
-              ExecutionNumber());
+          return ResultT<ExecutionNumber>::error(
+              TRI_ERROR_BAD_PARAMETER,
+              "Cannot use pregel on system collection");
         }
 
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return std::make_pair(
-              Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name},
-              ExecutionNumber());
+          return ResultT<ExecutionNumber>::error(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
         }
       } catch (...) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name},
-            ExecutionNumber());
+        return ResultT<ExecutionNumber>::error(
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
       if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
           coll->deleted()) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name},
-            ExecutionNumber());
+        return ResultT<ExecutionNumber>::error(
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else {
-      return std::make_pair(Result{TRI_ERROR_INTERNAL}, ExecutionNumber());
+      return ResultT<ExecutionNumber>::error(TRI_ERROR_INTERNAL);
     }
   }
 
@@ -184,10 +184,9 @@ std::pair<Result, ExecutionNumber> PregelFeature::startExecution(
         auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
-          return std::make_pair(
-              Result{TRI_ERROR_BAD_PARAMETER,
-                     "Cannot use pregel on system collection"},
-              ExecutionNumber());
+          return ResultT<ExecutionNumber>::error(
+              TRI_ERROR_BAD_PARAMETER,
+              "Cannot use pregel on system collection");
         }
 
         if (!coll->isSmart()) {
@@ -199,23 +198,19 @@ std::pair<Result, ExecutionNumber> PregelFeature::startExecution(
           }
 
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
-            return std::make_pair(
-                Result{TRI_ERROR_BAD_PARAMETER,
-                       "Edge collection needs to be sharded "
-                       "by shardKeyAttribute parameter ('" +
-                           shardKeyAttribute +
-                           "'), or use SmartGraphs. The current shardKey is: " +
-                           (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
-
-                },
-                ExecutionNumber());
+            return ResultT<ExecutionNumber>::error(
+                TRI_ERROR_BAD_PARAMETER,
+                "Edge collection needs to be sharded "
+                "by shardKeyAttribute parameter ('" +
+                    shardKeyAttribute +
+                    "'), or use SmartGraphs. The current shardKey is: " +
+                    (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'"));
           }
         }
 
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return std::make_pair(
-              Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name},
-              ExecutionNumber());
+          return ResultT<ExecutionNumber>::error(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
         }
 
         // smart edge collections contain multiple actual collections
@@ -223,22 +218,20 @@ std::pair<Result, ExecutionNumber> PregelFeature::startExecution(
 
         edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
       } catch (...) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name},
-            ExecutionNumber());
+        return ResultT<ExecutionNumber>::error(
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
       if (coll == nullptr || coll->deleted()) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name},
-            ExecutionNumber());
+        return ResultT<ExecutionNumber>::error(
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
       std::vector<std::string> actual = coll->realNamesForRead();
       edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
     } else {
-      return std::make_pair(Result{TRI_ERROR_INTERNAL}, ExecutionNumber());
+      return ResultT<ExecutionNumber>::error(TRI_ERROR_INTERNAL);
     }
   }
 
@@ -250,7 +243,7 @@ std::pair<Result, ExecutionNumber> PregelFeature::startExecution(
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
 
-  return std::make_pair(Result{}, en);
+  return ResultT<ExecutionNumber>::success(en);
 }
 
 ExecutionNumber PregelFeature::createExecutionNumber() {
@@ -375,15 +368,18 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void PregelFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_tempLocationCustomPath.empty() && _tempLocationType != "custom") {
     LOG_TOPIC("0dd1d", FATAL, Logger::PREGEL)
-        << "invalid settings for Pregel's temporary files: if a custom path is "
+        << "invalid settings for Pregel's temporary files: if a custom path "
+           "is "
            "provided, "
-        << "`--pregel.memory-mapped-files-location-type` must have a value of "
+        << "`--pregel.memory-mapped-files-location-type` must have a value "
+           "of "
            "'custom'";
     FATAL_ERROR_EXIT();
   } else if (_tempLocationCustomPath.empty() && _tempLocationType == "custom") {
     LOG_TOPIC("9b378", FATAL, Logger::PREGEL)
         << "invalid settings for Pregel's temporary files: if "
-           "`--pregel.memory-mapped-files-location-type` is 'custom', a custom "
+           "`--pregel.memory-mapped-files-location-type` is 'custom', a "
+           "custom "
            "directory must be provided via "
            "`--pregel.memory-mapped-files-custom-path`";
     FATAL_ERROR_EXIT();
@@ -423,14 +419,14 @@ void PregelFeature::start() {
     TRI_ASSERT(_tempLocationType == "custom" ||
                _tempLocationType == "database-directory");
 
-    // if the target directory for temporary files does not yet exist, create it
-    // on the fly! in case we want the temporary files to be created underneath
-    // the database's data directory, create the directory once. if a custom
-    // temporary directory was given, we can assume it to be reasonably stable
-    // across restarts, so it is fine to create it. if we want to store
-    // temporary files in the temporary directory, we should not create it upon
-    // startup, simply because the temporary directory can change with every
-    // instance start.
+    // if the target directory for temporary files does not yet exist, create
+    // it on the fly! in case we want the temporary files to be created
+    // underneath the database's data directory, create the directory once. if
+    // a custom temporary directory was given, we can assume it to be
+    // reasonably stable across restarts, so it is fine to create it. if we
+    // want to store temporary files in the temporary directory, we should not
+    // create it upon startup, simply because the temporary directory can
+    // change with every instance start.
     if (!basics::FileUtils::isDirectory(tempDirectory)) {
       std::string systemErrorStr;
       long errorNo;

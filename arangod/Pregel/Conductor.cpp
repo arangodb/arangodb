@@ -28,6 +28,7 @@
 #include <variant>
 
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 
 #include "Basics/voc-errors.h"
 #include "Conductor.h"
@@ -83,7 +84,7 @@ using namespace arangodb::basics;
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << fmt::format("[job {}]", executionNumber)
+      << fmt::format("[job {}]", _executionNumber)
 
 Conductor::Conductor(
     ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,

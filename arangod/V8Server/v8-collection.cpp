@@ -1794,11 +1794,11 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto res = pregel.startExecution(vocbase, algorithm, paramVertices,
                                    paramEdges, paramEdgeCollectionRestrictions,
                                    paramBuilder.slice());
-  if (res.first.fail()) {
-    TRI_V8_THROW_EXCEPTION(res.first);
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION(res.result());
   }
 
-  auto result = TRI_V8UInt64String<uint64_t>(isolate, res.second);
+  auto result = TRI_V8UInt64String<uint64_t>(isolate, res.get().value);
   TRI_V8_RETURN(result);
 
   TRI_V8_TRY_CATCH_END
@@ -1829,7 +1829,8 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
   }
 
-  uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
+  auto executionNum = arangodb::pregel::ExecutionNumber(
+      TRI_ObjectToUInt64(isolate, args[0], true));
   auto c = pregel.conductor(executionNum);
   if (!c) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
@@ -1858,7 +1859,8 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
 
-  uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
+  auto executionNum = arangodb::pregel::ExecutionNumber(
+      TRI_ObjectToUInt64(isolate, args[0], true));
   auto c = pregel.conductor(executionNum);
   if (!c) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
@@ -1893,7 +1895,8 @@ static void JS_PregelAQLResult(
   }
   auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
 
-  uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
+  auto executionNum = arangodb::pregel::ExecutionNumber(
+      TRI_ObjectToUInt64(isolate, args[0], true));
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     auto c = pregel.conductor(executionNum);
     if (!c) {
