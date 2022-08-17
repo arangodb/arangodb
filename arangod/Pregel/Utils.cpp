@@ -87,7 +87,6 @@ std::string const Utils::enterNextGSSKey = "nextGSS";
 std::string const Utils::maxNumIterations = "maxNumIterations";
 std::string const Utils::maxGSS = "maxGSS";
 
-
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";
 std::string const Utils::reportsKey = "reports";
