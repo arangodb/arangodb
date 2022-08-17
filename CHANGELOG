@@ -1,6 +1,8 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-851: "Could not fetch the applier state of: undefined".
+
 * Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
   same collection. The requirements were:
   - cluster deployment
