@@ -99,7 +99,8 @@ class ShortestPathPriorityQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   bool insert(Key const& k, std::unique_ptr<Value>&& v) {
-    auto it = _lookup.emplace(k, static_cast<ssize_t>(_heap.size() + _popped));
+    auto it =
+        _lookup.emplace(k, static_cast<std::ptrdiff_t>(_heap.size() + _popped));
     if (!it.second) {
       // value already exists in the lookup table
       return false;
@@ -207,7 +208,7 @@ class ShortestPathPriorityQueue {
     TRI_ASSERT(it != _lookup.end());
     // move val into history and hand over responsibility
     _history.push_back(std::move(_heap[0]));
-    it->second = -static_cast<ssize_t>(_history.size());
+    it->second = -static_cast<std::ptrdiff_t>(_history.size());
     if (!_isHeap) {
       // remove nullptr from heap
       _heap.pop_front();
@@ -266,13 +267,15 @@ class ShortestPathPriorityQueue {
     auto it = _lookup.find(keyp);
     TRI_ASSERT(it != _lookup.end());
     TRI_ASSERT(it->second - _popped == q);
-    it->second = static_cast<ssize_t>(p) + static_cast<ssize_t>(_popped);
+    it->second =
+        static_cast<std::ptrdiff_t>(p) + static_cast<std::ptrdiff_t>(_popped);
 
     Key const& keyq(_heap[q]->getKey());
     it = _lookup.find(keyq);
     TRI_ASSERT(it != _lookup.end());
     TRI_ASSERT(it->second - _popped == p);
-    it->second = static_cast<ssize_t>(q) + static_cast<ssize_t>(_popped);
+    it->second =
+        static_cast<std::ptrdiff_t>(q) + static_cast<std::ptrdiff_t>(_popped);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -368,7 +371,7 @@ class ShortestPathPriorityQueue {
     // Find the lokkup of new value
     auto it = _lookup.find(_heap[0]->getKey());
     TRI_ASSERT(it != _lookup.end());
-    it->second = static_cast<ssize_t>(_popped);
+    it->second = static_cast<std::ptrdiff_t>(_popped);
     repairDown();
   }
 
@@ -386,7 +389,7 @@ class ShortestPathPriorityQueue {
   /// @brief _lookup, this provides O(1) lookup by Key
   //////////////////////////////////////////////////////////////////////////////
 
-  containers::FlatHashMap<Key, ssize_t> _lookup;
+  containers::FlatHashMap<Key, std::ptrdiff_t> _lookup;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _isHeap, starts as false, in which case we only use a deque,

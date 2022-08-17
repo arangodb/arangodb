@@ -373,7 +373,7 @@ std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError,
   while (IsSymbolicLink(path.data(), &sb)) {
     // if file is a symlink this contains the targets file name length
     // instead of the file size
-    ssize_t buffsize = sb.st_size + 1;
+    auto buffsize = sb.st_size + 1;
 
     // resolve symlinks
     std::vector<char> buff;
@@ -966,7 +966,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length) {
   char const* ptr = static_cast<char const*>(buffer);
 
   while (0 < length) {
-    ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(length));
+    auto n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(length));
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1848,8 +1848,8 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
           break;
         }
       }
-      ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
-                            SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+      auto sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
+                         SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
       if (sent == -1) {
         error = std::string("splice read failed: ") + strerror(errno);
         rc = false;
@@ -1897,8 +1897,8 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
       while (writeRemaining > 0) {
         // write can write less data than requested. so we must go on writing
         // until we have written out all data
-        ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
-                                     static_cast<TRI_write_t>(writeRemaining));
+        auto nWritten = TRI_WRITE(dstFD, buf + writeOffset,
+                                  static_cast<TRI_write_t>(writeRemaining));
 
         if (nWritten < 0) {
           // error during write
@@ -2053,7 +2053,7 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
                      std::string& error) {
 #ifndef _WIN32
   char buffer[PATH_MAX];
-  ssize_t rc = readlink(srcItem.c_str(), buffer, sizeof(buffer) - 1);
+  auto rc = readlink(srcItem.c_str(), buffer, sizeof(buffer) - 1);
   if (rc == -1) {
     error = std::string("failed to read symlink ") + srcItem + ": " +
             strerror(errno);

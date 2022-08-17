@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _MSC_VER
-#define FST_NO_DEFINE_SSIZE_T
 #pragma warning(push)
 #pragma warning(disable : 4291)
 #pragma warning(disable : 4244)
@@ -656,9 +655,4 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
 
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
-#endif
-
-#ifdef _MSC_VER
-#undef FST_NO_DEFINE_SSIZE_T
-#pragma warning(pop)
 #endif

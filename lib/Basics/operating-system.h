@@ -579,7 +579,7 @@
 // secure functions.  For example, strcpy is automatically converted
 // to strcpy_s. This is enabled by default. We have disabled it here.
 
-//#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
+// #define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
 #include <WinSock2.h>  // must be before windows.h
 #include <io.h>
@@ -645,8 +645,6 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 #define ARANGODB_MISSING_MEMRCHR 1
-
-typedef int ssize_t;
 
 #ifndef va_copy
 #define va_copy(d, s) ((d) = (s))
@@ -715,7 +713,7 @@ typedef unsigned char bool;
 #define TRI_LSEEK ::_lseeki64
 #define TRI_MKDIR(a, b) TRI_MKDIR_WIN32(a)
 #define TRI_OPEN(a, b) TRI_OPEN_WIN32((a), (b))
-#define TRI_READ(a, b, c) static_cast<ssize_t>(::_read(a, b, c))
+#define TRI_READ(a, b, c) static_cast<int>(::_read(a, b, c))
 #define TRI_DUP ::_dup
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
