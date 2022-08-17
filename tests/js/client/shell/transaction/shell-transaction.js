@@ -4878,7 +4878,7 @@ function makeTestSuites(testSuite) {
   suiteV2.tearDown = function() {
     internal.sleep(1);
     tearDown();
-  }
+  };
 
   return [suiteV1, suiteV2];
 }
