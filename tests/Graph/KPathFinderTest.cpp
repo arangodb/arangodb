@@ -165,6 +165,7 @@ class KPathFinderTest
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
+    options.setStopAtFirstDepth(false);
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return KPathFinder{
         MockGraphProvider(

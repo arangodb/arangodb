@@ -28,7 +28,7 @@ const StyledButton = styled.button`
   color: white !important;
 `;
 
-export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onRequestClose, edge, edgeCollections, edgeData, editorContent, children, edgeKey, edgeCollection, onEdgeCreation, graphName, graphData, nodeFrom, nodeTo }) => {
+export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onRequestClose, edge, edgeCollections, edgeData, editorContent, children, edgeKey, edgeCollection, onEdgeCreation, graphName, graphData, nodeFrom, nodeTo, onEdgeCreationCancellation }) => {
 
   const { Option } = Select;
   const keyInputRef = useRef();
@@ -63,7 +63,7 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
         };
         openNotificationWithIcon(response.edge._id);
         onEdgeCreation(edgeModel);
-        onRequestClose();
+        onRequestClose(true);
       },
       error: function (response) {
         console.log("Error: Could not create edge: ", response);
@@ -72,12 +72,17 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
     });
   }
 
+  const cancelEdge = () => {
+    onEdgeCreationCancellation();
+    onRequestClose(false);
+  }
+
   const handleChange = (value) => {
     setCollection(value);
   }
 
   return shouldShow ? (
-    <ModalBackground onClick={onRequestClose}>
+    <ModalBackground onClick={() => onRequestClose(false)}>
       <ModalBody onClick={(e) => e.stopPropagation()}>
         <div>
           {children}<br />
@@ -126,7 +131,7 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
           }
         </div>
         <div style={{ 'marginTop': '38px', 'textAlign': 'right' }}>
-          <StyledButton className="button-close" onClick={onRequestClose}>Cancel</StyledButton>
+          <StyledButton className="button-close" onClick={() => cancelEdge()}>Cancel</StyledButton>
           <StyledButton className="button-success" onClick={() => { addEdge(edge) }}>Create</StyledButton>
         </div>
       </ModalBody>

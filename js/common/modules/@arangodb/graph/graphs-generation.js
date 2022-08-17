@@ -217,7 +217,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return {vertices, edges};
     };
 
-    // Creates a with numberLeaves many rays.
+    // Creates a with numberLeaves many rays. The center has index 0.
     // The parameter kind has the following meaning:
     //  - "fromCenter":  the edges point from the center to the leaves
     //  - "toCenter":  the edges point from the leaves to the center
@@ -279,6 +279,25 @@ const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
     };
 };
 
+/**
+ * Make the graph that is the disjoint union of given subgraphs. it is assumed that the
+ * subgraphs are disjoint.
+ * @param subgraphs a document containing "vertices" and "edges"
+ * @returns {{vertices: *[], edges: *[]}}
+ */
+const unionGraph = function(subgraphs) {
+    let vertices = [];
+    for (const subgraph of subgraphs) {
+        vertices = vertices.concat(subgraph.vertices);
+    }
+    let edges = [];
+    for (const subgraph of subgraphs) {
+        edges = edges.concat(subgraph.edges);
+    }
+    return {vertices, edges};
+};
+
 exports.communityGenerator = communityGenerator;
 exports.graphGenerator = graphGenerator;
 exports.makeEdgeBetweenVertices = makeEdgeBetweenVertices;
+exports.unionGraph = unionGraph;

@@ -48,6 +48,7 @@ struct AddParticipantAction {
         [&](auto& plan, auto& logTarget) {
           logTarget.participants[participant] = ParticipantFlags{
               .allowedInQuorum = false, .allowedAsLeader = false};
+          logTarget.version = logTarget.version.value_or(0) + 1;
 
           plan.participants[participant].generation = plan.generation;
           plan.generation.value += 1;
@@ -62,6 +63,7 @@ struct RemoveParticipantFromLogTargetAction {
     ctx.modify<agency::Plan, replication2::agency::LogTarget>(
         [&](auto& plan, auto& logTarget) {
           logTarget.participants.erase(participant);
+          logTarget.version = logTarget.version.value_or(0) + 1;
         });
   }
 };
@@ -73,6 +75,7 @@ struct RemoveParticipantFromStatePlanAction {
     ctx.modify<agency::Plan, replication2::agency::LogTarget>(
         [&](auto& plan, auto& logTarget) {
           plan.participants.erase(participant);
+          logTarget.version = logTarget.version.value_or(0) + 1;
         });
   }
 };
@@ -92,8 +95,10 @@ struct UpdateParticipantFlagsAction {
   ParticipantFlags flags;
 
   void execute(ActionContext& ctx) {
-    ctx.modify<replication2::agency::LogTarget>(
-        [&](auto& target) { target.participants.at(participant) = flags; });
+    ctx.modify<replication2::agency::LogTarget>([&](auto& target) {
+      target.participants.at(participant) = flags;
+      target.version = target.version.value_or(0) + 1;
+    });
   }
 };
 
@@ -110,8 +115,10 @@ struct SetLeaderAction {
   std::optional<ParticipantId> leader;
 
   void execute(ActionContext& ctx) {
-    ctx.modify<replication2::agency::LogTarget>(
-        [&](auto& target) { target.leader = leader; });
+    ctx.modify<replication2::agency::LogTarget>([&](auto& target) {
+      target.leader = leader;
+      target.version = target.version.value_or(0) + 1;
+    });
   }
 };
 
@@ -119,8 +126,10 @@ struct SetLogConfigAction {
   replication2::agency::LogTargetConfig config;
 
   void execute(ActionContext& ctx) {
-    ctx.modify<replication2::agency::LogTarget>(
-        [&](auto& target) { target.config = config; });
+    ctx.modify<replication2::agency::LogTarget>([&](auto& target) {
+      target.config = config;
+      target.version = target.version.value_or(0) + 1;
+    });
   }
 };
 

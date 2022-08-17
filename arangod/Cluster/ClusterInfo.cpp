@@ -55,6 +55,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -522,7 +523,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 
 auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
-    ClusterCollectionCreationInfo const& info)
+    ClusterCollectionCreationInfo const& info, std::string const& databaseName)
     -> replication2::replicated_state::agency::Target {
   using namespace replication2::replicated_state;
 
@@ -531,7 +532,8 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters = document::DocumentCoreParameters{info.collectionID};
+  auto parameters =
+      document::DocumentCoreParameters{info.collectionID, databaseName};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
@@ -1159,11 +1161,16 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  // Ensure views are being created BEFORE collections to allow
-  // links find them
+  // Since we have few types of view requiring initialization we perform
+  // dedicated loop to ensure database involved are properly cleared
+  for (auto const& database : changeSet.dbs) {
+    // TODO Why database name can be emtpy
+    if (!database.first.empty()) {
+      _newPlannedViews.erase(database.first);
+    }
+  }
   // Immediate children of "Views" are database names, then ids
   // of views, then one JSON object with the description:
-
   // "Plan":{"Views": {
   //  "_system": {
   //    "654321": {
@@ -1175,100 +1182,110 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   //  }}
-
-  // Now the same for views: // TODO change
-  for (auto const& database : changeSet.dbs) {
-    if (database.first.empty()) {  // Rest of plan
-      continue;
-    }
-    auto const& databaseName = database.first;
-    _newPlannedViews.erase(databaseName);  // clear views for this database
-    std::initializer_list<std::string_view> const viewsPath{
-        AgencyCommHelper::path(), "Plan", "Views", databaseName};
-    auto viewsSlice = database.second->slice()[0];
-    if (!viewsSlice.hasKey(viewsPath)) {
-      continue;
-    }
-    viewsSlice = viewsSlice.get(viewsPath);
-
-    auto* vocbase = databaseFeature.lookupDatabase(databaseName);
-
-    if (!vocbase) {
-      // No database with this name found.
-      // We have an invalid state here.
-      LOG_TOPIC("f105f", WARN, Logger::AGENCY)
-          << "No database '" << databaseName << "' found,"
-          << " corresponding view will be ignored for now and the "
-          << "invalid information will be repaired. VelocyPack: "
-          << viewsSlice.toJson();
-      // cannot find vocbase for defined views (allow empty views for missing
-      // vocbase)
-      planValid &= !viewsSlice.length();
-      continue;
-    }
-
-    for (auto const& viewPairSlice :
-         velocypack::ObjectIterator(viewsSlice, true)) {
-      auto const& viewSlice = viewPairSlice.value;
-
-      if (!viewSlice.isObject()) {
-        LOG_TOPIC("2487b", INFO, Logger::AGENCY)
-            << "View entry is not a valid json object."
-            << " The view will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << viewSlice.toJson();
+  auto ensureViews = [&](std::string_view type) {
+    for (auto const& database : changeSet.dbs) {
+      // TODO Why database name can be emtpy
+      if (database.first.empty()) {  // Rest of plan
+        continue;
+      }
+      auto const& databaseName = database.first;
+      std::initializer_list<std::string_view> const viewsPath{
+          AgencyCommHelper::path(), "Plan", "Views", databaseName};
+      auto viewsSlice = database.second->slice()[0];
+      viewsSlice = viewsSlice.get(viewsPath);
+      if (viewsSlice.isNone()) {
         continue;
       }
 
-      auto const viewId = viewPairSlice.key.copyString();
+      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
-      try {
-        LogicalView::ptr view;
-        auto res =
-            LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
+      if (!vocbase) {
+        // No database with this name found.
+        // We have an invalid state here.
+        LOG_TOPIC("f105f", WARN, Logger::AGENCY)
+            << "No database '" << databaseName << "' found,"
+            << " corresponding view will be ignored for now and the "
+            << "invalid information will be repaired. VelocyPack: "
+            << viewsSlice.toJson();
+        // cannot find vocbase for defined views (allow empty views for missing
+        // vocbase)
+        planValid &= !viewsSlice.length();
+        continue;
+      }
 
-        if (!res.ok() || !view) {
-          LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
-              << "Failed to create view '" << viewId
-              << "'. The view will be ignored for now and the invalid "
+      for (auto const& viewPairSlice :
+           velocypack::ObjectIterator(viewsSlice, true)) {
+        auto const& viewSlice = viewPairSlice.value;
+
+        if (!viewSlice.isObject()) {
+          LOG_TOPIC("2487b", INFO, Logger::AGENCY)
+              << "View entry is not a valid json object."
+              << " The view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: "
               << viewSlice.toJson();
-          planValid = false;  // view creation failure
           continue;
         }
+        auto const typeSlice = viewSlice.get(StaticStrings::DataSourceType);
+        if (!typeSlice.isString() || typeSlice.stringView() != type) {
+          continue;
+        }
+        auto const viewId = viewPairSlice.key.copyString();
 
-        auto& views = _newPlannedViews[databaseName];
+        try {
+          LogicalView::ptr view;
+          auto res = LogicalView::instantiate(view, *vocbase,
+                                              viewPairSlice.value, false);
 
-        // register with guid/id/name
-        views.reserve(views.size() + 3);
-        views[viewId] = view;
-        views[view->name()] = view;
-        views[view->guid()] = view;
+          if (!res.ok() || !view) {
+            LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
+                << "Failed to create view '" << viewId
+                << "'. The view will be ignored for now and the invalid "
+                << "information will be repaired. VelocyPack: "
+                << viewSlice.toJson();
+            planValid = false;  // view creation failure
+            continue;
+          }
 
-      } catch (std::exception const& ex) {
-        // The Plan contains invalid view information.
-        // This should not happen in healthy situations.
-        // If it happens in unhealthy situations the
-        // cluster should not fail.
-        LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
-            << "Failed to load information for view '" << viewId
-            << "': " << ex.what() << ". invalid information in Plan. The "
-            << "view will be ignored for now and the invalid "
-            << "information will be repaired. VelocyPack: "
-            << viewSlice.toJson();
-      } catch (...) {
-        // The Plan contains invalid view information.
-        // This should not happen in healthy situations.
-        // If it happens in unhealthy situations the
-        // cluster should not fail.
-        LOG_TOPIC("660bf", ERR, Logger::AGENCY)
-            << "Failed to load information for view '" << viewId
-            << ". invalid information in Plan. The view will "
-            << "be ignored for now and the invalid information will "
-            << "be repaired. VelocyPack: " << viewSlice.toJson();
+          auto& views = _newPlannedViews[databaseName];
+
+          // register with guid/id/name
+          // TODO Maybe assert view.id == view.planId == viewId?
+          // In that case we can use map<uint64_t, ...> for mapping id -> view
+          // and map<string_view, ...> for name/guid -> view
+          views.reserve(views.size() + 3);
+          views[viewId] = view;
+          views[view->name()] = view;
+          views[view->guid()] = view;
+        } catch (std::exception const& ex) {
+          // The Plan contains invalid view information.
+          // This should not happen in healthy situations.
+          // If it happens in unhealthy situations the
+          // cluster should not fail.
+          LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
+              << "Failed to load information for view '" << viewId
+              << "': " << ex.what() << ". invalid information in Plan. The "
+              << "view will be ignored for now and the invalid "
+              << "information will be repaired. VelocyPack: "
+              << viewSlice.toJson();
+        } catch (...) {
+          // The Plan contains invalid view information.
+          // This should not happen in healthy situations.
+          // If it happens in unhealthy situations the
+          // cluster should not fail.
+          LOG_TOPIC("660bf", ERR, Logger::AGENCY)
+              << "Failed to load information for view '" << viewId
+              << ". invalid information in Plan. The view will "
+              << "be ignored for now and the invalid information will "
+              << "be repaired. VelocyPack: " << viewSlice.toJson();
+        }
       }
     }
-  }
+  };
+
+  // Ensure "arangosearch" views are being created BEFORE collections
+  // to allow collection's links find them
+  ensureViews(iresearch::StaticStrings::ViewType);
+
   // "Plan":{"Analyzers": {
   //  "_system": {
   //    "Revision": 0,
@@ -1329,7 +1346,6 @@ void ClusterInfo::loadPlan() {
 
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
-
   // "Plan":{"Collections": {
   //  "_system": {
   //    "3010001": {
@@ -1618,6 +1634,12 @@ void ClusterInfo::loadPlan() {
     }
     newCollections.insert_or_assign(databaseName,
                                     std::move(databaseCollections));
+  }
+
+  // Ensure "search" views are being created AFTER collections
+  // to allow views find collection's inverted indexes
+  if (ServerState::instance()->isCoordinator()) {
+    ensureViews(iresearch::StaticStrings::SearchType);
   }
 
   // And now for replicated logs
@@ -1972,7 +1994,7 @@ void ClusterInfo::loadCurrent() {
   _current.swap(newCurrent);
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
-  LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
       << "Updating current in ClusterInfo: version=" << changeSet.version
       << " index=" << _currentIndex;
 
@@ -3278,7 +3300,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        auto spec = createDocumentStateSpec(shardId, serverIds, info);
+        auto spec =
+            createDocumentStateSpec(shardId, serverIds, info, databaseName);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
@@ -6136,21 +6159,31 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
-  ServerID result;
-
+  int tries = 0;
   if (!_mappingsProt.isValid) {
+    loadCurrentMappings();
+    tries++;
+  }
+
+  while (true) {
+    {
+      // return a consistent state of servers
+      READ_LOCKER(readLocker, _mappingsProt.lock);
+
+      auto it = _coordinatorIdMap.find(shortId);
+      if (it != _coordinatorIdMap.end()) {
+        return it->second;
+      }
+    }
+
+    if (++tries >= 2) {
+      break;
+    }
+
     loadCurrentMappings();
   }
 
-  // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
-
-  auto it = _coordinatorIdMap.find(shortId);
-  if (it != _coordinatorIdMap.end()) {
-    result = it->second;
-  }
-
-  return result;
+  return ServerID{};
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -6933,8 +6966,6 @@ bool ClusterInfo::SyncerThread::start() {
 }
 
 void ClusterInfo::SyncerThread::run() {
-  using namespace std::chrono_literals;
-
   std::function<bool(VPackSlice result)> update =  // for format
       [=, this](VPackSlice result) {
         if (!result.isNumber()) {
@@ -6949,70 +6980,62 @@ void ClusterInfo::SyncerThread::run() {
                                               update, true, false);
   Result res = _cr->registerCallback(std::move(acb));
   if (res.fail()) {
-    LOG_TOPIC("70e05", FATAL, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("70e05", FATAL, Logger::CLUSTER)
         << "Failed to register callback with local registry: "
         << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
+  auto call = [&]() noexcept {
+    try {
+      _f();
+    } catch (basics::Exception const& ex) {
+      if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+        LOG_TOPIC("9d1f5", WARN, Logger::CLUSTER)
+            << "caught an error while loading " << _section << ": "
+            << ex.what();
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("752c4", WARN, Logger::CLUSTER)
+          << "caught an error while loading " << _section << ": " << ex.what();
+    } catch (...) {
+      LOG_TOPIC("30968", WARN, Logger::CLUSTER)
+          << "caught an error while loading " << _section;
+    }
+  };
   // This first call needs to be done or else we might miss all potential until
   // such time, that we are ready to receive. Under no circumstances can we
   // assume that this first call can be neglected.
-  _f();
-
-  while (!isStopping()) {
-    bool news = false;
-    {
-      std::unique_lock<std::mutex> lk(_m);
-      if (!_news) {
-        // The timeout is strictly speaking not needed. However, we really do
-        // not want to be caught in here in production.
+  call();
+  for (std::unique_lock lk{_m}; !isStopping();) {
+    if (!_news) {
+      // The timeout is strictly speaking not needed.
+      // However, we really do not want to be caught in here in production.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        _cv.wait(lk);
+      _cv.wait(lk);
 #else
-        _cv.wait_for(lk, 100ms);
+      _cv.wait_for(lk, std::chrono::milliseconds{100});
 #endif
-      }
-      news = _news;
     }
-
-    if (news) {
-      {
-        std::unique_lock<std::mutex> lk(_m);
-        _news = false;
-      }
-      try {
-        _f();
-      } catch (basics::Exception const& ex) {
-        if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
-          LOG_TOPIC("9d1f5", WARN, arangodb::Logger::CLUSTER)
-              << "caught an error while loading " << _section << ": "
-              << ex.what();
-        }
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("752c4", WARN, arangodb::Logger::CLUSTER)
-            << "caught an error while loading " << _section << ": "
-            << ex.what();
-      } catch (...) {
-        LOG_TOPIC("30968", WARN, arangodb::Logger::CLUSTER)
-            << "caught an error while loading " << _section;
-      }
+    if (std::exchange(_news, false)) {
+      lk.unlock();
+      call();
+      lk.lock();
     }
-    // next round...
   }
 
   try {
     _cr->unregisterCallback(acb);
   } catch (basics::Exception const& ex) {
     if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
-      LOG_TOPIC("39336", WARN, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("39336", WARN, Logger::CLUSTER)
           << "caught exception while unregistering callback: " << ex.what();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("66f2f", WARN, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("66f2f", WARN, Logger::CLUSTER)
         << "caught exception while unregistering callback: " << ex.what();
   } catch (...) {
-    LOG_TOPIC("995cd", WARN, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("995cd", WARN, Logger::CLUSTER)
         << "caught unknown exception while unregistering callback";
   }
 }
@@ -7220,13 +7243,12 @@ void ClusterInfo::triggerWaiting(
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp =
-        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !_server.isStopping()) {
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp] { pp->setValue(Result()); });
+      scheduler->queue(
+          RequestLane::CLUSTER_INTERNAL,
+          [pp = std::move(pit->second)]() mutable { pp.setValue(Result()); });
     } else {
-      pp->setValue(Result(_syncerShutdownCode));
+      pit->second.setValue(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }

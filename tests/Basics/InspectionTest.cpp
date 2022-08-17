@@ -363,7 +363,6 @@ struct Access<Specialization> : AccessBase<Specialization> {
 template<>
 struct Access<AnEnumClass>
     : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
-
 }  // namespace arangodb::inspection
 
 namespace {
@@ -2049,6 +2048,48 @@ TEST_F(VPackInspectionTest, GenericEnumClass) {
     auto d = arangodb::velocypack::deserialize<AnEnumClass>(builder.slice());
 
     EXPECT_EQ(d, expected);
+  }
+}
+
+struct IncludesVPackBuilder {
+  VPackBuilder builder;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, IncludesVPackBuilder& x) {
+  return f.object(x).fields(f.field("builder", x.builder));
+}
+
+TEST_F(VPackInspectionTest, StructIncludingVPackBuilder) {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("key", "value");
+  builder.close();
+  auto const myStruct = IncludesVPackBuilder{.builder = builder};
+
+  {
+    VPackBuilder serializedMyStruct;
+    serialize(serializedMyStruct, myStruct);
+
+    auto slice = serializedMyStruct.slice();
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ("value", slice["builder"]["key"].copyString());
+  }
+
+  {
+    VPackBuilder serializedMyStruct;
+    serializedMyStruct.openObject();
+    serializedMyStruct.add(VPackValue("builder"));
+    serializedMyStruct.openObject();
+    serializedMyStruct.add("key", "value");
+    serializedMyStruct.close();
+    serializedMyStruct.close();
+
+    auto deserializedMyStruct =
+        deserialize<IncludesVPackBuilder>(serializedMyStruct.slice());
+
+    ASSERT_TRUE(deserializedMyStruct.builder.slice().binaryEquals(
+        myStruct.builder.slice()));
   }
 }
 

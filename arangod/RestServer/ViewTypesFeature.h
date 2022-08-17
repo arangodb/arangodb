@@ -42,7 +42,8 @@ struct ViewFactory {
 
   // LogicalView factory for internal instantiation only
   virtual Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                             velocypack::Slice definition) const = 0;
+                             velocypack::Slice definition,
+                             bool isUserRequest) const = 0;
 };
 
 class ViewTypesFeature final : public ArangodFeature {

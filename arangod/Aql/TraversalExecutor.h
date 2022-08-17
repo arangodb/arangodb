@@ -25,6 +25,7 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/Ast.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
@@ -128,8 +129,6 @@ class TraversalExecutorInfos {
 
   RegisterId getInputRegister() const;
 
-  Ast* getAst() const;
-
   auto parseTraversalEnumeratorSingleServer(
       traverser::TraverserOptions::Order order,
       traverser::TraverserOptions::UniquenessLevel uniqueVertices,
@@ -156,6 +155,7 @@ class TraversalExecutorInfos {
   traverser::TraverserOptions::UniquenessLevel getUniqueEdges() const;
   traverser::TraverserOptions::Order getOrder() const;
   transaction::Methods* getTrx();
+  arangodb::aql::QueryContext& getQuery();
   arangodb::aql::QueryWarnings& getWarnings();
 
  private:
@@ -173,8 +173,6 @@ class TraversalExecutorInfos {
       _registerMapping;
   std::string _fixedSource;
   RegisterId _inputRegister;
-
-  Ast* _ast;
   traverser::TraverserOptions::UniquenessLevel _uniqueVertices;
   traverser::TraverserOptions::UniquenessLevel _uniqueEdges;
   traverser::TraverserOptions::Order _order;
@@ -200,8 +198,8 @@ class TraversalExecutor {
   using Stats = TraversalStats;
 
   TraversalExecutor() = delete;
-  TraversalExecutor(TraversalExecutor&&) = default;
-  TraversalExecutor(TraversalExecutor const&) = default;
+  TraversalExecutor(TraversalExecutor&&) = delete;
+  TraversalExecutor(TraversalExecutor const&) = delete;
   TraversalExecutor(Fetcher& fetcher, Infos&);
   ~TraversalExecutor();
 
@@ -223,6 +221,10 @@ class TraversalExecutor {
 
  private:
   Infos& _infos;
+
+  // an AST owned by the TraversalExecutor, used to store data of index
+  // expressions
+  Ast _ast;
   InputAqlItemRow _inputRow;
 
   /// @brief the refactored finder variant.
