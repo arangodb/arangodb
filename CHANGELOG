@@ -5,6 +5,18 @@ v3.9.3 (XXXX-XX-XX)
   all levels, not just level0. Previously it only looked at level0, which is not
   enough if there aren't any other levels in the column family.
 
+* Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
+  to take the user to the collections view).
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
+
+* BTS-913: check for proper timezone setup of the system on startup.
+  This will then log errors that else would only occur in AQL-Functions at
+  runtime.
+
+* Fixed BTS-851: "Could not fetch the applier state of: undefined".
+
 * Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
   same collection. The requirements were:
   - cluster deployment
