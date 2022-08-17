@@ -141,46 +141,46 @@ function testSuite() {
       // make db servers unavailable
       suspend(dbServers);
       
-      require("internal").sleep(10);
-
-      // wake them up again
-      resume(dbServers);
-
       // restart coordinator
-      let instanceInfo = global.instanceInfo;
+      try {
+        let instanceInfo = global.instanceInfo;
 
-      let newInstanceInfo = {
-        arangods: [ coordinator ],
-        endpoint: instanceInfo.endpoint,
-      };
-    
-      let options = global.testOptions;
-      // shut down and restart coordinator.
-      // on this coordinator, the self-heal cannot run successfully because
-      // the DB servers are down
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
-      coordinator.pid = null;
-      assertTrue(shutdownStatus);
+        let newInstanceInfo = {
+          arangods: [ coordinator ],
+          endpoint: instanceInfo.endpoint,
+        };
 
-      let extraOptions = {
-        "foxx.force-update-on-startup": "false",
-        "foxx.queues": "false",
-        "server.jwt-secret": jwtSecret
-      };
-      pu.reStartInstance(options, instanceInfo, extraOptions);
-        
-      waitForAlive(30, coordinator.url, {});
+        let options = global.testOptions;
+        // shut down and restart coordinator.
+        // on this coordinator, the self-heal cannot run successfully because
+        // the DB servers are down
+        let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+        coordinator.pid = null;
+        assertTrue(shutdownStatus);
 
-      // try to request Foxx app. the app must be inaccessible, because self-heal
-      // hasn't run yet
-      let res = request({ method: "get", timeout: 3, url: coordinator.url + `/${mount}/echo` }); 
-      assertEqual(503, res.status);
+        let extraOptions = {
+          "foxx.force-update-on-startup": "false",
+          "foxx.queues": "false",
+          "server.jwt-secret": jwtSecret
+        };
+        pu.reStartInstance(options, instanceInfo, extraOptions);
+          
+        waitForAlive(30, coordinator.url, {});
+ 
+        // try to request Foxx app. the app must be inaccessible, because self-heal
+        // hasn't run yet
+        let res = request({ method: "get", timeout: 3, url: coordinator.url + `/${mount}/echo` }); 
+        assertEqual(503, res.status);
+
+      } finally {
+        resume(dbServers);
+      }
       
       // make sure self heal has run, otherwise we may not be able to access the app
       arango.reconnect(originalEndpoint, "_system", originalUser, "");
-      res = request({ method: "post", timeout: 3, url: coordinator.url + `/_admin/execute`, body: "require('@arangodb/foxx/manager').healAll(); return 1" });
-      assertEqual("1", res.body);
-       
+      let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
+      assertEqual("1", res);
+        
       res = request({ method: "get", timeout: 3, url: coordinator.url + `/${mount}/echo` }); 
       assertEqual(200, res.status);
     },
@@ -220,8 +220,8 @@ function testSuite() {
       
       // make sure self heal has run 
       arango.reconnect(originalEndpoint, "_system", originalUser, "");
-      let res = request({ method: "post", timeout: 3, url: coordinator.url + `/_admin/execute`, body: "require('@arangodb/foxx/manager').healAll(); return 1" });
-      assertEqual("1", res.body);
+      let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
+      assertEqual("1", res);
 
       // try to request Foxx app. the app must be accessible now, because we ran self-heal
       // just now
