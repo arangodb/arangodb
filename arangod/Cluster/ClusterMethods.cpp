@@ -2855,7 +2855,8 @@ ClusterMethods::persistCollectionsInAgency(
     for (auto& col : collections) {
       // TODO CLEANUP LATER LOG_DEVEL_IF(col->name() ==
       // "UnitTestDumpEnterpriseVerticesSingleServer") << "PersistInAgency"; We
-      // can only serve on Database at a time with this call.// We have the vocbase context around this calls anyways, so this is safe.
+      // can only serve on Database at a time with this call.// We have the
+      // vocbase context around this calls anyways, so this is safe.
       TRI_ASSERT(col->vocbase().name() == dbName);
       std::string distributeShardsLike = col->distributeShardsLike();
       std::vector<std::string> avoid = col->avoidServers();
