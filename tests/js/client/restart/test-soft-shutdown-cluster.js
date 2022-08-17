@@ -106,7 +106,7 @@ function testSuite() {
   return {
     setUp : function() {
       db._drop(cn);
-      let collection = db._create(cn, {numberOfShards:2, replicationFactor:1});
+      let collection = db._create(cn, {numberOfShards:2, replicationFactor:2});
       for (let i = 0; i < 10; ++i) {
         collection.insert({Hallo:i});
       }
@@ -120,8 +120,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-
-      arango.reconnect(coordinator.url.replace(/^http:\/\//, "tcp://").replace(/^https:\/\//, "ssl://"), "_system", arango.connectedUser(), "");  
 
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
@@ -140,8 +138,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      
-      arango.reconnect(coordinator.url.replace(/^http:\/\//, "tcp://").replace(/^https:\/\//, "ssl://"), "_system", arango.connectedUser(), "");  
 
       // Create an AQL cursor:
       let data = {
@@ -188,8 +184,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      
-      arango.reconnect(coordinator.url.replace(/^http:\/\//, "tcp://").replace(/^https:\/\//, "ssl://"), "_system", arango.connectedUser(), "");  
 
       // Create an AQL cursor:
       let data = {
@@ -239,8 +233,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      
-      arango.reconnect(coordinator.url.replace(/^http:\/\//, "tcp://").replace(/^https:\/\//, "ssl://"), "_system", arango.connectedUser(), "");  
 
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
@@ -280,8 +272,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      
-      arango.reconnect(coordinator.url.replace(/^http:\/\//, "tcp://").replace(/^https:\/\//, "ssl://"), "_system", arango.connectedUser(), "");  
 
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
@@ -322,8 +312,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      
-      arango.reconnect(coordinator.url.replace(/^http:\/\//, "tcp://").replace(/^https:\/\//, "ssl://"), "_system", arango.connectedUser(), "");  
 
       // Create a streaming transaction:
       let data = { query: `RETURN SLEEP(15)` };
@@ -376,8 +364,6 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      
-      arango.reconnect(coordinator.url.replace(/^http:\/\//, "tcp://").replace(/^https:\/\//, "ssl://"), "_system", arango.connectedUser(), "");  
 
       // Create a streaming transaction:
       let op = `require("internal").wait(1); return 1;`;
@@ -522,8 +508,6 @@ function testSuitePregel() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      
-      arango.reconnect(coordinator.url.replace(/^http:\/\//, "tcp://").replace(/^https:\/\//, "ssl://"), "_system", arango.connectedUser(), "");  
 
       // Start a pregel run:
       let pid = testAlgoStart("pagerank", { threshold: EPS / 1000, resultField: "result", store: true });

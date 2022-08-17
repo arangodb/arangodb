@@ -99,7 +99,6 @@ function testSuite() {
       tc.insert({ _key: "test1" });
 
       let coordinators = getServers('coordinator');
-      assertTrue(coordinators.length > 1);
       
       let instanceInfo = global.instanceInfo;
 
