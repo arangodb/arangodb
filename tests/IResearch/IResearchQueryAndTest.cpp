@@ -262,12 +262,12 @@ class QueryAnd : public QueryTest {
 
 class QueryAndView : public QueryAnd {
  protected:
-  ViewType type() const final { return arangodb::ViewType::kView; }
+  ViewType type() const final { return arangodb::ViewType::kArangoSearch; }
 };
 
 class QueryAndSearch : public QueryAnd {
  protected:
-  ViewType type() const final { return arangodb::ViewType::kSearch; }
+  ViewType type() const final { return arangodb::ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryAndView, Test) {

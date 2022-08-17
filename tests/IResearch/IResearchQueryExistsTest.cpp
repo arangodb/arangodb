@@ -124,14 +124,14 @@ class QueryExists : public QueryTest {
           empty));
     }
     // test non-existent (text analyzer)
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(
           "FOR d IN testView SEARCH ANALYZER(EXISTS(d.seq, 'analyzer'), "
           "'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
           empty));
     }
     // test non-existent (analyzer) via []
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(
           "FOR d IN testView SEARCH ANALYZER(EXISTS(d['seq'], 'analyzer'), "
           "'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
@@ -1687,12 +1687,12 @@ class QueryExists : public QueryTest {
 
 class QueryExistsView : public QueryExists {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryExistsSearch : public QueryExists {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryExistsView, Test) {

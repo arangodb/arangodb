@@ -184,7 +184,8 @@ Result createLink(LogicalCollection& collection,
   velocypack::Builder builder;
   builder.openObject();
   builder.add(arangodb::StaticStrings::IndexType,
-              velocypack::Value(arangodb::iresearch::StaticStrings::ViewType));
+              velocypack::Value(
+                  arangodb::iresearch::StaticStrings::ViewArangoSearchType));
   builder.add(arangodb::iresearch::StaticStrings::ViewIdField,
               velocypack::Value(view.guid()));
   if (!mergeSliceSkipKeys(builder, definition, acceptor)) {
@@ -328,7 +329,8 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
     namedJson.openObject();
     namedJson.add(
         arangodb::StaticStrings::IndexType,
-        velocypack::Value(arangodb::iresearch::StaticStrings::ViewType));
+        velocypack::Value(
+            arangodb::iresearch::StaticStrings::ViewArangoSearchType));
     namedJson.add(arangodb::iresearch::StaticStrings::ViewIdField,
                   velocypack::Value(view.guid()));
     if (!mergeSliceSkipKeys(namedJson, link, acceptor)) {
@@ -609,7 +611,8 @@ namespace iresearch {
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
   builder.add(arangodb::StaticStrings::IndexType,
-              velocypack::Value(arangodb::iresearch::StaticStrings::ViewType));
+              velocypack::Value(
+                  arangodb::iresearch::StaticStrings::ViewArangoSearchType));
   builder.close();
   return builder;
 }
@@ -727,9 +730,9 @@ namespace iresearch {
     return res;
   }
 
-  normalized.add(
-      arangodb::StaticStrings::IndexType,
-      velocypack::Value(arangodb::iresearch::StaticStrings::ViewType));
+  normalized.add(arangodb::StaticStrings::IndexType,
+                 velocypack::Value(
+                     arangodb::iresearch::StaticStrings::ViewArangoSearchType));
 
   if (ServerState::instance()->isClusterRole() && isCreation &&
       !collectionName.empty() && meta._collectionName.empty()) {
