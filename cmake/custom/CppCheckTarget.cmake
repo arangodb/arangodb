@@ -3,14 +3,12 @@ find_program(CMAKE_CXX_CPPCHECK cppcheck NAMES cppcheck HINTS $ENV{PROGRAMFILES}
   
 if(CMAKE_CXX_CPPCHECK)
   # Check CppCheck version
-  set(CPP_CHECK_CMD ${CMAKE_CXX_CPPCHECK} --version)
-    execute_process(COMMAND ${CPP_CHECK_CMD}
+  execute_process(COMMAND ${CMAKE_CXX_CPPCHECK} --version
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       RESULT_VARIABLE CPP_CHECK_RESULT
       OUTPUT_VARIABLE CPP_CHECK_VERSION
       ERROR_VARIABLE CPP_CHECK_ERROR)
     
-  # Check if version could be extracted
   if(CPP_CHECK_RESULT EQUAL 0)
     # Get number of CPU cores
     include(ProcessorCount)
@@ -30,6 +28,7 @@ if(CMAKE_CXX_CPPCHECK)
 
         # Ignore 3rdParty code
         "-i${CMAKE_SOURCE_DIR}/3rdParty"
+	"-i${CMAKE_BINARY_DIR}/"
 
         # Only show found errors
         "--quiet"
@@ -50,17 +49,18 @@ if(CMAKE_CXX_CPPCHECK)
         "--inline-suppr"
           
         # Run CppCheck from the working directory, as specified in the add_custom_target command below
-      "--project=${CMAKE_BINARY_DIR}/compile_commands.json"
+        "--project=${CMAKE_BINARY_DIR}/compile_commands.json"
 
-      # Legacy from old script; unclear why this is required.
-      "-DUSE_PLAN_CACHE"
-      "-DDEFINE_FACTORY_DEFAULT"
-        )
+        # Legacy from old script; unclear why this is required.
+        "-DUSE_PLAN_CACHE"
+        "-DDEFINE_FACTORY_DEFAULT"
+    )
       
     add_custom_target(cppcheck
-     COMMAND ${CMAKE_CXX_CPPCHECK} 2> "cppcheck.xml"
+      COMMAND ${CMAKE_CXX_CPPCHECK} 2> "cppcheck.xml"
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT "Static code analysis using ${CPP_CHECK_VERSION}"
+      BYPRODUCTS cppcheck.xml
     )
   endif()
 endif()
