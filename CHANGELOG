@@ -1,6 +1,9 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed a potential deadlock in RocksDB compaction.
+  For details see https://github.com/facebook/rocksdb/pull/10355.
+
 * Updated warning messages raised for non accepted query OPTIONS, 
   distinguishing between when the OPTIONS attribute is correct, but the value 
   is in incorrect format, and when the OPTIONS attribute itself is incorrect.
