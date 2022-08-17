@@ -1,10 +1,88 @@
-v3.9.2 (XXXX-XX-XX)
+v3.9.3 (XXXX-XX-XX)
 -------------------
 
 * Upgrade-Preparation: Shards of SmartVertexCollections will now locally persist
   their smart graph attribue. This will be needed in 3.10, but not yet in this
   version. We include this here to simplify upgrading at a later stage. It is
   not required to upgrade to this version (or later) before upgrading to 3.10.
+
+* Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
+  same collection. The requirements were:
+  - cluster deployment
+  - needs at least two collections (source and target), and the target
+    collection must have more than one shard and must use a custom shard key.
+  - inserting documents into the target collection must have happened via an AQL
+    query like `FOR doc IN source INSERT doc INTO target`.
+  In this particular combination, the document keys (`_key` attribute) from the
+  source collection were used as-is for insertion into the target collection.
+  However, as the target collection is not sharded by `_key` and uses a custom
+  shard key, it is actually not allowed to specify user-defined values for
+  `_key`. That check was missing since 3.8 in this particular combination and
+  has now been added back. AQL queries attempting to insert documents into a
+  collection like this will now fail with the error "must not specifiy _key for
+  this collection", as they used to do before 3.8.
+
+* Fixed an invalid attribute access in AQL query optimization.
+  Without the fix, a query such as
+
+      LET data = {
+        "a": [
+          ...
+        ],
+      }
+      FOR d IN data["a"]
+        RETURN d
+
+  could fail with error "invalid operand to FOR loop, expecting Array".
+
+* Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
+
+* Updated arangosync to v2.11.0.
+
+* Changed default macOS CI compiler to LLVM clang-13.
+
+* Fixed issue 16337: arangoimport with `--headers-file` and `--merge-attributes`
+  merges column names instead of row values on the first line of a CSV file.
+
+  Additionally, floating-point numbers are now merged using their standard
+  string representation instead of with a fixed precision of 6 decimal places.
+
+* Optionally enable range deletions in the WAL for truncate operations in the
+  cluster, too. This can speed up truncate operations for large
+  collections/shards. Range deletions are turned off by default to ensure
+  compatibility with all versions of arangosync. They can be turned on by
+  using the startup option `--rocksdb.use-range-delete-in-wal` and setting it to
+  `true`. The default value of that option will change from `false` to `true` in
+  ArangoDB 3.10.
+
+* Fixed potential resource leak when reusing `rocksdb::PinnableSlice` instances
+  without resetting them first. This issue can lead to the block cache filling
+  up with data that will not be evicted from the block cache anymore.
+
+
+v3.9.2 (2022-06-07)
+-------------------
+
+* Enterprise only: Restricted behavior of Hybrid Disjoint Smart Graphs. Within a 
+  single traversal or path query we now restrict that you can only switch
+  between Smart and Satellite sharding once, all queries where more than one
+  switch is (in theory) possible will be rejected. e.g:
+  ```
+    FOR v IN 2 OUTBOUND @start smartToSatEdges, satToSmartEdges
+  ```
+  will be rejected (we can go smart -> sat -> smart, so two switches)
+  ```
+  FOR v1 IN 1 OUTBOUND @start smartToSatEdges
+    FOR v2 IN 1 OUTBOUND v1 satToSmartEdges
+  ```
+  will still be allowed, as each statement only switches once.
+  We have decided to take these restrictions as especially for ShortestPath
+  queries the results are not well-defined. If you have a use case where this
+  restriction hits you, please contact us.
+
+* Fixed issue BTS-875.
+
+* Updated arangosync to v2.10.0.
 
 * Make all requests which are needed for shard resync at least medium priority
   to improve getting-in-sync under load.
@@ -71,8 +149,6 @@ v3.9.2 (XXXX-XX-XX)
   set to `false`, the attributes will not be added to the collection structure.
   If the attributes are already present in the dump data, they will not be
   modified by arangorestore irrespective of the setting of this option.
-
-* Updated arangosync to v2.9.1.
 
 * Fix agency inception when one of the gossip peers responds with HTTP 503 or
   another unexpected error.

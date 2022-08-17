@@ -198,7 +198,8 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
   network::Headers headers;
   ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
 
-  TRI_ASSERT(infoSlice.isObject() && infoSlice.get("clusterQueryId").isUInt());
+  TRI_ASSERT(infoSlice.isObject() &&
+             infoSlice.get("clusterQueryId").isNumber<QueryId>());
   QueryId globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
 
   auto buildCallback =

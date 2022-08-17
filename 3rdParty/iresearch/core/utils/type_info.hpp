@@ -71,9 +71,18 @@ class type_info {
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if current object is less than to a denoted by 'rhs'
   //////////////////////////////////////////////////////////////////////////////
+  #if defined(__clang_major__)
+    #pragma clang diagnostic push
+    #if __clang_major__ >= 13
+      #pragma clang diagnostic ignored "-Wordered-compare-function-pointers"
+    #endif
+  #endif
   bool operator<(const type_info& rhs) const noexcept {
     return id_ < rhs.id_;
   }
+  #if defined(__clang_major__)
+    #pragma clang diagnostic pop
+  #endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return type name
