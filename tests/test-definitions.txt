@@ -102,6 +102,8 @@ dump_jwt -- --dumpAgencyOnError true
 dump_maskings -- --dumpAgencyOnError true
 dump_multiple -- --dumpAgencyOnError true
 dump_no_envelope -- --dumpAgencyOnError true
+dump_mixed_cluster_single -- --dumpAgencyOnError true
+dump_mixed_single_cluster -- --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes wweight=1 weight=2000 -- --dumpAgencyOnError true 
 
