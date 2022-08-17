@@ -1,6 +1,9 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
+  or more SortNodes appeared in the AQL execution plan.
+
 * Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
   to take the user to the collections view).
 
