@@ -1,0 +1,12 @@
+name: arangodb_replication2_replicated_state_apply_entries_errors_total
+introducedIn: "3.10.0"
+help: |
+  Number of errors during an apply entries operation.
+unit: number
+type: counter
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of errors during an apply entries operation.

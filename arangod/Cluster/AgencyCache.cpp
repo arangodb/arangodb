@@ -676,7 +676,7 @@ void AgencyCache::invokeCallbackNoLock(uint64_t id,
   if (cb != nullptr) {
     try {
       cb->refetchAndUpdate(true, false);
-      LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+      LOG_TOPIC("76aa8", TRACE, Logger::CLUSTER)
           << "Agency callback " << id << " has been triggered. refetching "
           << key;
     } catch (arangodb::basics::Exception const& e) {

@@ -288,11 +288,12 @@ set(ARANGODB_TESTS_SOURCES
   V8Server/V8AnalyzersTest.cpp
   V8Server/V8UsersTest.cpp
   V8Server/V8ViewsTest.cpp
-  VocBase/VocbaseTest.cpp
+  VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
+  VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
@@ -310,6 +311,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/FakeFailureOracle.h
   Replication2/Mocks/FakeFollower.cpp
   Replication2/Mocks/FakeFollower.h
+  Replication2/Mocks/FakeLeader.cpp Replication2/Mocks/FakeLeader.h
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
@@ -354,6 +356,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
+  Replication2/ReplicatedState/LeaderResignTest.cpp
   Replication2/ReplicatedState/MaintenanceTest.cpp
   Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
@@ -372,6 +375,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/TestLogSpecification.h
   Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   Replication2/ReplicatedLog/MetricsTest.cpp
+  Replication2/ReplicatedState/FollowerResignTest.cpp
 )
 
 set(ARANGODB_GRAPH_TEST_SOURCES
@@ -382,6 +386,7 @@ set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/GraphMockProviderInstances.cpp
   Graph/GraphTestTools.cpp
   Graph/KPathFinderTest.cpp
+  Graph/AllShortestPathsFinderTest.cpp
   Graph/DFSFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/PathStoreTest.cpp

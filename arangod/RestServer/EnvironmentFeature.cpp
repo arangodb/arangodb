@@ -430,10 +430,10 @@ void EnvironmentFeature::prepare() {
       //    4 = Zone reclaim swaps pages
       //
       // https://www.poempelfox.de/blog/2010/03/19/
-      LOG_TOPIC("7a7af", WARN, Logger::PERFORMANCE)
+      LOG_TOPIC("7a7af", WARN, Logger::MEMORY)
           << "/proc/sys/vm/zone_reclaim_mode is set to '" << v
           << "'. It is recommended to set it to a value of 0";
-      LOG_TOPIC("11b2b", WARN, Logger::PERFORMANCE)
+      LOG_TOPIC("11b2b", WARN, Logger::MEMORY)
           << "execute 'sudo bash -c \"echo 0 > "
              "/proc/sys/vm/zone_reclaim_mode\"'";
     }

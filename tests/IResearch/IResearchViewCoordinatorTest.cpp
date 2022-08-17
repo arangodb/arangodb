@@ -126,7 +126,8 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
                   testDBInfo(server.server()));
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
-      (arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
+      (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), false)
+           .ok()));
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(
       nullptr !=
@@ -240,8 +241,9 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
-    ASSERT_TRUE((
-        arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
+    ASSERT_TRUE(
+        (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), false)
+             .ok()));
     EXPECT_TRUE((nullptr != view));
     EXPECT_TRUE(
         (nullptr != std::dynamic_pointer_cast<
@@ -2877,9 +2879,9 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   {
     auto newProperties = arangodb::velocypack::Parser::fromJson(
         "{"
-        "\"writeBufferActive\": 125, "
-        "\"writeBufferIdle\": 112, "
-        "\"writeBufferSizeMax\": 142, "
+        "\"writebufferActive\": 125, "
+        "\"writebufferIdle\": 112, "
+        "\"writebufferSizeMax\": 142, "
         "\"locale\": \"en\", "
         "\"version\": 1, "
         "\"primarySortCompression\":\"lz4\","
@@ -2906,9 +2908,9 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     auto newProperties = arangodb::velocypack::Parser::fromJson(
         "{"
         "\"consolidationIntervalMsec\": 42, "
-        "\"writeBufferActive\": 125, "
-        "\"writeBufferIdle\": 112, "
-        "\"writeBufferSizeMax\": 142, "
+        "\"writebufferActive\": 125, "
+        "\"writebufferIdle\": 112, "
+        "\"writebufferSizeMax\": 142, "
         "\"locale\": \"en\", "
         "\"version\": 1, "
         "\"primarySortCompression\":\"lz4\","

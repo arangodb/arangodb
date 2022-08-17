@@ -18,39 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Alexandru Petenchea
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
+#include "Transaction/SmartContext.h"
 
-namespace arangodb {
-namespace meta {
+namespace arangodb::transaction {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adjusts constness of 'Out' according to 'In'
-////////////////////////////////////////////////////////////////////////////////
-template<typename In, typename Out>
-struct adjustConst {
-  typedef Out value_type;
-  typedef Out& reference;
-  typedef Out* pointer;
+struct ReplicatedContext final : public SmartContext {
+  ReplicatedContext(TransactionId globalId,
+                    std::shared_ptr<TransactionState> state);
+
+  /// @brief get transaction state, determine commit responsibility
+  std::shared_ptr<TransactionState> acquireState(
+      transaction::Options const& options, bool& responsibleForCommit) override;
+
+  /// @brief unregister the transaction
+  void unregisterTransaction() noexcept override;
 };
 
-template<typename In, typename Out>
-struct adjustConst<const In, Out> {
-  typedef const Out value_type;
-  typedef const Out& reference;
-  typedef const Out* pointer;
-};
-
-template<class T, class U = T>
-T exchange(T& obj, U&& new_value) {
-  T old_value = std::move(obj);
-  obj = std::forward<U>(new_value);
-  return old_value;
-}
-
-}  // namespace meta
-}  // namespace arangodb
+}  // namespace arangodb::transaction

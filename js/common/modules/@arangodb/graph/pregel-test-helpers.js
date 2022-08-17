@@ -45,9 +45,9 @@ const loadGraphGenerators = function (isSmart) {
     if (isSmart) {
         return {
             makeEdgeBetweenVertices:
-            require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
+                require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
             verticesEdgesGenerator:
-            require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
+                require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
         };
     }
     return {
@@ -76,7 +76,7 @@ const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDes
         console.error("    Difference: " + Math.abs(actual - expected));
         console.error(context);
     }
-    // assertTrue(false);
+    assertTrue(false);
 };
 
 const runPregelInstance = function (algName, graphName, parameters, query, maxWaitTimeSecs = 120) {

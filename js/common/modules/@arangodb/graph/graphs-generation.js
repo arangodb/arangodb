@@ -234,7 +234,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return {vertices, edges};
     };
 
-    // Creates a with numberLeaves many rays. The center has index 0.
+    // Creates a star with numberLeaves many rays. The center has index 0.
     // The parameter kind has the following meaning:
     //  - "fromCenter":  the edges point from the center to the leaves
     //  - "toCenter":  the edges point from the leaves to the center
@@ -270,6 +270,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 }
                 break;
         }
+        // console.warn(edges);
         return {vertices, edges};
     };
 

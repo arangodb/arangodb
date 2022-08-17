@@ -1346,6 +1346,7 @@ void arangodb::aql::removeRedundantSortsRule(
           auto other =
               ExecutionNode::castTo<SortNode*>(current)->getSortInformation();
 
+          bool canContinueSearch = true;
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
               // different sort criteria
@@ -1355,20 +1356,25 @@ void arangodb::aql::removeRedundantSortsRule(
 
                 if (!other.isDeterministic) {
                   // if the sort is non-deterministic, we must not remove it
+                  canContinueSearch = false;
                   break;
                 }
 
                 if (sortNode->isStable()) {
-                  // we should not optimize predecessors of a stable sort (used
-                  // in a COLLECT node)
+                  // we should not optimize predecessors of a stable sort
+                  // (used in a COLLECT node)
                   // the stable sort is for a reason, and removing any
-                  // predecessors sorts might
-                  // change the result
+                  // predecessors sorts might change the result.
+                  // We're not allowed to continue our search for further
+                  // redundant SORTS in this iteration.
+                  canContinueSearch = false;
                   break;
                 }
 
                 // remove sort that is a direct predecessor of a sort
                 toUnlink.emplace(current);
+              } else {
+                canContinueSearch = false;
               }
               break;
             }
@@ -1381,7 +1387,9 @@ void arangodb::aql::removeRedundantSortsRule(
             case SortInformation::ourselvesLessAccurate: {
               // the sort at the start of the pipeline makes the sort at the end
               // superfluous, so we'll remove it
+              // Related to: BTS-937
               toUnlink.emplace(n);
+              canContinueSearch = false;
               break;
             }
 
@@ -1391,6 +1399,9 @@ void arangodb::aql::removeRedundantSortsRule(
               toUnlink.emplace(current);
               break;
             }
+          }
+          if (!canContinueSearch) {
+            break;
           }
         } else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
@@ -5042,6 +5053,7 @@ void arangodb::aql::distributeSortToClusterRule(
         // distributed in cluster as it accounts this disctribution. So we
         // should not encounter this kind of nodes for now
         case EN::MATERIALIZE:
+        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
@@ -7425,6 +7437,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     // TODO: As soon as materialize does no longer have to filter out
     //  non-existent documents, move MATERIALIZE to the allowed nodes!
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::MUTEX:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -8792,7 +8805,12 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
       // If our input variable is set by a collection/index enumeration, it is
       // guaranteed to be an object with a _key attribute, so we don't need to
       // do anything.
-      return;
+      if (!createKeys || collection->usesDefaultSharding()) {
+        // no need to insert an extra calculation node in this case.
+        return;
+      }
+      // in case we have a collection that is not sharded by _key,
+      // the keys need to be created/validated by the coordinator.
     }
 
     auto* ast = plan.getAst();

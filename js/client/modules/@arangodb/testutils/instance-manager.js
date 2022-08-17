@@ -271,7 +271,14 @@ class instanceManager {
     }
   }
   launchInstance() {
+
+    if (this.options.hasOwnProperty('server')) {
+      print("external server configured - not testing readyness! " + this.options.server);
+      return;
+    }
+
     internal.env['INSTANCEINFO'] = JSON.stringify(this.getStructure());
+
     const startTime = time();
     try {
       this.arangods.forEach(arangod => arangod.startArango());
@@ -712,6 +719,21 @@ class instanceManager {
       this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
       forceTerminate = true;
     }
+    try {
+      return this._shutdownInstance(forceTerminate);
+    }
+    catch (e) {
+      if (e instanceof ArangoError && e.errorNum === internal.errors.ERROR_DISABLED.code) {
+        let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+        if (timeoutReached) {
+          print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
+        }
+        return this._shutdownInstance(true);
+      }
+    }
+  }
+
+  _shutdownInstance (forceTerminate) {
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
@@ -1100,6 +1122,11 @@ class instanceManager {
       }
       this.endpoint = d.endpoint;
       this.url = d.url;
+    }
+
+    if (this.options.hasOwnProperty('server')) {
+      arango.reconnect(this.endpoint, '_system', 'root', '');
+      return true;
     }
 
     try {

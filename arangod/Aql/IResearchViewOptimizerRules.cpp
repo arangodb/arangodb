@@ -21,7 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
 
 #include "IResearchViewOptimizerRules.h"
 
@@ -41,6 +40,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/DownCast.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
@@ -49,6 +49,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/Search.h"
+#include "IResearch/SearchFuncReplace.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -61,32 +62,39 @@ using namespace arangodb::basics;
 
 namespace {
 
-inline IResearchSortBase const& primarySort(arangodb::LogicalView const& view) {
-  if (view.type() == ViewType::kSearch) {
-    auto const& viewImpl = basics::downCast<Search>(view);
+// TODO deduplicate these functions with IResearchViewNode
+
+IResearchSortBase const& primarySort(
+    std::shared_ptr<SearchMeta const> const& meta,
+    std::shared_ptr<LogicalView const> const& view) {
+  if (meta) {
+    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    return meta->primarySort;
+  }
+  TRI_ASSERT(view);
+  TRI_ASSERT(view->type() == ViewType::kView);
+  if (ServerState::instance()->isCoordinator()) {
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.primarySort();
   }
-  TRI_ASSERT(view.type() == ViewType::kView);
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
-    return viewImpl.primarySort();
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(*view);
   return viewImpl.primarySort();
 }
 
-inline IResearchViewStoredValues const& storedValues(
-    arangodb::LogicalView const& view) {
-  if (view.type() == ViewType::kSearch) {
-    auto const& viewImpl = basics::downCast<Search>(view);
+IResearchViewStoredValues const& storedValues(
+    std::shared_ptr<SearchMeta const> const& meta,
+    std::shared_ptr<LogicalView const> const& view) {
+  if (meta) {
+    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    return meta->storedValues;
+  }
+  TRI_ASSERT(view);
+  TRI_ASSERT(view->type() == ViewType::kView);
+  if (ServerState::instance()->isCoordinator()) {
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.storedValues();
   }
-  TRI_ASSERT(view.type() == ViewType::kView);
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
-    return viewImpl.storedValues();
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(*view);
   return viewImpl.storedValues();
 }
 
@@ -209,14 +217,16 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
       pushFuncToBack(*searchCondition.root(), starts_with);
     }
 
-    arangodb::iresearch::QueryContext ctx{.trx = &query.trxForOptimization(),
-                                          .ref = &viewNode.outVariable(),
-                                          .isSearchQuery = true};
+    arangodb::iresearch::QueryContext ctx{
+        .trx = &query.trxForOptimization(),
+        .ref = &viewNode.outVariable(),
+        .isSearchQuery = true,
+        .isOldMangling = (viewNode.meta() == nullptr)};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
     FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-    FilterContext const filterCtx{.analyzer = analyzer};
+    FilterContext const filterCtx{.contextAnalyzer = analyzer};
 
     auto filterCreated =
         FilterFactory::filter(nullptr, ctx, filterCtx, *searchCondition.root());
@@ -294,7 +304,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       if (!astCalcNode ||
           astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
         // Not a reference?  Seems that it is not
-        // something produced by ScorerReplacer.
+        // something produced by during search function replacement.
         // e.g. it is expected to be LET sortVar = scorerVar;
         // Definately not something we could handle.
         return false;
@@ -309,7 +319,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     auto s = std::find_if(scorers.begin(), scorers.end(),
-                          [sortVariable](Scorer const& t) {
+                          [sortVariable](SearchFunc const& t) {
                             return t.var->id == sortVariable->id;
                           });
     if (s == scorers.end()) {
@@ -329,8 +339,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 }
 
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
-  TRI_ASSERT(viewNode.view());
-  auto const& primarySort = ::primarySort(*viewNode.view());
+  auto const& primarySort = ::primarySort(viewNode.meta(), viewNode.view());
 
   if (primarySort.empty()) {
     // use system sort
@@ -469,8 +478,8 @@ void keepReplacementViewVariables(std::span<ExecutionNode* const> calcNodes,
     TRI_ASSERT(vNode &&
                ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
-    auto const& primarySort = ::primarySort(*viewNode.view());
-    auto const& storedValues = ::storedValues(*viewNode.view());
+    auto const& primarySort = ::primarySort(viewNode.meta(), viewNode.view());
+    auto const& storedValues = ::storedValues(viewNode.meta(), viewNode.view());
     if (primarySort.empty() && storedValues.empty()) {
       // neither primary sort nor stored values
       continue;
@@ -619,6 +628,9 @@ void lateDocumentMaterializationArangoSearchRule(
     return;
   }
 
+  VarSet currentUsedVars;
+  // nodes variables can be replaced
+  containers::SmallVector<aql::CalculationNode*, 16> calcNodes;
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
@@ -638,8 +650,7 @@ void lateDocumentMaterializationArangoSearchRule(
       auto stopSearch = false;
       auto stickToSortNode = false;
       auto const& var = viewNode.outVariable();
-      std::vector<aql::CalculationNode*>
-          calcNodes;  // nodes variables can be replaced
+      calcNodes.clear();
       auto& viewNodeState = viewNode.state();
       while (current != loop) {
         auto const type = current->getType();
@@ -674,7 +685,7 @@ void lateDocumentMaterializationArangoSearchRule(
             break;
         }
         if (!stopSearch) {
-          VarSet currentUsedVars;
+          currentUsedVars.clear();
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&var) != currentUsedVars.end()) {
             // currently only calculation nodes expected to use a loop variable
@@ -830,7 +841,6 @@ void handleConstrainedSortInView(Optimizer* opt,
   }
 }
 
-/// @brief move filters and sort conditions into views
 void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
   TRI_ASSERT(plan && plan->getAst());
@@ -853,12 +863,12 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   // replace scorers in all calculation nodes with references
   plan->findNodesOfType(calcNodes, ExecutionNode::CALCULATION, true);
 
-  ScorerReplacer scorerReplacer;
+  DedupSearchFuncs searchFuncs;
 
   for (auto* node : calcNodes) {
     TRI_ASSERT(node && ExecutionNode::CALCULATION == node->getType());
-
-    scorerReplacer.replace(*ExecutionNode::castTo<CalculationNode*>(node));
+    replaceSearchFunc(*ExecutionNode::castTo<CalculationNode*>(node),
+                      searchFuncs, &order_factory::refFromScorer);
   }
 
   // register replaced scorers to be evaluated by corresponding view nodes
@@ -868,7 +878,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   aql::QueryContext& query = plan->getAst()->query();
 
-  std::vector<Scorer> scorers;
+  std::vector<SearchFunc> scorers;
 
   for (auto* node : viewNodes) {
     TRI_ASSERT(node &&
@@ -883,7 +893,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     }
 
     // find scorers that have to be evaluated by a view
-    scorerReplacer.extract(viewNode, scorers);
+    extractSearchFunc(viewNode, searchFuncs, scorers);
     viewNode.setScorers(std::move(scorers));
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
@@ -893,14 +903,14 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     modified = true;
   }
   keepReplacementViewVariables(calcNodes, viewNodes);
-  arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  containers::HashSet<ExecutionNode*> toUnlink;
   modified |= noDocumentMaterialization(viewNodes, toUnlink);
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
   }
 
   // ensure all replaced scorers are covered by corresponding view nodes
-  scorerReplacer.visit([](Scorer const& scorer) -> bool {
+  for (auto& [scorer, _] : searchFuncs) {
     TRI_ASSERT(scorer.node);
     auto const funcName = iresearch::getFuncName(*scorer.node);
 
@@ -908,7 +918,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
         "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
         scorer.var->name.c_str(), funcName.c_str());
-  });
+  }
 }
 
 void scatterViewInClusterRule(Optimizer* opt,
@@ -1026,7 +1036,3 @@ void scatterViewInClusterRule(Optimizer* opt,
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

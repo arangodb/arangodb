@@ -281,6 +281,7 @@ bool Conductor::_startGlobalStep() {
     } else {  // just stop the timer
       updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
                                 : ExecutionState::DONE);
+      _timing.total.finish();
       LOG_PREGEL("9e82c", INFO)
           << "Done, execution took: " << _timing.total.elapsedSeconds().count()
           << " s";
@@ -868,8 +869,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     didStore = true;
     _timing.storing.finish();
     _feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
+    _timing.total.finish();
   }
-  _timing.total.finish();
 
   VPackBuilder debugOut;
   debugOut.openObject();
@@ -931,6 +932,10 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   if (_state != ExecutionState::DONE && _state != ExecutionState::FATAL_ERROR) {
+    return;
+  }
+
+  if (_storeResults) {
     return;
   }
 

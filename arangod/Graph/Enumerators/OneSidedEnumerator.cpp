@@ -85,7 +85,7 @@ void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
 
   if (!keepPathStore) {
     _interior.reset();
-    clearProvider();  // TODO: Check usage of keepPathStore (if necessary)
+    clearProvider();
   }
 }
 

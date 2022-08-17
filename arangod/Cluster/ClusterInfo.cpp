@@ -523,7 +523,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 
 auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
-    ClusterCollectionCreationInfo const& info)
+    ClusterCollectionCreationInfo const& info, std::string const& databaseName)
     -> replication2::replicated_state::agency::Target {
   using namespace replication2::replicated_state;
 
@@ -532,7 +532,8 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
   spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters = document::DocumentCoreParameters{info.collectionID};
+  auto parameters =
+      document::DocumentCoreParameters{info.collectionID, databaseName};
   spec.properties.implementation.parameters = parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
@@ -1232,8 +1233,8 @@ void ClusterInfo::loadPlan() {
 
         try {
           LogicalView::ptr view;
-          auto res =
-              LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
+          auto res = LogicalView::instantiate(view, *vocbase,
+                                              viewPairSlice.value, false);
 
           if (!res.ok() || !view) {
             LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
@@ -1993,7 +1994,7 @@ void ClusterInfo::loadCurrent() {
   _current.swap(newCurrent);
   _currentVersion = changeSet.version;
   _currentIndex = changeSet.ind;
-  LOG_TOPIC("feddd", DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
       << "Updating current in ClusterInfo: version=" << changeSet.version
       << " index=" << _currentIndex;
 
@@ -3299,7 +3300,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        auto spec = createDocumentStateSpec(shardId, serverIds, info);
+        auto spec =
+            createDocumentStateSpec(shardId, serverIds, info, databaseName);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
@@ -6157,21 +6159,31 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
-  ServerID result;
-
+  int tries = 0;
   if (!_mappingsProt.isValid) {
+    loadCurrentMappings();
+    tries++;
+  }
+
+  while (true) {
+    {
+      // return a consistent state of servers
+      READ_LOCKER(readLocker, _mappingsProt.lock);
+
+      auto it = _coordinatorIdMap.find(shortId);
+      if (it != _coordinatorIdMap.end()) {
+        return it->second;
+      }
+    }
+
+    if (++tries >= 2) {
+      break;
+    }
+
     loadCurrentMappings();
   }
 
-  // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
-
-  auto it = _coordinatorIdMap.find(shortId);
-  if (it != _coordinatorIdMap.end()) {
-    result = it->second;
-  }
-
-  return result;
+  return ServerID{};
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -6954,8 +6966,6 @@ bool ClusterInfo::SyncerThread::start() {
 }
 
 void ClusterInfo::SyncerThread::run() {
-  using namespace std::chrono_literals;
-
   std::function<bool(VPackSlice result)> update =  // for format
       [=, this](VPackSlice result) {
         if (!result.isNumber()) {
@@ -6970,70 +6980,62 @@ void ClusterInfo::SyncerThread::run() {
                                               update, true, false);
   Result res = _cr->registerCallback(std::move(acb));
   if (res.fail()) {
-    LOG_TOPIC("70e05", FATAL, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("70e05", FATAL, Logger::CLUSTER)
         << "Failed to register callback with local registry: "
         << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
+  auto call = [&]() noexcept {
+    try {
+      _f();
+    } catch (basics::Exception const& ex) {
+      if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+        LOG_TOPIC("9d1f5", WARN, Logger::CLUSTER)
+            << "caught an error while loading " << _section << ": "
+            << ex.what();
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("752c4", WARN, Logger::CLUSTER)
+          << "caught an error while loading " << _section << ": " << ex.what();
+    } catch (...) {
+      LOG_TOPIC("30968", WARN, Logger::CLUSTER)
+          << "caught an error while loading " << _section;
+    }
+  };
   // This first call needs to be done or else we might miss all potential until
   // such time, that we are ready to receive. Under no circumstances can we
   // assume that this first call can be neglected.
-  _f();
-
-  while (!isStopping()) {
-    bool news = false;
-    {
-      std::unique_lock<std::mutex> lk(_m);
-      if (!_news) {
-        // The timeout is strictly speaking not needed. However, we really do
-        // not want to be caught in here in production.
+  call();
+  for (std::unique_lock lk{_m}; !isStopping();) {
+    if (!_news) {
+      // The timeout is strictly speaking not needed.
+      // However, we really do not want to be caught in here in production.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        _cv.wait(lk);
+      _cv.wait(lk);
 #else
-        _cv.wait_for(lk, 100ms);
+      _cv.wait_for(lk, std::chrono::milliseconds{100});
 #endif
-      }
-      news = _news;
     }
-
-    if (news) {
-      {
-        std::unique_lock<std::mutex> lk(_m);
-        _news = false;
-      }
-      try {
-        _f();
-      } catch (basics::Exception const& ex) {
-        if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
-          LOG_TOPIC("9d1f5", WARN, arangodb::Logger::CLUSTER)
-              << "caught an error while loading " << _section << ": "
-              << ex.what();
-        }
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("752c4", WARN, arangodb::Logger::CLUSTER)
-            << "caught an error while loading " << _section << ": "
-            << ex.what();
-      } catch (...) {
-        LOG_TOPIC("30968", WARN, arangodb::Logger::CLUSTER)
-            << "caught an error while loading " << _section;
-      }
+    if (std::exchange(_news, false)) {
+      lk.unlock();
+      call();
+      lk.lock();
     }
-    // next round...
   }
 
   try {
     _cr->unregisterCallback(acb);
   } catch (basics::Exception const& ex) {
     if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
-      LOG_TOPIC("39336", WARN, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("39336", WARN, Logger::CLUSTER)
           << "caught exception while unregistering callback: " << ex.what();
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("66f2f", WARN, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("66f2f", WARN, Logger::CLUSTER)
         << "caught exception while unregistering callback: " << ex.what();
   } catch (...) {
-    LOG_TOPIC("995cd", WARN, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("995cd", WARN, Logger::CLUSTER)
         << "caught unknown exception while unregistering callback";
   }
 }
@@ -7241,13 +7243,12 @@ void ClusterInfo::triggerWaiting(
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp =
-        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !_server.isStopping()) {
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp] { pp->setValue(Result()); });
+      scheduler->queue(
+          RequestLane::CLUSTER_INTERNAL,
+          [pp = std::move(pit->second)]() mutable { pp.setValue(Result()); });
     } else {
-      pp->setValue(Result(_syncerShutdownCode));
+      pit->second.setValue(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }
