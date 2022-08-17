@@ -20,6 +20,11 @@
 ///
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _MSC_VER
+#define FST_NO_DEFINE_SSIZE_T
+#endif
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/ScopeGuard.h"
@@ -90,13 +95,13 @@ inline Weight Divide(const Weight& lhs, const Weight& rhs,
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
 
+namespace arangodb::iresearch {
+namespace {
+
 using Arc = fst::ArcTpl<Weight>;
 using VectorFst = fst::VectorFst<Arc>;
 using FstBuilder = irs::fst_builder<char, VectorFst>;
 using ExplicitMatcher = fst::explicit_matcher<fst::SortedMatcher<VectorFst>>;
-
-namespace arangodb::iresearch {
-namespace {
 
 std::shared_ptr<LogicalCollection> getCollection(
     CollectionNameResolver& resolver, velocypack::Slice cidOrName) {
