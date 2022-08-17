@@ -837,7 +837,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   if (fd >= 0) {
     memset(&str, 0, sizeof(str));
 
-    ssize_t n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
+    auto n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
     close(fd);
 
     if (n == 0) {

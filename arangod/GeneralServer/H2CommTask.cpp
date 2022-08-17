@@ -423,7 +423,7 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   for (auto const& buffer : this->_protocol->buffer.data()) {
     const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+    auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
     if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
       LOG_TOPIC("43942", INFO, Logger::REQUESTS)
           << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
@@ -785,8 +785,7 @@ void H2CommTask<T>::queueHttp2Responses() {
 
         // TODO do not copy the body if it is > 16kb
         TRI_ASSERT(body.size() > strm->responseOffset);
-        size_t nread = std::min(length, body.size() - strm->responseOffset);
-        TRI_ASSERT(nread > 0);
+        auto nread = std::min(length, body.size() - strm->responseOffset);
 
         const char* src = body.data() + strm->responseOffset;
         std::copy_n(src, nread, buf);
@@ -854,7 +853,7 @@ void H2CommTask<T>::doWrite() {
   std::array<asio_ns::const_buffer, 2> outBuffers;
   while (true) {
     const uint8_t* data;
-    ssize_t rv = nghttp2_session_mem_send(_session, &data);
+    auto rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
       this->_writing = false;
       LOG_TOPIC("2b6c4", INFO, arangodb::Logger::REQUESTS)
