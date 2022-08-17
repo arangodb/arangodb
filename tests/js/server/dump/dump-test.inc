@@ -177,7 +177,7 @@
         assertEqual(properties.numberOfShards, 5);
         assertEqual(properties.replicationFactor, 2);
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(properties.shardingStrategy, 'enterprise-hex-smart-vertex');
         }
       }
 
@@ -189,7 +189,7 @@
 
       assertEqual(properties.replicationFactor, 2);
       if (isCluster) {
-        assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+        assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
         assertEqual(properties.numberOfShards, 0);
       } else {
         assertEqual(properties.numberOfShards, 5);
