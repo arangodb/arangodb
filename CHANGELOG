@@ -1,6 +1,8 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
-* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
 
 * Updated arangosync to v2.11.0.
 
