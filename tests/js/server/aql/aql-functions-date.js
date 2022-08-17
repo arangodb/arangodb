@@ -1236,7 +1236,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_isoweekyear function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateISOWeekInvalid: function () {
+    testDateISOWeekYearInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR()");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(1, 1)");
@@ -1315,7 +1315,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_isoweekyear function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateISOWeek: function () {
+    testDateISOWeekYear: function () {
       const values = [
         [ "2000-04-29", 17, 2000 ],
         [ "2000-04-29Z", 17, 2000 ],
@@ -1366,7 +1366,6 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        print(getQueryResults("RETURN DATE_ISOWEEKYEAR(@value)", { value: value[0] }));
         assertEqual([{week: value[1], year: value[2]}], getQueryResults("RETURN DATE_ISOWEEKYEAR(@value)", { value: value[0] }));
         assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
       });
