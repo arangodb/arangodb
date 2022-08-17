@@ -1678,7 +1678,7 @@
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(properties.shardingStrategy, 'hash');
         }
 
         // test data
