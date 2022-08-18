@@ -369,7 +369,6 @@ VPackBuilder createCollectionProperties(
     bool haveShardingFeature = (ServerState::instance()->isCoordinator() ||
                                 allowEnterpriseCollectionsOnSingleServer) &&
                                vocbase.server().hasFeature<ShardingFeature>();
-
     if (haveShardingFeature &&
         !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
       // NOTE: We need to do this in a second merge as the feature call requires
