@@ -691,15 +691,6 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
     }
     IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
 
-    if constexpr (ExecutionTraits::EmitSearchDoc) {
-      auto reg = this->infos().searchDocIdRegId();
-      TRI_ASSERT(reg.isValid());
-
-      this->writeSearchDoc(
-          ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()),
-          reg);
-    }
-
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
       break;
     } else {
@@ -861,6 +852,14 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     ReadContext& ctx, IndexReadBufferEntry bufferEntry,
     LocalDocumentId const& documentId, LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
+
+  if constexpr (ExecutionTraits::EmitSearchDoc) {
+    auto reg = this->infos().searchDocIdRegId();
+    TRI_ASSERT(reg.isValid());
+
+    this->writeSearchDoc(
+        ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()), reg);
+  }
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
     if (ADB_UNLIKELY(
@@ -894,7 +893,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     }
   } else if constexpr (Traits::MaterializeType ==
                            MaterializeType::NotMaterialize &&
-                       !Traits::Ordered) {
+                       !Traits::Ordered && !Traits::EmitSearchDoc) {
     ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document

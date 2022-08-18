@@ -608,7 +608,8 @@ void registerFunctions(aql::AqlFunctionFeature& functions) {
        aql::Function::makeFlags(aql::Function::Flags::Deterministic,
                                 aql::Function::Flags::Cacheable,
                                 aql::Function::Flags::CanRunOnDBServerCluster,
-                                aql::Function::Flags::CanRunOnDBServerOneShard),
+                                aql::Function::Flags::CanRunOnDBServerOneShard,
+                                aql::Function::Flags::NoEval),
        &offsetInfoFunc});
 }
 
@@ -863,11 +864,13 @@ bool isScorer(aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
 
-#ifdef USE_ENTERPRISE
 bool isOffsetInfo(aql::Function const& func) noexcept {
+#ifdef USE_ENTERPRISE
   return func.implementation == &offsetInfoFunc;
-}
+#else
+  return false;
 #endif
+}
 
 IResearchFeature::IResearchFeature(Server& server)
     : ArangodFeature{server, *this},

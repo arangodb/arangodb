@@ -588,6 +588,10 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
                                          aql::Variable const& ref,
                                          bool allowExpansion) noexcept;
 
+// checks a specified args to be deterministic
+// and retuns reference to a loop variable
+aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept;
+
 }  // namespace iresearch
 }  // namespace arangodb
 

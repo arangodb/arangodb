@@ -62,12 +62,5 @@ void scatterViewInClusterRule(
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
     arangodb::aql::OptimizerRule const& rule);
 
-#ifdef USE_ENTERPRISE
-// Handle OFFSET_INFO function
-void handleOffsetInfo(arangodb::aql::Optimizer* opt,
-                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                      arangodb::aql::OptimizerRule const& rule);
-#endif
-
 }  // namespace iresearch
 }  // namespace arangodb

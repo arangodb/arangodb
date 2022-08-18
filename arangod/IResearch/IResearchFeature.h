@@ -61,14 +61,24 @@ bool isFilter(aql::Function const& func) noexcept;
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool isScorer(aql::Function const& func) noexcept;
+inline bool isScorer(aql::AstNode const& node) noexcept {
+  if (aql::NODE_TYPE_FCALL != node.type &&
+      aql::NODE_TYPE_FCALL_USER != node.type) {
+    return false;
+  }
 
-#ifdef USE_ENTERPRISE
+  return isScorer(*static_cast<aql::Function const*>(node.getData()));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns true if the specified 'func' is an ArangoSearch OFFSET_INFO
 ///          function, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool isOffsetInfo(aql::Function const& func) noexcept;
-#endif
+inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
+  return aql::NODE_TYPE_FCALL == node.type &&
+         isOffsetInfo(*static_cast<aql::Function const*>(node.getData()));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
