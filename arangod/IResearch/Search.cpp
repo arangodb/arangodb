@@ -23,6 +23,13 @@
 
 #ifdef _MSC_VER
 #define FST_NO_DEFINE_SSIZE_T
+#pragma warning(disable : 4291)
+#pragma warning(disable : 4244)
+#pragma warning(disable : 4245)
+#pragma warning(disable : 4706)
+#pragma warning(disable : 4305)
+#pragma warning(disable : 4267)
+#pragma warning(disable : 4018)
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -82,7 +89,7 @@ inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
     return Weight::NoWeight();
   }
   return Weight{
-      static_cast<bool>(static_cast<bool>(lhs) - static_cast<bool>(rhs))};
+      static_cast<bool>(static_cast<bool>(lhs) ^ static_cast<bool>(rhs))};
 }
 
 inline Weight Divide(const Weight& lhs, const Weight& rhs,
