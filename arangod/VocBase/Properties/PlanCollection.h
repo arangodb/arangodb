@@ -31,6 +31,9 @@
 #include <string>
 
 namespace arangodb {
+template<typename T>
+class ResultT;
+
 namespace inspection {
 struct Status;
 }
@@ -41,7 +44,8 @@ class Slice;
 struct PlanCollection {
   PlanCollection();
 
-  static PlanCollection fromCreateAPIBody(arangodb::velocypack::Slice input);
+  static ResultT<PlanCollection> fromCreateAPIBody(
+      arangodb::velocypack::Slice input);
 
   // Temporary method to handOver information from
   arangodb::velocypack::Builder toCollectionsCreate();
@@ -50,7 +54,6 @@ struct PlanCollection {
   std::underlying_type_t<TRI_col_type_e> type;
   bool waitForSync;
   bool isSystem;
-  bool allowSystem;
   bool doCompact;
   bool isVolatile;
   bool cacheEnabled;
@@ -94,7 +97,6 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               }),
           f.field("waitForSync", planCollection.waitForSync).fallback(false),
           f.field("isSystem", planCollection.isSystem).fallback(false),
-          f.field("allowSystem", planCollection.allowSystem).fallback(false),
           f.field("doCompact", planCollection.doCompact).fallback(false),
           f.field("cacheEnabled", planCollection.cacheEnabled).fallback(false),
           f.field("isVolatile", planCollection.isVolatile).fallback(false),
@@ -134,8 +136,6 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
                 }
                 return {"Only 2 (document) and 3 (edge) are allowed."};
               }),
-          f.field(StaticStrings::DataSourceSystem, planCollection.allowSystem)
-              .fallback(false),
           f.field("schema", planCollection.schema)
               .fallback(VPackSlice::emptyObjectSlice()),
           f.field("keyOptions", planCollection.keyOptions)

@@ -351,20 +351,27 @@ void RestCollectionHandler::handleCommandPost() {
 
 #if true
   auto planCollection = PlanCollection::fromCreateAPIBody(body);
-  auto parameters = planCollection.toCollectionsCreate();
+  if (planCollection.fail()) {
+    // error message generated in inspect
+    generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
+                  planCollection.errorMessage());
+    events::CreateCollection(_vocbase.name(), "", planCollection.errorNumber());
+    return;
+  }
+  auto parameters = planCollection->toCollectionsCreate();
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(_context);
 
   Result res = methods::Collections::create(
       _vocbase,  // collection vocbase
       options,
-      planCollection.name,       // colection name
-      planCollection.getType(),  // collection type
-      parameters.slice(),        // collection properties
-      waitForSyncReplication,    // replication wait flag
-      enforceReplicationFactor,  // replication factor flag
-      /*isNewDatabase*/ false,   // here always false
-      coll, planCollection.allowSystem);
+      planCollection->name,       // colection name
+      planCollection->getType(),  // collection type
+      parameters.slice(),         // collection properties
+      waitForSyncReplication,     // replication wait flag
+      enforceReplicationFactor,   // replication factor flag
+      /*isNewDatabase*/ false,    // here always false
+      coll, planCollection->isSystem);
 
 #else
   VPackSlice nameSlice;

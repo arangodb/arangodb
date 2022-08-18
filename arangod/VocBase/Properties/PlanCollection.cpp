@@ -29,8 +29,14 @@ using namespace arangodb;
 
 PlanCollection::PlanCollection() {}
 
-PlanCollection PlanCollection::fromCreateAPIBody(VPackSlice input) {
-  return arangodb::velocypack::deserialize<PlanCollection>(input);
+ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(VPackSlice input) {
+  try {
+    return velocypack::deserialize<PlanCollection>(input);
+  } catch (basics::Exception const& e) {
+    return Result{e.code(), e.message()};
+  } catch (std::exception const& e) {
+    return Result{TRI_ERROR_INTERNAL, e.what()};
+  }
 }
 
 arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {

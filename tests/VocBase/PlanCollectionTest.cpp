@@ -55,10 +55,9 @@ class PlanCollectionUserAPITest : public ::testing::Test {
     return body;
   }
 
-  void assertParsingThrows(VPackBuilder const& body) {
-    EXPECT_THROW(PlanCollection::fromCreateAPIBody(body.slice()),
-                 arangodb::basics::Exception)
-        << " On body " << body.toJson();
+  static void assertParsingThrows(VPackBuilder const& body) {
+    auto p = PlanCollection::fromCreateAPIBody(body.slice());
+    EXPECT_TRUE(p.fail()) << " On body " << body.toJson();
   }
 };
 
@@ -76,33 +75,33 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
     body.add("name", VPackValue(colName));
   }
   auto testee = PlanCollection::fromCreateAPIBody(body.slice());
-  EXPECT_EQ(testee.name, colName);
+  ASSERT_TRUE(testee.ok());
+  EXPECT_EQ(testee->name, colName);
   // Test Default values
-  EXPECT_FALSE(testee.waitForSync);
-  EXPECT_FALSE(testee.isSystem);
-  EXPECT_FALSE(testee.allowSystem);
-  EXPECT_FALSE(testee.doCompact);
-  EXPECT_FALSE(testee.isVolatile);
-  EXPECT_FALSE(testee.cacheEnabled);
-  EXPECT_EQ(testee.type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
+  EXPECT_FALSE(testee->waitForSync);
+  EXPECT_FALSE(testee->isSystem);
+  EXPECT_FALSE(testee->doCompact);
+  EXPECT_FALSE(testee->isVolatile);
+  EXPECT_FALSE(testee->cacheEnabled);
+  EXPECT_EQ(testee->type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
 
-  EXPECT_EQ(testee.numberOfShards, 1);
-  EXPECT_EQ(testee.replicationFactor, 1);
-  EXPECT_EQ(testee.writeConcern, 1);
+  EXPECT_EQ(testee->numberOfShards, 1);
+  EXPECT_EQ(testee->replicationFactor, 1);
+  EXPECT_EQ(testee->writeConcern, 1);
 
-  EXPECT_EQ(testee.distributeShardsLike, "");
-  EXPECT_EQ(testee.smartJoinAttribute, "");
+  EXPECT_EQ(testee->distributeShardsLike, "");
+  EXPECT_EQ(testee->smartJoinAttribute, "");
 
   // TODO: We only test defaults here, not all possible options
-  EXPECT_EQ(testee.shardingStrategy, "hash");
-  ASSERT_EQ(testee.shardKeys.size(), 1);
-  EXPECT_EQ(testee.shardKeys.at(0), StaticStrings::KeyString);
+  EXPECT_EQ(testee->shardingStrategy, "hash");
+  ASSERT_EQ(testee->shardKeys.size(), 1);
+  EXPECT_EQ(testee->shardKeys.at(0), StaticStrings::KeyString);
 
   // TODO: this is just rudimentary
   // does not test internals yet
-  EXPECT_TRUE(testee.computedValues.slice().isEmptyArray());
-  EXPECT_TRUE(testee.schema.slice().isEmptyObject());
-  EXPECT_TRUE(testee.keyOptions.slice().isEmptyObject());
+  EXPECT_TRUE(testee->computedValues.slice().isEmptyArray());
+  EXPECT_TRUE(testee->schema.slice().isEmptyObject());
+  EXPECT_TRUE(testee->keyOptions.slice().isEmptyObject());
 }
 
 TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
@@ -121,7 +120,7 @@ TEST_F(PlanCollectionUserAPITest, test_collection_type) {
   auto shouldBeEvaluatedToType = [&](VPackBuilder const& body,
                                      TRI_col_type_e type) {
     auto testee = PlanCollection::fromCreateAPIBody(body.slice());
-    EXPECT_EQ(testee.type, type) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->type, type) << "Parsing error in " << body.toJson();
   };
 
   // Edge types, we only have two valid ways to get edges
@@ -156,7 +155,7 @@ TEST_F(PlanCollectionUserAPITest, test_collection_type) {
   TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, bool expected) { \
       auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
-      EXPECT_EQ(testee.attributeName, expected)                               \
+      EXPECT_EQ(testee->attributeName, expected)                              \
           << "Parsing error in " << body.toJson();                            \
     };                                                                        \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, true),  \
@@ -188,7 +187,7 @@ GenerateBoolAttributeTest(cacheEnabled);
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                  \
                                    uint64_t expected) {                       \
       auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
-      EXPECT_EQ(testee.attributeName, expected)                               \
+      EXPECT_EQ(testee->attributeName, expected)                              \
           << "Parsing error in " << body.toJson();                            \
     };                                                                        \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2); \
@@ -214,7 +213,7 @@ GenerateIntegerAttributeTest(writeConcern);
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
                                    std::string expected) {                     \
       auto testee = PlanCollection::fromCreateAPIBody(body.slice());           \
-      EXPECT_EQ(testee.attributeName, expected)                                \
+      EXPECT_EQ(testee->attributeName, expected)                               \
           << "Parsing error in " << body.toJson();                             \
     };                                                                         \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
