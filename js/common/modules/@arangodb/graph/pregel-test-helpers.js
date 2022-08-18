@@ -1360,7 +1360,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                     .makeCrystal(numberLayers, thickness, "directed");
                 // add an edge
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "7", "v"));
-                const source = 'v_0';
+                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
                 testSSSPOnGraph(vertices, edges, source);
 
             },
@@ -1370,8 +1370,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                 let edges = [];
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "1", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "1", "v"));
-
-                testSSSPOnGraph(vertices, edges, "v_0");
+                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSPTwoEdgesWithSelfloops: function () {
@@ -1383,8 +1383,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "0", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "1", "v", "1", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "2", "v"));
-
-                testSSSPOnGraph(vertices, edges, "v_0");
+                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSPTwoDisjointDirectedCycles: function () {
@@ -1393,8 +1393,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
                 const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
                 const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
-
-                testSSSPOnGraph(vertices, edges, "v0_0");
+                const source = verticesEdgesGenerator(vColl, "v0").makeVertex('0')._key;
+                testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSP10Star: function () {
@@ -1403,7 +1403,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                     vertices,
                     edges
                 } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
-                testSSSPOnGraph(vertices, edges, "v_0");
+                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSP10StarMultipleEdges: function () {
@@ -1418,7 +1419,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                 for (const e of edges) {
                     edges2.push({... e});
                 }
-                testSSSPOnGraph(vertices, edges2, "v_0");
+                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                testSSSPOnGraph(vertices, edges2, source);
             }
 
 
