@@ -5,6 +5,13 @@ devel
   Switch from sigma to antv/G6 to draw the graph. Fix bugs with
   inconsistent behavior after deleting and adding nodes and edges.
 
+* Disallowed index creation that covers fields in which the field's name starts
+  or ends with `:` for single server or cluster when the instance is a
+  coordinator or single server. This validation only happens for index creation, 
+  so already existing indexes that might use such field names will remain as they are.
+
+* Updated arangosync to v2.12.0-preview-6.
+
 * When using `SHORTEST_PATH`, `K_SHORTEST_PATHS`, `ALL_SHORTEST_PATHS`, or
   `K_PATHS` in an AQL Query and the query itself produced warnings during
   execution, the type has been wrongly reported. It reported always with
