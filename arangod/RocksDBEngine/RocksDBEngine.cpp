@@ -1062,7 +1062,7 @@ void RocksDBEngine::start() {
 
   // give throttle access to families
   if (_useThrottle) {
-    _throttleListener->SetFamilies(cfHandles);
+    _throttleListener->setFamilies(cfHandles);
   }
 
   TRI_ASSERT(_db != nullptr);
@@ -3200,10 +3200,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
   if (_throttleListener) {
     if (v2) {
       builder.add("rocksdb_engine.throttle.bps",
-                  VPackValue(_throttleListener->GetThrottle()));
+                  VPackValue(_throttleListener->getThrottle()));
     } else {
       builder.add("rocksdbengine.throttle.bps",
-                  VPackValue(_throttleListener->GetThrottle()));
+                  VPackValue(_throttleListener->getThrottle()));
     }
   }  // if
 
