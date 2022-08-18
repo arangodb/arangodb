@@ -102,12 +102,12 @@ struct LinkTrxState final : public TransactionState::Cookie {
   LinkTrxState& operator=(LinkTrxState const&) = delete;
   LinkTrxState& operator=(LinkTrxState&&) = delete;
 
-  irs::index_writer::documents_context _ctx;
   LinkLock _linkLock;  // prevent data-store deallocation (lock @ AsyncSelf)
+  irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
   LinkTrxState(LinkLock linkLock, irs::index_writer& writer) noexcept
-      : _ctx{writer.documents()}, _linkLock{std::move(linkLock)} {}
+      : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~LinkTrxState() final {
     if (_removals.empty()) {

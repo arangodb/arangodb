@@ -141,10 +141,16 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
         } else if (name == arangodb::StaticStrings::IndexHintMaxProjections) {
           // maxProjections is a valid attribute, but handled elsewhere
           handled = true;
-        }
-
-        if (!handled) {
+        } else {
           ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
+                                                name.data(), name.size());
+          handled = true;
+        }
+        if (!handled) {
+          VPackBuilder builder;
+          child->getMember(0)->toVelocyPackValue(builder);
+          std::string msg = "invalid value " + builder.toJson() + " in ";
+          ExecutionPlan::invalidOptionAttribute(query, msg.data(), "FOR",
                                                 name.data(), name.size());
         }
       }

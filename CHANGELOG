@@ -5,6 +5,21 @@ v3.9.3 (XXXX-XX-XX)
   all levels, not just level0. Previously it only looked at level0, which is not
   enough if there aren't any other levels in the column family.
 
+* Improve error handling for passing wrong transaction ids / cursor ids / pregel
+  job ids to request forwarding. Also prevent the error "transaction id not
+  found" in cases when request forwarding was tried to a coordinator that was
+  recently restarted.
+
+* Fixed a potential deadlock in RocksDB compaction.
+  For details see https://github.com/facebook/rocksdb/pull/10355.
+
+* Updated warning messages raised for non accepted query OPTIONS, 
+  distinguishing between when the OPTIONS attribute is correct, but the value 
+  is in incorrect format, and when the OPTIONS attribute itself is incorrect.
+
+* BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
+  or more SortNodes appeared in the AQL execution plan.
+
 * Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
   to take the user to the collections view).
 
