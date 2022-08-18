@@ -25,12 +25,39 @@
 
 #include <Algorithm.h>
 
+namespace pregel::algorithms::pagerank {
+
+struct VertexProperties {
+  uint64_t foo;
+  float bla;
+};
+
+struct Msg1 {
+  uint64_t something;
+};
+
+struct Msg2 {
+  float something_else;
+};
+
+struct Message {
+  std::variant<Msg1, Msg2> msg;
+};
+
+enum class Phase { Phase0, Phase1 };
+
+struct Global {
+  Phase phase;
+};
+
 struct PageRankData {
   using Settings = struct {};
-  using VertexProperties = struct { float val; };
+  using VertexProperties = VertexProperties;
   using EdgeProperties = EmptyEdgeProperties;
-  using Message = float;
+  using Message = Message;
+
   using Global = struct {};
+
   using Aggregators = struct { float foo; };
 };
 
@@ -39,9 +66,8 @@ struct PageRank : AlgorithmBase<PageRankData> {
     return "PageRank";
   }
 
-  auto readVertexDocument(VPackSlice const &doc)
-      -> PageRankData::VertexProperties override {
-    return PageRankData::VertexProperties{.val = 0.0};
+  auto readVertexDocument(VPackSlice const &doc) -> VertexProperties override {
+    return VertexProperties{.val = 0.0};
   }
   auto readEdgeDocument(VPackSlice const &doc)
       -> PageRankData::EdgeProperties override {
@@ -49,6 +75,24 @@ struct PageRank : AlgorithmBase<PageRankData> {
   }
   auto writeVertexDocument(VPackBuilder &b) -> void override { return; }
 
-  auto vertexStep() -> void override { return; }
-  auto conductorStep() -> void override { return; }
+  auto vertexStepPhase0() -> void{};
+
+  auto vertexStep(Global const &global, VertexProperties &props)
+      -> void override {
+    switch (global.phase) {
+    case Phase::Phase0:
+      break;
+    case Phase::Phase1:
+      break;
+    }
+    props.foo = 15;
+
+    return;
+  }
+  auto conductorStep(Global &state) -> void override {
+    state.phase += 1;
+    return;
+  }
 };
+
+} // namespace pregel::algorithms::pagerank

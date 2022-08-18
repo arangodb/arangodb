@@ -41,18 +41,23 @@ struct EmptyVertexProperties = struct {};
 struct EmptyEdgeProperties = struct {};
 struct EmptyMessage = struct {};
 
-template <typename AlgorithmData> struct AlgorithmBase {
+template<typename AlgorithmData>
+struct AlgorithmBase {
   [[nodiscard]] virtual constexpr auto name() const -> std::string_view = 0;
 
-  [[nodiscard]] virtual auto readVertexDocument(VPackSlice const &doc) ->
+  [[nodiscard]] virtual auto readVertexDocument(VPackSlice const& doc) ->
       typename AlgorithmData::VertexProperties = 0;
 
-  [[nodiscard]] virtual auto readEdgeDocument(VPackSlice const &doc) ->
+  [[nodiscard]] virtual auto readEdgeDocument(VPackSlice const& doc) ->
       typename AlgorithmData::EdgeProperties = 0;
 
-  virtual auto writeVertexDocument(VPackBuilder &b) -> void = 0;
+  virtual auto writeVertexDocument(
+      typename AlgorithmData::VertexProperties const& prop, VPackBuilder& b)
+      -> void = 0;
 
-  virtual auto vertexStep() -> void = 0;
+  virtual auto conductorSetup() -> void = 0;
 
-  virtual auto conductorStep() -> void = 0;
+  virtual auto vertexStep(/* to be determined */) -> void = 0;
+
+  virtual auto conductorStep(/* to be determined */) -> void = 0;
 };
