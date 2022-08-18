@@ -1149,6 +1149,8 @@ Result RestReplicationHandler::processRestoreCollection(
 
   // Now we have done our best to remove the Collection.
   // It shall not be there anymore. Try to recreate it.
+
+  // TODO the following shall be unified as well.
   if (ServerState::instance()->isCoordinator()) {
     // Build up new information that we need to merge with the given one
     VPackBuilder toMerge;
