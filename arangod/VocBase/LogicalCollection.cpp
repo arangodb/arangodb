@@ -245,7 +245,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::initializeSmartAttributesBefore(velocypack::Slice info) {
+void LogicalCollection::initializeSmartAttributesBefore(
+    velocypack::Slice info) {
   // nothing to do in community edition
 }
 void LogicalCollection::initializeSmartAttributesAfter(velocypack::Slice info) {
