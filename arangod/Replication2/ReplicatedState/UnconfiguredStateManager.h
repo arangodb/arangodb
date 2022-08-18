@@ -55,7 +55,7 @@ struct UnconfiguredStateManager
       std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
           unconfiguredParticipant,
       std::unique_ptr<CoreType> core,
-      std::unique_ptr<ReplicatedStateToken> token);
+      std::unique_ptr<ReplicatedStateToken> token) noexcept;
 
   void run() noexcept override;
 

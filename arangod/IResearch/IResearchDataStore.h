@@ -20,6 +20,7 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "IResearchDataStoreMeta.h"
@@ -82,13 +83,13 @@ using LinkLock = AsyncValue<IResearchDataStore>::Value;
 /// @brief container storing the index state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchTrxState final : public TransactionState::Cookie {
-  irs::index_writer::documents_context _ctx;
   // prevent data-store deallocation (lock @ AsyncSelf)
-  LinkLock _linkLock;
+  LinkLock _linkLock;  // should be first field to destroy last
+  irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
   IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
-      : _ctx{writer.documents()}, _linkLock{std::move(linkLock)} {}
+      : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~IResearchTrxState() final {
     if (_removals.empty()) {

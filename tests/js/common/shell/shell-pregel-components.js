@@ -432,4 +432,5 @@ jsunity.run(labelPropagationTestSuite);
 jsunity.run(pagerankTestSuite);
 jsunity.run(seededPagerankTestSuite);
 jsunity.run(ssspTestSuite);
+
 return jsunity.done();

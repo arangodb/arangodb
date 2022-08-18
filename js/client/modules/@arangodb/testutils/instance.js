@@ -211,6 +211,10 @@ class instance {
     fs.makeDirectoryRecursive(this.appDir);
     fs.makeDirectoryRecursive(this.tmpDir);
     this.logFile = fs.join(rootDir, 'log');
+    this.coreDirectory = this.rootDir;
+    if (process.env.hasOwnProperty('COREDIR')) {
+      this.coreDirectory = process.env['COREDIR'];
+    }
     this._makeArgsArangod();
     
     this.name = instanceRole + ' - ' + this.port;
@@ -636,7 +640,7 @@ class instance {
     }
 
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
-      if (!crashUtils.runProcdump(this.options, this, this.rootDir, this.pid)) {
+      if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
         print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
@@ -669,7 +673,7 @@ class instance {
       throw x;
     }
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
-      if (!crashUtils.runProcdump(this.options, this, this.rootDir, this.pid)) {
+      if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
         print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
@@ -809,7 +813,7 @@ class instance {
       if (!this.options.disableMonitor) {
         crashUtils.stopProcdump (this.options, this, true);
       }
-      crashUtils.runProcdump (this.options, this, this.rootDir, this.pid, true);
+      crashUtils.runProcdump (this.options, this, this.coreDirectory, this.pid, true);
     }
     if (this.options.test !== undefined) {
       print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
