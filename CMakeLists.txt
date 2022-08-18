@@ -1255,11 +1255,12 @@ endif ()
 
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
-set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 ################################################################################
 ## V8
 ################################################################################
+
+set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
