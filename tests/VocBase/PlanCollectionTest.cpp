@@ -30,6 +30,109 @@
 namespace arangodb {
 namespace tests {
 
+/**********************
+ * MACRO SECTION
+ *
+ * Here are some helper Makros to fill some of the below test code
+ * which is highly overlapping
+ *********************/
+
+#define GenerateFailsOnBool(attributeName)                                  \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, true)); \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, false));
+
+#define GenerateFailsOnInteger(attributeName)                             \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 1));  \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0));  \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 42)); \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -2));
+
+#define GenerateFailsOnDouble(attributeName)                               \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 4.5)); \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0.2)); \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -0.3));
+
+#define GenerateFailsOnString(attributeName)                                  \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, ""));     \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, "test")); \
+  assertParsingThrows(                                                        \
+      createMinimumBodyWithOneValue(#attributeName, "dogfather"));
+
+#define GenerateFailsOnArray(attributeName)          \
+  assertParsingThrows(createMinimumBodyWithOneValue( \
+      #attributeName, VPackSlice::emptyArraySlice()));
+
+#define GenerateFailsOnObject(attributeName)         \
+  assertParsingThrows(createMinimumBodyWithOneValue( \
+      #attributeName, VPackSlice::emptyObjectSlice()));
+
+// This macro generates a basic bool value test, checking if we get true/false
+// through and other basic types are rejected.
+
+#define GenerateBoolAttributeTest(attributeName)                              \
+  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, bool expected) { \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
+      EXPECT_EQ(testee->attributeName, expected)                              \
+          << "Parsing error in " << body.toJson();                            \
+    };                                                                        \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, true),  \
+                        true);                                                \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, false), \
+                        false);                                               \
+    GenerateFailsOnInteger(attributeName);                                    \
+    GenerateFailsOnDouble(attributeName);                                     \
+    GenerateFailsOnString(attributeName);                                     \
+    GenerateFailsOnArray(attributeName);                                      \
+    GenerateFailsOnObject(attributeName);                                     \
+  }
+// This macro generates a basic integer value test, checking if we get 2 and 42
+// through and other basic types are rejected.
+// NOTE: we also test 4.5 (double) right now this passes the validator, need to
+// discuss if this is correct
+
+#define GenerateIntegerAttributeTest(attributeName)                           \
+  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                  \
+                                   uint64_t expected) {                       \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
+      EXPECT_EQ(testee->attributeName, expected)                              \
+          << "Parsing error in " << body.toJson();                            \
+    };                                                                        \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2); \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),    \
+                        42);                                                  \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),   \
+                        4);                                                   \
+    GenerateFailsOnBool(attributeName);                                       \
+    GenerateFailsOnString(attributeName);                                     \
+    GenerateFailsOnArray(attributeName);                                      \
+    GenerateFailsOnObject(attributeName);                                     \
+  }
+
+#define GenerateStringAttributeTest(attributeName)                             \
+  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
+                                   std::string const& expected) {              \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice());           \
+      EXPECT_EQ(testee->attributeName, expected)                               \
+          << "Parsing error in " << body.toJson();                             \
+    };                                                                         \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
+                        "test");                                               \
+    shouldBeEvaluatedTo(                                                       \
+        createMinimumBodyWithOneValue(#attributeName, "unknown"), "unknown");  \
+    GenerateFailsOnBool(attributeName);                                        \
+    GenerateFailsOnInteger(attributeName);                                     \
+    GenerateFailsOnDouble(attributeName);                                      \
+    GenerateFailsOnArray(attributeName);                                       \
+    GenerateFailsOnObject(attributeName);                                      \
+  }
+
+/**********************
+ * TEST SECTION
+ *********************/
+
 class PlanCollectionUserAPITest : public ::testing::Test {
  protected:
   /// @brief this generates the minimal required body, only exchanging one
@@ -146,110 +249,41 @@ TEST_F(PlanCollectionUserAPITest, test_collection_type) {
       createMinimumBodyWithOneValue("type", VPackSlice::emptyArraySlice()));
 }
 
-// Basic test makros for the parser
+TEST_F(PlanCollectionUserAPITest, test_shardingStrategy) {
+  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,
+                                 std::string const& expected) {
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+    EXPECT_EQ(testee->shardingStrategy, expected)
+        << "Parsing error in " << body.toJson();
+  };
+  std::vector<std::string> allowedStrategies{
+      "hash", "enterprise-hash-smart-edge", "community-compat",
+      "enterprise-compat", "enterprise-smart-edge-compat"};
 
-#define GenerateFailsOnBool(attributeName)                                  \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, true)); \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, false));
-
-#define GenerateFailsOnInteger(attributeName)                             \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 1));  \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0));  \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 42)); \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -2));
-
-#define GenerateFailsOnDouble(attributeName)                               \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 4.5)); \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0.2)); \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -0.3));
-
-#define GenerateFailsOnString(attributeName)                                  \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, ""));     \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, "test")); \
-  assertParsingThrows(                                                        \
-      createMinimumBodyWithOneValue(#attributeName, "dogfather"));
-
-#define GenerateFailsOnArray(attributeName)          \
-  assertParsingThrows(createMinimumBodyWithOneValue( \
-      #attributeName, VPackSlice::emptyArraySlice()));
-
-#define GenerateFailsOnObject(attributeName)         \
-  assertParsingThrows(createMinimumBodyWithOneValue( \
-      #attributeName, VPackSlice::emptyObjectSlice()));
-
-// This macro generates a basic bool value test, checking if we get true/false
-// through and other basic types are rejected.
-
-#define GenerateBoolAttributeTest(attributeName)                              \
-  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, bool expected) { \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
-      EXPECT_EQ(testee->attributeName, expected)                              \
-          << "Parsing error in " << body.toJson();                            \
-    };                                                                        \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, true),  \
-                        true);                                                \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, false), \
-                        false);                                               \
-    GenerateFailsOnInteger(attributeName);                                    \
-    GenerateFailsOnDouble(attributeName);                                     \
-    GenerateFailsOnString(attributeName);                                     \
-    GenerateFailsOnArray(attributeName);                                      \
-    GenerateFailsOnObject(attributeName);                                     \
+  for (auto const& strategy : allowedStrategies) {
+    shouldBeEvaluatedTo(
+        createMinimumBodyWithOneValue("shardingStrategy", strategy), strategy);
   }
 
+  GenerateFailsOnBool(shardingStrategy);
+  GenerateFailsOnString(shardingStrategy);
+  GenerateFailsOnInteger(shardingStrategy);
+  GenerateFailsOnDouble(shardingStrategy);
+  GenerateFailsOnArray(shardingStrategy);
+  GenerateFailsOnObject(shardingStrategy);
+}
+
+// Tests for generic attributes without special needs
 GenerateBoolAttributeTest(waitForSync);
 GenerateBoolAttributeTest(doCompact);
 GenerateBoolAttributeTest(isSystem);
 GenerateBoolAttributeTest(isVolatile);
 GenerateBoolAttributeTest(cacheEnabled);
 
-// This macro generates a basic integer value test, checking if we get 2 and 42
-// through and other basic types are rejected.
-// NOTE: we also test 4.5 (double) right now this passes the validator, need to
-// discuss if this is correct
-
-#define GenerateIntegerAttributeTest(attributeName)                           \
-  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                  \
-                                   uint64_t expected) {                       \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
-      EXPECT_EQ(testee->attributeName, expected)                              \
-          << "Parsing error in " << body.toJson();                            \
-    };                                                                        \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2); \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),    \
-                        42);                                                  \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),   \
-                        4);                                                   \
-    GenerateFailsOnBool(attributeName);                                       \
-    GenerateFailsOnString(attributeName);                                     \
-    GenerateFailsOnArray(attributeName);                                      \
-    GenerateFailsOnObject(attributeName);                                     \
-  }
 
 GenerateIntegerAttributeTest(numberOfShards);
 GenerateIntegerAttributeTest(replicationFactor);
 GenerateIntegerAttributeTest(writeConcern);
-
-#define GenerateStringAttributeTest(attributeName)                             \
-  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
-                                   std::string const& expected) {              \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice());           \
-      EXPECT_EQ(testee->attributeName, expected)                               \
-          << "Parsing error in " << body.toJson();                             \
-    };                                                                         \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
-                        "test");                                               \
-    shouldBeEvaluatedTo(                                                       \
-        createMinimumBodyWithOneValue(#attributeName, "unknown"), "unknown");  \
-    GenerateFailsOnBool(attributeName);                                        \
-    GenerateFailsOnInteger(attributeName);                                     \
-    GenerateFailsOnDouble(attributeName);                                      \
-    GenerateFailsOnArray(attributeName);                                       \
-    GenerateFailsOnObject(attributeName);                                      \
-  }
 
 GenerateStringAttributeTest(distributeShardsLike);
 GenerateStringAttributeTest(smartJoinAttribute);
