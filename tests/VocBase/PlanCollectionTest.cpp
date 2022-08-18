@@ -91,7 +91,7 @@ namespace tests {
 // NOTE: we also test 4.5 (double) right now this passes the validator, need to
 // discuss if this is correct
 
-#define GenerateIntegerAttributeTest(attributeName)                           \
+#define GeneratePositiveIntegerAttributeTest(attributeName)                   \
   TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                  \
                                    uint64_t expected) {                       \
@@ -104,6 +104,9 @@ namespace tests {
                         42);                                                  \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),   \
                         4);                                                   \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -1));   \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0));    \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -4.5)); \
     GenerateFailsOnBool(attributeName);                                       \
     GenerateFailsOnString(attributeName);                                     \
     GenerateFailsOnArray(attributeName);                                      \
@@ -217,6 +220,12 @@ TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
       createMinimumBodyWithOneValue("name", VPackSlice::emptyObjectSlice()));
   assertParsingThrows(
       createMinimumBodyWithOneValue("name", VPackSlice::emptyArraySlice()));
+
+  GenerateFailsOnBool(name);
+  GenerateFailsOnInteger(name);
+  GenerateFailsOnDouble(name);
+  GenerateFailsOnArray(name);
+  GenerateFailsOnObject(name);
 }
 
 TEST_F(PlanCollectionUserAPITest, test_collection_type) {
@@ -280,10 +289,9 @@ GenerateBoolAttributeTest(isSystem);
 GenerateBoolAttributeTest(isVolatile);
 GenerateBoolAttributeTest(cacheEnabled);
 
-
-GenerateIntegerAttributeTest(numberOfShards);
-GenerateIntegerAttributeTest(replicationFactor);
-GenerateIntegerAttributeTest(writeConcern);
+GeneratePositiveIntegerAttributeTest(numberOfShards);
+GeneratePositiveIntegerAttributeTest(replicationFactor);
+GeneratePositiveIntegerAttributeTest(writeConcern);
 
 GenerateStringAttributeTest(distributeShardsLike);
 GenerateStringAttributeTest(smartJoinAttribute);

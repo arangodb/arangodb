@@ -365,7 +365,7 @@ void RestCollectionHandler::handleCommandPost() {
   Result res = methods::Collections::create(
       _vocbase,  // collection vocbase
       options,
-      planCollection->name,       // colection name
+      planCollection->name,       // collection name
       planCollection->getType(),  // collection type
       parameters.slice(),         // collection properties
       waitForSyncReplication,     // replication wait flag

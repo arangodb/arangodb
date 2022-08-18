@@ -101,10 +101,29 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("cacheEnabled", planCollection.cacheEnabled).fallback(false),
           f.field("isVolatile", planCollection.isVolatile).fallback(false),
           f.field("numberOfShards", planCollection.numberOfShards)
-              .fallback(1ULL),
+              .fallback(1ULL)
+              .invariant([](auto const& value) -> inspection::Status {
+                if (value > 0) {
+                  return inspection::Status::Success{};
+                }
+                return {"Value has to be > 0"};
+              }),
           f.field("replicationFactor", planCollection.replicationFactor)
-              .fallback(1ULL),
-          f.field("writeConcern", planCollection.writeConcern).fallback(1ULL),
+              .fallback(1ULL)
+              .invariant([](auto const& value) -> inspection::Status {
+                if (value > 0) {
+                  return inspection::Status::Success{};
+                }
+                return {"Value has to be > 0"};
+              }),
+          f.field("writeConcern", planCollection.writeConcern)
+              .fallback(1ULL)
+              .invariant([](auto const& value) -> inspection::Status {
+                if (value > 0) {
+                  return inspection::Status::Success{};
+                }
+                return {"Value has to be > 0"};
+              }),
           f.field("distributeShardsLike", planCollection.distributeShardsLike)
               .fallback(""),
           f.field("smartJoinAttribute", planCollection.smartJoinAttribute)

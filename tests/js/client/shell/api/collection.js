@@ -123,9 +123,21 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['code'], 404);
     },
 
-    test_creating_a_collection_without_name: function() {
+    test_creating_a_collection_without_body: function () {
       let cmd = api;
       let doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 400);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 400);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_ILLEGAL_NAME.code);
+    },
+
+    test_creating_a_collection_without_name: function () {
+      let cmd = api;
+      let body = "{ \"name\" : \"\" }";
+      let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 400);
       assertEqual(doc.headers['content-type'], contentType);

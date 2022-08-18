@@ -31,7 +31,17 @@ PlanCollection::PlanCollection() {}
 
 ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(VPackSlice input) {
   try {
-    return velocypack::deserialize<PlanCollection>(input);
+    PlanCollection res;
+    auto status = velocypack::deserializeWithStatus(input, res);
+    if (status.ok()) {
+      return res;
+    }
+    if (status.path().empty() || status.path() == "name") {
+      // Special handling to be backwards compatible error reporting
+      // on "name"
+      return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+    }
+    return Result{TRI_ERROR_BAD_PARAMETER, status.error()};
   } catch (basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception const& e) {
