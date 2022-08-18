@@ -469,6 +469,22 @@ arangodb::Result sendRestoreCollection(
   }
   newOptions.add(arangodb::StaticStrings::NumberOfShards,
                  VPackValue(getNumberOfShards(options, parameters)));
+
+  // enable revision trees for the collection if the parameters are not set
+  // (likely a collection from the pre-3.8 era)
+  if (options.enableRevisionTrees) {
+    if ((parameters.get(arangodb::StaticStrings::SyncByRevision).isNone() ||
+         parameters.get(arangodb::StaticStrings::SyncByRevision).isTrue()) &&
+        (parameters.get(arangodb::StaticStrings::UsesRevisionsAsDocumentIds)
+             .isNone() ||
+         parameters.get(arangodb::StaticStrings::UsesRevisionsAsDocumentIds)
+             .isTrue())) {
+      newOptions.add(arangodb::StaticStrings::SyncByRevision, VPackValue(true));
+      newOptions.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
+                     VPackValue(true));
+    }
+  }
+
   newOptions.close();
 
   VPackBuilder b;
@@ -1390,7 +1406,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   using arangodb::basics::StringUtils::formatSize;
 
   int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      parameters, "type", 2);
+      parameters, std::vector<std::string_view>({"parameters", "type"}), 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   auto&& currentStatus = progressTracker.getStatus(collectionName);
@@ -1528,7 +1544,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       // data in order. this is because the enveloped data format may contain
       // documents to insert *AND* documents to remove (this is an MMFiles
       // legacy).
-      bool const forceDirect = (numRead == 0) || !useEnvelope;
+      bool const forceDirect = (numRead == 0) || useEnvelope;
 
       result = dispatchRestoreData(client, datafileReadOffset, buffer->begin(),
                                    length, forceDirect);
@@ -1572,7 +1588,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
         }
 
         LOG_TOPIC("69a73", INFO, Logger::RESTORE)
-            << "# Still loading data into " << collectionType << " collection '"
+            << "# Loading data into " << collectionType << " collection '"
             << collectionName << "', " << formatSize(numReadForThisCollection)
             << ofFilesize << " read" << percentage;
         numReadSinceLastReport = 0;
@@ -1776,6 +1792,14 @@ void RestoreFeature::collectOptions(
                   "(this is required from compatibility with v3.7 and before)",
                   new BooleanParameter(&_options.useEnvelope))
       .setIntroducedIn(30800);
+
+  options
+      ->addOption("--enable-revision-trees",
+                  "enable revision trees for new collections if the collection "
+                  "attributes 'syncByRevision' and "
+                  "'usesRevisionsAsDocumentIds' are missing",
+                  new BooleanParameter(&_options.enableRevisionTrees))
+      .setIntroducedIn(30807);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   options->addOption(
@@ -2236,15 +2260,17 @@ void RestoreFeature::start() {
 
     if (_options.importData) {
       LOG_TOPIC("a66e1", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s, "
-          << "read " << formatSize(_stats.totalRead) << " from datafiles, "
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 2) << " s total time. Read "
+          << formatSize(_stats.totalRead) << " from datafiles, "
           << "sent " << _stats.totalBatches << " data batch(es) of "
           << formatSize(_stats.totalSent) << " total size";
     } else if (_options.importStructure) {
       LOG_TOPIC("147ca", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s";
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 2) << " s total time.";
     }
   }
 }

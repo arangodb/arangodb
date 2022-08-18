@@ -686,7 +686,7 @@ class EnumerateCollectionNode : public ExecutionNode,
                       unsigned flags) const override final;
 
  private:
-  /// @brief whether or not we want random iteration
+  /// @brief whether or not we want a random document from the collection
   bool _random;
 
   /// @brief a possible hint from the user regarding which index to use

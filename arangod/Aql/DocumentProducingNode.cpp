@@ -42,11 +42,14 @@ using namespace arangodb::aql;
 
 namespace {
 arangodb::velocypack::StringRef const filterKey("filter");
+arangodb::velocypack::StringRef const maxProjectionsKey("maxProjections");
 arangodb::velocypack::StringRef const producesResultKey("producesResult");
 }  // namespace
 
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
-    : _outVariable(outVariable), _count(false) {
+    : _outVariable(outVariable),
+      _count(false),
+      _maxProjections(kMaxProjections) {
   TRI_ASSERT(_outVariable != nullptr);
 }
 
@@ -55,7 +58,8 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     : _outVariable(
           Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
       _projections(arangodb::aql::Projections::fromVelocyPack(slice)),
-      _count(false) {
+      _count(false),
+      _maxProjections(kMaxProjections) {
   TRI_ASSERT(_outVariable != nullptr);
 
   VPackSlice p = slice.get(::filterKey);
@@ -71,6 +75,11 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                        slice, "readOwnWrites", false)
                        ? ReadOwnWrites::yes
                        : ReadOwnWrites::no;
+
+  p = slice.get(::maxProjectionsKey);
+  if (!p.isNone()) {
+    setMaxProjections(p.getNumber<size_t>());
+  }
 }
 
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
@@ -81,6 +90,7 @@ void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
   }
   c.copyCountFlag(this);
   c.setCanReadOwnWrites(canReadOwnWrites());
+  c.setMaxProjections(maxProjections());
 }
 
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
@@ -110,6 +120,8 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   }
   builder.add("readOwnWrites",
               VPackValue(_readOwnWrites == ReadOwnWrites::yes));
+
+  builder.add(::maxProjectionsKey, VPackValue(maxProjections()));
 }
 
 Variable const* DocumentProducingNode::outVariable() const {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,9 +42,6 @@ class RegexMatcher;
 }
 
 namespace arangodb {
-namespace velocypack {
-class StringRef;
-}
 namespace basics {
 
 #ifdef _WIN32
@@ -52,6 +49,8 @@ std::wstring toWString(std::string const& validUTF8String);
 std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
 std::string fromWString(std::wstring const& validUTF16String);
 #endif
+
+enum class LanguageType { INVALID, DEFAULT, ICU };
 
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
@@ -103,9 +102,26 @@ class Utf8Helper {
   /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   /// @param icuDataPointer data file to be loaded by the application
+  /// @param langType type of language. Now supports DEFAULT and ICU only
+  /// collation
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string const& lang, void* icuDataPointer);
+  bool setCollatorLanguage(std::string_view lang, LanguageType langType,
+                           void* icuDataPointer);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get current collator
+  //////////////////////////////////////////////////////////////////////////////
+
+  icu::Collator* getCollator() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set collator
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setCollator(icu::Collator* coll);
+#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator language
@@ -147,8 +163,7 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tokenize(std::set<std::string>& words,
-                arangodb::velocypack::StringRef const& text,
+  bool tokenize(std::set<std::string>& words, std::string_view text,
                 size_t minimalWordLength, size_t maximalWordLength,
                 bool lowerCase);
 

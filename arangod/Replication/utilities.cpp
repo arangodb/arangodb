@@ -138,19 +138,18 @@ arangodb::Result handleLeaderStateResponse(
   }
 
   std::string const versionString(version.copyString());
-  auto v = arangodb::rest::Version::parseVersionString(versionString);
-  int major = v.first;
-  int minor = v.second;
+  auto v = arangodb::rest::Version::parseFullVersionString(versionString);
 
-  if (major != 3) {
+  if (v.major != 3) {
     // we can connect to 3.x only
     return Result(TRI_ERROR_REPLICATION_LEADER_INCOMPATIBLE,
                   std::string("got incompatible leader version") +
                       endpointString + ": '" + versionString + "'");
   }
 
-  leader.majorVersion = major;
-  leader.minorVersion = minor;
+  leader.majorVersion = v.major;
+  leader.minorVersion = v.minor;
+  leader.patchVersion = v.patch;
   leader.serverId = leaderId;
   leader.lastLogTick = lastLogTick;
 

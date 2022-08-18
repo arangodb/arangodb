@@ -168,6 +168,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
               // copy over the read-own-writes flag from EnumerateCollectionNode
               // to IndexNode
               idx->setCanReadOwnWrites(node->canReadOwnWrites());
+              // copy max number of projections
+              idx->setMaxProjections(node->maxProjections());
               return idx;
             }));
       }

@@ -340,6 +340,9 @@ class RocksDBEngine final : public StorageEngine {
   double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
   bool useEdgeCache() const { return _useEdgeCache; }
 
+  // whether or not to issue range delete markers in the write-ahead log
+  bool useRangeDeleteInWal() const noexcept { return _useRangeDeleteInWal; }
+
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
@@ -420,6 +423,16 @@ class RocksDBEngine final : public StorageEngine {
   recoveryHelpers();
 
   void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  uint64_t recoveryStartSequence() const noexcept {
+    return _recoveryStartSequence;
+  }
+  void recoveryStartSequence(uint64_t value) noexcept {
+    TRI_ASSERT(_recoveryStartSequence == 0);
+    _recoveryStartSequence = value;
+  }
+#endif
 
  private:
   void shutdownRocksDBInstance() noexcept;
@@ -557,6 +570,9 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief activate generation of SHA256 files to parallel .sst files
   bool _createShaFiles;
 
+  // whether or not to issue range delete markers in the write-ahead log
+  bool _useRangeDeleteInWal;
+
   /// @brief whether or not the last health check was successful.
   /// this is used to determine when to execute the potentially expensive
   /// checks for free disk space
@@ -627,6 +643,12 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _throttleSlowdownWritesTrigger = 8;
   // Lower bound for computed write bandwidth of throttle:
   uint64_t _throttleLowerBoundBps = 10 * 1024 * 1024;
+
+  // sequence number from which WAL recovery was started. used only
+  // for testing
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  uint64_t _recoveryStartSequence = 0;
+#endif
 
   Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   Gauge<uint64_t>& _metricsArchivedWalFiles;

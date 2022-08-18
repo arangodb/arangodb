@@ -26,8 +26,9 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/application-exit.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -40,6 +41,7 @@ using namespace arangodb::consensus;
 
 namespace {
 void handleGossipResponse(arangodb::network::Response const& r,
+                          std::string const& endpoint,
                           arangodb::consensus::Agent* agent, size_t version) {
   using namespace arangodb;
   std::string newLocation;
@@ -57,7 +59,8 @@ void handleGossipResponse(arangodb::network::Response const& r,
 
       case 307:  // Add new endpoint to gossip peers
         bool found;
-        newLocation = r.response().header.metaByKey("location", found);
+        newLocation =
+            r.response().header.metaByKey(StaticStrings::Location, found);
 
         if (found) {
           if (newLocation.compare(0, 5, "https") == 0) {
@@ -66,13 +69,14 @@ void handleGossipResponse(arangodb::network::Response const& r,
             newLocation = newLocation.replace(0, 4, "tcp");
           } else {
             LOG_TOPIC("60be0", FATAL, Logger::AGENCY)
-                << "Invalid URL specified as gossip endpoint";
+                << "Invalid URL specified as gossip endpoint by " << endpoint
+                << ": " << newLocation;
             FATAL_ERROR_EXIT();
           }
 
           LOG_TOPIC("4c822", DEBUG, Logger::AGENCY)
-              << "Got redirect to " << newLocation
-              << ". Adding peer to gossip peers";
+              << "Got redirect to " << newLocation << ". Adding peer "
+              << newLocation << " to gossip peers";
           bool added = agent->addGossipPeer(newLocation);
           if (added) {
             LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY)
@@ -87,17 +91,28 @@ void handleGossipResponse(arangodb::network::Response const& r,
         }
         break;
 
+      case 503:
+        // service unavailable
+        LOG_TOPIC("f9c3f", INFO, Logger::AGENCY)
+            << "Gossip endpoint " << endpoint << " is still unavailable";
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        break;
+
       default:
+        // unexpected error
         LOG_TOPIC("bed89", ERR, Logger::AGENCY)
-            << "Got error " << r.statusCode() << " from gossip endpoint";
+            << "Got error " << r.statusCode() << " from gossip endpoint "
+            << endpoint;
         std::this_thread::sleep_for(std::chrono::seconds(40));
         break;
     }
   }
 
   LOG_TOPIC("e2ef9", DEBUG, Logger::AGENCY)
-      << "Got error from gossip message, status:" << fuerte::to_string(r.error);
+      << "Got error from gossip message to " << endpoint
+      << ", status: " << fuerte::to_string(r.error);
 }
+
 }  // namespace
 
 Inception::Inception(Agent& agent)
@@ -128,8 +143,6 @@ void Inception::gossip() {
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(1);
 
-  CONDITION_LOCKER(guard, _cv);
-
   while (!this->isStopping() && !_agent.isStopping()) {
     auto const config = _agent.config();  // get a copy of conf
     auto const version = config.version();
@@ -153,7 +166,7 @@ void Inception::gossip() {
     for (auto const& p : config.gossipPeers()) {
       if (p != config.endpoint()) {
         {
-          MUTEX_LOCKER(ackedLocker, _vLock);
+          MUTEX_LOCKER(ackedLocker, _ackLock);
           auto const& ackedPeer = _acked.find(p);
           if (ackedPeer != _acked.end() && ackedPeer->second >= version) {
             continue;
@@ -168,7 +181,7 @@ void Inception::gossip() {
         network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
                              reqOpts)
             .thenValue([=](network::Response r) {
-              ::handleGossipResponse(r, &_agent, version);
+              ::handleGossipResponse(r, p, &_agent, version);
             });
       }
     }
@@ -183,7 +196,7 @@ void Inception::gossip() {
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
         {
-          MUTEX_LOCKER(ackedLocker, _vLock);
+          MUTEX_LOCKER(ackedLocker, _ackLock);
           if (_acked[pair.second] > version) {
             continue;
           }
@@ -199,7 +212,7 @@ void Inception::gossip() {
         network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
                              buffer, reqOpts)
             .thenValue([=](network::Response r) {
-              ::handleGossipResponse(r, &_agent, version);
+              ::handleGossipResponse(r, pair.second, &_agent, version);
             });
       }
     }
@@ -229,6 +242,8 @@ void Inception::gossip() {
 
     // don't panic just yet
     //  wait() is true on signal, false on timeout
+    CONDITION_LOCKER(guard, _cv);
+
     if (_cv.wait(waitInterval)) {
       waitInterval = 250000;
     } else {
@@ -273,8 +288,6 @@ bool Inception::restartingActiveAgent() {
 
   auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
-
-  CONDITION_LOCKER(guard, _cv);
 
   active.erase(std::remove(active.begin(), active.end(), myConfig.id()),
                active.end());
@@ -335,7 +348,7 @@ bool Inception::restartingActiveAgent() {
                                            path, greetBuffer, reqOpts)
                           .get();
 
-        if (comres.ok()) {
+        if (comres.combinedResult().ok()) {
           try {
             VPackSlice theirConfig = comres.slice();
 
@@ -460,6 +473,7 @@ bool Inception::restartingActiveAgent() {
       break;
     }
 
+    CONDITION_LOCKER(guard, _cv);
     _cv.wait(waitInterval);
     if (waitInterval < 2500000) {  // 2.5s
       waitInterval *= 2;
@@ -471,7 +485,7 @@ bool Inception::restartingActiveAgent() {
 
 void Inception::reportVersionForEp(std::string const& endpoint,
                                    size_t version) {
-  MUTEX_LOCKER(versionLocker, _vLock);
+  MUTEX_LOCKER(versionLocker, _ackLock);
   if (_acked[endpoint] < version) {
     _acked[endpoint] = version;
   }

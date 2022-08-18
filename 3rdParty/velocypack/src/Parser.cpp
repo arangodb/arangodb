@@ -118,6 +118,17 @@ int Parser::skipWhiteSpace(char const* err) {
   throw Exception(Exception::ParseError, err);
 }
 
+void Parser::increaseNesting() { 
+  if (++_nesting >= options->nestingLimit) {
+    throw Exception(Exception::TooDeepNesting);
+  }
+}
+
+void Parser::decreaseNesting() noexcept { 
+  VELOCYPACK_ASSERT(_nesting > 0);
+  --_nesting; 
+}
+
 // parses a number value
 void Parser::parseNumber() {
   std::size_t startPos = _pos;
@@ -418,15 +429,16 @@ void Parser::parseString() {
 void Parser::parseArray() {
   _builderPtr->addArray();
 
+  increaseNesting();
+
   int i = skipWhiteSpace("Expecting item or ']'");
   if (i == ']') {
     // empty array
     ++_pos;  // the closing ']'
+    decreaseNesting();
     _builderPtr->close();
     return;
   }
-
-  increaseNesting();
 
   while (true) {
     // parse array element itself
@@ -454,6 +466,7 @@ void Parser::parseArray() {
 void Parser::parseObject() {
   _builderPtr->addObject();
 
+  increaseNesting();
   int i = skipWhiteSpace("Expecting item or '}'");
   if (i == '}') {
     // empty object
@@ -461,12 +474,11 @@ void Parser::parseObject() {
 
     if (_nesting != 0 || !options->keepTopLevelOpen) {
       // only close if we've not been asked to keep top level open
+      decreaseNesting();
       _builderPtr->close();
     }
     return;
   }
-
-  increaseNesting();
 
   while (true) {
     // always expecting a string attribute name here

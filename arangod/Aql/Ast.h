@@ -89,6 +89,13 @@ class Ast {
   /// @brief destroy the AST
   ~Ast();
 
+  // frees all data
+  void clear() noexcept;
+
+  // frees most data (keeps a bit of memory around to avoid later
+  // re-allocations)
+  void clearMost() noexcept;
+
   /// @brief maximum nesting level for expressions
   static constexpr uint64_t maxExpressionNesting = 500;
 
@@ -563,7 +570,9 @@ class Ast {
   AstNode* optimizeReference(AstNode*);
 
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-  AstNode* optimizeIndexedAccess(AstNode*);
+  AstNode* optimizeIndexedAccess(
+      AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                         variableDefinitions);
 
   /// @brief optimizes the LET statement
   AstNode* optimizeLet(AstNode*);

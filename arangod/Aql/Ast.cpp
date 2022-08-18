@@ -253,6 +253,12 @@ Ast::Ast(QueryContext& query,
 /// @brief destroy the AST
 Ast::~Ast() = default;
 
+// frees all data
+void Ast::clear() noexcept { _resources.clear(); }
+
+// frees most data (keeps a bit of memory around to avoid later re-allocations)
+void Ast::clearMost() noexcept { _resources.clearMost(); }
+
 /// @brief convert the AST into VelocyPack
 void Ast::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   {
@@ -2426,7 +2432,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
     // indexed access, e.g. a[0] or a['foo']
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-      return this->optimizeIndexedAccess(node);
+      return this->optimizeIndexedAccess(node, ctx->variableDefinitions);
     }
 
     // LET
@@ -3711,7 +3717,9 @@ AstNode* Ast::optimizeReference(AstNode* node) {
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
+AstNode* Ast::optimizeIndexedAccess(
+    AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                       variableDefinitions) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS);
   TRI_ASSERT(node->numMembers() == 2);
@@ -3730,9 +3738,10 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
       // we have to be careful with numeric values here...
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
-      return createNodeAttributeAccess(node->getMember(0),
-                                       index->getStringValue(),
-                                       index->getStringLength());
+      return this->optimizeAttributeAccess(
+          createNodeAttributeAccess(node->getMember(0), index->getStringValue(),
+                                    index->getStringLength()),
+          variableDefinitions);
     }
   }
 

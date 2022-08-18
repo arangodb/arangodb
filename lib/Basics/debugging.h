@@ -33,11 +33,7 @@
 
 #include "Basics/system-compiler.h"
 
-#ifndef TRI_ASSERT
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Basics/CrashHandler.h"
-#endif
-#endif
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -219,6 +215,7 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
 
 namespace debug {
 
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 struct NoOpStream {
   template<typename T>
   auto operator<<(T const&) noexcept -> NoOpStream& {
@@ -226,9 +223,13 @@ struct NoOpStream {
   }
 };
 
+struct AssertionNoOpLogger {
+  void operator&(NoOpStream const& stream) const {}
+};
+
+#else
 struct AssertionLogger {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void operator&(std::ostringstream const& stream) const {
+  [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
     arangodb::CrashHandler::assertionFailure(
         file, line, function, expr,
@@ -236,7 +237,7 @@ struct AssertionLogger {
   }
 
   // can be removed in C++20 because of LWG 1203
-  void operator&(std::ostream const& stream) const {
+  [[noreturn]] void operator&(std::ostream const& stream) const {
     operator&(static_cast<std::ostringstream const&>(stream));
   }
 
@@ -244,9 +245,10 @@ struct AssertionLogger {
   int line;
   const char* function;
   const char* expr;
-#endif
-  void operator&(NoOpStream const&) const noexcept {}
+
+  static thread_local std::ostringstream assertionStringStream;
 };
+#endif
 
 }  // namespace debug
 }  // namespace arangodb
@@ -261,15 +263,14 @@ struct AssertionLogger {
       ? (void)nullptr                                                         \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
                                            ARANGODB_PRETTY_FUNCTION, #expr} & \
-            std::ostringstream {}
+            ::arangodb::debug::AssertionLogger::assertionStringStream
 
 #else
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                   \
-  (true)                                                                       \
-      ? ((false) ? (void)(expr) : (void)nullptr)                               \
-      : ::arangodb::debug::AssertionLogger{} & ::arangodb::debug::NoOpStream { \
-  }
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/          \
+  (true) ? ((false) ? (void)(expr) : (void)nullptr)   \
+         : ::arangodb::debug::AssertionNoOpLogger{} & \
+               ::arangodb::debug::NoOpStream {}
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 

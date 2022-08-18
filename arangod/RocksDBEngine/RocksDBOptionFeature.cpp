@@ -122,6 +122,10 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "RocksDBOption"),
+      // number of lock stripes for the transaction lock manager. we bump this
+      // to at least 16 to reduce contention for small scale systems.
+      _transactionLockStripes(
+          std::max(NumberOfCores::getValue(), std::size_t(16))),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),

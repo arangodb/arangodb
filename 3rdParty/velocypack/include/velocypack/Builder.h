@@ -1081,6 +1081,9 @@ class Builder {
   bool checkAttributeUniqueness(Slice obj) const;
   bool checkAttributeUniquenessSorted(Slice obj) const;
   bool checkAttributeUniquenessUnsorted(Slice obj) const;
+
+  ValueLength effectivePaddingForOneByteMembers() const noexcept;
+  ValueLength effectivePaddingForTwoByteMembers() const noexcept;
 };
 
 struct BuilderNonDeleter {

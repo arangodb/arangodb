@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <unicode/locid.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {

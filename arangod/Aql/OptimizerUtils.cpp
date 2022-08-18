@@ -325,6 +325,11 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
     arangodb::aql::AstNode*& specializedCondition, bool& isSparse,
     bool failOnForcedHint) {
+  if (hint.type() == aql::IndexHint::HintType::Disabled) {
+    // usage of index disabled via index hint: disableIndex: true
+    return std::make_pair(false, false);
+  }
+
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
@@ -774,67 +779,69 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t itemsInIndex, aql::IndexHint const& hint,
                               std::vector<std::shared_ptr<Index>>& usedIndexes,
                               size_t& coveredAttributes) {
-  // We do not have a condition. But we have a sort!
-  if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
-      sortCondition->isUnidirectional()) {
-    double bestCost = 0.0;
-    std::shared_ptr<Index> bestIndex;
+  if (hint.type() != aql::IndexHint::HintType::Disabled) {
+    // We do not have a condition. But we have a sort!
+    if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
+        sortCondition->isUnidirectional()) {
+      double bestCost = 0.0;
+      std::shared_ptr<Index> bestIndex;
 
-    auto considerIndex =
-        [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
-         &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
-      TRI_ASSERT(!idx->inProgress());
+      auto considerIndex =
+          [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
+           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
+        TRI_ASSERT(!idx->inProgress());
 
-      Index::SortCosts costs =
-          idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
-      if (costs.supportsCondition &&
-          (bestIndex == nullptr || costs.estimatedCosts < bestCost)) {
-        bestCost = costs.estimatedCosts;
-        bestIndex = idx;
-        coveredAttributes = costs.coveredAttributes;
-      }
-    };
+        Index::SortCosts costs =
+            idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
+        if (costs.supportsCondition &&
+            (bestIndex == nullptr || costs.estimatedCosts < bestCost)) {
+          bestCost = costs.estimatedCosts;
+          bestIndex = idx;
+          coveredAttributes = costs.coveredAttributes;
+        }
+      };
 
-    auto indexes = coll.indexes();
+      auto indexes = coll.indexes();
 
-    if (hint.type() == aql::IndexHint::HintType::Simple) {
-      std::vector<std::string> const& hintedIndices = hint.hint();
-      for (std::string const& hinted : hintedIndices) {
-        std::shared_ptr<Index> matched;
-        for (std::shared_ptr<Index> const& idx : indexes) {
-          if (idx->name() == hinted) {
-            matched = idx;
-            break;
+      if (hint.type() == aql::IndexHint::HintType::Simple) {
+        std::vector<std::string> const& hintedIndices = hint.hint();
+        for (std::string const& hinted : hintedIndices) {
+          std::shared_ptr<Index> matched;
+          for (std::shared_ptr<Index> const& idx : indexes) {
+            if (idx->name() == hinted) {
+              matched = idx;
+              break;
+            }
+          }
+
+          if (matched != nullptr) {
+            considerIndex(matched);
+            if (bestIndex != nullptr) {
+              break;
+            }
           }
         }
 
-        if (matched != nullptr) {
-          considerIndex(matched);
-          if (bestIndex != nullptr) {
-            break;
-          }
+        if (hint.isForced() && bestIndex == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+              "could not use index hint to serve query; " + hint.toString());
         }
       }
 
-      if (hint.isForced() && bestIndex == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-            "could not use index hint to serve query; " + hint.toString());
+      if (bestIndex == nullptr) {
+        for (auto const& idx : indexes) {
+          considerIndex(idx);
+        }
       }
-    }
 
-    if (bestIndex == nullptr) {
-      for (auto const& idx : indexes) {
-        considerIndex(idx);
+      if (bestIndex != nullptr) {
+        usedIndexes.emplace_back(bestIndex);
       }
-    }
 
-    if (bestIndex != nullptr) {
-      usedIndexes.emplace_back(bestIndex);
+      return bestIndex != nullptr;
     }
-
-    return bestIndex != nullptr;
-  }
+  }  // disableIndex
 
   // No Index and no sort condition that
   // can be supported by an index.

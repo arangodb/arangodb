@@ -243,6 +243,8 @@ void reportPrimaryIndexInconsistency(
 
 namespace arangodb {
 
+void syncIndexOnCreate(Index&);
+
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
     : RocksDBMetaCollection(collection, info),
@@ -254,7 +256,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                             .server()
                             .getFeature<CacheManagerFeature>()
                             .manager() != nullptr),
-      _numIndexCreations(0),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<MetricsFeature>()
@@ -276,7 +277,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                   .server()
                   .getFeature<CacheManagerFeature>()
                   .manager() != nullptr),
-      _numIndexCreations(0),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<MetricsFeature>()
@@ -432,11 +432,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     throw;
   }
 
-  _numIndexCreations.fetch_add(1, std::memory_order_release);
-  auto colGuard = scopeGuard([&]() noexcept {
-    _numIndexCreations.fetch_sub(1, std::memory_order_release);
-    vocbase.release();
-  });
+  auto colGuard = scopeGuard([&]() noexcept { vocbase.release(); });
 
   READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
 
@@ -564,6 +560,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         _indexes.emplace(buildIdx);
       }
 
+      RocksDBFilePurgePreventer walKeeper(&engine);
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
@@ -590,9 +587,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
 
+    syncIndexOnCreate(*newIdx.get());
+
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
-      engine.settingsManager()->sync(false);
+      engine.settingsManager()->sync(/*force*/ false);
     }
 
     // Step 6. persist in rocksdb
@@ -778,7 +777,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
     rocksdb::DB* db = engine.db()->GetRootDB();
 
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
-      engine.settingsManager()->sync(false);
+      engine.settingsManager()->sync(/*force*/ false);
     }
 
     // pre commit sequence needed to place a blocker
@@ -794,7 +793,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
       return rocksutils::convertStatus(s);
     }
 
-    // delete indexes, place estimator blockers
+    // delete index values
     {
       RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -1087,19 +1086,12 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       options.isSynchronousReplicationFrom.empty()) {
     // only do schema validation when we are not restoring/replicating
     res = _logicalCollection.validate(
-        newSlice, trx->transactionContextPtr()->getVPackOptions());
+        options.schema, newSlice,
+        trx->transactionContextPtr()->getVPackOptions());
 
     if (res.fail()) {
       return res;
     }
-  }
-
-  auto r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection,
-                                                            newSlice);
-
-  if (r != TRI_ERROR_NO_ERROR) {
-    res.reset(r);
-    return res;
   }
 
   LocalDocumentId const documentId =
@@ -1250,7 +1242,8 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   if (options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(
-        newDoc, oldDoc, trx->transactionContextPtr()->getVPackOptions());
+        options.schema, newDoc, oldDoc,
+        trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
     }
@@ -2099,11 +2092,14 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
 
 /// @brief can use non transactional range delete in write ahead log
 bool RocksDBCollection::canUseRangeDeleteInWal() const {
+  TRI_IF_FAILURE("ForceRangeDeleteInWal") { return true; }
   if (ServerState::instance()->isSingleServer()) {
-    // disableWalFilePruning is used by createIndex
-    return _numIndexCreations.load(std::memory_order_acquire) == 0;
+    return true;
   }
-  return false;
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  return engine.useRangeDeleteInWal();
 }
 
 }  // namespace arangodb

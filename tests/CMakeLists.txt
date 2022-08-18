@@ -100,6 +100,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
@@ -269,6 +270,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/VstResponse-test.cpp
   RestServer/FlushFeature-test.cpp
   RocksDBEngine/Endian.cpp
+  RestServer/LanguageFeatureTest.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp

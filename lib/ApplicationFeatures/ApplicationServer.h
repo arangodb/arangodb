@@ -206,6 +206,10 @@ class ApplicationServer {
     _progressReports.emplace_back(reporter);
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setBinaryPath(const char* path) { _binaryPath = path; }
+#endif
+
   char const* getBinaryPath() const { return _binaryPath; }
 
   void registerStartupCallback(std::function<void()> const& callback) {

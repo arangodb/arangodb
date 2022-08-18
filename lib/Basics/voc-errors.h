@@ -652,6 +652,13 @@ constexpr auto TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE = ErrorCode{1407};
 /// Will be raised when an unexpected transaction id is found.
 constexpr auto TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION = ErrorCode{1408};
 
+/// 1409: ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED
+/// "shard synchronization attempt timeout exceeded"
+/// Will be raised when the synchronization of a shard takes longer than the
+/// configured timeout.
+constexpr auto TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED =
+    ErrorCode{1409};
+
 /// 1410: ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION
 /// "invalid replication applier configuration"
 /// Will be raised when the configuration for the replication applier is
@@ -1790,6 +1797,15 @@ constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE =
 /// Will be raised if there is an attempt to create an edge between separated
 /// graph components.
 constexpr auto TRI_ERROR_INVALID_DISJOINT_SMART_EDGE = ErrorCode{4010};
+
+/// 4011: ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION
+/// "Unsupported alternating Smart and Satellite in Disjoint SmartGraph."
+/// Switching back and forth between Satellite and Smart in Disjoint SmartGraph
+/// is not supported within a single AQL statement. Split into multiple
+/// statements.
+constexpr auto
+    TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION =
+        ErrorCode{4011};
 
 /// 20001: ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE
 /// "malformed gossip message"

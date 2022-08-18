@@ -228,6 +228,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #else
       _createShaFiles(false),
 #endif
+      _useRangeDeleteInWal(false),
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
       _runningRebuilds(0),
@@ -514,6 +515,17 @@ void RocksDBEngine::collectOptions(
                          arangodb::options::Flags::Enterprise));
 #endif
 
+  options
+      ->addOption("--rocksdb.use-range-delete-in-wal",
+                  "enable range delete markers in the write-ahead log (WAL). "
+                  "potentially incompatible with older arangosync versions",
+                  new BooleanParameter(&_useRangeDeleteInWal),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30903);
+
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
@@ -686,8 +698,9 @@ void RocksDBEngine::start() {
   auto const& opts = server().getFeature<arangodb::RocksDBOptionFeature>();
 
   rocksdb::TransactionDBOptions transactionOptions;
-  // number of locks per column_family
-  transactionOptions.num_stripes = NumberOfCores::getValue();
+  // num_stripes must be at least 1
+  transactionOptions.num_stripes =
+      std::max(size_t(1), static_cast<size_t>(opts._transactionLockStripes));
   transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
   _options.allow_fallocate = opts._allowFAllocate;
@@ -1049,7 +1062,7 @@ void RocksDBEngine::start() {
 
   // give throttle access to families
   if (_useThrottle) {
-    _throttleListener->SetFamilies(cfHandles);
+    _throttleListener->setFamilies(cfHandles);
   }
 
   TRI_ASSERT(_db != nullptr);
@@ -1185,12 +1198,11 @@ void RocksDBEngine::stop() {
     _backgroundThread->beginShutdown();
 
     if (_settingsManager) {
-      try {
-        _settingsManager->sync(true);
-      } catch (std::exception const& ex) {
+      auto syncRes = _settingsManager->sync(/*force*/ true);
+      if (syncRes.fail()) {
         LOG_TOPIC("0582f", WARN, Logger::ENGINES)
             << "caught exception while shutting down RocksDB engine: "
-            << ex.what();
+            << syncRes.errorMessage();
       }
     }
 
@@ -2220,7 +2232,7 @@ void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
-  RocksDBV8Functions::registerResources();
+  RocksDBV8Functions::registerResources(*this);
 }
 
 /// @brief Add engine-specific REST handlers
@@ -3188,10 +3200,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
   if (_throttleListener) {
     if (v2) {
       builder.add("rocksdb_engine.throttle.bps",
-                  VPackValue(_throttleListener->GetThrottle()));
+                  VPackValue(_throttleListener->getThrottle()));
     } else {
       builder.add("rocksdbengine.throttle.bps",
-                  VPackValue(_throttleListener->GetThrottle()));
+                  VPackValue(_throttleListener->getThrottle()));
     }
   }  // if
 

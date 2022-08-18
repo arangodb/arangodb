@@ -678,7 +678,8 @@ Builder& Builder::close() {
       (head == 0x0b && (options->buildUnindexedObjects || n == 1))) {
     if (closeCompactArrayOrObject(pos, isArray, indexStart, indexEnd)) {
       // And, if desired, check attribute uniqueness:
-      if (options->checkAttributeUniqueness && 
+      if ((head == 0x0b || head == 0x14) &&
+          options->checkAttributeUniqueness && 
           n > 1 &&
           !checkAttributeUniqueness(Slice(_start + pos))) {
         // duplicate attribute name!
@@ -703,7 +704,7 @@ Builder& Builder::close() {
   unsigned int offsetSize = 8;
   // can be 1, 2, 4 or 8 for the byte width of the offsets,
   // the byte length and the number of subvalues:
-  if (_pos - pos + n - 6 <= 0xff) {
+  if (_pos - pos + n - 6 + effectivePaddingForOneByteMembers() <= 0xff) {
     // We have so far used _pos - pos bytes, including the reserved 8
     // bytes for byte length and number of subvalues. In the 1-byte number
     // case we would win back 6 bytes but would need one byte per subvalue
@@ -712,7 +713,7 @@ Builder& Builder::close() {
     // One could move down things in the offsetSize == 2 case as well,
     // since we only need 4 bytes in the beginning. However, saving these
     // 4 bytes has been sacrificed on the Altar of Performance.
-  } else if (_pos - pos + 2 * n <= 0xffff) {
+  } else if (_pos - pos + 2 * n + effectivePaddingForTwoByteMembers() <= 0xffff) {
     offsetSize = 2;
   } else if (_pos - pos + 4 * n <= 0xffffffffu) {
     offsetSize = 4;
@@ -757,25 +758,60 @@ Builder& Builder::close() {
       _start[pos] += 2;
     } else {  // offsetSize == 8
       _start[pos] += 3;
+      // write number of items
       reserve(8);
       appendLengthUnchecked<8>(n);
     }
   }
 
   // Fix the byte length in the beginning:
-  ValueLength x = _pos - pos;
+  ValueLength const byteLength = _pos - pos;
+  ValueLength x = byteLength;
   for (unsigned int i = 1; i <= offsetSize; i++) {
     _start[pos + i] = x & 0xff;
     x >>= 8;
   }
 
   if (offsetSize < 8) {
-    x = n;
+    ValueLength x = n;
     for (unsigned int i = offsetSize + 1; i <= 2 * offsetSize; i++) {
       _start[pos + i] = x & 0xff;
       x >>= 8;
     }
   }
+
+#ifdef VELOCYPACK_DEBUG
+  // make sure byte size and number of items are actually written correctly
+  if (offsetSize == 1) {
+    VELOCYPACK_ASSERT(_start[pos] == 0x0b);
+    // read byteLength
+    uint64_t v = readIntegerFixed<uint64_t, 1>(_start + pos + 1);
+    VELOCYPACK_ASSERT(byteLength == v);
+    // read byteLength n
+    v = readIntegerFixed<uint64_t, 1>(_start + pos + 1 + offsetSize);
+    VELOCYPACK_ASSERT(n == v);
+  } else if (offsetSize == 2) {
+    VELOCYPACK_ASSERT(_start[pos] == 0x0c);
+    // read byteLength
+    uint64_t v = readIntegerFixed<uint64_t, 2>(_start + pos + 1);
+    VELOCYPACK_ASSERT(byteLength == v);
+    // read byteLength n
+    v = readIntegerFixed<uint64_t, 2>(_start + pos + 1 + offsetSize);
+    VELOCYPACK_ASSERT(n == v);
+  } else if (offsetSize == 4) {
+    VELOCYPACK_ASSERT(_start[pos] == 0x0d);
+    // read byteLength
+    uint64_t v = readIntegerFixed<uint64_t, 4>(_start + pos + 1);
+    VELOCYPACK_ASSERT(byteLength == v);
+    // read byteLength n
+    v = readIntegerFixed<uint64_t, 4>(_start + pos + 1 + offsetSize);
+    VELOCYPACK_ASSERT(n == v);
+  } else if (offsetSize == 8) {
+    VELOCYPACK_ASSERT(_start[pos] == 0x0e);
+    uint64_t v = readIntegerFixed<uint64_t, 4>(_start + pos + 1);
+    VELOCYPACK_ASSERT(byteLength == v);
+  }
+#endif
 
   // And, if desired, check attribute uniqueness:
   if (options->checkAttributeUniqueness && 
@@ -1288,6 +1324,16 @@ uint8_t* Builder::add(ArrayIterator&& sub) {
     sub.next();
   }
   return _start + oldPos;
+}
+
+ValueLength Builder::effectivePaddingForOneByteMembers() const noexcept {
+  // 8 bytes - object length (1 byte) - number of items (1 byte) = 6 bytes
+  return (options->paddingBehavior == Options::PaddingBehavior::UsePadding ? 6 : 0);
+}
+
+ValueLength Builder::effectivePaddingForTwoByteMembers() const noexcept {
+  // 8 bytes - object length (2 bytes) - number of items (2 bytes) = 4 bytes
+  return (options->paddingBehavior == Options::PaddingBehavior::UsePadding ? 4 : 0);
 }
 
 static_assert(sizeof(double) == 8, "double is not 8 bytes");

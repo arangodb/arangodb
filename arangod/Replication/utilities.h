@@ -135,6 +135,7 @@ struct LeaderInfo {
   ServerId serverId{0};
   int majorVersion{0};
   int minorVersion{0};
+  int patchVersion{0};
   TRI_voc_tick_t lastLogTick{0};  // only used during initialSync
 
   explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);

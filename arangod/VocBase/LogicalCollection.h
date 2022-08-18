@@ -325,9 +325,17 @@ class LogicalCollection : public LogicalDataSource {
       std::function<bool(LogicalCollection&)> const& callback);
 
   void schemaToVelocyPack(VPackBuilder&) const;
-  Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
-  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
-                  VPackOptions const*) const;  // update / replace
+
+  // return a pointer to the schema. can be a nullptr if no schema
+  std::shared_ptr<ValidatorBase> schema() const;
+
+  // validate a document on INSERT
+  Result validate(std::shared_ptr<ValidatorBase> const& schema,
+                  VPackSlice newDoc, VPackOptions const*) const;
+  // validate a document on UPDATE/REPLACE
+  Result validate(std::shared_ptr<ValidatorBase> const& schema,
+                  VPackSlice modifiedDoc, VPackSlice oldDoc,
+                  VPackOptions const*) const;
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -384,11 +392,13 @@ class LogicalCollection : public LogicalDataSource {
 
   bool determineSyncByRevision() const;
 
+ protected:
+  // Only protected for rolling upgrades within 3.9 branch
+  // can be moved to private in devel again
   void decorateWithInternalValidators();
 
   void decorateWithInternalEEValidators();
 
- protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   // SECTION: Meta Information

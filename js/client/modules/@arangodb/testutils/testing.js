@@ -74,6 +74,7 @@ let optionsDocumentation = [
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
+  '   - `setInterruptable`: register special break handler',
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '   - `sleepBeforeShutdown`: let the system rest before terminating it',
   '',
@@ -200,6 +201,7 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
+  'setInterruptable': ! internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
   'sniffDBServers': true,
@@ -590,7 +592,10 @@ function unitTest (cases, options) {
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);
   }
-
+  if (options.setInterruptable) {
+    internal.SetSignalToImmediateDeadline();
+  }
+  
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }

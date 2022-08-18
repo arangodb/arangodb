@@ -216,6 +216,17 @@ const impTodos = [{
   datatype: "value=string",
   mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
 }, {
+  id: 'csvheadersmergeattributes',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  skipLines: 1,
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs-headers.csv')),
+  coll: 'UnitTestsImportCsvHeadersMergeAttributes',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+}, {
   id: 'csvmergeattributesInvalid',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
   coll: 'UnitTestsImportCsvMergeAttributesInvalid',
@@ -440,9 +451,13 @@ function importing (options) {
       tu.makePathUnix(fs.join(testPaths.importing[0], 'import-teardown.js')));
 
     result.teardown.failed = result.teardown.success ? 0 : 1;
-  } catch (banana) {
-    print('An exceptions of the following form was caught:',
-          yaml.safeDump(banana));
+  } catch (exception) {
+    result['run'] = {
+      'failed': 1,
+      'message': 'An exception of the following form was caught: ' + exception + "\n" + exception.stack
+    };
+    print('An exception of the following form was caught: ',
+          exception);
   }
 
   print('Shutting down...');

@@ -34,7 +34,7 @@
 
 namespace arangodb {
 
-constexpr char const *BAD_PARAMS_CREATE =
+constexpr char const* BAD_PARAMS_CREATE =
     "backup payload must be an object "
     "defining optional string attribute 'label' and/or optional floating point "
     "parameter 'timeout' in seconds";
@@ -55,28 +55,31 @@ struct BackupMeta {
   bool _potentiallyInconsistent;
   bool _isAvailable;
   unsigned int _nrPiecesPresent;
+  bool _countIncludesFilesOnly;
 
-  static constexpr const char *ID = "id";
-  static constexpr const char *VERSION = "version";
-  static constexpr const char *DATETIME = "datetime";
-  static constexpr const char *SECRETHASH = "keys";
-  static constexpr const char *SIZEINBYTES = "sizeInBytes";
-  static constexpr const char *NRFILES = "nrFiles";
-  static constexpr const char *NRDBSERVERS = "nrDBServers";
-  static constexpr const char *SERVERID = "serverId";
-  static constexpr const char *POTENTIALLYINCONSISTENT =
+  static constexpr const char* ID = "id";
+  static constexpr const char* VERSION = "version";
+  static constexpr const char* DATETIME = "datetime";
+  static constexpr const char* SECRETHASH = "keys";
+  static constexpr const char* SIZEINBYTES = "sizeInBytes";
+  static constexpr const char* NRFILES = "nrFiles";
+  static constexpr const char* NRDBSERVERS = "nrDBServers";
+  static constexpr const char* SERVERID = "serverId";
+  static constexpr const char* POTENTIALLYINCONSISTENT =
       "potentiallyInconsistent";
-  static constexpr const char *AVAILABLE = "available";
-  static constexpr const char *NRPIECESPRESENT = "nrPiecesPresent";
+  static constexpr const char* AVAILABLE = "available";
+  static constexpr const char* NRPIECESPRESENT = "nrPiecesPresent";
+  static constexpr const char* COUNTINCLUDESFILESONLY =
+      "countIncludesFilesOnly";
 
-  void toVelocyPack(VPackBuilder &builder) const {
+  void toVelocyPack(VPackBuilder& builder) const {
     {
       VPackObjectBuilder ob(&builder);
       builder.add(ID, VPackValue(_id));
       builder.add(VERSION, VPackValue(_version));
       builder.add(DATETIME, VPackValue(_datetime));
       builder.add(SECRETHASH, VPackValue(VPackValueType::Array, true));
-      for (auto const &tmp : _userSecretHashes) {
+      for (auto const& tmp : _userSecretHashes) {
         builder.openObject(/*unindexed*/ true);
         builder.add("sha256", VPackValue(tmp));
         builder.close();
@@ -95,10 +98,11 @@ struct BackupMeta {
       }
       builder.add(POTENTIALLYINCONSISTENT,
                   VPackValue(_potentiallyInconsistent));
+      builder.add(COUNTINCLUDESFILESONLY, VPackValue(_countIncludesFilesOnly));
     }
   }
 
-  static ResultT<BackupMeta> fromSlice(VPackSlice const &slice) {
+  static ResultT<BackupMeta> fromSlice(VPackSlice const& slice) {
     try {
       BackupMeta meta;
       meta._id = slice.get(ID).copyString();
@@ -129,17 +133,19 @@ struct BackupMeta {
       meta._nrPiecesPresent =
           basics::VelocyPackHelper::getNumericValue<unsigned int>(
               slice, NRPIECESPRESENT, 1);
+      meta._countIncludesFilesOnly = basics::VelocyPackHelper::getBooleanValue(
+          slice, COUNTINCLUDESFILESONLY, false);
       return meta;
-    } catch (std::exception const &e) {
+    } catch (std::exception const& e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
     }
   }
 
-  BackupMeta(std::string const &id, std::string const &version,
-             std::string const &datetime,
-             std::vector<std::string> const &hashes, size_t sizeInBytes,
+  BackupMeta(std::string const& id, std::string const& version,
+             std::string const& datetime,
+             std::vector<std::string> const& hashes, size_t sizeInBytes,
              size_t nrFiles, unsigned int nrDBServers,
-             std::string const &serverId, bool potentiallyInconsistent)
+             std::string const& serverId, bool potentiallyInconsistent)
       : _id(id),
         _version(version),
         _datetime(datetime),
@@ -150,7 +156,8 @@ struct BackupMeta {
         _serverId(serverId),
         _potentiallyInconsistent(potentiallyInconsistent),
         _isAvailable(true),
-        _nrPiecesPresent(1) {}
+        _nrPiecesPresent(1),
+        _countIncludesFilesOnly(true) {}
 
  private:
   BackupMeta() {}

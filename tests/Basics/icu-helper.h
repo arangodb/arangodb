@@ -32,6 +32,7 @@ struct IcuInitializer {
   ~IcuInitializer();
 
   static void setup(char const* path);
+  static void reinit();
 
   static void* icuDataPtr;
   static bool initialized;

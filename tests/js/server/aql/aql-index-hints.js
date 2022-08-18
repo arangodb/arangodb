@@ -33,7 +33,7 @@ const db = internal.db;
 const jsunity = require("jsunity");
 const errors = internal.errors;
 
-function ahuacatlSkiplistOverlappingTestSuite() {
+function indexHintSuite() {
   const getIndexNames = function (query) {
     return AQL_EXPLAIN(query, {}, {optimizer: {rules: ["-all", "+use-indexes"]}})
       .plan.nodes.filter(node => (node.type === 'IndexNode'))
@@ -452,9 +452,102 @@ function ahuacatlSkiplistOverlappingTestSuite() {
       });
     }
   };
-
 }
 
-jsunity.run(ahuacatlSkiplistOverlappingTestSuite);
+function indexHintDisableIndexSuite() {
+  const cn = 'UnitTestsIndexHints';
+
+  return {
+
+    setUpAll: function () {
+      internal.db._drop(cn);
+      let c = internal.db._create(cn);
+      c.ensureIndex({type: 'persistent', name: 'value1', fields: ['value1']});
+    },
+    
+    tearDownAll: function () {
+      internal.db._drop(cn);
+    },
+
+    testDisableIndexOff : function () {
+      [ "", "OPTIONS { disableIndex: false }"].forEach((option) => {
+        const queries = [
+          [ `FOR doc IN ${cn} ${option} RETURN doc`, null, [] ],
+          [ `FOR doc IN ${cn} ${option} RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc._key == '123' RETURN doc`, 'primary', [], false ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc._key == '123' RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc`, 'value1', [], false ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc.value1`, 'value1', ['value1'], true ],
+          [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc.value2`, 'value1', ['value2'], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key RETURN 1`, 'primary', [], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN 1`, 'primary', [], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value1`, 'value1', ['value1'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value2`, 'value1', ['value2'], false ],
+        ];
+
+        queries.forEach((query) => {
+          let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+          let nodes = plan.nodes;
+
+          let node;
+
+          if (query[1] === null) {
+            // expect EnumerateCollectionNode
+            assertEqual(0, nodes.filter((node) => node.type === 'IndexNode').length);
+            let ns = nodes.filter((node) => node.type === 'EnumerateCollectionNode');
+            assertEqual(1, ns.length, query);
+            node = ns[0];
+          } else {
+            // expect IndexNode
+            assertEqual(0, nodes.filter((node) => node.type === 'EnumerateCollectionNode').length);
+            let ns = nodes.filter((node) => node.type === 'IndexNode');
+            assertEqual(1, ns.length, query);
+            node = ns[0];
+            assertEqual(1, node.indexes.length, query);
+            assertEqual(query[1], node.indexes[0].name, query);
+            assertEqual(query[3], node.indexCoversProjections, query);
+          }
+          assertEqual(query[2], node.projections);
+        });
+      });
+    },
+    
+    testDisableIndexOn : function () {
+      const queries = [
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN 1`, [] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN doc`, [] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc._key == '123' RETURN doc`, [] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc._key == '123' RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc`, [] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc.value1`, ['value1'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc.value2`, ['value1', 'value2'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key RETURN 1`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN 1`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value1`, ['value1'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value2`, ['value1', 'value2'] ],
+      ];
+
+      queries.forEach((query) => {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes;
+
+        assertEqual(0, nodes.filter((node) => node.type === 'IndexNode').length);
+        let ns = nodes.filter((node) => node.type === 'EnumerateCollectionNode');
+        assertEqual(1, ns.length, query);
+        let node = ns[0];
+        assertEqual(query[1], node.projections.sort(), query);
+      });
+    },
+
+  };
+}
+
+jsunity.run(indexHintSuite);
+jsunity.run(indexHintDisableIndexSuite);
 
 return jsunity.done();

@@ -23,13 +23,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "icu-helper.h"
+
+#include <iostream>
+
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
-
-#include <iostream>
 
 static IcuInitializer theInstance;  // must be here to call the dtor
 
@@ -45,6 +46,11 @@ IcuInitializer::~IcuInitializer() {
   icuDataPtr = nullptr;
 }
 
+void IcuInitializer::reinit() {
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
+      "", arangodb::basics::LanguageType::DEFAULT, icuDataPtr);
+}
+
 void IcuInitializer::setup(char const* path) {
   if (initialized) {
     return;
@@ -56,7 +62,7 @@ void IcuInitializer::setup(char const* path) {
                                                      p, "basics_suite");
   if (icuDataPtr == nullptr ||
       !arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
-          "", icuDataPtr)) {
+          "", arangodb::basics::LanguageType::DEFAULT, icuDataPtr)) {
     std::string msg =
         "failed to initialize ICU library. The environment variable ICU_DATA";
     if (getenv("ICU_DATA") != nullptr) {

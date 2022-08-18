@@ -855,20 +855,29 @@ arangodb::Result arangodb::maintenance::executePlan(
       feature.addAction(std::move(action), false);
     } else {
       TRI_ASSERT(action->has(SHARD));
+      TRI_ASSERT(action->has(DATABASE));
 
       std::string shardName = action->get(SHARD);
       bool ok = feature.lockShard(shardName, action);
-      TRI_ASSERT(ok);
-      try {
-        Result res = feature.addAction(std::move(action), false);
-        if (res.fail()) {
+      if (ok) {
+        try {
+          Result res = feature.addAction(std::move(action), false);
+          if (res.fail()) {
+            feature.unlockShard(shardName);
+          }
+        } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
+          LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
+              << "Exception caught when adding action, unlocking shard "
+              << shardName << " again: " << exc.what();
         }
-      } catch (std::exception const& exc) {
-        feature.unlockShard(shardName);
-        LOG_TOPIC("86762", WARN, Logger::MAINTENANCE)
-            << "Exception caught when adding action, unlocking shard "
-            << shardName << " again: " << exc.what();
+      } else {
+        TRI_ASSERT(action->has(DATABASE));
+        std::string dbName = action->get(DATABASE);
+        // For security measure let us flag this database as dirty.
+        // This ensures we are going to recheck it next turn when the shard
+        // is hopefully unlocked
+        feature.addDirty(dbName);
       }
     }
   }
@@ -1698,12 +1707,33 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         // Current's servers
         VPackSlice const cservers = cshrd.get(SERVERS);
 
+        // From above, we know that the shard exists locally. For the case
+        // that we have been restarted but the leader did not notice that
+        // we were gone, we must check if the leader is set correctly here
+        // locally for our shard:
+        VPackSlice lshard = localdb.get(shname);
+        TRI_ASSERT(lshard.isObject());
+        bool needsResyncBecauseOfRestart = false;
+        if (lshard.isObject()) {  // just in case
+          VPackSlice theLeader = lshard.get("theLeader");
+          if (theLeader.isString() &&
+              theLeader.stringView() ==
+                  maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+            needsResyncBecauseOfRestart = true;
+          }
+        }
+
         // if we are considered to be in sync there is nothing to do
-        if (indexOf(cservers, serverId) > 0) {
+        if (!needsResyncBecauseOfRestart && indexOf(cservers, serverId) > 0) {
           continue;
         }
 
         std::string leader = pservers[0].copyString();
+        std::string forcedResync =
+            needsResyncBecauseOfRestart ? "true" : "false";
+        std::string syncByRevision =
+            pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true"
+                                                                   : "false";
 
         // If the leader is failed, we need not try to get in sync:
         if (failedServers.find(leader) != failedServers.end()) {
@@ -1721,6 +1751,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                     {COLLECTION, colname.toString()},
                     {SHARD, shname.toString()},
                     {THE_LEADER, std::move(leader)},
+                    {FORCED_RESYNC, std::move(forcedResync)},
+                    {SYNC_BY_REVISION, syncByRevision},
                     {SHARD_VERSION,
                      std::to_string(feature.shardVersion(shname.toString()))}},
                 SYNCHRONIZE_PRIORITY, true);

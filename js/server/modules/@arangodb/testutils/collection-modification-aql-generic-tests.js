@@ -98,8 +98,6 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       // Locally apply the patch from before
       let updatedDoc = {...doc, ...patch};
 
-      // TODO: Remove me after BTS-750 is resolved
-      delete updatedDoc._key;
       const replace = {test2: "testmann2"};
       for (const [key, value] of Object.entries(replace)) {
         // Just make sure we are actually updating something here.

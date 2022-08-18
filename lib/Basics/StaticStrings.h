@@ -143,15 +143,10 @@ class StaticStrings {
   static std::string const IndexNameTime;
 
   // index hint strings
-  static std::string const IndexHintAny;
-  static std::string const IndexHintCollection;
-  static std::string const IndexHintHint;
-  static std::string const IndexHintDepth;
-  static std::string const IndexHintInbound;
+  static std::string const IndexHintDisableIndex;
+  static std::string const IndexHintMaxProjections;
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
-  static std::string const IndexHintOutbound;
-  static std::string const IndexHintWildcard;
 
   // HTTP headers
   static std::string const Accept;

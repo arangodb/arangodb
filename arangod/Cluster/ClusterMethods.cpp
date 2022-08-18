@@ -2379,19 +2379,22 @@ void fetchVerticesFromEngines(
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
       arangodb::velocypack::HashedStringRef key(pair.key);
       if (ADB_UNLIKELY(vertexIds.erase(key) == 0)) {
-        // We either found the same vertex twice,
-        // or found a vertex we did not request.
-        // Anyways something somewhere went seriously wrong
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
+        // This case is unlikely and can only happen for
+        // Satellite Vertex collections. There it is expected.
+        // If we fix above todo (fast-path) this case should
+        // be impossible.
+        TRI_ASSERT(result.find(key) != result.end());
+        TRI_ASSERT(VelocyPackHelper::equal(result.find(key)->second, pair.value,
+                                           true));
+      } else {
+        TRI_ASSERT(result.find(key) == result.end());
+        if (!cached) {
+          travCache.datalake().add(std::move(payload));
+          cached = true;
+        }
+        // Protected by datalake
+        result.try_emplace(key, pair.value);
       }
-
-      TRI_ASSERT(result.find(key) == result.end());
-      if (!cached) {
-        travCache.datalake().add(std::move(payload));
-        cached = true;
-      }
-      // Protected by datalake
-      result.try_emplace(key, pair.value);
     }
   }
 
