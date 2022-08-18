@@ -206,13 +206,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
-  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
-  initializeSmartAttributesBefore(info);
-
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
-  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
-  initializeSmartAttributesAfter(info);
+  initializeSmartAttributes(info);
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -245,11 +241,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::initializeSmartAttributesBefore(
-    velocypack::Slice info) {
-  // nothing to do in community edition
-}
-void LogicalCollection::initializeSmartAttributesAfter(velocypack::Slice info) {
+void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
   // nothing to do in community edition
 }
 #endif
@@ -1280,15 +1272,13 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable =
-      []<typename... Args>(basics::SourceLocation location,
-                           fmt::format_string<Args...> formatString,
-                           Args&&... args) {
-        throw basics::Exception(
-            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-            fmt::vformat(formatString, fmt::make_format_args(args...)),
-            location);
-      };
+  static constexpr auto throwUnavailable = []<typename... Args>(
+      basics::SourceLocation location, fmt::format_string<Args...> formatString,
+      Args && ... args) {
+    throw basics::Exception(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
+  };
 
   auto const status = stateMachine->getStatus();
   if (status == std::nullopt) {
