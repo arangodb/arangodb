@@ -1,6 +1,10 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Make throttle for RocksDB take into account the complete compaction debt on
+  all levels, not just level0. Previously it only looked at level0, which is not
+  enough if there aren't any other levels in the column family.
+
 * Improve error handling for passing wrong transaction ids / cursor ids / pregel
   job ids to request forwarding. Also prevent the error "transaction id not
   found" in cases when request forwarding was tried to a coordinator that was
