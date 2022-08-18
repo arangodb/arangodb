@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -32,6 +32,7 @@
 (function () {
   const _ = require('lodash');
   const fs = require('fs');
+  const arangodb = require("@arangodb");
   const internal = require("internal");
   const jsunity = require("jsunity");
   const users = require("@arangodb/users");
@@ -1405,6 +1406,9 @@
       /// @brief test smart graph restores
       ////////////////////////////////////////////////////////////////////////////////
       testEmptySmartGraph: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestsDumpEmptySmartGraph";
         const graphsColl = db._collection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1417,6 +1421,9 @@
       },
 
       testEmptyEnterpriseGraph: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const enterpriseGraphName = "UnitTestsDumpEmptyEnterpriseGraph";
         const graphsColl = db._collection('_graphs');
         assertTrue(!!graphsColl.exists(enterpriseGraphName));
@@ -1429,6 +1436,9 @@
       },
 
       testEmptySatelliteGraph: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestsDumpEmptySatelliteGraph";
         const graphsColl = db._collection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1440,6 +1450,9 @@
       },
 
       testEmptyDisjointGraph: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestsDumpEmptyDisjointGraph";
         const graphsColl = db._collection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1451,6 +1464,9 @@
       },
 
       testSmartGraphWithoutData: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
         const vertexCollName = 'UnitTestDumpSmartVerticesWithoutData';
         const edgeCollName = 'UnitTestDumpSmartEdgesWithoutData';
@@ -1466,6 +1482,9 @@
       },
 
       testEnterpriseGraphWithoutData: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const enterpriseGraphName = "UnitTestDumpEnterpriseGraphWithoutData";
         const vertexCollName = 'UnitTestDumpEnterpriseVerticesWithoutData';
         const edgeCollName = 'UnitTestDumpEnterpriseEdgesWithoutData';
@@ -1481,6 +1500,9 @@
       },
 
       testSmartGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestDumpSmartGraphSingleServer";
         const vertexCollName = 'UnitTestDumpSmartVerticesSingleServer';
         const edgeCollName = 'UnitTestDumpSmartEdgesSingleServer';
@@ -1523,6 +1545,9 @@
       },
 
       testEnterpriseGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const enterpriseGraphName = "UnitTestDumpEnterpriseGraphSingleServer";
         const vertexCollName = 'UnitTestDumpEnterpriseVerticesSingleServer';
         const edgeCollName = 'UnitTestDumpEnterpriseEdgesSingleServer';
@@ -1559,6 +1584,9 @@
       },
 
       testSatelliteSmartGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const satelliteGraphName = "UnitTestDumpSatelliteGraphSingleServer";
         const vertexCollName = 'UnitTestDumpSatelliteVerticesSingleServer';
         const edgeCollName = 'UnitTestDumpSatelliteEdgesSingleServer';
@@ -1587,6 +1615,9 @@
       },
 
       testDisjointGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const disjointGraphName = "UnitTestDumpDisjointGraphSingleServer";
         const vertexCollName = 'UnitTestDumpDisjointVerticesSingleServer';
         const edgeCollName = 'UnitTestDumpDisjointEdgesSingleServer';
@@ -1613,10 +1644,32 @@
           assertTrue(!!edge._to);
         }
 
-        // TODO: Add a non-disjoint edge to verify that the Graph is properly created as a Disjoint
+        // Additional test-case:
+        // Add a non-disjoint edge to verify that this graph is properly created as a DisjointGraph
+        // SmartGraphAttribute: "value"
+        const firstVertex = vColl.save({value: "A"});
+        const secondVertex = vColl.save({value: "A"});
+        const thirdVertex = vColl.save({value: "B"});
+        assertEqual(vColl.count(), 103);
+
+        const firstEdge = eColl.save({_from: firstVertex._id, _to: secondVertex._id});
+        assertEqual(eColl.count(), 101);
+
+        try {
+          // MUST fail
+          eColl.save({_from: firstVertex._id, _to: thirdVertex._id});
+          fail();
+        } catch (err) {
+          assertEqual(arangodb.ERROR_INVALID_DISJOINT_SMART_EDGE, err.errorNum);
+        }
+
+        assertEqual(eColl.count(), 101);
       },
 
       testHybridSmartGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const hybridGraphName = "UnitTestDumpHybridSmartGraphSingleServer";
         const verticesNonSat = "UnitTestDumpHybridSmartVerticesNonSatSingleServer";
         const verticesSat = "UnitTestDumpHybridSmartVerticesSatSingleServer";
@@ -1700,6 +1753,9 @@
       },
 
       testHybridDisjointSmartGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const hybridGraphName = "UnitTestDumpHybridDisjointSmartGraphSingleServer";
         const verticesANonSat = "UnitTestDumpHybridDisjointSmartVerticesANonSatSingleServer";
         const verticesBNonSat = "UnitTestDumpHybridDisjointSmartVerticesBNonSatSingleServer";
