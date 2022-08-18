@@ -148,6 +148,35 @@ TEST_F(PlanCollectionUserAPITest, test_collection_type) {
 
 // Basic test makros for the parser
 
+#define GenerateFailsOnBool(attributeName)                                  \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, true)); \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, false));
+
+#define GenerateFailsOnInteger(attributeName)                             \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 1));  \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0));  \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 42)); \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -2));
+
+#define GenerateFailsOnDouble(attributeName)                               \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 4.5)); \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0.2)); \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -0.3));
+
+#define GenerateFailsOnString(attributeName)                                  \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, ""));     \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, "test")); \
+  assertParsingThrows(                                                        \
+      createMinimumBodyWithOneValue(#attributeName, "dogfather"));
+
+#define GenerateFailsOnArray(attributeName)          \
+  assertParsingThrows(createMinimumBodyWithOneValue( \
+      #attributeName, VPackSlice::emptyArraySlice()));
+
+#define GenerateFailsOnObject(attributeName)         \
+  assertParsingThrows(createMinimumBodyWithOneValue( \
+      #attributeName, VPackSlice::emptyObjectSlice()));
+
 // This macro generates a basic bool value test, checking if we get true/false
 // through and other basic types are rejected.
 
@@ -162,13 +191,11 @@ TEST_F(PlanCollectionUserAPITest, test_collection_type) {
                         true);                                                \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, false), \
                         false);                                               \
-    assertParsingThrows(                                                      \
-        createMinimumBodyWithOneValue(#attributeName, "test"));               \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 1));    \
-    assertParsingThrows(createMinimumBodyWithOneValue(                        \
-        #attributeName, VPackSlice::emptyObjectSlice()));                     \
-    assertParsingThrows(createMinimumBodyWithOneValue(                        \
-        #attributeName, VPackSlice::emptyArraySlice()));                      \
+    GenerateFailsOnInteger(attributeName);                                    \
+    GenerateFailsOnDouble(attributeName);                                     \
+    GenerateFailsOnString(attributeName);                                     \
+    GenerateFailsOnArray(attributeName);                                      \
+    GenerateFailsOnObject(attributeName);                                     \
   }
 
 GenerateBoolAttributeTest(waitForSync);
@@ -195,13 +222,10 @@ GenerateBoolAttributeTest(cacheEnabled);
                         42);                                                  \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),   \
                         4);                                                   \
-    assertParsingThrows(                                                      \
-        createMinimumBodyWithOneValue(#attributeName, "test"));               \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, true)); \
-    assertParsingThrows(createMinimumBodyWithOneValue(                        \
-        #attributeName, VPackSlice::emptyObjectSlice()));                     \
-    assertParsingThrows(createMinimumBodyWithOneValue(                        \
-        #attributeName, VPackSlice::emptyArraySlice()));                      \
+    GenerateFailsOnBool(attributeName);                                       \
+    GenerateFailsOnString(attributeName);                                     \
+    GenerateFailsOnArray(attributeName);                                      \
+    GenerateFailsOnObject(attributeName);                                     \
   }
 
 GenerateIntegerAttributeTest(numberOfShards);
@@ -211,7 +235,7 @@ GenerateIntegerAttributeTest(writeConcern);
 #define GenerateStringAttributeTest(attributeName)                             \
   TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
-                                   std::string expected) {                     \
+                                   std::string const& expected) {              \
       auto testee = PlanCollection::fromCreateAPIBody(body.slice());           \
       EXPECT_EQ(testee->attributeName, expected)                               \
           << "Parsing error in " << body.toJson();                             \
@@ -220,13 +244,11 @@ GenerateIntegerAttributeTest(writeConcern);
                         "test");                                               \
     shouldBeEvaluatedTo(                                                       \
         createMinimumBodyWithOneValue(#attributeName, "unknown"), "unknown");  \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 2));     \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 4.5));   \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, true));  \
-    assertParsingThrows(createMinimumBodyWithOneValue(                         \
-        #attributeName, VPackSlice::emptyObjectSlice()));                      \
-    assertParsingThrows(createMinimumBodyWithOneValue(                         \
-        #attributeName, VPackSlice::emptyArraySlice()));                       \
+    GenerateFailsOnBool(attributeName);                                        \
+    GenerateFailsOnInteger(attributeName);                                     \
+    GenerateFailsOnDouble(attributeName);                                      \
+    GenerateFailsOnArray(attributeName);                                       \
+    GenerateFailsOnObject(attributeName);                                      \
   }
 
 GenerateStringAttributeTest(distributeShardsLike);
