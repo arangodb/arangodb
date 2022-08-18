@@ -25,17 +25,20 @@
 
 #include "Basics/voc-errors.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
-#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/ReplicatedContext.h"
+#include "DocumentStateHandlersFactory.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
-    GlobalLogIdentifier gid, DatabaseFeature& databaseFeature)
-    : _gid(std::move(gid)), _db(databaseFeature, _gid.database) {}
+    GlobalLogIdentifier gid, DatabaseFeature& databaseFeature,
+    std::shared_ptr<IDocumentStateHandlersFactory> factory)
+    : _gid(std::move(gid)),
+      _db(databaseFeature, _gid.database),
+      _factory(std::move(factory)) {}
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
-    -> std::shared_ptr<DocumentStateTransaction> {
+    -> std::shared_ptr<IDocumentStateTransaction> {
   auto it = _transactions.find(tid);
   if (it == _transactions.end()) {
     return nullptr;
@@ -96,33 +99,8 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry doc)
   if (trx != nullptr) {
     return trx;
   }
-
-  TRI_ASSERT(doc.operation != OperationType::kCommit &&
-             doc.operation != OperationType::kAbort);
-
-  auto options = transaction::Options();
-  options.isFollowerTransaction = true;
-  options.allowImplicitCollectionsForWrite = true;
-
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(_db.database(),
-                                                               tid, options);
-
-  auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
-
-  auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), doc.shardId, AccessMode::Type::WRITE);
-
-  // TODO Why is GLOBAL_MANAGED necessary?
-  methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-
-  auto res = methods->begin();
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  trx = std::make_shared<DocumentStateTransaction>(std::move(methods));
+  trx = _factory->createTransaction(doc, _db.database());
   _transactions.emplace(tid, trx);
-
   return trx;
 }
 
