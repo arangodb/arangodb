@@ -487,12 +487,12 @@ class QueryIn : public QueryTest {
 
 class QueryInView : public QueryIn {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryInSearch : public QueryIn {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryInView, Test) {

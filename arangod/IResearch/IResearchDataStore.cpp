@@ -1662,7 +1662,7 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   dataPath /= "databases";
   dataPath /= "database-";
   dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= StaticStrings::ViewType;
+  dataPath /= StaticStrings::ViewArangoSearchType;
   dataPath += "-";
   // has to be 'id' since this can be a per-shard collection
   dataPath += std::to_string(link.collection().id().id());
