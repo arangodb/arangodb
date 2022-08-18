@@ -449,12 +449,6 @@ bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
 
 #ifdef USE_ENTERPRISE
-  /* TODO CLEANUP LATER
-  LOG_DEVEL_IF(this->name() == "UnitTestDumpEnterpriseEdgesSingleServer") <<
-  "must create key check"; LOG_DEVEL_IF(this->name() ==
-  "UnitTestDumpEnterpriseEdgesSingleServer") << "Sharding Stra: " <<
-  _sharding->shardingStrategyName();
-  */
   if (_sharding->shardingStrategyName() ==
       ShardingStrategyEnterpriseHexSmartVertex::NAME) {
     TRI_ASSERT(isSmart());

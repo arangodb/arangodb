@@ -769,11 +769,6 @@ static std::shared_ptr<ShardMap> CloneShardDistribution(
 
   // We need to replace the distribute with the cid.
   auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id().id());
-  /* TODO CLEANUP LATER
-  LOG_DEVEL << "CLONE SHARD DISTRI?! for collection: " << col->name();
-  LOG_DEVEL << "^- CLONE FROM col: " <<
-  other->shardingInfo()->collection()->name();
-  */
 
   col->distributeShardsLike(cidString, other->shardingInfo());
 
