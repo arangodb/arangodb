@@ -33,8 +33,9 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/WorkerConductorMessages.h"
-#include "WorkerConfig.h"
-#include "WorkerContext.h"
+#include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/Worker/WorkerContext.h"
+#include "Pregel/WorkerInterface.h"
 #include "Pregel/Reports.h"
 #include "Scheduler/Scheduler.h"
 
@@ -51,7 +52,8 @@ class PregelFeature;
 class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
-  virtual void setupWorker() = 0;
+  [[nodiscard]] virtual auto loadGraph(LoadGraph const& graph)
+      -> futures::Future<ResultT<GraphLoaded>> = 0;
   virtual void prepareGlobalStep(VPackSlice const& data,
                                  VPackBuilder& result) = 0;
   virtual void startGlobalStep(
@@ -161,7 +163,8 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
-  void setupWorker() override;
+  auto loadGraph(LoadGraph const& graph)
+      -> futures::Future<ResultT<GraphLoaded>> override;
   void prepareGlobalStep(VPackSlice const& data, VPackBuilder& result) override;
   void startGlobalStep(VPackSlice const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;

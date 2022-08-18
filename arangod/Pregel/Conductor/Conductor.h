@@ -28,6 +28,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTypes.h"
 #include "Pregel/Reports.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConductorMessages.h"
@@ -46,13 +47,48 @@
 #include "Pregel/Conductor/States/StoringState.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
+#include "Pregel/WorkerInterface.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
+#include <cstdint>
 #include <memory>
 
 namespace arangodb {
 namespace pregel {
+
+struct ClusterWorkerOnConductor : NewIWorker {
+  ClusterWorkerOnConductor(ExecutionNumber executionNumber, ServerID serverId,
+                           TRI_vocbase_t& vocbase)
+      : _executionNumber{std::move(executionNumber)},
+        _serverId{std::move(serverId)},
+        _vocbaseGuard{vocbase} {}
+  [[nodiscard]] auto loadGraph(LoadGraph const& graph)
+      -> futures::Future<ResultT<GraphLoaded>> override;
+
+ private:
+  ExecutionNumber _executionNumber;
+  ServerID _serverId;
+  const DatabaseGuard _vocbaseGuard;
+};
+
+struct SingleServerWorkerOnConductor : NewIWorker {
+  SingleServerWorkerOnConductor(ExecutionNumber executionNumber,
+                                ServerID serverId, PregelFeature& feature,
+                                TRI_vocbase_t& vocbase)
+      : _executionNumber{std::move(executionNumber)},
+        _serverId{std::move(serverId)},
+        _feature{feature},
+        _vocbaseGuard{vocbase} {}
+  [[nodiscard]] auto loadGraph(LoadGraph const& graph)
+      -> futures::Future<ResultT<GraphLoaded>> override;
+
+ private:
+  ExecutionNumber _executionNumber;
+  ServerID _serverId;
+  PregelFeature& _feature;
+  const DatabaseGuard _vocbaseGuard;
+};
 
 enum ExecutionState {
   DEFAULT = 0,  // before calling start
@@ -140,8 +176,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ConductorStatus _status;
 
   bool _startGlobalStep();
-  ErrorCode _initializeWorkers(std::string const& suffix,
-                               VPackSlice additional);
+  auto _initializeWorkers(VPackSlice additional) -> futures::Future<std::vector<
+      futures::Try<arangodb::ResultT<arangodb::pregel::GraphLoaded>>>>;
   template<typename OutType, typename InType>
   auto _sendToAllDBServers(std::string const& path, InType const& message)
       -> ResultT<std::vector<OutType>>;
@@ -177,6 +213,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ExecutionNumber executionNumber() const { return _executionNumber; }
 
  private:
+  std::unordered_map<ServerID, std::unique_ptr<NewIWorker>> workers;
   void updateState(ExecutionState state);
   void cleanup();
 
