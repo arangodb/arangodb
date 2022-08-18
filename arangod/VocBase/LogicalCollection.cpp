@@ -209,12 +209,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesBefore(info);
 
-  // TODO CLEANUP LATER LOG_DEVEL_IF(name() ==
-  // "UnitTestDumpEnterpriseVerticesSingleServer") << "LOGICALCOLL CONSTRUCTOR";
   _sharding = std::make_unique<ShardingInfo>(info, this);
-  // TODO CLEANUP LATER LOG_DEVEL_IF(name() ==
-  // "UnitTestDumpEnterpriseVerticesSingleServer") << "SET SHARDINGINFO to: " <<
-  // _sharding->shardingStrategyName();
 
   // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
   initializeSmartAttributesAfter(info);

@@ -1149,11 +1149,6 @@ Result RestReplicationHandler::processRestoreCollection(
 
   // Now we have done our best to remove the Collection.
   // It shall not be there anymore. Try to recreate it.
-
-  // TODO the following shall be unified as well.
-  // TODO CLEANUP LATER LOG_DEVEL_IF(name ==
-  // "UnitTestDumpEnterpriseVerticesSingleServer") << "Attempt to continue with
-  // restore: " << name;
   if (ServerState::instance()->isCoordinator()) {
     // Build up new information that we need to merge with the given one
     VPackBuilder toMerge;
@@ -1368,11 +1363,6 @@ Result RestReplicationHandler::processRestoreCollection(
                                                .createWaitsForSyncReplication();
       // in the replication case enforcing the replication factor is absolutely
       // not desired, so it is hardcoded to false
-      // TODO CLEANUP LATER LOG_DEVEL_IF(name ==
-      // "UnitTestDumpEnterpriseVerticesSingleServer") << "Using
-      // createCollectionsOnCoordinator";
-      // TODO CLEANUP LATER LOG_DEVEL_IF(name ==
-      // "UnitTestDumpEnterpriseVerticesSingleServer") << merged.toJson();
       auto cols = ClusterMethods::createCollectionsOnCoordinator(
           _vocbase, merged, ignoreDistributeShardsLikeErrors,
           createWaitsForSyncReplication, false, false, nullptr);

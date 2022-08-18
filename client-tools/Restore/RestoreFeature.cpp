@@ -436,11 +436,6 @@ arangodb::Result sendRestoreCollection(
 
   std::string const body = b.slice().toJson();
 
-  // TODO CLEANUP LATER LOG_DEVEL_IF(name ==
-  // "UnitTestDumpEnterpriseVerticesSingleServer") << "RestoreBody of
-  // collection: " << name;
-  // TODO CLEANUP LATER LOG_DEVEL_IF(name ==
-  // "UnitTestDumpEnterpriseVerticesSingleServer") << body;
   std::unique_ptr<SimpleHttpResult> response(httpClient.request(
       arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
   return arangodb::HttpResponseChecker::check(

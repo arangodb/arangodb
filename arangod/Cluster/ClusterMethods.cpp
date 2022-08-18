@@ -2853,10 +2853,8 @@ ClusterMethods::persistCollectionsInAgency(
     vpackData.reserve(collections.size());
 
     for (auto& col : collections) {
-      // TODO CLEANUP LATER LOG_DEVEL_IF(col->name() ==
-      // "UnitTestDumpEnterpriseVerticesSingleServer") << "PersistInAgency"; We
-      // can only serve on Database at a time with this call.// We have the
-      // vocbase context around this calls anyways, so this is safe.
+      // We can only serve on Database at a time with this call.
+      // We have the vocbase context around this calls anyways, so this is safe.
       TRI_ASSERT(col->vocbase().name() == dbName);
       std::string distributeShardsLike = col->distributeShardsLike();
       std::vector<std::string> avoid = col->avoidServers();
@@ -2878,15 +2876,10 @@ ClusterMethods::persistCollectionsInAgency(
           }
         }
 
-        // TODO CLEANUP LATER LOG_DEVEL_IF(col->name() ==
-        // "UnitTestDumpEnterpriseVerticesSingleServer") << "Found
-        // distributeShardslike";
         shards = CloneShardDistribution(ci, col, myColToDistributeLike);
       } else {
-        // TODO CLEANUP LATER LOG_DEVEL_IF(col->name() ==
-        // "UnitTestDumpEnterpriseVerticesSingleServer") << "DID NOT found
-        // distributeShardslike"; system collections should never enforce
-        // replicationfactor// to allow them to come up with 1 dbserver
+        // system collections should never enforce replicationfactor
+        // to allow them to come up with 1 dbserver
         if (col->system()) {
           enforceReplicationFactor = false;
         }
@@ -2942,10 +2935,6 @@ ClusterMethods::persistCollectionsInAgency(
                                        "no database servers found in cluster");
       }
 
-      // TODO CLEANUP LATER LOG_DEVEL_IF(col->name() ==
-      // "UnitTestDumpEnterpriseVerticesSingleServer") << "ShardMapSize: " <<
-      // shards->size();
-
       col->setShardMap(shards);
 
       std::unordered_set<std::string> const ignoreKeys{
@@ -2956,9 +2945,6 @@ ClusterMethods::persistCollectionsInAgency(
       col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy = col->toVelocyPackIgnore(
           ignoreKeys, LogicalDataSource::Serialization::List);
-      // TODO CLEANUP LATER LOG_DEVEL_IF(col->name() ==
-      // "UnitTestDumpEnterpriseVerticesSingleServer") << "CVELOCY: " <<
-      // velocy.slice().toJson();
 
       auto const serverState = ServerState::instance();
       infos.emplace_back(std::to_string(col->id().id()), col->numberOfShards(),

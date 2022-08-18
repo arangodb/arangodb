@@ -370,9 +370,6 @@ VPackBuilder createCollectionProperties(
                                 allowEnterpriseCollectionsOnSingleServer) &&
                                vocbase.server().hasFeature<ShardingFeature>();
 
-    // TODO CLEANUP LATER LOG_DEVEL_IF(info.name ==
-    // "UnitTestDumpEnterpriseVerticesSingleServer") << "DO WE SEE THIS AT
-    // ALL?";
     if (haveShardingFeature &&
         !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
       // NOTE: We need to do this in a second merge as the feature call requires
@@ -388,9 +385,6 @@ VPackBuilder createCollectionProperties(
       helper.close();
       merged =
           VPackCollection::merge(merged.slice(), helper.slice(), false, true);
-      // TODO CLEANUP LATER  LOG_DEVEL_IF(info.name ==
-      // "UnitTestDumpEnterpriseVerticesSingleServer") <<
-      // merged.slice().toJson();
     }
 
     builder.add(merged.slice());
