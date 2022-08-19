@@ -31,7 +31,8 @@ const ArangoError = arangodb.ArangoError;
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
-const helper = require('@arangodb/test-helper');
+const helper = require('@arangodb/test-helper-common');
+const serverHelper = require('@arangodb/test-helper');
 
 const waitFor = function (checkFn, maxTries = 240) {
   let count = 0;
@@ -54,7 +55,7 @@ const waitFor = function (checkFn, maxTries = 240) {
 };
 
 const readAgencyValueAt = function (key) {
-  const response = helper.agency.get(key);
+  const response = serverHelper.agency.get(key);
   const path = ['arango', ...key.split('/')];
   let result = response;
   for (const p of path) {
@@ -102,10 +103,10 @@ const getServerHealth = function (serverId) {
 };
 
 const dbservers = (function () {
-  return helper.getDBServers().map((x) => x.id);
+  return serverHelper.getServersByType('dbserver').map((x) => x.id);
 }());
 const coordinators = (function () {
-  return helper.getCoordinators().map((x) => x.id);
+  return serverHelper.getServersByType('coordinator').map((x) => x.id);
 }());
 
 
@@ -155,13 +156,13 @@ const readReplicatedLogAgency = function (database, logId) {
 };
 
 const replicatedLogSetPlanParticipantsConfig = function (database, logId, participantsConfig) {
-  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`, participantsConfig);
-  helper.agency.increaseVersion(`Plan/Version`);
+  serverHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`, participantsConfig);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetTargetParticipantsConfig = function (database, logId, participantsConfig) {
-  helper.agency.set(`Target/ReplicatedLogs/${database}/${logId}/participants`, participantsConfig);
-  helper.agency.increaseVersion(`Target/Version`);
+  serverHelper.agency.set(`Target/ReplicatedLogs/${database}/${logId}/participants`, participantsConfig);
+  serverHelper.agency.increaseVersion(`Target/Version`);
 };
 
 const replicatedLogUpdatePlanParticipantsConfigParticipants = function (database, logId, participants) {
@@ -193,33 +194,33 @@ const replicatedLogUpdateTargetParticipants = function (database, logId, partici
 };
 
 const replicatedLogSetPlanTerm = function (database, logId, term) {
-  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`, term);
-  helper.agency.increaseVersion(`Plan/Version`);
+  serverHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`, term);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetPlanTermConfig = function (database, logId, term) {
-  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
-  helper.agency.increaseVersion(`Plan/Version`);
+  serverHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetPlan = function (database, logId, spec) {
-  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
-  helper.agency.increaseVersion(`Plan/Version`);
+  serverHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetTarget = function (database, logId, spec) {
-  helper.agency.set(`Target/ReplicatedLogs/${database}/${logId}`, spec);
-  helper.agency.increaseVersion(`Target/Version`);
+  serverHelper.agency.set(`Target/ReplicatedLogs/${database}/${logId}`, spec);
+  serverHelper.agency.increaseVersion(`Target/Version`);
 };
 
 const replicatedLogDeletePlan = function (database, logId) {
-  helper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}`);
-  helper.agency.increaseVersion(`Plan/Version`);
+  serverHelper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}`);
+  serverHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogDeleteTarget = function (database, logId) {
-  helper.agency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
-  helper.agency.increaseVersion(`Target/Version`);
+  serverHelper.agency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
+  serverHelper.agency.increaseVersion(`Target/Version`);
 };
 
 const waitForReplicatedLogAvailable = function (id) {
@@ -281,18 +282,18 @@ const stopServerWaitFailed = function (serverId) {
 };
 
 const nextUniqueLogId = function () {
-  return parseInt(helper.uniqid());
+  return parseInt(serverHelper.uniqid());
 };
 
 const registerAgencyTestBegin = function (testName) {
-  helper.agency.set(`Testing/${testName}/Begin`, (new Date()).toISOString());
+  serverHelper.agency.set(`Testing/${testName}/Begin`, (new Date()).toISOString());
 };
 
 const registerAgencyTestEnd = function (testName) {
-  helper.agency.set(`Testing/${testName}/End`, (new Date()).toISOString());
+  serverHelper.agency.set(`Testing/${testName}/End`, (new Date()).toISOString());
 };
 
-const getServerUrl = helper.getEndpointById;
+const getServerUrl = helper.getUrlById;
 
 const checkRequestResult = function (requestResult, expectingError=false) {
   if (requestResult === undefined) {
