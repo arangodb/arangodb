@@ -1482,9 +1482,9 @@ RegIdSet const& ExecutionNode::getRegsToClear() const {
   return _regsToClear;
 }
 
-bool ExecutionNode::isVarUsedLater(Variable const* variable) const {
+bool ExecutionNode::isVarUsedLater(Variable const* variable) const noexcept {
   TRI_ASSERT(_varUsageValid);
-  return (getVarsUsedLater().find(variable) != getVarsUsedLater().end());
+  return getVarsUsedLater().contains(variable);
 }
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }

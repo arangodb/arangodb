@@ -276,6 +276,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         }
         limitNode = ExecutionNode::castTo<LimitNode*>(current);
         break;
+      case ExecutionNode::OFFSET_INFO_MATERIALIZE:
       case ExecutionNode::CALCULATION:
         // Only deterministic calcs allowed
         // Otherwise optimization should be forbidden
@@ -302,35 +303,17 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   std::vector<std::pair<size_t, bool>> scoresSort;
   for (auto const& sort : sortElements) {
     TRI_ASSERT(sort.var);
-    auto varSetBy = plan->getVarSetBy(sort.var->id);
-    TRI_ASSERT(varSetBy);
-    arangodb::aql::Variable const* sortVariable{};
-    if (varSetBy->getType() == ExecutionNode::CALCULATION) {
-      auto* calc = ExecutionNode::castTo<CalculationNode*>(varSetBy);
-      TRI_ASSERT(calc->expression());
-      auto astCalcNode = calc->expression()->node();
-      if (!astCalcNode ||
-          astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
-        // Not a reference?  Seems that it is not
-        // something produced by during search function replacement.
-        // e.g. it is expected to be LET sortVar = scorerVar;
-        // Definately not something we could handle.
-        return false;
-      }
-      sortVariable = reinterpret_cast<arangodb::aql::Variable const*>(
-          astCalcNode->getData());
-      TRI_ASSERT(sortVariable);
-    } else {
-      // FIXME (Dronplane): here we should deal with stored
-      //                    values when we will support such optimization
+    if (auto const* varSetBy = plan->getVarSetBy(sort.var->id);
+        !varSetBy || varSetBy != &viewNode) {
+      // Scorers must be always evaluated by IResearchViewNode
       return false;
     }
 
-    auto s = std::find_if(scorers.begin(), scorers.end(),
-                          [sortVariable](SearchFunc const& t) {
-                            return t.var->id == sortVariable->id;
+    auto s = std::find_if(std::begin(scorers), std::end(scorers),
+                          [sortVariableId = sort.var->id](SearchFunc const& t) {
+                            return t.var->id == sortVariableId;
                           });
-    if (s == scorers.end()) {
+    if (s == std::end(scorers)) {
       return false;
     }
     scoresSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);

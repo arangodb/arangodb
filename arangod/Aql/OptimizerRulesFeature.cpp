@@ -486,16 +486,25 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
+  // apply late materialization for view queries
+  registerRule("late-document-materialization-arangosearch",
+               iresearch::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // apply late materialization for view queries
-  registerRule("late-document-materialization-arangosearch",
-               arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
-               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+#ifdef USE_ENTERPRISE
+  // apply late materialization for offset infos
+  registerRule("late-materialization-offset-info",
+               lateMaterialiationOffsetInfoRule,
+               OptimizerRule::lateMaterialiationOffsetInfoRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::EnterpriseOnly));
+#endif
 
   // add the storage-engine specific rules
   addStorageEngineRules();
