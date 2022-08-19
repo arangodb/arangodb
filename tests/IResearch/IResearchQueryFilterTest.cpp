@@ -155,12 +155,12 @@ class QueryFilter : public QueryTest {
 
 class QueryFilterView : public QueryFilter {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryFilterSearch : public QueryFilter {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryFilterView, Test) {

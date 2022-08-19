@@ -137,7 +137,7 @@ bool EnsureIndex::first() {
       if (docCount > 100000) {
         // This could be a larger job, let's reschedule ourselves with
         // priority SLOW_OP_PRIORITY:
-        LOG_TOPIC("25a63", INFO, Logger::MAINTENANCE)
+        LOG_TOPIC("25a63", DEBUG, Logger::MAINTENANCE)
             << "EnsureIndex action found a shard with more than 100000 "
                "documents, "
                "will reschedule with slow priority, database: "

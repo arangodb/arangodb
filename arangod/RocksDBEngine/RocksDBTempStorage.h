@@ -66,8 +66,13 @@ class RocksDBTempStorage {
 
   std::string const _basePath;
   StorageUsageTracker& _usageTracker;
+
+#ifdef USE_ENTERPRISE
+  // whether or not to use encryption for the temporary data
   bool const _useEncryption;
+  // whether or not to use hardware acceleration for encryption/decryption
   bool const _allowHWAcceleration;
+#endif
 
   std::string _tempFilesPath;
 

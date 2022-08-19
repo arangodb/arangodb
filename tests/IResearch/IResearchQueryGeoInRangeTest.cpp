@@ -154,27 +154,15 @@ class QueryGeoInRange : public QueryTest {
     }
     // EXISTS will also work
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry)
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(_insertedDocs.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry)
+        RETURN d)"));
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {
+    if (type() == ViewType::kArangoSearch) {
       EXPECT_TRUE(runQuery(
           R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)"));
-    } else if (type() == ViewType::kSearch) {
+    } else if (type() == ViewType::kSearchAlias) {
       // Because for search/inverted-index
       // we consider strings can be found as normal fields,
       // so them all have suffix \0_s,
@@ -187,29 +175,29 @@ class QueryGeoInRange : public QueryTest {
     }
     // test missing analyzer
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      std::vector<velocypack::Slice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     // test missing analyzer
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      std::vector<velocypack::Slice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
   }
 
@@ -221,7 +209,7 @@ class QueryGeoInRange : public QueryTest {
       auto view = _vocbase.lookupView("testView");
       ASSERT_TRUE(view);
       auto links = [&] {
-        if (view->type() == ViewType::kSearch) {
+        if (view->type() == ViewType::kSearchAlias) {
           auto& impl = basics::downCast<iresearch::Search>(*view);
           return impl.getLinks();
         }
@@ -261,211 +249,110 @@ class QueryGeoInRange : public QueryTest {
     }
     // EXISTS will also work
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson")
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(_insertedDocs.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson")
+        RETURN d)"));
     }
     // test missing field
-    {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     // test missing field
-    {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[12].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
@@ -474,24 +361,12 @@ class QueryGeoInRange : public QueryTest {
           _insertedDocs[24].slice(),
           _insertedDocs[25].slice(),
       };
-
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
   }
 
@@ -500,23 +375,12 @@ class QueryGeoInRange : public QueryTest {
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeocentroid')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeocentroid')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
   }
 
@@ -525,23 +389,12 @@ class QueryGeoInRange : public QueryTest {
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
   }
 
@@ -608,7 +461,7 @@ class QueryGeoInRange : public QueryTest {
     auto view = _vocbase.lookupView("testView");
     ASSERT_TRUE(view);
     auto links = [&] {
-      if (view->type() == ViewType::kSearch) {
+      if (view->type() == ViewType::kSearchAlias) {
         auto& impl = basics::downCast<iresearch::Search>(*view);
         return impl.getLinks();
       }
@@ -656,29 +509,22 @@ class QueryGeoInRange : public QueryTest {
 
       ASSERT_TRUE(trx.commit().ok());
     }
-    // EXISTS will also work
-    {
-      auto result = executeQuery(_vocbase,
-                                 R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry)
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(_insertedDocs.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry)
+        RETURN d)"));
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry.coordinates)
+        RETURN d)"));
+    }
+    // EXISTS will also work
+    if (type() == ViewType::kArangoSearch) {
       EXPECT_TRUE(runQuery(R"(FOR d IN testView
         SEARCH EXISTS(d.geometry.coordinates, 'string') RETURN d)"));
-    } else if (type() == ViewType::kSearch) {
+    } else if (type() == ViewType::kSearchAlias) {
       // Because for search/inverted-index
       // we consider strings can be found as normal fields,
       // so them all have suffix \0_s,
@@ -691,259 +537,147 @@ class QueryGeoInRange : public QueryTest {
     }
     // EXISTS will also work
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry.coordinates, 'analyzer', "mygeopoint")
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(_insertedDocs.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry.coordinates, 'analyzer', "mygeopoint")
+        RETURN d)"));
     }
     // test missing field
-    {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     // test missing field
-    {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     // test missing analyzer
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      std::vector<VPackSlice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300)
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     // test missing analyzer
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      std::vector<VPackSlice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300)
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[12].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0, false, false), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0, false, false), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 100, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 100, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 100, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 100, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 206, 207), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 206, 207), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 206, 207), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 206, 207), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
@@ -952,24 +686,12 @@ class QueryGeoInRange : public QueryTest {
           _insertedDocs[24].slice(),
           _insertedDocs[25].slice(),
       };
-
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 15000, 20000), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 15000, 20000), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
   }
 
@@ -1034,7 +756,7 @@ class QueryGeoInRange : public QueryTest {
     auto view = _vocbase.lookupView("testView");
     ASSERT_TRUE(view);
     auto links = [&] {
-      if (view->type() == ViewType::kSearch) {
+      if (view->type() == ViewType::kSearchAlias) {
         auto& impl = basics::downCast<iresearch::Search>(*view);
         return impl.getLinks();
       }
@@ -1083,27 +805,15 @@ class QueryGeoInRange : public QueryTest {
     }
     // EXISTS will also work
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry)
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(_insertedDocs.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry)
+        RETURN d)"));
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {
+    if (type() == ViewType::kArangoSearch) {
       EXPECT_TRUE(runQuery(
           R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)"));
-    } else if (type() == ViewType::kSearch) {
+    } else if (type() == ViewType::kSearchAlias) {
       // Because for search/inverted-index
       // we consider strings can be found as normal fields,
       // so them all have suffix \0_s,
@@ -1116,260 +826,147 @@ class QueryGeoInRange : public QueryTest {
     }
     // EXISTS will also work
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry, 'analyzer', "mygeopoint")
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(_insertedDocs.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry, 'analyzer', "mygeopoint")
+        RETURN d)"));
     }
     // test missing field
-    {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     // test missing field
-    {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     // test missing analyzer
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      std::vector<VPackSlice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     // test missing analyzer
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      std::vector<VPackSlice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[12].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(0, slice.length());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
-
     {
       std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
                                           _insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
@@ -1378,36 +975,24 @@ class QueryGeoInRange : public QueryTest {
           _insertedDocs[24].slice(),
           _insertedDocs[25].slice(),
       };
-
-      auto result = executeQuery(_vocbase,
-                                 R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      ASSERT_EQ(expected.size(), slice.length());
-      size_t i = 0;
-      for (VPackArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        EXPECT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
   }
 };
 
 class QueryGeoInRangeView : public QueryGeoInRange {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView(std::string_view fields) {
     auto createJson = VPackParser::fromJson(
         R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
     auto updateJson =
@@ -1424,11 +1009,11 @@ class QueryGeoInRangeView : public QueryGeoInRange {
 
 class QueryGeoInRangeSearch : public QueryGeoInRange {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createIndexes(std::string_view fields) {
     bool created = false;
-    // TODO remove fields, also see SEARCH-334
+    // TODO kSearch remove fields, also see SEARCH-334
     auto createJson = VPackParser::fromJson(absl::Substitute(
         R"({ "name": "testIndex0", "type": "inverted",
              "fields": $1,
@@ -1441,9 +1026,9 @@ class QueryGeoInRangeSearch : public QueryGeoInRange {
   }
 
   void createSearch() {
-    auto createJson =
-        VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "search-alias" })");
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
     auto updateJson = VPackParser::fromJson(R"({ "indexes": [

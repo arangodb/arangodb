@@ -75,7 +75,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -110,7 +110,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
            \"storedValues\": [{\"fields\":[\"str\"], \"compression\":\"none\"}, [\"value\"], [\"_id\"], [\"str\", \"value\"], [\"exist\"]] \
         }");
       view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view);
 
       // add links to collections
@@ -127,7 +127,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
            \"storedValues\": [] \
         }");
       view2 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view2);
 
       // add links to collections
@@ -442,7 +442,7 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
                           {\"fields\":[\"_id\"]}, {\"fields\":[\"str\", \"foo\", \"value\"]}] \
       }");
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase().createView(viewJson->slice()));
+      vocbase().createView(viewJson->slice(), false));
   ASSERT_TRUE(view);
 
   auto updateJson =
@@ -460,7 +460,7 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   auto slice = builder.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(slice.get("type").copyString() ==
-              arangodb::iresearch::StaticStrings::ViewType);
+              arangodb::iresearch::StaticStrings::ViewArangoSearchType);
   EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
   auto tmpSlice = slice.get("links");
   EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
@@ -604,7 +604,7 @@ TEST_P(IResearchQueryNoMaterializationTest,
         {\"fields\":[\"value\"], \"compression\":\"lz4\"}, [\"_id\"], {\"fields\":[\"str\", \"foo\", \"value\"]}] \
       }");
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase().createView(viewJson->slice()));
+      vocbase().createView(viewJson->slice(), false));
   ASSERT_TRUE(view);
 
   auto updateJson =
@@ -622,7 +622,7 @@ TEST_P(IResearchQueryNoMaterializationTest,
   auto slice = builder.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(slice.get("type").copyString() ==
-              arangodb::iresearch::StaticStrings::ViewType);
+              arangodb::iresearch::StaticStrings::ViewArangoSearchType);
   EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
   auto tmpSlice = slice.get("links");
   EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
