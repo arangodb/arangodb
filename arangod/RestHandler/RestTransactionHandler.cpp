@@ -403,6 +403,15 @@ RestTransactionHandler::forwardingTarget() {
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
+    // do not forward if we don't have a transaction suffix. the
+    // number of suffixes validation will still be performed for PUT
+    // and DELETE requests later, so not returning an error from here
+    // is ok.
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+
+  if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "write") {
+    // no request forwarding for stopping write transactions
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -410,8 +419,18 @@ RestTransactionHandler::forwardingTarget() {
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
   if (sourceServer == ServerState::instance()->getShortId()) {
+    // we need to handle the request ourselves, because we own the
+    // id used in the request.
     return {std::make_pair(StaticStrings::Empty, false)};
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+  auto coordinatorId = ci.getCoordinatorByShortID(sourceServer);
+
+  if (coordinatorId.empty()) {
+    return ResultT<std::pair<std::string, bool>>::error(
+        TRI_ERROR_TRANSACTION_NOT_FOUND,
+        "cannot find target server for transaction id");
+  }
+
+  return {std::make_pair(std::move(coordinatorId), false)};
 }

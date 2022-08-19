@@ -257,16 +257,6 @@ class LogicalCollection : public LogicalDataSource {
                                                 ReadOwnWrites readOwnWrites);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
-  /// @brief fetches current index selectivity estimates
-  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
-  /// to fetch current values!
-  /// @param tid the optional transaction ID to use
-  IndexEstMap clusterIndexEstimates(bool allowUpdating,
-                                    TransactionId tid = TransactionId::none());
-
-  /// @brief flushes the current index selectivity estimates
-  void flushClusterIndexEstimates();
-
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
@@ -284,7 +274,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Modification Functions
   Result drop() override;
   Result rename(std::string&& name) override;
-  virtual void setStatus(TRI_vocbase_col_status_e);
+  void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
