@@ -202,7 +202,7 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
   TRI_ASSERT(infoSlice.isObject());
   TRI_ASSERT(infoSlice.get("clusterQueryId").isNumber<QueryId>())
       << "unexpected clusterQueryId: " << infoSlice.toJson();
-  QueryId globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
+  auto const globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
 
   auto buildCallback =
       [this, server, didCreateEngine = std::move(didCreateEngine),
