@@ -1,6 +1,9 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
 * Improve error handling for passing wrong transaction ids / cursor ids / pregel
   job ids to request forwarding. Also prevent the error "transaction id not
   found" in cases when request forwarding was tried to a coordinator that was
