@@ -4,6 +4,11 @@ v3.10.0 (XXXX-XX-XX)
 * Web UI: Now correctly handles the server error response when an error occurred
   during the modification of a document or an edge (BTS-934).
 
+* Add progress reporting to RocksDB WAL recovery, in case there are many WAL
+  files to recover.
+
+* Updated arangosync to v2.12.0-preview-9.
+
 
 v3.10.0-alpha.1 (2022-08-17)
 ----------------------------
