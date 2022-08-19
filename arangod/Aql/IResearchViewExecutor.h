@@ -170,7 +170,6 @@ class IResearchViewExecutorInfos {
   bool _filterConditionIsEmpty;
   bool const _volatileSort;
   bool const _volatileFilter;
-  bool const _isOldMangling;
 };
 
 class IResearchViewStats {
