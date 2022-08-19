@@ -391,7 +391,14 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
-  // distribute operations in cluster
+#ifdef USE_ENTERPRISE
+  registerRule("distribute-offset-info-to-cluster",
+               distributeOffsetInfoToClusterRule,
+               OptimizerRule::distributeOffsetInfoToClusterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
+#endif
+
   registerRule("distribute-filtercalc-to-cluster",
                distributeFilterCalcToClusterRule,
                OptimizerRule::distributeFilterCalcToClusterRule,

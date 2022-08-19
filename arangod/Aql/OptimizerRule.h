@@ -271,6 +271,11 @@ struct OptimizerRule {
     // remove multiple remote <-> distribute snippets if we are able
     // to combine multiple in only one
     removeDistributeNodesRule,
+
+    // move OffsetInfoMaterialize in between
+    // scatter(remote) <-> gather(remote) so they're
+    // distributed to the cluster nodes.
+    distributeOffsetInfoToClusterRule,
 #endif
 
     // move FilterNodes & Calculation nodes in between

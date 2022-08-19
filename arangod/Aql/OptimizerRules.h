@@ -179,6 +179,10 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
+void distributeOffsetInfoToClusterRule(aql::Optimizer* opt,
+                                       std::unique_ptr<aql::ExecutionPlan> plan,
+                                       aql::OptimizerRule const& rule);
+
 ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                             ExecutionNode* node,
                                             bool& wasModified);

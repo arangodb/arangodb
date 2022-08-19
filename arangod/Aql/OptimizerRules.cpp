@@ -4875,6 +4875,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
         case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::WINDOW:
           // do break
           stopSearching = true;
@@ -4999,6 +5000,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::OFFSET_INFO_MATERIALIZE:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -5053,7 +5055,6 @@ void arangodb::aql::distributeSortToClusterRule(
         // distributed in cluster as it accounts this disctribution. So we
         // should not encounter this kind of nodes for now
         case EN::MATERIALIZE:
-        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
