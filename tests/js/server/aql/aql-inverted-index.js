@@ -96,11 +96,12 @@ function optimizerRuleInvertedIndexTestSuite() {
       try { analyzers.remove("my_geo", true); } catch (e) {}
     },
     testCreateDuplicate: function () {
-       col.ensureIndex({type: 'inverted',
+       let idx = col.ensureIndex({type: 'inverted',
                         name: 'InvertedIndexUnsorted_duplicate',
                         fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}]});
+       assertEqual("InvertedIndexUnsorted", idx.name);       
     },
     testIndexNotHinted: function () {
       const query = aql`

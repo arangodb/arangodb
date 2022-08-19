@@ -817,6 +817,10 @@ void extractNonConstPartsOfJunctionCondition(
   if (condition->type == NODE_TYPE_OPERATOR_NARY_OR) {
     for (size_t i = 0; i < condition->numMembers(); ++i) {
       auto andNode = condition->getMemberUnchecked(i);
+      TRI_ASSERT(andNode);
+      if (andNode->isConstant()) {
+        continue;
+      }
       auto path = selectedMembersFromRoot;
       path.emplace_back(i);
       extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,

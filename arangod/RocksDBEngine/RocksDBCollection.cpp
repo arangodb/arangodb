@@ -512,7 +512,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
   TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
 
-  // cleanup newly instanciated object
+  // cleanup newly instantiated object
   auto indexCleanup = ScopeGuard([&newIdx]() noexcept {
     try {
       newIdx->drop();
