@@ -695,6 +695,94 @@ AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
   return node;
 }
 
+void extractNonConstPartsOfJunctionCondition(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    Variable const* indexVariable,
+    std::vector<size_t> const& selectedMembersFromRoot,
+    NonConstExpressionContainer& result);
+
+void extractNonConstPartsOfLeafNode(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    bool evaluateFCalls, bool sorted, AstNode const* leaf,
+    Variable const* indexVariable,
+    std::vector<size_t> const& selectedMembersFromRoot,
+    NonConstExpressionContainer& result) {
+  // FCALL at this level is most likely a geo index
+  if (leaf->type == NODE_TYPE_FCALL) {
+    captureFCallArgumentExpressions(ast, varInfo, leaf, selectedMembersFromRoot,
+                                    indexVariable, result);
+    return;
+  } else if (leaf->type == NODE_TYPE_EXPANSION && leaf->numMembers() > 2 &&
+             leaf->isAttributeAccessForVariable(indexVariable, false)) {
+    // we need to gather all expressions from nested filter
+    auto filter = leaf->getMemberUnchecked(2);
+    TRI_ASSERT(filter->type == NODE_TYPE_ARRAY_FILTER);
+    if (ADB_LIKELY(filter->type == NODE_TYPE_ARRAY_FILTER)) {
+      auto path = selectedMembersFromRoot;
+      path.emplace_back(2);
+      captureArrayFilterArgumentExpressions(ast, varInfo, filter,
+                                            std::move(path), evaluateFCalls,
+                                            indexVariable, result);
+    }
+    return;
+  } else if (leaf->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    TRI_ASSERT(leaf->numMembers() == 1);
+    auto negatedNode = leaf->getMemberUnchecked(0);
+    TRI_ASSERT(negatedNode);
+    if (negatedNode->isConstant()) {
+      return;
+    }
+    auto path = selectedMembersFromRoot;
+    path.emplace_back(0);
+    if (negatedNode->type == NODE_TYPE_OPERATOR_NARY_AND ||
+        negatedNode->type == NODE_TYPE_OPERATOR_NARY_OR) {
+      extractNonConstPartsOfJunctionCondition(
+          ast, varInfo, evaluateFCalls, sorted, negatedNode, indexVariable,
+          std::move(path), result);
+    } else {
+      extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, sorted,
+                                     negatedNode, indexVariable,
+                                     std::move(path), result);
+    }
+    return;
+  } else if (leaf->numMembers() != 2) {
+    // The Index cannot solve non-binary operators.
+    TRI_ASSERT(false);
+    return;
+  }
+
+  // We only support binary conditions
+  TRI_ASSERT(leaf->numMembers() == 2);
+  AstNode* lhs = leaf->getMember(0);
+  AstNode* rhs = leaf->getMember(1);
+  if (lhs->isAttributeAccessForVariable(indexVariable, false)) {
+    // Index is responsible for the left side, check if right side
+    // has to be evaluated
+    if (!rhs->isConstant()) {
+      if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        rhs = wrapInUniqueCall(ast, rhs, sorted);
+      }
+      auto path = selectedMembersFromRoot;
+      path.emplace_back(1);
+      captureNonConstExpression(ast, varInfo, rhs, std::move(path), result);
+    }
+  } else {
+    auto path = selectedMembersFromRoot;
+    path.emplace_back(0);
+    // Index is responsible for the right side, check if left side
+    // has to be evaluated
+
+    if (lhs->type == NODE_TYPE_FCALL && !evaluateFCalls) {
+      // most likely a geo index condition
+      captureFCallArgumentExpressions(ast, varInfo, lhs, std::move(path),
+                                      indexVariable, result);
+    } else if (!lhs->isConstant()) {
+      captureNonConstExpression(ast, varInfo, lhs, std::move(path), result);
+    }
+  }
+}
+
 void extractNonConstPartsOfAndPart(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
     bool evaluateFCalls, bool sorted, AstNode const* andNode,
@@ -705,60 +793,40 @@ void extractNonConstPartsOfAndPart(
   // of a GEO_* function. We might need to evaluate fcall arguments
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   for (size_t j = 0; j < andNode->numMembers(); ++j) {
-    auto path = selectedMembersFromRoot;
-    path.emplace_back(j);
     auto leaf = andNode->getMemberUnchecked(j);
-
-    // FCALL at this level is most likely a geo index
-    if (leaf->type == NODE_TYPE_FCALL) {
-      captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path),
-                                      indexVariable, result);
-      continue;
-    } else if (leaf->type == NODE_TYPE_EXPANSION && leaf->numMembers() > 2 &&
-               leaf->isAttributeAccessForVariable(indexVariable, false)) {
-      // we need to gather all expressions from nested filter
-      auto filter = leaf->getMemberUnchecked(2);
-      TRI_ASSERT(filter->type == NODE_TYPE_ARRAY_FILTER);
-      if (ADB_LIKELY(filter->type == NODE_TYPE_ARRAY_FILTER)) {
-        path.emplace_back(2);
-        captureArrayFilterArgumentExpressions(ast, varInfo, filter,
-                                              std::move(path), evaluateFCalls,
-                                              indexVariable, result);
-      }
-      continue;
-    } else if (leaf->numMembers() != 2) {
-      // The Index cannot solve non-binary operators.
-      TRI_ASSERT(false);
-      continue;
+    if (!leaf->isConstant()) {
+      auto path = selectedMembersFromRoot;
+      path.emplace_back(j);
+      extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, sorted, leaf,
+                                     indexVariable, path, result);
     }
+  }
+}
 
-    // We only support binary conditions
-    TRI_ASSERT(leaf->numMembers() == 2);
-    AstNode* lhs = leaf->getMember(0);
-    AstNode* rhs = leaf->getMember(1);
-    if (lhs->isAttributeAccessForVariable(indexVariable, false)) {
-      // Index is responsible for the left side, check if right side
-      // has to be evaluated
-      if (!rhs->isConstant()) {
-        if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-          rhs = wrapInUniqueCall(ast, rhs, sorted);
-        }
-        path.emplace_back(1);
-        captureNonConstExpression(ast, varInfo, rhs, std::move(path), result);
-      }
-    } else {
-      path.emplace_back(0);
-      // Index is responsible for the right side, check if left side
-      // has to be evaluated
+void extractNonConstPartsOfJunctionCondition(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    Variable const* indexVariable,
+    std::vector<size_t> const& selectedMembersFromRoot,
+    NonConstExpressionContainer& result) {
+  // conditions can be of the form (a [<|<=|>|=>] b) && ...
+  TRI_ASSERT(condition != nullptr);
+  TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_AND ||
+             condition->type == NODE_TYPE_OPERATOR_NARY_OR);
 
-      if (lhs->type == NODE_TYPE_FCALL && !evaluateFCalls) {
-        // most likely a geo index condition
-        captureFCallArgumentExpressions(ast, varInfo, lhs, std::move(path),
-                                        indexVariable, result);
-      } else if (!lhs->isConstant()) {
-        captureNonConstExpression(ast, varInfo, lhs, std::move(path), result);
-      }
+  if (condition->type == NODE_TYPE_OPERATOR_NARY_OR) {
+    for (size_t i = 0; i < condition->numMembers(); ++i) {
+      auto andNode = condition->getMemberUnchecked(i);
+      auto path = selectedMembersFromRoot;
+      path.emplace_back(i);
+      extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,
+                                    andNode, indexVariable, std::move(path),
+                                    result);
     }
+  } else {
+    extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,
+                                  condition, indexVariable,
+                                  selectedMembersFromRoot, result);
   }
 }
 
@@ -1177,18 +1245,8 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
   TRI_ASSERT(indexVariable != nullptr);
 
   NonConstExpressionContainer result;
-
-  if (condition->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    for (size_t i = 0; i < condition->numMembers(); ++i) {
-      auto andNode = condition->getMemberUnchecked(i);
-      extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,
-                                    andNode, indexVariable, {i}, result);
-    }
-  } else {
-    extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,
-                                  condition, indexVariable, {}, result);
-  }
-
+  extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls, sorted,
+                                          condition, indexVariable, {}, result);
   return result;
 }
 
