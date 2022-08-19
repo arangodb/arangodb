@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Add progress reporting to RocksDB WAL recovery, in case there are many WAL
+  files to recover.
+
 * Updated arangosync to v2.12.0-preview-9.
 
 
