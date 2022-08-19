@@ -1270,11 +1270,10 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
   using namespace replication2::replicated_state;
 
   if (auto leaderStatus = status->asLeaderStatus(); leaderStatus != nullptr) {
-    // Even though we are the leader, we don't want to replicate during
-    // recovery.
-    // TODO why can't we just use kRecoveryInProgress?
     if (leaderStatus->managerState.state ==
         LeaderInternalState::kRecoveryInProgress) {
+      // Even though we are the leader, we don't want to replicate during
+      // recovery.
       options.silent = true;
       replicationType = ReplicationType::FOLLOWER;
       followers = nullptr;
