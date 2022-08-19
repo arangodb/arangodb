@@ -42,6 +42,13 @@
 
 #include <cstring>
 
+// Work-around for nghttp2 non-standard definition ssize_t under windows
+// https://github.com/nghttp2/nghttp2/issues/616
+#if defined(_WIN32) && defined(_MSC_VER)
+#define ssize_t long
+#endif
+#include <nghttp2/nghttp2.h>
+
 using namespace arangodb::basics;
 using std::string_view;
 
