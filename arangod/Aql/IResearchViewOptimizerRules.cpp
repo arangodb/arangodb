@@ -304,7 +304,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   for (auto const& sort : sortElements) {
     TRI_ASSERT(sort.var);
     if (auto const* varSetBy = plan->getVarSetBy(sort.var->id);
-        !varSetBy || varSetBy != &viewNode) {
+        varSetBy != &viewNode) {
       // Scorers must be always evaluated by IResearchViewNode
       return false;
     }

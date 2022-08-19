@@ -155,17 +155,17 @@ class IResearchViewExecutorInfos {
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   aql::AstNode const& _filterCondition;
-  bool const _volatileSort;
-  bool const _volatileFilter;
-  bool const _isOldMangling;
   VarInfoMap const& _varInfoMap;
-  int const _depth;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
   iresearch::CountApproximate _countApproximate;
-  bool _filterConditionIsEmpty;
   iresearch::FilterOptimization _filterOptimization;
   std::vector<std::pair<size_t, bool>> _scorersSort;
   size_t _scorersSortLimit;
+  int const _depth;
+  bool _filterConditionIsEmpty;
+  bool const _volatileSort;
+  bool const _volatileFilter;
+  bool const _isOldMangling;
 };
 
 class IResearchViewStats {

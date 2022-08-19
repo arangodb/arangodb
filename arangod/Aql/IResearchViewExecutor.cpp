@@ -205,18 +205,18 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _plan{plan},
       _outVariable{outVariable},
       _filterCondition{filterCondition},
+      _varInfoMap{varInfoMap},
+      _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
+      _countApproximate{countApproximate},
+      _filterOptimization{filterOptimization},
+      _scorersSort{std::move(scorersSort)},
+      _scorersSortLimit{scorersSortLimit},
+      _depth{depth},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
       _volatileSort{volatility.second},
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter{_volatileSort || volatility.first},
-      _isOldMangling(isOldMangling),
-      _varInfoMap{varInfoMap},
-      _depth{depth},
-      _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
-      _countApproximate{countApproximate},
-      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
-      _filterOptimization{filterOptimization},
-      _scorersSort{std::move(scorersSort)},
-      _scorersSortLimit{scorersSortLimit} {
+      _isOldMangling{isOldMangling} {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{

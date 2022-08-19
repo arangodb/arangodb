@@ -38,7 +38,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FilterExecutor.h"
-#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
