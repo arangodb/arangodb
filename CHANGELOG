@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.12.0-preview-9.
+
 * Disallowed index creation that covers fields in which the field's name starts
   or ends with `:` for single server or cluster when the instance is a
   coordinator or single server. This validation only happens for index creation, 
