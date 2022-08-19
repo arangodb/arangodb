@@ -37,6 +37,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/build.h"
+#include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
@@ -108,6 +109,7 @@
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
+#include <rocksdb/sst_file_reader.h>
 #include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
 #include <rocksdb/transaction_log.h>
@@ -242,6 +244,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _useReleasedTick(false),
       _debugLogging(false),
       _useEdgeCache(true),
+      _verifySst(false),
 #ifdef USE_ENTERPRISE
       _createShaFiles(true),
 #else
@@ -568,6 +571,19 @@ void RocksDBEngine::collectOptions(
       .setIntroducedIn(30604)
       .setDeprecatedIn(31000);
 
+  options
+      ->addOption("--rocksdb.verify-sst",
+                  "verify validity of sst files present in rocksdb directory",
+                  new BooleanParameter(&_verifySst),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Command,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31100);
+
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
       "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
@@ -650,6 +666,31 @@ void RocksDBEngine::prepare() {
 #endif
 }
 
+void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
+  rocksdb::SstFileReader sstReader(options);
+  for (auto const& fileName : TRI_FullTreeDirectory(dataPath().data())) {
+    if (!fileName.ends_with(".sst")) {
+      continue;
+    }
+    rocksdb::Status res =
+        sstReader.Open(basics::FileUtils::buildFilename(dataPath(), fileName));
+    if (!res.ok()) {
+      auto result = rocksutils::convertStatus(res);
+      LOG_TOPIC("40edd", FATAL, arangodb::Logger::STARTUP)
+          << result.errorMessage();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
+    }
+    res = sstReader.VerifyChecksum();
+    if (!res.ok()) {
+      auto result = rocksutils::convertStatus(res);
+      LOG_TOPIC("2943c", FATAL, arangodb::Logger::STARTUP)
+          << result.errorMessage();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
+    }
+  }
+  exit(EXIT_SUCCESS);
+}
+
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
@@ -729,6 +770,16 @@ void RocksDBEngine::start() {
   LOG_TOPIC("bc82a", TRACE, arangodb::Logger::ENGINES)
       << "initializing RocksDB, path: '" << _path << "', WAL directory '"
       << _dbOptions.wal_dir << "'";
+
+  if (_verifySst) {
+    rocksdb::Options options;
+#ifdef USE_ENTERPRISE
+    configureEnterpriseRocksDBOptions(options, createdEngineDir);
+#else
+    options.env = rocksdb::Env::Default();
+#endif
+    verifySstFiles(options);
+  }
 
   if (_createShaFiles) {
     _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
@@ -812,6 +863,7 @@ void RocksDBEngine::start() {
   bool dbExisted = checkExistingDB(cfFamilies);
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
+
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _dbOptions, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
 
@@ -1286,7 +1338,7 @@ ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
     if (ServerState::instance()->isDBServer() &&
         arangodb::basics::VelocyPackHelper::getStringView(
             slice, StaticStrings::DataSourceType, {}) !=
-            arangodb::iresearch::StaticStrings::ViewType) {
+            arangodb::iresearch::StaticStrings::ViewArangoSearchType) {
       continue;
     }
     result.add(slice);
@@ -2621,7 +2673,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         TRI_ASSERT(!it.get("id").isNone());
 
         LogicalView::ptr view;
-        auto res = LogicalView::instantiate(view, *vocbase, it);
+        auto res = LogicalView::instantiate(view, *vocbase, it, false);
 
         if (!res.ok()) {
           THROW_ARANGO_EXCEPTION(res);
@@ -2650,7 +2702,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   };
 
   // scan the database path for "arangosearch" views
-  scanViews(iresearch::StaticStrings::ViewType);
+  scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
   // scan the database path for replicated logs
   try {
@@ -2727,9 +2779,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     throw;
   }
 
-  // scan the database path for "search" views
+  // scan the database path for "search-alias" views
   if (ServerState::instance()->isSingleServer()) {
-    scanViews(iresearch::StaticStrings::SearchType);
+    scanViews(iresearch::StaticStrings::ViewSearchAliasType);
   }
 
   return vocbase;

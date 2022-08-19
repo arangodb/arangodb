@@ -370,9 +370,6 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   auto resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
-
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
@@ -410,9 +407,6 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_421) {
   auto resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
-
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
@@ -448,9 +442,6 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_conn_canceled) {
   auto resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
   pool->_conn->_err = fuerte::Error::NoError;
-
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
 
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
@@ -495,9 +486,6 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   b = VPackParser::fromJson("{\"error\":false}");
   resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
-
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
 
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");

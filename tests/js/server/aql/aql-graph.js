@@ -1828,6 +1828,78 @@ function ShortestPathErrorTestSuite() {
       } catch (err) {
         assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
       }
+    },
+
+    testShortestPathInvalidOptionsParameter: function () {
+      /* SHORTEST_PATH */
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const query = `
+        FOR path IN OUTBOUND SHORTEST_PATH "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {invalidParameter: "IShouldCreateAWarning"}
+          RETURN path
+      `;
+
+      const result = db._query(query);
+      const extra = result.getExtra();
+      assertEqual(1, extra.warnings.length);
+      assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
+      assertTrue(extra.warnings[0].message.includes('in SHORTEST_PATH statement'));
+    },
+
+    testKPathsInvalidOptionsParameter: function () {
+      /* K_PATHS */
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const query = `
+        FOR path IN OUTBOUND K_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {invalidParameter: "IShouldCreateAWarning"}
+          RETURN path
+      `;
+
+      const result = db._query(query);
+      const extra = result.getExtra();
+      assertEqual(1, extra.warnings.length);
+      assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
+      assertTrue(extra.warnings[0].message.includes('in K_PATHS statement'));
+    },
+
+    testKShortestPathsInvalidOptionsParameter: function () {
+      /* K_SHORTEST_PATHS */
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {invalidParameter: "IShouldCreateAWarning"}
+          RETURN path
+      `;
+
+      const result = db._query(query);
+      const extra = result.getExtra();
+      assertEqual(1, extra.warnings.length);
+      assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
+      assertTrue(extra.warnings[0].message.includes('in K_SHORTEST_PATHS statement'));
+    },
+
+    testAllShortestPathsInvalidOptionsParameter: function () {
+      /* ALL_SHORTEST_PATHS */
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const query = `
+        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {invalidParameter: "IShouldCreateAWarning"}
+          RETURN path
+      `;
+
+      const result = db._query(query);
+      const extra = result.getExtra();
+      assertEqual(1, extra.warnings.length);
+      assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
+      assertTrue(extra.warnings[0].message.includes('in ALL_SHORTEST_PATHS statement'));
     }
   };
 }

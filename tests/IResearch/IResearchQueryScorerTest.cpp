@@ -94,7 +94,7 @@ TEST_P(IResearchQueryScorerTest, test) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
 
   // add link to collection
@@ -131,7 +131,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -480,7 +480,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
     ASSERT_TRUE(std::regex_search(
         std::string(queryResult.errorMessage()),
-        std::regex("variable '.' is used in scorer function.*CUSTOMSCORER")));
+        std::regex("variable '.' is used in search function.*CUSTOMSCORER")));
 
     // need to turn off certain optimizations so that the independent subquery
     // is not moved out of the FOR loop

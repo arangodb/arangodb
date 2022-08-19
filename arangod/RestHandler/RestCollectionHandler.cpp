@@ -584,12 +584,6 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                 // has taken
                 coll->compact();
               }
-              if (ServerState::instance()
-                      ->isCoordinator()) {  // ClusterInfo::loadPlan eventually
-                                            // updates status
-                coll->setStatus(
-                    TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
-              }
 
               // no need to use async method, no
               collectionRepresentation(coll,

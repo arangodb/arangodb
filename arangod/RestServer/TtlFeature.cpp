@@ -468,6 +468,8 @@ void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
+  MUTEX_LOCKER(locker, _propertiesMutex);
+
   if (_properties.frequency > 0 &&
       _properties.frequency < TtlProperties::minFrequency) {
     LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
@@ -494,9 +496,13 @@ void TtlFeature::start() {
     return;
   }
 
-  // a frequency of 0 means the thread is not started at all
-  if (_properties.frequency == 0) {
-    return;
+  {
+    MUTEX_LOCKER(locker, _propertiesMutex);
+
+    // a frequency of 0 means the thread is not started at all
+    if (_properties.frequency == 0) {
+      return;
+    }
   }
 
   MUTEX_LOCKER(locker, _threadMutex);
