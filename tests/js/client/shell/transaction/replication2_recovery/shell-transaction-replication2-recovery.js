@@ -128,9 +128,20 @@ function transactionReplication2Recovery() {
       let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
       let newTerm = term + 2;
 
+      let servers = Object.assign({}, ...participants.map(
+        (serverId) => ({ [serverId]: replicatedLogsHelper.getServerUrl(serverId) })));
+
       // We unset the leader here so that once the old leader node is resumed we
       // do not move leadership back to that node.
       replicatedLogsHelper.unsetLeader(dbn, logId);
+
+      // Expect none of the keys to be found on any server.
+      for (const [key, endpoint] of Object.entries(servers)) {
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test1", false));
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test2", false));
+      }
 
       stopServerWait(leader);
       replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
@@ -156,6 +167,19 @@ function transactionReplication2Recovery() {
 
       syncShardsWithLogs(dbn);
 
+      servers = Object.assign({}, ...followers.map(
+        (serverId) => ({ [serverId]: replicatedLogsHelper.getServerUrl(serverId) })));
+
+      // Expect none of the keys to be found on the remaining servers.
+      for (const [key, endpoint] of Object.entries(servers)) {
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test1", false));
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test2", false));
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test3", false));
+      }
+
       // Try a new transaction, this time expecting it to work.
       try {
         trx = db._createTransaction({
@@ -168,7 +192,7 @@ function transactionReplication2Recovery() {
         fail("Transaction failed with: " + JSON.stringify(err));
       }
 
-      let servers = Object.assign({}, ...followers.map(
+      servers = Object.assign({}, ...followers.map(
         (serverId) => ({ [serverId]: replicatedLogsHelper.getServerUrl(serverId) })));
       for (const [key, endpoint] of Object.entries(servers)) {
         replicatedLogsHelper.waitFor(
@@ -194,11 +218,22 @@ function transactionReplication2Recovery() {
         fail("Transaction failed with: " + JSON.stringify(err));
       }
 
+      // Expect "bar" to be found on all servers.
       servers = Object.assign({}, ...participants.map(
         (serverId) => ({ [serverId]: replicatedLogsHelper.getServerUrl(serverId) })));
       for (const [_, endpoint] of Object.entries(servers)) {
         replicatedLogsHelper.waitFor(
           replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "bar", true));
+      }
+
+      // After the leader rejoined, expect none of the aborted transactions to have affected any servers.
+      for (const [key, endpoint] of Object.entries(servers)) {
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test1", false));
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test2", false));
+        replicatedLogsHelper.waitFor(
+          replicatedStatePredicates.localKeyStatus(endpoint, dbn, shardId, "test3", false));
       }
     },
 
@@ -236,6 +271,7 @@ function transactionReplication2Recovery() {
           newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
 
+      // TODO check that we cannot find test1 and test2 on any servers.
       syncShardsWithLogs(dbn);
 
       // Continue the transaction and expect it to succeed.
