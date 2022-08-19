@@ -648,10 +648,10 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
           << ", files in archive: " << filesInArchive;
     }
 
-    TRI_ASSERT(_tick == 0);
-
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler(server, recoveryStartSequence, latestSequenceNumber, _tick);
+    TRI_ASSERT(_tick == 0);
+    WBReader handler(server, recoveryStartSequence, latestSequenceNumber,
+                     _tick);
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
