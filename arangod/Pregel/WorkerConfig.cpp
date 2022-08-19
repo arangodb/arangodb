@@ -21,8 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/WorkerConfig.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
@@ -54,7 +54,7 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Supplied bad parameters to worker");
   }
-  _executionNumber = execNum.getUInt();
+  _executionNumber = ExecutionNumber(execNum.getUInt());
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
 

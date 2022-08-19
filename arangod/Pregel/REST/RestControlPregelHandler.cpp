@@ -24,6 +24,7 @@
 #include "RestControlPregelHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ResultT.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -178,14 +179,13 @@ void RestControlPregelHandler::startExecution() {
   auto res = _pregel.startExecution(_vocbase, algorithm, vertexCollections,
                                     edgeCollections, edgeCollectionRestrictions,
                                     parameters);
-  if (res.first.fail()) {
-    generateError(res.first);
-    return;
+  if (res.ok()) {
+    VPackBuilder builder;
+    builder.add(VPackValue(std::to_string(res.get().value)));
+    generateResult(rest::ResponseCode::OK, builder.slice());
+  } else {
+    generateError(res.result());
   }
-
-  VPackBuilder builder;
-  builder.add(VPackValue(std::to_string(res.second)));
-  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 void RestControlPregelHandler::getExecutionStatus() {
@@ -209,7 +209,8 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
-  uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  auto executionNumber = pregel::ExecutionNumber(
+      arangodb::basics::StringUtils::uint64(suffixes[0]));
   auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {
@@ -231,7 +232,8 @@ void RestControlPregelHandler::cancelExecution() {
     return;
   }
 
-  uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  auto executionNumber = pregel::ExecutionNumber(
+      arangodb::basics::StringUtils::uint64(suffixes[0]));
   auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {

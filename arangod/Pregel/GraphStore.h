@@ -100,7 +100,7 @@ template<typename V, typename E>
 class GraphStore final {
  public:
   GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-             uint64_t executionNumber, GraphFormat<V, E>* graphFormat,
+             ExecutionNumber executionNumber, GraphFormat<V, E>* graphFormat,
              std::unique_ptr<ShardResolver> shardResolver);
 
   std::unique_ptr<ShardResolver> _shardResolver;
@@ -175,7 +175,7 @@ class GraphStore final {
  private:
   PregelFeature& _feature;
   DatabaseGuard _vocbaseGuard;
-  uint64_t const _executionNumber;
+  const ExecutionNumber _executionNumber;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
 

@@ -33,8 +33,8 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Metrics/Gauge.h"
+#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
@@ -63,11 +63,15 @@
 #include <algorithm>
 #include <memory>
 
+#include <fmt/core.h>
+#include <fmt/ostream.h>
+
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-#define LOG_PREGEL(logId, level) \
-  LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+      << fmt::format("[job {}]", _executionNumber)
 
 auto DocumentId::create(std::string_view documentId) -> ResultT<DocumentId> {
   auto separatorPosition = documentId.find('/');
@@ -127,7 +131,7 @@ auto ShardResolver::create(bool isCluster, ClusterInfo& clusterInfo)
 
 template<typename V, typename E>
 GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-                             uint64_t executionNumber,
+                             ExecutionNumber executionNumber,
                              GraphFormat<V, E>* graphFormat,
                              std::unique_ptr<ShardResolver> shardResolver)
     : _shardResolver(std::move(shardResolver)),
@@ -353,7 +357,7 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(PregelFeature& feature,
   if (config.useMemoryMaps()) {
     // prefix used for logging in TypedBuffer.h
     std::string logPrefix =
-        "[job " + std::to_string(config.executionNumber()) + "] ";
+        "[job " + std::to_string(config.executionNumber().value) + "] ";
 
     auto ptr = std::make_unique<MappedFileBuffer<M>>(feature.tempPath(), cap,
                                                      logPrefix);

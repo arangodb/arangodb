@@ -119,7 +119,7 @@ void ArrayOutCache<M>::flushMessages() {
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey,
-             VPackValue(this->_config->executionNumber()));
+             VPackValue(this->_config->executionNumber().value));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
@@ -230,7 +230,7 @@ void CombiningOutCache<M>::flushMessages() {
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey,
-             VPackValue(this->_config->executionNumber()));
+             VPackValue(this->_config->executionNumber().value));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
