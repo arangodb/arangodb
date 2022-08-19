@@ -731,7 +731,7 @@ void replaceSearchFunc(aql::CalculationNode& calcNode,
                  *exprNode,
                  [](aql::AstNode const& node) {
                    auto const [var, type] = resolveSearchFunc(node);
-                   return var && type != SearchFuncType::kInvalid;
+                   return !var || type == SearchFuncType::kInvalid;
                  });
              hasFunc) {
     auto replaceFunc = [&](aql::AstNode* node) -> aql::AstNode* {
