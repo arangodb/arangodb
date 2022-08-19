@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
 
 v3.10.0-alpha.1 (2022-08-17)
 ----------------------------
