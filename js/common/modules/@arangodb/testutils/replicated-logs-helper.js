@@ -50,7 +50,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
     }
     wait(0.5); // 240 * .5s = 2 minutes
   }
-  if (onErrorCallback !== null) {
+  if (onErrorCallback !== undefined) {
     onErrorCallback(result);
   } else {
     throw result;
