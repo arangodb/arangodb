@@ -1136,6 +1136,13 @@ void transaction::Methods::trackWaitForSync(LogicalCollection& collection,
   }
 }
 
+/// @brief Determine the replication type and the followers for a transaction.
+/// The replication type indicates whether this server is the leader or a
+/// follower. The followers are the servers that will be contacted for the
+/// actual replication.
+///
+/// We had to split this function into two parts, because the first one is used
+/// by replication1 and the second one is used by replication2.
 Result transaction::Methods::determineReplicationTypeAndFollowers(
     LogicalCollection& collection, std::string_view operationName,
     velocypack::Slice value, OperationOptions& options,
@@ -1151,6 +1158,8 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
       collection, operationName, value, options, replicationType, followers);
 }
 
+/// @brief The original code for determineReplicationTypeAndFollowers, used for
+/// replication1.
 Result transaction::Methods::determineReplication1TypeAndFollowers(
     LogicalCollection& collection, std::string_view operationName,
     velocypack::Slice value, OperationOptions& options,
@@ -1244,6 +1253,10 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
   return {};
 }
 
+/// @brief The replication2 version for determineReplicationTypeAndFollowers.
+/// The replication type is determined from the replicated state status (could
+/// be follower status or leader status). Followers is always an empty vector,
+/// because replication2 framework handles followers itself.
 Result transaction::Methods::determineReplication2TypeAndFollowers(
     LogicalCollection& collection, std::string_view operationName,
     velocypack::Slice value, OperationOptions& options,
@@ -1291,7 +1304,7 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
              followerStatus != nullptr) {
     options.silent = true;
     replicationType = ReplicationType::FOLLOWER;
-    followers = nullptr;
+    followers = std::make_shared<std::vector<ServerID> const>();
   } else {
     std::stringstream s;
     s << "Status is " << *status;
