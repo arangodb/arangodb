@@ -113,7 +113,7 @@ class LogicalView : public LogicalDataSource {
   /// @return view instance or nullptr on error
   //////////////////////////////////////////////////////////////////////////////
   static Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                            velocypack::Slice definition);
+                            velocypack::Slice definition, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
@@ -173,7 +173,7 @@ class LogicalView : public LogicalDataSource {
 namespace cluster_helper {
 
 Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                 velocypack::Slice definition) noexcept;
+                 velocypack::Slice definition, bool isUserRequest) noexcept;
 
 Result drop(LogicalView const& view) noexcept;
 
@@ -187,7 +187,7 @@ Result properties(LogicalView const& view, bool safe) noexcept;
 namespace storage_helper {
 
 Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                 velocypack::Slice definition) noexcept;
+                 velocypack::Slice definition, bool isUserRequest) noexcept;
 
 Result drop(LogicalView const& view) noexcept;
 

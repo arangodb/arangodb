@@ -591,6 +591,14 @@ set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ fl
 set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
 set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 
+include(CheckCompilerVersion)
+
+CheckCompilerVersion(
+  11.2 # GCC
+  14.0 # Clang
+  19.32 # MSVC
+)
+
 if (MSVC)
   set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
@@ -604,6 +612,7 @@ if (MSVC)
   endif()
 endif ()
 
+# FIXME: refactor/cleanup check below
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
     message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")

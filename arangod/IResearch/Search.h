@@ -26,25 +26,38 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/ViewSnapshot.h"
+#include "Containers/FlatHashMap.h"
 
 #include <shared_mutex>
 #include <atomic>
 
 namespace arangodb {
-
+class CollectionNameResolver;
 struct ViewFactory;
 
 }  // namespace arangodb
 namespace arangodb::iresearch {
 
 class SearchFactory;
+class IResearchInvertedIndex;
+
+struct SearchMeta final {
+  IResearchInvertedIndexSort primarySort;
+  IResearchViewStoredValues storedValues;
+  struct Field final {
+    std::string analyzer;
+    bool includeAllFields{false};
+  };
+  using Map = std::map<std::string, Field, std::less<>>;
+  Map fieldToAnalyzer;
+};
 
 class Search final : public LogicalView {
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
 
  public:
   static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
-    return {ViewType::kSearch, StaticStrings::SearchType};
+    return {ViewType::kSearchAlias, StaticStrings::ViewSearchAliasType};
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -53,19 +66,14 @@ class Search final : public LogicalView {
   static ViewFactory const& factory();
 
   Search(TRI_vocbase_t& vocbase, velocypack::Slice info);
-  ~Search();
+  ~Search() final;
 
   /// Get from indexes
 
   //////////////////////////////////////////////////////////////////////////////
-  /// TODO
+  /// TODO can return reference
   //////////////////////////////////////////////////////////////////////////////
-  IResearchInvertedIndexSort const& primarySort() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// TODO
-  //////////////////////////////////////////////////////////////////////////////
-  IResearchViewStoredValues const& storedValues() const;
+  std::shared_ptr<SearchMeta const> meta() const;
 
   /// Single Server only methods
 
@@ -121,6 +129,12 @@ class Search final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result renameImpl(std::string const& oldName) final;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// TODO
+  //////////////////////////////////////////////////////////////////////////////
+  Result updateProperties(CollectionNameResolver& resolver,
+                          velocypack::ArrayIterator it, bool isUserRequest);
+
   using Indexes =
       containers::FlatHashMap<DataSourceId,
                               containers::SmallVector<AsyncLinkPtr, 1>>;
@@ -134,6 +148,8 @@ class Search final : public LogicalView {
   std::function<void(transaction::Methods& trx, transaction::Status status)>
       _trxCallback;  // for snapshot(...)
   // std::atomic_bool _inRecovery{false};
+
+  std::shared_ptr<SearchMeta const> _meta;
 
   friend SearchFactory;
 };

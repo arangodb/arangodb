@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
@@ -188,12 +189,13 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility, bool isOldMangling,
+    std::pair<bool, bool> volatility,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit)
+    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit,
+    iresearch::SearchMeta const* meta)
     : _searchDocOutReg{searchDocRegister},
       _scoreRegisters{std::move(scoreRegisters)},
       _scoreRegistersCount{_scoreRegisters.size()},
@@ -211,6 +213,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _filterOptimization{filterOptimization},
       _scorersSort{std::move(scorersSort)},
       _scorersSortLimit{scorersSortLimit},
+      _meta{meta} {
       _depth{depth},
       _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
       _volatileSort{volatility.second},
@@ -286,7 +289,7 @@ bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
 }
 
 bool IResearchViewExecutorInfos::isOldMangling() const noexcept {
-  return _isOldMangling;
+  return _meta == nullptr;
 }
 
 const std::pair<const arangodb::iresearch::IResearchSortBase*, size_t>&
@@ -544,6 +547,42 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     auto const* key = &infos.outVariable();
     _filterCookie = &ensureFilterCookie(_trx, key).filter;
   }
+
+  if (auto const* meta = infos.meta(); meta != nullptr) {
+    auto const& vocbase = _trx.vocbase();
+    auto const& analyzerFeature =
+        vocbase.server().getFeature<IResearchAnalyzerFeature>();
+    TRI_ASSERT(_trx.state());
+    auto const& revision = _trx.state()->analyzersRevision();
+
+    auto getAnalyzer = [&](std::string_view shortName) {
+      auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
+      if (!analyzer) {
+        return emptyAnalyzer();
+      }
+      return FieldMeta::Analyzer{std::move(analyzer), std::string{shortName}};
+    };
+
+    FieldMeta::Analyzer rootAnalyzer{emptyAnalyzer()};
+    containers::FlatHashMap<std::string_view, FieldMeta::Analyzer>
+        fieldToAnalyzer;
+
+    if (auto it = meta->fieldToAnalyzer.begin();
+        it != meta->fieldToAnalyzer.end() && it->first == "") {
+      rootAnalyzer = getAnalyzer(it->second.analyzer);
+    }
+    for (auto const& [name, field] : meta->fieldToAnalyzer) {
+      fieldToAnalyzer.emplace(name, getAnalyzer(field.analyzer));
+    }
+    _provider = [rootAnalyzer = std::move(rootAnalyzer),
+                 fieldToAnalyzer = std::move(fieldToAnalyzer)](
+                    std::string_view field) -> FieldMeta::Analyzer const& {
+      if (auto it = fieldToAnalyzer.find(field); it != fieldToAnalyzer.end()) {
+        return it->second;
+      }
+      return rootAnalyzer;
+    };
+  }
 }
 
 template<typename Impl, typename ExecutionTraits>
@@ -723,14 +762,16 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
-    FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-    // if (!infos().isOldMangling()) {
-    //   TODO(SEARCH-342)
-    //    map[field_path, full_analyzer_name] stored in Coordinator view
-    //    on DBServer create from it map[field_path, analyzer*]
-    //    and here crete local AnalyzerProvider functor
-    // }
-    FilterContext const filterCtx{.contextAnalyzer = analyzer};
+    FieldMeta::Analyzer const identity{IResearchAnalyzerFeature::identity()};
+    AnalyzerProvider const* fieldAnalyzerProvider = nullptr;
+    auto const* contextAnalyzer = &identity;
+    if (!infos().isOldMangling()) {
+      fieldAnalyzerProvider = &_provider;
+      contextAnalyzer = &emptyAnalyzer();
+    }
+    FilterContext const filterCtx{
+        .fieldAnalyzerProvider = fieldAnalyzerProvider,
+        .contextAnalyzer = *contextAnalyzer};
 
     auto const rv = FilterFactory::filter(&root, queryCtx, filterCtx,
                                           infos().filterCondition());

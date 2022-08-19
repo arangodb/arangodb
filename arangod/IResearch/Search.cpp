@@ -20,8 +20,22 @@
 ///
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _MSC_VER
+#define FST_NO_DEFINE_SSIZE_T
+#pragma warning(push)
+#pragma warning(disable : 4291)
+#pragma warning(disable : 4244)
+#pragma warning(disable : 4245)
+#pragma warning(disable : 4706)
+#pragma warning(disable : 4305)
+#pragma warning(disable : 4267)
+#pragma warning(disable : 4018)
+#endif
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
@@ -37,6 +51,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
+#include "frozen/unordered_set.h"
 
 #ifdef USE_PLAN_CACHE
 #include "Aql/PlanCache.h"
@@ -45,8 +60,56 @@
 #include <absl/strings/numbers.h>
 #include <absl/strings/str_cat.h>
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
+
+#include "utils/automaton.hpp"
+
+using Weight = fst::fsa::BooleanWeight;
+
+namespace fst {
+
+inline Weight Times(const Weight& lhs, const Weight& rhs) {
+  if (!lhs.Member() || !rhs.Member()) {
+    return Weight::NoWeight();
+  }
+  return Weight{lhs && rhs};
+}
+
+inline Weight Plus(const Weight& lhs, const Weight& rhs) {
+  if (!lhs.Member() || !rhs.Member()) {
+    return Weight::NoWeight();
+  }
+  return Weight{lhs || rhs};
+}
+
+inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
+  if (!lhs.Member() || !rhs.Member()) {
+    return Weight::NoWeight();
+  }
+  return Weight{
+      static_cast<bool>(static_cast<bool>(lhs) ^ static_cast<bool>(rhs))};
+}
+
+inline Weight Divide(const Weight& lhs, const Weight& rhs,
+                     DivideType typ = DIVIDE_ANY) {
+  return DivideLeft(lhs, rhs);
+}
+
+}  // namespace fst
+
+#include "utils/fstext/fst_builder.hpp"
+#include "utils/fstext/fst_matcher.hpp"
+
 namespace arangodb::iresearch {
 namespace {
+
+using Arc = fst::ArcTpl<Weight>;
+using VectorFst = fst::VectorFst<Arc>;
+using FstBuilder = irs::fst_builder<char, VectorFst>;
+using ExplicitMatcher = fst::explicit_matcher<fst::SortedMatcher<VectorFst>>;
 
 std::shared_ptr<LogicalCollection> getCollection(
     CollectionNameResolver& resolver, velocypack::Slice cidOrName) {
@@ -77,9 +140,128 @@ std::shared_ptr<Index> getIndex(LogicalCollection const& collection,
   return nullptr;
 }
 
+template<typename V>
+auto Find(SearchMeta::Map const& map, V&& v) noexcept {
+  return map.find(std::forward<V>(v));
+}
+
+template<typename V>
+auto Find(auto const& vector, V const& v) noexcept {
+  auto last = end(vector);
+  auto it = std::lower_bound(
+      begin(vector), last, v,
+      [](auto const& field, auto const& value) { return field.first < value; });
+  if (it != last && it->first == v) {
+    return it;
+  }
+  return last;
+}
+
+std::string checkFields(SearchMeta const& search,
+                        IResearchInvertedIndexMeta const& index) {
+  auto check = [](auto const& lhs, auto const& rhs, bool lhsView) {
+    std::string_view const lhsIs = lhsView ? "view" : "index";
+    std::string_view const rhsIs = lhsView ? "Index" : "View";
+
+    VectorFst fst;
+    FstBuilder builder{fst};
+    for (auto const& field : lhs) {
+      builder.add(field.first, true);
+    }
+    builder.finish();
+
+    auto start = fst.Start();
+    ExplicitMatcher matcher{&fst, fst::MATCH_INPUT};
+    for (auto const& field : rhs) {
+      auto const fieldName = field.first;
+      matcher.SetState(start);
+
+      size_t lastKey = 0;
+      for (size_t matched = 0; matched < fieldName.size();) {
+        if (!matcher.Find(fieldName[matched])) {
+          break;
+        }
+        ++matched;
+        auto const nextstate = matcher.Value().nextstate;
+        if (fst.Final(nextstate)) {
+          lastKey = matched;
+        }
+        matcher.SetState(nextstate);
+      }
+      auto it = Find(lhs, fieldName.substr(0, lastKey));
+      if (it == lhs.end()) {
+        TRI_ASSERT(lastKey == 0);
+        continue;
+      }
+      if (it->second.analyzer == field.second.analyzer) {
+        continue;
+      }
+      if (it->first == fieldName) {
+        return absl::StrCat(rhsIs, " field '", fieldName, "' analyzer '",
+                            field.second.analyzer, "' mismatches ", lhsIs,
+                            " field analyzer '", it->second.analyzer, "'");
+      } else if (it->second.includeAllFields) {
+        return absl::StrCat(
+            rhsIs, " field '", fieldName, "' analyzer '", field.second.analyzer,
+            "' mismatches ", lhsIs, " field '", it->first,
+            "' with includeAllFields analyzer '", it->second.analyzer, "'");
+      }
+    }
+    return std::string{};
+  };
+  std::vector<std::pair<std::string, SearchMeta::Field>> fields;
+  fields.reserve(index._fields.size() + index._includeAllFields);
+  for (auto const& field : index._fields) {
+    fields.emplace_back(field.path(),
+                        SearchMeta::Field{field.analyzer()._shortName,
+                                          field._includeAllFields});
+  }
+  if (index._includeAllFields) {
+    fields.emplace_back("",
+                        SearchMeta::Field{index.analyzer()._shortName, true});
+  }
+  std::sort(fields.begin(), fields.end(), [](auto const& lhs, auto const& rhs) {
+    return lhs.first < rhs.first;
+  });
+  auto error = check(search.fieldToAnalyzer, fields, true);
+  if (error.empty()) {
+    error = check(fields, search.fieldToAnalyzer, false);
+  }
+  return error;
+}
+
+std::string check(SearchMeta const& search,
+                  IResearchInvertedIndexMeta const& index) {
+  if (search.primarySort != index._sort) {
+    return "index primary sort mismatches view primary sort";
+  }
+  if (search.storedValues != index._storedValues) {
+    return "index stored values mismatches view stored values";
+  }
+  return {};
+}
+
+void add(SearchMeta& search, IResearchInvertedIndexMeta const& index) {
+  for (auto const& field : index._fields) {
+    auto it = search.fieldToAnalyzer.lower_bound(field.path());
+    if (it == search.fieldToAnalyzer.end() || it->first != field.path()) {
+      search.fieldToAnalyzer.emplace_hint(
+          it, field.path(),
+          SearchMeta::Field{field.analyzer()._shortName,
+                            field._includeAllFields});
+    } else {
+      it->second.includeAllFields |= field._includeAllFields;
+    }
+  }
+  if (index._includeAllFields) {
+    search.fieldToAnalyzer.emplace(
+        "", SearchMeta::Field{index.analyzer()._shortName, true});
+  }
+}
+
 }  // namespace
 
-class SearchFactory : public ViewFactory {
+class SearchFactory final : public ViewFactory {
   // LogicalView factory for end-user validation instantiation and
   // persistence.
   // Return if success then 'view' is set, else 'view' state is undefined
@@ -88,46 +270,35 @@ class SearchFactory : public ViewFactory {
 
   // LogicalView factory for internal instantiation only
   Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                     velocypack::Slice definition) const final;
+                     velocypack::Slice definition,
+                     bool isUserRequest) const final;
 };
 
 Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                              velocypack::Slice definition,
                              bool isUserRequest) const {
   if (!definition.isObject()) {
-    return {TRI_ERROR_BAD_PARAMETER};
+    return {TRI_ERROR_BAD_PARAMETER,
+            "search-alias view definition should be a object"};
   }
   auto const nameSlice = definition.get("name");
   if (nameSlice.isNone()) {
-    return {TRI_ERROR_BAD_PARAMETER};
+    return {TRI_ERROR_BAD_PARAMETER,
+            "search-alias view definition should contains field 'name'"};
   }
   if (ServerState::instance()->isCoordinator()) {
-    // auto indexesSlice = definition.get("indexes");
-    // auto r = Some::validateIndexes(vocbase, indexesSlice);
-    // if (!r.ok()) {
-    //   return r;
-    // }
     LogicalView::ptr impl;
-    auto r = cluster_helper::construct(impl, vocbase, definition);
+    auto r =
+        cluster_helper::construct(impl, vocbase, definition, isUserRequest);
     if (!r.ok()) {
       return r;
     }
     view = impl;
   } else {
     TRI_ASSERT(ServerState::instance()->isSingleServer());
-    // auto& server = vocbase.server();
-    // TRI_ASSERT(server.hasFeature<EngineSelectorFeature>());
-    // auto& engine = server.getFeature<EngineSelectorFeature>().engine();
-    // auto indexesSlice = definition.get("indexes");
-    // auto r = engine.inRecovery() ? Result{}  // don't validate if in recovery
-    //                              : Some::validateLinks(vocbase, indexesSlice)
-    // if (!r.ok()) {
-    //   auto name = definition.get("name");
-    //   events::CreateView(vocbase.name(), name, r.errorNumber());
-    //   return r;
-    // }
     LogicalView::ptr impl;
-    auto r = storage_helper::construct(impl, vocbase, definition);
+    auto r =
+        storage_helper::construct(impl, vocbase, definition, isUserRequest);
     if (!r.ok()) {
       auto name = nameSlice.copyString();  // TODO stringView()
       events::CreateView(vocbase.name(), name, r.errorNumber());
@@ -141,7 +312,8 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
 
 Result SearchFactory::instantiate(LogicalView::ptr& view,
                                   TRI_vocbase_t& vocbase,
-                                  velocypack::Slice definition) const {
+                                  velocypack::Slice definition,
+                                  bool isUserRequest) const {
   TRI_ASSERT(ServerState::instance()->isCoordinator() ||
              ServerState::instance()->isSingleServer());
   auto impl = std::make_shared<Search>(vocbase, definition);
@@ -151,35 +323,16 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
     return {};
   }
   if (!indexesSlice.isArray()) {
-    return {TRI_ERROR_BAD_PARAMETER, "indexes field should be array"};
+    return {TRI_ERROR_BAD_PARAMETER,
+            "search-alias view optional field 'indexes' should be array"};
   }
-  velocypack::ArrayIterator it{indexesSlice};
   CollectionNameResolver resolver{vocbase};
-  for (; it.valid(); ++it) {
-    auto value = *it;
-    auto const operation =
-        value.hasKey("operation") ? value.get("operation").stringView() : "";
-    TRI_ASSERT(operation.empty() || operation == "add");
-    if (!(operation.empty() || operation == "add")) {
-      // TODO maybe log and skip?
-      return {TRI_ERROR_BAD_PARAMETER, "Invalid type of operation"};
-    }
-    auto collection = getCollection(resolver, value.get("collection"));
-    if (!collection) {
-      return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
-    }
-    auto index = getIndex(*collection, value.get("index"));
-    // TODO Remove dynamic_cast
-    auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
-    if (!inverted) {
-      return {TRI_ERROR_BAD_PARAMETER, "Cannot parse index"};
-    }
-    auto& indexes = impl->_indexes[collection->id()];
-    indexes.emplace_back(inverted->self());
-    TRI_ASSERT(indexes.back());
+  velocypack::ArrayIterator it{indexesSlice};
+  auto r = impl->updateProperties(resolver, it, isUserRequest);
+  if (r.ok()) {
+    view = impl;
   }
-  view = impl;
-  return {};
+  return r;
 }
 
 ViewFactory const& Search::factory() {
@@ -188,21 +341,10 @@ ViewFactory const& Search::factory() {
 }
 
 Search::Search(TRI_vocbase_t& vocbase, velocypack::Slice definition)
-    : LogicalView(*this, vocbase, definition) {
+    : LogicalView{*this, vocbase, definition},
+      _meta{std::make_shared<SearchMeta const>()} {
   if (ServerState::instance()->isSingleServer()) {
     _asyncSelf = std::make_shared<AsyncSearchPtr::element_type>(this);
-
-    // set up in-recovery insertion hooks
-    // TRI_ASSERT(vocbase.server().hasFeature<DatabaseFeature>());
-    // auto& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();
-    // databaseFeature.registerPostRecoveryCallback([view = _asyncSelf] {
-    //   //  ensure view does not get deallocated before call back finishes
-    //   auto viewLock = view->lock();
-    //   if (viewLock) {
-    //     viewLock->verifyKnownCollections();
-    //   }
-    //   return Result{};
-    // });
 
     // initialize transaction read callback
     _trxCallback = [asyncSelf = _asyncSelf](transaction::Methods& trx,
@@ -229,32 +371,9 @@ Search::~Search() {
   }
 }
 
-IResearchInvertedIndexSort const& Search::primarySort() const {
+std::shared_ptr<SearchMeta const> Search::meta() const {
   std::shared_lock lock{_mutex};
-  for (auto const& [_, handles] : _indexes) {
-    for (auto const& handle : handles) {
-      if (auto index = handle->lock(); index) {
-        auto* inverted = basics::downCast<IResearchInvertedIndex>(index.get());
-        return inverted->meta()._sort;
-      }
-    }
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                 "Try to query empty view");
-}
-
-IResearchViewStoredValues const& Search::storedValues() const {
-  std::shared_lock lock{_mutex};
-  for (auto const& [_, handles] : _indexes) {
-    for (auto const& handle : handles) {
-      if (auto index = handle->lock(); index) {
-        auto* inverted = basics::downCast<IResearchInvertedIndex>(index.get());
-        return inverted->meta()._storedValues;
-      }
-    }
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                 "Try to query empty view");
+  return _meta;
 }
 
 bool Search::apply(transaction::Methods& trx) {
@@ -274,7 +393,7 @@ ViewSnapshot::Links Search::getLinks() const {
   return indexes;
 }
 
-Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
+Result Search::properties(velocypack::Slice definition, bool isUserRequest,
                           bool partialUpdate) {
   auto indexesSlice = definition.get("indexes");
   if (indexesSlice.isNone()) {
@@ -286,62 +405,35 @@ Result Search::properties(velocypack::Slice definition, bool /*isUserRequest*/,
   }
   CollectionNameResolver resolver{vocbase()};
   std::unique_lock lock{_mutex};
-  if (!partialUpdate) {
-    _indexes.clear();
-  }
-  for (; it.valid(); ++it) {
-    auto value = *it;
-    auto collection = getCollection(resolver, value.get("collection"));
-    if (!collection) {
-      return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
+  auto oldIndexes = [&] {
+    if (partialUpdate) {
+      return _indexes;
     }
-    auto const cid = collection->id();
-    auto const operation =
-        value.hasKey("operation") ? value.get("operation").stringView() : "";
-    TRI_ASSERT(operation.empty() || operation == "add" || operation == "del");
-    if (operation == "del" && !_indexes.contains(cid)) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Cannot find collection for index to delete"};
-    }
-    auto index = getIndex(*collection, value.get("index"));
-    // TODO Remove dynamic_cast
-    auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
-    if (!inverted) {
-      return {TRI_ERROR_BAD_PARAMETER, "Cannot parse index"};
-    }
-    auto const indexId = inverted->id();
-    auto& indexes = _indexes[cid];
-    auto indexIt = std::find_if(begin(indexes), end(indexes),
-                                [indexId](const auto& handle) {
-                                  auto other = handle->lock();
-                                  return other && other->id() == indexId;
-                                });
-    if (operation == "del") {
-      if (indexIt == end(indexes)) {
-        // TODO log and skip?
-        return {TRI_ERROR_BAD_PARAMETER, "Cannot find index to delete"};
-      }
-      indexes.back().swap(*indexIt);
-      indexes.pop_back();
-    } else {
-      if (indexIt != end(indexes)) {
-        // TODO log and skip?
-        return {TRI_ERROR_BAD_PARAMETER,
-                "This index already exit in that view"};
-      }
-      indexes.emplace_back(inverted->self());
-      TRI_ASSERT(indexes.back());
-    }
+    return std::move(_indexes);
+  }();
+  auto oldMeta = std::move(_meta);
+  ScopeGuard revert{[&]() noexcept {
+    _indexes = std::move(oldIndexes);
+    _meta = std::move(oldMeta);
+  }};
+  auto r = updateProperties(resolver, it, isUserRequest);
+  if (!r.ok()) {
+    return r;
   }
   if (ServerState::instance()->isCoordinator()) {
-    return cluster_helper::properties(*this, true /*means under lock*/);
-  }
-  TRI_ASSERT(ServerState::instance()->isSingleServer());
+    r = cluster_helper::properties(*this, true /*means under lock*/);
+  } else {
+    TRI_ASSERT(ServerState::instance()->isSingleServer());
 #ifdef USE_PLAN_CACHE
-  aql::PlanCache::instance()->invalidate(&vocbase());
+    aql::PlanCache::instance()->invalidate(&vocbase());
 #endif
-  aql::QueryCache::instance()->invalidate(&vocbase());
-  return storage_helper::properties(*this, true /*means under lock*/);
+    aql::QueryCache::instance()->invalidate(&vocbase());
+    r = storage_helper::properties(*this, true /*means under lock*/);
+  }
+  if (r.ok()) {
+    revert.cancel();
+  }
+  return r;
 }
 
 void Search::open() {
@@ -448,4 +540,125 @@ Result Search::renameImpl(std::string const& oldName) {
   return {TRI_ERROR_CLUSTER_UNSUPPORTED};
 }
 
+Result Search::updateProperties(CollectionNameResolver& resolver,
+                                velocypack::ArrayIterator it,
+                                bool isUserRequest) {
+  constexpr auto kOperations =
+      frozen::make_unordered_set<frozen::string>({"", "add", "del"});
+  for (; it.valid(); ++it) {
+    auto value = *it;
+    auto collection = getCollection(resolver, value.get("collection"));
+    if (!collection) {
+      if (!isUserRequest) {
+        continue;
+      }
+      return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
+    }
+    if (auto const& ctx = ExecContext::current(); !ctx.isSuperuser()) {
+      if (!ctx.canUseCollection(vocbase().name(), collection->name(),
+                                auth::Level::RO)) {
+        return {TRI_ERROR_FORBIDDEN,
+                absl::StrCat("Current user cannot use collection '",
+                             collection->name(), "'")};
+      }
+    }
+    auto const cid = collection->id();
+    auto operationSlice = value.get("operation");
+    auto const operation =
+        operationSlice.isNone() ? "" : operationSlice.stringView();
+    TRI_ASSERT(operation.empty() || isUserRequest);
+    if (isUserRequest) {
+      if (!kOperations.count(operation)) {
+        return {TRI_ERROR_BAD_PARAMETER, "Invalid type of operation"};
+      }
+      if (operation == "del" && !_indexes.contains(cid)) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "Cannot find collection for index to delete"};
+      }
+    }
+    auto index = getIndex(*collection, value.get("index"));
+    // TODO Remove dynamic_cast
+    auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
+    if (!inverted) {
+      if (!isUserRequest) {
+        continue;
+      }
+      return {TRI_ERROR_BAD_PARAMETER, "Cannot find index"};
+    }
+    auto& indexes = _indexes[cid];
+    if (operation != "del") {
+      indexes.emplace_back(inverted->self());
+      TRI_ASSERT(indexes.back());
+    } else {
+      auto indexIt = std::find(begin(indexes), end(indexes), inverted->self());
+      if (indexIt == end(indexes)) {
+        // TODO log and skip?
+        return {TRI_ERROR_BAD_PARAMETER, "Cannot find index to delete"};
+      }
+      indexes.back().swap(*indexIt);
+      indexes.pop_back();
+    }
+  }
+
+  auto iterate = [&](auto const& init, auto const& next) -> Result {
+    bool first = true;
+    for (auto const& [_, handles] : _indexes) {
+      for (auto const& handle : handles) {
+        if (auto index = handle->lock(); index) {
+          auto const& inverted =
+              basics::downCast<IResearchInvertedIndex>(*index.get());
+          auto const& indexMeta = inverted.meta();
+          if (first) {
+            init(indexMeta);
+            first = false;
+          } else {
+            auto error = next(indexMeta);
+            if (!error.empty()) {
+              // TODO Remove dynamic_cast
+              auto const& arangodbIndex = dynamic_cast<Index const&>(inverted);
+              absl::StrAppend(&error, ". Collection name '",
+                              arangodbIndex.collection().name(),
+                              "', index name '", arangodbIndex.name(), "'.");
+              return {TRI_ERROR_BAD_PARAMETER, std::move(error)};
+            }
+          }
+        }
+      }
+    }
+    return {};
+  };
+
+  auto searchMeta = std::make_shared<SearchMeta>();
+  auto r = iterate(
+      [&](auto const& indexMeta) {
+        searchMeta->primarySort = indexMeta._sort;
+        searchMeta->storedValues = indexMeta._storedValues;
+      },
+      [&](auto const& indexMeta) { return check(*searchMeta, indexMeta); });
+  if (!r.ok()) {
+    return r;
+  }
+  r = iterate([&](auto const& indexMeta) { add(*searchMeta, indexMeta); },
+              [&](auto const& indexMeta) {
+                auto error = checkFields(*searchMeta, indexMeta);
+                if (error.empty()) {
+                  add(*searchMeta, indexMeta);
+                }
+                return error;
+              });
+  if (r.ok()) {
+    _meta = std::move(searchMeta);
+  }
+  return r;
+}
+
 }  // namespace arangodb::iresearch
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+#ifdef _MSC_VER
+#undef FST_NO_DEFINE_SSIZE_T
+#pragma warning(pop)
+#endif

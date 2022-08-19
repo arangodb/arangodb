@@ -33,49 +33,19 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const _ = require("lodash");
 const internal = require("internal");
-const wait = internal.wait;
+const {errors, wait} = internal;
+const { debugSetFailAt, debugCanUseFailAt, debugRemoveFailAt, debugClearFailAt } = require('@arangodb/test-helper');
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
-const {deriveTestSuite, getEndpointById} = require('@arangodb/test-helper');
-const errors = internal.errors;
+const {getServersByType, deriveTestSuite, getEndpointById, getUrlById} = require('@arangodb/test-helper-common');
 const request = require('@arangodb/request');
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
 
-function getDBServers() {
-  var tmp = global.ArangoClusterInfo.getDBServers();
-  var servers = [];
-  for (var i = 0; i < tmp.length; ++i) {
-    servers[i] = tmp[i].serverId;
-  }
-  return servers;
-}
-
-var servers = getDBServers();
-
-
-/// @brief set failure point
-function debugSetFailAt(endpoint, failAt) {
-  let res = request.put({
-    url: endpoint + '/_admin/debug/failat/' + failAt,
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error setting failure point";
-  }
-}
-
-/// @brief remove failure points
-function debugClearFailAt(endpoint) {
-  let res = request.delete({
-    url: endpoint + '/_admin/debug/failat',
-    body: ""
-  });
-  if (res.status !== 200) {
-    throw "Error removing failure points";
-  }
-}
+const dbservers = (function () {
+  return getServersByType('dbserver').map((x) => x.id);
+}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -88,7 +58,6 @@ function MovingShardsSuite ({useData}) {
   var cn = "UnitTestMovingShards";
   var count = 0;
   var c = [];
-  var dbservers = getDBServers();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for a collection
@@ -466,7 +435,7 @@ function MovingShardsSuite ({useData}) {
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    var numberOfDBServers = servers.length;
+    var numberOfDBServers = dbservers.length;
     var body = {"cleanedServers":[], "numberOfDBServers":numberOfDBServers};
     try {
       var res = request({ method: "PUT",
@@ -720,12 +689,10 @@ function MovingShardsSuite ({useData}) {
 
     testSetup : function () {
       for (var count = 0; count < 120; ++count) {
-        dbservers = getDBServers();
         if (dbservers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           checkCollectionContents();
 
-          servers = dbservers;
           return;
         }
         console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
@@ -740,7 +707,7 @@ function MovingShardsSuite ({useData}) {
 
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
-      var _dbservers = servers;
+      var _dbservers = _.clone(dbservers);
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
       assertTrue(testServerEmpty(_dbservers[4], true));
@@ -1039,13 +1006,13 @@ function MovingShardsSuite ({useData}) {
       var servers = findCollectionServers("_system", c[1].name());
       var leader = servers[0];
       var fromServer = servers[1];
-      var leaderEndpoint = getEndpointById(leader);
+      var leaderUrl = getUrlById(leader);
       // Switch off something in the maintenance on the leader to detect
       // followers which are not in Plan. This means that the moveShard
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
       try {
-        debugSetFailAt(leaderEndpoint, "Maintenance::doNotRemoveUnPlannedFollowers");
+        debugSetFailAt(leaderUrl, "Maintenance::doNotRemoveUnPlannedFollowers");
 
         var toServer = findServerNotOnList(servers);
         var cinfo = global.ArangoClusterInfo.getCollectionInfo(
@@ -1059,14 +1026,14 @@ function MovingShardsSuite ({useData}) {
         // failoverCandidates (and indeed in Current/servers). Let's now
         // try to move the shard back, this ought to be denied:
         assertTrue(moveShard("_system", c[1]._id, shard, toServer, fromServer, false, "Failed"));
-        debugClearFailAt(leaderEndpoint);
+        debugClearFailAt(leaderUrl);
         // Now we should go back to only 3 servers in Current.
         assertTrue(waitForSynchronousReplication("_system"));
         assertTrue(testServerEmpty(fromServer, false, 1, 1));
         assertTrue(waitForSupervision());
         checkCollectionContents();
       } catch (err) {
-        debugClearFailAt(leaderEndpoint);
+        debugClearFailAt(leaderUrl);
         throw err;
       }
     },

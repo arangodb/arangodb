@@ -143,12 +143,12 @@ class QueryAggregate : public QueryTest {
 
 class QueryAggregateView : public QueryAggregate {
  protected:
-  ViewType type() const final { return arangodb::ViewType::kView; }
+  ViewType type() const final { return arangodb::ViewType::kArangoSearch; }
 };
 
 class QueryAggregateSearch : public QueryAggregate {
  protected:
-  ViewType type() const final { return arangodb::ViewType::kSearch; }
+  ViewType type() const final { return arangodb::ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryAggregateView, Test) {

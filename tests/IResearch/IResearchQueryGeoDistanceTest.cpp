@@ -131,10 +131,10 @@ class QueryGeoDistance : public QueryTest {
               .result.ok());
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {
+    if (type() == ViewType::kArangoSearch) {
       EXPECT_TRUE(runQuery(
           R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)"));
-    } else if (type() == ViewType::kSearch) {
+    } else if (type() == ViewType::kSearchAlias) {
       // Because for search/inverted-index
       // we consider strings can be found as normal fields,
       // so them all have suffix \0_s,
@@ -147,19 +147,27 @@ class QueryGeoDistance : public QueryTest {
     }
     // test missing analyzer
     {
+      std::vector<VPackSlice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
-        SEARCH GEO_DISTANCE(d.missing, origin) < 300
+        SEARCH GEO_DISTANCE(d.geometry, origin) < 300
         RETURN d)",
-                           empty));
+                           expected));
     }
     // test missing analyzer
     {
+      std::vector<VPackSlice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+      }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
-        SEARCH GEO_DISTANCE(origin, d.missing) < 300
+        SEARCH GEO_DISTANCE(origin, d.geometry) < 300
         RETURN d)",
-                           empty));
+                           expected));
     }
   }
 
@@ -171,7 +179,7 @@ class QueryGeoDistance : public QueryTest {
       auto view = _vocbase.lookupView("testView");
       ASSERT_TRUE(view);
       auto links = [&] {
-        if (view->type() == ViewType::kSearch) {
+        if (view->type() == ViewType::kSearchAlias) {
           auto& impl = basics::downCast<iresearch::Search>(*view);
           return impl.getLinks();
         }
@@ -220,7 +228,7 @@ class QueryGeoDistance : public QueryTest {
           R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson") RETURN d)"));
     }
     // test missing field
-    {
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_DISTANCE(d.missing, origin) < 300, 'mygeojson')
@@ -228,7 +236,7 @@ class QueryGeoDistance : public QueryTest {
                            empty));
     }
     // test missing field
-    {
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_DISTANCE(origin, d.missing) < 300, 'mygeojson')
@@ -469,12 +477,12 @@ class QueryGeoDistance : public QueryTest {
 
 class QueryGeoDistanceView : public QueryGeoDistance {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView() {
     auto createJson = VPackParser::fromJson(
         R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
     auto updateJson = VPackParser::fromJson(absl::Substitute(R"({ "links": {
@@ -492,7 +500,7 @@ class QueryGeoDistanceView : public QueryGeoDistance {
 
 class QueryGeoDistanceSearch : public QueryGeoDistance {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createIndexes(std::string_view analyzer) {
     bool created = false;
@@ -510,9 +518,9 @@ class QueryGeoDistanceSearch : public QueryGeoDistance {
   }
 
   void createSearch() {
-    auto createJson =
-        VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "search-alias" })");
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
     auto updateJson = VPackParser::fromJson(R"({ "indexes": [
