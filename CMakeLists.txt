@@ -611,49 +611,6 @@ if (MSVC)
   endif()
 endif ()
 
-# FIXME: refactor/cleanup check below
-if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
-    message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "11.9.9")
-    message(WARNING "ArangoDB doesn't support g++ 12.0 yet, building with newer compiler versions is unsupported")
-  endif()
-  set(BASE_C_FLAGS "${BASE_C_FLAGS}")
-endif ()
-
-if(MSVC)
-  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
-  if (MSVC_VERSION VERSION_LESS 1915)
-    message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
-  elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1915 AND MSVC_VERSION VERSION_LESS 1920)
-    message(WARNING "ArangoDB requires MSVC 2019 update 16.4 or newer, building with older compiler versions is unsupported")
-    # according to https://developercommunity.visualstudio.com/solutions/616098/view.html,
-    # the following define is not necessary anymore, as it should be fixed in MSVC 16.0:
-    # MSVC2018.8 requires the following define
-    add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
-  elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
-    message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
-  endif()
-endif()
-
-if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
-  if (APPLE)
-    if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR ENV{MACOSX_DEPLOYMENT_TARGET} STREQUAL "")
-      set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
-    else ()
-      set(BASE_C_FLAGS "${BASE_C_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-      set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-      set(BASE_LD_FLAGS "${BASE_LD_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-    endif ()
-    add_definitions("-Wno-deprecated-declarations")
-  else ()
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
-      message(WARNING "ArangoDB requires clang 10.0 or newer, building with older compiler versions is unsupported")
-    endif()
-    list(APPEND BASE_LIBS atomic)
-  endif ()
-endif ()
-
 # need c++20
 # XXX this should really be set on a per target level using cmake compile_features capabilties
 set(CMAKE_CXX_STANDARD 20)
