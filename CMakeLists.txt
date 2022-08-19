@@ -596,7 +596,7 @@ include(CheckCompilerVersion)
 CheckCompilerVersion(
   11.2 # GCC
   14.0 # Clang
-  1932 # MSVC
+  19.32 # MSVC
 )
 
 if (MSVC)
