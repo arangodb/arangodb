@@ -197,9 +197,10 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
 
   EXPECT_EQ(testee->distributeShardsLike, "");
   EXPECT_EQ(testee->smartJoinAttribute, "");
+  EXPECT_EQ(testee->globallyUniqueId, "");
+  EXPECT_EQ(testee->shardingStrategy, "hash");
 
   // TODO: We only test defaults here, not all possible options
-  EXPECT_EQ(testee->shardingStrategy, "hash");
   ASSERT_EQ(testee->shardKeys.size(), 1);
   EXPECT_EQ(testee->shardKeys.at(0), StaticStrings::KeyString);
 
@@ -295,6 +296,7 @@ GeneratePositiveIntegerAttributeTest(writeConcern);
 
 GenerateStringAttributeTest(distributeShardsLike);
 GenerateStringAttributeTest(smartJoinAttribute);
+GenerateStringAttributeTest(globallyUniqueId)
 
 }  // namespace tests
 }  // namespace arangodb

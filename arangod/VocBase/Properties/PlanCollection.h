@@ -57,12 +57,14 @@ struct PlanCollection {
   bool doCompact;
   bool isVolatile;
   bool cacheEnabled;
+
   uint64_t numberOfShards;
   uint64_t replicationFactor;
   uint64_t writeConcern;
   std::string distributeShardsLike;
   std::string smartJoinAttribute;
   std::string shardingStrategy;
+  std::string globallyUniqueId;
 
   std::vector<std::string> shardKeys;
 
@@ -127,6 +129,8 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("distributeShardsLike", planCollection.distributeShardsLike)
               .fallback(""),
           f.field("smartJoinAttribute", planCollection.smartJoinAttribute)
+              .fallback(""),
+          f.field("globallyUniqueId", planCollection.globallyUniqueId)
               .fallback(""),
           f.field("shardingStrategy", planCollection.shardingStrategy)
               .fallback("hash")

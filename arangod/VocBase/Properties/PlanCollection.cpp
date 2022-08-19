@@ -41,7 +41,8 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(VPackSlice input) {
       // on "name"
       return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
     }
-    return Result{TRI_ERROR_BAD_PARAMETER, status.error()};
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  status.error() + " on path " + status.path()};
   } catch (basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception const& e) {
