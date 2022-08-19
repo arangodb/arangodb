@@ -1,6 +1,9 @@
 devel
 -----
 
+* Add progress reporting to RocksDB WAL recovery, in case there are many WAL
+  files to recover.
+
 * Disallowed index creation that covers fields in which the field's name starts
   or ends with `:` for single server or cluster when the instance is a
   coordinator or single server. This validation only happens for index creation, 
