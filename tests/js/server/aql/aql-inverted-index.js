@@ -95,6 +95,13 @@ function optimizerRuleInvertedIndexTestSuite() {
       col.drop();
       try { analyzers.remove("my_geo", true); } catch (e) {}
     },
+    testCreateDuplicate: function () {
+       col.ensureIndex({type: 'inverted',
+                        name: 'InvertedIndexUnsorted_duplicate',
+                        fields: ['data_field',
+                                {name:'geo_field', analyzer:'my_geo'},
+                                {name:'custom_field', analyzer:'text_en'}]});
+    },
     testIndexNotHinted: function () {
       const query = aql`
         FOR d IN ${col}
