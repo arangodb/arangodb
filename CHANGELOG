@@ -1,6 +1,9 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
 * Make throttle for RocksDB take into account the complete compaction debt on
   all levels, not just level0. Previously it only looked at level0, which is not
   enough if there aren't any other levels in the column family.
