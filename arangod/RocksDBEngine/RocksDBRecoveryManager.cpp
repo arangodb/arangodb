@@ -26,12 +26,14 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
+#include "Basics/files.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -128,11 +130,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   application_features::ApplicationServer& _server;
 
   rocksdb::SequenceNumber const _recoveryStartSequence;
+  rocksdb::SequenceNumber const _latestSequence;
+
+  // informational section, used only for progress reporting
+  rocksdb::SequenceNumber _sequenceRange = 0;
+  rocksdb::SequenceNumber _rangeBegin = 0;
+  int _reportTicker = 0;
+  int _progress = 0;
+
   // max tick found
   uint64_t _maxTick;
   uint64_t _maxHLC;
   uint64_t _entriesScanned;
-  /// @brief last document removed
+
+  // brief last document removed
   RevisionId _lastRemovedDocRid = RevisionId::none();
 
   rocksdb::SequenceNumber _startSequence;     /// start of batch sequence nr
@@ -144,9 +155,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   /// @param seqs sequence number from which to count operations
   explicit WBReader(application_features::ApplicationServer& server,
                     rocksdb::SequenceNumber recoveryStartSequence,
+                    rocksdb::SequenceNumber latestSequence,
                     rocksdb::SequenceNumber& currentSequence)
       : _server(server),
         _recoveryStartSequence(recoveryStartSequence),
+        _latestSequence(latestSequence),
         _maxTick(TRI_NewTickServer()),
         _maxHLC(0),
         _entriesScanned(0),
@@ -158,6 +171,31 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
+
+    if (_startSequence == 0) {
+      // for the first call, initialize the [from - to] recovery range values
+      _rangeBegin = startSequence;
+      _sequenceRange = _latestSequence - _rangeBegin;
+    }
+
+    // progress reporting. only do this every 100 iterations to avoid the
+    // overhead of the calculations for every new sequence number
+    if (_sequenceRange > 0 && ++_reportTicker >= 100) {
+      _reportTicker = 0;
+
+      auto progress = static_cast<int>(100.0 * (startSequence - _rangeBegin) /
+                                       _sequenceRange);
+
+      // report only every 5%, so that we don't flood the log with micro
+      // progress
+      if (progress >= 5 && progress >= _progress + 5) {
+        LOG_TOPIC("fb20c", INFO, Logger::ENGINES)
+            << "Recovering from sequence number " << startSequence << " ("
+            << progress << "% of WAL)...";
+
+        _progress = progress;
+      }
+    }
 
     // starting new write batch
     _startSequence = startSequence;
@@ -589,17 +627,31 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     engine.recoveryStartSequence(recoveryStartSequence);
 #endif
 
+    auto latestSequenceNumber = _db->GetLatestSequenceNumber();
+
     if (engine.dbExisted()) {
+      size_t filesInArchive = 0;
+      try {
+        std::string archive = basics::FileUtils::buildFilename(
+            _db->GetOptions().wal_dir, "archive");
+        filesInArchive = TRI_FilesDirectory(archive.c_str()).size();
+      } catch (...) {
+        // don't ever fail recovery because we can't get list of files in
+        // archive
+      }
+
       LOG_TOPIC("fe333", INFO, Logger::ENGINES)
           << "RocksDB recovery starting, scanning WAL starting from sequence "
              "number "
           << recoveryStartSequence
-          << ", latest sequence number: " << _db->GetLatestSequenceNumber();
+          << ", latest sequence number: " << latestSequenceNumber
+          << ", files in archive: " << filesInArchive;
     }
 
     TRI_ASSERT(_tick == 0);
+
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler(server, recoveryStartSequence, _tick);
+    WBReader handler(server, recoveryStartSequence, latestSequenceNumber, _tick);
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
