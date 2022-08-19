@@ -44,9 +44,12 @@ class IResearchInvertedIndex;
 struct SearchMeta final {
   IResearchInvertedIndexSort primarySort;
   IResearchViewStoredValues storedValues;
-  std::string rootAnalyzer;
-  containers::FlatHashMap<std::string, std::string> fieldToAnalyzer;
-  bool includeAllFields{false};
+  struct Field final {
+    std::string analyzer;
+    bool includeAllFields{false};
+  };
+  using Map = std::map<std::string, Field, std::less<>>;
+  Map fieldToAnalyzer;
 };
 
 class Search final : public LogicalView {
