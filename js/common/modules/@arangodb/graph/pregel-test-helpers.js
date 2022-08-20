@@ -70,16 +70,27 @@ const loadGraphGenerators = function (isSmart) {
  * @param actualDescription the description of actual
  * @param context the context in that the test is performed, output after the values
  */
-const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDescription, actualDescription, context) {
-    if (Math.abs(expected - actual) >= epsilon) {
-        console.error(msg + ":");
-        console.error("    " + expectedDescription + ":");
-        console.error("        " + expected);
-        console.error("    " + actualDescription + ":");
-        console.error("        " + actual);
-        console.error("    Difference: " + Math.abs(actual - expected));
+const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDescription, actualDescription, context,
+                                     doThrow = true) {
+    if (Math.abs(expected - actual) >= epsilon
+        || (expected === undefined && actual !== undefined)
+        || (expected !== undefined && actual === undefined)) {
+        console.error(`${msg}:`);
+        console.error(`    ${expectedDescription}:`);
+        console.error(`        ${expected}`);
+        console.error(`    ${actualDescription}:`);
+        console.error(`        ${actual}`);
+        const diff = Math.abs(actual - expected);
+        const relativeDiff = 100 * diff / Math.max(expected, actual); // in percent
+        if (doThrow) {
+            assertTrue(relativeDiff < 90, `    Relative difference ${relativeDiff} is greater than 90!`);
+        }
+
+        console.error(`    Difference: ${diff} (${relativeDiff.toFixed(2)}%)`);
         console.error(context);
-        assertTrue(false);
+        if (doThrow) {
+            assertTrue(false);
+        }
     }
 };
 
@@ -165,7 +176,7 @@ const testHITSKleinbergOnGraph = function (vertices, edges) {
     // check that Pregel returned the same result as our test algorithm.
     for (const resultV of result) {
         const vKey = resultV._key;
-        const v = graph.vertex(resultV._key);
+        const v = graph.vertex(vKey);
         // auth
         assertAlmostEquals(resultV.value.hits_auth, v.value.hits_auth, epsilon,
             `Different authority values for vertex ${vKey}`,
@@ -183,6 +194,55 @@ const testHITSKleinbergOnGraph = function (vertices, edges) {
         );
     }
 };
+
+const computeCloseness = function (graph) {
+    for (let [vKey, v] of graph.vertices) {
+        graph.bfs(vKey, graph.writeDistance, undefined);
+        let sumOfDistances = 0;
+        let count = 0;
+        for (let [, w] of graph.vertices) {
+            if (w.distance === 0 || w.distance === undefined) { // w is not reachable from v
+                continue;
+            }
+            ++count;
+            sumOfDistances += w.distance;
+            w.distance = 0; // reset for the next v
+
+        }
+        v.closenessFromTestAlgorithm = sumOfDistances / count;
+    }
+};
+
+const testEffectiveClosenessOnGraph = function (vertices, edges) {
+    db[vColl].save(vertices);
+    db[eColl].save(edges);
+    const query = `
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "closeness": v.closeness, "v": v}  
+              `;
+
+    let parameters = {resultField: "closeness"};
+    let algName = "effectivecloseness";
+    const result = runPregelInstance(algName, graphName, parameters, query);
+
+    let graph = new Graph(vertices, edges);
+    computeCloseness(graph); // write result into the closenessFromTestAlgorithm field
+    // check that Pregel returned the same result as our test algorithm.
+
+    for (const resultV of result) {
+        const vKey = resultV._key;
+        const v = graph.vertex(vKey);
+        const doThrow = false;
+        assertAlmostEquals(resultV.closeness, v.closenessFromTestAlgorithm, epsilon,
+            `Different closeness values for vertex ${vKey}`,
+            "Pregel returned",
+            "test returned",
+            "",
+            doThrow
+        );
+    }
+};
+
 
 /**
  * Run the given algorithm, collect buckets labeled with parameters.resultField with their sizes and returns
@@ -436,19 +496,35 @@ class Graph {
         // this.printVertices();
     }
 
+    numVertices () {
+        return this.vertices.size;
+    }
+
+    /**
+     * A special purpose function to be used in bfs that writes, for vertex, the distance to the source of bfs.
+     * @param vertex
+     * @param parent
+     */
+    writeDistance (vertex, parent) {
+        if (parent === undefined) {
+            vertex.distance = 0;
+        } else {
+            vertex.distance = parent.distance + 1;
+        }
+    }
 
     /**
      * Performs BFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
      * when the vertex is popped from the queue.
      * @param source The key of the vertex to start the search from
-     * @param cbOnFindVertex Either undefiend or the callback function to run on a vertex
+     * @param cbOnFindVertex Either undefined or the callback function to run on a vertex
      *              that is being pushed on the queue. The function can have one or two arguments:
      *              the vertex being pushed and its parent in the search. The second argument can be undefined.
      * @param cbOnPopVertex Either undefined or the callback function to run on a vertex
      *              that is being popped from the queue. The function must have one argument: the vertex being popped.
      */
     bfs(source, cbOnFindVertex, cbOnPopVertex) {
-        assertTrue(typeof (source) === `string`, `${source} is not a string`);
+        assertTrue(typeof (source) === `string`, `${JSON.stringify(source)} is not a string`);
         assertTrue(this.vertices.has(`${source}`), `bfs: the given source "${JSON.stringify(source)}" is not a vertex`);
         let visited = new Set();
         visited.add(source);
@@ -1766,14 +1842,6 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
         console.warn(`printVertexKey: ${vertex._key}`);
     };
 
-    const writeDistance = function (vertex, parent) {
-        if (parent === undefined) {
-            vertex.value = 0;
-        } else {
-            vertex.value = parent.value + 1;
-        }
-    };
-
     /**
      *
      * @param vertices
@@ -1794,16 +1862,16 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
         // assign to each vertex.value infinity
         // (This is what Pregel, in fact, returns if a vertex is not reachable.
         // The documentation says "length above 9007199254740991 (max safe integer)".)
-        const infinity = 9223372036854776000n;
+        const infinity = 9223372036854776000;
         for (let [, vertex] of graph.vertices) {
             vertex.value = infinity;
         }
-        graph.bfs(source, writeDistance, undefined);
+        graph.bfs(source, graph.writeDistance, undefined);
         for (const element of result) {
-            assertTrue(element.result === (graph.vertex(element._key)).value
-                || (element.result > 9007199254740991 && (graph.vertex(element._key)).value === infinity),
+            assertTrue(element.result === (graph.vertex(element._key)).distance
+                || (element.result > 9007199254740991 && (graph.vertex(element._key)).distance === infinity),
                 `Different distances. Pregel returned ${element.result}, ` +
-                `test computed ${(graph.vertex(element._key)).value} for vertex ${element._key} ` +
+                `test computed ${(graph.vertex(element._key)).distance} for vertex ${element._key} ` +
                 `where source is ${source}`);
         }
     };
@@ -1998,6 +2066,52 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
     };
 }
 
+function makeEffectiveClosenessTestSuite(isSmart, smartAttribute, numberOfShards) {
+
+    const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+    const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
+
+    return function () {
+        'use strict';
+
+        const unionGraph = graphGeneration.unionGraph;
+
+        return {
+
+            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+
+            tearDown: makeTearDown(isSmart),
+
+            testEffectiveClosenessOnPath: function () {
+                const length = 143;
+                const kind = "bidirected";
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length, kind);
+                testEffectiveClosenessOnGraph(vertices, edges);
+
+            },
+            testEffectiveClosenessOnTwoDisjointDirectedCycles: function () {
+                const length = 3;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
+                const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                testEffectiveClosenessOnGraph(vertices, edges);
+            },
+            testEffectiveClosenessOnClique: function () {
+                const size = 10;
+                const kind = "bidirected";
+                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeClique(size, kind);
+                testEffectiveClosenessOnGraph(vertices, edges);
+            },
+            testEffectiveClosenessOnStar: function () {
+                const numLeaves = 10;
+                const kind = "bidirected";
+                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeStar(numLeaves, kind);
+                testEffectiveClosenessOnGraph(vertices, edges);
+            }
+        };
+    };
+}
+
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
 exports.makeSCCTestSuite = makeSCCTestSuite;
@@ -2006,3 +2120,4 @@ exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
 exports.makeHITSTestSuite = makeHITSTestSuite;
+exports.makeEffectiveClosenessTestSuite = makeEffectiveClosenessTestSuite;
