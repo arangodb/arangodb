@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.5-preview-2.
+
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
 
