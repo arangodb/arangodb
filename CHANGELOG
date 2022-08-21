@@ -4,6 +4,12 @@ devel
 * Added integration tests for `--log.escape-control-chars` and 
  `--log.escape-unicode-chars`.
 
+* Updated ArangoDB Starter to 0.15.5-preview-2.
+
+* Fixed BTS-918 (incorrectly navigating back 1 level in history when a modal-dialog element is present).
+
+* Updated arangosync to v2.12.0-preview-9.
+
 * Disallowed index creation that covers fields in which the field's name starts
   or ends with `:` for single server or cluster when the instance is a
   coordinator or single server. This validation only happens for index creation, 
