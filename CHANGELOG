@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed BTS-918 (incorrectly navigating back 1 level in history when a modal-dialog element is present).
+
 * Updated arangosync to v2.12.0-preview-9.
 
 * Disallowed index creation that covers fields in which the field's name starts
