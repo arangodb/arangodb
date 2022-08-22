@@ -553,7 +553,6 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
         vocbase.server().getFeature<IResearchAnalyzerFeature>();
     TRI_ASSERT(_trx.state());
     auto const& revision = _trx.state()->analyzersRevision();
-
     auto getAnalyzer = [&](std::string_view shortName) {
       auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
       if (!analyzer) {
@@ -562,24 +561,34 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
       return FieldMeta::Analyzer{std::move(analyzer), std::string{shortName}};
     };
 
-    FieldMeta::Analyzer rootAnalyzer{emptyAnalyzer()};
-    containers::FlatHashMap<std::string_view, FieldMeta::Analyzer>
-        fieldToAnalyzer;
-
-    if (auto it = meta->fieldToAnalyzer.begin();
-        it != meta->fieldToAnalyzer.end() && it->first == "") {
-      rootAnalyzer = getAnalyzer(it->second.analyzer);
-    }
+    struct Field final {
+      FieldMeta::Analyzer analyzer;
+      bool includeAllFields;
+    };
+    containers::FlatHashMap<std::string_view, Field> fieldToAnalyzer;
     for (auto const& [name, field] : meta->fieldToAnalyzer) {
-      fieldToAnalyzer.emplace(name, getAnalyzer(field.analyzer));
+      fieldToAnalyzer.emplace(
+          name, Field{getAnalyzer(field.analyzer), field.includeAllFields});
     }
-    _provider = [rootAnalyzer = std::move(rootAnalyzer),
-                 fieldToAnalyzer = std::move(fieldToAnalyzer)](
-                    std::string_view field) -> FieldMeta::Analyzer const& {
-      if (auto it = fieldToAnalyzer.find(field); it != fieldToAnalyzer.end()) {
-        return it->second;
+
+    // we don't want create few _provider in parallel.
+    // so it should be safe
+    auto const* fst = meta->getFst();
+
+    _provider = [fieldToAnalyzer = std::move(fieldToAnalyzer),
+                 fst](std::string_view field) -> FieldMeta::Analyzer const& {
+      auto it = fieldToAnalyzer.find(field);  // fast-path O(1)
+      if (it != fieldToAnalyzer.end()) {
+        return it->second.analyzer;
       }
-      return rootAnalyzer;
+      auto prefix = findLongestCommonPrefix(*fst, field);  // o(prefix.size())
+      TRI_ASSERT(prefix.size() < field.size());
+      TRI_ASSERT(field.starts_with(prefix));
+      it = fieldToAnalyzer.find(prefix);
+      if (it != fieldToAnalyzer.end() && it->second.includeAllFields) {
+        return it->second.analyzer;
+      }
+      return emptyAnalyzer();
     };
   }
 }

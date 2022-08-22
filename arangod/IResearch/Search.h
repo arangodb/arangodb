@@ -32,6 +32,7 @@
 #include <atomic>
 
 namespace arangodb {
+
 class CollectionNameResolver;
 struct ViewFactory;
 
@@ -40,6 +41,8 @@ namespace arangodb::iresearch {
 
 class SearchFactory;
 class IResearchInvertedIndex;
+
+struct MetaFst;
 
 struct SearchMeta final {
   IResearchInvertedIndexSort primarySort;
@@ -50,7 +53,16 @@ struct SearchMeta final {
   };
   using Map = std::map<std::string, Field, std::less<>>;
   Map fieldToAnalyzer;
+
+  static std::shared_ptr<SearchMeta> make();
+  [[nodiscard]] MetaFst const* getFst() const;
+
+ private:
+  mutable std::unique_ptr<MetaFst> fst;
 };
+
+std::string_view findLongestCommonPrefix(MetaFst const& fst,
+                                         std::string_view key) noexcept;
 
 class Search final : public LogicalView {
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;

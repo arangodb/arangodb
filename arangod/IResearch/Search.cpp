@@ -260,6 +260,47 @@ void add(SearchMeta& search, IResearchInvertedIndexMeta const& index) {
 
 }  // namespace
 
+struct MetaFst : VectorFst {};
+
+std::shared_ptr<SearchMeta> SearchMeta::make() {
+  return std::make_shared<SearchMeta>();
+}
+
+MetaFst const* SearchMeta::getFst() const {
+  if (fst) {
+    return fst.get();
+  }
+  auto metaFst = std::make_unique<MetaFst>();
+  FstBuilder builder{*metaFst};
+  for (auto const& field : fieldToAnalyzer) {
+    builder.add(field.first, true);
+  }
+  builder.finish();
+  fst = std::move(metaFst);
+  return fst.get();
+}
+
+std::string_view findLongestCommonPrefix(MetaFst const& fst,
+                                         std::string_view key) noexcept {
+  auto start = fst.Start();
+  ExplicitMatcher matcher{&fst, fst::MATCH_INPUT};
+  matcher.SetState(start);
+
+  size_t lastKey = 0;
+  for (size_t matched = 0; matched < key.size();) {
+    if (!matcher.Find(key[matched])) {
+      break;
+    }
+    ++matched;
+    auto const nextstate = matcher.Value().nextstate;
+    if (fst.Final(nextstate)) {
+      lastKey = matched;
+    }
+    matcher.SetState(nextstate);
+  }
+  return key.substr(0, lastKey);
+}
+
 class SearchFactory final : public ViewFactory {
   // LogicalView factory for end-user validation instantiation and
   // persistence.
@@ -627,7 +668,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     return {};
   };
 
-  auto searchMeta = std::make_shared<SearchMeta>();
+  auto searchMeta = SearchMeta::make();
   auto r = iterate(
       [&](auto const& indexMeta) {
         searchMeta->primarySort = indexMeta._sort;
@@ -645,9 +686,10 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
                 }
                 return error;
               });
-  if (r.ok()) {
-    _meta = std::move(searchMeta);
+  if (!r.ok()) {
+    return r;
   }
+  _meta = std::move(searchMeta);
   return r;
 }
 
