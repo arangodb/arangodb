@@ -56,6 +56,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <absl/strings/str_cat.h>
@@ -797,7 +798,20 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourcePlanId,
               VPackValue(std::to_string(planId().id())));
   }
-  _sharding->toVelocyPack(build, ctx != Serialization::List);
+  if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
+      ServerState::instance()->isRunningInCluster()) {
+    TRI_ASSERT(!isSmartChild());
+    VirtualClusterSmartEdgeCollection const* edgeCollection =
+        static_cast<arangodb::VirtualClusterSmartEdgeCollection const*>(this);
+    if (edgeCollection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast smart edge collection");
+    }
+    edgeCollection->shardsToVelocyPack(build);
+  } else {
+    _sharding->toVelocyPack(build, ctx != Serialization::List);
+  }
+
   includeVelocyPackEnterprise(build);
   TRI_ASSERT(build.isOpenObject());
   // We leave the object open
