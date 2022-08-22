@@ -154,6 +154,9 @@ A message created for this error.
 
 @EXAMPLES
 
+Create a General Graph. This graph type does not make use of any sharding
+strategy and is useful on the single server.
+
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreate}
   var graph = require("@arangodb/general-graph");
 | if (graph._exists("myGraph")) {
@@ -177,6 +180,10 @@ A message created for this error.
 
   graph._drop("myGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
+
+Create a SmartGraph. This graph uses 9 shards and
+is sharded by the "region" attribute.
+
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateSmart}
   var graph = require("@arangodb/general-graph");
@@ -273,6 +280,9 @@ logJsonResponse(response);
 graph._drop("smartGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
 
+Create an EnterpriseGraph. This graph uses 9 shards,
+it does not make use of specific sharding locations..
+
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateEnterprise}
 var graph = require("@arangodb/general-graph");
 | if (graph._exists("enterpriseGraph")) {
@@ -302,6 +312,12 @@ logJsonResponse(response);
 
 graph._drop("enterpriseGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
+
+
+Create a SatelliteGraph. A SatelliteGraph does not use
+shards, but uses "satellite" as replicationFactor.
+Make sure to keep this graph small as it is cloned
+to every server.
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateSatellite}
 var graph = require("@arangodb/general-graph");
