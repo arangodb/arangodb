@@ -60,6 +60,7 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateAgencyHandler;
 struct IDocumentStateShardHandler;
 struct IDocumentStateTransactionHandler;
+struct IDocumentStateTransaction;
 
 struct IDocumentStateHandlersFactory {
   virtual ~IDocumentStateHandlersFactory() = default;
@@ -69,9 +70,14 @@ struct IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
   virtual auto createTransactionHandler(GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
+  virtual auto createTransaction(DocumentLogEntry const& doc,
+                                 TRI_vocbase_t& vocbase)
+      -> std::shared_ptr<IDocumentStateTransaction> = 0;
 };
 
-class DocumentStateHandlersFactory : public IDocumentStateHandlersFactory {
+class DocumentStateHandlersFactory
+    : public IDocumentStateHandlersFactory,
+      public std::enable_shared_from_this<DocumentStateHandlersFactory> {
  public:
   DocumentStateHandlersFactory(ArangodServer& server,
                                ClusterFeature& clusterFeature,
@@ -83,6 +89,8 @@ class DocumentStateHandlersFactory : public IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateShardHandler> override;
   auto createTransactionHandler(GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
+  auto createTransaction(DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
+      -> std::shared_ptr<IDocumentStateTransaction> override;
 
  private:
   ArangodServer& _server;

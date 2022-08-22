@@ -35,6 +35,7 @@
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateTransaction;
+struct IDocumentStateHandlersFactory;
 class DocumentStateTransaction;
 
 struct IDocumentStateTransactionHandler {
@@ -48,20 +49,22 @@ struct IDocumentStateTransactionHandler {
 class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
-  explicit DocumentStateTransactionHandler(GlobalLogIdentifier gid,
-                                           DatabaseFeature& databaseFeature);
+  explicit DocumentStateTransactionHandler(
+      GlobalLogIdentifier gid, DatabaseFeature& databaseFeature,
+      std::shared_ptr<IDocumentStateHandlersFactory> factory);
   auto applyEntry(DocumentLogEntry doc) -> Result override;
   auto ensureTransaction(DocumentLogEntry doc)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;
 
  private:
-  auto getTrx(TransactionId tid) -> std::shared_ptr<DocumentStateTransaction>;
+  auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
 
  private:
   GlobalLogIdentifier _gid;
   DatabaseGuard _db;
-  std::unordered_map<TransactionId, std::shared_ptr<DocumentStateTransaction>>
+  std::shared_ptr<IDocumentStateHandlersFactory> _factory;
+  std::unordered_map<TransactionId, std::shared_ptr<IDocumentStateTransaction>>
       _transactions;
 };
 
