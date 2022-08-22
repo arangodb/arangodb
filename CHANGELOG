@@ -1,8 +1,8 @@
 devel
 -----
 
-* Implemented handling of requests with Transfer-Encodign chunked, which is 
-  not implemented.
+* Added handling of requests with Transfer-Encodign chunked, which is 
+  not implemented, so returns code HTTP code 501.
 
 * Updated ArangoDB Starter to 0.15.5-preview-2.
 
