@@ -34,7 +34,7 @@ function headerWithChunkedEncodingSuite() {
   'use strict';
 
   var baseUrl = function() {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');;
   };
 
 
