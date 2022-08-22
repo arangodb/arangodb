@@ -1429,41 +1429,6 @@ if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif ()
 
-option(BUILD_SEPP "Build SEPP (Storage Engine Performance Prediction)" OFF)
-
-if (BUILD_SEPP)
-  set(ARANGODB_SEPP_SOURCES
-    tests/sepp/main.cpp
-    tests/sepp/Execution.cpp
-    tests/sepp/ExecutionThread.cpp
-    tests/sepp/Runner.cpp
-    tests/sepp/RocksDBOptions.cpp
-    tests/sepp/Server.cpp
-    tests/sepp/ValueGenerators/RandomStringGenerator.cpp
-    tests/sepp/Workloads/GetByPrimaryKey.cpp
-    tests/sepp/Workloads/InsertDocuments.cpp
-    tests/sepp/Workloads/IterateDocuments.cpp
-  )
-
-  add_executable(
-    sepp
-    ${ARANGODB_SEPP_SOURCES}
-  )
-
-  target_include_directories(sepp PRIVATE
-    ${PROJECT_SOURCE_DIR}/arangod
-    ${PROJECT_SOURCE_DIR}/tests/sepp
-  )
-
-  target_link_libraries(sepp
-    arango_rocksdb
-    arangoserver
-    rocksdb
-    snappy
-    boost_boost
-  )
-endif()
-
 add_dependencies(arangobench   zlibstatic)
 if (USE_ENTERPRISE)
   add_dependencies(arangobackup  zlibstatic)
