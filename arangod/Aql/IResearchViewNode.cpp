@@ -773,8 +773,6 @@ const char* NODE_VIEW_SCORERS_SORT_INDEX = "index";
 const char* NODE_VIEW_SCORERS_SORT_ASC = "asc";
 const char* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
 const char* NODE_VIEW_META_FIELDS = "metaFields";
-const char* NODE_VIEW_META_ANALYZER = "metaAnalyzer";
-const char* NODE_VIEW_META_INCLUDE_ALL = "metaIncludeAll";
 const char* NODE_VIEW_META_SORT = "metaSort";
 const char* NODE_VIEW_META_STORED = "metaStored";
 
@@ -788,14 +786,11 @@ void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
     meta.storedValues.toVelocyPack(node);
   }
-  node.add(NODE_VIEW_META_INCLUDE_ALL,
-           velocypack::Value{meta.includeAllFields});
-  node.add(NODE_VIEW_META_ANALYZER, velocypack::Value{meta.rootAnalyzer});
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_FIELDS};
-    for (auto const& [field, analyzer] : meta.fieldToAnalyzer) {
-      node.add(velocypack::Value{field});
-      node.add(velocypack::Value{analyzer});
+    for (auto const& [name, field] : meta.fieldToAnalyzer) {
+      node.add(velocypack::Value{name});
+      node.add(velocypack::Value{field.analyzer});
     }
   }
 }
@@ -820,20 +815,6 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
   meta.storedValues.fromVelocyPack(slice, error);
   checkError(NODE_VIEW_META_STORED);
 
-  slice = node.get(NODE_VIEW_META_INCLUDE_ALL);
-  if (!slice.isBool()) {
-    error = "should be bool";
-    checkError(NODE_VIEW_META_INCLUDE_ALL);
-  }
-  meta.includeAllFields = slice.getBool();
-
-  slice = node.get(NODE_VIEW_META_ANALYZER);
-  if (!slice.isString()) {
-    error = "should be string";
-    checkError(NODE_VIEW_META_ANALYZER);
-  }
-  meta.rootAnalyzer = slice.stringView();
-
   slice = node.get(NODE_VIEW_META_FIELDS);
   if (!slice.isArray() || slice.length() % 2 != 0) {
     error = "should be even array";
@@ -855,7 +836,8 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
     checkValue();
     auto analyzer = value.stringView();
     ++it;
-    meta.fieldToAnalyzer.emplace(field, analyzer);
+    meta.fieldToAnalyzer.emplace(
+        field, SearchMeta::Field{std::string{analyzer}, false});
   }
 }
 
