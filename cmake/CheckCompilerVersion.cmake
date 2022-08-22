@@ -1,5 +1,6 @@
 
-option(ARANGODB_SKIP_COMPILER_CHECK "Skip compiler support check.")
+option(ARANGODB_JUST_WARN_COMPILER_CHECK "Do not exit with FATAL_ERROR and just WARN "
+	                                 "if the compiler is not recent enough.")
 
 macro(CheckMinVersionsSet)
   if(NOT DEFINED ARANGODB_MIN_GCC_VERSION)
@@ -15,11 +16,16 @@ endmacro()
 
 macro(CheckMinCompilerVersionInner MIN_VERSION)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${MIN_VERSION})
-    message(
-      FATAL_ERROR
-        "ArangoDB requires at least ${CMAKE_CXX_COMPILER_ID} version ${MIN_VERSION},"
-        " detected ${CMAKE_CXX_COMPILER_VERSION}."
-        "\nYou can use ARANGODB_SKIP_COMPILER_CHECK to skip this check.")
+    set(MESSAGE "ArangoDB requires at least ${CMAKE_CXX_COMPILER_ID} version ${MIN_VERSION},"
+                " detected ${CMAKE_CXX_COMPILER_VERSION}.")
+
+    if(${ARANGODB_WARN_COMPILER_CHECK})
+      message(WARN ${MESSAGE})
+    else()
+      message(FATAL_ERROR
+        ${MESSAGE}
+	"\nYou can use -DARANGODB_JUST_WARN_COMPILER_CHECK to turn this error into a warning.")
+    endif()
   endif()
 endmacro()
 
@@ -34,14 +40,11 @@ macro(CheckCompilerVersion)
   else()
     message(
       FATAL_ERROR
-        "ArangoDB does not support CMAKE_CXX_COMPILER_ID ${CMAKE_CXX_COMPILER_ID}"
-    )
+        "ArangoDB does not support CMAKE_CXX_COMPILER_ID ${CMAKE_CXX_COMPILER_ID}")
   endif()
 
 endmacro()
 
 CheckMinVersionsSet()
 
-if (NOT ${ARANGODB_SKIP_COMPILER_CHECK})
-  CheckCompilerVersion()
-endif()
+CheckCompilerVersion()
