@@ -32,9 +32,11 @@
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
-    std::unique_ptr<IDatabaseGuard> dbGuard,
+    GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
     std::shared_ptr<IDocumentStateHandlersFactory> factory)
-    : _dbGuard(std::move(dbGuard)), _factory(std::move(factory)) {}
+    : _gid(std::move(gid)),
+      _dbGuard(std::move(dbGuard)),
+      _factory(std::move(factory)) {}
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
     -> std::shared_ptr<IDocumentStateTransaction> {

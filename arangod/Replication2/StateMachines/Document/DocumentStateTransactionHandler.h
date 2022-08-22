@@ -50,7 +50,7 @@ class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
   explicit DocumentStateTransactionHandler(
-      std::unique_ptr<IDatabaseGuard> dbGuard,
+      GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
       std::shared_ptr<IDocumentStateHandlersFactory> factory);
   auto applyEntry(DocumentLogEntry doc) -> Result override;
   auto ensureTransaction(DocumentLogEntry const& doc)
@@ -61,6 +61,7 @@ class DocumentStateTransactionHandler
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
 
  private:
+  GlobalLogIdentifier _gid;
   std::unique_ptr<IDatabaseGuard> _dbGuard;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
   std::unordered_map<TransactionId, std::shared_ptr<IDocumentStateTransaction>>

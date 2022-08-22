@@ -56,6 +56,7 @@ auto DocumentStateHandlersFactory::createTransactionHandler(
     GlobalLogIdentifier gid)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
   return std::make_unique<DocumentStateTransactionHandler>(
+      std::move(gid),
       std::make_unique<DatabaseGuard>(_databaseFeature, gid.database),
       shared_from_this());
 }
