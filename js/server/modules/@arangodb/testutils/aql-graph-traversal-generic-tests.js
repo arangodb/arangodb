@@ -2217,7 +2217,8 @@ function testSmallCircleTestDocumentsShardsAPI(testGraph) {
       fail();
     } catch (err) {
       assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
-      assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
+      // Unfortunately cannot assert this, different implementations client vs. server (v8)
+      // assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
     }
 
     try {
@@ -2227,7 +2228,8 @@ function testSmallCircleTestDocumentsShardsAPI(testGraph) {
       fail();
     } catch (err) {
       assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
-      assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
+      // Unfortunately cannot assert this, different implementations client vs. server (v8)
+      // assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
     }
   }
 }

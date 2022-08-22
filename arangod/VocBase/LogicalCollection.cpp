@@ -798,6 +798,8 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourcePlanId,
               VPackValue(std::to_string(planId().id())));
   }
+
+#ifdef USE_ENTERPRISE
   if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
       ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(!isSmartChild());
@@ -811,6 +813,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   } else {
     _sharding->toVelocyPack(build, ctx != Serialization::List);
   }
+#else
+  _sharding->toVelocyPack(build, ctx != Serialization::List);
+#endif
 
   includeVelocyPackEnterprise(build);
   TRI_ASSERT(build.isOpenObject());
