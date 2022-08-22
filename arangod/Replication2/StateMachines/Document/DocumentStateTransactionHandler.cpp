@@ -23,6 +23,8 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include "Basics/voc-errors.h"
+#include "Logger/LogContextKeys.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/ReplicatedContext.h"
@@ -42,8 +44,7 @@ auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
   return it->second;
 }
 
-auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc,
-                                                 bool ignoreRecoveryErrors)
+auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
     -> Result {
   if (doc.operation == OperationType::kAbortAllOngoingTrx) {
     _transactions.clear();
@@ -60,7 +61,15 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc,
       case OperationType::kRemove:
       case OperationType::kTruncate: {
         auto res = trx->apply(doc);
-        if (ignoreRecoveryErrors && res.fail() && res.ignoreDuringRecovery()) {
+        if (res.fail() && res.ignoreDuringRecovery()) {
+          LoggerContext logContext =
+              LoggerContext(Logger::REPLICATED_STATE)
+                  .with<logContextKeyDatabaseName>(_gid.database)
+                  .with<logContextKeyLogId>(_gid.id);
+          LOG_CTX("0da00", WARN, logContext)
+              << "Result ignored while applying transaction " << doc.tid
+              << " with operation " << to_string(doc.operation) << " on shard "
+              << doc.shardId << ": " << res.result();
           return Result{};
         }
         return res.result();

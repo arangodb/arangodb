@@ -105,8 +105,7 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
 };
 
 struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
-  auto applyEntry(DocumentLogEntry doc, bool ignoreRecoveryErrors)
-      -> Result override {
+  auto applyEntry(DocumentLogEntry doc) -> Result override {
     auto trx = ensureTransaction(doc);
     TRI_ASSERT(trx != nullptr);
     switch (doc.operation) {

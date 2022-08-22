@@ -39,8 +39,7 @@ class DocumentStateTransaction;
 
 struct IDocumentStateTransactionHandler {
   virtual ~IDocumentStateTransactionHandler() = default;
-  virtual auto applyEntry(DocumentLogEntry doc, bool ignoreRecoveryErrors)
-      -> Result = 0;
+  virtual auto applyEntry(DocumentLogEntry doc) -> Result = 0;
   virtual auto ensureTransaction(DocumentLogEntry doc)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
@@ -51,8 +50,7 @@ class DocumentStateTransactionHandler
  public:
   explicit DocumentStateTransactionHandler(GlobalLogIdentifier gid,
                                            DatabaseFeature& databaseFeature);
-  auto applyEntry(DocumentLogEntry doc, bool ignoreRecoveryErrors)
-      -> Result override;
+  auto applyEntry(DocumentLogEntry doc) -> Result override;
   auto ensureTransaction(DocumentLogEntry doc)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;

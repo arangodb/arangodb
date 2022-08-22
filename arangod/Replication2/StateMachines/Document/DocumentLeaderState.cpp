@@ -59,7 +59,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
   while (auto entry = ptr->next()) {
     auto doc = entry->second;
-    auto res = transactionHandler->applyEntry(doc, true);
+    auto res = transactionHandler->applyEntry(doc);
     if (res.fail()) {
       return res;
     }
@@ -70,9 +70,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                               {},
                               TransactionId{0}};
   auto stream = getStream();
-  auto idx = stream->insert(doc);
-  _guardedData.doUnderLock(
-      [idx](auto& data) { data.core->updateLastIndex(idx); });
+  stream->insert(doc);
 
   // TODO Add a tombstone to the TransactionManager
   return {TRI_ERROR_NO_ERROR};
@@ -87,8 +85,6 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                 std::move(payload), transactionId};
   auto stream = getStream();
   auto idx = stream->insert(entry);
-  _guardedData.doUnderLock(
-      [idx](auto& data) { data.core->updateLastIndex(idx); });
 
   if (opts.waitForCommit) {
     return stream->waitFor(idx).thenValue(

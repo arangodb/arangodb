@@ -44,8 +44,6 @@ struct DocumentCore {
 
   auto getShardId() -> std::string_view;
   auto getGid() -> GlobalLogIdentifier;
-  auto getLastIndex() -> LogIndex;
-  void updateLastIndex(LogIndex index);
 
  private:
   GlobalLogIdentifier _gid;
@@ -53,6 +51,5 @@ struct DocumentCore {
   ShardID _shardId;
   std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
-  LogIndex _lastIndex;
 };
 }  // namespace arangodb::replication2::replicated_state::document
