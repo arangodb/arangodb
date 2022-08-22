@@ -93,3 +93,4 @@ auto DocumentStateHandlersFactory::createTransaction(
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
+
