@@ -708,13 +708,13 @@ void replaceSearchFunc(aql::CalculationNode& calcNode,
 
   if (auto const [var, type] = resolveSearchFunc(*exprNode); var) {
     // Simple expression, e.g. LET x = BM25(d)
-    replaceSearchFunc(calcNode, *exprNode, dedup);
-
-    // Replace expression so referenced variables don't affect "no
-    // materializaton" optimization
-    calcNode.expression()->replaceNode(ast->createNodeNop());
-    // We don't need calculation node anymore
-    calcNode.plan()->unlinkNode(&calcNode);
+    if (exprNode != replaceSearchFunc(calcNode, *exprNode, dedup)) {
+      // Replace expression so referenced variables don't affect "no
+      // materializaton" optimization
+      calcNode.expression()->replaceNode(ast->createNodeNop());
+      // We don't need calculation node anymore
+      calcNode.plan()->unlinkNode(&calcNode);
+    }
   } else if (bool const hasFunc = !arangodb::iresearch::visit<true>(
                  *exprNode,
                  [](aql::AstNode const& node) {
