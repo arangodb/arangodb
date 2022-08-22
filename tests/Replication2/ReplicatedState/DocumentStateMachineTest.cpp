@@ -66,7 +66,7 @@ struct MockDocumentStateHandlersFactory
       -> std::unique_ptr<IDocumentStateTransactionHandler> override {
     fakeit::Fake(Dtor(dbGuardMock));
     auto transactionHandler = std::make_unique<DocumentStateTransactionHandler>(
-        std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
+        std::move(gid), std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
         shared_from_this());
     transactionHandlerPtrs.push_back(transactionHandler.get());
     return transactionHandler;
@@ -212,8 +212,47 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
         });
     follower->runAllAsyncAppendEntries();
     fakeit::Verify(Method(factory->transactionMock, apply)).Exactly(1);
-    fakeit::Verify(Method(transactionHandlerFollowerSpy, applyEntry)
-                       .Using(fakeit::_, ApplyEntryErrorHandling::kFail))
+    fakeit::Verify(Method(transactionHandlerFollowerSpy, applyEntry))
+        .Exactly(1);
+  }
+
+  // Insert another document, but fail with UNIQUE_CONSTRAINT_VIOLATED. The
+  // follower should continue.
+  builder.clear();
+  transactionHandlerFollowerSpy.ClearInvocationHistory();
+  factory->transactionMock.ClearInvocationHistory();
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add("document2_key", "document2_value");
+    ob->close();
+
+    auto operation = OperationType::kInsert;
+    auto tid = TransactionId{1};
+    auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
+                                               tid, ReplicationOptions{});
+
+    ASSERT_TRUE(res.isReady());
+    auto logIndex = res.result().get();
+
+    inMemoryLog = leader->copyInMemoryLog();
+    entry = inMemoryLog.getEntryByIndex(logIndex);
+    doc = velocypack::deserialize<DocumentLogEntry>(
+        entry->entry().logPayload()->slice()[1]);
+    ASSERT_EQ(doc.shardId, shardId);
+    ASSERT_EQ(doc.operation, operation);
+    ASSERT_EQ(doc.tid, tid);
+    ASSERT_EQ(doc.data.get("document2_key").stringView(), "document2_value");
+
+    fakeit::When(Method(factory->transactionMock, apply))
+        .Do([](DocumentLogEntry const& entry) {
+          auto opRes = OperationResult{Result{}, OperationOptions{}};
+          opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] =
+              1;
+          return DocumentStateTransactionResult(entry.tid, std::move(opRes));
+        });
+    follower->runAllAsyncAppendEntries();
+    fakeit::Verify(Method(factory->transactionMock, apply)).Exactly(1);
+    fakeit::Verify(Method(transactionHandlerFollowerSpy, applyEntry))
         .Exactly(1);
   }
 
@@ -233,8 +272,7 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     ASSERT_TRUE(res.isReady());
     auto logIndex = res.result().get();
     fakeit::Verify(Method(factory->transactionMock, commit)).Exactly(1);
-    fakeit::Verify(Method(transactionHandlerFollowerSpy, applyEntry)
-                       .Using(fakeit::_, ApplyEntryErrorHandling::kFail))
+    fakeit::Verify(Method(transactionHandlerFollowerSpy, applyEntry))
         .Exactly(1);
 
     inMemoryLog = follower->copyInMemoryLog();
@@ -255,6 +293,7 @@ TEST(DocumentStateTransactionHandlerTest, test_ensureTransaction) {
 
   fakeit::Fake(Dtor(dbGuardMock));
   auto transactionHandler = DocumentStateTransactionHandler(
+      GlobalLogIdentifier{"testDb", LogId{1}},
       std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
       std::shared_ptr<IDocumentStateHandlersFactory>(
           &handlersFactoryMock.get()));
@@ -283,6 +322,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
 
   fakeit::Fake(Dtor(dbGuardMock));
   auto transactionHandler = DocumentStateTransactionHandler(
+      GlobalLogIdentifier{"testDb", LogId{1}},
       std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
       std::shared_ptr<IDocumentStateHandlersFactory>(
           &handlersFactoryMock.get()));
@@ -305,8 +345,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
                               velocypack::SharedSlice(), TransactionId{1}};
 
   // Expect the transaction to be started an applied successfully
-  auto result =
-      transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  auto result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   fakeit::Verify(Method(transactionMock, apply)).Once();
 
@@ -314,7 +353,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   fakeit::Spy(Method(transactionHandlerSpy, removeTransaction));
   fakeit::When(Method(transactionMock, commit)).Return(Result{});
   doc.operation = OperationType::kCommit;
-  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   fakeit::Verify(Method(transactionMock, commit)).Once();
   fakeit::Verify(Method(transactionHandlerSpy, removeTransaction)).Once();
@@ -324,14 +363,14 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   transactionHandlerSpy.ClearInvocationHistory();
   doc = DocumentLogEntry{"s1234", OperationType::kRemove,
                          velocypack::SharedSlice(), TransactionId{2}};
-  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   fakeit::Verify(Method(transactionMock, apply)).Once();
 
   // Expect the transaction to be removed after abort
   fakeit::When(Method(transactionMock, abort)).Return(Result{});
   doc.operation = OperationType::kAbort;
-  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   fakeit::Verify(Method(transactionMock, abort)).Once();
   fakeit::Verify(Method(transactionHandlerSpy, removeTransaction)).Once();
@@ -339,19 +378,19 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   // No transaction should be created during AbortAllOngoingTrx
   transactionHandlerSpy.ClearInvocationHistory();
   doc.operation = OperationType::kAbortAllOngoingTrx;
-  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   fakeit::Verify(Method(transactionHandlerSpy, ensureTransaction)).Never();
 }
 
-TEST(DocumentStateTransactionHandlerTest,
-     test_applyEntry_error_without_recovery) {
+TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
   fakeit::Mock<IDatabaseGuard> dbGuardMock;
   fakeit::Mock<IDocumentStateHandlersFactory> handlersFactoryMock;
   fakeit::Mock<IDocumentStateTransaction> transactionMock;
 
   fakeit::Fake(Dtor(dbGuardMock));
   auto transactionHandler = DocumentStateTransactionHandler(
+      GlobalLogIdentifier{"testDb", LogId{1}},
       std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
       std::shared_ptr<IDocumentStateHandlersFactory>(
           &handlersFactoryMock.get()));
@@ -374,66 +413,7 @@ TEST(DocumentStateTransactionHandlerTest,
             OperationResult{Result{TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION},
                             OperationOptions{}});
       });
-  auto result =
-      transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
-  ASSERT_TRUE(result.fail());
-  fakeit::Verify(Method(transactionMock, apply)).Exactly(1);
-
-  // Unique constraint violation, should fail because we are not doing recovery
-  fakeit::When(Method(transactionMock, apply))
-      .Do([](DocumentLogEntry const& entry) {
-        auto opRes = OperationResult{Result{}, OperationOptions{}};
-        opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] = 1;
-        return DocumentStateTransactionResult(entry.tid, std::move(opRes));
-      });
-  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
-  ASSERT_TRUE(result.fail());
-  fakeit::Verify(Method(transactionMock, apply)).Exactly(2);
-
-  // Other type of error inside countErrorCodes
-  fakeit::When(Method(transactionMock, apply))
-      .Do([](DocumentLogEntry const& entry) {
-        auto opRes = OperationResult{Result{}, OperationOptions{}};
-        opRes.countErrorCodes[TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION] = 1;
-        return DocumentStateTransactionResult(entry.tid, std::move(opRes));
-      });
-  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
-  ASSERT_TRUE(result.fail());
-  fakeit::Verify(Method(transactionMock, apply)).Exactly(3);
-}
-
-TEST(DocumentStateTransactionHandlerTest,
-     test_applyEntry_error_during_recovery) {
-  fakeit::Mock<IDatabaseGuard> dbGuardMock;
-  fakeit::Mock<IDocumentStateHandlersFactory> handlersFactoryMock;
-  fakeit::Mock<IDocumentStateTransaction> transactionMock;
-
-  fakeit::Fake(Dtor(dbGuardMock));
-  auto transactionHandler = DocumentStateTransactionHandler(
-      std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
-      std::shared_ptr<IDocumentStateHandlersFactory>(
-          &handlersFactoryMock.get()));
-
-  fakeit::When(Method(handlersFactoryMock, createTransaction))
-      .AlwaysDo(
-          [&transactionMock](DocumentLogEntry const&, IDatabaseGuard const&) {
-            return std::shared_ptr<IDocumentStateTransaction>(
-                &transactionMock.get());
-          });
-
-  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), TransactionId{1}};
-
-  // OperationResult failed, transaction should fail
-  fakeit::When(Method(transactionMock, apply))
-      .Do([](DocumentLogEntry const& entry) {
-        return DocumentStateTransactionResult(
-            entry.tid,
-            OperationResult{Result{TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION},
-                            OperationOptions{}});
-      });
-  auto result = transactionHandler.applyEntry(
-      doc, ApplyEntryErrorHandling::kIgnoreRecoveryErrors);
+  auto result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.fail());
   fakeit::Verify(Method(transactionMock, apply)).Exactly(1);
 
@@ -444,8 +424,7 @@ TEST(DocumentStateTransactionHandlerTest,
         opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] = 1;
         return DocumentStateTransactionResult(entry.tid, std::move(opRes));
       });
-  result = transactionHandler.applyEntry(
-      doc, ApplyEntryErrorHandling::kIgnoreRecoveryErrors);
+  result = transactionHandler.applyEntry(doc);
   ASSERT_FALSE(result.fail());
   fakeit::Verify(Method(transactionMock, apply)).Exactly(2);
 
@@ -456,8 +435,7 @@ TEST(DocumentStateTransactionHandlerTest,
         opRes.countErrorCodes[TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION] = 1;
         return DocumentStateTransactionResult(entry.tid, std::move(opRes));
       });
-  result = transactionHandler.applyEntry(
-      doc, ApplyEntryErrorHandling::kIgnoreRecoveryErrors);
+  result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.fail());
   fakeit::Verify(Method(transactionMock, apply)).Exactly(3);
 }
