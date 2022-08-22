@@ -46,8 +46,6 @@ using namespace arangodb::replication2::test;
 struct MockDocumentStateHandlersFactory
     : IDocumentStateHandlersFactory,
       std::enable_shared_from_this<MockDocumentStateHandlersFactory> {
-  MockDocumentStateHandlersFactory() { reset(); }
-
   auto createAgencyHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateAgencyHandler> override {
     return std::shared_ptr<IDocumentStateAgencyHandler>(
@@ -64,7 +62,6 @@ struct MockDocumentStateHandlersFactory
 
   auto createTransactionHandler(GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override {
-    fakeit::Fake(Dtor(dbGuardMock));
     auto transactionHandler = std::make_unique<DocumentStateTransactionHandler>(
         std::move(gid), std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
         shared_from_this());
@@ -87,6 +84,10 @@ struct MockDocumentStateHandlersFactory
         .AlwaysReturn(std::make_shared<VPackBuilder>());
     fakeit::When(Method(agencyHandlerMock, reportShardInCurrent))
         .AlwaysReturn(Result{});
+    fakeit::Fake(Dtor(agencyHandlerMock));
+    fakeit::Fake(Dtor(shardHandlerMock));
+    fakeit::Fake(Dtor(transactionMock));
+    fakeit::Fake(Dtor(dbGuardMock));
   }
 
   fakeit::Mock<IDocumentStateAgencyHandler> agencyHandlerMock;
@@ -101,6 +102,8 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
     feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
                                               factory);
   }
+
+  void SetUp() override { factory.reset(); }
 
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
@@ -179,6 +182,7 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
 
   fakeit::Mock<IDocumentStateTransactionHandler> transactionHandlerFollowerSpy(
       *factory->transactionHandlerPtrs[1]);
+  fakeit::Fake(Dtor(transactionHandlerFollowerSpy));
   fakeit::Spy(Method(transactionHandlerFollowerSpy, applyEntry));
 
   // Insert a document
@@ -291,6 +295,9 @@ TEST(DocumentStateTransactionHandlerTest, test_ensureTransaction) {
   fakeit::Mock<IDocumentStateTransaction> transactionMock;
 
   fakeit::Fake(Dtor(dbGuardMock));
+  fakeit::Fake(Dtor(handlersFactoryMock));
+  fakeit::Fake(Dtor(transactionMock));
+
   auto transactionHandler = DocumentStateTransactionHandler(
       GlobalLogIdentifier{"testDb", LogId{1}},
       std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
@@ -320,6 +327,9 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   fakeit::Mock<IDocumentStateTransaction> transactionMock;
 
   fakeit::Fake(Dtor(dbGuardMock));
+  fakeit::Fake(Dtor(handlersFactoryMock));
+  fakeit::Fake(Dtor(transactionMock));
+
   auto transactionHandler = DocumentStateTransactionHandler(
       GlobalLogIdentifier{"testDb", LogId{1}},
       std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
@@ -387,6 +397,9 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
   fakeit::Mock<IDocumentStateTransaction> transactionMock;
 
   fakeit::Fake(Dtor(dbGuardMock));
+  fakeit::Fake(Dtor(handlersFactoryMock));
+  fakeit::Fake(Dtor(transactionMock));
+
   auto transactionHandler = DocumentStateTransactionHandler(
       GlobalLogIdentifier{"testDb", LogId{1}},
       std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
