@@ -87,10 +87,7 @@ auto DocumentStateHandlersFactory::createTransaction(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto trx = std::make_shared<DocumentStateTransaction>(std::move(methods));
-
-  return trx;
+  return std::make_shared<DocumentStateTransaction>(std::move(methods));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
-
