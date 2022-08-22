@@ -32,6 +32,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/Version.h"
 
 namespace arangodb {
 
@@ -164,7 +165,8 @@ arangodb::Result diffPlanLocal(
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ReplicatedStateStatusMapByDatabase const& localStates);
+    ReplicatedStateStatusMapByDatabase const& localStates,
+    replication::Version defaultReplicationVersion = replication::Version::ONE);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -300,7 +302,8 @@ arangodb::Result reportInCurrent(
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ReplicatedStateStatusMapByDatabase const& localStates);
+    ReplicatedStateStatusMapByDatabase const& localStates,
+    replication::Version defaultReplicationVersion);
 
 /**
  * @brief            Schedule synchroneous replications

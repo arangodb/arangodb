@@ -758,7 +758,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogsByDatabase,
-    ReplicatedStateStatusMapByDatabase const& localStatesByDatabase) {
+    ReplicatedStateStatusMapByDatabase const& localStatesByDatabase,
+    replication::Version defaultReplicationVersion) {
   // You are entering the functional sector.
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
@@ -783,7 +784,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       TRI_ASSERT(version.ok());
       replicationVersion.emplace(dbname, version.get());
     } else {
-      replicationVersion.emplace(dbname, replication::Version::ONE);
+      replicationVersion.emplace(dbname, defaultReplicationVersion);
     }
 
     if (pdb.isObject() && local.find(dbname) == local.end()) {
@@ -1327,7 +1328,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     DatabaseFeature& df, VPackSlice const& info, VPackSlice const& planServers,
     std::string const& database, std::string const& shard,
     std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors,
-    replication::Version replicationVersion = replication::Version::ONE) {
+    replication::Version replicationVersion) {
   VPackBuilder ret;
 
   try {
@@ -1804,7 +1805,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ReplicatedStateStatusMapByDatabase const& localStates) {
+    ReplicatedStateStatusMapByDatabase const& localStates,
+    replication::Version defaultReplicationVersion) {
   for (auto const& dbName : dirty) {
     auto lit = local.find(dbName);
     VPackSlice ldb;
@@ -1826,7 +1828,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       cur = cit->second->slice()[0];
     }
 
-    auto replicationVersion = replication::Version::ONE;
+    auto replicationVersion = defaultReplicationVersion;
     VPackBuilder shardMap;
     auto pit = plan.find(dbName);
     VPackSlice pdb;
@@ -2517,9 +2519,12 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       VPackObjectBuilder agency(&report);
       // Update Current
       try {
+        auto defaultReplicationVersion = feature.server()
+                                             .getFeature<DatabaseFeature>()
+                                             .defaultReplicationVersion();
         result = reportInCurrent(feature, plan, dirty, cur, local, allErrors,
                                  serverId, report, shardStats, localLogs,
-                                 localStates);
+                                 localStates, defaultReplicationVersion);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
             << "Error reporting in current: " << e.what();
