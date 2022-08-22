@@ -103,12 +103,13 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
                                               factory);
   }
 
-  void SetUp() override { factory.reset(); }
-
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
   std::shared_ptr<MockDocumentStateHandlersFactory> factory =
       std::make_shared<MockDocumentStateHandlersFactory>();
+
+ protected:
+  void SetUp() override { factory->reset(); }
 };
 
 TEST_F(DocumentStateMachineTest, leader_follower_integration) {
