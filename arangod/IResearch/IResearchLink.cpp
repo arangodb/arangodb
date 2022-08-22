@@ -209,8 +209,12 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
 Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
   auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
-                         _meta._hasNested, _meta._storedValues.columns(),
-                         _meta._sortCompression);
+#ifdef USE_ENTERPRISE
+                         _meta._hasNested,
+#else
+                         false,
+#endif
+                         _meta._storedValues.columns(), _meta._sortCompression);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
   }

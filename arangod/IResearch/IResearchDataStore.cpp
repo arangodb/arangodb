@@ -22,9 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "IResearchDataStore.h"
 #include "IResearchDocument.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/IResearchDocumentEE.h"
-#endif
 #include "IResearchKludge.h"
 #include "IResearchFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -43,6 +40,10 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDocumentEE.h"
+#endif
 
 #include <index/column_info.hpp>
 #include <store/mmap_directory.hpp>
