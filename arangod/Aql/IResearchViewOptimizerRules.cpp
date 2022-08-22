@@ -1037,9 +1037,9 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     replaceSearchFunc(*ExecutionNode::castTo<CalculationNode*>(node),
                       searchFuncs);
   }
+  modified = !searchFuncs.empty();
 
   aql::QueryContext& query = plan->getAst()->query();
-
   std::vector<SearchFunc> scorers;
 
   for (auto* node : viewNodes) {
@@ -1083,8 +1083,6 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
           "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
           func.var->name.c_str(), funcName.c_str());
-    } else if (isOffsetInfo(node)) {
-      modified = true;
     }
   }
 }
