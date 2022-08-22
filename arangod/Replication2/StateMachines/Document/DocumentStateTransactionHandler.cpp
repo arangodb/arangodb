@@ -29,6 +29,47 @@
 #include "Transaction/ReplicatedContext.h"
 #include "DocumentStateHandlersFactory.h"
 
+namespace {
+
+auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
+  auto ignoreError = [](ErrorCode code) {
+    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+           // TODO - should not be necessary once we cancel transactions when we
+           // loose leadership
+           code == TRI_ERROR_ARANGO_CONFLICT;
+  };
+
+  if (res.fail() && !ignoreError(res.errorNumber())) {
+    return false;
+  }
+
+  for (auto const& [code, cnt] : res.countErrorCodes) {
+    if (!ignoreError(code)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+auto makeResultFromOperationResult(arangodb::OperationResult const& res,
+                                   arangodb::TransactionId tid)
+    -> arangodb::Result {
+  ErrorCode e{res.result.errorNumber()};
+  std::stringstream msg;
+  if (!res.countErrorCodes.empty()) {
+    if (e == TRI_ERROR_NO_ERROR) {
+      e = TRI_ERROR_TRANSACTION_INTERNAL;
+    }
+    msg << "Transaction " << tid << ": ";
+    for (auto const& it : res.countErrorCodes) {
+      msg << it.first << ' ';
+    }
+  }
+  return arangodb::Result{e, std::move(msg).str()};
+}
+
+}  // namespace
+
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
@@ -63,19 +104,23 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       case OperationType::kReplace:
       case OperationType::kRemove:
       case OperationType::kTruncate: {
-        auto res = trx->apply(doc);
-        if (res.fail() && res.ignoreDuringRecovery()) {
+        auto opRes = trx->apply(doc);
+        auto res = opRes.fail() ? opRes.result
+                                : makeResultFromOperationResult(opRes, doc.tid);
+        if (res.fail() && shouldIgnoreError(opRes)) {
           LoggerContext logContext =
               LoggerContext(Logger::REPLICATED_STATE)
                   .with<logContextKeyDatabaseName>(_gid.database)
                   .with<logContextKeyLogId>(_gid.id);
+
           LOG_CTX("0da00", INFO, logContext)
               << "Result ignored while applying transaction " << doc.tid
               << " with operation " << to_string(doc.operation) << " on shard "
-              << doc.shardId << ": " << res.result();
+              << doc.shardId << ": " << res;
+          ;
           return Result{};
         }
-        return res.result();
+        return res;
       }
       case OperationType::kCommit: {
         auto res = trx->commit();

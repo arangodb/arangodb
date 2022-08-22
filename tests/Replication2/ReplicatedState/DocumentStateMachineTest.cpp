@@ -207,8 +207,7 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
 
     fakeit::When(Method(factory->transactionMock, apply))
         .Do([](DocumentLogEntry const& entry) {
-          return DocumentStateTransactionResult(
-              entry.tid, OperationResult{Result{}, OperationOptions{}});
+          return OperationResult{Result{}, OperationOptions{}};
         });
     follower->runAllAsyncAppendEntries();
     fakeit::Verify(Method(factory->transactionMock, apply)).Exactly(1);
@@ -248,7 +247,7 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
           auto opRes = OperationResult{Result{}, OperationOptions{}};
           opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] =
               1;
-          return DocumentStateTransactionResult(entry.tid, std::move(opRes));
+          return opRes;
         });
     follower->runAllAsyncAppendEntries();
     fakeit::Verify(Method(factory->transactionMock, apply)).Exactly(1);
@@ -337,8 +336,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
           });
   fakeit::When(Method(transactionMock, apply))
       .AlwaysDo([](DocumentLogEntry const& entry) {
-        return DocumentStateTransactionResult(
-            entry.tid, OperationResult{Result{}, OperationOptions{}});
+        return OperationResult{Result{}, OperationOptions{}};
       });
 
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
@@ -408,10 +406,9 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
   // OperationResult failed, transaction should fail
   fakeit::When(Method(transactionMock, apply))
       .Do([](DocumentLogEntry const& entry) {
-        return DocumentStateTransactionResult(
-            entry.tid,
-            OperationResult{Result{TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION},
-                            OperationOptions{}});
+        return OperationResult{
+            Result{TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION},
+            OperationOptions{}};
       });
   auto result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.fail());
@@ -422,7 +419,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
       .Do([](DocumentLogEntry const& entry) {
         auto opRes = OperationResult{Result{}, OperationOptions{}};
         opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] = 1;
-        return DocumentStateTransactionResult(entry.tid, std::move(opRes));
+        return opRes;
       });
   result = transactionHandler.applyEntry(doc);
   ASSERT_FALSE(result.fail());
@@ -433,7 +430,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
       .Do([](DocumentLogEntry const& entry) {
         auto opRes = OperationResult{Result{}, OperationOptions{}};
         opRes.countErrorCodes[TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION] = 1;
-        return DocumentStateTransactionResult(entry.tid, std::move(opRes));
+        return opRes;
       });
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.fail());
