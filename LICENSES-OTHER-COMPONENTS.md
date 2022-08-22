@@ -78,8 +78,8 @@ _Enterprise Edition only_
 ### fakeit
 
 * Name: fakeit
-* Version: 2.0.3
-* Date: 2017-02-28 13:11:35Z & 2018-08-17 00:22:33Z
+* Version: 2.3.0
+* Date: 2022-06-12 10:26:05.974129
 * Project Home: https://github.com/eranpeer/FakeIt
 * License: https://raw.githubusercontent.com/eranpeer/FakeIt/master/LICENSE
 * License Name: MIT License
