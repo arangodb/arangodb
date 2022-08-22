@@ -318,7 +318,9 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
   vocbaseOptions.replicationFactor = 1;
   vocbaseOptions.writeConcern = 1;
   vocbaseOptions.sharding = "";
-  vocbaseOptions.replicationVersion = replication::Version::ONE;
+
+  vocbaseOptions.replicationVersion =
+      server.getFeature<DatabaseFeature>().defaultReplicationVersion();
 
   //  sanitize input for vocbase creation
   //  sharding -- must be "", "flexible" or "single"
