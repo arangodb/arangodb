@@ -102,6 +102,30 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
                             FilterContext const& filterCtx,
                             aql::AstNode const& args);
 
+FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
+    std::string_view name, Result& r) const noexcept {
+  if (!fieldAnalyzerProvider) {
+    if (ADB_UNLIKELY(!contextAnalyzer)) {
+      TRI_ASSERT(false);
+      r = {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
+    }
+    return contextAnalyzer;
+  }
+  auto const& analyzer = (*fieldAnalyzerProvider)(name);
+  if (ADB_UNLIKELY(contextAnalyzer &&
+                   contextAnalyzer._pool != analyzer._pool)) {
+    r = {TRI_ERROR_BAD_PARAMETER,
+         absl::StrCat("Context analyzer '", contextAnalyzer->name(),
+                      "' doesn't match field '", name, "' analyzer '",
+                      analyzer ? analyzer->name() : "", "'")};
+  }
+  if (!analyzer) {
+    r = {TRI_ERROR_BAD_PARAMETER,
+         absl::StrCat("Analyzer for field '", name, "' isn't set")};
+  }
+  return analyzer;
+}
+
 }  // namespace arangodb::iresearch
 
 namespace {
@@ -1998,41 +2022,35 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
   }
 
   // default analyzer
-  FieldMeta::Analyzer analyzerValue{IResearchAnalyzerFeature::identity()};
-  auto& analyzer = analyzerValue._pool;
-  auto& shortName = analyzerValue._shortName;
-
+  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
   if (filter || analyzerIdValue.isConstant()) {
     TRI_ASSERT(ctx.trx);
-    auto& server = ctx.trx->vocbase().server();
+    auto& vocbase = ctx.trx->vocbase();
+    auto& server = vocbase.server();
     if (!server.hasFeature<IResearchAnalyzerFeature>()) {
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-              "'"s.append(IResearchAnalyzerFeature::name())
-                  .append("' feature is not registered, unable to evaluate '")
-                  .append(funcName)
-                  .append("' function")};
+              absl::StrCat("'", IResearchAnalyzerFeature::name(),
+                           "' feature is not registered, unable to evaluate '",
+                           funcName, "' function")};
     }
-
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
-                                   ctx.trx->state()->analyzersRevision());
+    analyzer._pool = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
+                                         ctx.trx->state()->analyzersRevision());
     if (!analyzer) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName)
-                  .append("' AQL function: Unable to lookup analyzer '")
-                  .append(analyzerId.c_str())
-                  .append("'")};
+              absl::StrCat(
+                  "'", funcName, "' AQL function: Unable to lookup analyzer '",
+                  std::string_view{analyzerId.data(), analyzerId.size()}, "'")};
     }
-
-    shortName = IResearchAnalyzerFeature::normalize(
-        analyzerId, ctx.trx->vocbase().name(), false);
+    analyzer._shortName =
+        IResearchAnalyzerFeature::normalize(analyzerId, vocbase.name(), false);
   }
 
   // override analyzer and throw away provider
   FilterContext const subFilterContext{
       .fieldAnalyzerProvider =
           ctx.isOldMangling ? nullptr : filterCtx.fieldAnalyzerProvider,
-      .contextAnalyzer = analyzerValue,
+      .contextAnalyzer = analyzer,
       .fields = filterCtx.fields,
       .namePrefix = filterCtx.namePrefix,
       .boost = filterCtx.boost};
@@ -2041,9 +2059,8 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
 
   if (rv.fail()) {
     return {rv.errorNumber(),
-            "failed to get filter for analyzer: "s.append(analyzer->name())
-                .append(" : ")
-                .append(rv.errorMessage())};
+            absl::StrCat("failed to get filter for analyzer: ",
+                         analyzer->name(), " : ", rv.errorMessage())};
   }
   return rv;
 }

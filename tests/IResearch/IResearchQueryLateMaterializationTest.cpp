@@ -71,7 +71,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -105,7 +105,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
            \"type\": \"arangosearch\" \
         }");
       view1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view1);
 
       // add links to collections
@@ -122,7 +122,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
             \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}] \
          }");
       view2 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view2);
 
       // add links to collections
