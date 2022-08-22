@@ -183,6 +183,7 @@ strategy and is useful on the single server.
 
 Create a SmartGraph. This graph uses 9 shards and
 is sharded by the "region" attribute.
+Available in the Enterprise Edition only.
 
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateSmart}
@@ -216,6 +217,12 @@ is sharded by the "region" attribute.
   graph._drop("smartGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
 
+Create a disjoint SmartGraph. This graph uses 9 shards and
+is sharded by the "region" attribute.
+Available in the Enterprise Edition only.
+Note here: as we are using a disjoint version, we can only
+create edges between vertices sharing the same region.
+
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateDisjointSmart}
 var graph = require("@arangodb/general-graph");
 | if (graph._exists("disjointSmartGraph")) {
@@ -247,6 +254,13 @@ logJsonResponse(response);
 
 graph._drop("disjointSmartGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
+
+Create a SmartGraph with a satellite vertex collection.
+It uses the collection "endVertices" as a satellite collection.
+So this collection is cloned to all servers, all other vertex
+collections are split into 9 shards 
+and are sharded by the "region" attribute.
+Available in the Enterprise Edition only.
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateSmartWithSatellites}
 var graph = require("@arangodb/general-graph");
@@ -282,6 +296,7 @@ graph._drop("smartGraph", true);
 
 Create an EnterpriseGraph. This graph uses 9 shards,
 it does not make use of specific sharding locations..
+Available in the Enterprise Edition only.
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateEnterprise}
 var graph = require("@arangodb/general-graph");
@@ -318,6 +333,7 @@ Create a SatelliteGraph. A SatelliteGraph does not use
 shards, but uses "satellite" as replicationFactor.
 Make sure to keep this graph small as it is cloned
 to every server.
+Available in the Enterprise Edition only.
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateSatellite}
 var graph = require("@arangodb/general-graph");
