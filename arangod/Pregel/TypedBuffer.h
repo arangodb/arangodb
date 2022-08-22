@@ -409,7 +409,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
           writeSize = maximalSize - written;
         }
 
-        ssize_t writeResult =
+        auto writeResult =
             TRI_WRITE(fd, &nullBuffer[0], static_cast<TRI_write_t>(writeSize));
 
         TRI_IF_FAILURE("CreateDatafile2") {
