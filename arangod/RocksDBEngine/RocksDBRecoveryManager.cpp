@@ -132,16 +132,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   ArangodServer& _server;
 
-  // sequence number from which we start recovering
-  rocksdb::SequenceNumber const _recoveryStartSequence;
-  // latest sequence in WAL
-  rocksdb::SequenceNumber const _latestSequence;
+  struct ProgressState {
+    // sequence number from which we start recovering
+    rocksdb::SequenceNumber const recoveryStartSequence;
+    // latest sequence in WAL
+    rocksdb::SequenceNumber const latestSequence;
 
-  // informational section, used only for progress reporting
-  rocksdb::SequenceNumber _sequenceRange = 0;
-  rocksdb::SequenceNumber _rangeBegin = 0;
-  int _reportTicker = 0;
-  int _progress = 0;
+    // informational section, used only for progress reporting
+    rocksdb::SequenceNumber sequenceRange = 0;
+    rocksdb::SequenceNumber rangeBegin = 0;
+    int reportTicker = 0;
+    int progressValue = 0;
+  } _progressState;
 
   // minimum server tick we are going to accept (initialized to
   // TRI_NewTickServer())
@@ -171,8 +173,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
                     rocksdb::SequenceNumber latestSequence,
                     std::atomic<rocksdb::SequenceNumber>& currentSequence)
       : _server(server),
-        _recoveryStartSequence(recoveryStartSequence),
-        _latestSequence(latestSequence),
+        _progressState{recoveryStartSequence, latestSequence},
         _minimumServerTick(TRI_NewTickServer()),
         _maxTickFound(0),
         _maxHLCFound(0),
@@ -188,26 +189,29 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     if (_batchStartSequence == 0) {
       // for the first call, initialize the [from - to] recovery range values
-      _rangeBegin = startSequence;
-      _sequenceRange = _latestSequence - _rangeBegin;
+      _progressState.rangeBegin = startSequence;
+      _progressState.sequenceRange =
+          _progressState.latestSequence - _progressState.rangeBegin;
     }
 
     // progress reporting. only do this every 100 iterations to avoid the
     // overhead of the calculations for every new sequence number
-    if (_sequenceRange > 0 && ++_reportTicker >= 100) {
-      _reportTicker = 0;
+    if (_progressState.sequenceRange > 0 &&
+        ++_progressState.reportTicker >= 100) {
+      _progressState.reportTicker = 0;
 
-      auto progress = static_cast<int>(100.0 * (startSequence - _rangeBegin) /
-                                       _sequenceRange);
+      auto progress =
+          static_cast<int>(100.0 * (startSequence - _progressState.rangeBegin) /
+                           _progressState.sequenceRange);
 
       // report only every 5%, so that we don't flood the log with micro
       // progress
-      if (progress >= 5 && progress >= _progress + 5) {
+      if (progress >= 5 && progress >= _progressState.progressValue + 5) {
         LOG_TOPIC("fb20c", INFO, Logger::ENGINES)
             << "Recovering from sequence number " << startSequence << " ("
             << progress << "% of WAL)...";
 
-        _progress = progress;
+        _progressState.progressValue = progress;
       }
     }
 
@@ -223,7 +227,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         LOG_TOPIC("a4ec8", INFO, Logger::ENGINES)
             << "RocksDB recovery finished, "
             << "WAL entries scanned: " << _entriesScanned
-            << ", recovery start sequence number: " << _recoveryStartSequence
+            << ", recovery start sequence number: "
+            << _progressState.recoveryStartSequence
             << ", latest WAL sequence number: "
             << _engine.db()->GetLatestSequenceNumber()
             << ", max tick value found in WAL: " << _maxTickFound
