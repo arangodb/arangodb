@@ -1100,6 +1100,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   if (viewIdSlice.isNone()) {  // handle search-alias view
     auto meta = SearchMeta::make();
     fromVelocyPack(base, *meta);
+    meta->createFst();
     _meta = std::move(meta);
   } else if (!viewIdSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

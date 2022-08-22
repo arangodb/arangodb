@@ -27,6 +27,7 @@
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/ViewSnapshot.h"
 #include "Containers/FlatHashMap.h"
+#include "IResearchFilterFactory.h"
 
 #include <shared_mutex>
 #include <atomic>
@@ -54,15 +55,18 @@ struct SearchMeta final {
   using Map = std::map<std::string, Field, std::less<>>;
   Map fieldToAnalyzer;
 
-  static std::shared_ptr<SearchMeta> make();
+  [[nodiscard]] static std::shared_ptr<SearchMeta> make();
+
+  void createFst();
+
   [[nodiscard]] MetaFst const* getFst() const;
 
- private:
-  mutable std::unique_ptr<MetaFst> fst;
-};
+  [[nodiscard]] AnalyzerProvider createProvider(
+      std::function<FieldMeta::Analyzer(std::string_view)> getAnalyzer) const;
 
-std::string_view findLongestCommonPrefix(MetaFst const& fst,
-                                         std::string_view key) noexcept;
+ private:
+  std::unique_ptr<MetaFst const> _fst;
+};
 
 class Search final : public LogicalView {
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;

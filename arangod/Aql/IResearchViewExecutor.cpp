@@ -560,36 +560,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
       }
       return FieldMeta::Analyzer{std::move(analyzer), std::string{shortName}};
     };
-
-    struct Field final {
-      FieldMeta::Analyzer analyzer;
-      bool includeAllFields;
-    };
-    containers::FlatHashMap<std::string_view, Field> fieldToAnalyzer;
-    for (auto const& [name, field] : meta->fieldToAnalyzer) {
-      fieldToAnalyzer.emplace(
-          name, Field{getAnalyzer(field.analyzer), field.includeAllFields});
-    }
-
-    // we don't want create few _provider in parallel.
-    // so it should be safe
-    auto const* fst = meta->getFst();
-
-    _provider = [fieldToAnalyzer = std::move(fieldToAnalyzer),
-                 fst](std::string_view field) -> FieldMeta::Analyzer const& {
-      auto it = fieldToAnalyzer.find(field);  // fast-path O(1)
-      if (it != fieldToAnalyzer.end()) {
-        return it->second.analyzer;
-      }
-      auto prefix = findLongestCommonPrefix(*fst, field);  // o(prefix.size())
-      TRI_ASSERT(prefix.size() < field.size());
-      TRI_ASSERT(field.starts_with(prefix));
-      it = fieldToAnalyzer.find(prefix);
-      if (it != fieldToAnalyzer.end() && it->second.includeAllFields) {
-        return it->second.analyzer;
-      }
-      return emptyAnalyzer();
-    };
+    _provider = meta->createProvider(getAnalyzer);
   }
 }
 
@@ -780,7 +751,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
     FieldMeta::Analyzer const identity{IResearchAnalyzerFeature::identity()};
-    AnalyzerProvider const* fieldAnalyzerProvider = nullptr;
+    AnalyzerProvider* fieldAnalyzerProvider = nullptr;
     auto const* contextAnalyzer = &identity;
     if (!infos().isOldMangling()) {
       fieldAnalyzerProvider = &_provider;
