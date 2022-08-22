@@ -154,7 +154,7 @@ A message created for this error.
 
 @EXAMPLES
 
-Create a general graph. This graph type does not make use of any sharding
+Create a General Graph. This graph type does not make use of any sharding
 strategy and is useful on the single server.
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreate}
