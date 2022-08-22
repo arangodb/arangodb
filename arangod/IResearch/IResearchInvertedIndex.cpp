@@ -786,9 +786,10 @@ Result IResearchInvertedIndex::init(
   }
 
   TRI_ASSERT(_meta._sort.sortCompression());
-  auto r = initDataStore(
-      pathExists, initCallback, static_cast<uint32_t>(_meta._version),
-      isSorted(), _meta._storedValues.columns(), _meta._sort.sortCompression());
+  auto r = initDataStore(pathExists, initCallback,
+                         static_cast<uint32_t>(_meta._version), isSorted(),
+                         _meta.hasNested(), _meta._storedValues.columns(),
+                         _meta._sort.sortCompression());
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }
