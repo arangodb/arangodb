@@ -98,6 +98,12 @@ class H2CommTask final : public GeneralCommTask<T> {
     size_t responseOffset = 0;  // current offset in response body
   };
 
+  /// verify if the transfer-encoding in the header is chunked, which is not
+  /// implemented
+  static bool transferEncodingContainsChunked(H2CommTask<T>& commTask,
+                                              Stream& strm,
+                                              std::string const& encoding);
+
   /// init h2 session
   void initNgHttp2Session();
 

@@ -56,6 +56,20 @@ struct H2Response : public HttpResponse {
 };
 
 template<SocketType T>
+bool H2CommTask<T>::transferEncodingContainsChunked(
+    H2CommTask<T>& commTask, Stream& strm, std::string const& encoding) {
+  if (basics::StringUtils::tolower(encoding).find("chunked") !=
+      std::string::npos) {
+    commTask.sendErrorResponse(
+        rest::ResponseCode::NOT_IMPLEMENTED,
+        strm.request->contentTypeResponse(), 1, TRI_ERROR_NOT_IMPLEMENTED,
+        "Parsing for transfer-encoding of type chunked not implemented.");
+    return true;
+  }
+  return false;
+}
+
+template<SocketType T>
 /*static*/ int H2CommTask<T>::on_begin_headers(nghttp2_session* session,
                                                const nghttp2_frame* frame,
                                                void* user_data) {
@@ -109,6 +123,12 @@ template<SocketType T>
   // https://http2.github.io/http2-spec/#rfc.section.8.1.2.3
   std::string_view field(reinterpret_cast<const char*>(name), namelen);
   std::string_view val(reinterpret_cast<const char*>(value), valuelen);
+
+  if (basics::StringUtils::tolower({field}) == "transfer-encoding") {
+    if (transferEncodingContainsChunked(*me, *strm, std::string(field))) {
+      return -1;
+    }
+  }
 
   if (std::string_view(":method") == field) {
     strm->request->setRequestType(GeneralRequest::translateMethod(val));

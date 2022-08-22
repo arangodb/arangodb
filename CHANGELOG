@@ -1,6 +1,9 @@
 devel
 -----
 
+* Implemented handling of requests with Transfer-Encodign chunked, which is 
+  not implemented.
+
 * Updated ArangoDB Starter to 0.15.5-preview-2.
 
 * Fixed BTS-918 (incorrectly navigating back 1 level in history when a modal-dialog element is present).

@@ -72,6 +72,22 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
 }
 }  // namespace
 
+// must be called before on_header_complete because llhttp calls
+// on_header_complete when it's already acknowledge the body
+template<SocketType T>
+bool HttpCommTask<T>::transferEncodingContainsChunked(
+    HttpCommTask<T>& commTask, std::string const& encoding) {
+  if (basics::StringUtils::tolower(encoding).find("chunked") !=
+      std::string::npos) {
+    commTask.sendErrorResponse(
+        rest::ResponseCode::NOT_IMPLEMENTED,
+        commTask._request->contentTypeResponse(), 1, TRI_ERROR_NOT_IMPLEMENTED,
+        "Parsing for transfer-encoding of type chunked not implemented.");
+    return true;
+  }
+  return false;
+}
+
 template<SocketType T>
 int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
@@ -133,6 +149,12 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
   if (me->_lastHeaderWasValue) {
     me->_lastHeaderValue.append(at, len);
   } else {
+    if (basics::StringUtils::tolower(me->_lastHeaderField) ==
+        "transfer-encoding") {
+      if (transferEncodingContainsChunked(*me, {at, len})) {
+        return -1;
+      }
+    }
     me->_lastHeaderValue.assign(at, len);
   }
   me->_lastHeaderWasValue = true;
