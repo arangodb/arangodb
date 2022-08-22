@@ -66,7 +66,7 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
               LoggerContext(Logger::REPLICATED_STATE)
                   .with<logContextKeyDatabaseName>(_gid.database)
                   .with<logContextKeyLogId>(_gid.id);
-          LOG_CTX("0da00", WARN, logContext)
+          LOG_CTX("0da00", INFO, logContext)
               << "Result ignored while applying transaction " << doc.tid
               << " with operation " << to_string(doc.operation) << " on shard "
               << doc.shardId << ": " << res.result();
