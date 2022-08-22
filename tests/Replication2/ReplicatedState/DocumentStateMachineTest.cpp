@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <fakeit.hpp>
 
 #include "Replication2/ReplicatedLog/TestHelper.h"
 
@@ -42,160 +43,57 @@ using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
-struct MockDocumentStateAgencyHandler : IDocumentStateAgencyHandler {
-  auto getCollectionPlan(std::string const& collectionId)
-      -> std::shared_ptr<velocypack::Builder> override {
-    return std::make_shared<VPackBuilder>();
-  }
-
-  auto reportShardInCurrent(
-      std::string const& collectionId, std::string const& shardId,
-      std::shared_ptr<velocypack::Builder> const& properties)
-      -> Result override {
-    shards.emplace_back(shardId, collectionId);
-    return {};
-  }
-
-  // A mapping between shardId and collectionId
-  std::vector<std::pair<std::string, std::string>> shards;
-};
-
-struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
-  MockDocumentStateShardHandler() : shardId{0} {};
-
-  auto createLocalShard(std::string const& collectionId,
-                        std::shared_ptr<velocypack::Builder> const& properties)
-      -> ResultT<std::string> override {
-    ++shardId;
-    return ResultT<std::string>::success(std::to_string(shardId));
-  }
-
-  int shardId;
-};
-
-struct MockDocumentStateTransaction : IDocumentStateTransaction {
-  explicit MockDocumentStateTransaction(TransactionId tid) : tid(tid) {}
-
-  auto apply(DocumentLogEntry const& entry)
-      -> DocumentStateTransactionResult override {
-    TRI_ASSERT(!applied);
-    applied = true;
-    return DocumentStateTransactionResult{TransactionId{1},
-                                          OperationResult{Result{}, {}}};
-  }
-
-  auto commit() -> Result override {
-    TRI_ASSERT(!committed);
-    committed = true;
-    return Result{};
-  }
-
-  auto abort() -> Result override {
-    TRI_ASSERT(!aborted);
-    aborted = true;
-    return Result{};
-  }
-
-  TransactionId tid;
-  bool ensured = false;
-  bool applied = false;
-  bool committed = false;
-  bool removed = false;
-  bool aborted = false;
-};
-
-struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
-  auto applyEntry(DocumentLogEntry doc) -> Result override {
-    auto trx = ensureTransaction(doc);
-    TRI_ASSERT(trx != nullptr);
-    switch (doc.operation) {
-      case OperationType::kInsert:
-      case OperationType::kUpdate:
-      case OperationType::kReplace:
-      case OperationType::kRemove:
-      case OperationType::kTruncate: {
-        auto res = trx->apply(doc);
-        return res.result();
-      }
-      case OperationType::kCommit: {
-        auto res = trx->commit();
-        removeTransaction(doc.tid);
-        return res;
-      }
-      case OperationType::kAbort: {
-        auto res = trx->abort();
-        removeTransaction(doc.tid);
-        return res;
-      }
-      case OperationType::kAbortAllOngoingTrx:
-        // do nothing
-        break;
-      default:
-        TRI_ASSERT(false);
-    }
-    return {};
-  }
-
-  auto ensureTransaction(DocumentLogEntry doc)
-      -> std::shared_ptr<IDocumentStateTransaction> override {
-    if (auto trx = getTransaction(doc.tid)) {
-      return trx;
-    }
-    auto trx = std::make_shared<MockDocumentStateTransaction>(doc.tid);
-    trx->ensured = true;
-    transactions.emplace(doc.tid, trx);
-    return trx;
-  }
-
-  void removeTransaction(TransactionId tid) override {
-    auto trx = getTransaction(tid);
-    trx->removed = true;
-    transactions.erase(tid);
-  }
-
-  auto getTransaction(TransactionId tid)
-      -> std::shared_ptr<MockDocumentStateTransaction> {
-    if (auto trx = transactions.find(tid); trx != transactions.end()) {
-      return trx->second;
-    }
-    return nullptr;
-  }
-
-  std::string database;
-  std::unordered_map<TransactionId,
-                     std::shared_ptr<MockDocumentStateTransaction>>
-      transactions;
-};
-
-struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
-  MockDocumentStateHandlersFactory(
-      std::shared_ptr<IDocumentStateAgencyHandler> ah,
-      std::shared_ptr<IDocumentStateShardHandler> sh,
-      MockDocumentStateTransactionHandler*& transactionHandler)
-      : agencyHandler(std::move(ah)),
-        shardHandler(std::move(sh)),
-        transactionHandler(transactionHandler) {}
+struct MockDocumentStateHandlersFactory
+    : IDocumentStateHandlersFactory,
+      std::enable_shared_from_this<MockDocumentStateHandlersFactory> {
+  MockDocumentStateHandlersFactory() { reset(); }
 
   auto createAgencyHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateAgencyHandler> override {
-    return agencyHandler;
+    return std::shared_ptr<IDocumentStateAgencyHandler>(
+        &agencyHandlerMock.get());
   }
 
   auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override {
-    return shardHandler;
+    fakeit::When(Method(shardHandlerMock, createLocalShard))
+        .AlwaysReturn(ResultT<std::string>::success(
+            DocumentStateShardHandler::stateIdToShardId(gid.id)));
+    return std::shared_ptr<IDocumentStateShardHandler>(&shardHandlerMock.get());
   }
 
   auto createTransactionHandler(GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override {
-    auto th = std::make_unique<MockDocumentStateTransactionHandler>();
-    transactionHandler = th.get();
-    return std::move(th);
+    fakeit::Fake(Dtor(dbGuardMock));
+    auto transactionHandler = std::make_unique<DocumentStateTransactionHandler>(
+        std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
+        shared_from_this());
+    transactionHandlerPtrs.push_back(transactionHandler.get());
+    return transactionHandler;
   }
 
-  std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler;
-  std::shared_ptr<IDocumentStateShardHandler> shardHandler;
-  MockDocumentStateTransactionHandler*& transactionHandler;
+  auto createTransaction(DocumentLogEntry const& doc,
+                         IDatabaseGuard const& dbGuard)
+      -> std::shared_ptr<IDocumentStateTransaction> override {
+    return std::shared_ptr<IDocumentStateTransaction>(&transactionMock.get());
+  }
+
+  void reset() {
+    agencyHandlerMock.ClearInvocationHistory();
+    shardHandlerMock.ClearInvocationHistory();
+    transactionMock.ClearInvocationHistory();
+    transactionHandlerPtrs.clear();
+    fakeit::When(Method(agencyHandlerMock, getCollectionPlan))
+        .AlwaysReturn(std::make_shared<VPackBuilder>());
+    fakeit::When(Method(agencyHandlerMock, reportShardInCurrent))
+        .AlwaysReturn(Result{});
+  }
+
+  fakeit::Mock<IDocumentStateAgencyHandler> agencyHandlerMock;
+  fakeit::Mock<IDocumentStateShardHandler> shardHandlerMock;
+  fakeit::Mock<IDocumentStateTransaction> transactionMock;
+  fakeit::Mock<IDatabaseGuard> dbGuardMock;
+  std::vector<DocumentStateTransactionHandler*> transactionHandlerPtrs;
 };
 
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
@@ -206,126 +104,360 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
 
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
-  std::shared_ptr<MockDocumentStateAgencyHandler> agencyHandler =
-      std::make_shared<MockDocumentStateAgencyHandler>();
-  std::shared_ptr<MockDocumentStateShardHandler> shardHandler =
-      std::make_shared<MockDocumentStateShardHandler>();
-  MockDocumentStateTransactionHandler* transactionHandler{nullptr};
-  std::shared_ptr<IDocumentStateHandlersFactory> factory =
-      std::make_shared<MockDocumentStateHandlersFactory>(
-          agencyHandler, shardHandler, transactionHandler);
+  std::shared_ptr<MockDocumentStateHandlersFactory> factory =
+      std::make_shared<MockDocumentStateHandlersFactory>();
 };
 
-TEST_F(DocumentStateMachineTest, simple_operations) {
+TEST_F(DocumentStateMachineTest, leader_follower_integration) {
   const std::string collectionId = "testCollectionID";
+  const std::string dbName = "testDB";
+  const LogId logId = LogId{1};
+  auto const shardId = DocumentStateShardHandler::stateIdToShardId(logId);
 
-  auto followerLog = makeReplicatedLog(LogId{1});
+  auto followerLog = makeReplicatedLog(logId);
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
-  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto leaderLog = makeReplicatedLog(logId);
   auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
-
   leader->triggerAsyncReplication();
-
-  auto parameters =
-      document::DocumentCoreParameters{collectionId, "testDb"}.toSharedSlice();
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
           feature->createReplicatedState(DocumentState::NAME, leaderLog));
   ASSERT_NE(leaderReplicatedState, nullptr);
-  leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
-  follower->runAllAsyncAppendEntries();
-  ASSERT_EQ(shardHandler->shardId, 1);
-  ASSERT_EQ(agencyHandler->shards.size(), 1);
-  ASSERT_EQ(agencyHandler->shards[0].first, "1");
-  ASSERT_EQ(agencyHandler->shards[0].second, collectionId);
 
+  auto coreParams = document::DocumentCoreParameters{collectionId, dbName};
+  leaderReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      coreParams.toSharedSlice());
+
+  // Very methods called during core construction
+  fakeit::Verify(
+      Method(factory->agencyHandlerMock, getCollectionPlan).Using(collectionId))
+      .Exactly(1);
+  fakeit::Verify(Method(factory->agencyHandlerMock, reportShardInCurrent)
+                     .Using(collectionId, shardId, fakeit::_))
+      .Exactly(1);
+  fakeit::Verify(Method(factory->shardHandlerMock, createLocalShard)
+                     .Using(coreParams.collectionId, fakeit::_))
+      .Exactly(1);
+
+  follower->runAllAsyncAppendEntries();
   auto leaderState = leaderReplicatedState->getLeader();
   ASSERT_NE(leaderState, nullptr);
-  ASSERT_EQ(leaderState->shardId, "1");
+  ASSERT_EQ(leaderState->shardId, shardId);
+
+  // During leader recovery, all ongoing transactions must be aborted
+  auto inMemoryLog = leader->copyInMemoryLog();
+  auto lastIndex = inMemoryLog.getLastIndex();
+  auto entry = inMemoryLog.getEntryByIndex(lastIndex);
+  auto doc = velocypack::deserialize<DocumentLogEntry>(
+      entry->entry().logPayload()->slice()[1]);
+  ASSERT_EQ(doc.operation, OperationType::kAbortAllOngoingTrx);
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
           feature->createReplicatedState(DocumentState::NAME, followerLog));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
-  ASSERT_EQ(shardHandler->shardId, 2);
-  ASSERT_EQ(agencyHandler->shards.size(), 2);
-  ASSERT_EQ(agencyHandler->shards[1].first, "2");
-  ASSERT_EQ(agencyHandler->shards[1].second, collectionId);
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      coreParams.toSharedSlice());
+
+  // Very methods called during core construction
+  fakeit::Verify(
+      Method(factory->agencyHandlerMock, getCollectionPlan).Using(collectionId))
+      .Exactly(2);
+  fakeit::Verify(Method(factory->agencyHandlerMock, reportShardInCurrent)
+                     .Using(collectionId, shardId, fakeit::_))
+      .Exactly(2);
+  fakeit::Verify(Method(factory->shardHandlerMock, createLocalShard)
+                     .Using(coreParams.collectionId, fakeit::_))
+      .Exactly(2);
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
 
-  follower->runAllAsyncAppendEntries();
+  fakeit::Mock<IDocumentStateTransactionHandler> transactionHandlerFollowerSpy(
+      *factory->transactionHandlerPtrs[1]);
+  fakeit::Spy(Method(transactionHandlerFollowerSpy, applyEntry));
 
-  // insert operation
+  // Insert a document
   VPackBuilder builder;
   {
     VPackObjectBuilder ob(&builder);
-    builder.add("testfoo", "testbar");
+    builder.add("document1_key", "document1_value");
     ob->close();
 
-    // starting from index 3 because the 2nd is an AbortAllOngoingTrx
-    auto logIndex = LogIndex{3};
     auto operation = OperationType::kInsert;
     auto tid = TransactionId{1};
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
                                                tid, ReplicationOptions{});
 
     ASSERT_TRUE(res.isReady());
-    ASSERT_EQ(res.result().get(), logIndex);
+    auto logIndex = res.result().get();
 
-    follower->runAllAsyncAppendEntries();
-    auto inMemoryLog = leader->copyInMemoryLog();
-    auto entry = inMemoryLog.getEntryByIndex(logIndex);
-    auto docEntry = velocypack::deserialize<DocumentLogEntry>(
+    inMemoryLog = leader->copyInMemoryLog();
+    entry = inMemoryLog.getEntryByIndex(logIndex);
+    doc = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(docEntry.shardId, "1");
-    ASSERT_EQ(docEntry.operation, operation);
-    ASSERT_EQ(docEntry.tid, tid);
-    ASSERT_EQ(docEntry.data.get("testfoo").stringView(), "testbar");
+    ASSERT_EQ(doc.shardId, shardId);
+    ASSERT_EQ(doc.operation, operation);
+    ASSERT_EQ(doc.tid, tid);
+    ASSERT_EQ(doc.data.get("document1_key").stringView(), "document1_value");
 
-    auto trx = transactionHandler->getTransaction(tid);
-    ASSERT_NE(trx, nullptr);
-    ASSERT_TRUE(trx->ensured);
-    ASSERT_TRUE(trx->applied);
-    ASSERT_FALSE(trx->committed);
-    ASSERT_FALSE(trx->aborted);
-    ASSERT_FALSE(trx->removed);
+    fakeit::When(Method(factory->transactionMock, apply))
+        .Do([](DocumentLogEntry const& entry) {
+          return DocumentStateTransactionResult(
+              entry.tid, OperationResult{Result{}, OperationOptions{}});
+        });
+    follower->runAllAsyncAppendEntries();
+    fakeit::Verify(Method(factory->transactionMock, apply)).Exactly(1);
+    fakeit::Verify(Method(transactionHandlerFollowerSpy, applyEntry)
+                       .Using(fakeit::_, ApplyEntryErrorHandling::kFail))
+        .Exactly(1);
   }
 
-  // commit operation
+  // Commit
+  transactionHandlerFollowerSpy.ClearInvocationHistory();
   {
-    auto logIndex = LogIndex{4};
     auto operation = OperationType::kCommit;
     auto tid = TransactionId{1};
-    auto trx = transactionHandler->getTransaction(tid);
     auto res = leaderState->replicateOperation(
         velocypack::SharedSlice{}, operation, tid,
         ReplicationOptions{.waitForCommit = true});
 
     ASSERT_FALSE(res.isReady());
+    fakeit::When(Method(factory->transactionMock, commit)).Return(Result{});
+
     follower->runAllAsyncAppendEntries();
     ASSERT_TRUE(res.isReady());
-    ASSERT_EQ(res.result().get(), logIndex);
+    auto logIndex = res.result().get();
+    fakeit::Verify(Method(factory->transactionMock, commit)).Exactly(1);
+    fakeit::Verify(Method(transactionHandlerFollowerSpy, applyEntry)
+                       .Using(fakeit::_, ApplyEntryErrorHandling::kFail))
+        .Exactly(1);
 
-    follower->runAllAsyncAppendEntries();
-    auto inMemoryLog = leader->copyInMemoryLog();
-    auto entry = inMemoryLog.getEntryByIndex(logIndex);
-    auto docEntry = velocypack::deserialize<DocumentLogEntry>(
+    inMemoryLog = follower->copyInMemoryLog();
+    entry = inMemoryLog.getEntryByIndex(logIndex);
+    doc = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(docEntry.shardId, "1");
-    ASSERT_EQ(docEntry.operation, operation);
-    ASSERT_EQ(docEntry.tid, tid);
-    ASSERT_TRUE(docEntry.data.isNone());
-
-    ASSERT_NE(trx, nullptr);
-    ASSERT_TRUE(trx->committed);
-    ASSERT_TRUE(trx->removed);
-    ASSERT_FALSE(trx->aborted);
+    ASSERT_EQ(doc.shardId, shardId);
+    ASSERT_EQ(doc.operation, operation);
+    ASSERT_EQ(doc.tid, tid);
+    ASSERT_TRUE(doc.data.isNone());
   }
+}
+
+TEST(DocumentStateTransactionHandlerTest, test_ensureTransaction) {
+  fakeit::Mock<IDatabaseGuard> dbGuardMock;
+  fakeit::Mock<IDocumentStateHandlersFactory> handlersFactoryMock;
+  fakeit::Mock<IDocumentStateTransaction> transactionMock;
+
+  fakeit::Fake(Dtor(dbGuardMock));
+  auto transactionHandler = DocumentStateTransactionHandler(
+      std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
+      std::shared_ptr<IDocumentStateHandlersFactory>(
+          &handlersFactoryMock.get()));
+
+  auto tid = TransactionId{1};
+  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
+                              velocypack::SharedSlice(), tid};
+
+  fakeit::When(Method(handlersFactoryMock, createTransaction))
+      .Return(
+          std::shared_ptr<IDocumentStateTransaction>(&transactionMock.get()));
+
+  // Use a new entry and expect the transaction to be created
+  auto trx = transactionHandler.ensureTransaction(doc);
+  fakeit::Verify(Method(handlersFactoryMock, createTransaction)).Once();
+
+  // Use an existing entry, and expect the transaction to be reused
+  ASSERT_EQ(trx, transactionHandler.ensureTransaction(doc));
+  fakeit::VerifyNoOtherInvocations(handlersFactoryMock);
+}
+
+TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
+  fakeit::Mock<IDatabaseGuard> dbGuardMock;
+  fakeit::Mock<IDocumentStateHandlersFactory> handlersFactoryMock;
+  fakeit::Mock<IDocumentStateTransaction> transactionMock;
+
+  fakeit::Fake(Dtor(dbGuardMock));
+  auto transactionHandler = DocumentStateTransactionHandler(
+      std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
+      std::shared_ptr<IDocumentStateHandlersFactory>(
+          &handlersFactoryMock.get()));
+  fakeit::Mock<IDocumentStateTransactionHandler> transactionHandlerSpy(
+      transactionHandler);
+
+  fakeit::When(Method(handlersFactoryMock, createTransaction))
+      .AlwaysDo(
+          [&transactionMock](DocumentLogEntry const&, IDatabaseGuard const&) {
+            return std::shared_ptr<IDocumentStateTransaction>(
+                &transactionMock.get());
+          });
+  fakeit::When(Method(transactionMock, apply))
+      .AlwaysDo([](DocumentLogEntry const& entry) {
+        return DocumentStateTransactionResult(
+            entry.tid, OperationResult{Result{}, OperationOptions{}});
+      });
+
+  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
+                              velocypack::SharedSlice(), TransactionId{1}};
+
+  // Expect the transaction to be started an applied successfully
+  auto result =
+      transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  ASSERT_TRUE(result.ok());
+  fakeit::Verify(Method(transactionMock, apply)).Once();
+
+  // After commit, expect the transaction to be removed
+  fakeit::Spy(Method(transactionHandlerSpy, removeTransaction));
+  fakeit::When(Method(transactionMock, commit)).Return(Result{});
+  doc.operation = OperationType::kCommit;
+  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  ASSERT_TRUE(result.ok());
+  fakeit::Verify(Method(transactionMock, commit)).Once();
+  fakeit::Verify(Method(transactionHandlerSpy, removeTransaction)).Once();
+
+  // Start a new transaction and then abort it.
+  transactionMock.ClearInvocationHistory();
+  transactionHandlerSpy.ClearInvocationHistory();
+  doc = DocumentLogEntry{"s1234", OperationType::kRemove,
+                         velocypack::SharedSlice(), TransactionId{2}};
+  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  ASSERT_TRUE(result.ok());
+  fakeit::Verify(Method(transactionMock, apply)).Once();
+
+  // Expect the transaction to be removed after abort
+  fakeit::When(Method(transactionMock, abort)).Return(Result{});
+  doc.operation = OperationType::kAbort;
+  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  ASSERT_TRUE(result.ok());
+  fakeit::Verify(Method(transactionMock, abort)).Once();
+  fakeit::Verify(Method(transactionHandlerSpy, removeTransaction)).Once();
+
+  // No transaction should be created during AbortAllOngoingTrx
+  transactionHandlerSpy.ClearInvocationHistory();
+  doc.operation = OperationType::kAbortAllOngoingTrx;
+  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  ASSERT_TRUE(result.ok());
+  fakeit::Verify(Method(transactionHandlerSpy, ensureTransaction)).Never();
+}
+
+TEST(DocumentStateTransactionHandlerTest,
+     test_applyEntry_error_without_recovery) {
+  fakeit::Mock<IDatabaseGuard> dbGuardMock;
+  fakeit::Mock<IDocumentStateHandlersFactory> handlersFactoryMock;
+  fakeit::Mock<IDocumentStateTransaction> transactionMock;
+
+  fakeit::Fake(Dtor(dbGuardMock));
+  auto transactionHandler = DocumentStateTransactionHandler(
+      std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
+      std::shared_ptr<IDocumentStateHandlersFactory>(
+          &handlersFactoryMock.get()));
+
+  fakeit::When(Method(handlersFactoryMock, createTransaction))
+      .AlwaysDo(
+          [&transactionMock](DocumentLogEntry const&, IDatabaseGuard const&) {
+            return std::shared_ptr<IDocumentStateTransaction>(
+                &transactionMock.get());
+          });
+
+  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
+                              velocypack::SharedSlice(), TransactionId{1}};
+
+  // OperationResult failed, transaction should fail
+  fakeit::When(Method(transactionMock, apply))
+      .Do([](DocumentLogEntry const& entry) {
+        return DocumentStateTransactionResult(
+            entry.tid,
+            OperationResult{Result{TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION},
+                            OperationOptions{}});
+      });
+  auto result =
+      transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  ASSERT_TRUE(result.fail());
+  fakeit::Verify(Method(transactionMock, apply)).Exactly(1);
+
+  // Unique constraint violation, should fail because we are not doing recovery
+  fakeit::When(Method(transactionMock, apply))
+      .Do([](DocumentLogEntry const& entry) {
+        auto opRes = OperationResult{Result{}, OperationOptions{}};
+        opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] = 1;
+        return DocumentStateTransactionResult(entry.tid, std::move(opRes));
+      });
+  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  ASSERT_TRUE(result.fail());
+  fakeit::Verify(Method(transactionMock, apply)).Exactly(2);
+
+  // Other type of error inside countErrorCodes
+  fakeit::When(Method(transactionMock, apply))
+      .Do([](DocumentLogEntry const& entry) {
+        auto opRes = OperationResult{Result{}, OperationOptions{}};
+        opRes.countErrorCodes[TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION] = 1;
+        return DocumentStateTransactionResult(entry.tid, std::move(opRes));
+      });
+  result = transactionHandler.applyEntry(doc, ApplyEntryErrorHandling::kFail);
+  ASSERT_TRUE(result.fail());
+  fakeit::Verify(Method(transactionMock, apply)).Exactly(3);
+}
+
+TEST(DocumentStateTransactionHandlerTest,
+     test_applyEntry_error_during_recovery) {
+  fakeit::Mock<IDatabaseGuard> dbGuardMock;
+  fakeit::Mock<IDocumentStateHandlersFactory> handlersFactoryMock;
+  fakeit::Mock<IDocumentStateTransaction> transactionMock;
+
+  fakeit::Fake(Dtor(dbGuardMock));
+  auto transactionHandler = DocumentStateTransactionHandler(
+      std::unique_ptr<IDatabaseGuard>(&dbGuardMock.get()),
+      std::shared_ptr<IDocumentStateHandlersFactory>(
+          &handlersFactoryMock.get()));
+
+  fakeit::When(Method(handlersFactoryMock, createTransaction))
+      .AlwaysDo(
+          [&transactionMock](DocumentLogEntry const&, IDatabaseGuard const&) {
+            return std::shared_ptr<IDocumentStateTransaction>(
+                &transactionMock.get());
+          });
+
+  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
+                              velocypack::SharedSlice(), TransactionId{1}};
+
+  // OperationResult failed, transaction should fail
+  fakeit::When(Method(transactionMock, apply))
+      .Do([](DocumentLogEntry const& entry) {
+        return DocumentStateTransactionResult(
+            entry.tid,
+            OperationResult{Result{TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION},
+                            OperationOptions{}});
+      });
+  auto result = transactionHandler.applyEntry(
+      doc, ApplyEntryErrorHandling::kIgnoreRecoveryErrors);
+  ASSERT_TRUE(result.fail());
+  fakeit::Verify(Method(transactionMock, apply)).Exactly(1);
+
+  // Unique constraint violation, should not fail because we are doing recovery
+  fakeit::When(Method(transactionMock, apply))
+      .Do([](DocumentLogEntry const& entry) {
+        auto opRes = OperationResult{Result{}, OperationOptions{}};
+        opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] = 1;
+        return DocumentStateTransactionResult(entry.tid, std::move(opRes));
+      });
+  result = transactionHandler.applyEntry(
+      doc, ApplyEntryErrorHandling::kIgnoreRecoveryErrors);
+  ASSERT_FALSE(result.fail());
+  fakeit::Verify(Method(transactionMock, apply)).Exactly(2);
+
+  // Other type of error inside countErrorCodes, transaction should fail
+  fakeit::When(Method(transactionMock, apply))
+      .Do([](DocumentLogEntry const& entry) {
+        auto opRes = OperationResult{Result{}, OperationOptions{}};
+        opRes.countErrorCodes[TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION] = 1;
+        return DocumentStateTransactionResult(entry.tid, std::move(opRes));
+      });
+  result = transactionHandler.applyEntry(
+      doc, ApplyEntryErrorHandling::kIgnoreRecoveryErrors);
+  ASSERT_TRUE(result.fail());
+  fakeit::Verify(Method(transactionMock, apply)).Exactly(3);
 }
