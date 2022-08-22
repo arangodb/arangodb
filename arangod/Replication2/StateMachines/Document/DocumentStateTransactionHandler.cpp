@@ -32,11 +32,9 @@
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
-    GlobalLogIdentifier gid, DatabaseFeature& databaseFeature,
+    std::unique_ptr<IDatabaseGuard> dbGuard,
     std::shared_ptr<IDocumentStateHandlersFactory> factory)
-    : _gid(std::move(gid)),
-      _db(databaseFeature, _gid.database),
-      _factory(std::move(factory)) {}
+    : _dbGuard(std::move(dbGuard)), _factory(std::move(factory)) {}
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
     -> std::shared_ptr<IDocumentStateTransaction> {
@@ -92,7 +90,6 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }
-
   } catch (basics::Exception& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception& e) {
@@ -100,14 +97,19 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
   }
 }
 
-auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry doc)
-    -> std::shared_ptr<IDocumentStateTransaction> {
+auto DocumentStateTransactionHandler::ensureTransaction(
+    DocumentLogEntry const& doc) -> std::shared_ptr<IDocumentStateTransaction> {
   auto tid = doc.tid;
   auto trx = getTrx(tid);
   if (trx != nullptr) {
     return trx;
   }
-  trx = _factory->createTransaction(doc, _db.database());
+
+  TRI_ASSERT(doc.operation != OperationType::kCommit);
+  TRI_ASSERT(doc.operation != OperationType::kAbort);
+  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
+
+  trx = _factory->createTransaction(doc, *_dbGuard);
   _transactions.emplace(tid, trx);
   return trx;
 }

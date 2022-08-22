@@ -71,7 +71,7 @@ struct IDocumentStateHandlersFactory {
   virtual auto createTransactionHandler(GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(DocumentLogEntry const& doc,
-                                 TRI_vocbase_t& vocbase)
+                                 IDatabaseGuard const& dbGuard)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
 };
 
@@ -89,7 +89,8 @@ class DocumentStateHandlersFactory
       -> std::shared_ptr<IDocumentStateShardHandler> override;
   auto createTransactionHandler(GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
-  auto createTransaction(DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
+  auto createTransaction(DocumentLogEntry const& doc,
+                         IDatabaseGuard const& dbGuard)
       -> std::shared_ptr<IDocumentStateTransaction> override;
 
  private:

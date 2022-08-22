@@ -41,7 +41,7 @@ class DocumentStateTransaction;
 struct IDocumentStateTransactionHandler {
   virtual ~IDocumentStateTransactionHandler() = default;
   virtual auto applyEntry(DocumentLogEntry doc) -> Result = 0;
-  virtual auto ensureTransaction(DocumentLogEntry doc)
+  virtual auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
 };
@@ -50,10 +50,10 @@ class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
   explicit DocumentStateTransactionHandler(
-      GlobalLogIdentifier gid, DatabaseFeature& databaseFeature,
+      std::unique_ptr<IDatabaseGuard> dbGuard,
       std::shared_ptr<IDocumentStateHandlersFactory> factory);
   auto applyEntry(DocumentLogEntry doc) -> Result override;
-  auto ensureTransaction(DocumentLogEntry doc)
+  auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;
 
@@ -61,8 +61,7 @@ class DocumentStateTransactionHandler
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
 
  private:
-  GlobalLogIdentifier _gid;
-  DatabaseGuard _db;
+  std::unique_ptr<IDatabaseGuard> _dbGuard;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
   std::unordered_map<TransactionId, std::shared_ptr<IDocumentStateTransaction>>
       _transactions;

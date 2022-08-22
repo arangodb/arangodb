@@ -27,6 +27,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -55,11 +56,12 @@ auto DocumentStateHandlersFactory::createTransactionHandler(
     GlobalLogIdentifier gid)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
   return std::make_unique<DocumentStateTransactionHandler>(
-      std::move(gid), _databaseFeature, shared_from_this());
+      std::make_unique<DatabaseGuard>(_databaseFeature, gid.database),
+      shared_from_this());
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
-    DocumentLogEntry const& doc, TRI_vocbase_t& vocbase)
+    DocumentLogEntry const& doc, IDatabaseGuard const& dbGuard)
     -> std::shared_ptr<IDocumentStateTransaction> {
   TRI_ASSERT(doc.operation != OperationType::kCommit &&
              doc.operation != OperationType::kAbort);
@@ -68,8 +70,8 @@ auto DocumentStateHandlersFactory::createTransaction(
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
 
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(vocbase, doc.tid,
-                                                               options);
+  auto state = std::make_shared<SimpleRocksDBTransactionState>(
+      dbGuard.database(), doc.tid, options);
 
   auto ctx = std::make_shared<transaction::ReplicatedContext>(doc.tid, state);
 
