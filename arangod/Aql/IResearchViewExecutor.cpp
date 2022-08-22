@@ -566,11 +566,12 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     containers::FlatHashMap<std::string_view, FieldMeta::Analyzer>
         fieldToAnalyzer;
 
-    if (meta->includeAllFields) {
-      rootAnalyzer = getAnalyzer(meta->rootAnalyzer);
+    if (auto it = meta->fieldToAnalyzer.begin();
+        it != meta->fieldToAnalyzer.end() && it->first == "") {
+      rootAnalyzer = getAnalyzer(it->second.analyzer);
     }
-    for (auto const& [field, analyzer] : meta->fieldToAnalyzer) {
-      fieldToAnalyzer.emplace(field, getAnalyzer(analyzer));
+    for (auto const& [name, field] : meta->fieldToAnalyzer) {
+      fieldToAnalyzer.emplace(name, getAnalyzer(field.analyzer));
     }
     _provider = [rootAnalyzer = std::move(rootAnalyzer),
                  fieldToAnalyzer = std::move(fieldToAnalyzer)](

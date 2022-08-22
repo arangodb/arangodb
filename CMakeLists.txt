@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.21)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -270,6 +270,8 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
+set(BUILD_SHARED_LIBS OFF)
+
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -355,11 +357,7 @@ set(INSTALL_CONFIGFILES_LIST)
 # update files containing VERSION information
 # ------------------------------------------------------------------------------
 
-if (${CMAKE_MAJOR_VERSION} EQUAL 2)
-  set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
-else ()
-  string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-endif ()
+string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -596,10 +594,11 @@ include(CheckCompilerVersion)
 CheckCompilerVersion(
   11.2 # GCC
   14.0 # Clang
-  1932 # MSVC
+  19.32 # MSVC
 )
 
 if (MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
   # Increase the reserved stack size for all threads to 4MB
@@ -1428,41 +1427,6 @@ add_subdirectory(arangod)
 if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif ()
-
-option(BUILD_SEPP "Build SEPP (Storage Engine Performance Prediction)" OFF)
-
-if (BUILD_SEPP)
-  set(ARANGODB_SEPP_SOURCES
-    tests/sepp/main.cpp
-    tests/sepp/Execution.cpp
-    tests/sepp/ExecutionThread.cpp
-    tests/sepp/Runner.cpp
-    tests/sepp/RocksDBOptions.cpp
-    tests/sepp/Server.cpp
-    tests/sepp/ValueGenerators/RandomStringGenerator.cpp
-    tests/sepp/Workloads/GetByPrimaryKey.cpp
-    tests/sepp/Workloads/InsertDocuments.cpp
-    tests/sepp/Workloads/IterateDocuments.cpp
-  )
-
-  add_executable(
-    sepp
-    ${ARANGODB_SEPP_SOURCES}
-  )
-
-  target_include_directories(sepp PRIVATE
-    ${PROJECT_SOURCE_DIR}/arangod
-    ${PROJECT_SOURCE_DIR}/tests/sepp
-  )
-
-  target_link_libraries(sepp
-    arango_rocksdb
-    arangoserver
-    rocksdb
-    snappy
-    boost_boost
-  )
-endif()
 
 add_dependencies(arangobench   zlibstatic)
 if (USE_ENTERPRISE)

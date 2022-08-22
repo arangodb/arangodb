@@ -183,10 +183,6 @@ exports.waitForShardsInSync = function(cn, timeout) {
   assertTrue(false, "Shards were not getting in sync in time, giving up!");
 };
 
-exports.getEndpointById = function (id) {
-  return endpointToURL(global.ArangoClusterInfo.getServerEndpoint(id));
-};
-
 exports.getCoordinators = function () {
   // Note that the client implementation has more information, not all of which
   // we have available.
