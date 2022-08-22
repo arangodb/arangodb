@@ -73,7 +73,7 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
 }  // namespace
 
 // must be called before on_header_complete because llhttp calls
-// on_header_complete when it's already acknowledge the body
+// on_header_complete when it's already acknowledged the body
 template<SocketType T>
 bool HttpCommTask<T>::transferEncodingContainsChunked(
     HttpCommTask<T>& commTask, std::string const& encoding) {
