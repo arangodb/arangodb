@@ -295,7 +295,7 @@ graph._drop("smartGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Create an EnterpriseGraph. This graph uses 9 shards,
-it does not make use of specific sharding locations..
+it does not make use of specific sharding attributes.
 Available in the Enterprise Edition only.
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialCreateEnterprise}
