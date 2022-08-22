@@ -2197,10 +2197,10 @@ function testSmallCircleTestDocumentsShardsAPI(testGraph) {
       // - Disjoint Enterprise Graph
       assertEqual(db._collection(vn).shards().length, testGraph.amountOfShards());
       if (testGraph.isDisjoint()) {
-        // x2 (_local_, _from_)
-        assertEqual(db._collection(en).shards().length, testGraph.amountOfShards() * 2);
+        // "x1" (_local_)
+        assertEqual(db._collection(en).shards().length, testGraph.amountOfShards());
       } else {
-        // x3 (_local_, _from_, _to_)
+        // "x3" (_local_, _from_, _to_)
         assertEqual(db._collection(en).shards().length, testGraph.amountOfShards() * 3);
       }
     } else if (testGraph.isSatellite()) {
