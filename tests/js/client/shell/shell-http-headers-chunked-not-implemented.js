@@ -29,7 +29,6 @@
 
 const jsunity = require("jsunity");
 const request = require('@arangodb/request').request;
-const _ = require("lodash");
 
 function headerWithChunkedEncodingSuite() {
   'use strict';
