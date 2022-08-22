@@ -308,16 +308,46 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   std::vector<std::pair<size_t, bool>> scoresSort;
   for (auto const& sort : sortElements) {
     TRI_ASSERT(sort.var);
-    if (auto const* varSetBy = plan->getVarSetBy(sort.var->id);
-        varSetBy != &viewNode) {
-      // Scorers must be always evaluated by IResearchViewNode
-      return false;
+
+    auto const* varSetBy = plan->getVarSetBy(sort.var->id);
+    TRI_ASSERT(varSetBy);
+
+    aql::Variable const* sortVariable{};
+    switch (varSetBy->getType()) {
+      case ExecutionNode::CALCULATION: {
+        auto* calc = ExecutionNode::castTo<CalculationNode const*>(varSetBy);
+        TRI_ASSERT(calc->expression());
+
+        auto const* astCalcNode = calc->expression()->node();
+        if (!astCalcNode ||
+            astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
+          // Not a reference?  Seems that it is not
+          // something produced by during search function replacement.
+          // e.g. it is expected to be LET sortVar = scorerVar;
+          // Definately not something we could handle.
+          return false;
+        }
+
+        sortVariable =
+            reinterpret_cast<aql::Variable const*>(astCalcNode->getData());
+        TRI_ASSERT(sortVariable);
+        break;
+      }
+      case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // FIXME (Dronplane): here we should deal with stored
+        //                    values when we will support such optimization
+        [[fallthrough]];
+      default:
+        TRI_ASSERT(false);
+        return false;
     }
 
-    auto s = std::find_if(std::begin(scorers), std::end(scorers),
-                          [sortVariableId = sort.var->id](SearchFunc const& t) {
-                            return t.var->id == sortVariableId;
-                          });
+    TRI_ASSERT(sortVariable);
+    auto const s = std::find_if(
+        std::begin(scorers), std::end(scorers),
+        [sortVariableId = sortVariable->id](auto const& t) noexcept {
+          return t.var->id == sortVariableId;
+        });
     if (s == std::end(scorers)) {
       return false;
     }
@@ -433,9 +463,9 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       return false;
     }
 
-    // we are almost done... but we need to do a final check and verify that our
-    // sort node itself is not followed by another node that injects more data
-    // into the result or that re-sorts it
+    // we are almost done... but we need to do a final check and verify that
+    // our sort node itself is not followed by another node that injects more
+    // data into the result or that re-sorts it
     while (current->hasParent()) {
       current = current->getFirstParent();
       if (current->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW ||
@@ -446,8 +476,9 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           current->getType() == ExecutionNode::INDEX ||
           current->getType() == ExecutionNode::COLLECT ||
           current->getType() == ExecutionNode::SORT) {
-        // any of these node types will lead to more/less results in the output,
-        // and may as well change the sort order, so let's better abort here
+        // any of these node types will lead to more/less results in the
+        // output, and may as well change the sort order, so let's better
+        // abort here
         return false;
       }
     }
@@ -457,7 +488,8 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
     sortNode->_reinsertInCluster = false;
     if (!arangodb::ServerState::instance()->isCoordinator()) {
-      // in cluster node will be unlinked later by 'distributeSortToClusterRule'
+      // in cluster node will be unlinked later by
+      // 'distributeSortToClusterRule'
       plan->unlinkNode(sortNode);
     }
 
@@ -603,21 +635,18 @@ enum class SearchFuncType { kInvalid, kScorer, kOffsetInfo };
 
 std::pair<aql::Variable const*, SearchFuncType> resolveSearchFunc(
     aql::AstNode const& node) {
-  if (aql::NODE_TYPE_FCALL != node.type &&
-      aql::NODE_TYPE_FCALL_USER != node.type) {
-    return {nullptr, SearchFuncType::kInvalid};
+  if (aql::NODE_TYPE_FCALL == node.type ||
+      aql::NODE_TYPE_FCALL_USER == node.type) {
+    auto* impl = static_cast<aql::Function*>(node.getData());
+
+    if (isScorer(*impl)) {
+      return {getSearchFuncRef(node.getMember(0)), SearchFuncType::kScorer};
+    } else if (isOffsetInfo(*impl)) {
+      return {getSearchFuncRef(node.getMember(0)), SearchFuncType::kOffsetInfo};
+    }
   }
 
-  auto* impl = static_cast<aql::Function*>(node.getData());
-
-  auto type = SearchFuncType::kInvalid;
-  if (isScorer(*impl)) {
-    type = SearchFuncType::kScorer;
-  } else if (isOffsetInfo(*impl)) {
-    type = SearchFuncType::kOffsetInfo;
-  }
-
-  return {getSearchFuncRef(node.getMember(0)), type};
+  return {nullptr, SearchFuncType::kInvalid};
 }
 
 aql::Variable const* replaceScorer(aql::CalculationNode& calcNode,
@@ -630,15 +659,11 @@ aql::Variable const* replaceScorer(aql::CalculationNode& calcNode,
     return nullptr;
   }
 
-  if (calcNode.expression()->node() != &node) {
-    auto* ast = calcNode.plan()->getAst();
-    TRI_ASSERT(ast);
-    auto* vars = ast->variables();
-    TRI_ASSERT(vars);
-    return vars->createTemporaryVariable();
-  }
-
-  return calcNode.outVariable();
+  auto* ast = calcNode.plan()->getAst();
+  TRI_ASSERT(ast);
+  auto* vars = ast->variables();
+  TRI_ASSERT(vars);
+  return vars->createTemporaryVariable();
 }
 
 aql::Variable const* replaceSearchFunc(aql::CalculationNode& calcNode,
@@ -707,19 +732,15 @@ void replaceSearchFunc(aql::CalculationNode& calcNode,
   }
 
   if (auto const [var, type] = resolveSearchFunc(*exprNode); var) {
-    // Simple expression, e.g. LET x = BM25(d)
-    if (exprNode != replaceSearchFunc(calcNode, *exprNode, dedup)) {
-      // Replace expression so referenced variables don't affect "no
-      // materializaton" optimization
-      calcNode.expression()->replaceNode(ast->createNodeNop());
-      // We don't need calculation node anymore
-      calcNode.plan()->unlinkNode(&calcNode);
-    }
+    auto* newNode = replaceSearchFunc(calcNode, *exprNode, dedup);
+    TRI_ASSERT(newNode != exprNode);
+
+    calcNode.expression()->replaceNode(newNode);
   } else if (bool const hasFunc = !arangodb::iresearch::visit<true>(
                  *exprNode,
                  [](aql::AstNode const& node) {
-                   auto const [var, type] = resolveSearchFunc(node);
-                   return !var || type == SearchFuncType::kInvalid;
+                   auto const [var, _] = resolveSearchFunc(node);
+                   return !var;
                  });
              hasFunc) {
     auto replaceFunc = [&](aql::AstNode* node) -> aql::AstNode* {
