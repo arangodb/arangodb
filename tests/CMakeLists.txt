@@ -508,6 +508,13 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
   )
+
+  # add these includes as system includes because otherwise
+  # the compiler will emit warnings for fakeit.hpp
+  target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
+  )
+
   target_link_libraries(arangodbtests_replication2 arango)
 endif()
 
