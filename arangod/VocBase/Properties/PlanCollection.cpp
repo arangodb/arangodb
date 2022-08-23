@@ -22,7 +22,9 @@
 
 #include "PlanCollection.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 
+#include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -30,19 +32,26 @@ using namespace arangodb;
 PlanCollection::PlanCollection() {}
 
 ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(VPackSlice input) {
+  if (!input.isObject()) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
   try {
     PlanCollection res;
     auto status = velocypack::deserializeWithStatus(input, res);
     if (status.ok()) {
       return res;
     }
-    if (status.path().empty() || status.path() == "name") {
+    if (status.path() == "name") {
       // Special handling to be backwards compatible error reporting
       // on "name"
       return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
     }
-    return Result{TRI_ERROR_BAD_PARAMETER,
-                  status.error() + " on path " + status.path()};
+    return Result{
+        TRI_ERROR_BAD_PARAMETER,
+        status.error() +
+            (status.path().empty() ? "" : " on path " + status.path())};
   } catch (basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception const& e) {
@@ -53,5 +62,16 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(VPackSlice input) {
 arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::serialize(builder, *this);
+  if (builder.slice().hasKey(StaticStrings::SmartJoinAttribute) &&
+      builder.slice()
+          .get(StaticStrings::SmartJoinAttribute)
+          .isEqualString("")) {
+    // TODO: This is a hack to erase the SmartJoin attribute if it was not set
+    // We need this to satisfy the API checks in LogicalCollection
+    // `initializeSmartAttributes`
+    return VPackCollection::remove(
+        builder.slice(),
+        std::vector<std::string>{StaticStrings::SmartJoinAttribute});
+  }
   return builder;
 }

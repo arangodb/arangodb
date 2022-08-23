@@ -59,6 +59,7 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
+#include "VocBase/Properties/PlanCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -593,6 +594,43 @@ void Collections::enumerate(
   }
 
   return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+}
+
+[[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
+Collections::create(         // create collection
+    TRI_vocbase_t& vocbase,  // collection vocbase
+    OperationOptions const& options,
+    std::vector<PlanCollection> collections,  // Collections to create
+    bool createWaitsForSyncReplication,       // replication wait flag
+    bool enforceReplicationFactor,            // replication factor flag
+    bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
+    bool isRestore) {
+  std::vector<std::shared_ptr<LogicalCollection>> results;
+  results.reserve(collections.size());
+  // This block is to be replaced by proper implementation
+  {
+    // In this rudimentary forward we only support single collection, as this is
+    // the only way it is used right now.
+    TRI_ASSERT(collections.size() == 1);
+    // Just plainly forward
+    auto& planCollection = collections.at(0);
+    auto parameters = planCollection.toCollectionsCreate();
+    std::shared_ptr<LogicalCollection> coll;
+    auto res = methods::Collections::create(
+        vocbase, options,
+        planCollection.name,            // collection name
+        planCollection.getType(),       // collection type
+        parameters.slice(),             // collection properties
+        createWaitsForSyncReplication,  // replication wait flag
+        enforceReplicationFactor,       // replication factor flag
+        /*isNewDatabase*/ false,        // here always false
+        coll, planCollection.isSystem);
+    if (res.fail()) {
+      return res;
+    }
+    results.emplace_back(coll);
+    return results;
+  }
 }
 
 /*static*/ arangodb::Result Collections::create(  // create collection

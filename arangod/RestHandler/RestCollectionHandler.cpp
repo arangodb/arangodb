@@ -358,20 +358,27 @@ void RestCollectionHandler::handleCommandPost() {
     events::CreateCollection(_vocbase.name(), "", planCollection.errorNumber());
     return;
   }
+  std::vector<PlanCollection> collections{std::move(planCollection.get())};
   auto parameters = planCollection->toCollectionsCreate();
-  std::shared_ptr<LogicalCollection> coll;
-  OperationOptions options(_context);
 
-  Result res = methods::Collections::create(
+  OperationOptions options(_context);
+  std::shared_ptr<LogicalCollection> coll;
+  auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
-      options,
-      planCollection->name,       // collection name
-      planCollection->getType(),  // collection type
-      parameters.slice(),         // collection properties
-      waitForSyncReplication,     // replication wait flag
-      enforceReplicationFactor,   // replication factor flag
-      /*isNewDatabase*/ false,    // here always false
-      coll, planCollection->isSystem);
+      options, collections,
+      waitForSyncReplication,    // replication wait flag
+      enforceReplicationFactor,  // replication factor flag
+      /*isNewDatabase*/ false    // here always false
+  );
+
+  // backwards compatibility transformation:
+  Result res{TRI_ERROR_NO_ERROR};
+  if (result.fail()) {
+    res = result.result();
+  } else {
+    TRI_ASSERT(result.get().size() == 1);
+    coll = result.get().at(0);
+  }
 
 #else
   VPackSlice nameSlice;
