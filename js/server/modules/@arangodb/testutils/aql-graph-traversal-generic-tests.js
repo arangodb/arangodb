@@ -2226,7 +2226,6 @@ function testSmallCircleTestDocumentsShardsAPI(testGraph) {
       db._collection(en).shards();
       fail();
     } catch (err) {
-      print(err);
       assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
       // Unfortunately cannot assert this, different implementations client vs. server (v8)
       // assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
