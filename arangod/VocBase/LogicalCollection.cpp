@@ -810,6 +810,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                      "unable to cast smart edge collection");
     }
     edgeCollection->shardsToVelocyPack(build);
+    bool includeShardsEntry = false;
+    _sharding->toVelocyPack(build, ctx != Serialization::List,
+                            includeShardsEntry);
   } else {
     _sharding->toVelocyPack(build, ctx != Serialization::List);
   }
