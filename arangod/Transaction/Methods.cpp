@@ -1136,13 +1136,36 @@ void transaction::Methods::trackWaitForSync(LogicalCollection& collection,
   }
 }
 
+/// @brief Determine the replication type and the followers for a transaction.
+/// The replication type indicates whether this server is the leader or a
+/// follower. The followers are the servers that will be contacted for the
+/// actual replication.
+///
+/// We had to split this function into two parts, because the first one is used
+/// by replication1 and the second one is used by replication2.
 Result transaction::Methods::determineReplicationTypeAndFollowers(
     LogicalCollection& collection, std::string_view operationName,
     velocypack::Slice value, OperationOptions& options,
     ReplicationType& replicationType,
     std::shared_ptr<std::vector<ServerID> const>& followers) {
-  replicationType = ReplicationType::NONE;
   auto replicationVersion = collection.replicationVersion();
+  if (replicationVersion == replication::Version::ONE) {
+    return determineReplication1TypeAndFollowers(
+        collection, operationName, value, options, replicationType, followers);
+  }
+  TRI_ASSERT(replicationVersion == replication::Version::TWO);
+  return determineReplication2TypeAndFollowers(
+      collection, operationName, value, options, replicationType, followers);
+}
+
+/// @brief The original code for determineReplicationTypeAndFollowers, used for
+/// replication1.
+Result transaction::Methods::determineReplication1TypeAndFollowers(
+    LogicalCollection& collection, std::string_view operationName,
+    velocypack::Slice value, OperationOptions& options,
+    ReplicationType& replicationType,
+    std::shared_ptr<std::vector<ServerID> const>& followers) {
+  replicationType = ReplicationType::NONE;
   TRI_ASSERT(followers == nullptr);
 
   if (_state->isDBServer()) {
@@ -1166,19 +1189,15 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
         return {TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION};
       }
 
-      // This is just a trick to let the function continue for replication2
-      // databases
-      if (replicationVersion != replication::Version::TWO) {
-        switch (followerInfo->allowedToWrite()) {
-          case FollowerInfo::WriteState::FORBIDDEN:
-            // We cannot fulfill minimum replication Factor. Reject write.
-            return {TRI_ERROR_ARANGO_READ_ONLY};
-          case FollowerInfo::WriteState::UNAVAILABLE:
-          case FollowerInfo::WriteState::STARTUP:
-            return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
-          default:
-            break;
-        }
+      switch (followerInfo->allowedToWrite()) {
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return {TRI_ERROR_ARANGO_READ_ONLY};
+        case FollowerInfo::WriteState::UNAVAILABLE:
+        case FollowerInfo::WriteState::STARTUP:
+          return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1189,14 +1208,12 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty() ||
-          replicationVersion == replication::Version::TWO) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
-      if (replicationVersion != replication::Version::TWO &&
-          options.isSynchronousReplicationFrom.empty()) {
+      if (options.isSynchronousReplicationFrom.empty()) {
         return {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
@@ -1213,7 +1230,7 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
                           std::string::npos);
         }
       }
-      if (replicationVersion != replication::Version::TWO && sendRefusal) {
+      if (sendRefusal) {
         return ::buildRefusalResult(collection, operationName, options,
                                     theLeader);
       }
@@ -1233,6 +1250,66 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
   // on followers, the silent flag must always be set
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER || options.silent);
 
+  return {};
+}
+
+/// @brief The replication2 version for determineReplicationTypeAndFollowers.
+/// The replication type is determined from the replicated state status (could
+/// be follower status or leader status). Followers is always an empty vector,
+/// because replication2 framework handles followers itself.
+Result transaction::Methods::determineReplication2TypeAndFollowers(
+    LogicalCollection& collection, std::string_view operationName,
+    velocypack::Slice value, OperationOptions& options,
+    ReplicationType& replicationType,
+    std::shared_ptr<std::vector<ServerID> const>& followers) {
+  if (!_state->isDBServer()) {
+    replicationType = ReplicationType::NONE;
+    return {};
+  }
+
+  auto state = collection.getDocumentState();
+  TRI_ASSERT(state != nullptr);
+  if (state == nullptr) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
+            "Could not get replicated state"};
+  }
+
+  auto status = state->getStatus();
+  if (status == std::nullopt) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            "Could not get replicated state status"};
+  }
+
+  using namespace replication2::replicated_state;
+
+  if (auto leaderStatus = status->asLeaderStatus(); leaderStatus != nullptr) {
+    if (leaderStatus->managerState.state ==
+        LeaderInternalState::kRecoveryInProgress) {
+      // Even though we are the leader, we don't want to replicate during
+      // recovery.
+      options.silent = true;
+      replicationType = ReplicationType::FOLLOWER;
+      followers = nullptr;
+    } else if (leaderStatus->managerState.state ==
+               LeaderInternalState::kServiceAvailable) {
+      options.silent = false;
+      replicationType = ReplicationType::LEADER;
+      followers = std::make_shared<std::vector<ServerID>>();
+    } else {
+      return {TRI_ERROR_REPLICATION_LEADER_ERROR,
+              "Unexpected manager state " +
+                  std::string(to_string(leaderStatus->managerState.state))};
+    }
+  } else if (auto followerStatus = status->asFollowerStatus();
+             followerStatus != nullptr) {
+    options.silent = true;
+    replicationType = ReplicationType::FOLLOWER;
+    followers = std::make_shared<std::vector<ServerID> const>();
+  } else {
+    std::stringstream s;
+    s << "Status is " << *status;
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE, s.str()};
+  }
   return {};
 }
 
