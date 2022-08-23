@@ -5,6 +5,9 @@ devel
   should be optimized into the traversal, and some that are not valid should not be optimized
   anymore. Fixes #16589.
 
+* Add progress reporting to RocksDB WAL recovery, in case there are many WAL
+  files to recover.
+
 * Updated ArangoDB Starter to 0.15.5-preview-2.
 
 * Fixed BTS-918 (incorrectly navigating back 1 level in history when a modal-dialog element is present).
