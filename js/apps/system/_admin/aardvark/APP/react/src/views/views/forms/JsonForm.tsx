@@ -11,9 +11,7 @@ declare var frontendConfig: { [key: string]: any };
 
 const ajv = new Ajv2019({
   allErrors: true,
-  verbose: true,
-  discriminator: true,
-  $data: true
+  verbose: true
 });
 ajv.addSchema(linksSchema);
 
