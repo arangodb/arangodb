@@ -59,7 +59,13 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
           id: response.edge._id,
           label: response.edge._key,
           source: edgeModelToAdd.source,
-          target: edgeModelToAdd.target
+          target: edgeModelToAdd.target,
+          style: {
+            aaaaaa: this.props.edgeColor,
+            //stroke: '#' + this.props.edgeColor,
+            stroke: '#ff00ff',
+            cursor: 'help',
+          },
         };
         openNotificationWithIcon(response.edge._id);
         onEdgeCreation(edgeModel);

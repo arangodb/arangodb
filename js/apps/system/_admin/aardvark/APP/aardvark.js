@@ -1443,8 +1443,10 @@ authRouter.get('/g6graph/:name', function (req, res) {
             target: edge._to,
             style: {
               //stroke: calculatedEdgeColor,
-              stroke: '#f8a310',
-              whatever: 'info',
+              //stroke: '#1FFCEF',
+              stroke: '#' + config.edgeColor,
+              whatever: config.edgeColor,
+              calcul: calculatedEdgeColor,
             }
           };
 

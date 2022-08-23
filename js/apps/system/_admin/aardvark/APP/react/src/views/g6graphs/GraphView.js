@@ -17,6 +17,9 @@ export class GraphView extends React.Component {
 
   constructor(props) {
     super(props)
+    console.log("this.props.nodeColor: ", this.props.nodeColor);
+    console.log("this.props.edgeColor: ", this.props.edgeColor);
+    console.log("this.props: ", this.props);
     this.ref = React.createRef(); 
     this.handleResize = () => {
       this.graph.changeSize(this.ref.current.clientWidth, this.ref.current.clientHeight);
@@ -124,10 +127,9 @@ export class GraphView extends React.Component {
       },
       defaultNode: {
         type: 'circle',
-        size: 20,
+        size: 40,
         style: {
-          //fill: '#' + this.props.nodeColor,
-          //fill: '#f00',
+          fill: '#' + this.props.nodeColor,
           stroke: '#' + this.props.nodeColor,
           lineWidth: 8,
           cursor: 'pointer',
@@ -177,15 +179,16 @@ export class GraphView extends React.Component {
           autoRotate: true,
           refY: 10,
           style: {
-            fill: '#' + this.props.edgeColor,
+            //fill: '#' + this.props.edgeColor,
+            fill: '#F814E1',
             fontStyle: 'regular',
             fontFamily: 'Roboto',
             fontSize: 12
           },
         },
         style: {
-          stroke: '#' + this.props.edgeColor,
-          //stroke: '#f95fff',
+          //stroke: '#' + this.props.edgeColor,
+          stroke: '#21FD0E',
           cursor: 'pointer',
         },
       },

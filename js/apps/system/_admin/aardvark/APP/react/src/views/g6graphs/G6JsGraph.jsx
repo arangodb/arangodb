@@ -176,6 +176,7 @@ const G6JsGraph = () => {
   }
 
   const updateGraphDataWithEdge = (newEdge) => {
+    console.log("newEdge in updateGraphDataWithEdge: ", newEdge);
     const currentNodes = graphData.nodes;
     const newGraphData = {
       nodes: [
