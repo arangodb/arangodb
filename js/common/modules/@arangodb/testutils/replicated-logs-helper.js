@@ -34,7 +34,7 @@ const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const helper = require('@arangodb/test-helper-common');
 const serverHelper = require('@arangodb/test-helper');
 
-const waitFor = function (checkFn, maxTries = 240) {
+const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
   let count = 0;
   let result = null;
   while (count < maxTries) {
@@ -51,7 +51,11 @@ const waitFor = function (checkFn, maxTries = 240) {
     }
     wait(0.5); // 240 * .5s = 2 minutes
   }
-  throw result;
+  if (onErrorCallback !== undefined) {
+    onErrorCallback(result);
+  } else {
+    throw result;
+  }
 };
 
 const readAgencyValueAt = function (key) {
@@ -70,7 +74,6 @@ const readAgencyValueAt = function (key) {
 const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
-
 
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
@@ -414,7 +417,7 @@ const createReplicatedLog = function (database, targetConfig, replicationFactor)
 };
 
 
-const testHelperFunctions = function (database) {
+const testHelperFunctions = function (database, databaseOptions = {}) {
   let previousDatabase, databaseExisted = true;
   let stoppedServers = {};
 
@@ -454,7 +457,7 @@ const testHelperFunctions = function (database) {
   const createTestDatabase = function () {
     previousDatabase = db._name();
     if (!_.includes(db._databases(), database)) {
-      db._createDatabase(database);
+      db._createDatabase(database, databaseOptions);
       databaseExisted = false;
     }
     db._useDatabase(database);
@@ -548,9 +551,25 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const dumpLog = function (shardId, limit=1000) {
+const dumpShardLog = function (shardId, limit=1000) {
   let log = db._replicatedLog(shardIdToLogId(shardId));
   return log.head(limit);
+};
+
+const setLeader = (database, logId, newLeader) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
+  checkRequestResult(res);
+  const { json: { result } } = res;
+  return result;
+};
+
+const unsetLeader = (database, logId) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}/leader`);
+  checkRequestResult(res);
+  const { json: { result } } = res;
+  return result;
 };
 
 exports.checkRequestResult = checkRequestResult;
@@ -594,4 +613,6 @@ exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
 exports.shardIdToLogId = shardIdToLogId;
-exports.dumpLog = dumpLog;
+exports.dumpShardLog = dumpShardLog;
+exports.setLeader = setLeader;
+exports.unsetLeader = unsetLeader;

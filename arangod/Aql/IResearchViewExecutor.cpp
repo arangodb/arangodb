@@ -207,18 +207,18 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _plan{plan},
       _outVariable{outVariable},
       _filterCondition{filterCondition},
-      _volatileSort{volatility.second},
-      // `_volatileSort` implies `_volatileFilter`
-      _volatileFilter{_volatileSort || volatility.first},
       _varInfoMap{varInfoMap},
-      _depth{depth},
       _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
       _countApproximate{countApproximate},
-      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
       _filterOptimization{filterOptimization},
       _scorersSort{std::move(scorersSort)},
       _scorersSortLimit{scorersSortLimit},
-      _meta{meta} {
+      _meta{meta},
+      _depth{depth},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
+      _volatileSort{volatility.second},
+      // `_volatileSort` implies `_volatileFilter`
+      _volatileFilter{_volatileSort || volatility.first} {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
@@ -729,15 +729,6 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
     }
     IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
 
-    if constexpr (ExecutionTraits::EmitSearchDoc) {
-      auto reg = this->infos().searchDocIdRegId();
-      TRI_ASSERT(reg.isValid());
-
-      this->writeSearchDoc(
-          ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()),
-          reg);
-    }
-
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
       break;
     } else {
@@ -901,6 +892,14 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     ReadContext& ctx, IndexReadBufferEntry bufferEntry,
     LocalDocumentId const& documentId, LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
+
+  if constexpr (ExecutionTraits::EmitSearchDoc) {
+    auto reg = this->infos().searchDocIdRegId();
+    TRI_ASSERT(reg.isValid());
+
+    this->writeSearchDoc(
+        ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()), reg);
+  }
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
     if (ADB_UNLIKELY(
@@ -934,7 +933,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     }
   } else if constexpr (Traits::MaterializeType ==
                            MaterializeType::NotMaterialize &&
-                       !Traits::Ordered) {
+                       !Traits::Ordered && !Traits::EmitSearchDoc) {
     ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document
