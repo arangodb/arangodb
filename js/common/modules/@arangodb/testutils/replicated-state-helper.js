@@ -163,6 +163,16 @@ const getReplicatedStateLeaderTarget = function (database, logId) {
   return target.leader;
 };
 
+const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
+  const url = LH.getServerUrl(_.sample(LH.coordinators));
+  const res = request.post(
+    `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+  );
+  LH.checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
+};
+
 /**
  * Returns the value of a key from a follower.
  */
@@ -187,4 +197,5 @@ exports.replicatedStateDeletePlan = replicatedStateDeletePlan;
 exports.replicatedStateDeleteTarget = replicatedStateDeleteTarget;
 exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
 exports.updateReplicatedStateTarget = updateReplicatedStateTarget;
+exports.replaceParticipant = replaceParticipant;
 exports.getLocalValue = getLocalValue;

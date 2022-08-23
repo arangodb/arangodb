@@ -551,8 +551,7 @@ auto FollowerStateManager<S>::applyNewEntries() -> futures::Future<Result> {
             basics::catchToResult([&] { return std::move(tryResult.get()); });
         if (result.fail()) {
           LOG_CTX("dd84e", ERR, ctx)
-              << "failed to transfer snapshot: " << result.errorMessage()
-              << " - retry scheduled";
+              << "failed to apply log entries: " << result.errorMessage();
           metrics->replicatedStateNumberApplyEntriesErrors->operator++();
         } else {
           metrics->replicatedStateNumberProcessedEntries->count(range.count());
