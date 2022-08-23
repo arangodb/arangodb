@@ -34,20 +34,38 @@ function headerWithChunkedEncodingSuite() {
   'use strict';
 
   var baseUrl = function() {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
   };
 
-
+  // all requests with chunked encoding must not contain a content-length, so it cannot be added to the header
   return {
-    testHeaderChunkedEncodingSimple: function() {
+
+    testHeaderWithoutChunkedEncoding: function() {
       let result = request.post({
         url: baseUrl() + "/_api/cursor",
-        headers: {'accept': 'application/json', 'Transfer-Encoding': 'chunked'},
+        headers: {
+          'accept': 'application/json'
+        },
         body: JSON.stringify({
           "query": "FOR p IN banana  RETURN p",
           "count": true,
           "batchSize": 2
-        })
+        }), addContentLength: true
+      });
+      assertEqual(404, result.status);
+    },
+
+    testHeaderChunkedEncodingSimple: function() {
+      let result = request.post({
+        url: baseUrl() + "/_api/cursor",
+        headers: {
+          'accept': 'application/json', 'Transfer-Encoding': 'chunked', 'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({
+          "query": "FOR p IN banana  RETURN p",
+          "count": true,
+          "batchSize": 2
+        }), addContentLength: false
       });
       assertEqual(501, result.status);
     },
@@ -60,16 +78,20 @@ function headerWithChunkedEncodingSuite() {
           "query": "FOR p IN banana  RETURN p",
           "count": true,
           "batchSize": 2
-        })
+        }), addContentLength: false
       });
       assertEqual(501, result.status);
 
       result = request.post({
         url: baseUrl() + "/_api/collection",
-        headers: {'accept': 'application/json', 'Transfer-Encoding': 'gzip, deflate, chunked'},
+        headers: {
+          'accept': 'application/json',
+          'Transfer-Encoding': 'gzip, deflate, chunked',
+          'addContentLength': false
+        },
         body: JSON.stringify({
           "name": "testCollection"
-        })
+        }), addContentLength: false
       });
       assertEqual(501, result.status);
     },
@@ -78,7 +100,7 @@ function headerWithChunkedEncodingSuite() {
       let result = request.post({
         url: baseUrl() + "/_api/cursor",
         headers: {'accept': 'application/json', 'Transfer-Encoding': 'gzip, chunked'},
-        body: {}
+        body: {}, addContentLength: false
       });
       assertEqual(501, result.status);
     },

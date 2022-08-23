@@ -72,16 +72,14 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
 }
 }  // namespace
 
-// must be called before on_header_complete because llhttp calls
-// on_header_complete when it's already acknowledged the body
 template<SocketType T>
 bool HttpCommTask<T>::transferEncodingContainsChunked(
     HttpCommTask<T>& commTask, std::string const& encoding) {
   if (basics::StringUtils::tolower(encoding).find("chunked") !=
       std::string::npos) {
     commTask.sendErrorResponse(
-        rest::ResponseCode::NOT_IMPLEMENTED,
-        commTask._request->contentTypeResponse(), 1, TRI_ERROR_NOT_IMPLEMENTED,
+        rest::ResponseCode::NOT_IMPLEMENTED, rest::ContentType::UNSET, 1,
+        TRI_ERROR_NOT_IMPLEMENTED,
         "Parsing for transfer-encoding of type chunked not implemented.");
     return true;
   }
@@ -149,12 +147,6 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
   if (me->_lastHeaderWasValue) {
     me->_lastHeaderValue.append(at, len);
   } else {
-    if (basics::StringUtils::tolower(me->_lastHeaderField) ==
-        "transfer-encoding") {
-      if (transferEncodingContainsChunked(*me, {at, len})) {
-        return -1;
-      }
-    }
     me->_lastHeaderValue.assign(at, len);
   }
   me->_lastHeaderWasValue = true;
@@ -170,6 +162,16 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
                               std::move(me->_lastHeaderValue));
   }
 
+  bool found;
+  std::string const& encoding =
+      me->_request->header(StaticStrings::TransferEncoding, found);
+
+  if (found) {
+    if (transferEncodingContainsChunked(*me, encoding)) {
+      return HPE_USER;
+    }
+  }
+
   if ((p->http_major != 1 || p->http_minor != 0) &&
       (p->http_major != 1 || p->http_minor != 1)) {
     me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
@@ -183,7 +185,6 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
-  bool found;
   std::string const& expect =
       me->_request->header(StaticStrings::Expect, found);
   if (found && StringUtils::trim(expect) == "100-continue") {
