@@ -38,6 +38,8 @@ namespace arangodb::iresearch::kludge {
 #ifdef USE_ENTERPRISE
 void mangleNested(std::string& name);
 #endif
+
+bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept;
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
 

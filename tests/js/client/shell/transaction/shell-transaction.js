@@ -4871,6 +4871,15 @@ function makeTestSuites(testSuite) {
   // for the transaction. Since this class is currently not covered by unittests, these tests are
   // parameterized to cover both cases.
   deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
+
+  // TODO this is a temporary workaround to prevent deleting the collection while followers
+  //  are still processing entries
+  const tearDown = suiteV2.tearDown;
+  suiteV2.tearDown = function() {
+    internal.sleep(1);
+    tearDown();
+  };
+
   return [suiteV1, suiteV2];
 }
 

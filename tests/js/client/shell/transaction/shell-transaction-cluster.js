@@ -30,19 +30,18 @@ const { fail,
   assertTrue,
   assertFalse,
   assertEqual,
-  assertIdentical,
-  assertNotUndefined,
 } = jsunity.jsUnity.assertions;
 
 const arangodb = require('@arangodb');
+const _ = require('lodash');
 const db = arangodb.db;
+const helper = require('@arangodb/test-helper');
 const internal = require('internal');
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const replicatedStateHelper = require('@arangodb/testutils/replicated-state-helper');
 const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
 const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
 const replicatedStatePredicates = require('@arangodb/testutils/replicated-state-predicates');
-const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
 
 /**
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
@@ -51,7 +50,8 @@ const isReplication2Enabled = require('internal').db._version(true).details['rep
 function transactionReplication2ReplicateOperationSuite() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
-  var cn = 'UnitTestsTransaction';
+  const cn = 'UnitTestsTransaction';
+  const rc = replicatedLogsHelper.dbservers.length;
   var c = null;
 
   const bumpTermOfLogsAndWaitForConfirmation = (col) => {
@@ -71,29 +71,21 @@ function transactionReplication2ReplicateOperationSuite() {
     Object.entries(terms).forEach(x => replicatedLogsHelper.waitFor(leaderReady(x)));
   };
 
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
+
   return {
-    setUpAll: function () {
-      db._createDatabase(dbn, {replicationVersion: "2"});
-      db._useDatabase(dbn);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(dbn);
-    },
-
-    setUp: function () {
-      db._drop(cn);
-      c = db._create(cn, {numberOfShards: 4});
-    },
-
-    tearDown: function () {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      c = db._create(cn, {"numberOfShards": 4, "writeConcern": rc, "replicationFactor": rc});
+    }),
+    tearDown: tearDownAnd(() => {
       if (c !== null) {
         c.drop();
       }
-
       c = null;
-    },
+    }),
 
     testTransactionAbortLogEntry: function () {
       let trx = db._createTransaction({
@@ -227,7 +219,7 @@ function transactionReplication2ReplicateOperationSuite() {
       try {
         trx.commit();
         committed = true;
-        fail('Abort was expected to fail due to leader change, but reported success.');
+        fail('Commit was expected to fail due to leader change, but reported success.');
       } catch (ex) {
         // The actual error code is a little bit strange, but happens due to
         // automatic retry of the commit request on the coordinator.
@@ -253,35 +245,26 @@ function transactionReplication2ReplicateOperationSuite() {
 function transactionReplicationOnFollowersSuite(dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
-  const numberOfShards = 1;
   const cn = 'UnitTestsTransaction';
+  const rc = replicatedLogsHelper.dbservers.length;
+  const isReplication2 = dbParams.replicationVersion === "2";
   let c = null;
-  let isReplication2 = dbParams.replicationVersion === "2";
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: isReplication2 ? "2" : "1"});
 
   return {
-    setUpAll: function () {
-      db._createDatabase(dbn, dbParams);
-      db._useDatabase(dbn);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(dbn);
-    },
-
-    setUp: function () {
-      db._drop(cn);
-      let rc = Object.keys(replicatedLogsHelper.dbservers).length;
-      c = db._create(cn, {"numberOfShards": numberOfShards, "writeConcern": rc, "replicationFactor": rc});
-    },
-
-    tearDown: function () {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      c = db._create(cn, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
+    }),
+    tearDown: tearDownAnd(() => {
       if (c !== null) {
         c.drop();
       }
-
       c = null;
-    },
+    }),
 
     testFollowerAbort: function () {
       let trx = db._createTransaction({
@@ -399,11 +382,11 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 function makeTestSuites(testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
-  deriveTestSuite(testSuite({}), suiteV1, "_V1");
+  helper.deriveTestSuite(testSuite({}), suiteV1, "_V1");
   // For databases with replicationVersion 2 we internally use a ReplicatedRocksDBTransactionState
   // for the transaction. Since this class is currently not covered by unittests, these tests are
   // parameterized to cover both cases.
-  deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
+  helper.deriveTestSuite(testSuite({replicationVersion: "2"}), suiteV2, "_V2");
   return [suiteV1, suiteV2];
 }
 
