@@ -3,7 +3,6 @@ import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { HashRouter, Route, Switch } from 'react-router-dom';
 import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
 import LinkList from './Components/LinkList';
-import NewLink from './Components/NewLink';
 import { ViewContext } from './constants';
 import LinkPropertiesForm from './forms/LinkPropertiesForm';
 import { postProcessor, useNavbar, useView } from './helpers';
@@ -53,9 +52,6 @@ const ViewLinksReactView = ({ name }) => {
     <div className={'centralContent'} id={'content'}>
       <HashRouter basename={`view/${name}/links`} hashType={'noslash'}>
         <Switch>
-          <Route exact path={'/_add'}>
-            { isAdminUser ? <NewLink/> : null }
-          </Route>
           <Route path={'/:link'}>
             <LinkPropertiesForm name={name}/>
           </Route>
