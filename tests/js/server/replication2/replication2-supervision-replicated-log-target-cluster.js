@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual*/
+/*global assertTrue, assertEqual, print*/
 "use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,6 +256,7 @@ const replicatedLogSuite = function () {
         log.insert({foo: "bar"});
         let quorum = log.insert({foo: "bar"});
         assertTrue(quorum.result.quorum.quorum.indexOf(followers[0]) === -1);
+        print(log.status());
       }
 
       // now stop the leader

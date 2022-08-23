@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchKludge.h"
+#include "IResearchDocument.h"
 #include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBInvertedIndex.h"
 #include "Basics/DownCast.h"
@@ -108,6 +109,15 @@ void mangleNested(std::string& name) {
   name += kNestedDelimiter;
 }
 #endif
+
+bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept {
+#ifdef USE_ENTERPRISE
+  return (!name.empty() && name.back() == kNestedDelimiter) ||
+         (nested && name == DocumentPrimaryKey::PK());
+#else
+  return false;
+#endif
+}
 
 void mangleField(std::string& name, bool isOldMangling,
                  iresearch::FieldMeta::Analyzer const& analyzer) {

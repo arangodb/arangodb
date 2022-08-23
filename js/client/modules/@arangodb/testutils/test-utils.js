@@ -187,8 +187,10 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && global.ARANGODB_CLIENT_VERSION(true).asan === 'true') {
-    whichFilter.filter = 'skip when built with asan';
+  if ((testname.indexOf('-noasan') !== -1) && 
+    (global.ARANGODB_CLIENT_VERSION(true).asan === 'true') ||
+    (global.ARANGODB_CLIENT_VERSION(true).tsan === 'true')) {
+    whichFilter.filter = 'skip when built with asan or tsan';
     return false;
   }
 
