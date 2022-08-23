@@ -36,7 +36,7 @@
 namespace arangodb::replication2::replicated_state {
 namespace document {
 
-enum OperationType {
+enum class OperationType {
   kInsert,
   kUpdate,
   kReplace,
@@ -44,6 +44,7 @@ enum OperationType {
   kTruncate,
   kCommit,
   kAbort,
+  kAbortAllOngoingTrx
 };
 
 auto to_string(OperationType) noexcept -> std::string_view;

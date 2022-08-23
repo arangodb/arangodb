@@ -129,11 +129,14 @@ RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
                                        bool allowHWAcceleration)
     : _basePath(basePath),
       _usageTracker(usageTracker),
+#ifdef USE_ENTERPRISE
       _useEncryption(useEncryption),
       _allowHWAcceleration(allowHWAcceleration),
+#endif
       _nextId(0),
       _db(nullptr),
-      _comparator(std::make_unique<::KeysComparator>()) {}
+      _comparator(std::make_unique<::KeysComparator>()) {
+}
 
 RocksDBTempStorage::~RocksDBTempStorage() { close(); }
 

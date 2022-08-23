@@ -86,6 +86,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   ~Query() override;
 
+  void destroy();
+
  public:
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
@@ -358,6 +360,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
                           // transaction, it is valid and remains valid
                           // once `preparePlan` has run and can be queried
                           // until the query object is gone!
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _wasDestroyed{false};
+#endif
 };
 
 }  // namespace aql
