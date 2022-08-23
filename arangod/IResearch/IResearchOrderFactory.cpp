@@ -41,7 +41,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/fasthash.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/SearchFuncReplace.h"
 #include "IResearch/VelocyPackHelper.h"
 
 #include <search/scorers.hpp>

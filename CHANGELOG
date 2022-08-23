@@ -11,6 +11,8 @@ v3.10.0 (XXXX-XX-XX)
   schemas could compare unequal, this could have caused unnecessary repeated
   work for background maintenance threads.
 
+* Fixed SEARCH-329 fixed removes with nested documents.
+
 * Fixed parsing on NOT operator in nested query filter.
 
 * Fixed SEARCH-346. If index creation is aborted due to existing same index new
