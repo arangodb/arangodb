@@ -241,12 +241,22 @@ const replicatedLogSuite = function () {
       // This important to make sure that all followers have responded to all append entries messages
       // upto now. Otherwise, the insert below doesn't work as expect.
       waitFor(lpreds.replicatedLogReplicationCompleted(database, logId));
+
+
+      // Note: We need to access the log BEFORE we stop the
+      // follower, otherwise this API will block and wait.
+      // this will give the replication protocol time to
+      // do a failover, before we actually start the test here,
+      // which would make all assumptions below invalid
+      // and will cause race conditions in who sees which
+      // entries.
+      let log = db._replicatedLog(logId);
+
       // now stop one server
       stopServer(followers[0]);
 
       // we should still be able to write
       {
-        let log = db._replicatedLog(logId);
         // we have to insert two log entries here, reason:
         // Even though followers[0] is stopped, it will receive the AppendEntries message for log index 1.
         // It will stay in its tcp input queue. So when the server is continued below it will process
