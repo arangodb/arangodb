@@ -1,7 +1,7 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* Fixed SEARCH-329 fixed removes with nested documents
+* Fixed SEARCH-329 fixed removes with nested documents.
 
 * Fixed parsing on NOT operator in nested query filter.
 
