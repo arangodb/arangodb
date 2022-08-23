@@ -282,11 +282,15 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     auto& state = *(_trx->state());
 
     // TODO FIXME find a better way to look up a State
-    auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(_index));
+    // we cannot use _index pointer as key - the same is used for storing
+    // removes/inserts so we add 1 to the value (we need just something unique
+    // after all)
+    void const* key = reinterpret_cast<uint8_t const*>(_index) + 1;
+    auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(key));
     if (!ctx) {
       auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
       ctx = ptr.get();
-      state.cookie(_index, std::move(ptr));
+      state.cookie(key, std::move(ptr));
 
       if (!ctx) {
         LOG_TOPIC("d7061", WARN, arangodb::iresearch::TOPIC)
