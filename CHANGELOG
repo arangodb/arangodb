@@ -1,6 +1,8 @@
 devel
 -----
 
+* Removed transitive node dependencies.
+
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
 
