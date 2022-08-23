@@ -362,7 +362,7 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result initDataStore(
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
-      bool sorted,
+      bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
       irs::type_info::type_id primarySortCompression);
 

@@ -26,16 +26,16 @@
 
 #include <fmt/core.h>
 
+#include "Replication2/Helper/AgencyLogBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/Helper/AgencyLogBuilder.h"
 
-#include "velocypack/Parser.h"
 #include "Inspection/VPack.h"
+#include "velocypack/Parser.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -691,5 +691,62 @@ TEST_F(LogSupervisionTest, test_convergence_no_leader_established) {
     EXPECT_TRUE(ctx.hasAction());
     auto const& r = ctx.getAction();
     EXPECT_TRUE(std::holds_alternative<ConvergedToTargetAction>(r));
+  }
+}
+
+TEST_F(LogSupervisionTest, test_leader_election_sets_write_concern) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig{2, 3, true})
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags)
+      .setTargetParticipant("D", defaultFlags)
+      .setTargetVersion(1);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags)
+      .setPlanParticipant("D", defaultFlags);
+  log.setPlanLeader("A").setPlanConfig(defaultPlanConfig);
+  log.acknowledgeTerm("A")
+      .acknowledgeTerm("B")
+      .acknowledgeTerm("C")
+      .acknowledgeTerm("D");
+
+  log.establishLeadership();
+  log.setEmptyTerm();
+
+  log.acknowledgeTerm("A")
+      .acknowledgeTerm("B")
+      .acknowledgeTerm("C")
+      .acknowledgeTerm("D");
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = false});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "D", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  {
+    SupervisionContext ctx;
+    checkReplicatedLog(ctx, log.get(), health);
+    EXPECT_TRUE(ctx.hasAction());
+
+    auto const& r = ctx.getAction();
+    EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r))
+        << fmt::format("{}", r);
+
+    auto const& elec = std::get<LeaderElectionAction>(r);
+    EXPECT_EQ(elec._assumedWriteConcern, 2);
+    EXPECT_EQ(elec._effectiveWriteConcern, 3);
   }
 }
