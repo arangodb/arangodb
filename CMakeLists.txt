@@ -592,11 +592,29 @@ set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker
 set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 
 
+#
+# Check for the compiler versions required to build ArangoDB
+#
+# The compiler versions checked here are the ones used in the Jenkins CI and as
+# such the "source of truth" as to which compilers must work; this does not mean
+# that other compilers will not.
+#
+# This check is designed to error out early if someone tries to compile with an
+# untested version to make sure they do not waste their time waiting for half
+# an hour for an obscure compiler error.
+#
+# This check can be disabled by using -DARANGODB_JUST_WARN_COMPILER_CHECK=ON to
+# turn this error into a warning.
+#
+include(CheckCompilerVersion)
+
 set(ARANGODB_MIN_GCC_VERSION 11.2)
 set(ARANGODB_MIN_CLANG_VERSION 14.0)
 set(ARANGODB_MIN_MSVC_VERSION 19.32)
 
-include(CheckCompilerVersion)
+CheckCompilerVersion(ARANGODB_MIN_GCC_VERSION,
+                     ARANGODB_MIN_CLANG_VERSION
+                     ARANGODB_MIN_MSVC_VERSION)
 
 if (MSVC)
   set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")

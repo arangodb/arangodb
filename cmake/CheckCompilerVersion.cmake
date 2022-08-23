@@ -2,18 +2,6 @@
 option(ARANGODB_JUST_WARN_COMPILER_CHECK "Do not exit with FATAL_ERROR and just WARN "
 	                                 "if the compiler is not recent enough.")
 
-macro(CheckMinVersionsSet)
-  if(NOT DEFINED ARANGODB_MIN_GCC_VERSION)
-    message(FATAL_ERROR "Please define ARANGODB_MIN_GCC_VERSION in CMakeLists.txt.")
-  endif()
-  if(NOT DEFINED ARANGODB_MIN_CLANG_VERSION)
-    message(FATAL_ERROR "Please define ARANGODB_MIN_CLANG_VERSION in CMakeLists.txt.")
-  endif()
-  if(NOT DEFINED ARANGODB_MIN_MSVC_VERSION)
-    message(FATAL_ERROR "Please define ARANGODB_MIN_MSVC_VERSION in CMakeLists.txt.")
-  endif()
-endmacro()
-
 macro(CheckMinCompilerVersionInner MIN_VERSION)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS ${MIN_VERSION})
     set(MESSAGE "ArangoDB requires at least ${CMAKE_CXX_COMPILER_ID} version ${MIN_VERSION},"
@@ -29,22 +17,26 @@ macro(CheckMinCompilerVersionInner MIN_VERSION)
   endif()
 endmacro()
 
-macro(CheckCompilerVersion)
+function(CheckCompilerVersion ...)
+  if(ARGC LESS 3)
+	  message(FATAL_ERROR "CheckCompilerVersion: Not enough arguments\n"
+	                      "usage:\n"
+			      "  CheckCompilerVersion(MIN_GCC_VERSION MIN_CLANG_VERSION MIN_MSVC_VERSION)")
+  endif()
+  set(MIN_GCC_VERSION ARG0)
+  set(MIN_CLANG_VERSION ARG1)
+  set(MIN_MSVC_VERSION ARG2)
 
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    CheckMinCompilerVersionInner(${ARANGODB_MIN_GCC_VERSION})
+    CheckMinCompilerVersionInner(MIN_GCC_VERSION)
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    CheckMinCompilerVersionInner(${ARANGODB_MIN_CLANG_VERSION})
+    CheckMinCompilerVersionInner(MIN_CLANG_VERSION)
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    CheckMinCompilerVersionInner(${ARANGODB_MIN_MSVC_VERSION})
+    CheckMinCompilerVersionInner(MIN_MSVC_VERSION)
   else()
     message(
       FATAL_ERROR
         "ArangoDB does not support CMAKE_CXX_COMPILER_ID ${CMAKE_CXX_COMPILER_ID}")
   endif()
+endfunction()
 
-endmacro()
-
-CheckMinVersionsSet()
-
-CheckCompilerVersion()
