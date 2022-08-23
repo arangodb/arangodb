@@ -1285,8 +1285,6 @@ add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 # RocksDB
 # ------------------------------------------------------------------------------
 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
-
 add_dependencies(rocksdb snappy)
 
 if (USE_JEMALLOC)
