@@ -290,8 +290,7 @@ struct arangodb::VocBaseLogManager {
     return result;
   }
 
-  auto createReplicatedState(replication2::LogId id, std::string_view type,
-                             velocypack::Slice userData)
+  auto createReplicatedState(replication2::LogId id, std::string_view type)
       -> ResultT<std::shared_ptr<
           replication2::replicated_state::ReplicatedStateBase>> {
     auto& feature = _server.getFeature<
@@ -301,18 +300,16 @@ struct arangodb::VocBaseLogManager {
             -> ResultT<std::shared_ptr<
                 replication2::replicated_state::ReplicatedStateBase>> {
           auto state = data.buildReplicatedState(
-              id, type, userData, feature,
+              id, type, feature,
               _logContext.withTopic(Logger::REPLICATED_STATE), _statePersistor);
           LOG_CTX("2bf8d", DEBUG, _logContext)
-              << "Created replicated state " << id << " impl = " << type
-              << " data = " << userData.toJson();
+              << "Created replicated state " << id << " impl = " << type;
 
           return state;
         });
   }
 
-  auto ensureReplicatedState(replication2::LogId id, std::string_view type,
-                             velocypack::Slice userData)
+  auto ensureReplicatedState(replication2::LogId id, std::string_view type)
       -> ResultT<std::shared_ptr<
           replication2::replicated_state::ReplicatedStateBase>> {
     auto& feature = _server.getFeature<
@@ -327,11 +324,10 @@ struct arangodb::VocBaseLogManager {
           }
 
           auto state = data.buildReplicatedState(
-              id, type, userData, feature,
+              id, type, feature,
               _logContext.withTopic(Logger::REPLICATED_STATE), _statePersistor);
           LOG_CTX("2bf5d", DEBUG, _logContext)
-              << "Created replicated state " << id << " impl = " << type
-              << " data = " << userData.toJson();
+              << "Created replicated state " << id << " impl = " << type;
 
           return state;
         });
@@ -355,7 +351,6 @@ struct arangodb::VocBaseLogManager {
 
     auto buildReplicatedState(
         replication2::LogId id, std::string_view type,
-        velocypack::Slice userData,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext,
         std::shared_ptr<replication2::replicated_state::StatePersistorInterface>
@@ -2230,7 +2225,7 @@ void TRI_vocbase_t::registerReplicatedState(
       replication2::replicated_state::ReplicatedStateAppFeature>();
   auto guard = _logManager->_guardedData.getLockedGuard();
   auto result = guard->buildReplicatedState(
-      info.stateId, info.specification.type, VPackSlice::noneSlice(), feature,
+      info.stateId, info.specification.type, feature,
       _logManager->_logContext.withTopic(Logger::REPLICATED_STATE),
       _logManager->_statePersistor);
   if (result.ok()) {
@@ -2273,18 +2268,15 @@ std::shared_ptr<replicated_log::ILogParticipant> TRI_vocbase_t::lookupLog(
   return nullptr;
 }
 
-auto TRI_vocbase_t::createReplicatedState(LogId id, std::string_view type,
-                                          arangodb::velocypack::Slice data)
+auto TRI_vocbase_t::createReplicatedState(LogId id, std::string_view type)
     -> arangodb::ResultT<
         std::shared_ptr<replicated_state::ReplicatedStateBase>> {
-  return _logManager->createReplicatedState(id, type, data);
+  return _logManager->createReplicatedState(id, type);
 }
 
-auto TRI_vocbase_t::ensureReplicatedState(LogId id, std::string_view type,
-                                          arangodb::velocypack::Slice data)
+auto TRI_vocbase_t::ensureReplicatedState(LogId id, std::string_view type)
     -> std::shared_ptr<replicated_state::ReplicatedStateBase> {
-  if (auto result = _logManager->ensureReplicatedState(id, type, data);
-      result.ok()) {
+  if (auto result = _logManager->ensureReplicatedState(id, type); result.ok()) {
     return result.get();
   } else {
     THROW_ARANGO_EXCEPTION(result.result());

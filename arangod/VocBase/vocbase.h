@@ -195,15 +195,13 @@ struct TRI_vocbase_t {
 
  public:
   auto createReplicatedState(arangodb::replication2::LogId id,
-                             std::string_view type,
-                             arangodb::velocypack::Slice data)
+                             std::string_view type)
       -> arangodb::ResultT<std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>>;
   auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result;
   auto ensureReplicatedState(arangodb::replication2::LogId id,
-                             std::string_view type,
-                             arangodb::velocypack::Slice data)
+                             std::string_view type)
       -> std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>;
   [[nodiscard]] auto getReplicatedStateStatus() const -> std::unordered_map<
