@@ -28,7 +28,7 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
-#include "Pregel/WorkerContext.h"
+#include "Pregel/Worker/WorkerContext.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;

@@ -33,9 +33,9 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/WorkerConductorMessages.h"
-#include "Pregel/WorkerConfig.h"
-#include "Pregel/WorkerContext.h"
-#include "Reports.h"
+#include "WorkerConfig.h"
+#include "WorkerContext.h"
+#include "Pregel/Reports.h"
 #include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;

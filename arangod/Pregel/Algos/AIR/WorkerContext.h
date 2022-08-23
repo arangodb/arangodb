@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include <Pregel/WorkerContext.h>
+#include "Pregel/Worker/WorkerContext.h"
 
 #include <Pregel/Algos/AIR/AIR.h>
 #include <Greenspun/Primitives.h>

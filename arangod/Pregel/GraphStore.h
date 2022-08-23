@@ -32,7 +32,7 @@
 #include "Pregel/Reports.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>

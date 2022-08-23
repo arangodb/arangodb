@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <velocypack/Slice.h>
+#include "velocypack/Slice.h"
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Utils.h"

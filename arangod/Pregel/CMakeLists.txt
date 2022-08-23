@@ -13,8 +13,8 @@ add_library(arango_pregel STATIC
   Reports.cpp
   Reports.h
   Utils.cpp
-  Worker.cpp
-  WorkerConfig.cpp)
+        Worker/Worker.cpp
+        Worker/WorkerConfig.cpp)
 
 target_link_libraries(arango_pregel
 	arango

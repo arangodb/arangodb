@@ -63,7 +63,7 @@
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
