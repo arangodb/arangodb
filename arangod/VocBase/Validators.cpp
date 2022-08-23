@@ -126,13 +126,18 @@ bool ValidatorBase::isSame(VPackSlice validator1, VPackSlice validator2) {
 
     // all attributes equal
     return true;
-  } else if (validator1.isObject()) {
-    // validator1 is an object, but validator2 isn't, so they must be different
+  }
+
+  if (validator1.isObject() || validator2.isObject()) {
+    TRI_ASSERT(validator1.isObject() != validator2.isObject());
+    // validator1 is an object, but validator2 isn't (or vice versa),
+    // so they must be different
     return false;
   }
+
   // both validators are non-objects
-  TRI_ASSERT(!validator1.isObject());
-  TRI_ASSERT(!validator2.isObject());
+  TRI_ASSERT(validator1.isNone() || validator1.isNull());
+  TRI_ASSERT(validator2.isNone() || validator2.isNull());
   return true;
 }
 
