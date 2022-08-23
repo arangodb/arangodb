@@ -4,6 +4,13 @@ v3.10.0 (XXXX-XX-XX)
 * Web UI: Now correctly handles the server error response when an error occurred
   during the modification of a document or an edge (BTS-934).
 
+* Fixed parsing on NOT operator in nested query filter.
+
+* Fixed SEARCH-346. If index creation is aborted due to existing same index new
+  index is properly dropped if it was already instantiated.
+
+* Updated ArangoDB Starter to 0.15.5-preview-2.
+
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
 

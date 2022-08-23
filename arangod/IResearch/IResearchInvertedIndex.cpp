@@ -50,12 +50,11 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
-  static FieldMeta::Analyzer defaultAnalyzer =
-      FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
-  return [&meta, &defaultAnalyzer = std::as_const(defaultAnalyzer)](
-             std::string_view ex) -> FieldMeta::Analyzer const& {
+  static FieldMeta::Analyzer const defaultAnalyzer{
+      IResearchAnalyzerFeature::identity()};
+  return [&meta](std::string_view fieldPath) -> FieldMeta::Analyzer const& {
     for (auto const& field : meta._fields) {
-      if (field.toString() == ex) {
+      if (field.path() == fieldPath) {
         return field.analyzer();
       }
     }

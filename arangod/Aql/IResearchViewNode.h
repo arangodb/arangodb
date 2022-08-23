@@ -36,6 +36,7 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
+#include "IResearch/Search.h"
 #include "VocBase/LogicalView.h"
 
 #include "types.h"
@@ -151,6 +152,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
   // Return the view.
   auto const& view() const noexcept { return _view; }
 
+  // Return the meta.
+  auto const& meta() const noexcept { return _meta; }
+
   // Return the filter condition to pass to the view.
   auto const& filterCondition() const noexcept { return *_filterCondition; }
 
@@ -185,14 +189,13 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
   // Return sort condition satisfied by a sorted index.
   std::pair<iresearch::IResearchSortBase const*, size_t> sort() const noexcept {
-    return {_sort.get(), _sortBuckets};
+    return {_sort, _sortBuckets};
   }
 
   // Set sort condition satisfied by a sorted index.
   void setSort(IResearchSortBase const& sort, size_t buckets) noexcept {
     _sortBuckets = std::min(buckets, sort.size());
-    _sort = std::shared_ptr<IResearchSortBase const>(
-        &sort, [](IResearchSortBase const*) noexcept {});
+    _sort = &sort;
   }
 
   // getVariablesUsedHere, modifying the set in-place.
@@ -335,6 +338,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
   // Underlying view.
   // Need shared_ptr to ensure view validity.
   std::shared_ptr<LogicalView const> _view;
+  std::shared_ptr<SearchMeta const> _meta;
 
   // Output variable to write ArangoSearch document identifiers
   // composed of segment id (8 bytes) and document id (4 bytes).
@@ -368,12 +372,9 @@ class IResearchViewNode final : public aql::ExecutionNode {
 
   // Sort condition covered by the view
   // Sort condition.
-  std::shared_ptr<IResearchSortBase const> _sort;
+  IResearchSortBase const* _sort{nullptr};
   // Number of sort buckets to use.
   size_t _sortBuckets{0};
-
-  // Stored values covered by the view.
-  std::shared_ptr<IResearchViewStoredValues const> _storedValues;
 
   // Scorers related to the view.
   std::vector<SearchFunc> _scorers;
