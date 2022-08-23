@@ -45,7 +45,8 @@ class IResearchInvertedIndex;
 
 struct MetaFst;
 
-struct SearchMeta final {
+class SearchMeta final {
+ public:
   IResearchInvertedIndexSort primarySort;
   IResearchViewStoredValues storedValues;
   struct Field final {

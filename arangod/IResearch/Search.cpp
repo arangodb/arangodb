@@ -139,14 +139,14 @@ std::shared_ptr<Index> getIndex(LogicalCollection const& collection,
   return nullptr;
 }
 
-auto Find(SearchMeta::Map const& map, std::string_view key) noexcept {
+auto find(SearchMeta::Map const& map, std::string_view key) noexcept {
   return map.find(key);
 }
 
-auto Find(auto const& vector, std::string_view key) noexcept {
-  auto last = end(vector);
+auto find(auto const& vector, std::string_view key) noexcept {
+  auto last = vector.end();
   auto it = std::lower_bound(
-      begin(vector), last, key,
+      vector.begin(), last, key,
       [](auto const& field, auto const& value) { return field.first < value; });
   if (it != last && it->first == key) {
     return it;
@@ -191,7 +191,7 @@ std::string checkFields(SearchMeta const& search,
     for (auto const& field : rhs) {
       auto const name = field.first;
       auto const prefix = findLongestCommonPrefix(matcher, name);
-      auto it = Find(lhs, prefix);
+      auto it = find(lhs, prefix);
       if (it == lhs.end()) {
         TRI_ASSERT(prefix.empty());
         continue;

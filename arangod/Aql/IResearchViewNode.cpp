@@ -818,14 +818,14 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
 
   slice = node.get(NODE_VIEW_META_FIELDS);
   if (!slice.isArray() || slice.length() % 3 != 0) {
-    error = "should be array and it length should be multiple of 3";
+    error = "should be an array and its length must be a multiple of 3";
     checkError(NODE_VIEW_META_FIELDS);
   }
   velocypack::Slice value;
   for (velocypack::ArrayIterator it{slice}; it.valid();) {
     value = it.value();
     if (!value.isString()) {
-      error = "field name should be string";
+      error = "field name must be a string";
       checkError(NODE_VIEW_META_FIELDS);
     }
     auto field = value.stringView();
@@ -833,7 +833,7 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
 
     value = it.value();
     if (!value.isString()) {
-      error = "analyzer name should be string";
+      error = "analyzer name must be a string";
       checkError(NODE_VIEW_META_FIELDS);
     }
     auto analyzer = value.stringView();
@@ -841,7 +841,7 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
 
     value = it.value();
     if (!value.isBool()) {
-      error = "includeAllFields should be bool";
+      error = "includeAllFields must be a boolean value";
       checkError(NODE_VIEW_META_FIELDS);
     }
     auto includeAllFields = value.getBool();
