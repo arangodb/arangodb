@@ -105,12 +105,12 @@ namespace fakeit {
         static const bool value = true;
     };
 
-    template<typename R, typename... arglist>
+    template<typename C, typename R, typename... arglist>
     struct VTableMethodType {
 #if defined (__GNUG__)
-        typedef R(*type)(void *, arglist...);
+        using type = R(C::*)(arglist...);
 #elif defined (_MSC_VER)
-        typedef R(__thiscall *type)(void *, arglist...);
+        using type = R(__thiscall C::*)(arglist...);
 #endif
     };
 }
@@ -8611,8 +8611,8 @@ namespace fakeit {
                 void *mPtr = MethodMockingContextBase<R, arglist...>::_mock.getOriginalMethod(_vMethod);
                 C * instance = &(MethodMockingContextBase<R, arglist...>::_mock.get());
                 return [=](arglist&... args) -> R {
-                    auto m = union_cast<typename VTableMethodType<R,arglist...>::type>(mPtr);
-                    return m(instance, args...);
+                    auto m = union_cast<typename VTableMethodType<C,R,arglist...>::type>(mPtr);
+                    return (instance->*m)(args...);
                 };
             }
 
@@ -8631,8 +8631,8 @@ namespace fakeit {
                 void *mPtr = MethodMockingContextBase<R, arglist...>::_mock.getOriginalMethod(_vMethod);
                 C * instance = &(MethodMockingContextBase<R, arglist...>::_mock.get());
                 return [=](arglist&... args) -> R {
-                    auto m = union_cast<typename VTableMethodType<R,arglist...>::type>(mPtr);
-                    return m(instance, std::forward<arglist>(args)...);
+                    auto m = union_cast<typename VTableMethodType<C,R,arglist...>::type>(mPtr);
+                    return (instance->*m)(std::forward<arglist>(args)...);
                 };
             }
         };
