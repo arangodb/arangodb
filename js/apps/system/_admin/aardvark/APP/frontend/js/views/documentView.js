@@ -462,7 +462,7 @@
             // Here we need to do an additional error check as PUT API is returning 202 (PUT) with error inside.
             // Can contain error variable, but can contain errorNum and errorMessage as well (Babies API)
             const entry = data[0];
-            if (entry.error || (entry.errorNum && entry.errorMessage)) {
+            if (entry.errorNum && entry.errorMessage) {
               arangoHelper.arangoError('Error', `${entry.errorMessage} [${entry.errorNum}]`);
               return;
             }
