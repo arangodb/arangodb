@@ -11,6 +11,8 @@ v3.9.3 (XXXX-XX-XX)
   schemas could compare unequal, this could have caused unnecessary repeated
   work for background maintenance threads.
 
+* Make graph search case-insensitive (fixes BTS-882).
+
 * Make throttle for RocksDB take into account the complete compaction debt on
   all levels, not just level0. Previously it only looked at level0, which is not
   enough if there aren't any other levels in the column family.
