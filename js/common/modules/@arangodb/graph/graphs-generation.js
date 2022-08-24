@@ -186,7 +186,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
         return makeClique(size, "bidirected");
     };
 
-    // Creates a path of length length.
+    // Creates a path with length many vertices.
     // The parameter kind has the following meaning:
     //  - "directed" (default):  directed path
     //  - "bidirected": as "directed" but for every edge (v,w), we also have the edge (w,v)
@@ -221,7 +221,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
     // The parameter kind has the following meaning:
     //  - "fromCenter":  the edges point from the center to the leaves
     //  - "toCenter":  the edges point from the leaves to the center
-    //  - "bidirected" (default): as "directed" but for every edge (v,w), we also have the edge (w,v)
+    //  - "bidirected" (default): as "fromCenter" but for every edge (v,w), we also have the edge (w,v)
     //  - "fromAndToCenter": the half of the edges point as with "fromCenter", the other half vice versa; if
     //      numberLeaves is odd, one more edge points from the center to a leaf
     const makeStar = function (numberLeaves, kind = "bidirected") {
@@ -253,9 +253,96 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 }
                 break;
         }
-        // console.warn(edges);
         return {vertices, edges};
     };
+
+    /**
+     * Creates a grid with dimensions numberLayers x thickness. If parameter kind is "directed", the edges go from
+     * Layer i to Layer i+1. Edges between vertices of the same layer all go to the same direction and edges of two
+     * layers go to the same direction. If parameter kind is "zigzag", edges within one layer go to the same direction,
+     * but edges between neighbor layers go to the opposite directions. If parameter
+     * kind is "bidirected", the graph is bidirected. The vertices are enumerated layer-wise: the first layer gets
+     * indexes 0, 1, ..., thickness - 1, the second one thickness, thickness + 1, 2*thickness -1 etc.
+     * @param numberLayers the number of layers between source and target
+     * @param thickness the number of vertices in each layer
+     * @param kind "directed", "zigzag" or "bidirected"
+     */
+
+    const makeGrid = function (numberLayers, thickness, kind) {
+        assertTrue(numberLayers > 1,
+            `makeGrid: numberLayers should be at least 2, it is ${numberLayers}`);
+        assertTrue(thickness > 1,
+            `makeGrid: thickness should be at least 2, it is ${thickness}`);
+        assertTrue(kind === "directed" || kind === "zigzag" || kind === "bidirected",
+            `makeGrid: kind should one of {"directed", "zigzag", "bidirected"}, it is ${kind}`);
+        let vertices = makeVertices(numberLayers * thickness);
+        let edges = [];
+        for (let layer = 0; layer < numberLayers; ++layer) {
+            // edges within one layer
+            for (let i = 0; i < thickness - 1; ++i) {
+                const s = layer * thickness + i;
+                const t = s + 1;
+                switch (kind) {
+                    case "directed":
+                        edges.push(makeEdge(s, t));
+                        break;
+                    case "zigzag":
+                        if (layer % 2 === 0) {
+                            edges.push(makeEdge(s, t));
+                        } else {
+                            edges.push(makeEdge(t, s));
+                        }
+                        break;
+                    case "bidirected":
+                        edges.push(makeEdge(s, t));
+                        edges.push(makeEdge(t, s));
+                        break;
+                }
+            }
+            // edges between layers: from previous layer to current layer (and back if "bidirected")
+            if (layer === 0) {
+                continue;
+            }
+            for (let i = 0; i < thickness; ++i) {
+                const t = layer * thickness + i;
+                const s = t - thickness;
+                edges.push(makeEdge(s, t));
+                if (kind === "bidirected") {
+                    edges.push(makeEdge(t, s));
+                }
+            }
+        }
+        return {vertices, edges};
+    };
+
+    /**
+     * Creates a graph consisting of a grid with dimensions numberLayers x thickness and, additionally,
+     * two vertices source and target. Vertex source is connected to each of thickness many vertices of the first layer.
+     * Each of thickness many vertices of the last layer is connected to vertex target. If parameter kind is "directed",
+     * the edges go from source to the first layer, from Layer i to Layer i+1 and from the last layer to target. Edges
+     * between vertices of the same layer all go to the same direction and edges of two layers go to the same direction.
+     * If parameter kind is "zigzag", edges between source, the layers and target are as for "directed", edges within
+     * one layer go to the same direction, but edges between neighbor layers go to the opposite directions. If parameter
+     * kind is "bidirected", the graph is bidirected. The vertices are enumerated layer-wise: the first layer gets
+     * indexes 0, 1, ..., thickness - 1, the second one thickness, thickness + 1, 2*thickness -1 etc. Source gets index
+     * numberLayers x thickness and target gets index numberLayers x thickness + 1.
+     * @param numberLayers the number of layers between source and target
+     * @param thickness the number of vertices in each layer
+     * @param kind "directed", "zigzag" or "bidirected"
+     */
+    const makeCrystal = function (numberLayers, thickness, kind) {
+        let {vertices, edges} = makeGrid(numberLayers, thickness, kind);
+        const source = vertices.length;
+        const target = vertices.length + 1;
+        vertices.push(makeVertex(source));
+        vertices.push(makeVertex(target));
+        for (let i = 0; i < thickness; ++i) {
+            edges.push(makeEdge(source, i));
+            edges.push(makeEdge(numberLayers * (thickness - 1) + i, target));
+        }
+        return {vertices, edges};
+    };
+
 
     return {
         makeVertices,
@@ -267,7 +354,9 @@ const graphGenerator = function (verticesEdgesGenerator) {
         makeClique,
         makeBidirectedClique,
         makePath,
-        makeStar
+        makeStar,
+        makeGrid,
+        makeCrystal
     };
 };
 
@@ -297,7 +386,25 @@ const unionGraph = function(subgraphs) {
     return {vertices, edges};
 };
 
+/**
+ * Prints the topology of a graph (for manual testing of generated graphs).
+ * @param vertices
+ * @param edges
+ */
+const printTopology = function (vertices, edges) {
+    console.warn("VERTICES:");
+    for (const v of vertices) {
+        console.warn(`    ${v._key}`);
+    }
+    console.warn("EDGES:");
+    for (const e of edges) {
+        console.warn(`    ${e._from.substr(e._from.indexOf('/') + 1)} ${e._to.substr(e._to.indexOf('/') + 1)}`);
+    }
+};
+
 exports.communityGenerator = communityGenerator;
 exports.graphGenerator = graphGenerator;
 exports.makeEdgeBetweenVertices = makeEdgeBetweenVertices;
+exports.unionGraph = unionGraph;
+exports.printTopology = printTopology;
 exports.unionGraph = unionGraph;

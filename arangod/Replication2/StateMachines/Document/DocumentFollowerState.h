@@ -36,6 +36,7 @@ struct DocumentFollowerState
   explicit DocumentFollowerState(
       std::unique_ptr<DocumentCore> core,
       std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
+  ~DocumentFollowerState();
 
  protected:
   [[nodiscard]] auto resign() && noexcept

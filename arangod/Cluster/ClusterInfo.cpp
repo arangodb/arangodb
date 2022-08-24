@@ -1233,8 +1233,8 @@ void ClusterInfo::loadPlan() {
 
         try {
           LogicalView::ptr view;
-          auto res =
-              LogicalView::instantiate(view, *vocbase, viewPairSlice.value);
+          auto res = LogicalView::instantiate(view, *vocbase,
+                                              viewPairSlice.value, false);
 
           if (!res.ok() || !view) {
             LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
@@ -1284,7 +1284,7 @@ void ClusterInfo::loadPlan() {
 
   // Ensure "arangosearch" views are being created BEFORE collections
   // to allow collection's links find them
-  ensureViews(iresearch::StaticStrings::ViewType);
+  ensureViews(iresearch::StaticStrings::ViewArangoSearchType);
 
   // "Plan":{"Analyzers": {
   //  "_system": {
@@ -1636,10 +1636,10 @@ void ClusterInfo::loadPlan() {
                                     std::move(databaseCollections));
   }
 
-  // Ensure "search" views are being created AFTER collections
+  // Ensure "search-alias" views are being created AFTER collections
   // to allow views find collection's inverted indexes
   if (ServerState::instance()->isCoordinator()) {
-    ensureViews(iresearch::StaticStrings::SearchType);
+    ensureViews(iresearch::StaticStrings::ViewSearchAliasType);
   }
 
   // And now for replicated logs

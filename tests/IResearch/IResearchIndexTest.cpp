@@ -250,7 +250,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase().createCollection(createCollection1->slice());
   ASSERT_NE(nullptr, collection1);
-  auto viewImpl = vocbase().createView(createView->slice());
+  auto viewImpl = vocbase().createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
 
   // populate collections
@@ -522,7 +522,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
   ASSERT_NE(nullptr, collection1);
-  auto viewImpl = vocbase.createView(createView->slice());
+  auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
 
   // link collections with view
@@ -876,7 +876,7 @@ TEST_F(IResearchIndexTest, test_fields) {
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
   ASSERT_NE(nullptr, collection1);
-  auto viewImpl = vocbase.createView(createView->slice());
+  auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
 
   // populate collections
