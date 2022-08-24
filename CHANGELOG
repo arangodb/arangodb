@@ -1,6 +1,9 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
 * Make graph search case-insensitive (fixes BTS-882).
 
 * Make throttle for RocksDB take into account the complete compaction debt on
