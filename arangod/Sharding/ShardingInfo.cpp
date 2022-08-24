@@ -665,16 +665,17 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
 template<typename T>
 void ShardingInfo::sortShardNamesNumerically(T& list) {
   // We need to sort numerically, so s99 is before s100:
-  std::sort(list.begin(), list.end(),
-            [](T::value_type const& lhs, T::value_type const& rhs) {
-              TRI_ASSERT(lhs.size() > 1 && lhs[0] == 's');
-              uint64_t l =
-                  basics::StringUtils::uint64(lhs.data() + 1, lhs.size() - 1);
-              TRI_ASSERT(rhs.size() > 1 && rhs[0] == 's');
-              uint64_t r =
-                  basics::StringUtils::uint64(rhs.data() + 1, rhs.size() - 1);
-              return l < r;
-            });
+  std::sort(
+      list.begin(), list.end(),
+      [](typename T::value_type const& lhs, typename T::value_type const& rhs) {
+        TRI_ASSERT(lhs.size() > 1 && lhs[0] == 's');
+        uint64_t l =
+            basics::StringUtils::uint64(lhs.data() + 1, lhs.size() - 1);
+        TRI_ASSERT(rhs.size() > 1 && rhs[0] == 's');
+        uint64_t r =
+            basics::StringUtils::uint64(rhs.data() + 1, rhs.size() - 1);
+        return l < r;
+      });
 }
 
 template void ShardingInfo::sortShardNamesNumerically<std::vector<ServerID>>(
