@@ -83,7 +83,7 @@ TEST_P(IResearchQuerWildcardTest, test) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();

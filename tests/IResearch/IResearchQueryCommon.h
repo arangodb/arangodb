@@ -74,7 +74,9 @@ class IResearchQueryTest
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
-  virtual arangodb::ViewType type() const { return arangodb::ViewType::kView; }
+  virtual arangodb::ViewType type() const {
+    return arangodb::ViewType::kArangoSearch;
+  }
 
   IResearchQueryTest() : server{false} {
     arangodb::tests::init(true);
@@ -327,7 +329,7 @@ class QueryTest : public IResearchQueryTest {
   void createView(std::string_view definition1, std::string_view definition2) {
     auto createJson = VPackParser::fromJson(
         R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
     auto updateJson = VPackParser::fromJson(absl::Substitute(
@@ -349,7 +351,7 @@ class QueryTest : public IResearchQueryTest {
     // testIndex0
     {
       bool created = false;
-      // TODO remove fields, also see SEARCH-334
+      // TODO kSearch remove fields, also see SEARCH-334
       auto createJson = VPackParser::fromJson(absl::Substitute(
           R"({ "name": "testIndex0", "type": "inverted",
                "version": $0, $1
@@ -364,7 +366,7 @@ class QueryTest : public IResearchQueryTest {
     // testIndex1
     {
       bool created = false;
-      // TODO remove fields, also see SEARCH-334
+      // TODO kSearch remove fields, also see SEARCH-334
       auto createJson = VPackParser::fromJson(absl::Substitute(
           R"({ "name": "testIndex1", "type": "inverted",
                "version": $0, $1
@@ -379,9 +381,9 @@ class QueryTest : public IResearchQueryTest {
   }
 
   void createSearch() {
-    auto createJson =
-        VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "search-alias" })");
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE(logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
     auto updateJson = VPackParser::fromJson(R"({ "indexes": [

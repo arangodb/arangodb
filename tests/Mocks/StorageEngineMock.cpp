@@ -1050,7 +1050,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   } else if (type == "inverted") {
     index =
         StorageEngineMock::buildInvertedIndexMock(id, _logicalCollection, info);
-  } else if (type == arangodb::iresearch::StaticStrings::ViewType) {
+  } else if (type == arangodb::iresearch::StaticStrings::ViewArangoSearchType) {
     try {
       auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {

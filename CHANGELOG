@@ -3,6 +3,13 @@ v3.10.0 (XXXX-XX-XX)
 
 * Make graph search case-insensitive (fixes BTS-882).
 
+* Fixed SEARCH-329 fixed removes with nested documents.
+
+* Fixed parsing on NOT operator in nested query filter.
+
+* Fixed SEARCH-346. If index creation is aborted due to existing same index new
+  index is properly dropped if it was already instantiated.
+
 * Updated ArangoDB Starter to 0.15.5-preview-2.
 
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL

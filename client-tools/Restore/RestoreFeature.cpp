@@ -1453,7 +1453,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
     }
 
-    ssize_t numRead = datafile->read(buffer->end(), bufferSize);
+    auto numRead = datafile->read(buffer->end(), bufferSize);
     if (datafile->status().fail()) {  // error while reading
       return datafile->status();
     }
