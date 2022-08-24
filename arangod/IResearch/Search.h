@@ -27,11 +27,13 @@
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/ViewSnapshot.h"
 #include "Containers/FlatHashMap.h"
+#include "IResearchFilterFactory.h"
 
 #include <shared_mutex>
 #include <atomic>
 
 namespace arangodb {
+
 class CollectionNameResolver;
 struct ViewFactory;
 
@@ -41,12 +43,30 @@ namespace arangodb::iresearch {
 class SearchFactory;
 class IResearchInvertedIndex;
 
-struct SearchMeta final {
+struct MetaFst;
+
+class SearchMeta final {
+ public:
   IResearchInvertedIndexSort primarySort;
   IResearchViewStoredValues storedValues;
-  std::string rootAnalyzer;
-  containers::FlatHashMap<std::string, std::string> fieldToAnalyzer;
-  bool includeAllFields{false};
+  struct Field final {
+    std::string analyzer;
+    bool includeAllFields{false};
+  };
+  using Map = std::map<std::string, Field, std::less<>>;
+  Map fieldToAnalyzer;
+
+  [[nodiscard]] static std::shared_ptr<SearchMeta> make();
+
+  void createFst();
+
+  [[nodiscard]] MetaFst const* getFst() const;
+
+  [[nodiscard]] AnalyzerProvider createProvider(
+      std::function<FieldMeta::Analyzer(std::string_view)> getAnalyzer) const;
+
+ private:
+  std::unique_ptr<MetaFst const> _fst;
 };
 
 class Search final : public LogicalView {
@@ -54,7 +74,7 @@ class Search final : public LogicalView {
 
  public:
   static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
-    return {ViewType::kSearch, StaticStrings::SearchType};
+    return {ViewType::kSearchAlias, StaticStrings::ViewSearchAliasType};
   }
 
   //////////////////////////////////////////////////////////////////////////////

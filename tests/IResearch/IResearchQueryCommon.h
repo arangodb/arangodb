@@ -74,7 +74,9 @@ class IResearchQueryTest
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
-  virtual arangodb::ViewType type() const { return arangodb::ViewType::kView; }
+  virtual arangodb::ViewType type() const {
+    return arangodb::ViewType::kArangoSearch;
+  }
 
   IResearchQueryTest() : server{false} {
     arangodb::tests::init(true);
@@ -379,8 +381,8 @@ class QueryTest : public IResearchQueryTest {
   }
 
   void createSearch() {
-    auto createJson =
-        VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "search-alias" })");
     auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_TRUE(logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);

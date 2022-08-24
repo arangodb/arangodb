@@ -688,7 +688,7 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
     return {};
   }
   auto links = [&] {
-    if (view.type() == ViewType::kView) {
+    if (view.type() == ViewType::kArangoSearch) {
       auto const& viewImpl = basics::downCast<IResearchView>(view);
       return viewImpl.getLinks();
     } else {
@@ -706,7 +706,7 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
 
 std::shared_ptr<SearchMeta const> getMeta(
     std::shared_ptr<LogicalView const> const& view) {
-  if (!view || view->type() != ViewType::kSearch) {
+  if (!view || view->type() != ViewType::kSearchAlias) {
     return {};
   }
   return basics::downCast<Search>(*view).meta();
@@ -716,11 +716,11 @@ IResearchSortBase const& primarySort(
     std::shared_ptr<SearchMeta const> const& meta,
     std::shared_ptr<LogicalView const> const& view) {
   if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
     return meta->primarySort;
   }
   TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kView);
+  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
   if (ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.primarySort();
@@ -733,11 +733,11 @@ IResearchViewStoredValues const& storedValues(
     std::shared_ptr<SearchMeta const> const& meta,
     std::shared_ptr<LogicalView const> const& view) {
   if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearch);
+    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
     return meta->storedValues;
   }
   TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kView);
+  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
   if (ServerState::instance()->isCoordinator()) {
     auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
     return viewImpl.storedValues();
@@ -773,8 +773,6 @@ const char* NODE_VIEW_SCORERS_SORT_INDEX = "index";
 const char* NODE_VIEW_SCORERS_SORT_ASC = "asc";
 const char* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
 const char* NODE_VIEW_META_FIELDS = "metaFields";
-const char* NODE_VIEW_META_ANALYZER = "metaAnalyzer";
-const char* NODE_VIEW_META_INCLUDE_ALL = "metaIncludeAll";
 const char* NODE_VIEW_META_SORT = "metaSort";
 const char* NODE_VIEW_META_STORED = "metaStored";
 
@@ -788,14 +786,12 @@ void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
     meta.storedValues.toVelocyPack(node);
   }
-  node.add(NODE_VIEW_META_INCLUDE_ALL,
-           velocypack::Value{meta.includeAllFields});
-  node.add(NODE_VIEW_META_ANALYZER, velocypack::Value{meta.rootAnalyzer});
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_FIELDS};
-    for (auto const& [field, analyzer] : meta.fieldToAnalyzer) {
-      node.add(velocypack::Value{field});
-      node.add(velocypack::Value{analyzer});
+    for (auto const& [name, field] : meta.fieldToAnalyzer) {
+      node.add(velocypack::Value{name});
+      node.add(velocypack::Value{field.analyzer});
+      node.add(velocypack::Value{field.includeAllFields});
     }
   }
 }
@@ -820,42 +816,39 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
   meta.storedValues.fromVelocyPack(slice, error);
   checkError(NODE_VIEW_META_STORED);
 
-  slice = node.get(NODE_VIEW_META_INCLUDE_ALL);
-  if (!slice.isBool()) {
-    error = "should be bool";
-    checkError(NODE_VIEW_META_INCLUDE_ALL);
-  }
-  meta.includeAllFields = slice.getBool();
-
-  slice = node.get(NODE_VIEW_META_ANALYZER);
-  if (!slice.isString()) {
-    error = "should be string";
-    checkError(NODE_VIEW_META_ANALYZER);
-  }
-  meta.rootAnalyzer = slice.stringView();
-
   slice = node.get(NODE_VIEW_META_FIELDS);
-  if (!slice.isArray() || slice.length() % 2 != 0) {
-    error = "should be even array";
+  if (!slice.isArray() || slice.length() % 3 != 0) {
+    error = "should be an array and its length must be a multiple of 3";
     checkError(NODE_VIEW_META_FIELDS);
   }
   velocypack::Slice value;
-  auto checkValue = [&] {
-    if (!value.isString()) {
-      error = "should be array of string";
-      checkError(NODE_VIEW_META_FIELDS);
-    }
-  };
   for (velocypack::ArrayIterator it{slice}; it.valid();) {
     value = it.value();
-    checkValue();
+    if (!value.isString()) {
+      error = "field name must be a string";
+      checkError(NODE_VIEW_META_FIELDS);
+    }
     auto field = value.stringView();
     ++it;
+
     value = it.value();
-    checkValue();
+    if (!value.isString()) {
+      error = "analyzer name must be a string";
+      checkError(NODE_VIEW_META_FIELDS);
+    }
     auto analyzer = value.stringView();
     ++it;
-    meta.fieldToAnalyzer.emplace(field, analyzer);
+
+    value = it.value();
+    if (!value.isBool()) {
+      error = "includeAllFields must be a boolean value";
+      checkError(NODE_VIEW_META_FIELDS);
+    }
+    auto includeAllFields = value.getBool();
+    ++it;
+
+    meta.fieldToAnalyzer.emplace(
+        field, SearchMeta::Field{std::string{analyzer}, includeAllFields});
   }
 }
 
@@ -1068,7 +1061,7 @@ IResearchViewNode::IResearchViewNode(
   // FIXME any other way to validate options before object creation???
   std::string error;
   TRI_ASSERT(_view);
-  TRI_ASSERT(_meta || _view->type() != ViewType::kSearch);
+  TRI_ASSERT(_meta || _view->type() != ViewType::kSearchAlias);
   if (!parseOptions(ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -1105,8 +1098,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       viewNameSlice.isNone() ? "" : viewNameSlice.stringView();
   auto const viewIdSlice = base.get(NODE_VIEW_ID_PARAM);
   if (viewIdSlice.isNone()) {  // handle search-alias view
-    auto meta = std::make_shared<SearchMeta>();
+    auto meta = SearchMeta::make();
     fromVelocyPack(base, *meta);
+    meta->createFst();
     _meta = std::move(meta);
   } else if (!viewIdSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1355,7 +1349,7 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // system info
   nodes.add(NODE_DATABASE_PARAM, VPackValue(_vocbase.name()));
   TRI_ASSERT(_view);
-  TRI_ASSERT(_meta || _view->type() != ViewType::kSearch);
+  TRI_ASSERT(_meta || _view->type() != ViewType::kSearchAlias);
   // need 'view' field to correctly print view name in JS explanation
   nodes.add(NODE_VIEW_NAME_PARAM, VPackValue(_view->name()));
   if (!_meta) {

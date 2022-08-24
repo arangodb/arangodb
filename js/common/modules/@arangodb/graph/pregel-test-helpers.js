@@ -357,6 +357,7 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
 
 
 class Vertex {
+
     constructor(key, label, value = 0) {
         this.outEdges = [];
         this.outNeighbors = new Set();
@@ -396,7 +397,6 @@ class Graph {
             }
             console.warn("End vertices");
         }
-
     }
 
     /**
@@ -450,6 +450,7 @@ class Graph {
     bfs(source, cbOnFindVertex, cbOnPopVertex) {
         assertTrue(typeof (source) === `string`, `${source} is not a string`);
         assertTrue(this.vertices.has(`${source}`), `bfs: the given source "${JSON.stringify(source)}" is not a vertex`);
+
         let visited = new Set();
         visited.add(source);
         if (cbOnFindVertex !== undefined) {
@@ -464,6 +465,7 @@ class Graph {
             }
             for (const wKey of v.outNeighbors) {
                 if (!visited.has(wKey)) {
+
                     visited.add(wKey);
                     if (cbOnFindVertex !== undefined) {
                         cbOnFindVertex(this.vertex(wKey), v);
@@ -479,6 +481,7 @@ class Graph {
      * when the vertex is popped from the queue.
      */
     dfs(source, cbOnFindVertex, cbOnPopVertex) {
+
         assertTrue(this.vertices.has(source), `dfs: the given source "${source}" is not a vertex`);
         let visited = new Set();
         visited.add(source);
@@ -494,6 +497,7 @@ class Graph {
             }
             for (const wKey of v.outNeighbors) {
                 if (!visited.has(wKey)) {
+
                     visited.add(wKey);
                     if (cbOnFindVertex !== undefined) {
                         cbOnFindVertex(this.vertex(wKey), v);
@@ -1730,6 +1734,7 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
                     vertices,
                     edges
                 } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+
                 // insert each edge twice
                 let edges2 = [];
                 for (const e of edges) {
@@ -1760,12 +1765,6 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
 
-
-    // only for debugging
-    const printVertexKey = function (vertex) {
-        console.warn(`printVertexKey: ${vertex._key}`);
-    };
-
     const writeDistance = function (vertex, parent) {
         if (parent === undefined) {
             vertex.value = 0;
@@ -1782,6 +1781,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
      */
     const testSSSPOnGraph = function (vertices, edges, source) {
         assertEqual(typeof (source), 'string', `${source} is not a string`);
+
         db[vColl].save(vertices);
         db[eColl].save(edges);
         const query = `
@@ -1796,6 +1796,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
         // The documentation says "length above 9007199254740991 (max safe integer)".)
         const infinity = 9223372036854776000;
         for (let [, vertex] of graph.vertices) {
+
             vertex.value = infinity;
         }
         graph.bfs(source, writeDistance, undefined);
@@ -1820,6 +1821,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
             tearDown: makeTearDown(isSmart),
 
             testSSSPDirectedCrystalGraphWithAdditionalEdge: function () {
+
                 // directed crystal graph (vertical edges go down):
                 //   ->0 -> 3 -> 6 ->
                 //     |    |    |
@@ -1997,6 +1999,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
         };
     };
 }
+
 
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
