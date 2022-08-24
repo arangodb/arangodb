@@ -130,6 +130,7 @@ const LinkPropertiesInput = ({
                 onSelect={addField}
                 label={"Fields"}
                 disabled={disabled}
+                readOnly={true}
               />
             </span>
             <span style={{
