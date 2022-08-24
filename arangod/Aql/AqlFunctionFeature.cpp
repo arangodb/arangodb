@@ -450,6 +450,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_MILLISECOND", ".", flags, &functions::DateMillisecond});
   add({"DATE_DAYOFYEAR", ".", flags, &functions::DateDayOfYear});
   add({"DATE_ISOWEEK", ".", flags, &functions::DateIsoWeek});
+  add({"DATE_ISOWEEKYEAR", ".", flags, &functions::DateIsoWeekYear});
   add({"DATE_LEAPYEAR", ".", flags, &functions::DateLeapYear});
   add({"DATE_QUARTER", ".", flags, &functions::DateQuarter});
   add({"DATE_DAYS_IN_MONTH", ".", flags, &functions::DateDaysInMonth});

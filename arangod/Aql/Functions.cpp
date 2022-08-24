@@ -3788,6 +3788,31 @@ AqlValue functions::DateIsoWeek(ExpressionContext* expressionContext,
   return AqlValue(AqlValueHintUInt(isoWeek));
 }
 
+/// @brief function DATE_ISOWEEKYEAR
+AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
+                                    AstNode const&,
+                                    VPackFunctionParametersView parameters) {
+  static char const* AFN = "DATE_ISOWEEKYEAR";
+  tp_sys_clock_ms tp;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
+  // The (unsigned) operator is overloaded...
+  uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
+  int isoYear = (int)(yww.year());
+  transaction::Methods* trx = &expressionContext->trx();
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("week", VPackValue(isoWeek));
+  builder->add("year", VPackValue(isoYear));
+  builder->close();
+
+  return AqlValue(builder->slice(), builder->size());
+}
+
 /// @brief function DATE_LEAPYEAR
 AqlValue functions::DateLeapYear(ExpressionContext* expressionContext,
                                  AstNode const&,
