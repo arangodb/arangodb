@@ -58,10 +58,6 @@ struct PlanCollection {
   bool isVolatile;
   bool cacheEnabled;
 
-  // NOTE: This attribute is not documented
-  bool syncByRevision;
-  bool usesRevisionsAsDocumentIds;
-
   uint64_t numberOfShards;
   uint64_t replicationFactor;
   uint64_t writeConcern;
@@ -84,6 +80,13 @@ struct PlanCollection {
   // Did a short_cut here to avoid concatenated changes
   arangodb::velocypack::Builder keyOptions;
 
+  // NOTE: This attributes are not documented
+  bool syncByRevision;
+  bool usesRevisionsAsDocumentIds;
+  // Deprecated, and not documented anymore
+
+  std::string id;
+
   // TODO: Maybe this is better off with a transformator Uint -> col_type_e
   [[nodiscard]] TRI_col_type_e getType() const noexcept {
     return TRI_col_type_e(type);
@@ -101,6 +104,7 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
                 }
                 return inspection::Status::Success{};
               }),
+          f.field("id", planCollection.id).fallback(""),
           f.field("waitForSync", planCollection.waitForSync).fallback(false),
           f.field("isSystem", planCollection.isSystem).fallback(false),
           f.field("doCompact", planCollection.doCompact).fallback(false),
@@ -119,15 +123,26 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
                 }
                 return {"Value has to be > 0"};
               }),
-          f.field("replicationFactor", planCollection.replicationFactor)
-              .fallback(1ULL)
+          // Deprecated, and not documented anymore
+          // The ordering is important here, minReplicationFactor
+          // has to be before writeConcern, this way we ensure that writeConcern
+          // will overwrite the minReplicationFactor value if present
+          f.field("minReplicationFactor", planCollection.writeConcern)
+              .fallback(1ULL),
+          // Now check the new attribute, if it is not there,
+          // fallback to minReplicationFactor / default, whatever
+          // is set already.
+          // Then do the invariant check, this should now cover both
+          // values.
+          f.field("writeConcern", planCollection.writeConcern)
+              .fallback(f.keep())
               .invariant([](auto const& value) -> inspection::Status {
                 if (value > 0) {
                   return inspection::Status::Success{};
                 }
                 return {"Value has to be > 0"};
               }),
-          f.field("writeConcern", planCollection.writeConcern)
+          f.field("replicationFactor", planCollection.replicationFactor)
               .fallback(1ULL)
               .invariant([](auto const& value) -> inspection::Status {
                 if (value > 0) {

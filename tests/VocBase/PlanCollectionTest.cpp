@@ -91,27 +91,30 @@ namespace tests {
 // NOTE: we also test 4.5 (double) right now this passes the validator, need to
 // discuss if this is correct
 
-#define GeneratePositiveIntegerAttributeTest(attributeName)                   \
-  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                  \
-                                   uint64_t expected) {                       \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
-      EXPECT_EQ(testee->attributeName, expected)                              \
-          << "Parsing error in " << body.toJson();                            \
-    };                                                                        \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2); \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),    \
-                        42);                                                  \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),   \
-                        4);                                                   \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -1));   \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0));    \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -4.5)); \
-    GenerateFailsOnBool(attributeName);                                       \
-    GenerateFailsOnString(attributeName);                                     \
-    GenerateFailsOnArray(attributeName);                                      \
-    GenerateFailsOnObject(attributeName);                                     \
+#define GeneratePositiveIntegerAttributeTestInternal(attributeName, valueName) \
+  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
+                                   uint64_t expected) {                        \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice());           \
+      EXPECT_EQ(testee->valueName, expected)                                   \
+          << "Parsing error in " << body.toJson();                             \
+    };                                                                         \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2);  \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),     \
+                        42);                                                   \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),    \
+                        4);                                                    \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -1));    \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0));     \
+    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -4.5));  \
+    GenerateFailsOnBool(attributeName);                                        \
+    GenerateFailsOnString(attributeName);                                      \
+    GenerateFailsOnArray(attributeName);                                       \
+    GenerateFailsOnObject(attributeName);                                      \
   }
+
+#define GeneratePositiveIntegerAttributeTest(attributeName) \
+  GeneratePositiveIntegerAttributeTestInternal(attributeName, attributeName)
 
 #define GenerateStringAttributeTest(attributeName)                             \
   TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
@@ -213,6 +216,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   // This covers only non-documented APIS
   EXPECT_TRUE(testee->syncByRevision);
   EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
+  EXPECT_EQ(testee->id, "");
 }
 
 TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
@@ -287,6 +291,45 @@ TEST_F(PlanCollectionUserAPITest, test_shardingStrategy) {
   GenerateFailsOnObject(shardingStrategy);
 }
 
+TEST_F(PlanCollectionUserAPITest,
+       test_writeConcernWinsVersusminReplicationFactor) {
+  std::string colName = "test";
+  {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue(colName));
+      body.add("writeConcern", VPackValue(3));
+      body.add("minReplicationFactor", VPackValue(5));
+      // has to be greater or equal to used writeConcern
+      body.add("replicationFactor", VPackValue(4));
+    }
+
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+    ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
+                             << testee.result().errorMessage();
+    EXPECT_EQ(testee->writeConcern, 3);
+  }
+  {
+    // We change order of attributes in the input vpack
+    // to ensure ordering in json does not have a subtle impact
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      // has to be greater or equal to used writeConcern
+      body.add("name", VPackValue(colName));
+      body.add("replicationFactor", VPackValue(4));
+      body.add("minReplicationFactor", VPackValue(5));
+      body.add("writeConcern", VPackValue(3));
+    }
+
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+    ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
+                             << testee.result().errorMessage();
+    EXPECT_EQ(testee->writeConcern, 3);
+  }
+}
+
 // Tests for generic attributes without special needs
 GenerateBoolAttributeTest(waitForSync);
 GenerateBoolAttributeTest(doCompact);
@@ -305,6 +348,10 @@ GenerateStringAttributeTest(globallyUniqueId);
 // Covers a non-documented API
 GenerateBoolAttributeTest(syncByRevision);
 GenerateBoolAttributeTest(usesRevisionsAsDocumentIds);
+GenerateStringAttributeTest(id);
+
+GeneratePositiveIntegerAttributeTestInternal(minReplicationFactor,
+                                             writeConcern);
 
 }  // namespace tests
 }  // namespace arangodb
