@@ -26,12 +26,14 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
+#include "Basics/files.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -133,9 +135,16 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   uint64_t _maxTick;
   uint64_t _maxHLC;
   uint64_t _entriesScanned;
-  /// @brief last document removed
+  // brief last document removed
   RevisionId _lastRemovedDocRid = RevisionId::none();
 
+  // latest sequence number in WAL
+  rocksdb::SequenceNumber const _latestSequence; 
+  rocksdb::SequenceNumber _sequenceRange;
+  rocksdb::SequenceNumber _rangeBegin;
+  int _reportTicker = 0;
+  int _progress = 0;
+  
   rocksdb::SequenceNumber _startSequence;    /// start of batch sequence nr
   rocksdb::SequenceNumber& _currentSequence;  /// current sequence nr
   RocksDBEngine& _engine;
@@ -144,17 +153,42 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
   /// @param seqs sequence number from which to count operations
   explicit WBReader(application_features::ApplicationServer& server,
+                    rocksdb::SequenceNumber latestSequence,
                     rocksdb::SequenceNumber& currentSequence)
       : _server(server),
         _maxTick(TRI_NewTickServer()),
         _maxHLC(0),
         _entriesScanned(0),
         _lastRemovedDocRid(0),
+        _latestSequence(latestSequence),
+        _sequenceRange(0),
+        _rangeBegin(0),
         _startSequence(0),
         _currentSequence(currentSequence),
         _engine(_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
+    if (_startSequence == 0) {
+      _rangeBegin = startSequence;
+      _sequenceRange = _latestSequence - _rangeBegin;
+    }
+
+    // progress reporting. only do this every 100 iterations to avoid the overhead
+    // of the calculations for every new sequence number
+    if (_sequenceRange > 0 && ++_reportTicker >= 100) {
+      _reportTicker = 0;
+
+      auto progress = static_cast<int>(100.0 * (startSequence - _rangeBegin) / _sequenceRange);
+      
+      // report only every 5%, so that we don't flood the log with micro progress
+      if (progress >= 5 && progress >= _progress + 5) {
+        LOG_TOPIC("fb20c", INFO, Logger::ENGINES) 
+            << "Recovering from sequence number " << startSequence << " (" << progress << "% of WAL)...";
+        
+        _progress = progress;
+      }
+    }
+
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -531,13 +565,23 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler(server, _tick);
+    auto latest = _db->GetLatestSequenceNumber();
+    WBReader handler(server, latest, _tick);
     rocksdb::SequenceNumber earliest = engine.settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine.releasedTick());
  
+
     if (engine.dbExisted()) {
+      size_t filesInArchive = 0;
+      try {
+        std::string archive = basics::FileUtils::buildFilename(_db->GetOptions().wal_dir, "archive");
+        filesInArchive = TRI_FilesDirectory(archive.c_str()).size();
+      } catch (...) {
+        // don't ever fail recovery because we can't get list of files in archive
+      }
+
       LOG_TOPIC("fe333", INFO, Logger::ENGINES)
-          << "RocksDB recovery starting, scanning WAL starting from sequence number " << minTick;
+          << "RocksDB recovery starting, scanning WAL starting from sequence number " << minTick << ". latest sequence number: " << latest << ", files in archive: " << filesInArchive;
     }
 
     // prevent purging of WAL files while we are in here
