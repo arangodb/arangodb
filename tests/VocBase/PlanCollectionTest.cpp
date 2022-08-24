@@ -209,6 +209,10 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_TRUE(testee->computedValues.slice().isEmptyArray());
   EXPECT_TRUE(testee->schema.slice().isEmptyObject());
   EXPECT_TRUE(testee->keyOptions.slice().isEmptyObject());
+
+  // This covers only non-documented APIS
+  EXPECT_TRUE(testee->syncByRevision);
+  EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
 }
 
 TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
@@ -296,7 +300,11 @@ GeneratePositiveIntegerAttributeTest(writeConcern);
 
 GenerateStringAttributeTest(distributeShardsLike);
 GenerateStringAttributeTest(smartJoinAttribute);
-GenerateStringAttributeTest(globallyUniqueId)
+GenerateStringAttributeTest(globallyUniqueId);
+
+// Covers a non-documented API
+GenerateBoolAttributeTest(syncByRevision);
+GenerateBoolAttributeTest(usesRevisionsAsDocumentIds);
 
 }  // namespace tests
 }  // namespace arangodb

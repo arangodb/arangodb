@@ -58,6 +58,10 @@ struct PlanCollection {
   bool isVolatile;
   bool cacheEnabled;
 
+  // NOTE: This attribute is not documented
+  bool syncByRevision;
+  bool usesRevisionsAsDocumentIds;
+
   uint64_t numberOfShards;
   uint64_t replicationFactor;
   uint64_t writeConcern;
@@ -102,6 +106,11 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("doCompact", planCollection.doCompact).fallback(false),
           f.field("cacheEnabled", planCollection.cacheEnabled).fallback(false),
           f.field("isVolatile", planCollection.isVolatile).fallback(false),
+          f.field("syncByRevision", planCollection.syncByRevision)
+              .fallback(true),
+          f.field("usesRevisionsAsDocumentIds",
+                  planCollection.usesRevisionsAsDocumentIds)
+              .fallback(true),
           f.field("numberOfShards", planCollection.numberOfShards)
               .fallback(1ULL)
               .invariant([](auto const& value) -> inspection::Status {
