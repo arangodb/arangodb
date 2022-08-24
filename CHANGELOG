@@ -11,6 +11,11 @@ devel
   schemas could compare unequal, this could have caused unnecessary repeated
   work for background maintenance threads.
 
+* Removed transitive node dependencies.
+
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
 * Make graph search case-insensitive (fixes BTS-882).
 
 * BTS-428: Added function DATE_ISOWEEKYEAR that retrieves the number of the
