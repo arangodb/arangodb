@@ -1,6 +1,8 @@
 devel
 -----
 
+* Removed transitive node dependencies.
+
 * Web UI: Now correctly handles the server error response when an error occurred
   during the modification of a document or an edge (BTS-934).
 
