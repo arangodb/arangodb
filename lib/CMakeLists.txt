@@ -200,7 +200,6 @@ add_library(arango STATIC
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
-  ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
 # The following is necessary to compile MerkleTree.cpp without RTTI.
