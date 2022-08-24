@@ -264,13 +264,13 @@ function transactionIntermediateCommitsSingleSuite() {
       // follower must have been dropped
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
-    
-      let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits_total");
-      assertEqual(intermediateCommitsBefore + 10, intermediateCommitsAfter);
 
+      // By coming back in sync the follower removes 10000 entries which results in another intermediate commit
+      assertInSync(leader, follower, shardId);
+      let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits_total");
+      assertEqual(intermediateCommitsBefore + 10 + 1, intermediateCommitsAfter);
 
       debugClearFailAt(follower, "logAfterIntermediateCommit");
-      assertInSync(leader, follower, shardId);
     },
     
     // make follower execute intermediate commits (before the leader), and let the
