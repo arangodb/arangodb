@@ -157,7 +157,6 @@ add_executable(${BIN_ARANGODUMP}
   ../cmake/activeCodePage.manifest
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
-  ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 

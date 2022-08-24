@@ -40,29 +40,32 @@ const pad = function(value) {
   return Array(6 - value.length).join("0") + value;
 };
 
+
+let vertices = [];
+for (let i = 0; i < 5000; ++i) {
+  vertices.push({ _key: "test" + pad(i), value1: i, value2: i % 113, value3: i });
+}
+let edges = [];
+for (let i = 0; i < 5000; ++i) {
+  edges.push({
+    _from: cn + "/blubb",
+    _to: cn + "/test" + pad(i),
+    value1: i,
+    value2: i % 113,
+    value3: i,
+    uniqueValue: i,
+  });
+}
+
+
 function IteratorSuite(permuteConfigs) {
   'use strict';
 
   const prepare = function(ctx) {
     const col = ctx.collection(cn);
-    let docs = [];
-    for (let i = 0; i < 5000; ++i) {
-      docs.push({ _key: "test" + pad(i), value1: i, value2: i % 113, value3: i });
-    }
-    col.insert(docs);
-
+    col.insert(vertices);
     let ecol = ctx.collection(ecn);
-    for (let i = 0; i < 5000; ++i) {
-      docs.push({
-        _from: cn + "/blubb",
-        _to: cn + "/test" + pad(i),
-        value1: i,
-        value2: i % 113,
-        value3: i,
-        uniqueValue: i,
-      });
-    }
-    ecol.insert(docs);
+    ecol.insert(edges);
   };
 
   const permute = function(test) {
