@@ -24,8 +24,11 @@
 
 #pragma once
 
+namespace arangodb::pregel::algorithm_sdk {
 struct IConductor {
   virtual auto start() -> void = 0;
+
+  virtual ~IConductor(){};
 };
 
 template <typename Algorithm> struct Conductor : public IConductor {
@@ -36,3 +39,5 @@ template <typename Algorithm>
 auto makeConductor() -> std::shared_ptr<Conductor<Algorithm>> {
   return std::make_shared<Conductor<Algorithm>>();
 }
+
+} // namespace arangodb::pregel::algorithm_sdk

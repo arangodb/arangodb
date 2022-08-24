@@ -23,13 +23,14 @@
 
 #pragma once
 
-#include <Algorithm.h>
+#include <Algorithm/Algorithm.h>
 
-namespace pregel::algorithms::pagerank {
+#include <variant>
+
+namespace arangodb::pregel::algorithms::pagerank {
 
 struct VertexProperties {
-  uint64_t foo;
-  float bla;
+  uint64_t val;
 };
 
 struct Msg1 {
@@ -53,7 +54,7 @@ struct Global {
 struct PageRankData {
   using Settings = struct {};
   using VertexProperties = VertexProperties;
-  using EdgeProperties = EmptyEdgeProperties;
+  using EdgeProperties = algorithm_sdk::EmptyEdgeProperties;
   using Message = Message;
 
   using Global = struct {};
@@ -61,38 +62,26 @@ struct PageRankData {
   using Aggregators = struct { float foo; };
 };
 
-struct PageRank : AlgorithmBase<PageRankData> {
+struct PageRank : arangodb::pregel::algorithm_sdk::AlgorithmBase<PageRankData> {
   [[nodiscard]] constexpr auto name() const -> std::string_view override {
     return "PageRank";
   }
 
-  auto readVertexDocument(VPackSlice const &doc) -> VertexProperties override {
-    return VertexProperties{.val = 0.0};
+  [[nodiscard]] auto readVertexDocument(VPackSlice const& doc) const
+      -> VertexProperties override {
+    return VertexProperties{.val = 0};
   }
-  auto readEdgeDocument(VPackSlice const &doc)
+  [[nodiscard]] auto readEdgeDocument(VPackSlice const& doc) const
       -> PageRankData::EdgeProperties override {
     return PageRankData::EdgeProperties{};
   }
-  auto writeVertexDocument(VPackBuilder &b) -> void override { return; }
-
-  auto vertexStepPhase0() -> void{};
-
-  auto vertexStep(Global const &global, VertexProperties &props)
-      -> void override {
-    switch (global.phase) {
-    case Phase::Phase0:
-      break;
-    case Phase::Phase1:
-      break;
-    }
-    props.foo = 15;
-
-    return;
+  [[nodiscard]] auto writeVertexDocument(VertexProperties const& prop,
+                                         VPackSlice const& doc)
+      -> std::shared_ptr<VPackBuilder> override {
+    return std::make_shared<VPackBuilder>();
   }
-  auto conductorStep(Global &state) -> void override {
-    state.phase += 1;
-    return;
-  }
+
+  void conductorSetup() override{};
 };
 
-} // namespace pregel::algorithms::pagerank
+}  // namespace arangodb::pregel::algorithms::pagerank

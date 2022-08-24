@@ -30,6 +30,7 @@
 
 #include <fmt/core.h>
 
+namespace arangodb::pregel::algorithm_sdk {
 // These structs can be used by an algorithm
 // implementor to signal that the respective
 // data is empty, so we do not allocate *any*
@@ -41,25 +42,29 @@ struct EmptyVertexProperties {};
 struct EmptyEdgeProperties {};
 struct EmptyMessage {};
 
-template <typename AlgorithmData> struct AlgorithmBase {
+template<typename AlgorithmData>
+struct AlgorithmBase {
   [[nodiscard]] virtual constexpr auto name() const -> std::string_view = 0;
 
-  [[nodiscard]] virtual auto readVertexDocument(VPackSlice const &doc) ->
+  [[nodiscard]] virtual auto readVertexDocument(VPackSlice const& doc) const ->
       typename AlgorithmData::VertexProperties = 0;
 
-  [[nodiscard]] virtual auto readEdgeDocument(VPackSlice const &doc) ->
+  [[nodiscard]] virtual auto readEdgeDocument(VPackSlice const& doc) const ->
       typename AlgorithmData::EdgeProperties = 0;
 
-  virtual auto
-  writeVertexDocument(typename AlgorithmData::VertexProperties const &prop,
-                      VPackBuilder &b) -> void = 0;
+  virtual auto writeVertexDocument(
+      typename AlgorithmData::VertexProperties const& prop,
+      VPackSlice const& doc) -> std::shared_ptr<VPackBuilder>;
 
   virtual auto conductorSetup() -> void = 0;
+  virtual auto conductorStep(typename AlgorithmData::Global const& state)
+      -> void = 0;
 
-  virtual auto vertexStep(/* to be determined */) -> void /* to be determined */
-      = 0;
+  virtual auto vertexStep(typename AlgorithmData::Global const& global,
+                          typename AlgorithmData::VertexProperties& props) const
+      -> void = 0;
 
-  virtual auto conductorStep(/* to be determined */)
-      -> void /* to be determined */
-      = 0;
+  virtual ~AlgorithmBase() = default;
 };
+
+}  // namespace arangodb::pregel::algorithm_sdk

@@ -24,12 +24,14 @@
 
 #pragma once
 
-#include <Algorithm.h>
+#include <Algorithm/Algorithm.h>
 
 struct IWorker {
   virtual auto loadGraphShard() -> void = 0;
   virtual auto runGSS() -> void = 0;
   virtual auto storeGraphShard() -> void = 0;
+
+  virtual ~IWorker() = default;
 };
 
 template <typename Algorithm> struct Worker : IWorker {
