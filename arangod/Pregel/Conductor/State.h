@@ -46,14 +46,12 @@ enum class StateType {
   Canceled,
   Done,
   InError,
-  Recovering,
   FatalError
 };
 
 struct State {
   virtual auto run() -> void = 0;
   virtual auto receive(Message const& message) -> void = 0;
-  virtual auto recover() -> void = 0;
   virtual auto getResults(bool withId) -> PregelResults {
     return PregelResults{.results = VPackBuilder{}};
   };

@@ -40,7 +40,6 @@ struct Done : State {
   ~Done() = default;
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
-  auto recover() -> void override{};
   auto getResults(bool withId) -> PregelResults override;
   auto name() const -> std::string override { return "done"; };
   auto isRunning() const -> bool override { return false; }

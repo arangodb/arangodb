@@ -43,12 +43,10 @@
 #include "Pregel/Conductor/FatalErrorState.h"
 #include "Pregel/Conductor/InErrorState.h"
 #include "Pregel/Conductor/LoadingState.h"
-#include "Pregel/Conductor/RecoveringState.h"
 #include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/StoringState.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
@@ -402,22 +400,9 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   return VPackBuilder();
 }
 
-void Conductor::finishedRecoveryStep(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _callbackMutex);
-
-  auto event = deserialize<RecoveryFinished>(data);
-
-  receive(event);
-}
-
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
   changeState(conductor::StateType::Canceled);
-}
-
-void Conductor::startRecovery() {
-  MUTEX_LOCKER(guard, _callbackMutex);
-  state->recover();
 }
 
 // resolves into an ordered list of shards for each collection on each server
@@ -469,8 +454,7 @@ static void resolveInfo(
   }
 }
 
-/// should cause workers to start a new execution or begin with recovery
-/// proceedings
+/// should cause workers to start a new execution
 ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
                                         VPackSlice additional) {
   _callbackMutex.assertLockedByCurrentThread();
@@ -640,12 +624,6 @@ void Conductor::cleanup() {
 
   if (_masterContext) {
     _masterContext->postApplication();
-  }
-
-  // stop monitoring shards
-  RecoveryManager* mngr = _feature.recoveryManager();
-  if (mngr) {
-    mngr->stopMonitoring(this);
   }
 }
 
@@ -874,9 +852,6 @@ auto Conductor::changeState(conductor::StateType name) -> void {
     case conductor::StateType::InError:
       state = std::make_unique<conductor::InError>(*this, _ttl);
       break;
-    case conductor::StateType::Recovering:
-      state = std::make_unique<conductor::Recovering>(*this, _ttl);
-      break;
     case conductor::StateType::FatalError:
       state = std::make_unique<conductor::FatalError>(*this, _ttl);
       break;
@@ -901,9 +876,3 @@ template auto Conductor::_sendToAllDBServers(std::string const& path,
 template auto Conductor::_sendToAllDBServers(std::string const& path,
                                              CancelGss const& message)
     -> ResultT<std::vector<GssCanceled>>;
-template auto Conductor::_sendToAllDBServers(std::string const& path,
-                                             FinalizeRecovery const& message)
-    -> ResultT<std::vector<RecoveryFinalized>>;
-template auto Conductor::_sendToAllDBServers(std::string const& path,
-                                             ContinueRecovery const& message)
-    -> ResultT<std::vector<RecoveryContinued>>;

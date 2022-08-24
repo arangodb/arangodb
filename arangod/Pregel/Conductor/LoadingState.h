@@ -37,7 +37,6 @@ struct Loading : State {
   ~Loading();
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
-  auto recover() -> void override{};
   auto name() const -> std::string override { return "loading"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

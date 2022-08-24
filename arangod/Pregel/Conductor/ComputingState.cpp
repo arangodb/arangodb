@@ -10,7 +10,6 @@ using namespace arangodb::pregel::conductor;
 
 Computing::Computing(Conductor& conductor) : conductor{conductor} {
   conductor.updateState(ExecutionState::RUNNING);
-  // TODO choose how to handle state after Recovery
   if (!conductor._timing.computation.hasStarted()) {
     conductor._timing.computation.start();
   }
@@ -18,7 +17,6 @@ Computing::Computing(Conductor& conductor) : conductor{conductor} {
 }
 
 Computing::~Computing() {
-  // TODO choose how to handle state after Recovery
   if (!conductor._timing.computation.hasFinished()) {
     conductor._timing.computation.finish();
   }
@@ -57,8 +55,4 @@ auto Computing::receive(Message const& message) -> void {
           << "No further action taken after receiving all responses";
     }
   });
-}
-
-auto Computing::recover() -> void {
-  conductor.changeState(StateType::Recovering);
 }

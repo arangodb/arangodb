@@ -5,7 +5,6 @@
 #include "Pregel/Conductor/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Pregel/WorkerConductorMessages.h"
 
 using namespace arangodb::pregel::conductor;
