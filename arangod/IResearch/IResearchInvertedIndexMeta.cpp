@@ -414,6 +414,11 @@ bool IResearchInvertedIndexMeta::operator==(
     return false;
   }
 
+  if (*static_cast<InvertedIndexField const*>(this) !=
+      static_cast<InvertedIndexField const&>(other)) {
+    return false;
+  }
+
   if (_sort != other._sort) {
     return false;
   }
@@ -436,8 +441,8 @@ bool IResearchInvertedIndexMeta::operator==(
 
   size_t matched{0};
   for (auto const& thisField : _fields) {
-    for (auto const& otherField : _fields) {
-      if (thisField.namesMatch(otherField)) {
+    for (auto const& otherField : other._fields) {
+      if (thisField == otherField) {
         matched++;
         break;
       }
@@ -446,9 +451,9 @@ bool IResearchInvertedIndexMeta::operator==(
   return matched == _fields.size();
 }
 
-bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
+bool IResearchInvertedIndexMeta::matchesDefinition(
     IResearchInvertedIndexMeta const& meta, VPackSlice other,
-    LogicalCollection const& collection) {
+    TRI_vocbase_t const& vocbase) {
   auto value = other.get(arangodb::StaticStrings::IndexFields);
 
   if (!value.isArray()) {
@@ -462,7 +467,6 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
   }
 
   IResearchInvertedIndexMeta otherMeta;
-  auto& vocbase = collection.vocbase();
   std::string errorField;
   return otherMeta.init(vocbase.server(), other, true, errorField,
                         vocbase.name()) &&
@@ -831,29 +835,16 @@ std::string_view InvertedIndexField::attributeString() const {
 
 std::string_view InvertedIndexField::path() const noexcept { return _path; }
 
-bool InvertedIndexField::namesMatch(
+bool InvertedIndexField::operator==(
     InvertedIndexField const& other) const noexcept {
   return analyzerName() == other.analyzerName() &&
-         basics::AttributeName::namesMatch(_attribute, other._attribute);
-}
-
-bool InvertedIndexField::isIdentical(
-    std::vector<basics::AttributeName> const& path,
-    irs::string_ref analyzerName) const noexcept {
-  if (_analyzers.front()._shortName == analyzerName &&
-      path.size() == _attribute.size()) {
-    auto it = path.begin();
-    auto atr = _attribute.begin();
-    while (it != path.end() && atr != _attribute.end()) {
-      if (it->name != atr->name || it->shouldExpand != atr->shouldExpand) {
-        return false;
-      }
-      ++atr;
-      ++it;
-    }
-    return true;
-  }
-  return false;
+         basics::AttributeName::namesMatch(_attribute, other._attribute) &&
+         _includeAllFields == other._includeAllFields &&
+         _trackListPositions == other._trackListPositions &&
+         _features == other._features &&
+         _isArray == other._isArray && 
+         _overrideValue == other._overrideValue &&
+         _expression == other._expression;
 }
 
 bool IResearchInvertedIndexSort::toVelocyPack(
