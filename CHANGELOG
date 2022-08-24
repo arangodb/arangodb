@@ -11,6 +11,12 @@ devel
   schemas could compare unequal, this could have caused unnecessary repeated
   work for background maintenance threads.
 
+* Make graph search case-insensitive (fixes BTS-882).
+
+* BTS-428: Added function DATE_ISOWEEKYEAR that retrieves the number of the
+  week counting from when the year started in ISO calendar and also the year
+  it's in.
+
 * Added handling of requests with Transfer-Encodign chunked, which is 
   not implemented, so returns code HTTP code 501.
 
