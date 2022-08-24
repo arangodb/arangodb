@@ -22,9 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "IResearchDataStore.h"
 #include "IResearchDocument.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/IResearchDocumentEE.h"
-#endif
+#include "IResearchKludge.h"
 #include "IResearchFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
@@ -43,6 +41,10 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDocumentEE.h"
+#endif
+
 #include <index/column_info.hpp>
 #include <store/mmap_directory.hpp>
 #include <store/store_utils.hpp>
@@ -55,10 +57,6 @@ using namespace std::literals;
 
 namespace arangodb::iresearch {
 namespace {
-
-#ifndef USE_ENTERPRISE
-inline bool needTrackPrevDoc(irs::string_ref) { return false; }
-#endif
 
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
@@ -933,7 +931,7 @@ Result IResearchDataStore::deleteDataStore() noexcept {
 
 Result IResearchDataStore::initDataStore(
     bool& pathExists, InitCallback const& initCallback, uint32_t version,
-    bool sorted,
+    bool sorted, bool nested,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
     irs::type_info::type_id primarySortCompression) {
   std::atomic_store(&_flushSubscription, {});
@@ -1083,7 +1081,7 @@ Result IResearchDataStore::initDataStore(
   auto const encrypt =
       (nullptr != _dataStore._directory->attributes().encryption());
   options.column_info =
-      [encrypt, compressionMap = std::move(compressionMap),
+      [nested, encrypt, compressionMap = std::move(compressionMap),
        primarySortCompression](irs::string_ref name) -> irs::column_info {
     if (name.null()) {
       return {.compression = primarySortCompression(),
@@ -1097,12 +1095,12 @@ Result IResearchDataStore::initDataStore(
       return {.compression = compress->second(),
               .options = {},
               .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
-              .track_prev_doc = false};
+              .track_prev_doc = kludge::needTrackPrevDoc(name, nested)};
     }
     return {.compression = getDefaultCompression()(),
             .options = {},
             .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
-            .track_prev_doc = needTrackPrevDoc(name)};
+            .track_prev_doc = kludge::needTrackPrevDoc(name, nested)};
   };
 
   auto openFlags = irs::OM_APPEND;
