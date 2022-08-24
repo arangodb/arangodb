@@ -70,7 +70,7 @@ class ViewSnapshotCookie final : public ViewSnapshotImpl,
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
     : _links{std::move(links)} {
-  _readers.reserve(links.size());
+  _readers.reserve(_links.size());
 }
 
 void ViewSnapshotCookie::clear() noexcept {
