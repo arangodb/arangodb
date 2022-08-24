@@ -54,7 +54,7 @@ class LogicalCollection;
 
 namespace iresearch {
 struct SearchFunc;
-struct SearchMeta;
+class SearchMeta;
 }  // namespace iresearch
 
 namespace aql {
