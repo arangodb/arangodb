@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Removed transitive node dependencies is-wsl and media-typer.
+
 * Web UI: Now correctly handles the server error response when an error occurred
   during the modification of a document or an edge (BTS-934).
 
