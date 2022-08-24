@@ -121,7 +121,8 @@ bool EnsureIndex::first() {
       body.add(VPackObjectIterator(props));
     }
 
-    if (_priority != maintenance::SLOW_OP_PRIORITY) {
+    if (_priority != maintenance::SLOW_OP_PRIORITY &&
+        vocbase->replicationVersion() != replication::Version::TWO) {
       uint64_t docCount = 0;
       if (Result res = arangodb::maintenance::collectionCount(*col, docCount);
           res.fail()) {
@@ -161,6 +162,8 @@ bool EnsureIndex::first() {
       log += (created.isBool() && created.getBool() ? std::string(" created")
                                                     : std::string(" updated"));
       LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
+      LOG_DEVEL << log << " " << vocbase->name() << "/" << collection << "/"
+                << shard;
     } else {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "

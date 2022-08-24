@@ -34,7 +34,8 @@ namespace arangodb {
 class LogicalCollection;
 namespace transaction {
 class Methods;
-}
+class Hints;
+}  // namespace transaction
 
 class TransactionState;
 
@@ -79,6 +80,10 @@ class TransactionCollection {
 
   virtual Result lockUsage() = 0;
   virtual void releaseUsage() = 0;
+
+  // This is used for creating Indexes on followers, in replication2
+  // databases
+  virtual Result lockUsage(transaction::Hints const& hints);
 
  protected:
   TransactionState* _transaction;                  // the transaction state

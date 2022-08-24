@@ -68,6 +68,7 @@ class ReplicatedRocksDBTransactionCollection final
 
  protected:
   auto ensureCollection() -> Result override;
+  auto ensureCollection(transaction::Hints const& hints) -> Result override;
 
  private:
   void maybeDisableIndexing();

@@ -116,6 +116,43 @@ Result RocksDBTransactionCollection::lockUsage() {
   return {};
 }
 
+Result RocksDBTransactionCollection::lockUsage(
+    transaction::Hints const& hints) {
+  Result res;
+
+  bool doSetup = false;
+  if (_collection == nullptr) {
+    res = ensureCollection(hints);
+    if (res.fail()) {
+      return res;
+    }
+    doSetup = true;
+  }
+
+  TRI_ASSERT(_collection != nullptr);
+
+  if (/*AccessMode::isWriteOrExclusive(_accessType) &&*/ !isLocked()) {
+    // r/w lock the collection
+    res = doLock(_accessType);
+
+    // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
+    // operation has actually acquired the lock (and that the lock has not
+    // been held before)
+    if (res.fail() && !res.is(TRI_ERROR_LOCKED)) {
+      return res;
+    }
+  }
+
+  if (doSetup) {
+    RocksDBMetaCollection* rc =
+        static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+    _initialNumberDocuments = rc->meta().numberDocuments();
+    _revision = rc->meta().revisionId();
+  }
+
+  return {};
+}
+
 void RocksDBTransactionCollection::releaseUsage() {
   // questionable, but seems to work
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
@@ -458,4 +495,9 @@ Result RocksDBTransactionCollection::ensureCollection() {
   TRI_ASSERT(_collection != nullptr);
 
   return {};
+}
+
+Result RocksDBTransactionCollection::ensureCollection(
+    transaction::Hints const& hints) {
+  return ensureCollection();
 }

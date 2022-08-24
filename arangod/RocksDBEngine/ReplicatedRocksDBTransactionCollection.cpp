@@ -32,6 +32,7 @@
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "Transaction/Hints.h"
 
 #include <algorithm>
 
@@ -174,4 +175,12 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   }
 
   return res;
+}
+
+auto ReplicatedRocksDBTransactionCollection::ensureCollection(
+    transaction::Hints const& hints) -> Result {
+  if (hints.has(transaction::Hints::Hint::INDEX_CREATION)) {
+    return RocksDBTransactionCollection::ensureCollection();
+  }
+  return ensureCollection();
 }
