@@ -277,7 +277,7 @@
 
       this.userConfig.fetch({
         success: function (data) {
-          self.graphConfig = data.toJSON().graphs[combinedName];
+          self.graphConfig = data.toJSON().result.graphs[combinedName];
           if (render) {
             self.continueRender();
           }
@@ -342,7 +342,10 @@
         // enable edge editing by default (as this was an option in the past)
         config[combinedName].edgeEditable = 'true';
 
-        var callback = function () {
+        let callbackAfterStore = function (storedData) {
+          if (storedData && storedData[combinedName]) {
+            self.graphConfig = storedData[combinedName];
+          }
           self.lastConfigChange = new Date();
           if (window.App.graphViewer) {
             // no complete rerender needed
@@ -398,7 +401,7 @@
           }
         }.bind(this);
 
-        this.userConfig.setItem('graphs', config, callback);
+        this.userConfig.setItem('graphs', config, callbackAfterStore);
       } else {
         // aql mode - only visual
 
