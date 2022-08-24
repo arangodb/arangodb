@@ -11,6 +11,9 @@ devel
   schemas could compare unequal, this could have caused unnecessary repeated
   work for background maintenance threads.
 
+* Added handling of requests with Transfer-Encodign chunked, which is 
+  not implemented, so returns code HTTP code 501.
+
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
 
