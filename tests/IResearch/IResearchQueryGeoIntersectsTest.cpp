@@ -49,6 +49,7 @@ class QueryGeoIntersects : public QueryTest {
   }
 
   void queryTests() {
+    static std::vector<velocypack::Slice> const empty;
     auto collection = _vocbase.lookupCollection("testCollection0");
     ASSERT_TRUE(collection);
     // populate collection
@@ -116,7 +117,7 @@ class QueryGeoIntersects : public QueryTest {
     auto view = _vocbase.lookupView("testView");
     ASSERT_TRUE(view);
     auto links = [&] {
-      if (view->type() == ViewType::kSearch) {
+      if (view->type() == ViewType::kSearchAlias) {
         auto& impl = basics::downCast<iresearch::Search>(*view);
         return impl.getLinks();
       }
@@ -158,58 +159,25 @@ class QueryGeoIntersects : public QueryTest {
     }
     // EXISTS will also work
     {
-      auto result = executeQuery(_vocbase, R"(FOR d IN testView
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
         SEARCH EXISTS(d.geometry)
-        RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-
-      size_t i = 0;
-      for (VPackArrayIterator it{slice}; it.valid(); ++it) {
-        auto const resolved = it.value().resolveExternals();
-        ASSERT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+        RETURN d)"));
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {  // TODO Fix exists
-      auto result = executeQuery(_vocbase, R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry, 'string')
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-
-      size_t i = 0;
-      for (VPackArrayIterator it{slice}; it.valid(); ++it) {
-        auto const resolved = it.value().resolveExternals();
-        ASSERT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry, 'string')
+        RETURN d)"));
     }
     // EXISTS will also work
     {
-      auto result = executeQuery(_vocbase, R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry, 'analyzer', 'mygeojson')
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-
-      size_t i = 0;
-      for (VPackArrayIterator it{slice}; it.valid(); ++it) {
-        auto const resolved = it.value().resolveExternals();
-        ASSERT_LT(i, _insertedDocs.size());
-        EXPECT_EQUAL_SLICES(_insertedDocs[i++].slice(), resolved);
-      }
-      EXPECT_EQ(i, _insertedDocs.size());
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry, 'analyzer', 'mygeojson')
+        RETURN d)"));
     }
     // test missing field
-    {
-      auto result = executeQuery(_vocbase, R"(LET box = GEO_POLYGON([
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -218,15 +186,12 @@ class QueryGeoIntersects : public QueryTest {
         ])
         FOR d IN testView
         SEARCH ANALYZER(GEO_INTERSECTS(d.missing, box), 'mygeojson')
-        RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-      EXPECT_EQ(slice.length(), 0);
+        RETURN d)",
+                           empty));
     }
     // test missing field
-    {
-      auto result = executeQuery(_vocbase, R"(LET box = GEO_POLYGON([
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -235,15 +200,17 @@ class QueryGeoIntersects : public QueryTest {
         ])
         FOR d IN testView
         SEARCH ANALYZER(GEO_INTERSECTS(box, d.missing), 'mygeojson')
-        RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-      EXPECT_EQ(slice.length(), 0);
+        RETURN d)",
+                           empty));
     }
     // test missing analyzer
     {
-      auto result = executeQuery(_vocbase, R"(LET box = GEO_POLYGON([
+      std::vector<velocypack::Slice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                    _insertedDocs[28].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -252,15 +219,17 @@ class QueryGeoIntersects : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_INTERSECTS(d.geometry, box)
-        RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-      EXPECT_EQ(slice.length(), 0);
+        RETURN d)",
+                           expected));
     }
     // test missing analyzer
     {
-      auto result = executeQuery(_vocbase, R"(LET box = GEO_POLYGON([
+      std::vector<velocypack::Slice> expected;
+      if (type() == ViewType::kSearchAlias) {
+        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                    _insertedDocs[28].slice()};
+      }
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -269,74 +238,49 @@ class QueryGeoIntersects : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_INTERSECTS(box, d.geometry)
-        RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-      EXPECT_EQ(slice.length(), 0);
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<velocypack::Slice> expected = {_insertedDocs[16].slice(),
                                                  _insertedDocs[17].slice(),
                                                  _insertedDocs[28].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET box = GEO_POLYGON([
-             [37.602682, 55.706853],
-             [37.613025, 55.706853],
-             [37.613025, 55.711906],
-             [37.602682, 55.711906],
-             [37.602682, 55.706853]
-           ])
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_INTERSECTS(d.geometry, box), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-
-      size_t i = 0;
-      for (VPackArrayIterator it{slice}; it.valid(); ++it) {
-        auto const resolved = it.value().resolveExternals();
-        ASSERT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+          [37.602682, 55.706853],
+          [37.613025, 55.706853],
+          [37.613025, 55.711906],
+          [37.602682, 55.711906],
+          [37.602682, 55.706853]
+        ])
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_INTERSECTS(d.geometry, box), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<velocypack::Slice> expected = {_insertedDocs[16].slice(),
                                                  _insertedDocs[17].slice(),
                                                  _insertedDocs[28].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET box = GEO_POLYGON([
-             [37.602682, 55.706853],
-             [37.613025, 55.706853],
-             [37.613025, 55.711906],
-             [37.602682, 55.711906],
-             [37.602682, 55.706853]
-           ])
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_INTERSECTS(box, d.geometry), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-
-      size_t i = 0;
-      for (VPackArrayIterator it{slice}; it.valid(); ++it) {
-        auto const resolved = it.value().resolveExternals();
-        ASSERT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+          [37.602682, 55.706853],
+          [37.613025, 55.706853],
+          [37.613025, 55.711906],
+          [37.602682, 55.711906],
+          [37.602682, 55.706853]
+        ])
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_INTERSECTS(box, d.geometry), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<velocypack::Slice> expected = {_insertedDocs[28].slice()};
-      auto result = executeQuery(_vocbase, R"(LET box = GEO_POLYGON([
+      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
           [37.612025, 55.709029],
           [37.618818, 55.709029],
           [37.618818, 55.711906],
@@ -346,52 +290,31 @@ class QueryGeoIntersects : public QueryTest {
         FOR d IN testView
         SEARCH ANALYZER(GEO_INTERSECTS(box, d.geometry), 'mygeojson')
         SORT d.id ASC
-        RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-
-      size_t i = 0;
-      for (VPackArrayIterator it{slice}; it.valid(); ++it) {
-        auto const resolved = it.value().resolveExternals();
-        ASSERT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+        RETURN d)",
+                           expected));
     }
     //
     {
       std::vector<velocypack::Slice> expected = {_insertedDocs[21].slice()};
-      auto result = executeQuery(_vocbase,
-                                 R"(LET point = GEO_POINT(37.73735,  55.816715)
+      EXPECT_TRUE(runQuery(R"(LET point = GEO_POINT(37.73735,  55.816715)
         FOR d IN testView
         SEARCH ANALYZER(GEO_INTERSECTS(point, d.geometry), 'mygeojson')
         SORT d.id ASC
-        RETURN d)");
-      ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
-      auto slice = result.data->slice();
-      ASSERT_TRUE(slice.isArray()) << slice.toString();
-
-      size_t i = 0;
-      for (VPackArrayIterator it{slice}; it.valid(); ++it) {
-        auto const resolved = it.value().resolveExternals();
-        ASSERT_LT(i, expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-      EXPECT_EQ(i, expected.size());
+        RETURN d)",
+                           expected));
     }
   }
 };
 
 class QueryGeoIntersectsView : public QueryGeoIntersects {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView() {
     auto createJson = velocypack::Parser::fromJson(
         R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
-    ASSERT_FALSE(!logicalView);
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
+    ASSERT_TRUE(logicalView);
     auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
     auto updateJson =
         velocypack::Parser::fromJson(absl::Substitute(R"({ "links": {
@@ -409,7 +332,7 @@ class QueryGeoIntersectsView : public QueryGeoIntersects {
 
 class QueryGeoIntersectsSearch : public QueryGeoIntersects {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createIndexes() {
     bool created = false;
@@ -429,9 +352,9 @@ class QueryGeoIntersectsSearch : public QueryGeoIntersects {
 
   void createSearch() {
     auto createJson = velocypack::Parser::fromJson(
-        R"({ "name": "testView", "type": "search" })");
-    auto logicalView = _vocbase.createView(createJson->slice());
-    ASSERT_FALSE(!logicalView);
+        R"({ "name": "testView", "type": "search-alias" })");
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
+    ASSERT_TRUE(logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
     auto updateJson = velocypack::Parser::fromJson(R"({ "indexes": [
       { "collection": "testCollection0", "index": "testIndex0" } ] })");

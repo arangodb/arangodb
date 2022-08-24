@@ -199,8 +199,10 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
   network::Headers headers;
   ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
 
-  TRI_ASSERT(infoSlice.isObject() && infoSlice.get("clusterQueryId").isUInt());
-  QueryId globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
+  TRI_ASSERT(infoSlice.isObject()) << valueTypeName(infoSlice.type());
+  TRI_ASSERT(infoSlice.get("clusterQueryId").isNumber<QueryId>())
+      << "unexpected clusterQueryId: " << infoSlice.toJson();
+  auto const globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
 
   auto buildCallback =
       [this, server, didCreateEngine = std::move(didCreateEngine),

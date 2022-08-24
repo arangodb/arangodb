@@ -53,7 +53,6 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConductorMessages.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
@@ -342,6 +341,8 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   auto loadedEvent = deserialize<GraphLoaded>(data);
+  LOG_PREGEL("08142", WARN) << fmt::format(
+      "finishedWorkerStartup, got response from {}.", loadedEvent.senderId);
 
   state->receive(loadedEvent);
 }
@@ -374,6 +375,8 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
                                      finishedEvent.messageStats.slice());
   if (_asyncMode == false) {  // in async mode we wait for all responded
     _ensureUniqueResponse(finishedEvent.senderId);
+    LOG_PREGEL("08142", WARN) << fmt::format(
+        "finishedWorkerStep, got response from {}.", finishedEvent.senderId);
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
       return VPackBuilder();
@@ -650,6 +653,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   auto event = deserialize<CleanupFinished>(data);
+  LOG_PREGEL("08142", WARN) << fmt::format(
+      "finishedWorkerFinalize, got response from {}.", event.senderId);
 
   state->receive(event);
 }

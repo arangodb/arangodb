@@ -512,6 +512,15 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
   TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   TRI_ASSERT(newIdx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
 
+  // cleanup newly instantiated object
+  auto indexCleanup = ScopeGuard([&newIdx]() noexcept {
+    try {
+      newIdx->drop();
+    } catch (...) {
+      TRI_ASSERT(false);
+    }
+  });
+
   {
     // Step 2. Check for existing matching index
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
@@ -558,7 +567,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
 
   // until here we have been completely read only.
   // modifications start now...
-
   Result res = arangodb::basics::catchToResult([&]() -> Result {
     Result res;
 
@@ -670,6 +678,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
 
   if (res.ok()) {
     created = true;
+    indexCleanup.cancel();
     return newIdx;
   }
 
@@ -679,7 +688,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
     RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
     removeIndex(_indexes, newIdx->id());
   }
-  newIdx->drop();
   THROW_ARANGO_EXCEPTION(res);
 }
 

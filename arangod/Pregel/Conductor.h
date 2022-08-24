@@ -66,7 +66,6 @@ enum ExecutionState {
   RECOVERING,   // during recovery
   FATAL_ERROR,  // execution can not continue because of errors
 };
-extern const char* ExecutionStateNames[9];
 
 class PregelFeature;
 class MasterContext;

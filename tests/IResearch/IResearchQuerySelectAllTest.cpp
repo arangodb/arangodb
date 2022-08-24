@@ -75,7 +75,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
 
   // add link to collection
@@ -108,7 +108,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());

@@ -37,6 +37,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -1453,7 +1455,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
     }
 
-    ssize_t numRead = datafile->read(buffer->end(), bufferSize);
+    auto numRead = datafile->read(buffer->end(), bufferSize);
     if (datafile->status().fail()) {  // error while reading
       return datafile->status();
     }
@@ -2256,8 +2258,10 @@ ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
 
 void RestoreFeature::reportError(Result const& error) {
   try {
-    MUTEX_LOCKER(lock, _workerErrorLock);
-    _workerErrors.emplace(error);
+    {
+      MUTEX_LOCKER(lock, _workerErrorLock);
+      _workerErrors.emplace_back(error);
+    }
     _clientTaskQueue.clearQueue();
   } catch (...) {
   }

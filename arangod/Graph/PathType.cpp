@@ -33,6 +33,7 @@ namespace graph {
 constexpr char const* KShortestPathsName = "K_SHORTEST_PATHS";
 constexpr char const* KPathsName = "K_PATHS";
 constexpr char const* AllShortestPathsName = "ALL_SHORTEST_PATHS";
+constexpr char const* ShortestPathName = "SHORTEST_PATH";
 
 /// @brief get the type from a string
 /*static*/ PathType::Type PathType::fromString(char const* value) {
@@ -44,6 +45,9 @@ constexpr char const* AllShortestPathsName = "ALL_SHORTEST_PATHS";
   }
   if (strcmp(value, AllShortestPathsName) == 0) {
     return Type::AllShortestPaths;
+  }
+  if (strcmp(value, ShortestPathName) == 0) {
+    return Type::ShortestPath;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "invalid shortest path type");
@@ -58,6 +62,8 @@ constexpr char const* AllShortestPathsName = "ALL_SHORTEST_PATHS";
       return KPathsName;
     case Type::AllShortestPaths:
       return AllShortestPathsName;
+    case Type::ShortestPath:
+      return ShortestPathName;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid path type");
 }

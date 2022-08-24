@@ -2583,14 +2583,15 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
 
   // STEP 4: now that the collections exist create the "arangosearch" views
   // this should be faster than re-indexing afterwards
-  // We don't create "search" view because inverted indexes don't exist yet
+  // We don't create "search-alias" view because inverted indexes don't exist
+  // yet
   // ----------------------------------------------------------------------------------
 
   if (!_config.applier._skipCreateDrop &&
       _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
-    auto r = handleViewCreation(viewSlices,
-                                arangodb::iresearch::StaticStrings::ViewType);
+    auto r = handleViewCreation(
+        viewSlices, arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     if (r.fail()) {
       LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
           << "Error during initial sync view creation: " << r.errorMessage();
@@ -2608,10 +2609,10 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
     return r;
   }
 
-  // STEP 6 load "search" views
+  // STEP 6 load "search-alias" views
   // ----------------------------------------------------------------------------------
-  return handleViewCreation(viewSlices,
-                            arangodb::iresearch::StaticStrings::SearchType);
+  return handleViewCreation(
+      viewSlices, arangodb::iresearch::StaticStrings::ViewSearchAliasType);
 }
 
 /// @brief iterate over all collections from an array and apply an action

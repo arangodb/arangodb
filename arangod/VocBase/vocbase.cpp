@@ -1733,7 +1733,7 @@ void TRI_vocbase_t::releaseCollection(
 /// using a cid of > 0 is supported to import dumps from other servers etc.
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
-    arangodb::velocypack::Slice parameters) {
+    arangodb::velocypack::Slice parameters, bool isUserRequest) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
   std::string const& dbName = _info.getName();
@@ -1756,7 +1756,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   }
 
   arangodb::LogicalView::ptr view;
-  auto res = LogicalView::instantiate(view, *this, parameters);
+  auto res = LogicalView::instantiate(view, *this, parameters, isUserRequest);
 
   if (!res.ok() || !view) {
     events::CreateView(dbName, name, res.errorNumber());

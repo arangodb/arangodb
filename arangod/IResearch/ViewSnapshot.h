@@ -145,8 +145,7 @@ struct FilterCookie : TransactionState::Cookie {
   irs::filter::prepared const* filter{};
 };
 
-FilterCookie* getFilterCookie(transaction::Methods& trx,
-                              void const* key) noexcept;
+FilterCookie& ensureFilterCookie(transaction::Methods& trx, void const* key);
 
 }  // namespace iresearch
 }  // namespace arangodb
