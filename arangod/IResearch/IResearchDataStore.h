@@ -70,7 +70,7 @@ class AsyncLinkHandle final {
  private:
   friend class IResearchDataStore;
 
-  void reset();
+  void reset() noexcept;
 
   AsyncValue<IResearchDataStore> _link;
   // trigger termination of long-running async jobs

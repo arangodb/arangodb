@@ -250,7 +250,7 @@ AsyncLinkHandle::AsyncLinkHandle(IResearchDataStore* link) : _link{link} {}
 
 AsyncLinkHandle::~AsyncLinkHandle() = default;
 
-void AsyncLinkHandle::reset() {
+void AsyncLinkHandle::reset() noexcept {
   // mark long-running async jobs for termination
   _asyncTerminate.store(true, std::memory_order_release);
   // the data-store is being deallocated, link use is no longer valid
@@ -899,19 +899,19 @@ Result IResearchDataStore::consolidateUnsafeImpl(
 
 void IResearchDataStore::shutdownDataStore() noexcept {
   std::atomic_store(&_flushSubscription, {});  // reset together with _asyncSelf
+  // the data-store is being deallocated, link use is no longer valid
+  _asyncSelf->reset();  // wait for all the view users to finish
   try {
-    // the data-store is being deallocated, link use is no longer valid
-    _asyncSelf->reset();  // wait for all the view users to finish
     if (_dataStore) {
       removeMetrics();  // TODO(MBkkt) Should be noexcept?
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("bad00", ERR, TOPIC)
-        << "caught exception while waiting reset arangosearch data store '"
+        << "caught exception while removeMetrics arangosearch data store '"
         << std::to_string(id().id()) << "': " << e.what();
   } catch (...) {
     LOG_TOPIC("bad01", ERR, TOPIC)
-        << "caught something while waiting reset arangosearch data store '"
+        << "caught something while removeMetrics arangosearch data store '"
         << std::to_string(id().id()) << "'";
   }
   _dataStore.resetDataStore();
@@ -1154,6 +1154,7 @@ Result IResearchDataStore::initDataStore(
   _dataStore._meta._writebufferSizeMax = options.segment_memory_max;
 
   // create a new 'self' (previous was reset during unload() above)
+  TRI_ASSERT(_asyncSelf->empty());
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
   // register metrics before starting any background threads
