@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
+
 * Fixed SEARCH-328 fixed cookie key.
 
 * Make graph search case-insensitive (fixes BTS-882).
