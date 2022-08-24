@@ -85,7 +85,6 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchViewSort.h
   IResearch/IResearchViewStoredValues.h
   IResearch/Search.h
-  IResearch/SearchFuncReplace.h
   IResearch/VelocyPackHelper.h
   IResearch/ViewSnapshot.h
   RestHandler/RestAnalyzerHandler.h
@@ -131,7 +130,6 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchViewSort.cpp
   IResearch/IResearchViewStoredValues.cpp
   IResearch/Search.cpp
-  IResearch/SearchFuncReplace.cpp
   IResearch/VelocyPackHelper.cpp
   IResearch/ViewSnapshot.cpp
   RestHandler/RestAnalyzerHandler.cpp
@@ -640,9 +638,15 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/StateMachines/Document/DocumentFollowerState.cpp
   Replication2/StateMachines/Document/DocumentLeaderState.cpp
   Replication2/StateMachines/Document/DocumentLogEntry.cpp
+  Replication2/StateMachines/Document/DocumentStateAgencyHandler.cpp
+  Replication2/StateMachines/Document/DocumentStateHandlersFactory.cpp
   Replication2/StateMachines/Document/DocumentStateMachine.cpp
   Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
-  Replication2/StateMachines/Document/DocumentStateStrategy.cpp
+  Replication2/StateMachines/Document/DocumentStateShardHandler.cpp
+  Replication2/StateMachines/Document/DocumentStateTransaction.cpp
+  Replication2/StateMachines/Document/DocumentStateTransactionHandler.cpp
+  Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
+  Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
   Replication2/StateMachines/Prototype/PrototypeCore.cpp
   Replication2/StateMachines/Prototype/PrototypeFollowerState.cpp
   Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp

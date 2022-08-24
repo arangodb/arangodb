@@ -50,12 +50,11 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
-  static FieldMeta::Analyzer defaultAnalyzer =
-      FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
-  return [&meta, &defaultAnalyzer = std::as_const(defaultAnalyzer)](
-             std::string_view ex) -> FieldMeta::Analyzer const& {
+  static FieldMeta::Analyzer const defaultAnalyzer{
+      IResearchAnalyzerFeature::identity()};
+  return [&meta](std::string_view fieldPath) -> FieldMeta::Analyzer const& {
     for (auto const& field : meta._fields) {
-      if (field.toString() == ex) {
+      if (field.path() == fieldPath) {
         return field.analyzer();
       }
     }
@@ -787,9 +786,10 @@ Result IResearchInvertedIndex::init(
   }
 
   TRI_ASSERT(_meta._sort.sortCompression());
-  auto r = initDataStore(
-      pathExists, initCallback, static_cast<uint32_t>(_meta._version),
-      isSorted(), _meta._storedValues.columns(), _meta._sort.sortCompression());
+  auto r = initDataStore(pathExists, initCallback,
+                         static_cast<uint32_t>(_meta._version), isSorted(),
+                         _meta.hasNested(), _meta._storedValues.columns(),
+                         _meta._sort.sortCompression());
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }
