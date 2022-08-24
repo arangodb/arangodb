@@ -261,6 +261,25 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
   }
 }
 
+/// @brief validate fields that start or end with ":"
+void Index::validateFieldsWithSpecialCase(VPackSlice fields) {
+  if (!fields.isArray()) {
+    return;
+  }
+
+  for (VPackSlice name : VPackArrayIterator(fields)) {
+    if (name.isObject()) {
+      name = name.get("name");
+    }
+    if (name.stringView().starts_with(":") ||
+        name.stringView().ends_with(":")) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                     "field names starting or ending with "
+                                     "\":\" are disallowed in indexes");
+    }
+  }
+}
+
 /// @brief validate fields from slice
 void Index::validateFields(VPackSlice slice) {
   std::string_view type =
@@ -276,8 +295,9 @@ void Index::validateFields(VPackSlice slice) {
   for (VPackSlice name : VPackArrayIterator(fields)) {
     if (fieldIsObject) {
       if (!name.isObject()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                       "invered index: field is not an object");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+            "inverted index: field is not an object");
       }
       name = name.get("name");
     }
@@ -285,7 +305,6 @@ void Index::validateFields(VPackSlice slice) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                      "invalid index description");
     }
-
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
     TRI_ParseAttributeString(name.copyString(), parsedAttributes,
                              allowExpansion);
@@ -327,7 +346,7 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "zkd") {
     return TRI_IDX_TYPE_ZKD_INDEX;
   }
-  if (type == iresearch::StaticStrings::ViewType) {
+  if (type == iresearch::StaticStrings::ViewArangoSearchType) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
   if (type == "noaccess") {
@@ -369,7 +388,7 @@ char const* Index::oldtypeName(Index::IndexType type) {
     case TRI_IDX_TYPE_GEO_INDEX:
       return "geo";
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-      return iresearch::StaticStrings::ViewType.data();
+      return iresearch::StaticStrings::ViewArangoSearchType.data();
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_ZKD_INDEX:
@@ -1101,6 +1120,12 @@ AttributeAccessParts::AttributeAccessParts(
 void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
                                  arangodb::Index const* idx,
                                  size_t itemsInIndex, size_t invocations) {
+  // number of fields to consider for this index. this is normally
+  // equivalent to the number of fields of the index, but also adds the
+  // number of stored values if there exist any.
+  size_t numFieldsToConsider = idx->numFieldsToConsiderInIndexSelection();
+  TRI_ASSERT(numFieldsToConsider > 0);
+
   // costs.estimatedItems is always set here, make it at least 1
   costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
 
@@ -1110,11 +1135,11 @@ void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
   // add per-document processing cost
   costs.estimatedCosts += costs.estimatedItems * 0.05;
   // slightly prefer indexes that cover more attributes
-  costs.estimatedCosts -= (idx->fields().size() - 1) * 0.02;
+  costs.estimatedCosts -= (numFieldsToConsider - 1) * 0.02;
 
   // cost is already low... now slightly prioritize unique indexes
   if (idx->unique() || idx->implicitlyUnique()) {
-    costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
+    costs.estimatedCosts *= 0.995 - 0.05 * (numFieldsToConsider - 1);
   }
 
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||

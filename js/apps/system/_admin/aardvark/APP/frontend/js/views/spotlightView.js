@@ -32,7 +32,7 @@
 
     aqlKeywords: 'for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|' +
       'insert|update|remove|replace|upsert|options|with|and|or|not|' +
-      'distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like|count',
+      'distinct|graph|shortest_path|k_shortest_paths|all_shortest_paths|k_paths|outbound|inbound|any|all|none|aggregate|like|count',
 
     hide: function () {
       this.typeahead = $('#spotlight .typeahead').typeahead('destroy');

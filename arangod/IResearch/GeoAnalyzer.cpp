@@ -268,14 +268,8 @@ irs::analysis::analyzer::ptr make(irs::string_ref args) {
 namespace arangodb {
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                      GeoAnalyzer
-// ----------------------------------------------------------------------------
-
 GeoAnalyzer::GeoAnalyzer(const irs::type_info& type)
-    : attributes{{{irs::type<irs::increment>::id(), &_inc},
-                  {irs::type<irs::term_attribute>::id(), &_term}},
-                 type} {}
+    : irs::analysis::analyzer{type} {}
 
 bool GeoAnalyzer::next() noexcept {
   if (_begin >= _end) {
@@ -284,8 +278,8 @@ bool GeoAnalyzer::next() noexcept {
 
   auto& value = *_begin++;
 
-  _term.value = irs::bytes_ref(
-      reinterpret_cast<const irs::byte_type*>(value.c_str()), value.size());
+  std::get<irs::term_attribute>(_attrs).value = {
+      reinterpret_cast<const irs::byte_type*>(value.c_str()), value.size()};
 
   return true;
 }
@@ -295,10 +289,6 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
   _begin = _terms.data();
   _end = _begin + _terms.size();
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                  GeoJSONAnalyzer
-// ----------------------------------------------------------------------------
 
 /*static*/ bool GeoJSONAnalyzer::normalize(irs::string_ref args,
                                            std::string& out) {
@@ -363,10 +353,6 @@ bool GeoJSONAnalyzer::reset(irs::string_ref value) {
 
   return true;
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                 GeoPointAnalyzer
-// ----------------------------------------------------------------------------
 
 /*static*/ bool GeoPointAnalyzer::normalize(irs::string_ref args,
                                             std::string& out) {

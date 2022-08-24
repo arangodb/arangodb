@@ -246,7 +246,7 @@ Result RocksDBTransactionState::abortTransaction(
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_ASSERT(activeTrx->isMainTransaction());
 
-  Result result = doAbort();
+  Result result = basics::catchToResult([&] { return doAbort(); });
 
   cleanupTransaction();  // deletes trx
 

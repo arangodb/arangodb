@@ -4,7 +4,19 @@
 
 @RESTHEADER{POST /_api/cursor, Create cursor, createQueryCursor}
 
-A JSON object describing the query and query parameters.
+@RESTHEADERPARAMETERS
+
+@RESTHEADERPARAM{x-arango-allow-dirty-read,boolean,optional}
+Set this header to `true` to allow the Coordinator to ask any shard replica for
+the data, not only the shard leader. This may result in "dirty reads".
+
+The header is ignored if this operation is part of a Stream Transaction
+(`x-arango-trx-id` header). The header set when creating the transaction decides
+about dirty reads for the entire transaction, not the individual read operations.
+
+@RESTHEADERPARAM{x-arango-trx-id,string,optional}
+To make this operation a part of a Stream Transaction, set this header to the
+transaction ID returned by the `POST /_api/transaction/begin` call.
 
 @RESTBODYPARAM{query,string,required,string}
 contains the query string to be executed

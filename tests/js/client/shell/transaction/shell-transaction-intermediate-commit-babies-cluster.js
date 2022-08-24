@@ -98,12 +98,12 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
       assertEqual(1000, db._collection(cn).count());
       assertInSync(leader, follower, shardId);
     },
-    
+
     testAqlIntermediateCommitsWithFailurePoint: function () {
       let [shardId, leader, follower] = collectionInfo();
       // trigger a certain failure point on the leader
       debugSetFailAt(leader, "insertLocal::fakeResult1");
-      
+
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
 

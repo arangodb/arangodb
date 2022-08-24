@@ -78,6 +78,9 @@ ArangoPrototypeState.prototype._readInternal = function (keys, options) {
   if (options.readFrom !== undefined) {
     query += `&readFrom=${encodeURIComponent(options.readFrom)}`;
   }
+  if (options.allowDirtyRead !== undefined) {
+    query += `&allowDirtyRead=${options.allowDirtyRead}`;
+  }
   let requestResult = this._database._connection.POST(this._baseurl() + query, keys);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;

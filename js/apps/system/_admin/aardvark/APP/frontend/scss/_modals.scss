@@ -64,7 +64,7 @@
   color: $c-btn-inverse;
   font-size: 14px;
   font-weight: 300;
-  max-height: 410px;
+  max-height: 600px;
 
   input {
     height: 20px;
@@ -183,8 +183,18 @@
       height: 20px;
     }
 
+    &.labeledSpacer {
+      th {
+        height: 40px;
+        font-weight: 600 !important;
+      }
+    }
+
     &.first {
-      background-color: $c-lightgreen-2-bg;
+      background-color: $c-positive-high-transparency;
+      border-left: 1px solid $c-positive-low-transparency;
+      border-right: 1px solid $c-positive-low-transparency;
+      border-top: 1px solid $c-positive-low-transparency !important;
 
       th:first-child {
         border-top-left-radius: 3px;
@@ -196,13 +206,19 @@
     }
 
     &.middle {
-      background-color: $c-lightgreen-2-bg;
+      background-color: $c-positive-high-transparency;
+      border-left: 1px solid $c-positive-low-transparency;
+      border-right: 1px solid $c-positive-low-transparency;
+
       padding-left: 10px;
       padding-right: 10px;
     }
 
     &.last {
-      background-color: $c-lightgreen-2-bg;
+      background-color: $c-positive-high-transparency;
+      border-left: 1px solid $c-positive-low-transparency;
+      border-right: 1px solid $c-positive-low-transparency;
+      border-bottom: 1px solid $c-positive-low-transparency;
 
       th:first-child {
         border-bottom-left-radius: 3px;
@@ -279,7 +295,7 @@
     font-size: 18px;
     margin-top: -10px;
     position: absolute;
-    right: 12px;
+    right: 20px;
 
     &:hover {
       color: $c-black;
@@ -358,6 +374,7 @@
     padding-left: 5px;
     padding-right: 5px;
     position: absolute;
+    z-index: 100;
   }
 
   .nav .tab-icon {

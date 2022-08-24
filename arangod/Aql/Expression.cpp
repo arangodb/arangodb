@@ -48,6 +48,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
+#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
@@ -91,7 +92,7 @@ void Expression::variables(VarSet& result) const {
 /// @brief execute the expression
 AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(ctx != nullptr);
-  prepareForExecution(*ctx);
+  prepareForExecution();
 
   TRI_ASSERT(_type != UNPROCESSED);
 
@@ -164,7 +165,7 @@ void Expression::replaceAttributeAccess(
 void Expression::freeInternals() noexcept {
   switch (_type) {
     case JSON:
-      delete[] _data;
+      velocypack_free(_data);
       _data = nullptr;
       break;
 
@@ -336,7 +337,7 @@ void Expression::determineType() {
   }
 }
 
-void Expression::initAccessor(ExpressionContext& ctx) {
+void Expression::initAccessor() {
   TRI_ASSERT(_type == ATTRIBUTE_ACCESS);
   TRI_ASSERT(_accessor == nullptr);
 
@@ -357,30 +358,35 @@ void Expression::initAccessor(ExpressionContext& ctx) {
   TRI_ASSERT(_accessor != nullptr);
 }
 
-/// @brief prepare the expression for execution
-void Expression::prepareForExecution(ExpressionContext& ctx) {
+/// @brief prepare the expression for execution, without an
+/// ExpressionContext.
+void Expression::prepareForExecution() {
   TRI_ASSERT(_type != UNPROCESSED);
 
-  switch (_type) {
-    case JSON: {
-      if (_data == nullptr) {
-        // generate a constant value
-        transaction::BuilderLeaser builder(&ctx.trx());
-        _node->toVelocyPackValue(*builder.get());
+  if (_type == JSON && _data == nullptr) {
+    // generate a constant value, using an on-stack Builder
+    velocypack::Buffer<uint8_t> buffer;
+    velocypack::Builder builder(buffer);
+    _node->toVelocyPackValue(builder);
 
-        _data = new uint8_t[static_cast<size_t>(builder->size())];
-        memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
+    if (buffer.usesLocalMemory()) {
+      // Buffer has data in its local memory. because we
+      // don't want to keep the whole Buffer object, we allocate
+      // the required space ourselves and copy things over.
+      _data = static_cast<uint8_t*>(
+          velocypack_malloc(static_cast<size_t>(buffer.size())));
+      if (_data == nullptr) {
+        // malloc returned a nullptr
+        throw std::bad_alloc();
       }
-      break;
+      memcpy(_data, buffer.data(), static_cast<size_t>(buffer.size()));
+    } else {
+      // we can simply steal the data from the Buffer. we
+      // own the data now.
+      _data = buffer.steal();
     }
-    case ATTRIBUTE_ACCESS: {
-      if (_accessor == nullptr) {
-        initAccessor(ctx);
-      }
-      break;
-    }
-    default: {
-    }
+  } else if (_type == ATTRIBUTE_ACCESS && _accessor == nullptr) {
+    initAccessor();
   }
 }
 
@@ -684,7 +690,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       VPackSlice slice = materializer.slice(result, false);
 
       buffer->clear();
-      Functions::Stringify(&vopts, adapter, slice);
+      functions::Stringify(&vopts, adapter, slice);
 
       if (mustCheckUniqueness) {
         // prevent duplicate keys from being used
@@ -1718,7 +1724,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         if (!isBoolean) {
           AqlValue sub = executeSimpleExpression(ctx, projectionNode,
                                                  localMustDestroy, false);
-          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
+          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ true,
                            /*allowUnindexed*/ false);
           if (localMustDestroy) {
             sub.destroy();

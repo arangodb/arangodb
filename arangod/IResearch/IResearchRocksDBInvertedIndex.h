@@ -29,13 +29,31 @@
 namespace arangodb {
 namespace iresearch {
 
+class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
+ public:
+  explicit IResearchRocksDBInvertedIndexFactory(ArangodServer& server);
+
+  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+             std::string const& dbname) const override;
+
+  /// @brief instantiate an Index definition
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition, IndexId id,
+                                     bool isClusterConstructor) const override;
+
+  /// @brief normalize an Index definition prior to instantiation/persistence
+  Result normalize(velocypack::Builder& normalized,
+                   velocypack::Slice definition, bool isCreation,
+                   TRI_vocbase_t const& vocbase) const override;
+
+  bool attributeOrderMatters() const override { return false; }
+};
+
 class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                                             public RocksDBIndex {
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
-                                uint64_t objectId, std::string const& name,
-                                IResearchInvertedIndexMeta&& meta);
-
+                                uint64_t objectId, std::string const& name);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   virtual ~IResearchRocksDBInvertedIndex() {
     // if triggered  - no unload was called prior to deleting index object
@@ -78,6 +96,10 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   void load() override {}
   void unload() override;
 
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
+    IResearchDataStore::afterTruncate(tick, trx);
+  }
+
   bool matchesDefinition(
       arangodb::velocypack::Slice const& other) const override;
 
@@ -117,36 +139,26 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                 LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                      IResearchInvertedIndexMeta>(
-        trx, documentId, doc, meta());
+    return IResearchDataStore::insert<
+        FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+        IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc,
+                                                   *meta()._indexingContext);
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchDataStore::remove(trx, documentId);
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested());
+  }
+
+ private:
+  // required for calling initFields()
+  friend class arangodb::iresearch::IResearchRocksDBInvertedIndexFactory;
+
+  void initFields() {
+    TRI_ASSERT(_fields.empty());
+    *const_cast<std::vector<std::vector<arangodb::basics::AttributeName>>*>(
+        &_fields) = IResearchInvertedIndex::fields(meta());
   }
 };
-
-class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
- public:
-  explicit IResearchRocksDBInvertedIndexFactory(ArangodServer& server);
-
-  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-             std::string const& dbname) const override;
-
-  /// @brief instantiate an Index definition
-  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition, IndexId id,
-                                     bool isClusterConstructor) const override;
-
-  /// @brief normalize an Index definition prior to instantiation/persistence
-  Result normalize(velocypack::Builder& normalized,
-                   velocypack::Slice definition, bool isCreation,
-                   TRI_vocbase_t const& vocbase) const override;
-
-  bool attributeOrderMatters() const override { return false; }
-};
-
 }  // namespace iresearch
 }  // namespace arangodb

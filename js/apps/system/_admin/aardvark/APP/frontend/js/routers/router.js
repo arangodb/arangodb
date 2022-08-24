@@ -29,6 +29,7 @@
       'cIndices/:colname': 'cIndices',
       'cSettings/:colname': 'cSettings',
       'cSchema/:colname': 'cSchema',
+      'cComputedValues/:colname': 'cComputedValues',
       'cInfo/:colname': 'cInfo',
       'collection/:colid/:docid': 'document',
       'queries': 'query',
@@ -117,7 +118,7 @@
         }
 
         $('#modal-dialog').on('hide', function () {
-          if (goBack) {
+          if (goBack && replaceUrlFirst === '#view') {
             window.history.back();
           }
         });
@@ -805,6 +806,27 @@
       });
     },
 
+    cComputedValues: function (colname) {
+      const self = this;
+
+      this.checkUser();
+
+      this.init.then(() => {
+        this.arangoCollectionsStore.fetch({
+          cache: false,
+          success: function () {
+            self.computedValuesView = new window.ComputedValuesView({
+              collectionName: colname,
+              collection: self.arangoCollectionsStore.findWhere({
+                name: colname
+              })
+            });
+            self.computedValuesView.render();
+          }
+        });
+      });
+    },
+
     cSchema: function (colname) {
       const self = this;
 
@@ -814,13 +836,13 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            self.settingsView = new window.ValidationView({
+            self.validationView = new window.ValidationView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
                 name: colname
               })
             });
-            self.settingsView.render();
+            self.validationView.render();
           }
         });
       });
@@ -1241,6 +1263,9 @@
       }
       if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
+      }
+      if (this.computedValuesView && Backbone.history.getFragment().indexOf('cComputedValues') > -1) {
+        this.computedValuesView.resize();
       }
       if (this.validationView && Backbone.history.getFragment().indexOf('cSchema') > -1) {
         this.validationView.resize();

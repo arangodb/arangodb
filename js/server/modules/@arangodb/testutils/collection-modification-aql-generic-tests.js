@@ -46,6 +46,10 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
     NEW`;
 
     const readAql = `FOR c IN ${cn} FILTER c._key == @key RETURN c`;
+    const generateReadByDocumentAql = (cn, key) => {
+      const id = cn + '/' + key;
+      return `RETURN DOCUMENT("${id}")`;
+    };
     const updateAql = `UPDATE @key WITH @patch IN ${cn} RETURN NEW`;
     const replaceAql = `REPLACE @key WITH @updatedDoc IN ${cn} RETURN NEW`;
     const removeAql = `REMOVE @key IN ${cn}`;
@@ -66,7 +70,11 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       assertEqual(1, result.length, `Creating document with key ${key}`);
       let rev = result[0]._rev;
 
-      // read document back
+      // read document via document function by key (string)
+      result = db._query(generateReadByDocumentAql(cn, key)).toArray();
+      assertEqual(1, result.length, `Reading document with key ${key} via DOCUMENT function.`);
+
+      // read document back (collection scan + filter)
       result = db._query(readAql, {key}).toArray();
       assertEqual(1, result.length, `Reading document with key ${key}`);
 

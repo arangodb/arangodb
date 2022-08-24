@@ -26,10 +26,12 @@
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
+#include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
+#include "Pregel/Status/Status.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 #include "Reports.h"
@@ -127,6 +129,9 @@ class Worker : public IWorker {
   // preallocated ootgoing caches
   std::vector<OutCache<M>*> _outCaches;
 
+  GssObservables _currentGssObservables;
+  Guarded<AllGssStatus> _allGssStatus;
+
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
   ReportManager _reports;
@@ -151,6 +156,8 @@ class Worker : public IWorker {
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
+  [[nodiscard]] auto _observeStatus() -> Status const;
+  [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,

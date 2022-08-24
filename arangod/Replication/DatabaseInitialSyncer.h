@@ -265,7 +265,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
       bool incremental, SyncPhase);
 
   /// @brief create non-existing views locally
-  Result handleViewCreation(VPackSlice const& views);
+  Result handleViewCreation(VPackSlice views, std::string_view type);
 
   /// @brief send a "start batch" command
   /// @param patchCount (optional)

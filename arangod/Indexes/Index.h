@@ -242,6 +242,10 @@ class Index {
   /// coveringIndexPosition value in it.
   virtual bool covers(arangodb::aql::Projections& projections) const;
 
+  virtual size_t numFieldsToConsiderInIndexSelection() const noexcept {
+    return _fields.size();
+  }
+
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
 
@@ -253,6 +257,9 @@ class Index {
 
   /// @brief whether or not the index is unique
   inline bool unique() const { return _unique; }
+
+  /// @brief validates that field names don't start or end with ":"
+  static void validateFieldsWithSpecialCase(velocypack::Slice fields);
 
   /// @brief validate fields from slice
   static void validateFields(velocypack::Slice slice);

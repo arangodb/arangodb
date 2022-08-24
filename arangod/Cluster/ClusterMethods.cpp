@@ -42,6 +42,7 @@
 #include "Futures/Utilities.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Metrics/Counter.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -805,88 +806,6 @@ static std::shared_ptr<ShardMap> CloneShardDistribution(
 }
 
 namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a list of attributes have the same values in two vpack
-/// documents
-////////////////////////////////////////////////////////////////////////////////
-
-bool shardKeysChanged(LogicalCollection const& collection,
-                      VPackSlice const& oldValue, VPackSlice const& newValue,
-                      bool isPatch) {
-  if (!oldValue.isObject() || !newValue.isObject()) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (collection.vocbase().name() == "sync-replication-test") {
-    return false;
-  }
-#endif
-
-  std::vector<std::string> const& shardKeys = collection.shardKeys();
-
-  for (const auto& shardKey : shardKeys) {
-    if (shardKey == StaticStrings::KeyString) {
-      continue;
-    }
-
-    VPackSlice n = newValue.get(shardKey);
-
-    if (n.isNone() && isPatch) {
-      // attribute not set in patch document. this means no update
-      continue;
-    }
-
-    VPackSlice o = oldValue.get(shardKey);
-
-    if (o.isNone()) {
-      // if attribute is undefined, use "null" instead
-      o = arangodb::velocypack::Slice::nullSlice();
-    }
-
-    if (n.isNone()) {
-      // if attribute is undefined, use "null" instead
-      n = arangodb::velocypack::Slice::nullSlice();
-    }
-
-    if (!Helper::equal(n, o, false)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool smartJoinAttributeChanged(LogicalCollection const& collection,
-                               VPackSlice const& oldValue,
-                               VPackSlice const& newValue, bool isPatch) {
-  if (!collection.hasSmartJoinAttribute()) {
-    return false;
-  }
-  if (!oldValue.isObject() || !newValue.isObject()) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-
-  std::string const& s = collection.smartJoinAttribute();
-
-  VPackSlice n = newValue.get(s);
-  if (!n.isString()) {
-    if (isPatch && n.isNone()) {
-      // attribute not set in patch document. this means no update
-      return false;
-    }
-
-    // no string value... invalid!
-    return true;
-  }
-
-  VPackSlice o = oldValue.get(s);
-  TRI_ASSERT(o.isString());
-
-  return !Helper::equal(n, o, false);
-}
 
 void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
                              VPackSlice value, VPackBuilder& builder) {
@@ -2113,6 +2032,8 @@ Future<OperationResult> getDocumentOnCoordinator(
           builder.close();
         }
         if (allowDirtyReads) {
+          auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
+          ++cf.potentiallyDirtyDocumentReadsCounter();
           reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
           headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
         }
@@ -2161,7 +2082,9 @@ Future<OperationResult> getDocumentOnCoordinator(
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+  auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
+  auto& nf = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = nf.pool();
   const size_t expectedLen = useMultiple ? slice.length() : 0;
   if (!useMultiple) {
     std::string_view const key(
@@ -2184,6 +2107,7 @@ Future<OperationResult> getDocumentOnCoordinator(
       }
 
       if (allowDirtyReads) {
+        ++cf.potentiallyDirtyDocumentReadsCounter();
         reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }
@@ -2203,6 +2127,7 @@ Future<OperationResult> getDocumentOnCoordinator(
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
       if (allowDirtyReads) {
+        ++cf.potentiallyDirtyDocumentReadsCounter();
         reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }

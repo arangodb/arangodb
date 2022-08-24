@@ -35,6 +35,7 @@ let db = arangodb.db;
 let isCluster = require("internal").isCluster();
 let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
 
+
 function checkDumpJsonFile(dbName, path, id) {
   let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
   assertEqual(dbName, data.properties.name);
@@ -128,6 +129,66 @@ function dumpIntegrationSuite() {
     });
   };
 
+  let checkDataFileForCollectionWithComputedValues = function(tree, path, compressed, envelopes, readable, cn) {
+    const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+    let checkData = function(data, envelopes) {
+      assertEqual(1000, data.length);
+      data.forEach(function(line) {
+        line = JSON.parse(line);
+        if (envelopes) {
+          assertEqual(2300, line.type);
+          assertTrue(line.hasOwnProperty('data'));
+          assertTrue(line.data.hasOwnProperty('_key'));
+          assertTrue(line.data.hasOwnProperty('_rev'));
+          assertTrue(line.data.hasOwnProperty('value1'));
+          assertTrue(line.data.hasOwnProperty('value2'));
+          assertTrue(line.data.hasOwnProperty('value3'));
+          assertTrue(line.data.hasOwnProperty('value4'));
+          assertEqual(line.value3, line.value1 + "+" + line.value2);
+          assertEqual(line.value4, line.value2 + " " + line.value1);
+        } else {
+          assertFalse(line.hasOwnProperty('type'));
+          assertFalse(line.hasOwnProperty('data'));
+          assertTrue(line.hasOwnProperty('_key'));
+          assertTrue(line.hasOwnProperty('_rev'));
+          assertTrue(line.hasOwnProperty('value1'));
+          assertTrue(line.hasOwnProperty('value2'));
+          assertTrue(line.hasOwnProperty('value3'));
+          assertTrue(line.hasOwnProperty('value4'));
+          assertEqual(line.value3, line.value1 + "+" + line.value2);
+          assertEqual(line.value4, line.value2 + " " + line.value1);
+        }
+      });
+    };
+
+    if (compressed) {
+      assertTrue(readable);
+
+      assertNotEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
+      assertEqual(-1, tree.indexOf(prefix + ".data.json"));
+
+      let data = fs.readGzip(fs.join(path, prefix + ".data.json.gz")).toString().trim().split('\n');
+      checkData(data, envelopes);
+    } else {
+      assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
+      assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
+
+      if (readable) {
+        let data = fs.readFileSync(fs.join(path, prefix + ".data.json")).toString().trim().split('\n');
+        checkData(data, envelopes);
+      } else {
+        try {
+          // cannot read encrypted file
+          JSON.parse(fs.readFileSync(fs.join(path, prefix + ".data.json")));
+          fail();
+        } catch (err) {
+          // error is expected here
+          assertTrue(err instanceof SyntaxError, err);
+        }
+      }
+    }
+  };
+
   let checkDataFile = function(tree, path, compressed, envelopes, readable, cn) {
     const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
     let checkData = function(data, envelopes) {
@@ -188,6 +249,7 @@ function dumpIntegrationSuite() {
         }
         db._useDatabase(name);
         db._drop(cn);
+
         let c = db._create(cn, {numberOfShards: 3});
         let docs = [];
         for (let i = 0; i < 1000; ++i) {
@@ -218,6 +280,23 @@ function dumpIntegrationSuite() {
           docs.push({});
         }
         c.insert(docs);
+        c = db._create(cn + "ComputedValues", {
+          computedValues: [{
+            name: "value3",
+            expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+            overwrite: false
+          }, {
+            name: "value4",
+            expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)",
+            overwrite: true
+          }]
+        });
+        docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({value1: "test" + i, value2: "abc", value4: false});
+        }
+        c.insert(docs);
+
       });
     },
 
@@ -229,10 +308,43 @@ function dumpIntegrationSuite() {
           db._drop(cn + "Other");
           db._drop(cn + "Padded");
           db._drop(cn + "AutoIncrement");
+          db._drop(cn + "ComputedValues");
         } else {
           db._dropDatabase(name);
         }
       });
+    },
+
+    testDumpForCollectionWithComputedValuesUncompressed: function() {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--collection', cn + "ComputedValues", '--compress-output', 'false'];
+        let tree = runDump(path, args, 0);
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn + "ComputedValues");
+        checkDataFileForCollectionWithComputedValues(tree, path, false, false, true, cn + "ComputedValues");
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {
+        }
+      }
+    },
+
+    testDumpForCollectionWithComputedValuesCompressed: function() {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--collection', cn + "ComputedValues", '--compress-output', 'true'];
+        let tree = runDump(path, args, 0);
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn + "ComputedValues");
+        checkDataFileForCollectionWithComputedValues(tree, path, true, false, true, cn + "ComputedValues");
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {
+        }
+      }
     },
 
     testDumpOnlyOneShard: function() {

@@ -25,12 +25,11 @@
 
 #include <cstdlib>
 #include <string>
+#include <string_view>
 
 #include "Basics/Common.h"
 
-namespace arangodb {
-namespace rest {
-namespace SslInterface {
+namespace arangodb::rest::SslInterface {
 
 enum Algorithm {
   ALGORITHM_SHA256 = 0,
@@ -45,7 +44,7 @@ enum Algorithm {
 /// @brief md5 hash
 //////////////////////////////////////////////////////////////////////////
 
-std::string sslMD5(std::string const&);
+std::string sslMD5(std::string_view);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief md5 hash
@@ -208,6 +207,4 @@ int sslRand(int32_t*);
 int rsaPrivSign(std::string const& pem, std::string const& msg,
                 std::string& sign, std::string& error);
 
-}  // namespace SslInterface
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest::SslInterface

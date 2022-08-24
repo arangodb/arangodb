@@ -131,6 +131,14 @@ class ClusterFeature : public ArangodFeature {
     TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
     return *_followersTotalRebuildCounter;
   }
+  metrics::Counter& potentiallyDirtyDocumentReadsCounter() {
+    TRI_ASSERT(_potentiallyDirtyDocumentReadsCounter != nullptr);
+    return *_potentiallyDirtyDocumentReadsCounter;
+  }
+  metrics::Counter& dirtyReadQueriesCounter() {
+    TRI_ASSERT(_dirtyReadQueriesCounter != nullptr);
+    return *_dirtyReadQueriesCounter;
+  }
 
   /**
    * @brief Add databases to dirty list
@@ -230,7 +238,9 @@ class ClusterFeature : public ArangodFeature {
   metrics::Counter* _followersRefusedCounter = nullptr;
   metrics::Counter* _followersWrongChecksumCounter = nullptr;
   metrics::Counter* _followersTotalRebuildCounter = nullptr;
-  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
+  metrics::Counter* _potentiallyDirtyDocumentReadsCounter = nullptr;
+  metrics::Counter* _dirtyReadQueriesCounter = nullptr;
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback = nullptr;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;

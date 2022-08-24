@@ -51,7 +51,7 @@ function randomTestSuite() {
     do {
       internal.sleep(0.2);
       let stats = pregel.status(key);
-      if (stats.state !== "running" && stats.state !== 'storing') {
+      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== 'storing') {
         break;
       }
     } while (i-- >= 0);
@@ -161,7 +161,7 @@ function randomTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;
@@ -182,7 +182,7 @@ function randomTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;
@@ -203,7 +203,7 @@ function randomTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "running" && stats.state !== "storing") {
+        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;

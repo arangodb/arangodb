@@ -290,8 +290,6 @@ std::string TRI_GetFilename(std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file
-/// It is the caller's responsibility to free the string created by this
-/// function
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_GetAbsolutePath(std::string const& fileName,

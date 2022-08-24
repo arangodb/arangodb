@@ -39,6 +39,8 @@ namespace arangodb::replication2::replicated_state {
 namespace static_strings {
 inline constexpr auto StringDetail = std::string_view{"detail"};
 inline constexpr auto StringManager = std::string_view{"manager"};
+inline constexpr auto StringLastAppliedIndex =
+    std::string_view{"lastAppliedIndex"};
 inline constexpr auto StringLastChange = std::string_view{"lastChange"};
 inline constexpr auto StringManagerState = std::string_view{"managerState"};
 inline constexpr auto StringSnapshot = std::string_view{"snapshot"};
@@ -52,8 +54,8 @@ inline constexpr auto StringFollower = std::string_view{"follower"};
 enum class LeaderInternalState {
   kUninitializedState,
   kWaitingForLeadershipEstablished,
-  kIngestingExistingLog,
   kRecoveryInProgress,
+  kServiceStarting,
   kServiceAvailable,
 };
 
@@ -104,7 +106,7 @@ enum class FollowerInternalState {
   kUninitializedState,
   kWaitForLeaderConfirmation,
   kTransferSnapshot,
-  kNothingToApply,
+  kWaitForNewEntries,
   kApplyRecentEntries,
   kSnapshotTransferFailed,
 };
@@ -131,6 +133,7 @@ struct FollowerStatus {
   ManagerState managerState;
   StateGeneration generation;
   SnapshotInfo snapshot;
+  LogIndex lastAppliedIndex;
 };
 
 template<class Inspector>
@@ -140,6 +143,7 @@ auto inspect(Inspector& f, FollowerStatus& x) {
       f.field(static_strings::StringGeneration, x.generation),
       f.field(static_strings::StringSnapshot, x.snapshot),
       f.field(static_strings::StringManager, x.managerState),
+      f.field(static_strings::StringLastAppliedIndex, x.lastAppliedIndex),
       f.field(static_strings::StringRole, role));
 }
 

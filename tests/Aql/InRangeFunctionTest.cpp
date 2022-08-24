@@ -85,11 +85,11 @@ class InRangeFunctionTest : public ::testing::Test {
       params.emplace_back(*includeUpper);
     }
 
-    arangodb::aql::Function f("IN_RANGE", &Functions::InRange);
+    arangodb::aql::Function f("IN_RANGE", &functions::InRange);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
 
-    return Functions::InRange(&expressionContext, node, params);
+    return functions::InRange(&expressionContext, node, params);
   }
 
   void assertInRangeFail(size_t line, std::set<int> const& expected_warnings,

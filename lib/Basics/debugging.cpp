@@ -28,6 +28,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <stdexcept>
 
 #include "debugging.h"
 
@@ -79,12 +80,30 @@ void TRI_TerminateDebugging(std::string_view message) {
     // intentionally crashes the program!
     // note: when using ASan/UBSan, this actually does not crash
     // the program but continues.
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wexceptions"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
+#elif _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4297)
+#endif
+
     auto f = []() noexcept {
       // intentionally crashes the program!
       // cppcheck-suppress *
-      return std::string(nullptr);
+      throw std::runtime_error("Intentional test error");
     };
     f();
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif _MSC_VER
+#pragma warning(pop)
+#endif
     // we will get here at least with ASan/UBSan.
     std::terminate();
   } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
@@ -190,5 +209,7 @@ char const conpar<false>::close = ']';
 
 thread_local std::ostringstream
     arangodb::debug::AssertionLogger::assertionStringStream;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 thread_local arangodb::debug::AssertionConditionalStream
     arangodb::debug::AssertionConditionalLogger::assertionStringStream;
+#endif

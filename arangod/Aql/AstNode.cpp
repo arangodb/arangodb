@@ -160,7 +160,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
     {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
-    {static_cast<int>(NODE_TYPE_K_SHORTEST_PATHS), "k-shortest paths"},
+    {static_cast<int>(NODE_TYPE_ENUMERATE_PATHS), "enumerate paths"},
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
@@ -597,7 +597,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
-    case NODE_TYPE_K_SHORTEST_PATHS:
+    case NODE_TYPE_ENUMERATE_PATHS:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
@@ -2319,8 +2319,12 @@ bool AstNode::hasFlag(AstNodeFlagType flag) const noexcept {
 }
 
 void AstNode::clearFlags() noexcept {
-  // clear all flags but this one
-  flags &= AstNodeFlagType::FLAG_INTERNAL_CONST;
+  // clear all flags but these ones
+  flags &= (AstNodeFlagType::FLAG_INTERNAL_CONST |
+            AstNodeFlagType::FLAG_BOOLEAN_EXPANSION |
+            AstNodeFlagType::FLAG_BIND_PARAMETER |
+            AstNodeFlagType::FLAG_SUBQUERY_REFERENCE |
+            AstNodeFlagType::FLAG_KEEP_VARIABLENAME);
 }
 
 void AstNode::setFlag(AstNodeFlagType flag) const noexcept { flags |= flag; }

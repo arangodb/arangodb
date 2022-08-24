@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, assertNotUndefined, require*/
+/* global assertTrue, assertFalse, assertEqual, assertNotUndefined, assertMatch, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -32,6 +32,7 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
+const errors = require('internal').errors;
 const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
 const servers = getCoordinatorEndpoints();
@@ -231,6 +232,42 @@ function TransactionsSuite () {
         
         result = sendRequest('GET', url, {}, {}, true);
         assertNotInList(result.body.transactions, trx1);
+      } finally {
+        sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, {}, true);
+      }
+    },
+    
+    testCreateAndCommitUseWrongId: function() {
+      const obj = { collections: { read: cn } };
+
+      let url = "/_api/transaction";
+      let result = sendRequest('POST', url + "/begin", obj, {}, true);
+
+      assertEqual(result.status, 201);
+      assertNotUndefined(result.body.result.id);
+
+      let trx1 = result.body.result;
+
+      try {
+        // commit
+        result = sendRequest('PUT', url + "/" + encodeURIComponent("12345" + trx1.id), {}, {}, true);
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+
+        // commit on different coord
+        result = sendRequest('PUT', url + "/" + encodeURIComponent("12345" + trx1.id), {}, {}, false);
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+        
+        // abort
+        result = sendRequest('DELETE', url + "/" + encodeURIComponent("12345" + trx1.id), {}, {}, true);
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+
+        // abort on different coord
+        result = sendRequest('DELETE', url + "/" + encodeURIComponent("12345" + trx1.id), {}, {}, false);
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
       } finally {
         sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, {}, true);
       }

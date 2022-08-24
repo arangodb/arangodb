@@ -36,6 +36,8 @@ namespace arangodb {
 
 using tp_sys_clock_ms = std::chrono::time_point<std::chrono::system_clock,
                                                 std::chrono::milliseconds>;
+using tp_sys_clock_us = std::chrono::time_point<std::chrono::system_clock,
+                                                std::chrono::microseconds>;
 
 using d_sys_clock_ms = std::chrono::duration<std::chrono::milliseconds>;
 

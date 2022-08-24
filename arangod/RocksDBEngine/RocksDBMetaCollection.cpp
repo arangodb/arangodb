@@ -139,17 +139,6 @@ ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
 /// @brief read unlocks a collection
 void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
 
-void RocksDBMetaCollection::trackWaitForSync(
-    arangodb::transaction::Methods* trx, OperationOptions& options) {
-  if (_logicalCollection.waitForSync() && !options.isRestore) {
-    options.waitForSync = true;
-  }
-
-  if (options.waitForSync) {
-    trx->state()->waitForSync(true);
-  }
-}
-
 // rescans the collection to update document count
 uint64_t RocksDBMetaCollection::recalculateCounts() {
   std::unique_lock<std::mutex> guard(_recalculationLock);

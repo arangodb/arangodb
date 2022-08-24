@@ -75,33 +75,6 @@ class SmartContext : public Context {
 
 struct TransactionContextSideUser {};
 
-/// @brief Acquire a transaction from the Manager
-struct ManagedContext final : public SmartContext {
-  ManagedContext(TransactionId globalId,
-                 std::shared_ptr<TransactionState> state,
-                 bool responsibleForCommit, bool cloned);
-
-  ManagedContext(TransactionId globalId,
-                 std::shared_ptr<TransactionState> state,
-                 TransactionContextSideUser /*sideUser*/);
-
-  ~ManagedContext();
-
-  /// @brief get transaction state, determine commit responsiblity
-  std::shared_ptr<TransactionState> acquireState(
-      transaction::Options const& options, bool& responsibleForCommit) override;
-
-  /// @brief unregister the transaction
-  void unregisterTransaction() noexcept override;
-
-  std::shared_ptr<Context> clone() const override;
-
- private:
-  bool const _responsibleForCommit;
-  bool const _cloned;
-  bool const _isSideUser;
-};
-
 /// Used for a standalone AQL query. Always creates the state first.
 /// Registers the TransactionState with the manager
 struct AQLStandaloneContext final : public SmartContext {

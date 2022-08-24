@@ -461,6 +461,71 @@ TEST_F(FailedFollowerTest,
   ASSERT_FALSE(failedFollower.start(aborts));
 }
 
+TEST_F(FailedFollowerTest,
+       if_there_is_no_non_maintenance_free_server_at_start_just_finish) {
+  std::string jobId = "1";
+
+  TestStructureType createTestStructure = [&](VPackSlice const& s,
+                                              std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto it : VPackObjectIterator(s)) {
+        auto childBuilder =
+            createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add("1", createJob().slice());
+      }
+      if (path == "/arango/Current/MaintenanceDBServers") {
+        builder->add("free", VPackSlice::emptyObjectSlice());
+      }
+      builder->close();
+    } else {
+      if (path == "/arango/Supervision/Health/free/Status") {
+        builder->add(VPackValue("GOOD"));
+      } else if (path == "/arango/Supervision/Health/free2/Status") {
+        builder->add(VPackValue("FAILED"));
+      } else {
+        builder->add(s);
+      }
+    }
+    return builder;
+  };
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createNodeFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write))
+      .Do([&](query_t const& q,
+              consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        // check that moveshard is being moved to failed
+        EXPECT_EQ(std::string(q->slice().typeName()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_TRUE(
+            std::string(
+                q->slice()[0][0].get("/arango/Target/Failed/1").typeName()) ==
+            "object");
+        return fakeWriteResult;
+      });
+
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
+                                       JOB_STATUS::TODO, jobId);
+  ASSERT_FALSE(failedFollower.start(aborts));
+}
+
 TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
   Mock<AgentInterface> moveShardMockAgent;
   Builder moveShardBuilder;

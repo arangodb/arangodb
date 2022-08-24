@@ -46,6 +46,7 @@ class Utils {
 
   static std::string const edgeShardingKey;
   static std::string const startExecutionPath;
+  static std::string const statusUpdatePath;
   static std::string const finishedStartupPath;
   static std::string const prepareGSSPath;
   static std::string const startGSSPath;
@@ -93,6 +94,7 @@ class Utils {
 
   /// sender cluster id
   static std::string const senderKey;
+  static std::string const payloadKey;
 
   /// Recovery method name
   static std::string const recoveryMethodKey;
@@ -129,6 +131,9 @@ class Utils {
   static std::string const compensate;
   static std::string const rollback;
   static std::string const reportsKey;
+
+  static size_t const batchOfVerticesStoredBeforeUpdatingStatus;
+  static size_t const batchOfVerticesProcessedBeforeUpdatingStatus;
 
   // pass the db name and either "worker" or "conductor" as target.
   static std::string baseUrl(std::string const& target);

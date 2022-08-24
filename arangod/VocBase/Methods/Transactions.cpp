@@ -429,7 +429,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
                  .FromMaybe(v8::Local<v8::Value>());
 
     if (tryCatch.HasCaught()) {
-      trx.abort();
+      std::ignore = trx.abort();
 
       std::tuple<bool, bool, Result> rvTuple =
           extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);

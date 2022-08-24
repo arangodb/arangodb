@@ -144,6 +144,16 @@ class ConfigBuilder {
     if (what.batchSize !== undefined) {
       this.config['batch-size'] = what.batchSize;
     }
+
+    if (what["from-collection-prefix"] !== undefined) {
+      this.config["from-collection-prefix"] = what["from-collection-prefix"];
+    }
+    if (what["to-collection-prefix"] !== undefined) {
+      this.config["to-collection-prefix"] = what["to-collection-prefix"];
+    }
+    if (what["overwrite-collection-prefix"] !== undefined) {
+      this.config["overwrite-collection-prefix"] = what["overwrite-collection-prefix"];
+    }
   }
 
   setAuth(username, password) {
@@ -449,6 +459,10 @@ function killRemainingProcesses(results) {
   results.status = results.status && (running.length === 0);
   let i = 0;
   for (i = 0; i < running.length; i++) {
+    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    if (timeoutReached) {
+      print(RED + Date() + ' external deadline reached!' + RESET);
+    }
     let status = internal.statusExternal(running[i].pid, false);
     if (status.status === "TERMINATED") {
       print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
@@ -721,7 +735,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   let instanceInfo = {
     rootDir: rootDir,
     pid: 0,
-    exitStatus: {}
+    exitStatus: {},
+    getStructure: function() { return {}; }
   };
 
   let res = {};

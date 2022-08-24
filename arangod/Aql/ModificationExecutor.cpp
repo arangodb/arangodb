@@ -112,12 +112,6 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
     upstreamCall.softLimit = _modifier->getBatchSize();
   }
 
-  // Try to initialize the RangeHandler
-  if (!_rangeHandler.init(input)) {
-    return {translateReturnType(_rangeHandler.upstreamState(input)),
-            ModificationStats{}, upstreamCall};
-  }
-
   auto stats = ModificationStats{};
 
   auto const maxRows = std::invoke([&] {
@@ -130,16 +124,14 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
   });
 
   // Read as much input as possible
-  while (_rangeHandler.hasDataRow(input) &&
-         _modifier->nrOfOperations() < maxRows) {
-    auto row = _rangeHandler.nextDataRow(input);
+  while (input.hasDataRow() && _modifier->nrOfOperations() < maxRows) {
+    auto row = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second;
 
     TRI_ASSERT(row.isInitialized());
     _modifier->accumulate(row);
   }
 
-  bool const inputDone =
-      _rangeHandler.upstreamState(input) == ExecutorState::DONE;
+  bool const inputDone = input.upstreamState() == ExecutorState::DONE;
   bool const enoughOutputAvailable = maxRows == _modifier->nrOfOperations();
   bool const hasAtLeastOneModification = _modifier->nrOfOperations() > 0;
 
@@ -149,7 +141,7 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
   if (!inputDone && !enoughOutputAvailable) {
     // This case handles when there's still work to do, but no input in the
     // current range.
-    TRI_ASSERT(!_rangeHandler.hasDataRow(input));
+    TRI_ASSERT(!input.hasDataRow());
 
     return {ExecutionState::HASMORE, stats, upstreamCall};
   }
@@ -177,8 +169,7 @@ ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
 
   TRI_ASSERT(_modifier->hasNeitherResultNorOperationPending());
 
-  return {translateReturnType(_rangeHandler.upstreamState(input)), stats,
-          upstreamCall};
+  return {translateReturnType(input.upstreamState()), stats, upstreamCall};
 }
 
 template<typename FetcherType, typename ModifierType>
@@ -313,92 +304,6 @@ ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
   std::swap(stats, _stats);
 
   return {state, stats, call.getSkipCount(), upstreamCall};
-}
-
-template<typename FetcherType, typename ModifierType>
-auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::nextDataRow(
-    typename FetcherType::DataRange& input) -> arangodb::aql::InputAqlItemRow {
-  if constexpr (inputIsMatrix) {
-    // Assume init() was called at least once
-    TRI_ASSERT(_iterator.isInitialized());
-    // Assume hasDataRow() is true (caller has to make sure)
-    TRI_ASSERT(hasDataRow(input));
-
-    auto ret = _iterator.next();
-
-    if (!_iterator) {
-      // We are done with this input.
-      // We need to forward it to the last ShadowRow.
-      // RangeHandler::hasDataRow() will continue to return false, even if
-      // the AqlItemBlockInputMatrix is now already in the next range.
-      input.skipAllRemainingDataRows();
-    }
-
-    return ret;
-  } else {
-    return input.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second;
-  }
-}
-
-template<typename FetcherType, typename ModifierType>
-auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::hasDataRow(
-    typename FetcherType::DataRange& input) const noexcept -> bool {
-  if constexpr (inputIsMatrix) {
-    // Assume init() was called at least once
-    TRI_ASSERT(_iterator.isInitialized());
-
-    return _iterator.hasMore();
-  } else {
-    return input.hasDataRow();
-  }
-}
-
-template<typename FetcherType, typename ModifierType>
-bool ModificationExecutor<FetcherType, ModifierType>::RangeHandler::init(
-    typename FetcherType::DataRange& input) {
-  if constexpr (inputIsMatrix) {
-    if (!_iterator.isInitialized()) {
-      if (input.hasValidRow()) {
-        auto&& [state, matrix] = input.getMatrix();
-        TRI_ASSERT(state == ExecutorState::DONE);
-        _iterator = matrix->begin();
-        if (!_iterator) {
-          input.skipAllRemainingDataRows();
-        }
-        // initialized successfully
-        return true;
-      } else {
-        // can't initialize yet, no matrix
-        return false;
-      }
-    } else {
-      // already initialized
-      return true;
-    }
-  } else {
-    // no-op
-    return true;
-  }
-}
-
-template<typename FetcherType, typename ModifierType>
-auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::
-    upstreamState(typename FetcherType::DataRange& input) const noexcept
-    -> ExecutorState {
-  if constexpr (inputIsMatrix) {
-    if (ADB_UNLIKELY(!_iterator.isInitialized())) {
-      // As long as the iterator isn't initialized, we need to pass the upstream
-      // state. In particular if the input is completely empty, we need to
-      // return DONE.
-      return input.upstreamState();
-    } else if (hasDataRow(input)) {
-      return ExecutorState::HASMORE;
-    } else {
-      return ExecutorState::DONE;
-    }
-  } else {
-    return input.upstreamState();
-  }
 }
 
 using NoPassthroughSingleRowFetcher =

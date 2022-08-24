@@ -395,6 +395,9 @@ class RocksDBEngine final : public StorageEngine {
       std::string const& keystorePath,
       std::vector<enterprise::EncryptionSecret>& userKeys,
       std::string& encryptionKey) const;
+
+  void configureEnterpriseRocksDBOptions(rocksdb::DBOptions& options,
+                                         bool createdEngineDir);
 #endif
 
   // returns whether sha files are created or not
@@ -464,12 +467,13 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
+  void verifySstFiles(rocksdb::Options const& options) const;
+
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
-  void configureEnterpriseRocksDBOptions(rocksdb::DBOptions& options,
-                                         bool createdEngineDir);
+
   void validateJournalFiles() const;
 
   Result readUserEncryptionSecrets(
@@ -584,6 +588,9 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief whether or not the in-memory cache for edges is used
   bool _useEdgeCache;
+
+  /// @brief whether or not to verify the sst files present in the db path
+  bool _verifySst;
 
   /// @brief activate generation of SHA256 files to parallel .sst files
   bool _createShaFiles;

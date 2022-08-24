@@ -51,7 +51,7 @@ struct custom_sort : public irs::sort {
     return "custom_sort";
   }
 
-  class prepared : public irs::prepared_sort_base<irs::doc_id_t, void> {
+  class prepared : public irs::PreparedSortBase<void> {
    public:
     class field_collector : public irs::sort::field_collector {
      public:
@@ -99,24 +99,19 @@ struct custom_sort : public irs::sort {
     struct scorer : public irs::score_ctx {
       scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
              const irs::term_reader& term_reader, const irs::byte_type* stats,
-             irs::byte_type* score_buf,
              const irs::attribute_provider& document_attrs)
           : document_attrs_(document_attrs),
             stats_(stats),
-            score_buf_(score_buf),
             segment_reader_(segment_reader),
             sort_(sort),
             term_reader_(term_reader) {}
 
       const irs::attribute_provider& document_attrs_;
       const irs::byte_type* stats_;
-      irs::byte_type* score_buf_;
       const irs::sub_reader& segment_reader_;
       const custom_sort& sort_;
       const irs::term_reader& term_reader_;
     };
-
-    static ptr make(prepared);
 
     prepared(const custom_sort& sort) : sort_(sort) {}
 
@@ -143,36 +138,31 @@ struct custom_sort : public irs::sort {
           sort_);
     }
 
-    virtual irs::score_function prepare_scorer(
+    virtual irs::ScoreFunction prepare_scorer(
         irs::sub_reader const& segment_reader,
         irs::term_reader const& term_reader,
-        irs::byte_type const* filter_node_attrs, irs::byte_type* score_buf,
+        irs::byte_type const* filter_node_attrs,
         irs::attribute_provider const& document_attrs,
-        irs::boost_t boost) const override {
+        irs::score_t boost) const override {
       if (sort_.prepare_scorer) {
         sort_.prepare_scorer(segment_reader, term_reader, filter_node_attrs,
-                             score_buf, document_attrs, boost);
+                             document_attrs, boost);
       }
 
       return {
           std::make_unique<custom_sort::prepared::scorer>(
-              sort_, segment_reader, term_reader, filter_node_attrs, score_buf,
+              sort_, segment_reader, term_reader, filter_node_attrs,
               document_attrs),
-          [](irs::score_ctx* ctx) -> const irs::byte_type* {
+          [](irs::score_ctx* ctx, irs::score_t* res) {
             auto& ctxImpl =
                 *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
 
-            EXPECT_TRUE(ctxImpl.score_buf_);
-            auto& doc_id =
-                *reinterpret_cast<irs::doc_id_t*>(ctxImpl.score_buf_);
-
-            doc_id = irs::get<irs::document>(ctxImpl.document_attrs_)->value;
+            irs::doc_id_t doc_id =
+                irs::get<irs::document>(ctxImpl.document_attrs_)->value;
 
             if (ctxImpl.sort_.scorer_score) {
-              ctxImpl.sort_.scorer_score(doc_id);
+              ctxImpl.sort_.scorer_score(doc_id, res);
             }
-
-            return ctxImpl.score_buf_;
           }};
     }
 
@@ -184,13 +174,6 @@ struct custom_sort : public irs::sort {
 
       return irs::memory::make_unique<custom_sort::prepared::term_collector>(
           sort_);
-    }
-
-    virtual bool less(irs::byte_type const* lhs,
-                      const irs::byte_type* rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(traits_t::score_cast(lhs),
-                                                   traits_t::score_cast(rhs))
-                               : false;
     }
 
    private:
@@ -208,13 +191,11 @@ struct custom_sort : public irs::sort {
       collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
   std::function<void(const irs::sub_reader&, const irs::term_reader&,
-                     const irs::byte_type*, irs::byte_type*,
-                     const irs::attribute_provider&, irs::boost_t)>
+                     const irs::byte_type*, const irs::attribute_provider&,
+                     irs::score_t)>
       prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
-  std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
-  std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
-  std::function<void(irs::doc_id_t&)> scorer_score;
+  std::function<void(irs::doc_id_t&, irs::score_t*)> scorer_score;
 
   static ptr make();
   custom_sort() : sort(irs::type<custom_sort>::get()) {}
@@ -222,8 +203,6 @@ struct custom_sort : public irs::sort {
     return std::make_unique<custom_sort::prepared>(*this);
   }
 };
-
-DEFINE_FACTORY_DEFAULT(custom_sort)
 
 }  // namespace
 
@@ -247,7 +226,7 @@ TEST(GeoFilterTest, ctor) {
   GeoFilter q;
   ASSERT_EQ(irs::type<GeoFilter>::id(), q.type());
   ASSERT_EQ("", q.field());
-  ASSERT_EQ(irs::no_boost(), q.boost());
+  ASSERT_EQ(irs::kNoBoost, q.boost());
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   ASSERT_EQ(GeoFilterOptions{}, q.options());
 #endif
@@ -325,12 +304,12 @@ TEST(GeoFilterTest, boost) {
     *q.mutable_field() = "field";
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::no_boost(), prepared->boost());
+    ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
   {
-    irs::boost_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->shape.reset(
@@ -425,7 +404,7 @@ TEST(GeoFilterTest, query) {
     for (auto& segment : *reader) {
       auto column = segment.column("name");
       EXPECT_NE(nullptr, column);
-      auto values = column->iterator(false);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
       EXPECT_NE(nullptr, values);
       auto* value = irs::get<irs::payload>(*values);
       EXPECT_NE(nullptr, value);
@@ -446,7 +425,7 @@ TEST(GeoFilterTest, query) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_TRUE(score->is_default());
+      EXPECT_EQ(*score, irs::ScoreFunction::kDefault);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -474,7 +453,7 @@ TEST(GeoFilterTest, query) {
           auto const docId = it->value();
           auto seek_it = prepared->execute(segment);
           EXPECT_NE(nullptr, seek_it);
-          auto column_it = column->iterator(false);
+          auto column_it = column->iterator(irs::ColumnHint::kNormal);
           EXPECT_NE(nullptr, column_it);
           auto* payload = irs::get<irs::payload>(*column_it);
           EXPECT_NE(nullptr, payload);
@@ -769,8 +748,7 @@ TEST(GeoFilterTest, checkScorer) {
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
   ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
 
-  auto executeQuery = [&reader](irs::filter const& q,
-                                irs::order::prepared const& ord) {
+  auto executeQuery = [&reader](irs::filter const& q, irs::Order const& ord) {
     std::map<std::string, irs::bstring> actualResults;
 
     auto prepared = q.prepare(*reader, ord);
@@ -778,7 +756,7 @@ TEST(GeoFilterTest, checkScorer) {
     for (auto& segment : *reader) {
       auto column = segment.column("name");
       EXPECT_NE(nullptr, column);
-      auto column_it = column->iterator(false);
+      auto column_it = column->iterator(irs::ColumnHint::kNormal);
       EXPECT_NE(nullptr, column_it);
       auto* payload = irs::get<irs::payload>(*column_it);
       EXPECT_NE(nullptr, payload);
@@ -795,7 +773,7 @@ TEST(GeoFilterTest, checkScorer) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_FALSE(score->is_default());
+      EXPECT_NE(*score, irs::ScoreFunction::kDefault);
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -809,9 +787,12 @@ TEST(GeoFilterTest, checkScorer) {
         EXPECT_EQ(docId, doc->value);
         EXPECT_FALSE(payload->value.null());
 
+        irs::bstring score_value(ord.score_size(), 0);
+        (*score)(reinterpret_cast<irs::score_t*>(score_value.data()));
+
         actualResults.emplace(
             irs::to_string<std::string>(payload->value.c_str()),
-            irs::bytes_ref(score->evaluate(), ord.score_size()));
+            std::move(score_value));
       }
       EXPECT_TRUE(irs::doc_limits::eof(it->value()));
       EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
@@ -824,7 +805,7 @@ TEST(GeoFilterTest, checkScorer) {
           auto const docId = it->value();
           auto seek_it = prepared->execute(segment);
           EXPECT_NE(nullptr, seek_it);
-          auto column_it = column->iterator(false);
+          auto column_it = column->iterator(irs::ColumnHint::kNormal);
           EXPECT_NE(nullptr, column_it);
           auto* payload = irs::get<irs::payload>(*column_it);
           EXPECT_NE(nullptr, payload);
@@ -847,8 +828,8 @@ TEST(GeoFilterTest, checkScorer) {
   };
 
   auto encodeDocId = [](irs::doc_id_t id) {
-    irs::bstring str(sizeof(id), 0);
-    *reinterpret_cast<irs::doc_id_t*>(&str[0]) = id;
+    irs::bstring str(sizeof(irs::score_t), 0);
+    *reinterpret_cast<irs::score_t*>(&str[0]) = static_cast<irs::score_t>(id);
     return str;
   };
 
@@ -875,13 +856,13 @@ TEST(GeoFilterTest, checkScorer) {
               q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
-    irs::order order;
     size_t collector_collect_field_count = 0;
     size_t collector_collect_term_count = 0;
     size_t collector_finish_count = 0;
     size_t scorer_score_count = 0;
     size_t prepare_scorer_count = 0;
-    auto& sort = order.add<::custom_sort>(false);
+
+    ::custom_sort sort;
 
     sort.field_collector_collect = [&collector_collect_field_count, &q](
                                        const irs::sub_reader&,
@@ -902,31 +883,24 @@ TEST(GeoFilterTest, checkScorer) {
     };
     sort.prepare_scorer = [&prepare_scorer_count, &q](
                               const irs::sub_reader&, const irs::term_reader&,
-                              const irs::byte_type*, irs::byte_type*,
+                              const irs::byte_type*,
                               const irs::attribute_provider&,
-                              irs::boost_t boost) {
+                              irs::score_t boost) {
       EXPECT_EQ(q.boost(), boost);
       ++prepare_scorer_count;
     };
 
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src) -> void {
-      ASSERT_TRUE(&dst);
-      ASSERT_TRUE(&src);
-      dst = src;
-    };
-    sort.scorer_less = [](const irs::doc_id_t& lhs,
-                          const irs::doc_id_t& rhs) -> bool {
-      return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA);
-    };
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score) -> void {
-      ASSERT_TRUE(&score);
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score,
+                                              irs::score_t* res) -> void {
+      ASSERT_TRUE(res);
+      *res = score;
       ++scorer_score_count;
     };
 
     std::map<std::string, irs::bstring> const expected{{"Q", encodeDocId(9)},
                                                        {"R", encodeDocId(9)}};
 
-    ASSERT_EQ(expected, executeQuery(q, order.prepare()));
+    ASSERT_EQ(expected, executeQuery(q, irs::Order::Prepare(sort)));
     ASSERT_EQ(2, collector_collect_field_count);  // 2 segments
     ASSERT_EQ(0, collector_collect_term_count);
     ASSERT_EQ(1, collector_finish_count);
@@ -957,13 +931,13 @@ TEST(GeoFilterTest, checkScorer) {
               q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
-    irs::order order;
     size_t collector_collect_field_count = 0;
     size_t collector_collect_term_count = 0;
     size_t collector_finish_count = 0;
     size_t scorer_score_count = 0;
     size_t prepare_scorer_count = 0;
-    auto& sort = order.add<::custom_sort>(false);
+
+    ::custom_sort sort;
 
     sort.field_collector_collect = [&collector_collect_field_count, &q](
                                        const irs::sub_reader&,
@@ -984,31 +958,24 @@ TEST(GeoFilterTest, checkScorer) {
     };
     sort.prepare_scorer = [&prepare_scorer_count, &q](
                               const irs::sub_reader&, const irs::term_reader&,
-                              const irs::byte_type*, irs::byte_type*,
+                              const irs::byte_type*,
                               const irs::attribute_provider&,
-                              irs::boost_t boost) {
+                              irs::score_t boost) {
       EXPECT_EQ(q.boost(), boost);
       ++prepare_scorer_count;
     };
 
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src) -> void {
-      ASSERT_TRUE(&dst);
-      ASSERT_TRUE(&src);
-      dst = src;
-    };
-    sort.scorer_less = [](const irs::doc_id_t& lhs,
-                          const irs::doc_id_t& rhs) -> bool {
-      return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA);
-    };
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score) -> void {
-      ASSERT_TRUE(&score);
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score,
+                                              irs::score_t* res) -> void {
+      ASSERT_TRUE(res != nullptr);
+      *res = score;
       ++scorer_score_count;
     };
 
     std::map<std::string, irs::bstring> const expected{{"Q", encodeDocId(9)},
                                                        {"R", encodeDocId(9)}};
 
-    ASSERT_EQ(expected, executeQuery(q, order.prepare()));
+    ASSERT_EQ(expected, executeQuery(q, irs::Order::Prepare(sort)));
     ASSERT_EQ(2, collector_collect_field_count);  // 2 segments
     ASSERT_EQ(0, collector_collect_term_count);
     ASSERT_EQ(1, collector_finish_count);

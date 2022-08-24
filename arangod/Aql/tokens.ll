@@ -186,6 +186,10 @@ class Parser;
   return T_K_SHORTEST_PATHS;
 }
 
+(?i:ALL_SHORTEST_PATHS) {
+  return T_ALL_SHORTEST_PATHS;
+}
+
 (?i:K_PATHS) {
   return T_K_PATHS;
 }
@@ -540,7 +544,7 @@ class Parser;
   char const* e = yytext + yyleng;
 
   auto parser = yyextra;
-  if (static_cast<uint64_t>(e - p) > arangodb::aql::Functions::bitFunctionsMaxSupportedBits) {
+  if (static_cast<uint64_t>(e - p) > arangodb::aql::functions::bitFunctionsMaxSupportedBits) {
     /* we only support up to 32 bits for now */
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "binary number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
   }
@@ -574,7 +578,7 @@ class Parser;
 
   auto parser = yyextra;
   /* each digit 0-9a-f carries 4 bits of information */
-  if (static_cast<uint64_t>(e - p) > arangodb::aql::Functions::bitFunctionsMaxSupportedBits / 4) {
+  if (static_cast<uint64_t>(e - p) > arangodb::aql::functions::bitFunctionsMaxSupportedBits / 4) {
     /* we only support up to 32 bits for now */
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "hex number literal value exceeds the supported range", yylloc->first_line, yylloc->first_column);
   }

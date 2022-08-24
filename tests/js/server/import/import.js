@@ -83,19 +83,32 @@ function importTestSuite () {
     return results;
   }
 
+  const assertEqualDocumentWise = (expected, actual) => {
+    for (let i = 0; i < Math.min(expected.length, actual.length); ++i) {
+      const exp = expected[i];
+      const act = actual[i];
+      assertEqual(exp.id, act.id);
+      for (const [key, value] of Object.entries(exp)) {
+        assertEqual(value, act[key], `Mismatch on ${key}, got: ${act[key]} expected value`);
+      }
+      assertEqual(Object.keys(exp).sort(), Object.keys(act).sort());
+    }
+    assertEqual(expected.length, actual.length, `Wrong number of documents`);
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
-    
-    testCsvImportSkip : function () {
-      var expected = [ 
-        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
-        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
-        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
-        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
-        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+
+    testCsvImportSkip: function () {
+      var expected = [
+        {"a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1},
+        {"b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2},
+        {"a": "9999999999999999999999999999999999", "b": "test", "c": -99999999, "d": true, "e": -888.4434, "id": 5},
+        {"a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6},
+        {"a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7}
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportCsvSkip SORT i.id RETURN i");
@@ -1305,12 +1318,12 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
         
     testCsvImportRemoveAttribute : function () {
-      var expected = [ 
-        { "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
-        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
-        { "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
-        { "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
-        { "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      var expected = [
+        {"b": 1, "c": "1.3", "e": -5, "id": 1},
+        {"b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2},
+        {"b": "test", "c": -99999999, "d": true, "e": -888.4434, "id": 5},
+        {"b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6},
+        {"b": 1.05e-2, "c": true, "d": false, "id": 7}
       ];
 
       var actual = getQueryResults("FOR i IN UnitTestsImportRemoveAttribute SORT i.id RETURN i");
@@ -1318,31 +1331,119 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test JSON import removing attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testJsonImportRemoveAttribute: function () {
+      var expected = [{
+        "id": 1,
+        "one": 1,
+        "three": 3,
+        "two": 2
+      },
+        {
+          "b": "the quick fox",
+          "id": 2,
+          "jumped":
+            "over the fox",
+          "null": null
+        },
+        {
+          "id": 3,
+          "not": "important",
+          "spacing": "is"
+        },
+        {
+          "  c  ": "h\"'ihi",
+          "b": false,
+          "d": "",
+          "id": 4
+        },
+        {"id": 5}];
+      var actual = getQueryResults("FOR i IN UnitTestsImportRemoveAttributeJSON SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+    testJsonImportLarge: function () {
+      const makeDoc = (id) => {
+        const v = `randomAttribute${id}`;
+        return {
+          id,
+          attribute1: v,
+          attribute2: v,
+          attribute3: v,
+          attribute4: v,
+          attribute5: v,
+          attribute6: v,
+          attribute7: v,
+          attribute8: v
+        };
+      };
+      const expected = [];
+      for (var i = 0; i < 10000; ++i) {
+        expected.push(makeDoc(i));
+      }
+      var actual = getQueryResults("FOR i IN UnitTestsImportJsonLarge SORT i.id RETURN i");
+      assertEqualDocumentWise(expected, actual);
+    },
+
+    testJsonImportRemoveAttributeLarge: function () {
+      // We removed attribute 4
+      const makeDoc = (id) => {
+        const v = `randomAttribute${id}`;
+        return {
+          id,
+          attribute1: v,
+          attribute2: v,
+          attribute3: v,
+          attribute5: v,
+          attribute6: v,
+          attribute7: v,
+          attribute8: v
+        };
+      };
+      const expected = [];
+      for (var i = 0; i < 10000; ++i) {
+        expected.push(makeDoc(i));
+      }
+      var actual = getQueryResults("FOR i IN UnitTestsImportRemoveAttributeJsonLarge SORT i.id RETURN i");
+      assertEqualDocumentWise(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test database creation
 ////////////////////////////////////////////////////////////////////////////////
-    testCreateDatabase : function () {
+    testCreateDatabase: function () {
       var db = require("@arangodb").db;
       try {
         var testdb = db._useDatabase("UnitTestImportCreateDatabase");
-        var expected = [ { "id": 1,
-                           "one": 1,
-                           "three": 3,
-                           "two": 2 },
-                         { "a": 1234,
-                           "b": "the quick fox",
-                           "id": 2,
-                           "jumped":
-                           "over the fox",
-                           "null": null },
-                         { "id": 3,
-                           "not": "important",
-                           "spacing": "is" },
-                         { "  c  ": "h\"'ihi",
-                           "a": true,
-                           "b": false,
-                           "d": "",
-                           "id": 4 },
-                         { "id": 5 } ];
+        var expected = [{
+          "id": 1,
+          "one": 1,
+          "three": 3,
+          "two": 2
+        },
+          {
+            "a": 1234,
+            "b": "the quick fox",
+            "id": 2,
+            "jumped":
+              "over the fox",
+            "null": null
+          },
+          {
+            "id": 3,
+            "not": "important",
+            "spacing": "is"
+          },
+          {
+            "  c  ": "h\"'ihi",
+            "a": true,
+            "b": false,
+            "d": "",
+            "id": 4
+          },
+          {"id": 5}];
 
         var actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
         assertEqual(expected, actual);

@@ -52,8 +52,12 @@ ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
 
 ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                                 bool withProperties) const {
-  return cloneHelper(std::make_unique<MutexNode>(plan, _id), withDependencies,
-                     withProperties);
+  auto clone = cloneHelper(std::make_unique<MutexNode>(plan, _id),
+                           withDependencies, withProperties);
+
+  static_cast<MutexNode*>(clone)->_clients = this->_clients;
+
+  return clone;
 }
 
 /// @brief doToVelocyPack, for MutexNode

@@ -67,6 +67,7 @@ std::string const planVersion = "/Plan/Version";
 std::string const currentVersion = "/Current/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
+std::string const maintenancePrefix = "/Current/MaintenanceDBServers/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
@@ -226,6 +227,10 @@ std::string Job::randomIdleAvailableServer(
           std::end(exclude)) {
         continue;
       }
+      if (snap.has(maintenancePrefix + srv.first)) {
+        continue;  // ignore servers in maintenance mode
+      }
+
       // ignore servers not in availableServers above:
       if (std::find(std::begin(as), std::end(as), srv.first) == std::end(as)) {
         continue;
@@ -254,19 +259,6 @@ std::string Job::randomIdleAvailableServer(
   return ret;
 }
 
-std::string Job::randomIdleAvailableServer(Node const& snap,
-                                           Slice const& exclude) {
-  std::vector<std::string> ev;
-  if (exclude.isArray()) {
-    for (const auto& s : VPackArrayIterator(exclude)) {
-      if (s.isString()) {
-        ev.push_back(s.copyString());
-      }
-    }
-  }
-  return randomIdleAvailableServer(snap, ev);
-}
-
 // The following counts in a given server list how many of the servers are
 // in Status "GOOD" or "BAD".
 size_t Job::countGoodOrBadServersInList(Node const& snap,
@@ -277,6 +269,7 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
     return count;
   }
   auto const& health = snap.hasAsChildren(healthPrefix);
+  auto const& maintenanceSet = snap.hasAsChildren(maintenancePrefix);
   // Do we have a Health substructure?
   if (health) {
     Node::Children const& healthData = *health;  // List of servers in Health
@@ -297,6 +290,10 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
 
           if (auto status = healthNode->hasAsString("Status");
               status && (status.value() == "GOOD" || status.value() == "BAD")) {
+            ++count;
+            // check is server is maintenance mode, if so, consider as good
+          } else if (maintenanceSet.has_value() &&
+                     maintenanceSet->get().contains(serverStr)) {
             ++count;
           }
         }
@@ -490,7 +487,8 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
     std::string const& shrd, std::string const& serverToAvoid) {
   // serverToAvoid is the leader for which we are seeking a replacement. Note
   // that it is not a given that this server is the first one in Current/servers
-  // or Current/failoverCandidates.
+  // or Current/failoverCandidates. Futhermore servers in
+  // /Current/MaintenanceDBServers/ are not considered as well.
   auto cs = clones(snap, db, col, shrd);  // clones
   auto nclones = cs.size();               // #clones
   std::unordered_map<std::string, bool> good;
@@ -549,7 +547,12 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
         continue;
       }
 
-      // check if it is also part of the plan...because if not the soon to be
+      if (snap.has(maintenancePrefix + id)) {
+        // server is in maintenance mode
+        continue;
+      }
+
+      // check if it is also part of the plan...because if not the soon-to-be
       // leader will drop the collection
       bool found = false;
       for (const auto& plannedServer :

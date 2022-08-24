@@ -38,7 +38,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
-#include "Aql/KShortestPathsNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -57,7 +57,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathType.h"
+#include "Graph/PathType.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -326,7 +326,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
-    bool defaultToRefactor = false) {
+    arangodb::graph::PathType::Type type, bool defaultToRefactor = false) {
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -360,9 +360,10 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
         } else {
-          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
-                                                "SHORTEST_PATH", name.data(),
-                                                name.size());
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name.data(),
+              name.size());
         }
       }
     }
@@ -1414,7 +1415,8 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* graph = node->getMember(3);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(4));
+      createShortestPathOptions(getAst(), direction, node->getMember(4),
+                                arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
   auto spNode =
@@ -1441,16 +1443,17 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-/// @brief create an execution plan element from an AST for K_SHORTEST_PATH node
-ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
+/// @brief create an execution plan element from an AST for ENUMERATE_PATHS node
+ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
                                                      AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_K_SHORTEST_PATHS);
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_ENUMERATE_PATHS);
   TRI_ASSERT(node->numMembers() == 7);
 
-  auto const type = static_cast<arangodb::graph::ShortestPathType::Type>(
+  auto const type = static_cast<arangodb::graph::PathType::Type>(
       node->getMember(0)->getIntValue());
-  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
-             type == arangodb::graph::ShortestPathType::Type::KPaths);
+  TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
+             type == arangodb::graph::PathType::Type::KPaths ||
+             type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
@@ -1462,14 +1465,13 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
 
   // Refactored variant shall be default on SingleServer and Cluster on KPaths
   // After the whole refactoring is done, this can be removed.
-  bool defaultToRefactor =
-      type == arangodb::graph::ShortestPathType::Type::KPaths;
+  bool defaultToRefactor = type == arangodb::graph::PathType::Type::KPaths;
 
   auto options = createShortestPathOptions(
-      getAst(), direction, node->getMember(5), defaultToRefactor);
+      getAst(), direction, node->getMember(5), type, defaultToRefactor);
 
   // First create the node
-  auto spNode = new KShortestPathsNode(
+  auto spNode = new EnumeratePathsNode(
       this, nextId(), &(_ast->query().vocbase()), type, direction, start,
       target, graph, std::move(options));
 
@@ -2263,8 +2265,8 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
-      case NODE_TYPE_K_SHORTEST_PATHS: {
-        en = fromNodeKShortestPaths(en, member);
+      case NODE_TYPE_ENUMERATE_PATHS: {
+        en = fromNodeEnumeratePaths(en, member);
         break;
       }
       case NODE_TYPE_FILTER: {
@@ -2698,13 +2700,13 @@ void ExecutionPlan::prepareTraversalOptions() {
   findNodesOfType(nodes,
                   {arangodb::aql::ExecutionNode::TRAVERSAL,
                    arangodb::aql::ExecutionNode::SHORTEST_PATH,
-                   arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
+                   arangodb::aql::ExecutionNode::ENUMERATE_PATHS},
                   true);
   for (auto& node : nodes) {
     switch (node->getType()) {
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
-      case ExecutionNode::K_SHORTEST_PATHS: {
+      case ExecutionNode::ENUMERATE_PATHS: {
         auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
         graphNode->prepareOptions();
       } break;
@@ -2836,7 +2838,7 @@ struct Shower final
     switch (node.getType()) {
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
-      case ExecutionNode::K_SHORTEST_PATHS: {
+      case ExecutionNode::ENUMERATE_PATHS: {
         auto const& graphNode = *ExecutionNode::castTo<GraphNode const*>(&node);
         auto type = std::string{node.getTypeString()};
         if (graphNode.isUsedAsSatellite()) {
@@ -2871,7 +2873,7 @@ struct Shower final
 /// @brief show an overview over the plan
 void ExecutionPlan::show() const {
   Shower shower;
-  _root->walk(shower);
+  _root->flatWalk(shower, false);
 }
 
 #endif

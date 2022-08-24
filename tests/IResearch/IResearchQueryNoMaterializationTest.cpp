@@ -31,7 +31,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 
@@ -44,8 +43,6 @@ static const char* viewName = "view";
 
 class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
  protected:
-  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
-
   void addLinkToCollection(
       std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
     auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
@@ -78,7 +75,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -113,7 +110,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
            \"storedValues\": [{\"fields\":[\"str\"], \"compression\":\"none\"}, [\"value\"], [\"_id\"], [\"str\", \"value\"], [\"exist\"]] \
         }");
       view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view);
 
       // add links to collections
@@ -130,7 +127,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
            \"storedValues\": [] \
         }");
       view2 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       ASSERT_FALSE(!view2);
 
       // add links to collections
@@ -143,7 +140,8 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+          arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -164,9 +162,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
         ASSERT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          insertedDocs.emplace_back();
-          auto const res =
-              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
+          auto res = trx.insert(logicalCollection1->name(), doc, opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -189,9 +185,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
         ASSERT_TRUE(root.isArray());
 
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-          insertedDocs.emplace_back();
-          auto const res =
-              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
+          auto res = trx.insert(logicalCollection2->name(), doc, opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -253,7 +247,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
             auto fieldNumber = cf.get("fieldNumber");
             ASSERT_TRUE(fieldNumber.isNumber<size_t>());
             auto it = fields.find(std::make_pair(
-                arangodb::iresearch::IResearchViewNode::SortColumnNumber,
+                arangodb::iresearch::IResearchViewNode::kSortColumnNumber,
                 fieldNumber.getNumber<size_t>()));
             ASSERT_TRUE(it != fields.end());
             fields.erase(it);
@@ -327,7 +321,7 @@ TEST_P(IResearchQueryNoMaterializationTest, sortColumnPriority) {
 
   executeAndCheck(
       queryString, expectedValues, 1,
-      {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}});
+      {{arangodb::iresearch::IResearchViewNode::kSortColumnNumber, 0}});
 }
 
 TEST_P(IResearchQueryNoMaterializationTest, sortColumnPriorityViewsSubquery) {
@@ -390,7 +384,7 @@ TEST_P(IResearchQueryNoMaterializationTest, sortAndStoredValues) {
 
   executeAndCheck(
       queryString, expectedValues, 2,
-      {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 1}, {2, 0}});
+      {{arangodb::iresearch::IResearchViewNode::kSortColumnNumber, 1}, {2, 0}});
 }
 
 TEST_P(IResearchQueryNoMaterializationTest, fieldExistence) {
@@ -403,7 +397,7 @@ TEST_P(IResearchQueryNoMaterializationTest, fieldExistence) {
 
   executeAndCheck(
       queryString, expectedValues, 1,
-      {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}});
+      {{arangodb::iresearch::IResearchViewNode::kSortColumnNumber, 0}});
 }
 
 TEST_P(IResearchQueryNoMaterializationTest, storedFieldExistence) {
@@ -417,7 +411,7 @@ TEST_P(IResearchQueryNoMaterializationTest, storedFieldExistence) {
 
   executeAndCheck(
       queryString, expectedValues, 2,
-      {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}, {4, 0}});
+      {{arangodb::iresearch::IResearchViewNode::kSortColumnNumber, 0}, {4, 0}});
 }
 
 TEST_P(IResearchQueryNoMaterializationTest, emptyField) {
@@ -448,7 +442,7 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
                           {\"fields\":[\"_id\"]}, {\"fields\":[\"str\", \"foo\", \"value\"]}] \
       }");
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase().createView(viewJson->slice()));
+      vocbase().createView(viewJson->slice(), false));
   ASSERT_TRUE(view);
 
   auto updateJson =
@@ -466,20 +460,18 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   auto slice = builder.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(slice.get("type").copyString() ==
-              arangodb::iresearch::StaticStrings::ViewType);
+              arangodb::iresearch::StaticStrings::ViewArangoSearchType);
   EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
   auto tmpSlice = slice.get("links");
   EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
 
-  arangodb::ManagedDocumentResult insertedDoc;
   {
     arangodb::OperationOptions opt;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    auto const res =
-        logicalCollection->insert(&trx, doc->slice(), insertedDoc, opt);
+    auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());
@@ -531,7 +523,7 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
         }
         auto columnReader = segment.column(val.id());
         ASSERT_TRUE(columnReader);
-        auto valReader = columnReader->iterator(false);
+        auto valReader = columnReader->iterator(irs::ColumnHint::kNormal);
         ASSERT_TRUE(valReader);
         auto* value = irs::get<irs::payload>(*valReader);
         ASSERT_TRUE(value);
@@ -612,7 +604,7 @@ TEST_P(IResearchQueryNoMaterializationTest,
         {\"fields\":[\"value\"], \"compression\":\"lz4\"}, [\"_id\"], {\"fields\":[\"str\", \"foo\", \"value\"]}] \
       }");
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase().createView(viewJson->slice()));
+      vocbase().createView(viewJson->slice(), false));
   ASSERT_TRUE(view);
 
   auto updateJson =
@@ -630,20 +622,18 @@ TEST_P(IResearchQueryNoMaterializationTest,
   auto slice = builder.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(slice.get("type").copyString() ==
-              arangodb::iresearch::StaticStrings::ViewType);
+              arangodb::iresearch::StaticStrings::ViewArangoSearchType);
   EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
   auto tmpSlice = slice.get("links");
   EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
 
-  arangodb::ManagedDocumentResult insertedDoc;
   {
     arangodb::OperationOptions opt;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        EMPTY, EMPTY, arangodb::transaction::Options());
+        {logicalCollection->name()}, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    auto const res =
-        logicalCollection->insert(&trx, doc->slice(), insertedDoc, opt);
+    auto const res = trx.insert(logicalCollection->name(), doc->slice(), opt);
     EXPECT_TRUE(res.ok());
 
     EXPECT_TRUE(trx.commit().ok());
@@ -695,7 +685,7 @@ TEST_P(IResearchQueryNoMaterializationTest,
         }
         auto columnReader = segment.column(val.id());
         ASSERT_TRUE(columnReader);
-        auto valReader = columnReader->iterator(false);
+        auto valReader = columnReader->iterator(irs::ColumnHint::kNormal);
         ASSERT_TRUE(valReader);
         auto* value = irs::get<irs::payload>(*valReader);
         ASSERT_TRUE(value);

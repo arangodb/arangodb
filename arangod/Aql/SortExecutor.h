@@ -29,6 +29,7 @@
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/RegisterInfos.h"
 
 #include <cstddef>
@@ -36,6 +37,7 @@
 
 namespace arangodb {
 struct ResourceMonitor;
+class TemporaryStorageFeature;
 
 namespace transaction {
 class Methods;
@@ -52,6 +54,7 @@ class OutputAqlItemRow;
 template<BlockPassthrough>
 class SingleRowFetcher;
 struct SortRegister;
+class SortedRowsStorageBackend;
 
 class SortExecutorInfos {
  public:
@@ -60,8 +63,11 @@ class SortExecutorInfos {
                     RegIdFlatSet const& registersToClear,
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager,
+                    TemporaryStorageFeature& tempStorage,
                     velocypack::Options const* options,
-                    arangodb::ResourceMonitor& resourceMonitor, bool stable);
+                    arangodb::ResourceMonitor& resourceMonitor,
+                    size_t spillOverThresholdNumRows,
+                    size_t spillOverThresholdMemoryUsage, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -84,7 +90,13 @@ class SortExecutorInfos {
 
   [[nodiscard]] size_t limit() const noexcept;
 
+  [[nodiscard]] size_t spillOverThresholdNumRows() const noexcept;
+
+  [[nodiscard]] size_t spillOverThresholdMemoryUsage() const noexcept;
+
   [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
+
+  [[nodiscard]] TemporaryStorageFeature& getTemporaryStorageFeature() noexcept;
 
  private:
   RegisterCount _numInRegs;
@@ -92,9 +104,12 @@ class SortExecutorInfos {
   RegIdFlatSet _registersToClear;
   std::size_t _limit;
   AqlItemBlockManager& _manager;
+  TemporaryStorageFeature& _tempStorage;
   velocypack::Options const* _vpackOptions;
   arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
+  size_t _spillOverThresholdNumRows;
+  size_t _spillOverThresholdMemoryUsage;
   bool _stable;
 };
 
@@ -135,22 +150,10 @@ class SortExecutor {
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  private:
-  void doSorting();
-  void consumeInput(AqlItemBlockInputRange& inputRange, ExecutorState& state);
-
- private:
   bool _inputReady = false;
   Infos& _infos;
 
-  InputAqlItemRow _currentRow;
-
-  std::vector<AqlItemMatrix::RowIndex> _sortedIndexes;
-
-  size_t _returnNext;
-
-  size_t _memoryUsageForRowIndexes;
-  std::vector<SharedAqlItemBlockPtr> _inputBlocks;
-  std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
+  std::unique_ptr<SortedRowsStorageBackend> _storageBackend;
 };
 }  // namespace aql
 }  // namespace arangodb

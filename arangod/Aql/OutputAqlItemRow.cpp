@@ -206,7 +206,7 @@ void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow,
   // We either have a shadowRow, or we need to have all values written
   TRI_ASSERT((std::is_same_v<ItemRowType, ShadowAqlItemRow>) ||
              allValuesWritten());
-  if (_inputRowCopied) {
+  if (ADB_UNLIKELY(_inputRowCopied)) {
     _lastBaseIndex = _baseIndex;
     return;
   }
@@ -575,10 +575,10 @@ template void OutputAqlItemRow::copyRow<InputAqlItemRow>(
 template void OutputAqlItemRow::copyRow<ShadowAqlItemRow>(
     ShadowAqlItemRow const& sourceRow, bool ignoreMissing);
 template void OutputAqlItemRow::cloneValueInto<InputAqlItemRow>(
-    RegisterId registerId, const InputAqlItemRow& sourceRow,
+    RegisterId registerId, InputAqlItemRow const& sourceRow,
     AqlValue const& value);
 template void OutputAqlItemRow::cloneValueInto<ShadowAqlItemRow>(
-    RegisterId registerId, const ShadowAqlItemRow& sourceRow,
+    RegisterId registerId, ShadowAqlItemRow const& sourceRow,
     AqlValue const& value);
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard>(
     RegisterId registerId, InputAqlItemRow const& sourceRow,

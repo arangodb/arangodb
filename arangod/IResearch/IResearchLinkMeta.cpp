@@ -22,6 +22,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchLinkMeta.h"
+
+#include "frozen/map.h"
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
@@ -36,7 +40,6 @@
 #include "Cluster/ServerState.h"
 #include "VocBase/vocbase.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearchLinkMeta.h"
 #include "Misc.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -339,7 +342,6 @@ bool FieldMeta::init(
   // .............................................................................
   // process fields last since children inherit from parent
   // .............................................................................
-
   {
     // optional string map<name, overrides>
     constexpr std::string_view kFieldName{"fields"};
@@ -395,6 +397,65 @@ bool FieldMeta::init(
       }
     }
   }
+
+#ifdef USE_ENTERPRISE
+  {
+    // optional string map<name, overrides>
+    constexpr std::string_view kFieldName{"nested"};
+    if (slice.hasKey(kFieldName)) {
+      auto field = slice.get(kFieldName);
+
+      if (!field.isObject()) {
+        errorField = kFieldName;
+
+        return false;
+      }
+
+      auto subDefaults = *this;
+
+      _nested.clear();  // reset to match either defaults or read values exactly
+
+      for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+        auto key = itr.key();
+        auto value = itr.value();
+
+        if (!key.isString()) {
+          errorField = std::string{kFieldName} + "[" +
+                       basics::StringUtils::itoa(itr.index()) + "]";
+
+          return false;
+        }
+
+        auto name = key.stringView();
+
+        if (!value.isObject()) {
+          errorField = absl::StrCat(kFieldName, ".", name);
+          return false;
+        }
+
+        std::string childErrorField;
+
+        if (!_nested[name]->init(server, value, childErrorField, defaultVocbase,
+                                 version, subDefaults, referencedAnalyzers,
+                                 nullptr)) {
+          errorField =
+              absl::StrCat(kFieldName, ".", name, ".", childErrorField);
+          return false;
+        }
+      }
+    }
+  }
+  _hasNested = !_nested.empty();
+  if (!_hasNested) {
+    for (auto const& f : _fields) {
+      if (!f.value()->_nested.empty()) {
+        _hasNested = true;
+        break;
+      }
+    }
+  }
+#endif
+
   return true;
 }
 
@@ -472,6 +533,31 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
   }
+#ifdef USE_ENTERPRISE
+  if (!_nested.empty()) {
+    velocypack::Builder fieldsBuilder;
+    Mask fieldMask(true);      // output all non-matching fields
+    auto subDefaults = *this;  // make modifable copy
+    fieldsBuilder.openObject();
+
+    for (auto& entry : _nested) {
+      // do not output empty fields on subobjects
+      fieldMask._fields = !entry.value()->_fields.empty();
+      fieldsBuilder.add(
+          std::string_view(entry.key().c_str(), entry.key().size()),
+          VPackValue(velocypack::ValueType::Object));
+
+      if (!entry.value()->json(server, fieldsBuilder, &subDefaults,
+                               defaultVocbase, &fieldMask)) {
+        return false;
+      }
+
+      fieldsBuilder.close();
+    }
+    fieldsBuilder.close();
+    builder.add("nested", fieldsBuilder.slice());
+  }
+#endif
 
   if ((!ignoreEqual || _includeAllFields != ignoreEqual->_includeAllFields) &&
       (!mask || mask->_includeAllFields)) {
@@ -728,37 +814,13 @@ bool IResearchLinkMeta::init(
 
           if (value.hasKey(kSubFieldName)) {
             auto subField = value.get(kSubFieldName);
-
-            if (!subField.isArray()) {
-              errorField = std::string{kFieldName} + "[" +
-                           std::to_string(itr.index()) + "]." +
-                           std::string{kSubFieldName};
-
+            auto featuresRes = features.fromVelocyPack(subField);
+            if (featuresRes.fail()) {
+              errorField = std::string{kFieldName}
+                               .append(" (")
+                               .append(featuresRes.errorMessage())
+                               .append(")");
               return false;
-            }
-
-            for (velocypack::ArrayIterator subItr(subField); subItr.valid();
-                 ++subItr) {
-              auto subValue = *subItr;
-
-              if (!subValue.isString() && !subValue.isNull()) {
-                errorField = std::string{kFieldName} + "[" +
-                             std::to_string(itr.index()) + "]." +
-                             std::string{kSubFieldName} + "[" +
-                             std::to_string(subItr.index()) + +"]";
-
-                return false;
-              }
-
-              const auto featureName = getStringRef(subValue);
-              if (!features.add(featureName)) {
-                errorField = std::string{kFieldName} + "[" +
-                             std::to_string(itr.index()) + "]." +
-                             std::string{kSubFieldName} + "." +
-                             std::string{featureName};
-
-                return false;
-              }
             }
           }
         }

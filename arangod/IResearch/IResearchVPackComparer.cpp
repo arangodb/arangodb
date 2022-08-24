@@ -23,7 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchVPackComparer.h"
-#include "IResearchViewMeta.h"
+#include "IResearchViewSort.h"
+#include "IResearchInvertedIndexMeta.h"
 
 #include "Basics/VelocyPackHelper.h"
 
@@ -32,44 +33,44 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reverse multiplier to use in VPackComparer
 ////////////////////////////////////////////////////////////////////////////////
-constexpr const int MULTIPLIER[]{-1, 1};
+constexpr int kMultiplier[]{-1, 1};
 
 }  // namespace
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
-VPackComparer::VPackComparer()
-    : VPackComparer(IResearchViewMeta::DEFAULT()._primarySort) {}
+template<typename Sort>
+VPackComparer<Sort>::VPackComparer() : _sort{nullptr}, _size{0} {}
 
-bool VPackComparer::less(const irs::bytes_ref& lhs,
-                         const irs::bytes_ref& rhs) const {
+template<typename Sort>
+bool VPackComparer<Sort>::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());
   TRI_ASSERT(!rhs.empty());
 
-  VPackSlice lhsSlice(lhs.c_str());
-  VPackSlice rhsSlice(rhs.c_str());
+  VPackSlice lhsSlice{lhs.c_str()};
+  VPackSlice rhsSlice{rhs.c_str()};
 
   for (size_t i = 0; i < _size; ++i) {
     TRI_ASSERT(!lhsSlice.isNone());
     TRI_ASSERT(!rhsSlice.isNone());
 
-    auto const res =
-        arangodb::basics::VelocyPackHelper::compare(lhsSlice, rhsSlice, true);
-
-    if (res) {
-      return (MULTIPLIER[size_t(_sort->direction(i))] * res) < 0;
+    auto const r = basics::VelocyPackHelper::compare(lhsSlice, rhsSlice, true);
+    if (r) {
+      return (kMultiplier[size_t{_sort->direction(i)}] * r) < 0;
     }
 
     // move to the next value
-    lhsSlice = VPackSlice(lhsSlice.start() + lhsSlice.byteSize());
-    rhsSlice = VPackSlice(rhsSlice.start() + rhsSlice.byteSize());
+    lhsSlice = VPackSlice{lhsSlice.start() + lhsSlice.byteSize()};
+    rhsSlice = VPackSlice{rhsSlice.start() + rhsSlice.byteSize()};
   }
 
   return false;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+template class VPackComparer<IResearchSortBase>;
+template class VPackComparer<IResearchViewSort>;
+template class VPackComparer<IResearchInvertedIndexSort>;
+
+}  // namespace arangodb::iresearch

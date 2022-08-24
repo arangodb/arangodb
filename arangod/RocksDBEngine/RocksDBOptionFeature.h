@@ -110,6 +110,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
   std::string _checksumType;
+  std::string _compactionStyle;
   uint32_t _formatVersion;
   bool _enableIndexCompression;
   bool _prepopulateBlockCache;

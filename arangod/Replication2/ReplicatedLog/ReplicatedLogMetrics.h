@@ -74,20 +74,4 @@ struct ReplicatedLogMetrics {
   std::shared_ptr<metrics::Counter> const replicatedLogNumberCompactedEntries;
 };
 
-struct MeasureTimeGuard {
-  explicit MeasureTimeGuard(
-      std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
-          histogram) noexcept;
-  MeasureTimeGuard(MeasureTimeGuard const&) = delete;
-  MeasureTimeGuard(MeasureTimeGuard&&) = default;
-  ~MeasureTimeGuard();
-
-  void fire();
-
- private:
-  std::chrono::steady_clock::time_point const _start;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
-      _histogram;
-};
-
 }  // namespace arangodb::replication2::replicated_log

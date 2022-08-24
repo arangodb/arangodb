@@ -42,6 +42,7 @@ const setup = require(base);
   setup.createOrder();
   setup.createModifyCollection();
   setup.createMultiShard();
+  setup.createComputedValues();
   setup.createPaddedKeyGen();
   setup.createAutoIncKeyGen();
   setup.createUUIDKeyGen();

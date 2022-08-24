@@ -44,7 +44,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -101,7 +100,6 @@ Result removeKeysOutsideRange(
   auto iterator = createPrimaryIndexIterator(&trx, coll);
 
   VPackBuilder builder;
-  ManagedDocumentResult mdr;
 
   // remove everything from the beginning of the key range until the lowest
   // remote key
@@ -109,10 +107,19 @@ Result removeKeysOutsideRange(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
         std::string_view docKey(RocksDBKey::primaryKey(rocksKey));
         if (docKey.compare(lowRef) < 0) {
+          auto documentId = RocksDBValue::documentId(rocksValue);
+
           builder.clear();
-          builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
-                                            velocypack::ValueType::String));
-          auto r = physical->remove(trx, builder.slice(), mdr, options);
+          Result r = physical->lookupDocument(
+              trx, documentId, builder, /*readCache*/ true,
+              /*fillCache*/ false, ReadOwnWrites::yes);
+
+          if (r.ok()) {
+            TRI_ASSERT(builder.slice().isObject());
+            r = physical->remove(trx, documentId,
+                                 RevisionId::fromSlice(builder.slice()),
+                                 builder.slice(), options);
+          }
 
           if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
             // ignore not found, we remove conflicting docs ahead of time
@@ -146,18 +153,25 @@ Result removeKeysOutsideRange(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
         std::string_view docKey(RocksDBKey::primaryKey(rocksKey));
         if (docKey.compare(highRef) > 0) {
-          builder.clear();
-          builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
-                                            velocypack::ValueType::String));
-          auto r = physical->remove(trx, builder.slice(), mdr, options);
+          LocalDocumentId documentId = RocksDBValue::documentId(rocksValue);
 
-          if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-            // ignore not found, we remove conflicting docs ahead of time
-            THROW_ARANGO_EXCEPTION(r);
+          builder.clear();
+          Result r = physical->lookupDocument(
+              trx, documentId, builder, /*readCache*/ true,
+              /*fillCache*/ false, ReadOwnWrites::yes);
+
+          if (r.ok()) {
+            TRI_ASSERT(builder.slice().isObject());
+            r = physical->remove(trx, documentId,
+                                 RevisionId::fromSlice(builder.slice()),
+                                 builder.slice(), options);
           }
 
           if (r.ok()) {
             ++stats.numDocsRemoved;
+          } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+            // ignore not found, we remove conflicting docs ahead of time
+            THROW_ARANGO_EXCEPTION(r);
           }
         }
 
@@ -248,7 +262,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
                       syncer._state.leader.endpoint, ": ", r.errorMessage()));
   }
 
-  VPackSlice const responseBody = builder.slice();
+  VPackSlice responseBody = builder.slice();
   if (!responseBody.isArray()) {
     ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -271,10 +285,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   // LOG_TOPIC("3c002", TRACE, Logger::REPLICATION) << "received chunk: " <<
   // responseBody.toJson();
 
-  // state for RocksDBCollection insert/replace/remove
-  ManagedDocumentResult mdr, previous;
-
-  transaction::BuilderLeaser keyBuilder(trx);
+  transaction::BuilderLeaser tempBuilder(trx);
   std::vector<size_t> toFetch;
   size_t i = 0;
   size_t nextStart = 0;
@@ -289,7 +300,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     }
 
     // key
-    VPackSlice const keySlice = pair.at(0);
+    VPackSlice keySlice = pair.at(0);
     if (!keySlice.isString()) {
       ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -315,18 +326,32 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
       int res = keySlice.compareString(localKey);
       if (res > 0) {
         // we have a local key that is not present remotely
-        keyBuilder->clear();
-        keyBuilder->add(VPackValue(localKey));
+        std::pair<LocalDocumentId, RevisionId> lookupResult;
+        auto r = physical->lookupKey(trx, localKey, lookupResult,
+                                     ReadOwnWrites::yes);
 
-        auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options);
+        if (r.ok()) {
+          TRI_ASSERT(lookupResult.first.isSet());
+          TRI_ASSERT(lookupResult.second.isSet());
+          auto [documentId, revisionId] = lookupResult;
 
-        if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-          // ignore not found, we remove conflicting docs ahead of time
-          return r;
+          tempBuilder->clear();
+          r = physical->lookupDocument(*trx, documentId, *tempBuilder,
+                                       /*readCache*/ true, /*fillCache*/ false,
+                                       ReadOwnWrites::yes);
+
+          if (r.ok()) {
+            TRI_ASSERT(tempBuilder->slice().isObject());
+            r = physical->remove(*trx, documentId, revisionId,
+                                 tempBuilder->slice(), options);
+          }
         }
 
         if (r.ok()) {
           ++stats.numDocsRemoved;
+        } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+          // ignore not found, we remove conflicting docs ahead of time
+          return r;
         }
 
         ++nextStart;
@@ -369,18 +394,32 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
     if (localKey.compare(highString) > 0) {
       // we have a local key that is not present remotely
-      keyBuilder->clear();
-      keyBuilder->add(VPackValue(localKey));
+      std::pair<LocalDocumentId, RevisionId> lookupResult;
+      Result r =
+          physical->lookupKey(trx, localKey, lookupResult, ReadOwnWrites::yes);
 
-      auto r = physical->remove(*trx, keyBuilder->slice(), mdr, options);
+      if (r.ok()) {
+        TRI_ASSERT(lookupResult.first.isSet());
+        TRI_ASSERT(lookupResult.second.isSet());
+        auto [documentId, revisionId] = lookupResult;
 
-      if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // ignore not found, we remove conflicting docs ahead of time
-        return r;
+        tempBuilder->clear();
+        r = physical->lookupDocument(*trx, documentId, *tempBuilder,
+                                     /*readCache*/ true, /*fillCache*/ false,
+                                     ReadOwnWrites::yes);
+
+        if (r.ok()) {
+          TRI_ASSERT(tempBuilder->slice().isObject());
+          r = physical->remove(*trx, documentId, revisionId,
+                               tempBuilder->slice(), options);
+        }
       }
 
       if (r.ok()) {
         ++stats.numDocsRemoved;
+      } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // ignore not found, we remove conflicting docs ahead of time
+        return r;
       }
     }
     ++nextStart;
@@ -400,14 +439,15 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     return numUnique;
   }();
 
-  keyBuilder->clear();
+  transaction::BuilderLeaser keyBuilder(trx);
   keyBuilder->openArray(false);
   for (auto const& it : toFetch) {
     keyBuilder->add(VPackValue(it));
   }
   keyBuilder->close();
 
-  std::string const keyJsonString(keyBuilder->slice().toJson());
+  auto const keyJsonString(keyBuilder->slice().toJson());
+
   // this will be very verbose, so intentionally not active
   // LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
   //     << "will refetch " << toFetch.size() << " documents for this chunk: "
@@ -522,16 +562,36 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
       }
 
       auto removeConflict = [&](auto const& conflictingKey) -> Result {
-        keyBuilder->clear();
-        keyBuilder->add(VPackValue(conflictingKey));
+        std::pair<LocalDocumentId, RevisionId> lookupResult;
+        Result r = physical->lookupKey(trx, conflictingKey, lookupResult,
+                                       ReadOwnWrites::yes);
 
-        auto res = physical->remove(*trx, keyBuilder->slice(), mdr, options);
+        if (r.ok()) {
+          TRI_ASSERT(lookupResult.first.isSet());
+          TRI_ASSERT(lookupResult.second.isSet());
+          auto [documentId, revisionId] = lookupResult;
 
-        if (res.ok()) {
-          ++stats.numDocsRemoved;
+          tempBuilder->clear();
+          r = physical->lookupDocument(*trx, documentId, *tempBuilder,
+                                       /*readCache*/ true, /*fillCache*/ false,
+                                       ReadOwnWrites::yes);
+
+          if (r.ok()) {
+            TRI_ASSERT(tempBuilder->slice().isObject());
+            r = physical->remove(*trx, documentId, revisionId,
+                                 tempBuilder->slice(), options);
+          }
         }
 
-        return res;
+        if (r.ok()) {
+          ++stats.numDocsRemoved;
+        }
+        // if a conflict document cannot be removed because it doesn't exist,
+        // we do not care, because the goal is deletion anyway. if it fails
+        // for some other reason, the following re-insert will likely complain.
+        // so intentionally no special error handling here.
+
+        return r;
       };
 
       // check if target _key already exists
@@ -557,12 +617,13 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
         Result res;
         if (mustInsert) {
-          res = physical->insert(trx, it, mdr, options);
+          res = trx->insert(collectionName, it, options).result;
+
           if (res.ok()) {
             ++stats.numDocsInserted;
           }
         } else {
-          res = physical->replace(trx, it, mdr, options, previous);
+          res = trx->replace(collectionName, it, options).result;
           // do NOT count up stats.numDocsInserted, as this will influence the
           // persisted document count later!!
         }
@@ -807,20 +868,32 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
           if (cmp1 < 0) {
             // smaller values than lowKey mean they don't exist remotely
-            tempBuilder.clear();
-            tempBuilder.add(VPackValue(docKey));
+            std::pair<LocalDocumentId, RevisionId> lookupResult;
+            Result r = physical->lookupKey(trx.get(), docKey, lookupResult,
+                                           ReadOwnWrites::yes);
 
-            ManagedDocumentResult previous;
-            auto r =
-                physical->remove(*trx, tempBuilder.slice(), previous, options);
+            if (r.ok()) {
+              TRI_ASSERT(lookupResult.first.isSet());
+              TRI_ASSERT(lookupResult.second.isSet());
+              auto [documentId, revisionId] = lookupResult;
 
-            if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-              // ignore not found, we remove conflicting docs ahead of time
-              THROW_ARANGO_EXCEPTION(r);
+              tempBuilder.clear();
+              r = physical->lookupDocument(
+                  *trx, documentId, tempBuilder, /*readCache*/ true,
+                  /*fillCache*/ false, ReadOwnWrites::yes);
+
+              if (r.ok()) {
+                TRI_ASSERT(tempBuilder.slice().isObject());
+                r = physical->remove(*trx, documentId, revisionId,
+                                     tempBuilder.slice(), options);
+              }
             }
 
             if (r.ok()) {
               ++stats.numDocsRemoved;
+            } else if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+              // ignore not found, we remove conflicting docs ahead of time
+              THROW_ARANGO_EXCEPTION(r);
             }
 
             return;

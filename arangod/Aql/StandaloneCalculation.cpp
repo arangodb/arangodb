@@ -28,7 +28,6 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Expression.h"
-#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"
@@ -43,6 +42,8 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -233,11 +234,8 @@ std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
 Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                                             std::string_view queryString,
                                             std::string_view parameterName,
-                                            char const* errorContext) {
-  TRI_ASSERT(errorContext != nullptr);
-
-  using namespace std::string_literals;
-
+                                            std::string_view errorContext,
+                                            bool isComputedValue) {
   try {
     CalculationQueryContext queryContext(vocbase);
     auto ast = queryContext.ast();
@@ -245,45 +243,65 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     auto qs = arangodb::aql::QueryString(queryString);
     Parser parser(queryContext, *ast, qs);
     parser.parse();
-    ast->validateAndOptimize(queryContext.trxForOptimization());
+    ast->validateAndOptimize(
+        queryContext.trxForOptimization(),
+        {.optimizeNonCacheable = false, .optimizeFunctionCalls = false});
     AstNode* astRoot = const_cast<AstNode*>(ast->root());
     TRI_ASSERT(astRoot);
+    TRI_ASSERT(astRoot->type == NODE_TYPE_ROOT);
+
     // Forbid all V8 related stuff as it is not available on DBServers where
     // analyzers run.
     if (ast->willUseV8()) {
-      return {TRI_ERROR_BAD_PARAMETER, "V8 usage is forbidden"s + errorContext};
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("V8 usage is forbidden", errorContext)};
     }
 
     // no modification (as data access is forbidden) but to give more clear
     // error message
     if (ast->containsModificationNode()) {
-      return {TRI_ERROR_BAD_PARAMETER, "DML is forbidden"s + errorContext};
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("DML is forbidden", errorContext)};
     }
 
     // no traversal (also data access is forbidden) but to give more clear error
     // message
     if (ast->containsTraversal()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Traversal usage is forbidden"s + errorContext};
+              absl::StrCat("Traversal usage is forbidden", errorContext)};
     }
 
     std::string errorMessage;
+
     // Forbid to use functions that reference analyzers -> problems on recovery
     // as analyzers are not available for querying. Forbid all non-Dbserver
     // runnable functions as it is not available on DBServers where analyzers
     // run.
     arangodb::aql::Ast::traverseReadOnly(
-        ast->root(),
-        [&errorMessage, &parameterName,
-         &errorContext](arangodb::aql::AstNode const* node) -> bool {
+        astRoot,
+        [&errorMessage, &parameterName, &errorContext,
+         isComputedValue](arangodb::aql::AstNode const* node) -> bool {
           TRI_ASSERT(node);
           switch (node->type) {
+            case arangodb::aql::NODE_TYPE_SUBQUERY:
+            case arangodb::aql::NODE_TYPE_FOR:
+            case arangodb::aql::NODE_TYPE_LET: {
+              // these nodes are only ok for analyzer expressions, but
+              // not for computed values
+              if (isComputedValue) {
+                errorMessage =
+                    absl::StrCat("Node type '", node->getTypeString(),
+                                 "' is forbidden", std::string{errorContext});
+                return false;
+              }
+            }
+            // fall-through intentional
+
             // these nodes are ok unconditionally
             case arangodb::aql::NODE_TYPE_ROOT:
-            case arangodb::aql::NODE_TYPE_FOR:
-            case arangodb::aql::NODE_TYPE_LET:
             case arangodb::aql::NODE_TYPE_FILTER:
             case arangodb::aql::NODE_TYPE_ARRAY:
+            case arangodb::aql::NODE_TYPE_ARRAY_FILTER:
             case arangodb::aql::NODE_TYPE_RETURN:
             case arangodb::aql::NODE_TYPE_SORT:
             case arangodb::aql::NODE_TYPE_SORT_ELEMENT:
@@ -309,7 +327,6 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
             case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN:
             case arangodb::aql::NODE_TYPE_OPERATOR_TERNARY:
-            case arangodb::aql::NODE_TYPE_SUBQUERY:
             case arangodb::aql::NODE_TYPE_EXPANSION:
             case arangodb::aql::NODE_TYPE_ITERATOR:
             case arangodb::aql::NODE_TYPE_VALUE:
@@ -344,39 +361,48 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                                      CanRunOnDBServerCluster) ||
                   !func->hasFlag(arangodb::aql::Function::Flags::
                                      CanRunOnDBServerOneShard) ||
+                  func->hasFlag(arangodb::aql::Function::Flags::Internal) ||
                   func->hasFlag(
                       arangodb::aql::Function::Flags::CanReadDocuments) ||
                   !func->hasFlag(
                       arangodb::aql::Function::Flags::CanUseInAnalyzer)) {
-                errorMessage = "Function '";
-                errorMessage.append(func->name)
-                    .append("' is forbidden")
-                    .append(errorContext);
+                errorMessage = absl::StrCat("Function '", func->name,
+                                            " is forbidden", errorContext);
                 return false;
               }
             } break;
             case arangodb::aql::NODE_TYPE_PARAMETER: {
               if (node->getStringView() != parameterName) {
-                errorMessage = "Invalid bind parameter '";
-                errorMessage.append(node->getStringView()).append("' found");
+                errorMessage = absl::StrCat("Invalid bind parameter '",
+                                            node->getStringView(), "' found");
                 return false;
               }
             } break;
-            // by default all is forbidden
+            // by default everything else is forbidden
             default:
-              errorMessage = "Node type '";
-              errorMessage.append(node->getTypeString())
-                  .append("' is forbidden")
-                  .append(errorContext);
+              errorMessage = absl::StrCat("Node type '", node->getTypeString(),
+                                          "' is forbidden", errorContext);
               return false;
           }
           return true;
         });
+
+    if (errorMessage.empty() && isComputedValue &&
+        (astRoot->numMembers() != 1 ||
+         astRoot->getMember(0)->type != NODE_TYPE_RETURN)) {
+      // computed values expressions must start with a RETURN statement
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat(
+              "Computation expression needs to start with a RETURN statement",
+              errorContext)};
+    }
+
     if (!errorMessage.empty()) {
       return {TRI_ERROR_BAD_PARAMETER, errorMessage};
     }
   } catch (arangodb::basics::Exception const& e) {
-    return {TRI_ERROR_QUERY_PARSE, e.message()};
+    return {TRI_ERROR_QUERY_PARSE, absl::StrCat(e.message(), errorContext)};
   } catch (std::exception const& e) {
     return {TRI_ERROR_QUERY_PARSE, e.what()};
   } catch (...) {

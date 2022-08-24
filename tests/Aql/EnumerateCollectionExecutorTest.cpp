@@ -159,9 +159,6 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
 }
 
 TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input.steal(), false);
-  EnumerateCollectionExecutor testee(fetcher, executorInfos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
   // EnumerateCollectionExecutor::produceRows().
@@ -187,6 +184,10 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
       R"aql(INSERT {_key: "testeeC", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
   SCOPED_TRACE(insertQueryC);
   AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
+
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), false);
+  EnumerateCollectionExecutor testee(fetcher, executorInfos);
 
   AqlItemBlockInputRange inputRange{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),

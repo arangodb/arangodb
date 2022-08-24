@@ -26,6 +26,9 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 namespace arangodb {
+namespace replication2::replicated_state::document {
+struct DocumentLeaderState;
+}
 class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState;
 
@@ -60,9 +63,17 @@ class ReplicatedRocksDBTransactionCollection final
 
   bool ensureSnapshot();
 
+  auto leaderState() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentLeaderState>;
+
+ protected:
+  auto ensureCollection() -> Result override;
+
  private:
   void maybeDisableIndexing();
 
+  std::shared_ptr<replication2::replicated_state::document::DocumentLeaderState>
+      _leaderState;
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
 };

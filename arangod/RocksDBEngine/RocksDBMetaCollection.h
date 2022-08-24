@@ -144,11 +144,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
 #endif
 
- protected:
-  /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx,
-                        OperationOptions& options);
-
  private:
   /// @brief sends the collection's revision tree to hibernation
   void hibernateRevisionTree(std::unique_lock<std::mutex> const& lock);

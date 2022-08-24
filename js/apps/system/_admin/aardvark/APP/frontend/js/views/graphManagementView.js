@@ -9,9 +9,11 @@
     el: '#content',
     template: templateEngine.createTemplate('graphManagementView.ejs'),
     edgeDefintionTemplate: templateEngine.createTemplate('edgeDefinitionTable.ejs'),
-    eCollList: [],
-    removedECollList: [],
     readOnly: false,
+    smartGraphName: "SmartGraph",
+    enterpriseGraphName: "EnterpriseGraph",
+    currentGraphCreationType: (frontendConfig.isEnterprise ? 'enterprise' : 'community'),
+    currentGraphEditType: null,
 
     dropdownVisible: false,
 
@@ -43,11 +45,18 @@
         $('#modal-dialog .modal-footer .button-success').css('display', 'initial');
       }
 
-      if (id === 'smartGraph') {
-        this.setSmartGraphRows(true);
+      if (id === 'smartGraph' || id === 'enterpriseGraph') {
+        if (id === 'smartGraph') {
+          this.currentGraphCreationType = 'smart';
+        } else {
+          this.currentGraphCreationType = 'enterprise';
+        }
+        this.setSmartGraphRows(true, id);
       } else if (id === 'satelliteGraph') {
+        this.currentGraphCreationType = 'satellite';
         this.setSatelliteGraphRows(true);
       } else if (id === 'createGraph') {
+        this.currentGraphCreationType = 'community';
         this.setGeneralGraphRows(false);
       }
     },
@@ -74,6 +83,11 @@
       'row_new-isDisjoint'
     ],
 
+    nonNeededEnterpriseGraphRows: [
+      'row_new-smartGraphAttribute',
+      'row_new-isDisjoint'
+    ],
+
     // rows that needs to be hidden while creating satellites
     notNeededSatelliteGraphRows: [
       'row_general-numberOfShards',
@@ -82,23 +96,132 @@
       'row_general-writeConcern'
     ],
 
-    setGeneralGraphRows: function (cache) {
-      this.setCacheModeState(cache);
+    getCurrentCreationGraphType: function () {
+      if (this.currentGraphCreationType) {
+        return this.currentGraphCreationType;
+      }
+
+      // fallback - should not be required...
+      if ($('#tab-smartGraph').parent().hasClass('active')) {
+        return 'smart';
+      } else if ($('#tab-enterpriseGraph').parent().hasClass('active')) {
+        return 'enterprise';
+      } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
+        return 'satellite';
+      } else if ($('#tab-createGraph').parent().hasClass('active')) {
+        return 'community';
+      } else {
+        return 'none';
+      }
+    },
+
+    isEnterpriseOnlyGraphOrIsDefaultIsEnterprise: function (editType) {
+      if (editType && editType === 'community') {
+        return false;
+      }
+
+      const graphCreationType = editType || this.getCurrentCreationGraphType();
+      if (this.isEnterpriseOnlyGraph(graphCreationType)) {
+        return true;
+      }
+
+      if (graphCreationType === 'none') {
+        // In this special case we'll deliver the default
+        if (frontendConfig.isEnterprise) {
+          return true;
+        }
+      }
+
+      return false;
+    },
+
+    isEnterpriseOnlyGraph: function (graphCreationType) {
+      if (graphCreationType === 'smart' || graphCreationType === 'enterprise' || graphCreationType === 'satellite') {
+        return true;
+      }
+      return false;
+    },
+
+    buildAutoCompletionLists: function (type, editGraphType) {
+      // Supported type is either: "edges" or "vertices"
+
+      let collections = [];
+
+      const graphCreationType = editGraphType || this.getCurrentCreationGraphType();
+      if (this.isEnterpriseOnlyGraph(graphCreationType)) {
+        // In that case, all collections need to be newly created. Therefore, we cannot provide any
+        // auto-completion feature.
+        return collections;
+      } else if (graphCreationType === 'none') {
+        // Means we're in the init phase, and the modal view has not been rendered right now.
+        // In this case, we need to decide whether we want to have autocomplete on or off
+        // related to the environment we're running at. If we do have an Enterprise instance,
+        // by default it will be off (as EnterpriseGraphs are the default and need new collections).
+        // In Community edition, it will be enabled by default.
+        if (frontendConfig.isEnterprise) {
+          return collections;
+        }
+      }
+
+      // Will re-build the local state every time, as we might have newly created collections meanwhile
+      const storedCollections = this.options.collectionCollection.models;
+      storedCollections.forEach(function (c) {
+        if (c.get('isSystem')) {
+          // do not return system collections
+          return;
+        }
+        if (c.get('type') === 'edge' && type === 'edges') {
+          collections.push(c.id);
+        } else if (c.get('type') === 'document' && type === 'vertices') {
+          collections.push(c.id);
+        }
+      });
+
+      const sorter = function (l, r) {
+        l = l.toLowerCase();
+        r = r.toLowerCase();
+        if (l < r) {
+          return -1;
+        }
+        if (l > r) {
+          return 1;
+        }
+        return 0;
+      };
+      return collections.sort(sorter);
+    },
+
+    getVerticesAutoCompletionList: function (editGraph) {
+      return this.buildAutoCompletionLists('vertices', editGraph);
+    },
+
+    getEdgesAutoCompletionList: function (editGraph) {
+      return this.buildAutoCompletionLists('edges', editGraph);
+    },
+
+    setGeneralGraphRows: function (forget, editGraph) {
+      if (!editGraph) {
+        this.setCacheModeState(forget);
+      }
+
       this.hideSmartGraphRows();
       _.each(this.generalGraphRows, function (rowId) {
         $('#' + rowId).show();
       });
     },
 
-    setSatelliteGraphRows: function (cache) {
+    setSatelliteGraphRows: function (cache, editGraph) {
       $('#createGraph').addClass('active');
-      this.setCacheModeState(cache);
+      if (!editGraph) {
+        this.setCacheModeState(cache);
+      }
 
       this.showGeneralGraphRows();
       this.hideSmartGraphRows();
       _.each(this.notNeededSatelliteGraphRows, function (rowId) {
         $('#' + rowId).hide();
       });
+      $('#smartGraphInfo').show();
     },
 
     checkSmartGraphOneShardInfoHint: function () {
@@ -125,15 +248,30 @@
       });
     },
 
-    setSmartGraphRows: function (cache) {
+    setSmartGraphRows: function (cache, id, editGraph) {
       $('#createGraph').addClass('active');
-      this.setCacheModeState(cache);
+      if (!editGraph && cache) {
+        this.setCacheModeState(cache);
+      }
 
       this.hideGeneralGraphRows();
       this.checkSmartGraphOneShardInfoHint();
       _.each(this.neededSmartGraphRows, function (rowId) {
         $('#' + rowId).show();
       });
+
+      // Extra rule to identify whether we need to display smartGraphAttribute field
+      if (id === 'enterpriseGraph') {
+        // In enterpriseGraph case is not allowed to be set
+        _.each(this.nonNeededEnterpriseGraphRows, function (rowId) {
+          $('#' + rowId).hide();
+        });
+      } else if (id === 'smartGraph') {
+        // In smartGraph case it must be set
+        _.each(this.nonNeededEnterpriseGraphRows, function (rowId) {
+          $('#' + rowId).show();
+        });
+      }
     },
 
     hideSmartGraphRows: function () {
@@ -229,9 +367,11 @@
         } else {
           this.createEditGraphModal();
           // hide tab entries
-          // no SmartGraphs in single server mode
+          // no EnterpriseGraphs in the community edition.
+          $('#tab-enterpriseGraph').parent().remove();
+          // no SmartGraphs in the community edition.
           $('#tab-smartGraph').parent().remove();
-          // no SatelliteGraphs in single server mode
+          // no SatelliteGraphs in the community edition.
           $('#tab-satelliteGraph').parent().remove();
         }
       }
@@ -341,44 +481,27 @@
     },
 
     forgetCachedCollectionsState: function () {
-      // Note: re-enable cached collections for general graph
+      // Note: re-enable cached collections for GeneralGraph
       // General graph collections are allowed to use existing collections
-      // SatelliteGraphs and SmartGraphs are not allowed to use them, so we need to "forget" them here
-      var collList = [];
-      var self = this;
-      var collections = this.options.collectionCollection.models;
+      // SatelliteGraphs, SmartGraphs and Enterprise are not allowed to use them,
+      // so we need to "forget" them here.
+      let self = this;
 
-      collections.forEach(function (c) {
-        if (c.get('isSystem')) {
-          return;
-        }
-        collList.push(c.id);
-      });
-
-      var i;
+      let i;
       for (i = 0; i < this.counter; i++) {
-        $('#newEdgeDefinitions' + i).select2({
-          tags: self.eCollList,
-          maximumSelectionSize: 1
-        });
+        $('#newEdgeDefinitions' + i).select2(self.buildSelect2Options('edge'));
         $('#newEdgeDefinitions' + i).select2('data', self.cachedNewEdgeDefinitions);
         $('#newEdgeDefinitions' + i).attr('disabled', self.cachedNewEdgeDefinitionsState);
 
-        $('#fromCollections' + i).select2({
-          tags: collList
-        });
+        $('#fromCollections' + i).select2(self.buildSelect2Options('vertex'));
         $('#fromCollections' + i).select2('data', self.cachedFromCollections);
         $('#fromCollections' + i).attr('disabled', self.cachedFromCollectionsState);
 
-        $('#toCollections' + i).select2({
-          tags: collList
-        });
+        $('#toCollections' + i).select2(self.buildSelect2Options('vertex'));
         $('#toCollections' + i).select2('data', self.cachedToCollections);
         $('#toCollections' + i).attr('disabled', self.cachedToCollectionsState);
       }
-      $('#newVertexCollections').select2({
-        tags: collList
-      });
+      $('#newVertexCollections').select2(self.buildSelect2Options('vertex'));
       $('#newVertexCollections').select2('data', self.cachedNewVertexCollections);
       $('#newVertexCollections').attr('disabled', self.cachedNewVertexCollectionsState);
     },
@@ -387,38 +510,38 @@
       var self = this;
       var i;
 
-      for (i = 0; i < self.counter; i++) {
-        $('#newEdgeDefinitions' + i).select2({
-          tags: [],
-          maximumSelectionSize: 1
-        });
+      // TODO: Future: This whole section is not working anymore as it has been intended.
+      // It worked once where we only had GeneralGraphs and SmartGraphs. Now also EnterpriseGraphs,
+      // SatelliteGraphs and HybridGraphs are introduced. Therefore we have to manage more state of
+      // all new graph types. The below code still needs to be available, as it re-initializes the
+      // select2 components as well. But this area needs a whole cleanup. This can be done later.
+
+      for (i = 0; i <= self.counter; i++) {
+        $('#newEdgeDefinitions' + i).select2(self.buildSelect2Options('edge'));
+
         self.cachedNewEdgeDefinitions = $('#newEdgeDefinitions' + i).select2('data');
         self.cachedNewEdgeDefinitionsState = $('#newEdgeDefinitions' + i).attr('disabled');
         $('#newEdgeDefinitions' + i).select2('data', '');
         $('#newEdgeDefinitions' + i).attr('disabled', false);
         $('#newEdgeDefinitions' + i).change();
 
-        $('#fromCollections' + i).select2({
-          tags: []
-        });
+        $('#fromCollections' + i).select2(self.buildSelect2Options('vertex'));
+
         self.cachedFromCollections = $('#fromCollections' + i).select2('data');
         self.cachedFromCollectionsState = $('#fromCollections' + i).attr('disabled');
         $('#fromCollections' + i).select2('data', '');
         $('#fromCollections' + i).attr('disabled', false);
         $('#fromCollections' + i).change();
 
-        $('#toCollections' + i).select2({
-          tags: []
-        });
+        $('#toCollections' + i).select2(self.buildSelect2Options('vertex'));
         self.cachedToCollections = $('#toCollections' + i).select2('data');
         self.cachedToCollectionsState = $('#toCollections' + i).attr('disabled');
         $('#toCollections' + i).select2('data', '');
         $('#toCollections' + i).attr('disabled', false);
         $('#toCollections' + i).change();
       }
-      $('#newVertexCollections').select2({
-        tags: []
-      });
+      $('#newVertexCollections').select2(self.buildSelect2Options('vertex'));
+
       self.cachedNewVertexCollections = $('#newVertexCollections').select2('data');
       self.cachedNewVertexCollectionsState = $('#newVertexCollections').attr('disabled');
       $('#newVertexCollections').select2('data', '');
@@ -459,7 +582,7 @@
           }
 
           self.events['change tr[id*="newEdgeDefinitions"]'] = self.setFromAndTo.bind(self);
-          self.events['click .graphViewer-icon-button'] = self.addRemoveDefinition.bind(self);
+          self.events['click .graphViewer-icon-add-remove-button'] = self.addRemoveDefinition.bind(self);
           self.events['click #graphTab a'] = self.toggleTab.bind(self);
           self.events['click .createExampleGraphs'] = self.createExampleGraphs.bind(self);
           self.events['focusout .select2-search-field input'] = function (e) {
@@ -489,42 +612,76 @@
     },
 
     setFromAndTo: function (e) {
+      // This method triggers as soon as an edgeDefinition name is either being added or removed.
       e.stopPropagation();
-      var map = this.calculateEdgeDefinitionMap();
       var id;
 
-      if ($('#tab-smartGraph').parent().hasClass('active')) {
-        if (e.added) {
-          if (this.eCollList.indexOf(e.added.id) === -1 && this.removedECollList.indexOf(e.added.id) !== -1) {
-            id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
-            $('input[id*="newEdgeDefinitions' + id + '"]').select2('val', null);
-            $('input[id*="newEdgeDefinitions' + id + '"]').attr(
-              'placeholder', 'The collection ' + e.added.id + ' is already used.'
-            );
-            return;
-          }
-          this.removedECollList.push(e.added.id);
-          this.eCollList.splice(this.eCollList.indexOf(e.added.id), 1);
-        } else {
-          if (e.removed) {
-            // TODO edges not properly removed within selection
-            this.eCollList.push(e.removed.id);
-            this.removedECollList.splice(this.removedECollList.indexOf(e.removed.id), 1);
+      const getAllCurrentEdgeDefinitionNames = () => {
+        let edgeDefNames = [];
+        for (let i = 0; i <= this.counter; i++) {
+          let name = _.get($('#s2id_newEdgeDefinitions' + i).select2('data'), [0, 'text']);
+          if (name) {
+            // might be undefined as we do not have the state of all real "counter" values
+            edgeDefNames.push(name);
           }
         }
-        if (map[e.val]) {
+        return edgeDefNames;
+      };
+
+      const toFindDuplicates = (arr) => {
+        const itemCounts = arr.reduce((acc, item) => {
+          acc[item] = (acc[item] || 0) + 1;
+          return acc;
+        }, {});
+
+        return _.chain(arr).filter(item => itemCounts[item] > 1).uniq().value();
+      };
+
+      // This area checks whether new user defined EdgeDefinitions are being used twice - which is not valid.
+      if (e.added) {
+        let currentEdgeDefinitionName = e.added.id;
+        const allAvailableEdgeDefinitionNames = getAllCurrentEdgeDefinitionNames();
+        const duplicateEdgeDefinitions = toFindDuplicates(allAvailableEdgeDefinitionNames);
+
+        if (duplicateEdgeDefinitions.indexOf(currentEdgeDefinitionName) !== -1) {
           id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
-          $('#s2id_fromCollections' + id).select2('val', map[e.val].from);
-          $('#fromCollections' + id).attr('disabled', true);
-          $('#s2id_toCollections' + id).select2('val', map[e.val].to);
-          $('#toCollections' + id).attr('disabled', true);
-        } else {
-          id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
-          $('#s2id_fromCollections' + id).select2('val', null);
-          $('#fromCollections' + id).attr('disabled', false);
-          $('#s2id_toCollections' + id).select2('val', null);
-          $('#toCollections' + id).attr('disabled', false);
+          $('input[id*="newEdgeDefinitions' + id + '"]').select2('val', null);
+          arangoHelper.arangoError(
+            "Graph Creation",
+            `The EdgeDefinition name "${e.added.id}" is already being used. Please choose another name.`
+          );
+
+          // Please keep this line - we might need it later (during refactor)
+          // Currently (the old way how this has been implemented) it is not usable
+          // as the input keeps focus, we replace the placeholder - but as we still
+          // do have the focus -> the user cannot see that is has changed meanwhile.
+          // So for now, we remove that entry (as duplicate edge names are invalid)
+          // and notify the user via "arangoHelper.arangoWarning".
+          /*$('input[id*="newEdgeDefinitions' + id + '"]').attr(
+            'placeholder', 'The collection ' + e.added.id + ' is already used.'
+          );*/
+          return;
         }
+      }
+
+
+      // This area checks whether a stored EdgeDefinition has been found and re-used here.
+      // In case it is, we fill out from and to automatically and disable the inputs. As we
+      // do not allow multiple EdgeDefinitions based on the same name.
+      let map = this.calculateEdgeDefinitionMap();
+
+      if (map[e.val]) {
+        id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
+        $('#s2id_fromCollections' + id).select2('val', map[e.val].from);
+        $('#fromCollections' + id).attr('disabled', true);
+        $('#s2id_toCollections' + id).select2('val', map[e.val].to);
+        $('#toCollections' + id).attr('disabled', true);
+      } else {
+        id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
+        $('#s2id_fromCollections' + id).select2('val', null);
+        $('#fromCollections' + id).attr('disabled', false);
+        $('#s2id_toCollections' + id).select2('val', null);
+        $('#toCollections' + id).attr('disabled', false);
       }
     },
 
@@ -540,7 +697,7 @@
       } else if (graph.get('replicationFactor') === 'satellite') {
         this.createEditGraphModal(graph, false, true);
       } else {
-        this.createEditGraphModal(graph);
+        this.createEditGraphModal(graph, false, false, true);
       }
     },
 
@@ -669,6 +826,13 @@
         }
       );
       this.updateGraphManagementView();
+
+      // TODO: Currently whenever a user modifies the current graph model, and any of the above calls:
+      // "addEdgeDefinition", "modifyEdgeDefinition", "deleteEdgeDefinition" errors out -> we are notifying
+      // the user (which is good), but we're also closing the modalView directly. So the user has no chance
+      // to directly adjust his configuration to fix the misconfiguration. This needs to be improved.
+      // We need to gather all API modification results from above, and are only allowed to close this modal
+      // if all of them succeeded.
       window.modalView.hide();
     },
 
@@ -782,29 +946,43 @@
         orphanCollections: vertexCollections
       };
 
-      // SmartGraph enterprise area
-      if ($('#tab-smartGraph').parent().hasClass('active')) {
-        if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
-          arangoHelper.arangoError('SmartGraph creation', 'numberOfShards and/or smartGraphAttribute not set!');
-          return;
-        } else {
-          newCollectionObject.isSmart = true;
-          newCollectionObject.options = {
-            numberOfShards: parseInt($('#new-numberOfShards').val()),
-            smartGraphAttribute: $('#new-smartGraphAttribute').val(),
-            replicationFactor: parseInt($('#new-replicationFactor').val()),
-            minReplicationFactor: parseInt($('#new-writeConcern').val()),
-            isDisjoint: $('#new-isDisjoint').is(':checked')
-          };
+      const smartGraphActive = $('#tab-smartGraph').parent().hasClass('active');
+      const enterpriseGraphActive = $('#tab-enterpriseGraph').parent().hasClass('active');
+      const graphTypeName = smartGraphActive ? this.smartGraphName : this.enterpriseGraphName;
 
-          let satellites = $('#s2id_hybridSatelliteCollections').select2('data');
-          if (satellites.length > 0) {
-            let satelliteOptions = [];
-            _.forEach(satellites, function(sat) {
-              satelliteOptions.push(sat.id);
-            });
-            newCollectionObject.options.satellites = satelliteOptions;
+      // SmartGraph && EnterpriseGraph area
+      if (smartGraphActive || enterpriseGraphActive) {
+        if ($('#new-numberOfShards').val() === '') {
+          arangoHelper.arangoError(`${graphTypeName} creation`, 'numberOfShards not set!');
+        }
+        if (smartGraphActive) {
+          if ($('#new-smartGraphAttribute').val() === '') {
+            // Only needs to be set during SmartGraph creation
+            arangoHelper.arangoError(`${graphTypeName} creation`, 'smartGraphAttribute not set!');
+            return;
           }
+        }
+
+        newCollectionObject.isSmart = true;
+        newCollectionObject.options = {
+          numberOfShards: parseInt($('#new-numberOfShards').val()),
+          replicationFactor: parseInt($('#new-replicationFactor').val()),
+          minReplicationFactor: parseInt($('#new-writeConcern').val()),
+          isDisjoint: $('#new-isDisjoint').is(':checked'),
+          isSmart: true
+        };
+        if (smartGraphActive) {
+          // Only needs to be set during SmartGraph creation
+          newCollectionObject.options.smartGraphAttribute = $('#new-smartGraphAttribute').val();
+        }
+
+        let satellites = $('#s2id_hybridSatelliteCollections').select2('data');
+        if (satellites.length > 0) {
+          let satelliteOptions = [];
+          _.forEach(satellites, function (sat) {
+            satelliteOptions.push(sat.id);
+          });
+          newCollectionObject.options.satellites = satelliteOptions;
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
         // SatelliteGraph enterprise area
@@ -843,7 +1021,13 @@
       this.collection.create(newCollectionObject, {
         success: function () {
           self.updateGraphManagementView();
+          // Hide potential error notifications, which might be obsolete now.
+          arangoHelper.hideArangoNotifications();
           window.modalView.hide();
+          arangoHelper.arangoNotification(
+            'Graph',
+            `Successfully created the graph: ${newCollectionObject.name}`
+          );
         },
         error: function (obj, err) {
           var response = JSON.parse(err.responseText);
@@ -856,52 +1040,109 @@
       });
     },
 
-    createEditGraphModal: function (graph, isSmart, isSatellite) {
+    createEditGraphModal: function (graph, isSmart, isSatellite, isCommunity) {
+      let isEnterpriseGraph = false;
+      if (graph) {
+        if (graph.get('isSmart') && !graph.get('smartGraphAttribute')) {
+          // Found an EnterpriseGraph
+          isEnterpriseGraph = true;
+        }
+      }
+      const rowDescription = {
+        graphName: {
+          title: 'Name',
+          description: 'String value. The name to identify the graph. Has to be unique and must follow the' +
+            ' <b>Document Keys</b> naming conventions.',
+          placeholder: 'Insert the name of the graph',
+        },
+        numberOfShards: {
+          title: 'Shards',
+          description: 'Numeric value. Must be at least 1. Number of shards the graph is using.',
+          placeholder: 'Insert numeric value'
+        },
+        orphanCollection: {
+          title: 'Orphan collections',
+          description: 'Collections that are part of a graph but not used in an edge definition.',
+          placeholder: 'Insert list of Orphan Collections'
+        },
+        replicationFactor: {
+          title: 'Replication factor',
+          description: 'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.' +
+            'If not given, the system default for new collections will be used.',
+          placeholder: 'Insert numeric value'
+        },
+        writeConcern: {
+          title: 'Write concern',
+          description: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication ' +
+            'factor. Total number of copies of the data in the cluster that are required for each write operation. ' +
+            'If we get below this value, the collection will be read-only until enough copies are created. ' +
+            'If not given, the system default for new collections will be used.',
+          placeholder: 'Insert numeric value'
+        },
+        smartGraphAttribute: {
+          title: 'SmartGraph Attribute',
+          description: 'String value. The attribute name that is used to smartly shard the vertices of a graph.' +
+            ' Every vertex in this Graph has to have this attribute.',
+          placeholder: 'Insert the smartGraphAttribute'
+        },
+        satelliteCollections: {
+          title: 'Satellite collections',
+          descriptionNew: 'Insert vertex collections here which are being used in new edge definitions (fromCollections, toCollections).' +
+            ' Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
+          descriptionEdit: 'Insert vertex collections here which are being used in your edge definitions (fromCollections, toCollections).' +
+            ' Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
+          placeholder: 'Insert list of <from>/<to> Vertex Collections'
+        },
+        edgeDefinitions: {
+          title: 'Edge definition',
+          description: 'An edge definition defines a relation of the graph.',
+          placeholder: 'Insert a single Edge Collection'
+        },
+        toVertexCollection: {
+          title: 'toCollections',
+          description: 'The collections that contain the end vertices of the relation.',
+          placeholder: 'Insert list of <to> Vertex Collections'
+        },
+        fromVertexCollections: {
+          title: 'fromCollections',
+          description: 'The collections that contain the start vertices of the relation.',
+          placeholder: 'Insert list of <from> Vertex Collections'
+        }
+      };
+
       var buttons = [];
-      var collList = [];
       var tableContent = [];
-      var collections = this.options.collectionCollection.models;
       var self = this;
       var name = '';
       var edgeDefinitions = [{collection: '', from: '', to: ''}];
       var hybridSatelliteCollections = '';
       var orphanCollections = '';
       var title;
-      var sorter = function (l, r) {
-        l = l.toLowerCase();
-        r = r.toLowerCase();
-        if (l < r) {
-          return -1;
-        }
-        if (l > r) {
-          return 1;
-        }
-        return 0;
-      };
 
-      this.eCollList = [];
-      this.removedECollList = [];
-
-      collections.forEach(function (c) {
-        if (c.get('isSystem')) {
-          return;
-        }
-        if (c.get('type') === 'edge') {
-          self.eCollList.push(c.id);
-        } else {
-          collList.push(c.id);
-        }
-      });
       this.counter = 0;
 
       // edit graph section
       if (graph) {
+        let isEnterpriseGraph = false;
+
         if (isSmart) {
-          title = 'Edit SmartGraph';
+          if (!graph.get("smartGraphAttribute")) {
+            isEnterpriseGraph = true;
+          }
+          if (!isEnterpriseGraph) {
+            title = 'Edit SmartGraph';
+            this.currentGraphEditType = 'smart';
+          } else {
+            // If smartGraphAttribute not available, it must be an EnterpriseGraph
+            title = 'Edit EnterpriseGraph';
+            this.currentGraphEditType = 'enterprise';
+          }
         } else if (isSatellite) {
           title = 'Edit SatelliteGraph';
+          this.currentGraphEditType = 'satellite';
         } else {
           title = 'Edit Graph';
+          this.currentGraphEditType = 'community';
         }
 
         name = graph.get('_key');
@@ -914,20 +1155,19 @@
         tableContent.push(
           window.modalView.createReadOnlyEntry(
             'editGraphName',
-            'Name',
+            rowDescription.graphName.title,
             name,
-            'The name to identify the graph. Has to be unique'
+            rowDescription.graphName.description
           )
         );
 
-        if (isSmart) {
+        if (isSmart && !isEnterpriseGraph) {
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'smartGraphAttribute',
-              'SmartGraph Attribute',
+              rowDescription.smartGraphAttribute.title,
               graph.get('smartGraphAttribute'),
-              'The attribute name that is used to smartly shard the vertices of a graph. \n' +
-              'Every vertex in this Graph has to have this attribute. \n'
+              rowDescription.smartGraphAttribute.description
             )
           );
         }
@@ -936,9 +1176,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'numberOfShards',
-              'Shards',
+              rowDescription.numberOfShards.title,
               graph.get('numberOfShards'),
-              'Number of shards the graph is using.'
+              rowDescription.numberOfShards.description
             )
           );
         }
@@ -947,9 +1187,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'replicationFactor',
-              'Replication factor',
+              rowDescription.replicationFactor.title,
               graph.get('replicationFactor'),
-              'Total number of desired copies of the data in the cluster.'
+              rowDescription.replicationFactor.description
             )
           );
         }
@@ -958,9 +1198,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'writeConcern',
-              'Write concern',
+              rowDescription.writeConcern.title,
               graph.get('minReplicationFactor'),
-              'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
+              rowDescription.writeConcern.description
             )
           );
         }
@@ -984,14 +1224,16 @@
               'new-hybridSatelliteCollections',
               'New Satellite collections',
               hybridSatelliteCollections,
-              'Insert vertex collections here which are being used in new edge definitions (fromCollections, toCollections).' +
-              'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
+              rowDescription.satelliteCollections.descriptionNew,
               'New Satellite Collections',
               false,
               false,
               false,
               null,
-              collList.sort(sorter)
+              self.getEdgesAutoCompletionList(),
+              null, // style
+              null, // cssClass
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(this.currentGraphEditType)
             )
           );
         }
@@ -1006,16 +1248,18 @@
           window.modalView.createSuccessButton('Save', this.saveEditedGraph.bind(this))
         );
       } else {
+        this.currentGraphEditType = undefined;
+
         // create graph section
         title = 'Create Graph';
 
         tableContent.push(
           window.modalView.createTextEntry(
             'createNewGraphName',
-            'Name',
+            rowDescription.graphName.title,
             '',
-            'The name to identify the graph. Has to be unique.',
-            'graphName',
+            rowDescription.graphName.description,
+            rowDescription.graphName.placeholder,
             true
           )
         );
@@ -1030,10 +1274,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-numberOfShards',
-            'Shards*',
+            rowDescription.numberOfShards.title + '*',
             '',
-            'Number of shards the SmartGraph is using.',
-            '',
+            rowDescription.numberOfShards.description,
+            rowDescription.numberOfShards.placeholder,
             false,
             [
               {
@@ -1047,10 +1291,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-replicationFactor',
-            'Replication factor',
+            rowDescription.replicationFactor.title,
             '',
-            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
-            '',
+            rowDescription.replicationFactor.description,
+            rowDescription.replicationFactor.placeholder,
             false,
             [
               {
@@ -1064,15 +1308,15 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-writeConcern',
-            'Write concern',
+            rowDescription.writeConcern.title,
             '',
-            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
-            '',
+            rowDescription.writeConcern.description,
+            rowDescription.writeConcern.placeholder,
             false,
             [
               {
                 rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
-                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
+                msg: rowDescription.writeConcern.description
               }
             ]
           )
@@ -1090,12 +1334,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-smartGraphAttribute',
-            'SmartGraph Attribute*',
+            rowDescription.smartGraphAttribute.title + '*',
             '',
-            'The attribute name that is used to smartly shard the vertices of a graph. \n' +
-            'Every vertex in this Graph has to have this attribute. \n' +
-            'Cannot be modified later.',
-            '',
+            rowDescription.smartGraphAttribute.description + ' Cannot be modified later.',
+            rowDescription.smartGraphAttribute.placeholder,
             false,
             [
               {
@@ -1112,10 +1354,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-numberOfShards',
-            'Shards',
+            rowDescription.numberOfShards.title,
             '',
-            'Number of shards the graph is using.',
-            '',
+            rowDescription.numberOfShards.description,
+            rowDescription.numberOfShards.placeholder,
             false,
             [
               {
@@ -1128,10 +1370,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-replicationFactor',
-            'Replication factor',
+            rowDescription.replicationFactor.title,
             '',
-            'Numeric value. Must be at least 1. Total number of desired copies of the data in the cluster.',
-            '',
+            rowDescription.replicationFactor.description,
+            rowDescription.replicationFactor.placeholder,
             false,
             [
               {
@@ -1144,10 +1386,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-writeConcern',
-            'Write concern',
+            rowDescription.writeConcern.title,
             '',
-            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
-            '',
+            rowDescription.writeConcern.description,
+            rowDescription.writeConcern.placeholder,
             false,
             [
               {
@@ -1160,83 +1402,98 @@
         tableContent.push(
           window.modalView.createSelect2Entry(
             'hybridSatelliteCollections',
-            'Satellite collections',
+            rowDescription.satelliteCollections.title,
             hybridSatelliteCollections,
-            'Insert vertex collections here which are being used in your edge definitions (fromCollections, toCollections).' +
-            'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
-            'Satellite Collections',
+            rowDescription.satelliteCollections.descriptionEdit,
+            rowDescription.satelliteCollections.placeholder,
             false,
             false,
             false,
             null,
-            collList.sort(sorter)
+            self.getEdgesAutoCompletionList(),
+            null, // style
+            null, // cssClass
+            self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise()
           )
         );
       }
 
+      const createEdgeDefinitionEntry = (counter, edgeDefinition, graph) => {
+        let id = null;
+        let isMandatory = true;
+        let addDelete = false;
+        let addAdd = true;
+
+        if (counter !== 0) {
+          // means we're not creating the initial entry
+          id =  'newEdgeDefinitions' + self.counter;
+          isMandatory = false;
+          addDelete = true;
+          addAdd = false;
+        }
+
+        tableContent.push(
+          window.modalView.createSpacerEntry(
+            null, 'Relation'
+          )
+        );
+        tableContent.push(
+          window.modalView.createSelect2Entry(
+            'newEdgeDefinitions' + self.counter,
+            rowDescription.edgeDefinitions.title,
+            edgeDefinition.collection,
+            rowDescription.edgeDefinitions.description,
+            rowDescription.edgeDefinitions.placeholder,
+            isMandatory,
+            addDelete,
+            addAdd,
+            1,
+            self.getEdgesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
+            undefined, /*style*/
+            'first', /*cssClass*/
+            self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
+          )
+        );
+      };
+
       edgeDefinitions.forEach(
         function (edgeDefinition) {
-          if (self.counter === 0) {
-            if (edgeDefinition.collection) {
-              self.removedECollList.push(edgeDefinition.collection);
-              self.eCollList.splice(self.eCollList.indexOf(edgeDefinition.collection), 1);
-            }
-            tableContent.push(
-              window.modalView.createSelect2Entry(
-                'newEdgeDefinitions' + self.counter,
-                'Edge definitions',
-                edgeDefinition.collection,
-                'An edge definition defines a relation of the graph',
-                'Edge definitions',
-                true,
-                false,
-                true,
-                1,
-                self.eCollList.sort(sorter)
-              )
-            );
-          } else {
-            tableContent.push(
-              window.modalView.createSelect2Entry(
-                'newEdgeDefinitions' + self.counter,
-                'Edge definitions',
-                edgeDefinition.collection,
-                'An edge definition defines a relation of the graph',
-                'Edge definitions',
-                false,
-                true,
-                false,
-                1,
-                self.eCollList.sort(sorter)
-              )
-            );
-          }
+          // EdgeDefinition MAIN entry
+          createEdgeDefinitionEntry(self.counter, edgeDefinition, graph);
+          // EdgeDefinition FROM entry
           tableContent.push(
             window.modalView.createSelect2Entry(
-              'fromCollections' + self.counter,
-              'fromCollections',
+              rowDescription.fromVertexCollections.title + self.counter,
+              rowDescription.fromVertexCollections.title,
               edgeDefinition.from,
-              'The collections that contain the start vertices of the relation.',
-              'fromCollections',
+              rowDescription.fromVertexCollections.description,
+              rowDescription.fromVertexCollections.placeholder,
               true,
               false,
               false,
               null,
-              collList.sort(sorter)
+              self.getVerticesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
+              undefined, /*style*/
+              'middle', /*cssClass*/
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
             )
           );
+          // EdgeDefinition TO entry
           tableContent.push(
             window.modalView.createSelect2Entry(
-              'toCollections' + self.counter,
-              'toCollections',
+              rowDescription.toVertexCollection.title + self.counter,
+              rowDescription.toVertexCollection.title,
               edgeDefinition.to,
-              'The collections that contain the end vertices of the relation.',
-              'toCollections',
+              rowDescription.toVertexCollection.description,
+              rowDescription.toVertexCollection.placeholder,
               true,
               false,
               false,
               null,
-              collList.sort(sorter)
+              self.getVerticesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
+              undefined, /*style*/
+              'last', /*cssClass*/
+              self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
             )
           );
           self.counter++;
@@ -1246,15 +1503,18 @@
       tableContent.push(
         window.modalView.createSelect2Entry(
           'newVertexCollections',
-          'Vertex collections',
+          rowDescription.orphanCollection.title,
           orphanCollections,
-          'Collections that are part of a graph but not used in an edge definition',
-          'Vertex Collections',
+          rowDescription.orphanCollection.description,
+          rowDescription.orphanCollection.placeholder,
           false,
           false,
           false,
           null,
-          collList.sort(sorter)
+          self.getVerticesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
+          undefined,
+          undefined,
+          self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
         )
       );
 
@@ -1266,9 +1526,28 @@
         // hide them by default, as we're showing general graph as default
         // satellite does not need to appear here as it has no additional input fields
         self.hideSmartGraphRows();
+      } else if ($('#tab-enterpriseGraph').parent().hasClass('active')) {
+        // In enterpriseGraph case is not allowed to be set
+        // Special stunt here, as we need to generate that row to be generally available,
+        // but we need to hide it as "enterpriseGraphs" is the new default (if we do have
+        // an enterprise instance running).
+        self.setSmartGraphRows(null, 'enterpriseGraph');
+      } else if ($('#tab-smartGraph').parent().hasClass('active')) {
+        self.setSmartGraphRows(null, 'smartGraph');
       }
 
       if (graph) {
+        // Means we're in the editGraph state.
+        if (isCommunity) {
+          this.setGeneralGraphRows(false, true);
+        } else if (isSatellite) {
+          this.setSatelliteGraphRows(false, true);
+        } else if (isEnterpriseGraph) {
+          this.setSmartGraphRows(false, 'enterpriseGraph', true);
+        } else if (isSmart) {
+          this.setSmartGraphRows(false, 'smartGraph', true);
+        }
+
         $('.modal-body table').css('border-collapse', 'separate');
         var i;
 
@@ -1305,20 +1584,51 @@
       arangoHelper.arangoNotification('Graph', 'Reset successful.');
     },
 
-    addRemoveDefinition: function (e) {
-      var collList = [];
-      var collections = this.options.collectionCollection.models;
+    buildSelect2Options: function (type) {
+      let collections = [];
+      if (type === 'edge') {
+        collections = this.getEdgesAutoCompletionList(
+          this.currentGraphEditType ? this.currentGraphEditType : undefined
+        );
+      } else if (type === 'vertex') {
+        collections = this.getVerticesAutoCompletionList(
+          this.currentGraphEditType ? this.currentGraphEditType : undefined
+        );
+      }
 
-      collections.forEach(function (c) {
-        if (!c.get('isSystem')) {
-          if (c.get('type') !== 'edge') {
-            collList.push(c.id);
-          }
-        }
-      });
+      let options = {
+        tags: collections,
+        showSearchBox: false,
+        minimumResultsForSearch: -1,
+        width: '336px',
+      };
+
+      if (type === 'edge') {
+        options.maximumSelectionSize =  1;
+      }
+
+      if (this.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(
+        this.currentGraphEditType ? this.currentGraphEditType : undefined)
+      ) {
+        options.language = {};
+        options.language.noMatches = function () {
+          return "Please enter a new and valid collection name.";
+        };
+      } else {
+        options.language = {};
+        options.language.noMatches = function () {
+          return "No collections found.";
+        };
+      }
+
+      return options;
+    },
+
+    addRemoveDefinition: function (e) {
       e.stopPropagation();
-      var id = $(e.currentTarget).attr('id');
-      var number;
+      let id = $(e.currentTarget).attr('id');
+      let number;
+
       if (id.indexOf('addAfter_newEdgeDefinitions') !== -1) {
         this.counter++;
         $('#row_newVertexCollections').before(
@@ -1326,33 +1636,15 @@
             number: this.counter
           })
         );
-        $('#newEdgeDefinitions' + this.counter).select2({
-          tags: this.eCollList,
-          showSearchBox: false,
-          minimumResultsForSearch: -1,
-          width: '336px',
-          maximumSelectionSize: 1
-        });
-        $('#fromCollections' + this.counter).select2({
-          tags: collList,
-          showSearchBox: false,
-          minimumResultsForSearch: -1,
-          width: '336px'
-          // maximumSelectionSize: 10
-        });
-        $('#toCollections' + this.counter).select2({
-          tags: collList,
-          showSearchBox: false,
-          minimumResultsForSearch: -1,
-          width: '336px'
-          // maximumSelectionSize: 10
-        });
+        $('#newEdgeDefinitions' + this.counter).select2(this.buildSelect2Options('edge'));
+        $('#fromCollections' + this.counter).select2(this.buildSelect2Options('vertex'));
+        $('#toCollections' + this.counter).select2(this.buildSelect2Options('vertex'));
         window.modalView.undelegateEvents();
         window.modalView.delegateEvents(this.events);
 
         arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
 
-        var i;
+        let i;
         $('.modal-body .spacer').remove();
         for (i = 0; i <= this.counter; i++) {
           $('#row_fromCollections' + i).show();
@@ -1366,6 +1658,7 @@
       }
       if (id.indexOf('remove_newEdgeDefinitions') !== -1) {
         number = id.split('remove_newEdgeDefinitions')[1];
+        $('#row_newEdgeDefinitionsSpacer' + number).remove();
         $('#row_newEdgeDefinitions' + number).remove();
         $('#row_fromCollections' + number).remove();
         $('#row_toCollections' + number).remove();
@@ -1374,6 +1667,7 @@
     },
 
     calculateEdgeDefinitionMap: function () {
+      // This method calculates and returns all the edge definitions of all graphs.
       var edgeDefinitionMap = {};
       this.collection.models.forEach(function (m) {
         m.get('edgeDefinitions').forEach(function (ed) {

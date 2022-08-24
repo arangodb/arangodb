@@ -49,7 +49,7 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
   } else if (slice.isArray() && slice.length() >= 2) {
     res = shape.parseCoordinates(slice, /*geoJson*/ true);
   } else {
-    LOG_TOPIC("4449c", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("4449c", DEBUG, arangodb::iresearch::TOPIC)
         << "Geo JSON or array of coordinates expected, got '"
         << slice.typeName() << "'";
 
@@ -57,7 +57,7 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
   }
 
   if (res.fail()) {
-    LOG_TOPIC("4549c", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("4549c", DEBUG, arangodb::iresearch::TOPIC)
         << "Failed to parse value as GEO JSON or array of coordinates, error '"
         << res.errorMessage() << "'";
 
@@ -69,7 +69,7 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
 
 bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
   if (!latSlice.isNumber() || !lngSlice.isNumber()) {
-    LOG_TOPIC("4579a", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("4579a", DEBUG, arangodb::iresearch::TOPIC)
         << "Failed to parse value as GEO POINT, error 'Invalid "
            "latitude/longitude pair type'.";
 
@@ -81,7 +81,7 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
     lat = latSlice.getNumber<double_t>();
     lng = lngSlice.getNumber<double_t>();
   } catch (...) {
-    LOG_TOPIC("4579c", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("4579c", DEBUG, arangodb::iresearch::TOPIC)
         << "Failed to parse value as GEO POINT, error 'Failed to parse "
            "latitude/longitude pair' as double.";
     return false;
@@ -91,7 +91,7 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
   out = S2LatLng::FromDegrees(lat, lng);
 
   if (!out.is_valid()) {
-    LOG_TOPIC("4279c", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("4279c", DEBUG, arangodb::iresearch::TOPIC)
         << "Failed to parse value as GEO POINT, error 'Invalid "
            "latitude/longitude pair'.";
     return false;

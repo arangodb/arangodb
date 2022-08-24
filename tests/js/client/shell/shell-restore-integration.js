@@ -125,15 +125,12 @@ function restoreIntegrationSuite() {
       try {
         fs.makeDirectory(path);
         let fn = fs.join(path, cn + ".structure.json");
-        let numShards = 3;
-        if (isCluster) {
-          numShards = 1;
-        }
+
         fs.write(fn, JSON.stringify({
           indexes: [],
           parameters: {
             name: cn,
-            numberOfShards: numShards,
+            numberOfShards: 1,
             type: 2,
             keyOptions: {type: "autoincrement", lastValue: 12345, increment: 3, offset: 19}
           }
@@ -305,6 +302,66 @@ function restoreIntegrationSuite() {
         }
       }
     },
+
+    testRestoreWithComputedValues: function() {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+        let numShards = 1;
+        if (isCluster) {
+          numShards = 3;
+        }
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: numShards,
+            type: 2,
+            computedValues: [{
+              name: "value3",
+              expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+              computeOn: ["insert"],
+              overwrite: false,
+              failOnWarning: false
+            }, {
+              name: "value4",
+              expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)",
+              computeOn: ["insert"],
+              overwrite: true,
+              failOnWarning: false
+            }]
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 1000; ++i) {
+          data.push({type: 2300, data: {_key: "test" + i, value1: i, value2: "abc", value3: i + "+abc", value4: "abc " + i}});
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0);
+
+        let c = db._collection(cn);
+        assertEqual(data.length, c.count());
+        for (let i = 0; i < data.length; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(doc.value1, i);
+          assertEqual(doc.value2, "abc");
+          assertEqual(doc.value3, doc.value1 + "+" + doc.value2);
+          assertEqual(doc.value4, doc.value2 + " " + doc.value1);
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {
+        }
+      }
+    },
+
 
     testRestoreWithLineBreaksInData: function() {
       let path = fs.getTempFile();

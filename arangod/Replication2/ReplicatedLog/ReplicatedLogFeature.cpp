@@ -31,6 +31,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Logger/LogMacros.h"
 #include "Cluster/ServerState.h"
+#include "Basics/FeatureFlags.h"
 
 #include <memory>
 
@@ -64,6 +65,10 @@ auto ReplicatedLogFeature::options() const noexcept
 }
 
 void ReplicatedLogFeature::prepare() {
+  if (!::arangodb::replication2::EnableReplication2) {
+    setEnabled(false);
+    return;
+  }
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isAgent()) {
     setEnabled(false);

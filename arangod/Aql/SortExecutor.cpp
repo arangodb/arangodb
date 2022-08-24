@@ -28,65 +28,34 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
+#include "Aql/SortedRowsStorageBackendMemory.h"
+#include "Aql/SortedRowsStorageBackendStaged.h"
 #include "Aql/Stats.h"
-#include "Basics/ResourceUsage.h"
-
-#include <Logger/LogMacros.h>
-#include <algorithm>
+#include "RestServer/TemporaryStorageFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-namespace {
-// custom AqlValue-aware comparator for sorting
-class OurLessThan {
- public:
-  OurLessThan(velocypack::Options const* options,
-              std::vector<SharedAqlItemBlockPtr> const& input,
-              std::vector<SortRegister> const& sortRegisters) noexcept
-      : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
-
-  bool operator()(AqlItemMatrix::RowIndex const& a,
-                  AqlItemMatrix::RowIndex const& b) const {
-    auto const& left = _input[a.first].get();
-    auto const& right = _input[b.first].get();
-    for (auto const& reg : _sortRegisters) {
-      AqlValue const& lhs = left->getValueReference(a.second, reg.reg);
-      AqlValue const& rhs = right->getValueReference(b.second, reg.reg);
-      int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
-
-      if (cmp < 0) {
-        return reg.asc;
-      } else if (cmp > 0) {
-        return !reg.asc;
-      }
-    }
-
-    return false;
-  }
-
- private:
-  velocypack::Options const* _vpackOptions;
-  std::vector<SharedAqlItemBlockPtr> const& _input;
-  std::vector<SortRegister> const& _sortRegisters;
-};  // OurLessThan
-
-}  // namespace
 
 SortExecutorInfos::SortExecutorInfos(
     RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
     RegIdFlatSet const& registersToClear,
     std::vector<SortRegister> sortRegisters, std::size_t limit,
-    AqlItemBlockManager& manager, velocypack::Options const* options,
-    arangodb::ResourceMonitor& resourceMonitor, bool stable)
+    AqlItemBlockManager& manager, TemporaryStorageFeature& tempStorage,
+    velocypack::Options const* options,
+    arangodb::ResourceMonitor& resourceMonitor,
+    size_t spillOverThresholdNumRows, size_t spillOverThresholdMemoryUsage,
+    bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
       _limit(limit),
       _manager(manager),
+      _tempStorage(tempStorage),
       _vpackOptions(options),
       _resourceMonitor(resourceMonitor),
       _sortRegisters(std::move(sortRegisters)),
+      _spillOverThresholdNumRows(spillOverThresholdNumRows),
+      _spillOverThresholdMemoryUsage(spillOverThresholdMemoryUsage),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
 }
@@ -122,119 +91,79 @@ AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
   return _manager;
 }
 
+TemporaryStorageFeature&
+SortExecutorInfos::getTemporaryStorageFeature() noexcept {
+  return _tempStorage;
+}
+
+size_t SortExecutorInfos::spillOverThresholdNumRows() const noexcept {
+  return _spillOverThresholdNumRows;
+}
+
+size_t SortExecutorInfos::spillOverThresholdMemoryUsage() const noexcept {
+  return _spillOverThresholdMemoryUsage;
+}
+
 size_t SortExecutorInfos::limit() const noexcept { return _limit; }
 
-SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
-    : _infos(infos),
-      _currentRow(CreateInvalidInputRowHint{}),
-      _returnNext(0),
-      _memoryUsageForRowIndexes(0) {}
+SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos) : _infos(infos) {
+  _storageBackend = std::make_unique<SortedRowsStorageBackendMemory>(_infos);
 
-SortExecutor::~SortExecutor() {
-  _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
-}
-
-void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
-                                ExecutorState& state) {
-  size_t numDataRows = inputRange.countDataRows();
-  size_t memoryUsageForRowIndexes =
-      numDataRows * sizeof(AqlItemMatrix::RowIndex);
-
-  _rowIndexes.reserve(_rowIndexes.size() + numDataRows);
-
-  ResourceUsageScope guard(_infos.getResourceMonitor(),
-                           memoryUsageForRowIndexes);
-
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
-  while (inputRange.hasDataRow()) {
-    // This executor is passthrough. it has enough place to write.
-    _rowIndexes.emplace_back(
-        std::make_pair(static_cast<std::uint32_t>(_inputBlocks.size() - 1),
-                       static_cast<std::uint32_t>(inputRange.getRowIndex())));
-    std::tie(state, input) =
-        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    TRI_ASSERT(input.isInitialized());
+  // TODO: make storage backend dynamic
+  TemporaryStorageFeature& tempFeature = _infos.getTemporaryStorageFeature();
+  if (tempFeature.canBeUsed()) {
+    _storageBackend = std::make_unique<SortedRowsStorageBackendStaged>(
+        std::move(_storageBackend), tempFeature.getSortedRowsStorage(_infos));
   }
-  guard.steal();
-  _memoryUsageForRowIndexes += memoryUsageForRowIndexes;
 }
+
+SortExecutor::~SortExecutor() = default;
 
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
-  ExecutorState state = ExecutorState::HASMORE;
+
   if (!_inputReady) {
-    auto inputBlock = inputRange.getBlock();
-    if (inputBlock != nullptr) {
-      _inputBlocks.emplace_back(inputBlock);
-    }
-    consumeInput(inputRange, state);
+    ExecutorState state = _storageBackend->consumeInputRange(inputRange);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
-      return {state, NoStats{}, upstreamCall};
+      return {state, NoStats{}, std::move(upstreamCall)};
     }
-    doSorting();
+    _storageBackend->seal();
     _inputReady = true;
   }
 
-  while (_returnNext < _rowIndexes.size() && !output.isFull()) {
-    InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
-                          _rowIndexes[_returnNext].second);
-    output.copyRow(inRow);
-    output.advanceRow();
-    _returnNext++;
+  while (!output.isFull() && _storageBackend->hasMore()) {
+    _storageBackend->produceOutputRow(output);
   }
 
-  if (_returnNext >= _rowIndexes.size()) {
-    state = ExecutorState::DONE;
-  } else {
-    state = ExecutorState::HASMORE;
+  if (_storageBackend->hasMore()) {
+    return {ExecutorState::HASMORE, NoStats{}, std::move(upstreamCall)};
   }
-
-  return {state, NoStats{}, upstreamCall};
-}
-
-void SortExecutor::doSorting() {
-  TRI_IF_FAILURE("SortBlock::doSorting") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  // comparison function
-  OurLessThan ourLessThan(_infos.vpackOptions(), _inputBlocks,
-                          _infos.sortRegisters());
-  if (_infos.stable()) {
-    std::stable_sort(_rowIndexes.begin(), _rowIndexes.end(), ourLessThan);
-  } else {
-    std::sort(_rowIndexes.begin(), _rowIndexes.end(), ourLessThan);
-  }
+  return {ExecutorState::DONE, NoStats{}, std::move(upstreamCall)};
 }
 
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   AqlCall upstreamCall{};
 
-  ExecutorState state = ExecutorState::HASMORE;
-
   if (!_inputReady) {
-    auto inputBlock = inputRange.getBlock();
-    if (inputBlock != nullptr) {
-      _inputBlocks.emplace_back(inputBlock);
-    }
-    consumeInput(inputRange, state);
+    ExecutorState state = _storageBackend->consumeInputRange(inputRange);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
-      return {state, NoStats{}, 0, upstreamCall};
+      return {state, NoStats{}, 0, std::move(upstreamCall)};
     }
-    doSorting();
+    _storageBackend->seal();
     _inputReady = true;
   }
 
-  while (_returnNext < _rowIndexes.size() && call.shouldSkip()) {
-    _returnNext++;
+  while (call.shouldSkip() && _storageBackend->hasMore()) {
+    _storageBackend->skipOutputRow();
     call.didSkip(1);
   }
 
-  if (_returnNext >= _rowIndexes.size()) {
-    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};
+  if (_storageBackend->hasMore()) {
+    return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
+            std::move(upstreamCall)};
   }
-  return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
+  return {ExecutorState::DONE, NoStats{}, call.getSkipCount(),
+          std::move(upstreamCall)};
 }

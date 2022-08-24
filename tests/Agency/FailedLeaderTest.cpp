@@ -420,6 +420,13 @@ class FailedLeaderTest
           std::string(R"({"arango": {"Supervision": {"Health": {")") + server +
           std::string(R"(": {"Status": "FAILED" } } } } })");
       return applyJson(std::move(jsonString));
+    }
+
+    auto setServerMaintenance(std::string const& server) -> AgencyBuilder& {
+      auto jsonString =
+          std::string(R"({"arango": {"Current": {"MaintenanceDBServers": {")") +
+          server + std::string(R"(": {"Mode":"maintenance" } } } } })");
+      return applyJson(std::move(jsonString));
     };
 
     auto setJobInTodo(std::string const& jobId) -> AgencyBuilder& {
@@ -2073,6 +2080,55 @@ TEST_F(
                     .setFollowers(distLike2, reducedFollowers)
                     .setDistributeShardsLike(distLike2, si)
                     .setJobInTodo(jobId)
+                    .createNode();
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact))
+      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+        // Impossible to transact
+        EXPECT_TRUE(false);
+        return fakeTransResult;
+      });
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  // new server will randomly be selected...so seed the random number generator
+  srand(1);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
+                                   JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+TEST_F(
+    FailedLeaderTest,
+    failedleader_distribute_shard_like_no_common_candidate_follower_out_of_sync_or_maintenance) {
+  std::string jobId = "1";
+
+  std::string col1 = "shardLike1";
+  std::string shard1 = "s1001";
+  std::string col2 = "shardLike2";
+  std::string shard2 = "s2001";
+  ShardInfo si{DATABASE, COLLECTION, SHARD};
+  ShardInfo distLike1{DATABASE, col1, shard1, true};
+  ShardInfo distLike2{DATABASE, col2, shard2, true};
+
+  std::vector<std::string> planned = {SHARD_LEADER, SHARD_FOLLOWER1};
+  std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
+  // Follower2 has not enough followers, we cannot transact
+  std::vector<std::string> reducedFollowers = {SHARD_LEADER, SHARD_FOLLOWER1};
+
+  Node agency = AgencyBuilder(baseStructure.toBuilder())
+                    .setPlannedServers(si, planned)
+                    .setFollowers(si, followers)
+                    .setPlannedServers(distLike1, planned)
+                    .setFollowers(distLike1, followers)
+                    .setDistributeShardsLike(distLike1, si)
+                    .setPlannedServers(distLike2, planned)
+                    .setFollowers(distLike2, reducedFollowers)
+                    .setDistributeShardsLike(distLike2, si)
+                    .setJobInTodo(jobId)
+                    .setServerMaintenance(SHARD_FOLLOWER1)
                     .createNode();
 
   Mock<AgentInterface> mockAgent;

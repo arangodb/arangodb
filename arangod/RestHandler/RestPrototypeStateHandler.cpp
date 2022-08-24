@@ -291,6 +291,8 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
   readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.allowDirtyRead =
+      _request->parsedValue<bool>("allowDirtyRead").value_or(false);
   readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
@@ -366,6 +368,8 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
   readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.allowDirtyRead =
+      _request->parsedValue<bool>("allowDirtyRead").value_or(false);
   readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(

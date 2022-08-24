@@ -137,7 +137,7 @@ void expectNull(AstNode const& node, char const* input1,
 }  // namespace
 
 TEST(BitFunctionsTest, BitAnd) {
-  arangodb::aql::Function f("BIT_AND", &Functions::BitAnd);
+  arangodb::aql::Function f("BIT_AND", &functions::BitAnd);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -268,7 +268,7 @@ TEST(BitFunctionsTest, BitAnd) {
 }
 
 TEST(BitFunctionsTest, BitOr) {
-  arangodb::aql::Function f("BIT_OR", &Functions::BitOr);
+  arangodb::aql::Function f("BIT_OR", &functions::BitOr);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -406,7 +406,7 @@ TEST(BitFunctionsTest, BitOr) {
 }
 
 TEST(BitFunctionsTest, BitXOr) {
-  arangodb::aql::Function f("BIT_XOR", &Functions::BitXOr);
+  arangodb::aql::Function f("BIT_XOR", &functions::BitXOr);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -553,7 +553,7 @@ TEST(BitFunctionsTest, BitXOr) {
 }
 
 TEST(BitFunctionsTest, BitPopcount) {
-  arangodb::aql::Function f("BIT_POPCOUNT", &Functions::BitPopcount);
+  arangodb::aql::Function f("BIT_POPCOUNT", &functions::BitPopcount);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -602,7 +602,7 @@ TEST(BitFunctionsTest, BitPopcount) {
 }
 
 TEST(BitFunctionsTest, BitNegate) {
-  arangodb::aql::Function f("BIT_NEGATE", &Functions::BitNegate);
+  arangodb::aql::Function f("BIT_NEGATE", &functions::BitNegate);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -711,7 +711,7 @@ TEST(BitFunctionsTest, BitNegate) {
 }
 
 TEST(BitFunctionsTest, BitTest) {
-  arangodb::aql::Function f("BIT_TEST", &Functions::BitTest);
+  arangodb::aql::Function f("BIT_TEST", &functions::BitTest);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -817,7 +817,7 @@ TEST(BitFunctionsTest, BitTest) {
 }
 
 TEST(BitFunctionsTest, BitShiftLeft) {
-  arangodb::aql::Function f("BIT_SHIFT_LEFT", &Functions::BitShiftLeft);
+  arangodb::aql::Function f("BIT_SHIFT_LEFT", &functions::BitShiftLeft);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -995,7 +995,7 @@ TEST(BitFunctionsTest, BitShiftLeft) {
 }
 
 TEST(BitFunctionsTest, BitShiftRight) {
-  arangodb::aql::Function f("BIT_SHIFT_RIGHT", &Functions::BitShiftRight);
+  arangodb::aql::Function f("BIT_SHIFT_RIGHT", &functions::BitShiftRight);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -1149,7 +1149,7 @@ TEST(BitFunctionsTest, BitShiftRight) {
 }
 
 TEST(BitFunctionsTest, BitConstruct) {
-  arangodb::aql::Function f("BIT_CONSTRUCT", &Functions::BitConstruct);
+  arangodb::aql::Function f("BIT_CONSTRUCT", &functions::BitConstruct);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -1248,7 +1248,7 @@ TEST(BitFunctionsTest, BitConstruct) {
 }
 
 TEST(BitFunctionsTest, BitDeconstruct) {
-  arangodb::aql::Function f("BIT_DECONSTRUCT", &Functions::BitDeconstruct);
+  arangodb::aql::Function f("BIT_DECONSTRUCT", &functions::BitDeconstruct);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -1295,7 +1295,7 @@ TEST(BitFunctionsTest, BitDeconstruct) {
 }
 
 TEST(BitFunctionsTest, BitToString) {
-  arangodb::aql::Function f("BIT_TO_STRING", &Functions::BitToString);
+  arangodb::aql::Function f("BIT_TO_STRING", &functions::BitToString);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -1422,7 +1422,7 @@ TEST(BitFunctionsTest, BitToString) {
 }
 
 TEST(BitFunctionsTest, BitFromString) {
-  arangodb::aql::Function f("BIT_FROM_STRING", &Functions::BitFromString);
+  arangodb::aql::Function f("BIT_FROM_STRING", &functions::BitFromString);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 

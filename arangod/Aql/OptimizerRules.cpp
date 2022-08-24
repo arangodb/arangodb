@@ -41,7 +41,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
-#include "Aql/KShortestPathsNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -124,7 +124,7 @@ bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
         setter->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
         setter->getType() == EN::SUBQUERY ||
         setter->getType() == EN::TRAVERSAL ||
-        setter->getType() == EN::K_SHORTEST_PATHS ||
+        setter->getType() == EN::ENUMERATE_PATHS ||
         setter->getType() == EN::SHORTEST_PATH) {
       return true;
     }
@@ -153,7 +153,7 @@ arangodb::aql::Collection const* getCollection(
       return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
           ->collection();
     case EN::TRAVERSAL:
-    case EN::K_SHORTEST_PATHS:
+    case EN::ENUMERATE_PATHS:
     case EN::SHORTEST_PATH:
       return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
           ->collection();
@@ -455,7 +455,7 @@ class RestrictToSingleShardChecker final
 
     switch (en->getType()) {
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH: {
         _stop = true;
         return true;  // abort enumerating, we are done already!
@@ -1346,6 +1346,7 @@ void arangodb::aql::removeRedundantSortsRule(
           auto other =
               ExecutionNode::castTo<SortNode*>(current)->getSortInformation();
 
+          bool canContinueSearch = true;
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
               // different sort criteria
@@ -1355,20 +1356,25 @@ void arangodb::aql::removeRedundantSortsRule(
 
                 if (!other.isDeterministic) {
                   // if the sort is non-deterministic, we must not remove it
+                  canContinueSearch = false;
                   break;
                 }
 
                 if (sortNode->isStable()) {
-                  // we should not optimize predecessors of a stable sort (used
-                  // in a COLLECT node)
+                  // we should not optimize predecessors of a stable sort
+                  // (used in a COLLECT node)
                   // the stable sort is for a reason, and removing any
-                  // predecessors sorts might
-                  // change the result
+                  // predecessors sorts might change the result.
+                  // We're not allowed to continue our search for further
+                  // redundant SORTS in this iteration.
+                  canContinueSearch = false;
                   break;
                 }
 
                 // remove sort that is a direct predecessor of a sort
                 toUnlink.emplace(current);
+              } else {
+                canContinueSearch = false;
               }
               break;
             }
@@ -1381,7 +1387,9 @@ void arangodb::aql::removeRedundantSortsRule(
             case SortInformation::ourselvesLessAccurate: {
               // the sort at the start of the pipeline makes the sort at the end
               // superfluous, so we'll remove it
+              // Related to: BTS-937
               toUnlink.emplace(n);
+              canContinueSearch = false;
               break;
             }
 
@@ -1391,6 +1399,9 @@ void arangodb::aql::removeRedundantSortsRule(
               toUnlink.emplace(current);
               break;
             }
+          }
+          if (!canContinueSearch) {
+            break;
           }
         } else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
@@ -1403,7 +1414,7 @@ void arangodb::aql::removeRedundantSortsRule(
         } else if (current->getType() == EN::ENUMERATE_LIST ||
                    current->getType() == EN::ENUMERATE_COLLECTION ||
                    current->getType() == EN::TRAVERSAL ||
-                   current->getType() == EN::K_SHORTEST_PATHS ||
+                   current->getType() == EN::ENUMERATE_PATHS ||
                    current->getType() == EN::SHORTEST_PATH) {
           // ok, but we cannot remove two different sorts if one of these node
           // types is between them
@@ -2101,7 +2112,7 @@ void arangodb::aql::moveCalculationsDownRule(
                  currentType == EN::ENUMERATE_LIST ||
                  currentType == EN::TRAVERSAL ||
                  currentType == EN::SHORTEST_PATH ||
-                 currentType == EN::K_SHORTEST_PATHS ||
+                 currentType == EN::ENUMERATE_PATHS ||
                  currentType == EN::COLLECT || currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         break;
@@ -3396,7 +3407,7 @@ struct SortToIndexNode final
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH:
       case EN::ENUMERATE_LIST:
       case EN::ENUMERATE_IRESEARCH_VIEW:
@@ -4162,14 +4173,13 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       inputVariable = traversalNode->inVariable();
       isTraversalNode = true;
     } break;
-    case ExecutionNode::K_SHORTEST_PATHS: {
-      auto kShortestPathsNode =
-          ExecutionNode::castTo<KShortestPathsNode const*>(node);
-      TRI_ASSERT(kShortestPathsNode->isDisjoint());
-      collection = kShortestPathsNode->collection();
-      // Subtle: KShortestPathsNode uses a reference when returning
+    case ExecutionNode::ENUMERATE_PATHS: {
+      auto pathsNode = ExecutionNode::castTo<EnumeratePathsNode const*>(node);
+      TRI_ASSERT(pathsNode->isDisjoint());
+      collection = pathsNode->collection();
+      // Subtle: EnumeratePathsNode uses a reference when returning
       // startInVariable
-      inputVariable = &kShortestPathsNode->startInVariable();
+      inputVariable = &pathsNode->startInVariable();
     } break;
     case ExecutionNode::SHORTEST_PATH: {
       auto shortestPathNode =
@@ -4323,7 +4333,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
 
   if (nodeType == ExecutionNode::TRAVERSAL ||
       nodeType == ExecutionNode::SHORTEST_PATH ||
-      nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+      nodeType == ExecutionNode::ENUMERATE_PATHS) {
     auto const* graphNode = ExecutionNode::castTo<GraphNode*>(node);
 
     isSmart = graphNode->isSmart();
@@ -4358,7 +4368,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
 auto isGraphNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
   return nodeType == ExecutionNode::TRAVERSAL ||
          nodeType == ExecutionNode::SHORTEST_PATH ||
-         nodeType == ExecutionNode::K_SHORTEST_PATHS;
+         nodeType == ExecutionNode::ENUMERATE_PATHS;
 }
 
 auto isModificationNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
@@ -4565,11 +4575,10 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                 auto collections = viewNode.collections();
                 auto const collCount = collections.size();
                 TRI_ASSERT(collCount > 0);
-                if (collCount > 1) {
-                  hasFoundMultipleShards = true;
-                } else if (1 == collCount) {
+                hasFoundMultipleShards = collCount > 0;
+                if (collCount == 1) {
                   hasFoundMultipleShards =
-                      collections.front().get().numberOfShards() > 1;
+                      collections.front().first.get().numberOfShards() > 1;
                 }
               } break;
               default:
@@ -4862,7 +4871,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
         case EN::TRAVERSAL:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
         case EN::ENUMERATE_IRESEARCH_VIEW:
@@ -4871,6 +4880,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
           stopSearching = true;
           break;
 
+        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::CALCULATION:
         case EN::FILTER: {
           if (inspectNode->getType() == EN::CALCULATION) {
@@ -4985,11 +4995,12 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::LIMIT:
         case EN::INDEX:
         case EN::TRAVERSAL:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::OFFSET_INFO_MATERIALIZE:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -5386,7 +5397,7 @@ class RemoveToEnumCollFinder final
             std::vector<std::string> shardKeys =
                 rn->collection()->shardKeys(false);
             if (shardKeys.size() != 1 ||
-                shardKeys[0] != StaticStrings::KeyString) {
+                shardKeys[0] != arangodb::StaticStrings::KeyString) {
               break;  // abort . . .
             }
 
@@ -5413,7 +5424,7 @@ class RemoveToEnumCollFinder final
             }
             // for REMOVE, we must also know the _key value, otherwise
             // REMOVE will not work
-            toFind.emplace(StaticStrings::KeyString);
+            toFind.emplace(arangodb::StaticStrings::KeyString);
 
             // go through the input object attribute by attribute
             // and look for our shard keys
@@ -5476,7 +5487,7 @@ class RemoveToEnumCollFinder final
 
         auto const& projections =
             dynamic_cast<DocumentProducingNode const*>(enumColl)->projections();
-        if (projections.isSingle(StaticStrings::KeyString)) {
+        if (projections.isSingle(arangodb::StaticStrings::KeyString)) {
           // cannot handle projections
           break;
         }
@@ -5553,7 +5564,7 @@ class RemoveToEnumCollFinder final
       case EN::LIMIT:
       case EN::SORT:
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH: {
         // if we meet any of the above, then we abort . . .
         break;
@@ -5973,7 +5984,7 @@ struct RemoveRedundantOr {
             type == NODE_TYPE_OPERATOR_BINARY_LE);
   }
 
-  int isCompatibleBound(AstNodeType type, AstNode const* value) {
+  int isCompatibleBound(AstNodeType type, AstNode const*) {
     if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE ||
          comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
         (type == NODE_TYPE_OPERATOR_BINARY_LE ||
@@ -7199,7 +7210,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
         info.sorted) {
       // hack to pass on the sort-to-point info
       AstNodeType t = NODE_TYPE_OPERATOR_BINARY_LT;
-      std::string const& u = StaticStrings::Unlimited;
+      std::string const& u = arangodb::StaticStrings::Unlimited;
       AstNode* cc = ast->createNodeValueString(u.c_str(), u.length());
       cond->andCombine(ast->createNodeBinaryOperator(t, func, cc));
     }
@@ -7364,7 +7375,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
                  current->getType() == EN::ENUMERATE_LIST ||
                  current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
                  current->getType() == EN::TRAVERSAL ||
-                 current->getType() == EN::K_SHORTEST_PATHS ||
+                 current->getType() == EN::ENUMERATE_PATHS ||
                  current->getType() == EN::SHORTEST_PATH) {
         // invalidate limit and sort. filters can still be used
         limit = nullptr;
@@ -7389,6 +7400,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
     case ExecutionNode::ASYNC:
@@ -7415,7 +7427,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::RETURN:
     case ExecutionNode::DISTRIBUTE:
@@ -7879,7 +7891,7 @@ struct ParallelizableFinder final
 
     if (node->getType() == ExecutionNode::TRAVERSAL ||
         node->getType() == ExecutionNode::SHORTEST_PATH ||
-        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+        node->getType() == ExecutionNode::ENUMERATE_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
       if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
@@ -8144,7 +8156,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::ENUMERATE_IRESEARCH_VIEW: {
           // we don't handle nested FOR loops
           found = nullptr;
@@ -8268,8 +8280,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       // find all graph nodes and make sure that they all are using satellite
       nodes.clear();
       plan->findNodesOfType(
-          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS},
-          true);
+          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS}, true);
       bool const allSatellite =
           std::all_of(nodes.begin(), nodes.end(), [](auto n) {
             GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
@@ -8724,28 +8735,28 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
           traversalNode->setInVariable(var);
         };
       } break;
-      case ExecutionNode::K_SHORTEST_PATHS: {
-        auto* kShortestPathsNode =
-            ExecutionNode::castTo<KShortestPathsNode*>(targetNode);
-        TRI_ASSERT(kShortestPathsNode->isDisjoint());
-        collection = kShortestPathsNode->collection();
-        // Subtle: KShortestPathsNode uses a reference when returning
+      case ExecutionNode::ENUMERATE_PATHS: {
+        auto* pathsNode =
+            ExecutionNode::castTo<EnumeratePathsNode*>(targetNode);
+        TRI_ASSERT(pathsNode->isDisjoint());
+        collection = pathsNode->collection();
+        // Subtle: EnumeratePathsNode uses a reference when returning
         // startInVariable
-        TRI_ASSERT(kShortestPathsNode->usesStartInVariable());
-        inputVariable = &kShortestPathsNode->startInVariable();
-        TRI_ASSERT(kShortestPathsNode->usesTargetInVariable());
-        alternativeVariable = &kShortestPathsNode->targetInVariable();
+        TRI_ASSERT(pathsNode->usesStartInVariable());
+        inputVariable = &pathsNode->startInVariable();
+        TRI_ASSERT(pathsNode->usesTargetInVariable());
+        alternativeVariable = &pathsNode->targetInVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
         fixupGraphInput = DistributeType::PATH;
-        setInVariable = [kShortestPathsNode](Variable* var) {
-          kShortestPathsNode->setStartInVariable(var);
+        setInVariable = [pathsNode](Variable* var) {
+          pathsNode->setStartInVariable(var);
         };
-        setTargetVariable = [kShortestPathsNode](Variable* var) {
-          kShortestPathsNode->setTargetInVariable(var);
+        setTargetVariable = [pathsNode](Variable* var) {
+          pathsNode->setTargetInVariable(var);
         };
-        setDistributeVariable = [kShortestPathsNode](Variable* var) {
-          kShortestPathsNode->setDistributeVariable(var);
+        setDistributeVariable = [pathsNode](Variable* var) {
+          pathsNode->setDistributeVariable(var);
         };
       } break;
       case ExecutionNode::SHORTEST_PATH: {
@@ -8795,7 +8806,12 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
       // If our input variable is set by a collection/index enumeration, it is
       // guaranteed to be an object with a _key attribute, so we don't need to
       // do anything.
-      return;
+      if (!createKeys || collection->usesDefaultSharding()) {
+        // no need to insert an extra calculation node in this case.
+        return;
+      }
+      // in case we have a collection that is not sharded by _key,
+      // the keys need to be created/validated by the coordinator.
     }
 
     auto* ast = plan.getAst();

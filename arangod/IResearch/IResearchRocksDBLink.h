@@ -81,7 +81,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchLink::remove(trx, documentId);
+    return IResearchLink::remove(trx, documentId, hasNested());
   }
 
   ////////////////////////////////////////////////////////////////////////////////

@@ -31,6 +31,9 @@
 #include "VocBase/voc-types.h"
 #include "Zkd/ZkdHelper.h"
 
+#include <string>
+#include <string_view>
+
 #include <rocksdb/slice.h>
 
 #include <velocypack/Slice.h>
@@ -63,6 +66,9 @@ class RocksDBKey {
  public:
   /// @brief verify that a key actually contains the given local document id
   bool containsLocalDocumentId(LocalDocumentId const& id) const;
+
+  /// @brief construct a RocksDB key from another, already filled buffer
+  void constructFromBuffer(std::string_view buffer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified database key
@@ -193,7 +199,7 @@ class RocksDBKey {
   /// May be called on any valid key (in our keyspace)
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBEntryType type(RocksDBKey const&);
-  static RocksDBEntryType type(rocksdb::Slice const& slice) {
+  static RocksDBEntryType type(rocksdb::Slice slice) {
     return type(slice.data(), slice.size());
   }
 

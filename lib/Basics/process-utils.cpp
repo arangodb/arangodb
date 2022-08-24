@@ -486,7 +486,7 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
   err = wAppendQuotedArg(
       res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
-    return nullptr;
+    return L"";
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
@@ -494,7 +494,7 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     err = wAppendQuotedArg(
         res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
-      return nullptr;
+      return L"";
     }
   }
   return res;
@@ -837,7 +837,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   if (fd >= 0) {
     memset(&str, 0, sizeof(str));
 
-    ssize_t n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
+    auto n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
     close(fd);
 
     if (n == 0) {

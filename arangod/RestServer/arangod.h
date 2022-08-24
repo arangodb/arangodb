@@ -113,6 +113,7 @@ class StatisticsFeature;
 class StorageEngineFeature;
 class SystemDatabaseFeature;
 class TempFeature;
+class TemporaryStorageFeature;
 class TtlFeature;
 class UpgradeFeature;
 class V8DealerFeature;
@@ -252,6 +253,7 @@ using ArangodFeatures = TypeList<
     StorageEngineFeature,
     SystemDatabaseFeature,
     TempFeature,
+    TemporaryStorageFeature,
     TtlFeature,
     UpgradeFeature,
     V8DealerFeature,

@@ -165,6 +165,7 @@ ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,1424,"the replicated log of th
 ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM,1425,"an invalid term was given","Will be raised when a participant tries to change its term but found a invalid new term."
 ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED,1426,"log participant unconfigured","Will be raised when a participant is currently unconfigured, i.e. neither a leader nor a follower."
 ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,1427,"replicated state {id:} of type {type:} not found","Will be raised when a specific replicated state was not found."
+ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,1428,"replicated state {id:} of type {type:} is unavailable","Will be raised when a specific replicated state was accessed but is not (yet) available."
 
 ################################################################################
 ## ArangoDB cluster errors

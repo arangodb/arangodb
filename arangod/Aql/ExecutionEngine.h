@@ -48,6 +48,7 @@ class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
 struct ExecutionStats;
+class GraphNode;
 class Query;
 class QueryContext;
 class QueryRegistry;
@@ -136,6 +137,10 @@ class ExecutionEngine {
   std::vector<arangodb::cluster::CallbackGuard>& rebootTrackers();
 
 #ifdef USE_ENTERPRISE
+  static bool parallelizeGraphNode(
+      aql::Query& query, ExecutionPlan& plan, aql::GraphNode* graphNode,
+      std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
+
   static void parallelizeTraversals(
       aql::Query& query, ExecutionPlan& plan,
       std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);

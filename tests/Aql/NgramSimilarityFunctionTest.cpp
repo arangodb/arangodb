@@ -77,11 +77,11 @@ class NgramSimilarityFunctionTest : public ::testing::Test {
       params.emplace_back(*ngram_size);
     }
 
-    arangodb::aql::Function f("NGRAM_SIMILARITY", &Functions::NgramSimilarity);
+    arangodb::aql::Function f("NGRAM_SIMILARITY", &functions::NgramSimilarity);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
 
-    return Functions::NgramSimilarity(&expressionContext, node, params);
+    return functions::NgramSimilarity(&expressionContext, node, params);
   }
 
   void assertNgramSimilarityFail(size_t line,

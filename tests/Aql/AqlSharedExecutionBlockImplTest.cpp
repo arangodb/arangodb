@@ -29,7 +29,6 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockInputMatrix.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -47,6 +46,7 @@
 #include "Aql/UnsortedGatherExecutor.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
+#include "RestServer/TemporaryStorageFeature.h"
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
@@ -103,6 +103,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
           TRI_ASSERT(col != nullptr);  // failed to add collection
         }
       })};
+  arangodb::TemporaryStorageFeature tempStorage{fakedQuery->vocbase().server()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
   // Used for AllRowsFetcherCases
@@ -256,10 +257,17 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       std::vector<SortRegister> sortRegisters{};
       // We do not care for sorting, we skip anyways.
       sortRegisters.emplace_back(SortRegister{0, SortElement{nullptr, true}});
-      SortExecutorInfos execInfos{1,       1,
-                                  {},      std::move(sortRegisters),
-                                  0,       fakedQuery->itemBlockManager(),
-                                  nullptr, monitor,
+      SortExecutorInfos execInfos{1,
+                                  1,
+                                  {},
+                                  std::move(sortRegisters),
+                                  0,
+                                  fakedQuery->itemBlockManager(),
+                                  tempStorage,
+                                  nullptr,
+                                  monitor,
+                                  /*spillOverThresholdNumRows*/ 1000,
+                                  /*spillOverThresholdMemoryUsage*/ 1024 * 1024,
                                   true};
       return ExecutionBlockImpl<ExecutorType>{
           fakedQuery->rootEngine(), generateNodeDummy(),
@@ -325,15 +333,6 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                  AqlItemBlockInputRange>) {
       AqlItemBlockInputRange fakedInternalRange{MainQueryState::DONE, 0,
                                                 leftoverBlock, 0};
-      testee.testInjectInputRange(std::move(fakedInternalRange),
-                                  std::move(skip));
-    }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
-                                 AqlItemBlockInputMatrix>) {
-      _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
-      _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{MainQueryState::DONE,
-                                                 _aqlItemBlockMatrix.get()};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
     }
@@ -406,15 +405,6 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                  AqlItemBlockInputRange>) {
       AqlItemBlockInputRange fakedInternalRange{MainQueryState::HASMORE, 0,
                                                 leftoverBlock, 0};
-      testee.testInjectInputRange(std::move(fakedInternalRange),
-                                  std::move(skip));
-    }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
-                                 AqlItemBlockInputMatrix>) {
-      _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
-      _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{MainQueryState::HASMORE,
-                                                 _aqlItemBlockMatrix.get()};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
     }

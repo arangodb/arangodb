@@ -1000,6 +1000,10 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   builder.add(
       "readOnly",
       VPackValue(serverInfo._transactionsStatistics._readTransactions.load()));
+  builder.add(
+      "dirtyReadOnly",
+      VPackValue(
+          serverInfo._transactionsStatistics._dirtyReadTransactions.load()));
   builder.close();
 
   // export v8 statistics

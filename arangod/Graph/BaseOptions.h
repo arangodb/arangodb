@@ -70,7 +70,7 @@ class TraverserCache;
  *        There are specialized classes for
  *          - Traversals
  *          - Shortest_Path
- *          - K_Shortest_Path
+ *          - K_Shortest_Paths
  *          - K_Paths
  */
 struct BaseOptions {

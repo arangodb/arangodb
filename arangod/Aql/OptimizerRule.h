@@ -252,10 +252,6 @@ struct OptimizerRule {
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
 
-    // FIXME order-???
-    // make operations on sharded IResearch views use scatter / gather / remote
-    scatterIResearchViewInClusterRule,
-
 #ifdef USE_ENTERPRISE
     // move traversal on SatelliteGraph to db server and add scatter / gather /
     // remote
@@ -271,6 +267,13 @@ struct OptimizerRule {
     // remove multiple remote <-> distribute snippets if we are able
     // to combine multiple in only one
     removeDistributeNodesRule,
+#endif
+
+#ifdef USE_ENTERPRISE
+    // move OffsetInfoMaterialize in between
+    // scatter(remote) <-> gather(remote) so they're
+    // distributed to the cluster nodes.
+    distributeOffsetInfoToClusterRule,
 #endif
 
     // move FilterNodes & Calculation nodes in between
@@ -346,6 +349,10 @@ struct OptimizerRule {
     // needs to take into account query distribution across cluster nodes
     // for index
     lateDocumentMaterializationRule,
+
+#ifdef USE_ENTERPRISE
+    lateMaterialiationOffsetInfoRule,
+#endif
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode

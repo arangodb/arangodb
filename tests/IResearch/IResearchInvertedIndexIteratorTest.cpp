@@ -52,6 +52,8 @@ using DocsMap =
 using StoredFields = std::vector<std::vector<std::string>>;
 using Fields = std::vector<std::string>;
 using SortFields = std::vector<std::pair<std::string, bool>>;
+using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext>;
 
 class SimpleDataSetProvider {
  public:
@@ -122,21 +124,19 @@ class IResearchInvertedIndexIteratorTestBase
     _collection = vocbase().createCollection(createCollection->slice());
     EXPECT_TRUE(_collection);
     arangodb::IndexId id(1);
-    arangodb::iresearch::IResearchInvertedIndexMeta meta;
-    std::string errorField;
     auto storedFields = Provider::storedFields();
     auto sortedFields = Provider::sortFields();
-    EXPECT_TRUE(
-        meta.init(_server.server(),
-                  getInvertedIndexPropertiesSlice(id, Provider::indexFields(),
-                                                  &storedFields, &sortedFields)
-                      .slice(),
-                  false, errorField, _vocbase->name()));
     _index = std::make_shared<arangodb::iresearch::IResearchInvertedIndex>(
-        id, *_collection, std::move(meta));
+        id, *_collection);
     EXPECT_TRUE(_index);
     bool pathExists = false;
-    EXPECT_TRUE(_index->init(pathExists).ok());
+    EXPECT_TRUE(
+        _index
+            ->init(getInvertedIndexPropertiesSlice(id, Provider::indexFields(),
+                                                   &storedFields, &sortedFields)
+                       .slice(),
+                   pathExists)
+            .ok());
     EXPECT_FALSE(pathExists);
 
     // now populate the docs
@@ -150,12 +150,13 @@ class IResearchInvertedIndexIteratorTestBase
       trx.begin();
       for (size_t i = 0; i < _docs.size() / 2; ++i) {
         // MSVC fails to compile if EXPECT_TRUE  is called directly
-        auto res =
-            _index
-                ->insert<arangodb::iresearch::InvertedIndexFieldIterator,
-                         arangodb::iresearch::IResearchInvertedIndexMeta>(
-                    trx, doc->first, doc->second->slice(), _index->meta())
-                .ok();
+        auto res = _index
+                       ->insert<InvertedIndexFieldIterator,
+                                arangodb::iresearch::
+                                    IResearchInvertedIndexMetaIndexingContext>(
+                           trx, doc->first, doc->second->slice(),
+                           *_index->meta()._indexingContext)
+                       .ok();
         EXPECT_TRUE(res);
         ++doc;
       }
@@ -170,9 +171,11 @@ class IResearchInvertedIndexIteratorTestBase
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
       auto res = _index
-                     ->insert<arangodb::iresearch::InvertedIndexFieldIterator,
-                              arangodb::iresearch::IResearchInvertedIndexMeta>(
-                         trx, doc->first, doc->second->slice(), _index->meta())
+                     ->insert<InvertedIndexFieldIterator,
+                              arangodb::iresearch::
+                                  IResearchInvertedIndexMetaIndexingContext>(
+                         trx, doc->first, doc->second->slice(),
+                         *_index->meta()._indexingContext)
                      .ok();
       EXPECT_TRUE(res);
       ++doc;

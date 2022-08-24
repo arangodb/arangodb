@@ -78,11 +78,11 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
     }
 
     arangodb::aql::Function f("NGRAM_POSITIONAL_SIMILARITY",
-                              &Functions::NgramPositionalSimilarity);
+                              &functions::NgramPositionalSimilarity);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
 
-    return Functions::NgramPositionalSimilarity(&expressionContext, node,
+    return functions::NgramPositionalSimilarity(&expressionContext, node,
                                                 params);
   }
 

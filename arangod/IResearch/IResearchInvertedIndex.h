@@ -30,143 +30,18 @@
 #include "IResearchCommon.h"
 #include "IResearchDataStore.h"
 #include "IResearchInvertedIndexMeta.h"
-// FIXME: remove this header once lazy_bitset is landed in the upstream
-#include "Containers/FlatHashMap.h"
-
 #include "search/boolean_filter.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "search/score.hpp"
 #include "search/conjunction.hpp"
 #include "search/cost.hpp"
-
-// FIXME: this part should be moved to the upstream library
-namespace iresearch {
-class lazy_bitset : private irs::util::noncopyable {
- public:
-  using word_t = size_t;
-
-  lazy_bitset(const irs::sub_reader& segment,
-              const irs::filter::prepared& filter) noexcept
-      : filter_(filter), segment_(&segment) {}
-
-  bool get(size_t word_id, word_t* data);
-
- private:
-  std::unique_ptr<word_t[]> set_;
-  const word_t* begin_{nullptr};
-  const word_t* end_{nullptr};
-  const irs::filter::prepared& filter_;
-  const irs::sub_reader* segment_;
-  irs::doc_iterator::ptr real_doc_itr_;
-  const irs::document* real_doc_{nullptr};
-  size_t words_{0};
-};
-
-class lazy_filter_bitset_iterator final : public irs::doc_iterator,
-                                          private irs::util::noncopyable {
- public:
-  lazy_filter_bitset_iterator(lazy_bitset& bitset,
-                              irs::cost::cost_t estimation) noexcept
-      : bitset_(bitset), cost_(estimation) {
-    reset();
-  }
-
-  bool next() final;
-  irs::doc_id_t seek(irs::doc_id_t target) final;
-  irs::doc_id_t value() const noexcept final { return doc_.value; }
-  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept override;
-  void reset() noexcept;
-
- private:
-  lazy_bitset& bitset_;
-  irs::cost cost_;
-  irs::document doc_;
-  irs::doc_id_t word_idx_{0};
-  lazy_bitset::word_t word_{0};
-  irs::doc_id_t base_{irs::doc_limits::invalid()};
-};
-
-class proxy_query final : public irs::filter::prepared {
- public:
-  struct proxy_cache {
-    absl::flat_hash_map<const irs::sub_reader*, std::unique_ptr<lazy_bitset>>
-        readers_;
-    irs::filter::prepared::ptr prepared_real_filter_;
-  };
-
-  proxy_query(proxy_cache& cache, irs::filter::ptr&& filter,
-              const irs::index_reader& index, const irs::order::prepared& order)
-      : cache_(cache),
-        real_filter_(std::move(filter)),
-        index_(index),
-        order_(order) {}
-
-  irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr, const irs::order::prepared&,
-      const irs::attribute_provider* /*ctx*/) const override {
-    // first try to find segment in cache.
-    auto& [unused, cached] = *cache_.readers_.emplace(&rdr, nullptr).first;
-
-    if (!cached) {
-      if (!cache_.prepared_real_filter_) {
-        cache_.prepared_real_filter_ = real_filter_->prepare(index_, order_);
-      }
-      cached =
-          std::make_unique<lazy_bitset>(rdr, *cache_.prepared_real_filter_);
-    }
-
-    assert(cached);
-    return irs::memory::make_managed<lazy_filter_bitset_iterator>(
-        *cached, rdr.docs_count());
-  }
-
- private:
-  proxy_cache& cache_;
-  irs::filter::ptr real_filter_;
-  const irs::index_reader& index_;
-  const irs::order::prepared& order_;
-};
-
-class proxy_filter final : public irs::filter {
- public:
-  static ptr make();
-
-  proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
-
-  irs::filter::prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::order::prepared& ord,
-      irs::boost_t boost, const irs::attribute_provider* ctx) const override {
-    if (!real_filter_ || !cache_) {
-      TRI_ASSERT(false);
-      return irs::filter::prepared::empty();
-    }
-    return irs::memory::make_managed<proxy_query>(
-        *cache_, std::move(real_filter_), rdr, ord);
-  }
-
-  proxy_filter& add(irs::filter::ptr&& real_filter) {
-    real_filter_ = std::move(real_filter);
-    return *this;
-  }
-
-  proxy_filter& set_cache(proxy_query::proxy_cache* cache) {
-    cache_ = cache;
-    return *this;
-  }
-
- private:
-  mutable irs::filter::ptr real_filter_{nullptr};
-  mutable proxy_query::proxy_cache* cache_{nullptr};
-};
-
-}  // namespace iresearch
+#include <search/proxy_filter.hpp>
 
 namespace arangodb {
 namespace iresearch {
 class IResearchInvertedIndex : public IResearchDataStore {
  public:
-  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection,
-                                  IResearchInvertedIndexMeta&& meta);
+  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection);
 
   virtual ~IResearchInvertedIndex() = default;
 
@@ -175,14 +50,16 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   bool isSorted() const { return !_meta._sort.empty(); }
 
-  Result init(bool& pathExists, InitCallback const& initCallback = {});
+  Result init(VPackSlice definition, bool& pathExists,
+              InitCallback const& initCallback = {});
 
   static std::vector<std::vector<arangodb::basics::AttributeName>> fields(
       IResearchInvertedIndexMeta const& meta);
   static std::vector<std::vector<arangodb::basics::AttributeName>> sortedFields(
       IResearchInvertedIndexMeta const& meta);
 
-  bool matchesFieldsDefinition(VPackSlice other) const;
+  bool matchesFieldsDefinition(VPackSlice other,
+                               LogicalCollection const& collection) const;
 
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const override;
 
@@ -214,22 +91,18 @@ class IResearchInvertedIndex : public IResearchDataStore {
  protected:
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
+  irs::comparer const* getComparator() const noexcept override {
+    return &_comparer;
+  }
+
  private:
   IResearchInvertedIndexMeta _meta;
+  VPackComparer<IResearchInvertedIndexSort> _comparer;
 };
 
 class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
                                       public Index {
  public:
-  IResearchInvertedClusterIndex(IndexId iid, uint64_t objectId,
-                                LogicalCollection& collection,
-                                std::string const& name,
-                                IResearchInvertedIndexMeta&& m)
-      : IResearchInvertedIndex(iid, collection,
-                               std::forward<IResearchInvertedIndexMeta>(m)),
-        Index(iid, collection, name, IResearchInvertedIndex::fields(meta()),
-              false, true) {}
-
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
   }
@@ -300,7 +173,18 @@ class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
       aql::AstNode* node, aql::Variable const* reference) const override {
     return IResearchInvertedIndex::specializeCondition(node, reference);
   }
-};
 
+  IResearchInvertedClusterIndex(IndexId iid, uint64_t objectId,
+                                LogicalCollection& collection,
+                                std::string const& name)
+      : IResearchInvertedIndex(iid, collection),
+        Index(iid, collection, name, {}, false, true) {}
+
+  void initFields() {
+    TRI_ASSERT(_fields.empty());
+    *const_cast<std::vector<std::vector<arangodb::basics::AttributeName>>*>(
+        &_fields) = IResearchInvertedIndex::fields(meta());
+  }
+};
 }  // namespace iresearch
 }  // namespace arangodb

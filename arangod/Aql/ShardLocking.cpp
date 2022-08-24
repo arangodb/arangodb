@@ -35,6 +35,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utilities/NameValidator.h"
 
@@ -102,7 +103,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
   TRI_ASSERT(_serverToLockTypeToShard.empty());
   TRI_ASSERT(_serverToCollectionToShard.empty());
   switch (baseNode->getType()) {
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::TRAVERSAL: {
       // Add GraphNode
@@ -168,13 +169,14 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to ViewNode");
       }
-      for (aql::Collection const& col : viewNode->collections()) {
+      // TODO Enumerate for indexes, not collection?
+      for (auto const& [collection, _] : viewNode->collections()) {
         std::unordered_set<std::string> restrictedShards;
         if (useRestrictedShard) {
-          addRestrictedShard(&col, restrictedShards);
+          addRestrictedShard(&(collection.get()), restrictedShards);
         }
-        updateLocking(&col, AccessMode::Type::READ, snippetId, restrictedShards,
-                      false);
+        updateLocking(&(collection.get()), AccessMode::Type::READ, snippetId,
+                      restrictedShards, false);
       }
 
       break;
@@ -384,10 +386,13 @@ ShardLocking::getShardMapping() {
     if (!server.hasFeature<ClusterFeature>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+    auto& cf = server.getFeature<ClusterFeature>();
+    auto& ci = cf.clusterInfo();
 #ifdef USE_ENTERPRISE
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
     auto& trx = _query.trxForOptimization();
     if (trx.state()->options().allowDirtyReads) {
+      ++cf.dirtyReadQueriesCounter();
       _shardMapping = trx.state()->whichReplicas(shardIds);
     } else
 #endif

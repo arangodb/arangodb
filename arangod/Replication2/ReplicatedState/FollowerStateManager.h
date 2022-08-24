@@ -46,7 +46,8 @@ struct FollowerStateManager
   using Iterator = typename Stream::Iterator;
 
   FollowerStateManager(
-      LoggerContext loggerContext, std::shared_ptr<ReplicatedStateBase> parent,
+      LoggerContext loggerContext,
+      std::shared_ptr<ReplicatedStateBase> const& parent,
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token,
@@ -71,18 +72,20 @@ struct FollowerStateManager
   auto waitForApplied(LogIndex) -> futures::Future<futures::Unit>;
 
  private:
-  void awaitLeaderShip();
-  void ingestLogData();
+  void waitForLogFollowerResign();
+  [[nodiscard]] auto waitForLeaderAcked() -> futures::Future<futures::Unit>;
+  void instantiateStateMachine();
+  [[nodiscard]] auto tryTransferSnapshot() -> futures::Future<futures::Unit>;
+  void startService();
+  void registerError(Result error);
+  [[nodiscard]] auto waitForNewEntries()
+      -> futures::Future<std::unique_ptr<typename Stream::Iterator>>;
+  [[nodiscard]] auto applyNewEntries() -> futures::Future<Result>;
 
-  template<typename F>
-  auto pollNewEntries(F&& fn);
-  void checkSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
-  void tryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
-  void startService(std::shared_ptr<IReplicatedFollowerState<S>>);
-  void retryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>,
-                             std::uint64_t retryCount);
-
-  void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
+  [[nodiscard]] auto needsSnapshot() const noexcept -> bool;
+  [[nodiscard]] auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
+  void resolveAppliedEntriesQueue();
+  void saveNewEntriesIter(std::unique_ptr<typename Stream::Iterator> iter);
 
   using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
 
@@ -103,21 +106,14 @@ struct FollowerStateManager
     std::unique_ptr<CoreType> core;
     std::unique_ptr<ReplicatedStateToken> token;
     WaitForAppliedQueue waitForAppliedQueue;
+    std::unique_ptr<typename Stream::Iterator> nextEntriesIter;
 
     bool _didResign = false;
 
     GuardedData(FollowerStateManager& self, std::unique_ptr<CoreType> core,
                 std::unique_ptr<ReplicatedStateToken> token);
-    void updateInternalState(FollowerInternalState newState,
-                             std::optional<LogRange> range = std::nullopt);
-    void updateInternalState(FollowerInternalState newState, Result);
-    auto updateNextIndex(LogIndex nextWaitForIndex) -> DeferredAction;
+    void updateInternalState(FollowerInternalState newState);
   };
-
-  void handlePollResult(
-      futures::Future<std::unique_ptr<Iterator>>&& pollFuture);
-  void handleAwaitLeadershipResult(
-      futures::Future<replicated_log::WaitForResult>&&);
 
   Guarded<GuardedData> _guardedData;
   std::weak_ptr<ReplicatedStateBase> const parent;

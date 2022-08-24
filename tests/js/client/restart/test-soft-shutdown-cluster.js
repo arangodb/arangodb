@@ -419,11 +419,22 @@ function testSuite() {
 
 function testSuitePregel() {
   'use strict';
+  let oldLogLevel;
   return {
 
     /////////////////////////////////////////////////////////////////////////
     /// @brief set up
     /////////////////////////////////////////////////////////////////////////
+
+    setUpAll : function() {
+      oldLogLevel = arango.GET("/_admin/log/level").general;
+      arango.PUT("/_admin/log/level", { general: "info" });
+    },
+
+    tearDownAll : function () {
+      // restore previous log level for "general" topic;
+      arango.PUT("/_admin/log/level", { general: oldLogLevel });
+    },
 
     setUp: function () {
 
@@ -524,7 +535,7 @@ function testSuitePregel() {
       while (!testAlgoCheck(pid)) {
         console.warn("Pregel still running...");
         wait(0.2);
-        if (time() - startTime > 60) {
+        if (time() - startTime > 120) {
           assertTrue(false, "Pregel did not finish in time.");
         }
       }

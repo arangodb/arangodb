@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual*/
+/*global assertTrue, assertEqual, print*/
 "use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,6 +238,9 @@ const replicatedLogSuite = function () {
           createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
 
+      // This important to make sure that all followers have responded to all append entries messages
+      // upto now. Otherwise, the insert below doesn't work as expect.
+      waitFor(lpreds.replicatedLogReplicationCompleted(database, logId));
       // now stop one server
       stopServer(followers[0]);
 
@@ -253,6 +256,7 @@ const replicatedLogSuite = function () {
         log.insert({foo: "bar"});
         let quorum = log.insert({foo: "bar"});
         assertTrue(quorum.result.quorum.quorum.indexOf(followers[0]) === -1);
+        print(log.status());
       }
 
       // now stop the leader

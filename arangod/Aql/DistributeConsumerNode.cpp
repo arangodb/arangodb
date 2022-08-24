@@ -63,3 +63,16 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
       IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
+
+ExecutionNode* DistributeConsumerNode::clone(ExecutionPlan* plan,
+                                             bool withDependencies,
+                                             bool withProperties) const {
+  auto clone = cloneHelper(
+      std::make_unique<DistributeConsumerNode>(plan, _id, getDistributeId()),
+      withDependencies, withProperties);
+
+  static_cast<DistributeConsumerNode*>(clone)->isResponsibleForInitializeCursor(
+      _isResponsibleForInitializeCursor);
+
+  return clone;
+}

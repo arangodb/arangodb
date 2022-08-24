@@ -141,6 +141,13 @@ struct SetBothWriteConcernAction {
   size_t newSoftWriteConcern;
 };
 
+struct SetWaitForSyncAction {
+  SetWaitForSyncAction(bool newWaitForSync);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  bool newWaitForSync;
+};
+
 struct AddLogParticipantAction {
   AddLogParticipantAction(replication2::ParticipantId server);
   void apply(AgencyState& agency) const;
@@ -162,7 +169,8 @@ using AgencyTransition =
                  ReplaceServerTargetState, AddLogParticipantAction,
                  SetLeaderInTargetAction, RemoveLogParticipantAction,
                  SetWriteConcernAction, SetSoftWriteConcernAction,
-                 SetBothWriteConcernAction, ReplaceServerTargetLog>;
+                 SetBothWriteConcernAction, ReplaceServerTargetLog,
+                 SetWaitForSyncAction>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test

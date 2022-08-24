@@ -39,6 +39,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
+#include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
@@ -111,6 +112,8 @@ class PregelFeature final : public ArangodFeature {
   std::string tempPath() const;
   bool useMemoryMaps() const noexcept;
 
+  auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+
  private:
   void scheduleGarbageCollection();
 
@@ -158,6 +161,8 @@ class PregelFeature final : public ArangodFeature {
       _workers;
 
   std::atomic<bool> _softShutdownOngoing;
+
+  std::shared_ptr<PregelMetrics> _metrics;
 };
 
 }  // namespace arangodb::pregel

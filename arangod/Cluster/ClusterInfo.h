@@ -1170,7 +1170,8 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   static auto createDocumentStateSpec(std::string const& shardId,
                                       std::vector<std::string> const& serverIds,
-                                      ClusterCollectionCreationInfo const& info)
+                                      ClusterCollectionCreationInfo const& info,
+                                      std::string const& databaseName)
       -> replication2::replicated_state::agency::Target;
 
   //////////////////////////////////////////////////////////////////////////////

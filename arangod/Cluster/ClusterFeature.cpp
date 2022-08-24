@@ -570,6 +570,10 @@ DECLARE_COUNTER(arangodb_sync_wrong_checksum_total,
 DECLARE_COUNTER(arangodb_sync_rebuilds_total,
                 "Number of times a follower shard needed to be completely "
                 "rebuilt because of too many synchronization failures");
+DECLARE_COUNTER(arangodb_potentially_dirty_document_reads_total,
+                "Number of document reads which could be dirty");
+DECLARE_COUNTER(arangodb_dirty_read_queries_total,
+                "Number of queries which could be doing dirty reads");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -646,6 +650,11 @@ void ClusterFeature::start() {
         &_metrics.add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
         &_metrics.add(arangodb_sync_rebuilds_total{});
+  } else if (role == ServerState::RoleEnum::ROLE_COORDINATOR) {
+    _potentiallyDirtyDocumentReadsCounter =
+        &_metrics.add(arangodb_potentially_dirty_document_reads_total{});
+    _dirtyReadQueriesCounter =
+        &_metrics.add(arangodb_dirty_read_queries_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)

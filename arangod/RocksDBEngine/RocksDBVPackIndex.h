@@ -128,6 +128,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   std::shared_ptr<cache::Cache> makeCache() const override;
 
+  size_t numFieldsToConsiderInIndexSelection() const noexcept override {
+    return _fields.size() + _storedValues.size();
+  }
+
   bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
 
   // build new search values. this can also be called from the
