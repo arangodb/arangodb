@@ -306,11 +306,6 @@ endif ()
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
-if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  add_subdirectory(enterprise)
-endif ()
-
 # we want the following definitions to be in effect for both rocksdb and arangodb
 add_definitions("-DNROCKSDB_THREAD_STATUS")
 add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
@@ -1496,3 +1491,8 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 add_custom_target(arangodb
         DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
+
+if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
+  add_subdirectory(enterprise)
+endif ()
