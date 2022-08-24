@@ -33,6 +33,7 @@
 
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -55,6 +56,8 @@ struct ReplicatedStateFollowerResignTest : test::ReplicatedLogTest {
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
       std::make_shared<ReplicatedStateMetricsMock>("foo");
+  std::shared_ptr<test::MockStatePersistorInterface> _persistor =
+      std::make_shared<test::MockStatePersistorInterface>();
 
   auto getFollowerAtState(FollowerInternalState const state)
       -> std::shared_ptr<test::FakeFollower> {
@@ -65,7 +68,7 @@ struct ReplicatedStateFollowerResignTest : test::ReplicatedLogTest {
     auto manager = std::make_shared<FollowerStateManager<State>>(
         loggerCtx, nullptr, follower, std::move(core),
         std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-        _metrics);
+        _metrics, _persistor);
     {
       auto status = *manager->getStatus().asFollowerStatus();
       EXPECT_EQ(status.managerState.state,

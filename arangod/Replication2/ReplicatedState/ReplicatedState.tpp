@@ -276,10 +276,12 @@ auto ReplicatedState<S>::GuardedData::runFollower(
   auto&& self = _self.shared_from_this();
   static_assert(noexcept(FollowerStateManager<S>(
       std::move(loggerCtx), std::move(self), std::move(logFollower),
-      std::move(core), std::move(token), _self.factory, _self.metrics)));
+      std::move(core), std::move(token), _self.factory, _self.metrics,
+      _self.persistor)));
   auto manager = std::make_shared<FollowerStateManager<S>>(
       std::move(loggerCtx), std::move(self), std::move(logFollower),
-      std::move(core), std::move(token), _self.factory, _self.metrics);
+      std::move(core), std::move(token), _self.factory, _self.metrics,
+      _self.persistor);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
@@ -304,10 +306,12 @@ auto ReplicatedState<S>::GuardedData::runLeader(
   auto&& self = _self.shared_from_this();
   static_assert(noexcept(LeaderStateManager<S>(
       std::move(loggerCtx), std::move(self), std::move(logLeader),
-      std::move(core), std::move(token), _self.factory, _self.metrics)));
+      std::move(core), std::move(token), _self.factory, _self.metrics,
+      _self.persistor)));
   auto manager = std::make_shared<LeaderStateManager<S>>(
       std::move(loggerCtx), std::move(self), std::move(logLeader),
-      std::move(core), std::move(token), _self.factory, _self.metrics);
+      std::move(core), std::move(token), _self.factory, _self.metrics,
+      _self.persistor);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
