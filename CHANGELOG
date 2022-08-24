@@ -1,6 +1,16 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fix comparison of JSON schemas on DB servers after there was a schema change
+  via a coordinator: the schema comparison previously did not take into account
+  that some ArangoDB versions store an internal `{"type":"json"}` attribute in
+  the schema, and some don't. Thus two identical schemas could compare
+  differently.
+  The correct schema version was always applied and used, and validation of
+  documents against the schema was also not affected. However, because two
+  schemas could compare unequal, this could have caused unnecessary repeated
+  work for background maintenance threads.
+
 * Removed transitive node dependencies is-wsl and media-typer.
 
 * Web UI: Now correctly handles the server error response when an error occurred
