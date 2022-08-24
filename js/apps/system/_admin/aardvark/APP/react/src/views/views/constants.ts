@@ -22,7 +22,14 @@ export type PrimarySort = {
   primarySort?: PrimarySortType[]
 };
 
-export type ConsolidationPolicy = {
+export type BytesAccumConsolidationPolicy = {
+  consolidationPolicy?: {
+    type: 'bytes_accum';
+    threshold?: number;
+  }
+};
+
+export type TierConsolidationPolicy = {
   consolidationPolicy?: {
     type: 'tier';
     segmentsMin?: number;
@@ -32,6 +39,8 @@ export type ConsolidationPolicy = {
     minScore?: number;
   }
 };
+
+export type ConsolidationPolicy = BytesAccumConsolidationPolicy | TierConsolidationPolicy;
 
 export type ViewProperties = PrimarySort & StoredValues & ConsolidationPolicy & {
   primarySortCompression?: Compression;
@@ -239,43 +248,70 @@ export const formSchema: JSONSchemaType<FormState> = {
     consolidationPolicy: {
       type: 'object',
       nullable: true,
-      properties: {
-        type: {
-          type: 'string',
-          const: 'tier'
-        },
-        segmentsMin: {
-          type: 'integer',
-          nullable: true,
-          minimum: 0,
-          default: 1
-        },
-        segmentsMax: {
-          type: 'integer',
-          nullable: true,
-          default: 10
-        },
-        segmentsBytesMax: {
-          type: 'integer',
-          nullable: true,
-          minimum: 0,
-          default: 5368709120
-        },
-        segmentsBytesFloor: {
-          type: 'integer',
-          nullable: true,
-          minimum: 0,
-          default: 2097152
-        },
-        minScore: {
-          type: 'number',
-          nullable: true,
-          minimum: 0,
-          maximum: 1,
-          default: 0
-        }
+      discriminator: {
+        propertyName: "type"
       },
-      additionalProperties: false,
+      oneOf: [
+        {
+          properties: {
+            type: {
+              const: 'bytes_accum'
+            },
+            threshold: {
+              type: 'number',
+              nullable: false,
+              minimum: 0,
+              maximum: 1,
+              default: 0.1
+            }
+          },
+          additionalProperties: false
+        },
+        {
+          properties: {
+            type: {
+              const: 'tier'
+            },
+            segmentsMin: {
+              type: 'integer',
+              nullable: false,
+              minimum: 0,
+              maximum: {
+                $data: '1/segmentsMax'
+              },
+              default: 1
+            },
+            segmentsMax: {
+              type: 'integer',
+              nullable: false,
+              minimum: {
+                $data: '1/segmentsMin'
+              },
+              default: 10
+            },
+            segmentsBytesMax: {
+              type: 'integer',
+              nullable: false,
+              minimum: 0,
+              default: 5368709120
+            },
+            segmentsBytesFloor: {
+              type: 'integer',
+              nullable: false,
+              minimum: 0,
+              default: 2097152
+            },
+            minScore: {
+              type: 'number',
+              nullable: false,
+              minimum: 0,
+              maximum: 1,
+              default: 0
+            }
+          },
+          additionalProperties: false
+        }
+      ],
       default: {
         type: 'tier',
         segmentsMin: 1,

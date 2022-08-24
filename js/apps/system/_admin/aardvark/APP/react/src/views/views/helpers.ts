@@ -14,7 +14,9 @@ declare var window: any;
 const ajv = new Ajv2019({
   allErrors: true,
   removeAdditional: 'failing',
-  useDefaults: true
+  useDefaults: true,
+  discriminator: true,
+  $data: true
 });
 ajvErrors(ajv);
 
