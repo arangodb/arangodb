@@ -205,16 +205,6 @@ _Enterprise Edition only_
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-#### is-wsl
-
-* Name: is-wsl
-* Version: 2.2.0
-* Date: 2.12.2020
-* Project Home: https://github.com/sindresorhus/is-wsl
-* License: https://github.com/sindresorhus/is-wsl/blob/main/license
-* License Name: MIT License
-* License Id: MIT
-
 #### Jinja2
 
 * Name: Jinja2 Python Template Engine
@@ -1685,6 +1675,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
+#### is-wsl
+
+* Name: is-wsl
+* Version: 2.2.0
+* Project Home: https://github.com/sindresorhus/is-wsl
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/node-netstat/node_modules/is-wsl/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 #### isemail
 
 Name: isemail
@@ -1810,6 +1809,15 @@ Project Home: https://github.com/sinonjs/lolex
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/node_modules/lolex/LICENSE
 License Name: BSD 3-clause "New" or "Revised" License
 License Id: BSD-3-Clause
+
+#### media-typer
+
+* Name: media-typer
+* Version: 0.3.0
+* Project Home: https://github.com/jshttp/media-typer
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/type-is/node_modules/media-typer/LICENSE
+* License Name: MIT License
+* License Id: MIT
 
 #### mime-db
 
