@@ -100,9 +100,6 @@ struct InvertedIndexField {
 
   bool operator==(InvertedIndexField const& other) const noexcept;
 
-  //bool isIdentical(std::vector<basics::AttributeName> const& path,
-  //                 irs::string_ref analyzerName) const noexcept;
-
   FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzers[0]; }
 
   bool isArray() const noexcept { return _isArray || _hasExpansion; }

@@ -409,46 +409,12 @@ bool IResearchInvertedIndexMeta::json(
 
 bool IResearchInvertedIndexMeta::operator==(
     IResearchInvertedIndexMeta const& other) const noexcept {
-  if (*static_cast<IResearchDataStoreMeta const*>(this) !=
-      static_cast<IResearchDataStoreMeta const&>(other)) {
-    return false;
-  }
-
-  if (*static_cast<InvertedIndexField const*>(this) !=
-      static_cast<InvertedIndexField const&>(other)) {
-    return false;
-  }
-
-  if (_sort != other._sort) {
-    return false;
-  }
-
-  if (_consistency != other._consistency) {
-    return false;
-  }
-
-  if (_storedValues != other._storedValues) {
-    return false;
-  }
-
-  if (_version != other._version) {
-    return false;
-  }
-
-  if (_fields.size() != other._fields.size()) {
-    return false;
-  }
-
-  size_t matched{0};
-  for (auto const& thisField : _fields) {
-    for (auto const& otherField : other._fields) {
-      if (thisField == otherField) {
-        matched++;
-        break;
-      }
-    }
-  }
-  return matched == _fields.size();
+  return (*static_cast<IResearchDataStoreMeta const*>(this) ==
+          static_cast<IResearchDataStoreMeta const&>(other)) &&
+         (*static_cast<InvertedIndexField const*>(this) ==
+          static_cast<InvertedIndexField const&>(other)) &&
+         _sort == other._sort && _consistency == other._consistency &&
+         _storedValues == other._storedValues && _version == other._version;
 }
 
 bool IResearchInvertedIndexMeta::matchesDefinition(
@@ -837,14 +803,26 @@ std::string_view InvertedIndexField::path() const noexcept { return _path; }
 
 bool InvertedIndexField::operator==(
     InvertedIndexField const& other) const noexcept {
-  return analyzerName() == other.analyzerName() &&
-         basics::AttributeName::namesMatch(_attribute, other._attribute) &&
-         _includeAllFields == other._includeAllFields &&
-         _trackListPositions == other._trackListPositions &&
-         _features == other._features &&
-         _isArray == other._isArray && 
-         _overrideValue == other._overrideValue &&
-         _expression == other._expression;
+  if (!(analyzerName() == other.analyzerName() &&
+        basics::AttributeName::namesMatch(_attribute, other._attribute) &&
+        _includeAllFields == other._includeAllFields &&
+        _trackListPositions == other._trackListPositions &&
+        _features == other._features && _isArray == other._isArray &&
+        _overrideValue == other._overrideValue &&
+        _expression == other._expression &&
+        _fields.size() == other._fields.size())) {
+    return false;
+  }
+  size_t matched{0};
+  for (auto const& thisField : _fields) {
+    for (auto const& otherField : other._fields) {
+      if (thisField == otherField) {
+        matched++;
+        break;
+      }
+    }
+  }
+  return matched == _fields.size();
 }
 
 bool IResearchInvertedIndexSort::toVelocyPack(
