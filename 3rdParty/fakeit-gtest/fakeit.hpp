@@ -108,7 +108,7 @@ namespace fakeit {
     template<typename C, typename R, typename... arglist>
     struct VTableMethodType {
 #if defined (__GNUG__)
-        using type = R(C::*)(arglist...);
+        using type = R(*)(void*, arglist...);
 #elif defined (_MSC_VER)
         using type = R(__thiscall C::*)(arglist...);
 #endif
@@ -8612,7 +8612,7 @@ namespace fakeit {
                 C * instance = &(MethodMockingContextBase<R, arglist...>::_mock.get());
                 return [=](arglist&... args) -> R {
                     auto m = union_cast<typename VTableMethodType<C,R,arglist...>::type>(mPtr);
-                    return (instance->*m)(args...);
+                    return std::invoke(m, instance, args...);
                 };
             }
 
@@ -8632,7 +8632,7 @@ namespace fakeit {
                 C * instance = &(MethodMockingContextBase<R, arglist...>::_mock.get());
                 return [=](arglist&... args) -> R {
                     auto m = union_cast<typename VTableMethodType<C,R,arglist...>::type>(mPtr);
-                    return (instance->*m)(std::forward<arglist>(args)...);
+                    return std::invoke(m, instance, std::forward<arglist>(args)...);
                 };
             }
         };
