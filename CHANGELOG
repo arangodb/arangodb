@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Removed transitive node dependencies is-wsl and media-typer.
+
 * Fixed parsing on NOT operator in nested query filter.
 
 * Fixed SEARCH-346. If index creation is aborted due to existing same index new
@@ -12,8 +14,6 @@ v3.10.0 (XXXX-XX-XX)
   files to recover.
 
 * Updated arangosync to v2.12.0-preview-9.
-
-* Removed transitive node dependencies is-wsl and media-typer.
 
 
 v3.10.0-alpha.1 (2022-08-17)
