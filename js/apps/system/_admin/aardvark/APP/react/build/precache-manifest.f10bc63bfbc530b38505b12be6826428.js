@@ -36,10 +36,6 @@ self.__precacheManifest = [
     "url": "static/media/glyphicons-halflings.180b8ed9.png"
   },
   {
-    "revision": "11bbcff6f99be028bf04e2e200299b31",
-    "url": "static/media/OpenSansLight.11bbcff6.woff"
-  },
-  {
     "revision": "f71094988de2d6567eb9caba78f61041",
     "url": "static/media/OpenSans.f7109498.woff"
   },
@@ -50,6 +46,10 @@ self.__precacheManifest = [
   {
     "revision": "05f81795ee61b18a60d5be1b40714e01",
     "url": "static/media/OpenSansLightItalic.05f81795.woff"
+  },
+  {
+    "revision": "11bbcff6f99be028bf04e2e200299b31",
+    "url": "static/media/OpenSansLight.11bbcff6.woff"
   },
   {
     "revision": "403dee4359ca42b1d096976fda3ef95c",
@@ -76,16 +76,16 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-300.c3547b2e.eot"
   },
   {
+    "revision": "634f53eb79efa455a9e9d85d608b3447",
+    "url": "static/media/Roboto-300.634f53eb.ttf"
+  },
+  {
     "revision": "16a9467557c38b4e1b19e981bd17fe3f",
     "url": "static/media/Roboto-300.16a94675.woff2"
   },
   {
     "revision": "7e2d32e7141050d758a38b4ec96390c0",
     "url": "static/media/Roboto-300.7e2d32e7.woff"
-  },
-  {
-    "revision": "634f53eb79efa455a9e9d85d608b3447",
-    "url": "static/media/Roboto-300.634f53eb.ttf"
   },
   {
     "revision": "1dc35d25e61d819a9c357074014867ab",
@@ -108,6 +108,10 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-regular.f94d5e51.woff"
   },
   {
+    "revision": "d7c639084f684d66a1bc66855d193ed8",
+    "url": "static/media/fontawesome-webfont.d7c63908.svg"
+  },
+  {
     "revision": "38861cba61c66739c1452c3a71e39852",
     "url": "static/media/Roboto-regular.38861cba.ttf"
   },
@@ -124,24 +128,20 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-500.1afbee5a.woff2"
   },
   {
-    "revision": "d7c639084f684d66a1bc66855d193ed8",
-    "url": "static/media/fontawesome-webfont.d7c63908.svg"
+    "revision": "88f29ea5a372d06f521395134f62ab91",
+    "url": "static/media/Roboto-500.88f29ea5.ttf"
   },
   {
     "revision": "0f3b7101a8adc1afe1fbe89775553c32",
     "url": "static/media/Roboto-500.0f3b7101.woff"
   },
   {
-    "revision": "88f29ea5a372d06f521395134f62ab91",
-    "url": "static/media/Roboto-500.88f29ea5.ttf"
+    "revision": "128879da78c6c8eb4e2c07fa3732cea7",
+    "url": "static/media/Roboto-700.128879da.eot"
   },
   {
     "revision": "f1d811cdfaea49c969500d4bbe52251b",
     "url": "static/media/Roboto-500.f1d811cd.svg"
-  },
-  {
-    "revision": "128879da78c6c8eb4e2c07fa3732cea7",
-    "url": "static/media/Roboto-700.128879da.eot"
   },
   {
     "revision": "3b38c16e4b39e5fd4017cd5055b0d505",
