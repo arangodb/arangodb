@@ -49,18 +49,5 @@ namespace iresearch {
   return std::make_unique<IdentityAnalyzer>();
 }
 
-IdentityAnalyzer::IdentityAnalyzer() noexcept
-    : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
-      _empty(true) {}
-
-irs::attribute* IdentityAnalyzer::get_mutable(
-    irs::type_info::type_id type) noexcept {
-  if (type == irs::type<irs::increment>::id()) {
-    return &_inc;
-  }
-
-  return type == irs::type<irs::term_attribute>::id() ? &_term : nullptr;
-}
-
 }  // namespace iresearch
 }  // namespace arangodb

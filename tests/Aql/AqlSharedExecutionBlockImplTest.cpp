@@ -103,6 +103,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
           TRI_ASSERT(col != nullptr);  // failed to add collection
         }
       })};
+  arangodb::TemporaryStorageFeature tempStorage{fakedQuery->vocbase().server()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
   // Used for AllRowsFetcherCases
@@ -253,7 +254,6 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
           std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
     }
     if constexpr (std::is_same_v<ExecutorType, SortExecutor>) {
-      TemporaryStorageFeature tempStorage(fakedQuery->vocbase().server());
       std::vector<SortRegister> sortRegisters{};
       // We do not care for sorting, we skip anyways.
       sortRegisters.emplace_back(SortRegister{0, SortElement{nullptr, true}});

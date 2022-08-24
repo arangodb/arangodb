@@ -120,7 +120,6 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    using namespace fmt::literals;
     throw basics::Exception::fmt(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
@@ -131,7 +130,6 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    using namespace fmt::literals;
     throw basics::Exception::fmt(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
@@ -146,6 +144,8 @@ struct arangodb::VocBaseLogManager {
                                   "replicated state %" PRIu64 " not found",
                                   id.id());
   }
+
+  auto resignStates() { _guardedData.getLockedGuard()->states.clear(); }
 
   auto resignAll() {
     auto guard = _guardedData.getLockedGuard();
@@ -208,12 +208,9 @@ struct arangodb::VocBaseLogManager {
     });
 
     if (result.ok()) {
-      _server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogNumber->fetch_sub(1);
-      _server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogDeletionNumber->count();
+      auto& feature = _server.getFeature<ReplicatedLogFeature>();
+      feature.metrics()->replicatedLogNumber->fetch_sub(1);
+      feature.metrics()->replicatedLogDeletionNumber->count();
     }
     return result;
   }
@@ -925,6 +922,7 @@ void TRI_vocbase_t::stop() {
 void TRI_vocbase_t::shutdown() {
   this->stop();
 
+  _logManager->resignStates();
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   {
@@ -1735,7 +1733,7 @@ void TRI_vocbase_t::releaseCollection(
 /// using a cid of > 0 is supported to import dumps from other servers etc.
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
-    arangodb::velocypack::Slice parameters) {
+    arangodb::velocypack::Slice parameters, bool isUserRequest) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
   std::string const& dbName = _info.getName();
@@ -1758,7 +1756,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   }
 
   arangodb::LogicalView::ptr view;
-  auto res = LogicalView::instantiate(view, *this, parameters);
+  auto res = LogicalView::instantiate(view, *this, parameters, isUserRequest);
 
   if (!res.ok() || !view) {
     events::CreateView(dbName, name, res.errorNumber());

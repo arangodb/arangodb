@@ -88,8 +88,6 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
         return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
       }
     }
-    LOG_TOPIC("64670", DEBUG, Logger::CLUSTER)
-        << "Responsible server: " << spec.serverId;
   } else if (dest.compare(0, 7, "server:", 7) == 0) {
     spec.serverId = dest.substr(7);
   } else {

@@ -48,18 +48,21 @@ using namespace arangodb::options;
 namespace arangodb {
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--configuration,-c", "the configuration file or 'none'",
+  options->addOption("--configuration,-c",
+                     "The configuration file or \"none\".",
                      new StringParameter(&_file));
 
   // add --config as an alias for --configuration. both point to the same
   // variable!
   options->addOption(
-      "--config", "the configuration file or 'none'",
+      "--config", "The configuration file or \"none\".",
       new StringParameter(&_file),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--define,-D", "define key=value for a @key@ entry in config file",
+      "--define,-D",
+      "Define a value for a `@key@` entry in the configuration file using the "
+      "syntax `\"key=value\"`.",
       new VectorParameter<StringParameter>(&_defines),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 

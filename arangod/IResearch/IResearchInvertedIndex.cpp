@@ -50,12 +50,11 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
-  static FieldMeta::Analyzer defaultAnalyzer =
-      FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
-  return [&meta, &defaultAnalyzer = std::as_const(defaultAnalyzer)](
-             std::string_view ex) -> FieldMeta::Analyzer const& {
+  static FieldMeta::Analyzer const defaultAnalyzer{
+      IResearchAnalyzerFeature::identity()};
+  return [&meta](std::string_view fieldPath) -> FieldMeta::Analyzer const& {
     for (auto const& field : meta._fields) {
-      if (field.toString() == ex) {
+      if (field.path() == fieldPath) {
         return field.analyzer();
       }
     }
@@ -71,7 +70,7 @@ bool supportsFilterNode(
     IndexId id, std::vector<std::vector<basics::AttributeName>> const& fields,
     aql::AstNode const* node, aql::Variable const* reference,
     std::vector<InvertedIndexField> const& metaFields,
-    AnalyzerProvider const* provider) {
+    AnalyzerProvider* provider) {
   // We don`t want byExpression filters
   // and can`t apply index if we are not sure what attribute is
   // accessed so we provide QueryContext which is unable to
@@ -79,13 +78,14 @@ bool supportsFilterNode(
   // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a
   // variable from the upstream loop we may get here a field we don`t have in
   // the index.
-  QueryContext const queryCtx{.ref = reference, .isSearchQuery = false};
+  QueryContext const queryCtx{
+      .ref = reference, .isSearchQuery = false, .isOldMangling = false};
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
-  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-  FilterContext const filterCtx{
-      .analyzerProvider = provider, .analyzer = analyzer, .fields = metaFields};
+  FilterContext const filterCtx{.fieldAnalyzerProvider = provider,
+                                .contextAnalyzer = emptyAnalyzer(),
+                                .fields = metaFields};
 
   auto rv = FilterFactory::filter(nullptr, queryCtx, filterCtx, *node);
 
@@ -282,11 +282,15 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     auto& state = *(_trx->state());
 
     // TODO FIXME find a better way to look up a State
-    auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(_index));
+    // we cannot use _index pointer as key - the same is used for storing
+    // removes/inserts so we add 1 to the value (we need just something unique
+    // after all)
+    void const* key = reinterpret_cast<uint8_t const*>(_index) + 1;
+    auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(key));
     if (!ctx) {
       auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
       ctx = ptr.get();
-      state.cookie(_index, std::move(ptr));
+      state.cookie(key, std::move(ptr));
 
       if (!ctx) {
         LOG_TOPIC("d7061", WARN, arangodb::iresearch::TOPIC)
@@ -300,7 +304,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     QueryContext const queryCtx{.trx = _trx,
                                 .index = _reader,
                                 .ref = _variable,
-                                .isSearchQuery = false};
+                                .isSearchQuery = false,
+                                .isOldMangling = false};
 
     AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_index->meta());
 
@@ -312,10 +317,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
         // The analyzer is referenced in the FilterContext and used during the
         // following FilterFactory::::filter() call, so may not be a temporary.
-        FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-        FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                      .analyzer = analyzer,
-                                      .fields = _index->meta()._fields};
+        FilterContext const filterCtx{
+            .fieldAnalyzerProvider = &analyzerProvider,
+            .contextAnalyzer = emptyAnalyzer(),
+            .fields = _index->meta()._fields};
         auto rv = FilterFactory::filter(&root, queryCtx, filterCtx, *condition);
 
         if (rv.fail()) {
@@ -352,10 +357,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           conditionJoiner = &root.add<irs::Or>();
         }
 
-        FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-        FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                      .analyzer = analyzer,
-                                      .fields = _index->meta()._fields};
+        FilterContext const filterCtx{
+            .fieldAnalyzerProvider = &analyzerProvider,
+            .contextAnalyzer = emptyAnalyzer(),
+            .fields = _index->meta()._fields};
 
         auto& mutable_root = conditionJoiner->add<irs::Or>();
         auto rv =
@@ -397,9 +402,9 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           // The analyzer is referenced in the FilterContext and used during the
           // following ::filter() call, so may not be a temporary.
-          FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-          FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                        .analyzer = analyzer};
+          FilterContext const filterCtx{
+              .fieldAnalyzerProvider = &analyzerProvider,
+              .contextAnalyzer = emptyAnalyzer()};
 
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
@@ -785,9 +790,10 @@ Result IResearchInvertedIndex::init(
   }
 
   TRI_ASSERT(_meta._sort.sortCompression());
-  auto r = initDataStore(
-      pathExists, initCallback, static_cast<uint32_t>(_meta._version),
-      isSorted(), _meta._storedValues.columns(), _meta._sort.sortCompression());
+  auto r = initDataStore(pathExists, initCallback,
+                         static_cast<uint32_t>(_meta._version), isSorted(),
+                         _meta.hasNested(), _meta._storedValues.columns(),
+                         _meta._sort.sortCompression());
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }

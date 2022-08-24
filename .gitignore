@@ -29,10 +29,6 @@ build
 *.lnk
 Thumbs.db
 
-lib/Basics/error-registry.h
-lib/Basics/exitcodes.h
-lib/Basics/voc-errors.h
-
 cppcheck.xml
 
 enterprise

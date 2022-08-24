@@ -36,15 +36,13 @@ const wait = require("internal").wait;
 const instanceRoledbServer = 'dbserver';
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
-let { getEndpointById,
-      getEndpointsByType,
-      getServersByType,
-      debugCanUseFailAt,
-      debugRemoveFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
-      reconnectRetry,
-    } = require('@arangodb/test-helper');
+const {
+  debugRemoveFailAt,
+  debugSetFailAt,
+  debugClearFailAt,
+  getEndpointById,
+  getServersByType,
+} = require('@arangodb/test-helper');
 
 
 ////////////////////////////////////////////////////////////////////////////////

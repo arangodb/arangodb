@@ -55,6 +55,7 @@
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -321,13 +322,13 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
   //             (!trx.state()->isTopLevelTransaction() &&
   //              arangodb::transaction::Status::RUNNING ==
   //              trx.state()->status()));
-  TRI_ASSERT(trx.isMainTransaction());
 
   auto* state = trx.state();
-
   if (!state) {
     return;  // nothing to apply
   }
+
+  TRI_ASSERT(trx.isMainTransaction());
 
   auto* callbacks = getStatusChangeCallbacks(*state);
 
@@ -539,15 +540,12 @@ transaction::Methods::~Methods() {
         // regular life cycle. we want now to properly clean up and count them.
         _state->updateStatus(transaction::Status::COMMITTED);
       } else {
-        try {
-          this->abort();
-          TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
-        } catch (std::exception const& ex) {
+        auto res = this->abort();
+        if (res.fail()) {
           LOG_TOPIC("6d20f", ERR, Logger::TRANSACTIONS)
-              << "Exception triggered while destroying transaction " << tid()
+              << "Abort failed while destroying transaction " << tid()
               << " on server " << ServerState::instance()->getId() << " "
-              << ex.what();
-          // must never throw because we are in a dtor
+              << res;
         }
       }
     }
@@ -682,29 +680,41 @@ Result transaction::Methods::begin() {
   return Result();
 }
 
-Result Methods::commit() {
-  return commitInternal(MethodsApi::Synchronous).get();
+auto Methods::commit() noexcept -> Result {
+  return commitInternal(MethodsApi::Synchronous)  //
+      .then(basics::tryToResult)
+      .get();
 }
 
 /// @brief commit / finish the transaction
-Future<Result> transaction::Methods::commitAsync() {
-  return commitInternal(MethodsApi::Asynchronous);
+auto transaction::Methods::commitAsync() noexcept -> Future<Result> {
+  return commitInternal(MethodsApi::Asynchronous)  //
+      .then(basics::tryToResult);
 }
 
-Result Methods::abort() { return abortInternal(MethodsApi::Synchronous).get(); }
+auto Methods::abort() noexcept -> Result {
+  return abortInternal(MethodsApi::Synchronous)  //
+      .then(basics::tryToResult)
+      .get();
+}
 
 /// @brief abort the transaction
-Future<Result> transaction::Methods::abortAsync() {
-  return abortInternal(MethodsApi::Asynchronous);
+auto transaction::Methods::abortAsync() noexcept -> Future<Result> {
+  return abortInternal(MethodsApi::Asynchronous)  //
+      .then(basics::tryToResult);
 }
 
-Result Methods::finish(Result const& res) {
-  return finishInternal(res, MethodsApi::Synchronous).get();
+auto Methods::finish(Result const& res) noexcept -> Result {
+  return finishInternal(res, MethodsApi::Synchronous)  //
+      .then(basics::tryToResult)
+      .get();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
-Future<Result> transaction::Methods::finishAsync(Result const& res) {
-  return finishInternal(res, MethodsApi::Asynchronous);
+auto transaction::Methods::finishAsync(Result const& res) noexcept
+    -> Future<Result> {
+  return finishInternal(res, MethodsApi::Asynchronous)  //
+      .then(basics::tryToResult);
 }
 
 /// @brief return the transaction id
@@ -1126,7 +1136,31 @@ void transaction::Methods::trackWaitForSync(LogicalCollection& collection,
   }
 }
 
+/// @brief Determine the replication type and the followers for a transaction.
+/// The replication type indicates whether this server is the leader or a
+/// follower. The followers are the servers that will be contacted for the
+/// actual replication.
+///
+/// We had to split this function into two parts, because the first one is used
+/// by replication1 and the second one is used by replication2.
 Result transaction::Methods::determineReplicationTypeAndFollowers(
+    LogicalCollection& collection, std::string_view operationName,
+    velocypack::Slice value, OperationOptions& options,
+    ReplicationType& replicationType,
+    std::shared_ptr<std::vector<ServerID> const>& followers) {
+  auto replicationVersion = collection.replicationVersion();
+  if (replicationVersion == replication::Version::ONE) {
+    return determineReplication1TypeAndFollowers(
+        collection, operationName, value, options, replicationType, followers);
+  }
+  TRI_ASSERT(replicationVersion == replication::Version::TWO);
+  return determineReplication2TypeAndFollowers(
+      collection, operationName, value, options, replicationType, followers);
+}
+
+/// @brief The original code for determineReplicationTypeAndFollowers, used for
+/// replication1.
+Result transaction::Methods::determineReplication1TypeAndFollowers(
     LogicalCollection& collection, std::string_view operationName,
     velocypack::Slice value, OperationOptions& options,
     ReplicationType& replicationType,
@@ -1155,20 +1189,15 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
         return {TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION};
       }
 
-      // This is just a trick to let the function continue for replication2
-      // databases
-      auto replicationVersion = collection.replicationVersion();
-      if (replicationVersion != replication::Version::TWO) {
-        switch (followerInfo->allowedToWrite()) {
-          case FollowerInfo::WriteState::FORBIDDEN:
-            // We cannot fulfill minimum replication Factor. Reject write.
-            return {TRI_ERROR_ARANGO_READ_ONLY};
-          case FollowerInfo::WriteState::UNAVAILABLE:
-          case FollowerInfo::WriteState::STARTUP:
-            return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
-          default:
-            break;
-        }
+      switch (followerInfo->allowedToWrite()) {
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return {TRI_ERROR_ARANGO_READ_ONLY};
+        case FollowerInfo::WriteState::UNAVAILABLE:
+        case FollowerInfo::WriteState::STARTUP:
+          return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1179,8 +1208,7 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty() ||
-          replicationVersion == replication::Version::TWO) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1225,6 +1253,66 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
   return {};
 }
 
+/// @brief The replication2 version for determineReplicationTypeAndFollowers.
+/// The replication type is determined from the replicated state status (could
+/// be follower status or leader status). Followers is always an empty vector,
+/// because replication2 framework handles followers itself.
+Result transaction::Methods::determineReplication2TypeAndFollowers(
+    LogicalCollection& collection, std::string_view operationName,
+    velocypack::Slice value, OperationOptions& options,
+    ReplicationType& replicationType,
+    std::shared_ptr<std::vector<ServerID> const>& followers) {
+  if (!_state->isDBServer()) {
+    replicationType = ReplicationType::NONE;
+    return {};
+  }
+
+  auto state = collection.getDocumentState();
+  TRI_ASSERT(state != nullptr);
+  if (state == nullptr) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
+            "Could not get replicated state"};
+  }
+
+  auto status = state->getStatus();
+  if (status == std::nullopt) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            "Could not get replicated state status"};
+  }
+
+  using namespace replication2::replicated_state;
+
+  if (auto leaderStatus = status->asLeaderStatus(); leaderStatus != nullptr) {
+    if (leaderStatus->managerState.state ==
+        LeaderInternalState::kRecoveryInProgress) {
+      // Even though we are the leader, we don't want to replicate during
+      // recovery.
+      options.silent = true;
+      replicationType = ReplicationType::FOLLOWER;
+      followers = nullptr;
+    } else if (leaderStatus->managerState.state ==
+               LeaderInternalState::kServiceAvailable) {
+      options.silent = false;
+      replicationType = ReplicationType::LEADER;
+      followers = std::make_shared<std::vector<ServerID>>();
+    } else {
+      return {TRI_ERROR_REPLICATION_LEADER_ERROR,
+              "Unexpected manager state " +
+                  std::string(to_string(leaderStatus->managerState.state))};
+    }
+  } else if (auto followerStatus = status->asFollowerStatus();
+             followerStatus != nullptr) {
+    options.silent = true;
+    replicationType = ReplicationType::FOLLOWER;
+    followers = std::make_shared<std::vector<ServerID> const>();
+  } else {
+    std::stringstream s;
+    s << "Status is " << *status;
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE, s.str()};
+  }
+  return {};
+}
+
 /// @brief create one or multiple documents in a collection, local.
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -1233,8 +1321,9 @@ Future<OperationResult> transaction::Methods::insertLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  auto& transactionCollection = *trxCollection(cid);
   std::shared_ptr<LogicalCollection> const& collection =
-      trxCollection(cid)->collection();
+      transactionCollection.collection();
 
   ReplicationType replicationType = ReplicationType::NONE;
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1498,7 +1587,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options,
+      return replicateOperations(transactionCollection, followers, options,
                                  *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_INSERT)
           .thenValue([options, errs = std::move(errorCounter),
@@ -1652,8 +1741,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     OperationOptions& options, bool isUpdate) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  auto& transactionCollection = *trxCollection(cid);
   std::shared_ptr<LogicalCollection> const& collection =
-      trxCollection(cid)->collection();
+      transactionCollection.collection();
   TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::WRITE));
 
   // this call will populate replicationType and followers
@@ -1840,7 +1930,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options,
+      return replicateOperations(transactionCollection, followers, options,
                                  *replicationData,
                                  isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
                                           : TRI_VOC_DOCUMENT_OPERATION_REPLACE)
@@ -2013,8 +2103,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+  auto& transactionCollection = *trxCollection(cid);
   std::shared_ptr<LogicalCollection> const& collection =
-      trxCollection(cid)->collection();
+      transactionCollection.collection();
   TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::WRITE));
 
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2170,7 +2261,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(collection, followers, options,
+      return replicateOperations(transactionCollection, followers, options,
                                  *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_REMOVE)
           .thenValue([options, errs = std::move(errorCounter),
@@ -2315,7 +2406,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
     std::string const& collectionName, OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto const& collection = trxCollection(cid)->collection();
+  auto& tc = *trxCollection(cid);
+  auto const& collection = tc.collection();
 
   // this call will populate replicationType and followers
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2338,7 +2430,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
   auto replicationVersion = collection->replicationVersion();
   if (replicationType == ReplicationType::LEADER &&
       replicationVersion == replication::Version::TWO) {
-    auto leaderState = collection->waitForDocumentStateLeader();
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
+    auto leaderState = rtc.leaderState();
     auto body = VPackBuilder();
     {
       VPackObjectBuilder ob(&body);
@@ -2806,10 +2899,11 @@ Result transaction::Methods::resolveId(
 // Unified replication of operations. May be inserts (with or without
 // overwrite), removes, or modifies (updates/replaces).
 Future<Result> Methods::replicateOperations(
-    std::shared_ptr<LogicalCollection> collection,
+    TransactionCollection& transactionCollection,
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, velocypack::Builder const& replicationData,
     TRI_voc_document_operation_e operation) {
+  auto const& collection = transactionCollection.collection();
   TRI_ASSERT(followerList != nullptr);
 
   // It is normal to have an empty followerList when using replication2
@@ -2822,7 +2916,9 @@ Future<Result> Methods::replicateOperations(
 
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
-    auto leaderState = collection->waitForDocumentStateLeader();
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
+        transactionCollection);
+    auto leaderState = rtc.leaderState();
     leaderState->replicateOperation(
         replicationData.sharedSlice(),
         replication2::replicated_state::document::fromDocumentOperation(
@@ -3092,7 +3188,7 @@ Future<Result> Methods::replicateOperations(
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
 
-Future<Result> Methods::commitInternal(MethodsApi api) {
+Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
   TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
@@ -3140,9 +3236,15 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
         }
         return res;
       });
+} catch (basics::Exception const& ex) {
+  return Result(ex.code(), ex.message());
+} catch (std::exception const& ex) {
+  return Result(TRI_ERROR_INTERNAL, ex.what());
+} catch (...) {
+  return Result(TRI_ERROR_INTERNAL);
 }
 
-Future<Result> Methods::abortInternal(MethodsApi api) {
+Future<Result> Methods::abortInternal(MethodsApi api) noexcept try {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
     return Result(TRI_ERROR_TRANSACTION_INTERNAL,
@@ -3176,9 +3278,16 @@ Future<Result> Methods::abortInternal(MethodsApi api) {
 
     return res;
   });
+} catch (basics::Exception const& ex) {
+  return Result(ex.code(), ex.message());
+} catch (std::exception const& ex) {
+  return Result(TRI_ERROR_INTERNAL, ex.what());
+} catch (...) {
+  return Result(TRI_ERROR_INTERNAL);
 }
 
-Future<Result> Methods::finishInternal(Result const& res, MethodsApi api) {
+Future<Result> Methods::finishInternal(Result const& res,
+                                       MethodsApi api) noexcept try {
   if (res.ok()) {
     // there was no previous error, so we'll commit
     return this->commitInternal(api);
@@ -3188,6 +3297,12 @@ Future<Result> Methods::finishInternal(Result const& res, MethodsApi api) {
   return this->abortInternal(api).thenValue([res](Result const& ignore) {
     return res;  // return original error
   });
+} catch (basics::Exception const& ex) {
+  return Result(ex.code(), ex.message());
+} catch (std::exception const& ex) {
+  return Result(TRI_ERROR_INTERNAL, ex.what());
+} catch (...) {
+  return Result(TRI_ERROR_INTERNAL);
 }
 
 Future<OperationResult> Methods::documentInternal(

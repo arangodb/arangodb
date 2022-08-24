@@ -137,7 +137,11 @@ std::ostream& operator<<(std::ostream& os, And const& filter) {
 }
 
 std::ostream& operator<<(std::ostream& os, Or const& filter) {
-  os << "OR[";
+  os << "OR";
+  if (filter.min_match_count() != 1) {
+    os << "(" << filter.min_match_count() << ")";
+  }
+  os << "[";
   for (auto it = filter.begin(); it != filter.end(); ++it) {
     if (it != filter.begin()) {
       os << " || ";
@@ -229,9 +233,17 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_column_existence const&>(filter);
   } else if (type == irs::type<empty>::id()) {
     return os << static_cast<empty const&>(filter);
+  } else if (type == irs::type<arangodb::iresearch::ByExpression>::id()) {
+    return os << "ByExpression";
   } else {
     return os << "[Unknown filter]";
   }
+}
+
+std::string to_string(irs::filter const& f) {
+  std::stringstream ss;
+  ss << f;
+  return ss.str();
 }
 }  // namespace iresearch
 
@@ -716,7 +728,8 @@ void assertFilterOptimized(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     &actualFilter, ctx, filterCtx, viewNode->filterCondition())
                     .ok());
@@ -779,7 +792,8 @@ void assertExpressionFilter(
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                      nullptr, ctx, filterCtx, *filterNode)
                      .ok()));
@@ -808,7 +822,8 @@ void assertExpressionFilter(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
                      &actual, ctx, filterCtx, *filterNode)
                      .ok()));
@@ -846,7 +861,7 @@ void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
 
   if (expectedNegationFilter) {
     auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
-    ASSERT_NE(nullptr, expectedNegationFilter);
+    ASSERT_NE(nullptr, actualNegationFilter);
 
     assertFilterBoost(*expectedNegationFilter->filter(),
                       *actualNegationFilter->filter());
@@ -910,7 +925,8 @@ void buildActualFilter(
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     nullptr, ctx, filterCtx, *filterNode)
                     .ok());
@@ -936,7 +952,8 @@ void buildActualFilter(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(
                     dynamic_cast<irs::boolean_filter*>(&actual), ctx, filterCtx,
                     *filterNode)
@@ -950,7 +967,8 @@ void assertFilter(
     aql::ExpressionContext* exprCtx /*= nullptr*/,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& refName /*= "d"*/,
-    arangodb::iresearch::FilterOptimization filterOptimization) {
+    arangodb::iresearch::FilterOptimization filterOptimization /*= NONE*/,
+    bool searchQuery /*= true*/, bool oldMangling /*= true*/) {
   SCOPED_TRACE(testing::Message("assertFilter failed for query:<")
                << queryString << "> parseOk:" << parseOk
                << " execOk:" << execOk);
@@ -1006,10 +1024,12 @@ void assertFilter(
         .trx = &trx,
         .ref = ref,
         .filterOptimization = filterOptimization,
-        .isSearchQuery = true};
+        .isSearchQuery = searchQuery,
+        .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_TRUE((parseOk == arangodb::iresearch::FilterFactory::filter(
                                 nullptr, ctx, filterCtx, *filterNode)
                                 .ok()));
@@ -1033,10 +1053,12 @@ void assertFilter(
         .index = &irs::sub_reader::empty(),
         .ref = ref,
         .filterOptimization = filterOptimization,
-        .isSearchQuery = true};
+        .isSearchQuery = searchQuery,
+        .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.analyzer = analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
+                                                           analyzer};
     EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(
                           &actual, ctx, filterCtx, *filterNode)
                           .ok());
@@ -1053,9 +1075,11 @@ void assertFilterSuccess(
     irs::filter const& expected, aql::ExpressionContext* exprCtx /*= nullptr*/,
     std::shared_ptr<velocypack::Builder> bindVars /*= nullptr*/,
     std::string const& refName /*= "d"*/,
-    arangodb::iresearch::FilterOptimization filterOptimization) {
+    arangodb::iresearch::FilterOptimization filterOptimization /*= NONE*/,
+    bool searchQuery /*= true*/, bool oldMangling /*= true*/) {
   return assertFilter(vocbase, true, true, queryString, expected, exprCtx,
-                      bindVars, refName, filterOptimization);
+                      bindVars, refName, filterOptimization, searchQuery,
+                      oldMangling);
 }
 
 void assertFilterFail(

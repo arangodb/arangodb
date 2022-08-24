@@ -191,6 +191,9 @@ class FieldIterator {
     // TODO(Dronplane): Try to avoid copy.
     // But it will need to decide how to conveyr "erase" on upper levels.
     std::optional<MissingFieldsContainer> missingFields;
+#ifdef USE_ENTERPRISE
+    bool nestingProcessed{false};
+#endif
   };  // Level
 
   Level& top() noexcept {

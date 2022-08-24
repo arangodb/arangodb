@@ -350,8 +350,8 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--pregel.memory-mapped-files-custom-path",
-                  "custom path for Pregel's temporary files (only used if "
-                  "`--pregel.memory-mapped-files-location` is 'custom')",
+                  "Custom path for Pregel's temporary files. Only used if "
+                  "`--pregel.memory-mapped-files-location` is \"custom\".",
                   new StringParameter(&_tempLocationCustomPath),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -765,6 +765,9 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
         c->_state == ExecutionState::RUNNING ||
         c->_state == ExecutionState::STORING) {
       ++nr;
+      LOG_TOPIC("41564", WARN, Logger::PREGEL)
+          << fmt::format("Conductor for executionNumber {} is in state {}.",
+                         c->_executionNumber, ExecutionStateNames[c->_state]);
     }
   }
   return nr;

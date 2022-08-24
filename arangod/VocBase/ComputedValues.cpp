@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ComputedValues.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -38,6 +39,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/debugging.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -47,6 +49,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <span>
 #include <string_view>
 #include <type_traits>
 
@@ -194,8 +197,9 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
   // store the computed results once (e.g. when using a queryString such
   // as "RETURN DATE_NOW()" you always want the current date to be
   // returned, and not a date once stored)
-  ast->validateAndOptimize(_queryContext->trxForOptimization(),
-                           {.optimizeNonCacheable = false});
+  ast->validateAndOptimize(
+      _queryContext->trxForOptimization(),
+      {.optimizeNonCacheable = false, .optimizeFunctionCalls = false});
 
   if (_failOnWarning) {
     // rethrow any warnings during query inspection
@@ -556,6 +560,41 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
   }
 
   return {};
+}
+
+ResultT<std::shared_ptr<ComputedValues>> ComputedValues::buildInstance(
+    TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
+    velocypack::Slice computedValues) {
+  if (!computedValues.isNone()) {
+    if (computedValues.isNull()) {
+      computedValues = VPackSlice::emptyArraySlice();
+    }
+    if (!computedValues.isArray()) {
+      return Result{TRI_ERROR_BAD_PARAMETER,
+                    "Computed values description is not an array."};
+    }
+
+    TRI_ASSERT(computedValues.isArray());
+
+    std::shared_ptr<ComputedValues> newValue;
+
+    // computed values will be removed if empty array is given
+    if (!computedValues.isEmptyArray()) {
+      try {
+        return std::make_shared<ComputedValues>(
+            vocbase.server()
+                .getFeature<DatabaseFeature>()
+                .getCalculationVocbase(),
+            std::span(shardKeys), computedValues);
+      } catch (std::exception const& ex) {
+        return Result{
+            TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Error when validating computedValues: ", ex.what())};
+      }
+    }
+  }
+
+  return std::shared_ptr<ComputedValues>();
 }
 
 void ComputedValues::toVelocyPack(velocypack::Builder& result) const {

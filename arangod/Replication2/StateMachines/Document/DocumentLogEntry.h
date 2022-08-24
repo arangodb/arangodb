@@ -36,7 +36,7 @@
 namespace arangodb::replication2::replicated_state {
 namespace document {
 
-enum OperationType {
+enum class OperationType {
   kInsert,
   kUpdate,
   kReplace,
@@ -44,6 +44,7 @@ enum OperationType {
   kTruncate,
   kCommit,
   kAbort,
+  kAbortAllOngoingTrx
 };
 
 auto to_string(OperationType) noexcept -> std::string_view;
@@ -62,7 +63,7 @@ struct DocumentLogEntry {
   std::string shardId;
   OperationType operation;
   velocypack::SharedSlice data;
-  TransactionId trx;
+  TransactionId tid;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentLogEntry& p) {
@@ -71,9 +72,11 @@ struct DocumentLogEntry {
         f.field("operation", p.operation)
             .transformWith(OperationStringTransformer{}),
         f.field("data", p.data).fallback(velocypack::SharedSlice{}),
-        f.field("trx", p.trx));
+        f.field("tid", p.tid));
   }
 };
+
+auto operator<<(std::ostream& os, DocumentLogEntry entry) -> std::ostream&;
 }  // namespace document
 
 template<>

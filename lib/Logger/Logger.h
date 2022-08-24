@@ -168,8 +168,6 @@ class Logger {
   static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
-  static LogTopic CLUSTERCOMM;
-  static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;
   static LogTopic CONFIG;
   static LogTopic CRASH;
@@ -185,7 +183,6 @@ class Logger {
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
-  static LogTopic PERFORMANCE;
   static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;

@@ -99,20 +99,24 @@ function ReplicatedLogsWriteSuite() {
     let status = log.status();
     const leaderId = status.leaderId;
     if (leaderId === undefined) {
-      console.info(`leader not available for replicated log ${log.id()}`);
+      console.error(`leader not available for replicated log ${log.id()}`);
+      console.error(JSON.stringify(status));
       return null;
     }
     if (status.participants === undefined || status.participants[leaderId] === undefined) {
-      console.info(`participants status not available for replicated log ${log.id()}`);
+      console.error(`participants status not available for replicated log ${log.id()}`);
+      console.error(JSON.stringify(status));
       return null;
     }
     const leaderResponse = status.participants[leaderId].response;
     if (leaderResponse === undefined || leaderResponse.role !== "leader") {
-      console.info(`leader not available for replicated log ${log.id()}`);
+      console.error(`leader not available for replicated log ${log.id()}`);
+      console.error(JSON.stringify(status));
       return null;
     }
     if (!leaderResponse.leadershipEstablished) {
-      console.info(`leadership not yet established`);
+      console.error(`leadership not yet established`);
+      console.error(JSON.stringify(status));
       return null;
     }
     return status.participants[leaderId].response;
@@ -129,17 +133,20 @@ function ReplicatedLogsWriteSuite() {
 
     testStatus: function () {
       let leaderStatus = getLeaderStatus();
-      assertEqual(leaderStatus.local.commitIndex, 1);
+      assertEqual(leaderStatus.local.commitIndex, 1, `log ${log.id()}, leader status: ${JSON.stringify(leaderStatus)}`);
       let globalStatus = log.globalStatus();
-      assertEqual(globalStatus.specification.source, "RemoteAgency");
+      assertEqual(globalStatus.specification.source, "RemoteAgency",
+          `log ${log.id()}, global status: ${JSON.stringify(globalStatus)}`);
       let status = log.status();
 
       // Make sure that coordinator/status and coordinator/global-status return the same thing.
-      // We should avoid comparing timestamps, so comparing only the keys of these objects will suffice.
-      assertEqual(Object.keys(status).sort(), Object.keys(globalStatus).sort());
+      // We should avoid comparing timestamps, so comparing only the keys of these objects would suffice.
+      assertEqual(Object.keys(status).sort(), Object.keys(globalStatus).sort(),
+          `coordinator/status: ${JSON.stringify(status)}\ncoordinator/global-status: ${JSON.stringify(globalStatus)}`);
 
       let localGlobalStatus = log.globalStatus({useLocalCache: true});
-      assertEqual(localGlobalStatus.specification.source, "LocalCache");
+      assertEqual(localGlobalStatus.specification.source, "LocalCache",
+          `log ${log.id()}, global-status: ${JSON.stringify(localGlobalStatus)}`);
     },
 
     testInsert: function () {

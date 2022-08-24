@@ -83,7 +83,7 @@ ImportFeature::ImportFeature(Server& server, int* result)
 
 void ImportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--file", "file name (\"-\" for STDIN)",
+  options->addOption("--file", "File name (\"-\" for stdin).",
                      new StringParameter(&_filename));
 
   options
@@ -95,7 +95,7 @@ void ImportFeature::collectOptions(
 
   options->addOption(
       "--backslash-escape",
-      "use backslash as the escape character for quotes, used for csv",
+      "Use backslash as the escape character for quotes, used for CSV.",
       new BooleanParameter(&_useBackslash));
 
   options->addOption("--batch-size",
@@ -111,8 +111,8 @@ void ImportFeature::collectOptions(
                      new StringParameter(&_collectionName));
 
   options->addOption("--from-collection-prefix",
-                     "_from collection name prefix (will be prepended to all "
-                     "values in '_from')",
+                     "The collection name prefix that will be prepended to all "
+                     "values in `_from`.",
                      new StringParameter(&_fromCollectionPrefix));
 
   options->addOption(
@@ -141,26 +141,28 @@ void ImportFeature::collectOptions(
       .setIntroducedIn(30800);
 
   options->addOption("--skip-lines",
-                     "number of lines to skip for formats (csv and tsv only)",
+                     "Number of lines to skip for formats (CSV and TSV only).",
                      new UInt64Parameter(&_rowsToSkip));
 
-  options->addOption("--convert",
-                     "convert the strings 'null', 'false', 'true' and strings "
-                     "containing numbers into non-string types (csv and tsv "
-                     "only)",
-                     new BooleanParameter(&_convert));
+  options->addOption(
+      "--convert",
+      "Convert the strings `null`, `false`, `true` and strings "
+      "containing numbers into non-string types. For CSV and TSV "
+      "only.",
+      new BooleanParameter(&_convert));
 
   options->addOption("--translate",
-                     "translate an attribute name (use as --translate "
-                     "\"from=to\", for csv and tsv only)",
+                     "Translate an attribute name using the syntax "
+                     "`\"from=to\"`. For CSV and TSV only. ",
                      new VectorParameter<StringParameter>(&_translations));
 
   options
-      ->addOption("--datatype",
-                  "force a specific datatype for an attribute "
-                  "(null/boolean/number/string). Use as \"attribute=type\". "
-                  "For CSV and TSV only. Takes precendence over --convert",
-                  new VectorParameter<StringParameter>(&_datatypes))
+      ->addOption(
+          "--datatype",
+          "Force a specific datatype for an attribute "
+          "(null/boolean/number/string) using the syntax `\"attribute=type\"`. "
+          "For CSV and TSV only. Takes precedence over `--convert`.",
+          new VectorParameter<StringParameter>(&_datatypes))
       .setIntroducedIn(30900);
 
   options->addOption("--remove-attribute",
@@ -191,7 +193,7 @@ void ImportFeature::collectOptions(
       "from the collection)",
       new BooleanParameter(&_overwrite));
 
-  options->addOption("--quote", "quote character(s), used for csv",
+  options->addOption("--quote", "Quote character(s), used for CSV.",
                      new StringParameter(&_quote));
 
   options->addOption(
@@ -204,7 +206,7 @@ void ImportFeature::collectOptions(
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
 
-  options->addOption("--ignore-missing", "ignore missing columns in csv input",
+  options->addOption("--ignore-missing", "Ignore missing columns in CSV input.",
                      new BooleanParameter(&_ignoreMissing));
 
   std::unordered_set<std::string> actions = {"error", "update", "replace",

@@ -115,8 +115,8 @@ void ExportFeature::collectOptions(
 
   options
       ->addOption("--custom-query-bindvars",
-                  "bind parameters to be used with '--custom-query' or "
-                  "custom-query-file'",
+                  "The bind parameters to be used with the `--custom-query` or "
+                  "`--custom-query-file` option.",
                   new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
@@ -127,7 +127,7 @@ void ExportFeature::collectOptions(
                      new BooleanParameter(&_xgmmlLabelOnly));
 
   options->addOption("--xgmml-label-attribute",
-                     "specify document attribute that will be the xgmml label",
+                     "Specify document attribute that will be the XGMML label.",
                      new StringParameter(&_xgmmlLabelAttribute));
 
   options->addOption("--output-directory", "output directory",

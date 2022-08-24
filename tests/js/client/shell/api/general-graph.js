@@ -712,6 +712,9 @@ function check_vertex_operationSuite () {
 }
 
 function check_edge_operationSuite () {
+  const unrelatedEdgeCollectionName = 'unrelatedEdgeCollection';
+  const unrelatedVertexCollectionName = 'unrelatedVertexCollection';
+
   return {
     setUp: function() {
       drop_graph(sync, graph_name);
@@ -723,6 +726,14 @@ function check_edge_operationSuite () {
       drop_graph(sync, graph_name);
       db._drop(friend_collection);
       db._drop(user_collection);
+      try {
+        db._drop(unrelatedEdgeCollectionName);
+      } catch (ignore) {
+      }
+      try {
+        db._drop(unrelatedVertexCollectionName);
+      } catch (ignore) {
+      }
     },
 
     test_can_create_an_edge: function() {
@@ -740,6 +751,63 @@ function check_edge_operationSuite () {
 
       assertEqual(doc.parsedBody['old'], undefined);
       assertEqual(doc.parsedBody['new'], undefined);
+    },
+
+    test_cannot_create_an_edge_with_non_strings_in_from_and_to: function() {
+      // Create some existing documents v1 and v2
+      let v1 = create_vertex(sync, graph_name, user_collection, {});
+      let v2 = create_vertex(sync, graph_name, user_collection, {});
+
+      // Now try to add an edge document (pointing from valid v1 to v2),
+      // but the edge itself is not part of the graph definition (edge definition)
+      const response = create_edge(
+        sync, graph_name, friend_collection, v1, v2, {}
+      );
+      assertTrue(response.parsedBody);
+      assertTrue(response.parsedBody.error);
+      assertEqual(
+        response.parsedBody.errorNum,
+        internal.errors.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code
+      );
+    },
+
+    test_cannot_create_an_edge_in_unrelated_edge_collection: function() {
+      // Create another unrelated edge, which is not part of the graph itself
+      // Additionally, we will use wrong _from and _to values (objects instead
+      // of string)
+      db._createEdgeCollection(unrelatedEdgeCollectionName);
+
+      // Create some existing documents v1 and v2
+      const v1 = create_vertex(sync, graph_name, user_collection, {});
+      const v1id = v1.parsedBody.vertex._id;
+      const v2 = create_vertex(sync, graph_name, user_collection, {});
+      const v2id = v2.parsedBody.vertex._id;
+
+      // Now try to add an edge document (pointing from valid v1 to v2),
+      // but the edge itself is not part of the graph definition (edge definition)
+      const response = create_edge(
+        sync, graph_name, unrelatedEdgeCollectionName, v1id, v2id, {}
+      );
+      assertTrue(response.parsedBody);
+      assertTrue(response.parsedBody.error);
+      assertEqual(
+        response.parsedBody.errorNum,
+        internal.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code
+      );
+    },
+
+    test_cannot_create_a_vertex_in_unrelated_vertex_collection: function() {
+      // Create another unrelated vertex, which is not part of the graph itself
+      db._createDocumentCollection(unrelatedVertexCollectionName);
+
+      // Try to create a vertex document into an unrelated collection (not part of the graph)
+      const response = create_vertex(sync, graph_name, unrelatedVertexCollectionName, {});
+      assertTrue(response.parsedBody);
+      assertTrue(response.parsedBody.error);
+      assertEqual(
+        response.parsedBody.errorNum,
+        internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code
+      );
     },
 
     test_can_create_an_edge__returnNew: function() {
@@ -764,7 +832,7 @@ function check_edge_operationSuite () {
       v1 = v1.parsedBody['vertex']['_id'];
       let doc = create_edge(sync, graph_name, friend_collection, "MISSING/v2", v1, {});
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertMatch(/.*referenced _from collection 'MISSING' is not part of the graph.*/, doc.parsedBody['errorMessage'], doc);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
     },
@@ -774,7 +842,7 @@ function check_edge_operationSuite () {
       v1 = v1.parsedBody['vertex']['_id'];
       let doc = create_edge(sync, graph_name, friend_collection, v1, "MISSING/v2", {});
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertMatch(/.*referenced _to collection 'MISSING' is not part of the graph.*/, doc.parsedBody['errorMessage'], doc);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
     },
@@ -1316,14 +1384,17 @@ function check_error_codeSuite () {
     },
 
     test_create_vertex_unknown: function() {
-      check404CRUD(create_vertex(sync, graph_name, unknown_name, {}));
+      const response = create_vertex(sync, graph_name, unknown_name, {});
+      assertEqual(response.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertTrue(response.parsedBody.error);
+      assertEqual(response.parsedBody.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
     },
 
     test_get_vertex_unknown: function() {
       check404CRUD(get_vertex(graph_name, unknown_name, unknown_name));
     },
 
-    
     // TODO add tests where the edge/vertex collection is not part of the graph, but;
     // the given key exists!;
     test_update_vertex_unknown: function() {
@@ -1339,7 +1410,13 @@ function check_error_codeSuite () {
     },
 
     test_create_edge_unknown: function() {
-      check400CRUD(create_edge(sync, graph_name, unknown_name, unknown_name, unknown_name, {}));
+      const response = create_edge(
+        sync, graph_name, unknown_name, unknown_name, unknown_name, {}
+      );
+      assertEqual(response.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertTrue(response.parsedBody.error);
+      assertEqual(response.parsedBody.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code);
     },
 
     test_get_edge_unknown: function() {

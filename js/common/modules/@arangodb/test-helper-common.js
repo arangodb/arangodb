@@ -312,3 +312,19 @@ exports.compareStringIds = function (l, r) {
   }
   return 0;
 };
+
+exports.endpointToURL = (endpoint) => {
+  let protocol = endpoint.split('://')[0];
+  switch(protocol) {
+    case 'ssl':
+      return 'https://' + endpoint.substr(6);
+    case 'tcp':
+      return 'http://' + endpoint.substr(6);
+    default:
+      var pos = endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + endpoint;
+      }
+      return 'http' + endpoint.substr(pos);
+  }
+};

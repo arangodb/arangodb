@@ -95,6 +95,7 @@ struct PrototypeStateMethods {
 
   struct ReadOptions {
     LogIndex waitForApplied{0};
+    bool allowDirtyRead{false};
     std::optional<ParticipantId> readFrom{};
   };
 

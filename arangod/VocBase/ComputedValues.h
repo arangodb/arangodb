@@ -28,6 +28,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Basics/ErrorCode.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 
@@ -183,6 +184,10 @@ class ComputedValues {
       velocypack::Slice input,
       containers::FlatHashSet<std::string_view> const& keysWritten,
       ComputeValuesOn mustComputeOn, velocypack::Builder& output) const;
+
+  static ResultT<std::shared_ptr<ComputedValues>> buildInstance(
+      TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
+      velocypack::Slice computedValues);
 
  private:
   void mergeComputedAttributes(

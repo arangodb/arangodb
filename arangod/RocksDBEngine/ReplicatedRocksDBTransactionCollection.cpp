@@ -21,17 +21,19 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "ReplicatedRocksDBTransactionCollection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 
@@ -146,4 +148,30 @@ uint64_t ReplicatedRocksDBTransactionCollection::numOperations()
 
 bool ReplicatedRocksDBTransactionCollection::ensureSnapshot() {
   return _rocksMethods->ensureSnapshot();
+}
+
+auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
+    replication2::replicated_state::document::DocumentLeaderState> {
+  return _leaderState;
+}
+
+auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
+  auto res = RocksDBTransactionCollection::ensureCollection();
+
+  if (res.fail()) {
+    return res;
+  }
+
+  if (_leaderState == nullptr) {
+    // Note that doing this here is only correct as long as we're not supporting
+    // distributeShardsLike.
+    // Later, we must make sure to get the very same state for all collections
+    // (shards) belonging to the same collection group (shard sheaf) (i.e.
+    // belong to the same distributeShardsLike group) See
+    // https://arangodb.atlassian.net/browse/CINFRA-294.
+    _leaderState = _collection->getDocumentStateLeader();
+    ADB_PROD_ASSERT(_leaderState != nullptr);
+  }
+
+  return res;
 }

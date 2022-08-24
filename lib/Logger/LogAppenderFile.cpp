@@ -191,7 +191,7 @@ void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/,
   bool giveUp = false;
 
   while (len > 0) {
-    ssize_t n = TRI_WRITE(_fd, buffer, static_cast<TRI_write_t>(len));
+    auto n = TRI_WRITE(_fd, buffer, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
       if (allowStdLogging()) {

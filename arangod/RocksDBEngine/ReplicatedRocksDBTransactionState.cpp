@@ -88,16 +88,24 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   auto options = replication2::replicated_state::document::ReplicationOptions{
       .waitForCommit = true};
   std::vector<futures::Future<Result>> commits;
-  allCollections([&](TransactionCollection& c) {
-    auto leader = c.collection()->waitForDocumentStateLeader();
-    commits.emplace_back(
-        leader
-            ->replicateOperation(velocypack::SharedSlice{}, operation, id(),
-                                 options)
-            .thenValue([&c](auto&& res) -> Result {
-              return static_cast<ReplicatedRocksDBTransactionCollection&>(c)
-                  .commitTransaction();
-            }));
+  allCollections([&](TransactionCollection& tc) {
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
+    if (rtc.hasOperations()) {
+      // For non-empty transactions we have to write to the log and wait for the
+      // log entry to be committed (in the log sense), before we can commit
+      // locally.
+      auto leader = rtc.leaderState();
+      commits.emplace_back(leader
+                               ->replicateOperation(velocypack::SharedSlice{},
+                                                    operation, id(), options)
+                               .thenValue([&rtc](auto&& res) -> Result {
+                                 return rtc.commitTransaction();
+                               }));
+    } else {
+      // For empty transactions the commit is a no-op, but we still have to call
+      // it to ensure cleanup.
+      rtc.commitTransaction();
+    }
     return true;
   });
 
@@ -124,8 +132,8 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   if (!mustBeReplicated()) {
     Result res;
     for (auto& col : _collections) {
-      res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-                .abortTransaction();
+      auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
+      res = rtc.abortTransaction();
       if (!res.ok()) {
         break;
       }
@@ -140,15 +148,17 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   // The following code has been simplified based on this assertion.
   TRI_ASSERT(options.waitForCommit == false);
   for (auto& col : _collections) {
-    auto leader = col->collection()->waitForDocumentStateLeader();
-    leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
-                               options);
-    auto r = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-                 .abortTransaction();
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
+    if (rtc.hasOperations()) {
+      auto leader = rtc.leaderState();
+      leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                                 options);
+    }
+    auto r = rtc.abortTransaction();
     if (r.fail()) {
       return r;
     }
-  };
+  }
 
   return {};
 }

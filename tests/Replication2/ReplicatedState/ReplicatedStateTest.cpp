@@ -323,7 +323,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
       ASSERT_TRUE(std::holds_alternative<replicated_state::FollowerStatus>(
           status.variant));
       auto s = std::get<replicated_state::FollowerStatus>(status.variant);
-      EXPECT_EQ(s.managerState.state, FollowerInternalState::kNothingToApply);
+      EXPECT_EQ(s.managerState.state,
+                FollowerInternalState::kWaitForNewEntries);
     }
   }
 

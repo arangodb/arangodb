@@ -266,6 +266,7 @@ struct ReplicatedLogMethodsCoordinator final
           return false;
         },
         true, true);
+
     if (auto result =
             clusterFeature.agencyCallbackRegistry()->registerCallback(cb, true);
         result.fail()) {
@@ -366,7 +367,8 @@ struct ReplicatedLogMethodsCoordinator final
                   if (result.fail()) {
                     return {result.result()};
                   }
-                  return self->clusterInfo.waitForPlan(result.get())
+                  return self->clusterInfo
+                      .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
                       .thenValue([resp = std::move(resp)](auto&& result) mutable
                                  -> ResultT<CreateResult> {
                         if (result.fail()) {
@@ -936,7 +938,6 @@ struct ReplicatedStateCoordinatorMethods
           if (res.fail()) {
             return futures::Future<Result>{std::in_place, res.result()};
           }
-
           return self->clusterInfo.waitForPlan(res.get());
         });
   }

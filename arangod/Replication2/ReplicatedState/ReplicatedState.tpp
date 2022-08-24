@@ -52,23 +52,21 @@
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
-auto IReplicatedLeaderState<S>::getStream() const
+auto IReplicatedLeaderState<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> const& {
-  if (_stream) {
-    return _stream;
-  }
+  ADB_PROD_ASSERT(_stream != nullptr)
+      << "Replicated leader state: stream accessed before service was started.";
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  return _stream;
 }
 
 template<typename S>
-auto IReplicatedFollowerState<S>::getStream() const
+auto IReplicatedFollowerState<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> const& {
-  if (_stream) {
-    return _stream;
-  }
+  ADB_PROD_ASSERT(_stream != nullptr) << "Replicated follower state: stream "
+                                         "accessed before service was started.";
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  return _stream;
 }
 
 template<typename S>
@@ -152,9 +150,22 @@ auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
 }
 
 template<typename S>
-void ReplicatedState<S>::forceRebuild() {
+void ReplicatedState<S>::rebuildMe(const IStateManagerBase* caller) noexcept {
   LOG_CTX("8041a", TRACE, loggerContext) << "Force rebuild of replicated state";
-  auto deferred = guardedData.getLockedGuard()->forceRebuild();
+  static_assert(noexcept(
+      // get type of `deferred` by repeating the right-hand-side
+      decltype(guardedData.getLockedGuard()->rebuildMe(caller))
+      // call its copy constructor
+      (
+          // right-hand-side value
+          // note thate getLockedGuard() isn't noexcept, but we consciously
+          // ignore locks throwing exceptions.
+          std::declval<decltype(guardedData.getLockedGuard())>()->rebuildMe(
+              caller)  //
+          )            //
+      ));
+  auto deferred = guardedData.getLockedGuard()->rebuildMe(caller);
+  static_assert(noexcept(deferred.fire()));
   // execute *after* the lock has been released
   deferred.fire();
 }
@@ -194,16 +205,28 @@ ReplicatedState<S>::~ReplicatedState() {
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::rebuild(
-    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    -> DeferredAction try {
+    std::unique_ptr<CoreType> core,
+    std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction {
   LOG_CTX("edaef", TRACE, _self.loggerContext)
       << "replicated state rebuilding - query participant";
-  auto participant = _self.log->getParticipant();
+  auto participant = decltype(_self.log->getParticipant())(nullptr);
+  try {
+    participant = _self.log->getParticipant();
+  } catch (replicated_log::ParticipantResignedException const& ex) {
+    LOG_CTX("eacb9", TRACE, _self.loggerContext)
+        << "Replicated log participant is gone. Replicated state will go "
+           "soon as well. Error code: "
+        << ex.code();
+    currentManager = nullptr;
+    return {};
+  }
   if (auto leader =
           std::dynamic_pointer_cast<replicated_log::ILogLeader>(participant);
       leader) {
     LOG_CTX("99890", TRACE, _self.loggerContext)
         << "obtained leader participant";
+    static_assert(noexcept(
+        runLeader(std::move(leader), std::move(core), std::move(token))));
     return runLeader(std::move(leader), std::move(core), std::move(token));
   } else if (auto follower =
                  std::dynamic_pointer_cast<replicated_log::ILogFollower>(
@@ -211,12 +234,17 @@ auto ReplicatedState<S>::GuardedData::rebuild(
              follower) {
     LOG_CTX("f5328", TRACE, _self.loggerContext)
         << "obtained follower participant";
+    static_assert(noexcept(
+        runFollower(std::move(follower), std::move(core), std::move(token))));
     return runFollower(std::move(follower), std::move(core), std::move(token));
   } else if (auto unconfiguredLogParticipant = std::dynamic_pointer_cast<
                  replicated_log::LogUnconfiguredParticipant>(participant);
              unconfiguredLogParticipant) {
     LOG_CTX("ad84b", TRACE, _self.loggerContext)
         << "obtained unconfigured participant";
+    static_assert(
+        noexcept(runUnconfigured(std::move(unconfiguredLogParticipant),
+                                 std::move(core), std::move(token))));
     return runUnconfigured(std::move(unconfiguredLogParticipant),
                            std::move(core), std::move(token));
   } else {
@@ -224,95 +252,106 @@ auto ReplicatedState<S>::GuardedData::rebuild(
         << "Replicated log has an unhandled participant type.";
     std::abort();
   }
-} catch (replication2::replicated_log::ParticipantResignedException const& ex) {
-  LOG_CTX("eacb9", TRACE, _self.loggerContext)
-      << "Replicated log participant is gone. Replicated state will go soon "
-         "as well. Error code: "
-      << ex.code();
-  currentManager = nullptr;
-  return {};
-} catch (...) {
-  throw;
 }
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::runFollower(
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
-    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    -> DeferredAction try {
+    std::unique_ptr<CoreType> core,
+    std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction
+    try {
   LOG_CTX("95b9d", DEBUG, _self.loggerContext) << "create follower state";
 
   auto loggerCtx =
       _self.loggerContext.template with<logContextKeyStateComponent>(
           "follower-manager");
+  auto&& self = _self.shared_from_this();
+  static_assert(noexcept(FollowerStateManager<S>(
+      std::move(loggerCtx), std::move(self), std::move(logFollower),
+      std::move(core), std::move(token), _self.factory, _self.metrics)));
   auto manager = std::make_shared<FollowerStateManager<S>>(
-      std::move(loggerCtx), _self.shared_from_this(), std::move(logFollower),
+      std::move(loggerCtx), std::move(self), std::move(logFollower),
       std::move(core), std::move(token), _self.factory, _self.metrics);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
   return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
-  LOG_CTX("ab9de", DEBUG, _self.loggerContext)
+  LOG_CTX("ab9de", FATAL, _self.loggerContext)
       << "runFollower caught exception: " << e.what();
-  throw;
+  FATAL_ERROR_ABORT();
 }
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::runLeader(
     std::shared_ptr<replicated_log::ILogLeader> logLeader,
-    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    -> DeferredAction try {
+    std::unique_ptr<CoreType> core,
+    std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction
+    try {
   LOG_CTX("95b9d", DEBUG, _self.loggerContext) << "create leader state";
 
   auto loggerCtx =
       _self.loggerContext.template with<logContextKeyStateComponent>(
           "leader-manager");
+  auto&& self = _self.shared_from_this();
+  static_assert(noexcept(LeaderStateManager<S>(
+      std::move(loggerCtx), std::move(self), std::move(logLeader),
+      std::move(core), std::move(token), _self.factory, _self.metrics)));
   auto manager = std::make_shared<LeaderStateManager<S>>(
-      std::move(loggerCtx), _self.shared_from_this(), std::move(logLeader),
+      std::move(loggerCtx), std::move(self), std::move(logLeader),
       std::move(core), std::move(token), _self.factory, _self.metrics);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
   return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
-  LOG_CTX("016f3", DEBUG, _self.loggerContext)
+  LOG_CTX("016f3", FATAL, _self.loggerContext)
       << "run leader caught exception: " << e.what();
-  throw;
+  FATAL_ERROR_ABORT();
 }
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::runUnconfigured(
     std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
         unconfiguredParticipant,
-    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    -> DeferredAction try {
+    std::unique_ptr<CoreType> core,
+    std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction
+    try {
   LOG_CTX("5d7c6", DEBUG, _self.loggerContext) << "create unconfigured state";
+  auto&& self = _self.shared_from_this();
+  static_assert(noexcept((UnconfiguredStateManager<S>(
+      std::move(self), std::move(unconfiguredParticipant), std::move(core),
+      std::move(token)))));
   auto manager = std::make_shared<UnconfiguredStateManager<S>>(
-      _self.shared_from_this(), std::move(unconfiguredParticipant),
-      std::move(core), std::move(token));
+      std::move(self), std::move(unconfiguredParticipant), std::move(core),
+      std::move(token));
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
   return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
-  LOG_CTX("6f1eb", DEBUG, _self.loggerContext)
+  LOG_CTX("6f1eb", FATAL, _self.loggerContext)
       << "run unconfigured caught exception: " << e.what();
-  throw;
+  FATAL_ERROR_ABORT();
 }
 
 template<typename S>
-auto ReplicatedState<S>::GuardedData::forceRebuild() -> DeferredAction {
-  try {
-    auto [core, token, queueAction] = std::move(*currentManager).resign();
-    auto runAction = rebuild(std::move(core), std::move(token));
-    return DeferredAction::combine(std::move(queueAction),
-                                   std::move(runAction));
-  } catch (std::exception const& e) {
-    LOG_CTX("af348", DEBUG, _self.loggerContext)
-        << "forced rebuild caught exception: " << e.what();
-    throw;
+auto ReplicatedState<S>::GuardedData::rebuildMe(
+    const IStateManagerBase* caller) noexcept -> DeferredAction try {
+  if (caller != currentManager.get()) {
+    // Do nothing if the manager changed: A manager may only rebuild itself.
+    return {};
   }
+  static_assert(noexcept(std::move(*currentManager).resign()));
+  auto [core, token, queueAction] = std::move(*currentManager).resign();
+  static_assert(noexcept(decltype(rebuild(std::move(core), std::move(token)))(
+      rebuild(std::move(core), std::move(token)))));
+  auto runAction = rebuild(std::move(core), std::move(token));
+  return DeferredAction::combine(std::move(queueAction), std::move(runAction));
+} catch (std::exception const& e) {
+  LOG_CTX("af348", FATAL, _self.loggerContext)
+      << "forced rebuild caught exception: " << e.what();
+  FATAL_ERROR_ABORT();
 }
 
 template<typename S>

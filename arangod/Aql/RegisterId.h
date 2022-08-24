@@ -23,9 +23,10 @@
 
 #pragma once
 
-#include "Basics/debugging.h"
-
+#include <limits>
 #include <type_traits>
+
+#include "Basics/debugging.h"
 
 namespace arangodb::aql {
 
@@ -47,6 +48,8 @@ struct RegisterId {
       : _value(v), _type(type) {
     TRI_ASSERT(v <= maxRegisterId);
   }
+
+  constexpr static RegisterId makeInvalid() noexcept { return {maxRegisterId}; }
 
   constexpr static RegisterId makeConst(value_t value) noexcept {
     return RegisterId(value, Type::Const);
@@ -78,29 +81,29 @@ struct RegisterId {
     return _value < maxRegisterId && _type <= Type::Const;
   }
 
-  constexpr bool operator<(RegisterId const& rhs) const noexcept {
+  constexpr bool operator<(RegisterId rhs) const noexcept {
     TRI_ASSERT(type() == rhs.type());
     return _value < rhs._value;
   }
 
-  constexpr bool operator>(RegisterId const& rhs) const noexcept {
+  constexpr bool operator>(RegisterId rhs) const noexcept {
     TRI_ASSERT(type() == rhs.type());
     return _value > rhs._value;
   }
 
-  constexpr bool operator==(RegisterId const& rhs) const noexcept {
+  constexpr bool operator==(RegisterId rhs) const noexcept {
     return type() == rhs.type() && _value == rhs._value;
   }
 
-  constexpr bool operator!=(RegisterId const& rhs) const noexcept {
+  constexpr bool operator!=(RegisterId rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  constexpr bool operator==(value_t const& rhs) const noexcept {
+  constexpr bool operator==(value_t rhs) const noexcept {
     return _value == rhs;
   }
 
-  constexpr bool operator!=(value_t const& rhs) const noexcept {
+  constexpr bool operator!=(value_t rhs) const noexcept {
     return _value != rhs;
   }
 

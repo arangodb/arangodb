@@ -27,10 +27,27 @@
 
 namespace arangodb::basics {
 
-void UnshackledMutex::lock() { _sem.acquire(); }
+void UnshackledMutex::lock() noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
+  auto func = +[](bool const* locked) noexcept { return !*locked; };
+  absl::MutexLock guard{&_mutex,
+                        absl::Condition{func, &std::as_const(_locked)}};
+  _locked = true;
+}
 
-void UnshackledMutex::unlock() { _sem.release(); }
+void UnshackledMutex::unlock() noexcept {
+  absl::MutexLock guard{&_mutex};
+  TRI_ASSERT(_locked);
+  _locked = false;
+}
 
-bool UnshackledMutex::try_lock() noexcept { return _sem.try_acquire(); }
+bool UnshackledMutex::try_lock() noexcept {
+  if (!_mutex.TryLock()) {
+    return false;
+  }
+  bool const was_locked = std::exchange(_locked, true);
+  _mutex.Unlock();
+  return !was_locked;
+}
 
 }  // namespace arangodb::basics

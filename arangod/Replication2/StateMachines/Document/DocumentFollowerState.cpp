@@ -21,20 +21,34 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentCore.h"
-#include "DocumentFollowerState.h"
-#include "DocumentLeaderState.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
+#include "Replication2/StateMachines/Document/DocumentCore.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+
+#include <Basics/Exceptions.h>
 #include <Futures/Future.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
-DocumentFollowerState::DocumentFollowerState(std::unique_ptr<DocumentCore> core)
-    : _core(std::move(core)){};
+DocumentFollowerState::DocumentFollowerState(
+    std::unique_ptr<DocumentCore> core,
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
+    : _transactionHandler(
+          handlersFactory->createTransactionHandler(core->getGid())),
+      _guardedData(std::move(core)) {}
+
+DocumentFollowerState::~DocumentFollowerState() = default;
 
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
-  return std::move(_core);
+  return _guardedData.doUnderLock([](auto& data) {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+    }
+    return std::move(data.core);
+  });
 }
 
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
@@ -45,7 +59,14 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
+  while (auto entry = ptr->next()) {
+    auto doc = entry->second;
+    auto res = _transactionHandler->applyEntry(doc);
+    if (res.fail()) {
+      return res;
+    }
+  }
   return {TRI_ERROR_NO_ERROR};
-};
+}
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

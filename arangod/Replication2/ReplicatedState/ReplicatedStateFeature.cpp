@@ -83,7 +83,11 @@ auto replicated_state::ReplicatedStateFeature::createMetricsObject(
 
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
     Server& server)
-    : ArangodFeature{server, *this} {}
+    : ArangodFeature{server, *this} {
+  setOptional(true);
+  startsAfter<ReplicatedLogFeature>();
+  onlyEnabledWith<ReplicatedLogFeature>();
+}
 
 auto replicated_state::ReplicatedStateAppFeature::createMetricsObject(
     std::string_view impl) -> std::shared_ptr<ReplicatedStateMetrics> {

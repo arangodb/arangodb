@@ -55,7 +55,7 @@ constexpr std::string_view kIncludeAllFieldsFieldName = "includeAllFields";
 constexpr std::string_view kTrackListPositionsFieldName = "trackListPositions";
 constexpr std::string_view kFieldName = "field";
 constexpr std::string_view kFieldsFieldName = "fields";
-constexpr std::string_view kSortCompressionFieldName = "primarySortCompression";
+constexpr std::string_view kCompressionFieldName = "compression";
 constexpr std::string_view kLocaleFieldName = "locale";
 constexpr std::string_view kOverrideFieldName = "override";
 constexpr std::string_view kPrimarySortFieldName = "primarySort";
@@ -340,12 +340,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       }
     }
   }
-  // for index there is no recursive struct and fields array is mandatory
-  auto field = slice.get(kFieldsFieldName);
-  if (!field.isArray() || field.isEmptyArray()) {
-    errorField = kFieldsFieldName;
-    return false;
-  }
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
   if (!InvertedIndexField::init(slice, _analyzerDefinitions, _version,
@@ -353,7 +347,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                 true, errorField)) {
     return false;
   }
-
   _hasNested = std::find_if(_fields.begin(), _fields.end(),
                             [](InvertedIndexField const& r) {
                               return !r._fields.empty();
@@ -819,6 +812,10 @@ bool InvertedIndexField::init(
       }
     }
   }
+  if (rootMode && _fields.empty() && !_includeAllFields) {
+    errorField = kFieldsFieldName;
+    return false;
+  }
   return true;
 }
 
@@ -873,7 +870,7 @@ bool IResearchInvertedIndexSort::toVelocyPack(
 
   {
     auto compression = columnCompressionToString(_sortCompression);
-    addStringRef(builder, kSortCompressionFieldName, compression);
+    addStringRef(builder, kCompressionFieldName, compression);
   }
 
   if (!_locale.isBogus()) {
@@ -898,15 +895,15 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
     return false;
   }
 
-  auto const compression = slice.get(kSortCompressionFieldName);
+  auto const compression = slice.get(kCompressionFieldName);
   if (!compression.isNone()) {
     if (!compression.isString()) {
-      error = kSortCompressionFieldName;
+      error = kCompressionFieldName;
       return false;
     }
     auto sort = columnCompressionFromString(compression.stringView());
     if (!sort) {
-      error = kSortCompressionFieldName;
+      error = kCompressionFieldName;
       return false;
     }
     _sortCompression = sort;

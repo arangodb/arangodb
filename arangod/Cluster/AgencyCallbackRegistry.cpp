@@ -87,6 +87,10 @@ Result AgencyCallbackRegistry::registerCallback(
     if (res.ok()) {
       _callbacksCount += 1;
       ++_totalCallbacksRegistered;
+
+      if (cb->needsInitialValue()) {
+        cb->refetchAndUpdate(true, false);
+      }
       return res;
     }
   } catch (std::exception const& e) {

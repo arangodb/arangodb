@@ -344,6 +344,9 @@ static void JS_ReadInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (auto slice = options.get("waitForApplied"); !slice.isNone()) {
       readOptions.waitForApplied = slice.extract<LogIndex>();
     }
+    if (auto slice = options.get("allowDirtyRead"); !slice.isNone()) {
+      readOptions.allowDirtyRead = slice.extract<bool>();
+    }
     if (auto slice = options.get("readFrom"); !slice.isNone()) {
       readOptions.readFrom = slice.extract<ParticipantId>();
     }

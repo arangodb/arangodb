@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/Helper/ModelChecker/Actors.h"
+
+#include <utility>
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/Predicates.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -127,13 +129,34 @@ auto DBServerActor::stepReplicatedLogLeaderCommit(
     }
     return 0;
   });
+
   auto const& plan = *agency.replicatedLog->plan;
+  auto const isCommitPossible = [&] {
+    std::size_t numberOfAvailableServers = 0;
+
+    for (auto [pid, flags] : plan.participantsConfig.participants) {
+      if (not flags.allowedInQuorum) {
+        continue;
+      }
+      if (not agency.health.notIsFailed(pid)) {
+        continue;
+      }
+      numberOfAvailableServers += 1;
+    }
+
+    return numberOfAvailableServers >=
+           plan.participantsConfig.config.effectiveWriteConcern;
+  };
+
   if (plan.currentTerm) {
     auto const& term = *plan.currentTerm;
     if (term.leader && term.leader->serverId == name) {
       if (plan.participantsConfig.generation != committedGeneration) {
-        return DBServerCommitConfigAction{
-            name, plan.participantsConfig.generation, term.term};
+        bool const isPossible = isCommitPossible();
+        if (isPossible) {
+          return DBServerCommitConfigAction{
+              name, plan.participantsConfig.generation, term.term};
+        }
       }
     }
   }
@@ -340,7 +363,8 @@ auto ReplaceSpecificLogServerActor::step(AgencyState const& agency) const
   return {ReplaceServerTargetLog{oldServer, newServer}};
 }
 
-SetLeaderActor::SetLeaderActor(ParticipantId leader) : newLeader(leader) {}
+SetLeaderActor::SetLeaderActor(ParticipantId leader)
+    : newLeader(std::move(leader)) {}
 
 auto SetLeaderActor::step(AgencyState const& agency) const
     -> std::vector<AgencyTransition> {
@@ -373,4 +397,47 @@ auto SetBothWriteConcernActor::step(AgencyState const& agency) const
   return {SetBothWriteConcernAction(newWriteConcern, newSoftWriteConcern)};
 }
 
+auto ModifySoftWCMultipleStepsActor::expand(AgencyState const& s,
+                                            InternalState const& i)
+    -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>> {
+  if (!s.replicatedLog) {
+    return {};
+  }
+  if (i.state == State::RESET) {
+    return {};
+  }
+
+  std::vector<AgencyTransition> actions;
+  State nextState;
+  if (i.state == State::INIT) {
+    actions = {SetSoftWriteConcernAction(setInvalidWC)};
+    nextState = State::SET_TO_INVALID;
+  } else if (i.state == State::SET_TO_INVALID) {
+    actions = {SetSoftWriteConcernAction(resetValidWC)};
+    nextState = State::RESET;
+  }
+
+  auto result =
+      std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>{};
+
+  for (auto& action : actions) {
+    auto newState = s;
+    std::visit([&](auto& action) { action.apply(newState); }, action);
+    result.emplace_back(std::move(action), std::move(newState),
+                        InternalState{.state = nextState});
+  }
+
+  return result;
+}
+ModifySoftWCMultipleStepsActor::ModifySoftWCMultipleStepsActor(
+    size_t setInvalidWc, size_t resetValidWc)
+    : setInvalidWC(setInvalidWc), resetValidWC(resetValidWc) {}
 }  // namespace arangodb::test
+
+SetWaitForSyncActor::SetWaitForSyncActor(bool newWaitForSync)
+    : newWaitForSync(newWaitForSync) {}
+
+auto SetWaitForSyncActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetWaitForSyncAction(newWaitForSync)};
+}
