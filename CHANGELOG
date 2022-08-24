@@ -1,6 +1,45 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fix comparison of JSON schemas on DB servers after there was a schema change
+  via a coordinator: the schema comparison previously did not take into account
+  that some ArangoDB versions store an internal `{"type":"json"}` attribute in
+  the schema, and some don't. Thus two identical schemas could compare
+  differently.
+  The correct schema version was always applied and used, and validation of
+  documents against the schema was also not affected. However, because two
+  schemas could compare unequal, this could have caused unnecessary repeated
+  work for background maintenance threads.
+
+* Removed transitive node dependencies is-wsl and media-typer.
+
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
+* Fixed SEARCH-328 fixed cookie key.
+
+* Make graph search case-insensitive (fixes BTS-882).
+
+* Fixed SEARCH-329 fixed removes with nested documents.
+
+* Fixed parsing on NOT operator in nested query filter.
+
+* Fixed SEARCH-346. If index creation is aborted due to existing same index new
+  index is properly dropped if it was already instantiated.
+
+* Updated ArangoDB Starter to 0.15.5-preview-2.
+
+* Add progress reporting to RocksDB WAL recovery, in case there are many WAL
+  files to recover.
+
+* Updated arangosync to v2.12.0-preview-9.
+
+
+v3.10.0-alpha.1 (2022-08-17)
+----------------------------
+
+* Updated arangosync to v2.12.0-preview-6.
+
 * Updated warning messages raised for non accepted query OPTIONS, distinguishing
   between when the OPTIONS attribute is correct, but the value is in incorrect
   format, and when the OPTIONS attribute itself is incorrect.
@@ -22,8 +61,6 @@ v3.10.0 (XXXX-XX-XX)
   this collection", as they used to do before 3.8.
 
 * Updated ArangoDB Starter to 0.15.5-preview-1.
-
-* Updated arangosync to v2.12.0-preview-4.
 
 * Improve error handling for passing wrong transaction ids / cursor ids / pregel
   job ids to request forwarding. Also prevent the error "transaction id not

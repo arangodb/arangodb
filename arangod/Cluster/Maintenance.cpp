@@ -48,6 +48,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/Validators.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Compare.h>
@@ -94,7 +95,7 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
-  static std::array<std::string, 6> const compareProperties{
+  std::array<std::string_view, 6> const compareProperties{
       StaticStrings::WaitForSyncString,
       StaticStrings::Schema,
       StaticStrings::CacheEnabled,
@@ -106,9 +107,25 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackObjectBuilder b(result.get());
     for (auto const& property : compareProperties) {
       auto const& planned = first.get(property);
-      if (!basics::VelocyPackHelper::equal(planned, second.get(property),
-                                           false) &&
-          !planned.isNone()) {  // Register any change
+      if (planned.isNone()) {
+        continue;
+      }
+
+      bool isSame = true;
+      // Register any change
+      if (property == StaticStrings::Schema) {
+        // special handling for schemas is required here, because the
+        // format for schemas seems to have changed, and we need to
+        // compare them in a more fuzzy way
+        if (!ValidatorBase::isSame(planned, second.get(property))) {
+          isSame = false;
+        }
+      } else if (!basics::VelocyPackHelper::equal(planned, second.get(property),
+                                                  false)) {
+        isSame = false;
+      }
+
+      if (!isSame) {
         result->add(property, planned);
       }
     }

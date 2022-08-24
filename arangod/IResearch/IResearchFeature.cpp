@@ -469,7 +469,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
-    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
     dataPath += "-";
     dataPath += std::to_string(view->id().id());
 
@@ -587,7 +587,8 @@ void registerSingleFactory(
     auto& engine = server.getFeature<T>();
     auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
     Result res = engineFactory.emplace(
-        std::string{arangodb::iresearch::StaticStrings::ViewType}, factory);
+        std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
+        factory);
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
@@ -608,7 +609,8 @@ void registerFunctions(aql::AqlFunctionFeature& functions) {
        aql::Function::makeFlags(aql::Function::Flags::Deterministic,
                                 aql::Function::Flags::Cacheable,
                                 aql::Function::Flags::CanRunOnDBServerCluster,
-                                aql::Function::Flags::CanRunOnDBServerOneShard),
+                                aql::Function::Flags::CanRunOnDBServerOneShard,
+                                aql::Function::Flags::NoEval),
        &offsetInfoFunc});
 }
 
@@ -727,20 +729,25 @@ void registerViewFactory(ArangodServer& server) {
   // DB server in custer or single-server
   auto& viewTypes = server.getFeature<ViewTypesFeature>();
   if (ServerState::instance()->isCoordinator()) {
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
-                          IResearchViewCoordinator::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewArangoSearchType,
+        IResearchViewCoordinator::factory());
     check();
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::SearchType,
-                          Search::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewSearchAliasType,
+        Search::factory());
   } else if (ServerState::instance()->isSingleServer()) {
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
-                          IResearchView::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewArangoSearchType,
+        IResearchView::factory());
     check();
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::SearchType,
-                          Search::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewSearchAliasType,
+        Search::factory());
   } else if (ServerState::instance()->isDBServer()) {
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
-                          IResearchView::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewArangoSearchType,
+        IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
                                    "Invalid role for view creation.");
@@ -764,10 +771,10 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
     return {TRI_ERROR_INTERNAL};
   }
 
-  if (view->type() == ViewType::kSearch) {
+  if (view->type() == ViewType::kSearchAlias) {
     auto& impl = basics::downCast<Search>(*view);
     return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
-  } else if (view->type() == ViewType::kView) {
+  } else if (view->type() == ViewType::kArangoSearch) {
     auto& impl = basics::downCast<IResearchView>(*view);
     return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
   }
@@ -863,11 +870,13 @@ bool isScorer(aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
 
-#ifdef USE_ENTERPRISE
 bool isOffsetInfo(aql::Function const& func) noexcept {
+#ifdef USE_ENTERPRISE
   return func.implementation == &offsetInfoFunc;
-}
+#else
+  return false;
 #endif
+}
 
 IResearchFeature::IResearchFeature(Server& server)
     : ArangodFeature{server, *this},

@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
@@ -188,12 +189,13 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility, bool isOldMangling,
+    std::pair<bool, bool> volatility,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit)
+    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit,
+    iresearch::SearchMeta const* meta)
     : _searchDocOutReg{searchDocRegister},
       _scoreRegisters{std::move(scoreRegisters)},
       _scoreRegistersCount{_scoreRegisters.size()},
@@ -205,18 +207,18 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _plan{plan},
       _outVariable{outVariable},
       _filterCondition{filterCondition},
-      _volatileSort{volatility.second},
-      // `_volatileSort` implies `_volatileFilter`
-      _volatileFilter{_volatileSort || volatility.first},
-      _isOldMangling(isOldMangling),
       _varInfoMap{varInfoMap},
-      _depth{depth},
       _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
       _countApproximate{countApproximate},
-      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
       _filterOptimization{filterOptimization},
       _scorersSort{std::move(scorersSort)},
-      _scorersSortLimit{scorersSortLimit} {
+      _scorersSortLimit{scorersSortLimit},
+      _meta{meta},
+      _depth{depth},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
+      _volatileSort{volatility.second},
+      // `_volatileSort` implies `_volatileFilter`
+      _volatileFilter{_volatileSort || volatility.first} {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
@@ -286,7 +288,7 @@ bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
 }
 
 bool IResearchViewExecutorInfos::isOldMangling() const noexcept {
-  return _isOldMangling;
+  return _meta == nullptr;
 }
 
 const std::pair<const arangodb::iresearch::IResearchSortBase*, size_t>&
@@ -544,6 +546,22 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
     auto const* key = &infos.outVariable();
     _filterCookie = &ensureFilterCookie(_trx, key).filter;
   }
+
+  if (auto const* meta = infos.meta(); meta != nullptr) {
+    auto const& vocbase = _trx.vocbase();
+    auto const& analyzerFeature =
+        vocbase.server().getFeature<IResearchAnalyzerFeature>();
+    TRI_ASSERT(_trx.state());
+    auto const& revision = _trx.state()->analyzersRevision();
+    auto getAnalyzer = [&](std::string_view shortName) {
+      auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
+      if (!analyzer) {
+        return emptyAnalyzer();
+      }
+      return FieldMeta::Analyzer{std::move(analyzer), std::string{shortName}};
+    };
+    _provider = meta->createProvider(getAnalyzer);
+  }
 }
 
 template<typename Impl, typename ExecutionTraits>
@@ -691,15 +709,6 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
     }
     IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
 
-    if constexpr (ExecutionTraits::EmitSearchDoc) {
-      auto reg = this->infos().searchDocIdRegId();
-      TRI_ASSERT(reg.isValid());
-
-      this->writeSearchDoc(
-          ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()),
-          reg);
-    }
-
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
       break;
     } else {
@@ -732,14 +741,16 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
-    FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-    // if (!infos().isOldMangling()) {
-    //   TODO(SEARCH-342)
-    //    map[field_path, full_analyzer_name] stored in Coordinator view
-    //    on DBServer create from it map[field_path, analyzer*]
-    //    and here crete local AnalyzerProvider functor
-    // }
-    FilterContext const filterCtx{.contextAnalyzer = analyzer};
+    FieldMeta::Analyzer const identity{IResearchAnalyzerFeature::identity()};
+    AnalyzerProvider* fieldAnalyzerProvider = nullptr;
+    auto const* contextAnalyzer = &identity;
+    if (!infos().isOldMangling()) {
+      fieldAnalyzerProvider = &_provider;
+      contextAnalyzer = &emptyAnalyzer();
+    }
+    FilterContext const filterCtx{
+        .fieldAnalyzerProvider = fieldAnalyzerProvider,
+        .contextAnalyzer = *contextAnalyzer};
 
     auto const rv = FilterFactory::filter(&root, queryCtx, filterCtx,
                                           infos().filterCondition());
@@ -861,6 +872,14 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     ReadContext& ctx, IndexReadBufferEntry bufferEntry,
     LocalDocumentId const& documentId, LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
+
+  if constexpr (ExecutionTraits::EmitSearchDoc) {
+    auto reg = this->infos().searchDocIdRegId();
+    TRI_ASSERT(reg.isValid());
+
+    this->writeSearchDoc(
+        ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()), reg);
+  }
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
     if (ADB_UNLIKELY(
@@ -894,7 +913,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     }
   } else if constexpr (Traits::MaterializeType ==
                            MaterializeType::NotMaterialize &&
-                       !Traits::Ordered) {
+                       !Traits::Ordered && !Traits::EmitSearchDoc) {
     ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document

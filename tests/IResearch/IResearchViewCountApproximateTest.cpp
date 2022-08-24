@@ -89,7 +89,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
            \"storedValues\": [] \
         }");
       _view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-          vocbase().createView(createJson->slice()));
+          vocbase().createView(createJson->slice(), false));
       EXPECT_TRUE(_view);
 
       // add links to collections
@@ -245,7 +245,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -552,11 +552,12 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
-      viewNode.filterCondition(), {false, false}, true,
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
+      nullptr);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -632,11 +633,12 @@ TEST_F(IResearchViewCountApproximateTest,
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
-      viewNode.filterCondition(), {false, false}, true,
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
+      nullptr);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -714,11 +716,12 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
-      viewNode.filterCondition(), {false, false}, true,
+      viewNode.filterCondition(), {false, false},
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Cost,
-      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0,
+      nullptr);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>

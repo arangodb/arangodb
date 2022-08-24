@@ -465,7 +465,7 @@ class ExecutionNode {
   RegIdSet const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
-  bool isVarUsedLater(Variable const* variable) const;
+  bool isVarUsedLater(Variable const* variable) const noexcept;
 
   /// @brief whether or not the node is in an inner loop
   bool isInInnerLoop() const;
