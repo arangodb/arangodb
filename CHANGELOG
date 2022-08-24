@@ -1,6 +1,8 @@
 devel
 -----
 
+* Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
+
 * Make graph search case-insensitive (fixes BTS-882).
 
 * BTS-428: Added function DATE_ISOWEEKYEAR that retrieves the number of the
