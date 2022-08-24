@@ -1,6 +1,9 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
 * Make graph search case-insensitive (fixes BTS-882).
 
 * Improve error handling for passing wrong transaction ids / cursor ids / pregel
