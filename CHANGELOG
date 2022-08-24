@@ -1,6 +1,31 @@
 devel
 -----
 
+* Add progress reporting to RocksDB WAL recovery, in case there are many WAL
+  files to recover.
+
+* Updated ArangoDB Starter to 0.15.5-preview-2.
+
+* Fixed BTS-918 (incorrectly navigating back 1 level in history when a modal-dialog element is present).
+
+* Updated arangosync to v2.12.0-preview-9.
+
+* Disallowed index creation that covers fields in which the field's name starts
+  or ends with `:` for single server or cluster when the instance is a
+  coordinator or single server. This validation only happens for index creation, 
+  so already existing indexes that might use such field names will remain as they are.
+
+* Updated arangosync to v2.12.0-preview-6.
+
+* When using `SHORTEST_PATH`, `K_SHORTEST_PATHS`, `ALL_SHORTEST_PATHS`, or
+  `K_PATHS` in an AQL Query and the query itself produced warnings during
+  execution, the type has been wrongly reported. It reported always with
+  `SHORTEST_PATH` and not the specific used one.
+
+* Updated warning messages raised for non accepted query OPTIONS,
+  distinguishing between when the OPTIONS attribute is correct, but the value
+  is in incorrect format, and when the OPTIONS attribute itself is incorrect.
+
 * Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
   same collection. The requirements were:
   - cluster deployment

@@ -602,3 +602,5 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
     )
   endif()
 endforeach()
+
+add_subdirectory(sepp)

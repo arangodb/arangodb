@@ -326,7 +326,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
-    bool defaultToRefactor = false) {
+    arangodb::graph::PathType::Type type, bool defaultToRefactor = false) {
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -360,9 +360,10 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
         } else {
-          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
-                                                "SHORTEST_PATH", name.data(),
-                                                name.size());
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name.data(),
+              name.size());
         }
       }
     }
@@ -1414,7 +1415,8 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* graph = node->getMember(3);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(4));
+      createShortestPathOptions(getAst(), direction, node->getMember(4),
+                                arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
   auto spNode =
@@ -1466,7 +1468,7 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   bool defaultToRefactor = type == arangodb::graph::PathType::Type::KPaths;
 
   auto options = createShortestPathOptions(
-      getAst(), direction, node->getMember(5), defaultToRefactor);
+      getAst(), direction, node->getMember(5), type, defaultToRefactor);
 
   // First create the node
   auto spNode = new EnumeratePathsNode(

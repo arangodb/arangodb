@@ -189,6 +189,11 @@ struct FieldMeta {
 #endif
 };
 
+inline FieldMeta::Analyzer const& emptyAnalyzer() noexcept {
+  static FieldMeta::Analyzer const empty{{}, {}};
+  return empty;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief metadata describing how to process a field in a collection
 ////////////////////////////////////////////////////////////////////////////////
