@@ -124,7 +124,7 @@ struct Task {
         << T::typeName()
         << " pool: " << ThreadGroupStats{async->stats(T::threadGroup())};
 
-    if (!asyncLink->terminationRequested()) {
+    if (!asyncLink->empty()) {
       async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
     }
   }
@@ -244,19 +244,8 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   }
   return {};
 }
+
 }  // namespace
-
-AsyncLinkHandle::AsyncLinkHandle(IResearchDataStore* link) : _link{link} {}
-
-AsyncLinkHandle::~AsyncLinkHandle() = default;
-
-void AsyncLinkHandle::reset() noexcept {
-  // mark long-running async jobs for termination
-  _asyncTerminate.store(true, std::memory_order_release);
-  // the data-store is being deallocated, link use is no longer valid
-  // (wait for all the view users to finish)
-  _link.reset();
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct MaintenanceState
@@ -330,13 +319,6 @@ void CommitTask::finalize(IResearchDataStore& link,
 void CommitTask::operator()() {
   const char runId = 0;
   state->pendingCommits.fetch_sub(1, std::memory_order_release);
-
-  if (asyncLink->terminationRequested()) {
-    LOG_TOPIC("eba1a", DEBUG, TOPIC)
-        << "termination requested while committing the link '" << id
-        << "', runId '" << size_t(&runId) << "'";
-    return;
-  }
 
   auto linkLock = asyncLink->lock();
   if (!linkLock) {
@@ -439,13 +421,6 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 void ConsolidationTask::operator()() {
   const char runId = 0;
   state->pendingConsolidations.fetch_sub(1, std::memory_order_release);
-
-  if (asyncLink->terminationRequested()) {
-    LOG_TOPIC("eba2a", DEBUG, TOPIC)
-        << "termination requested while consolidating the link '" << id
-        << "', runId '" << size_t(&runId) << "'";
-    return;
-  }
 
   auto linkLock = asyncLink->lock();
   if (!linkLock) {
@@ -622,9 +597,7 @@ void IResearchDataStore::scheduleConsolidation(
   task.async = _asyncFeature;
   task.id = id();
   task.state = _maintenanceState;
-  task.progress = [link = _asyncSelf.get()] {
-    return !link->terminationRequested();
-  };
+  task.progress = [link = _asyncSelf.get()] { return !link->empty(); };
 
   _maintenanceState->pendingConsolidations.fetch_add(1,
                                                      std::memory_order_release);
