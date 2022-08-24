@@ -289,7 +289,7 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   constexpr int BUFFER_SIZE = 16384;
   char buffer[BUFFER_SIZE];
   while (!_hasError) {
-    ssize_t n = fd->read(buffer, sizeof(buffer));
+    auto n = fd->read(buffer, sizeof(buffer));
 
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -430,7 +430,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   char buffer[BUFFER_SIZE];
 
   while (!_hasError) {
-    ssize_t n = fd->read(buffer, sizeof(buffer));
+    auto n = fd->read(buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
@@ -521,7 +521,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     }
 
     // read directly into string buffer
-    ssize_t n = fd->read(_outputBuffer.end(), BUFFER_SIZE - 1);
+    auto n = fd->read(_outputBuffer.end(), BUFFER_SIZE - 1);
 
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -664,7 +664,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
   }
 
   // read into temporary buffer
-  ssize_t n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
+  auto n = fd->read(tmpBuffer.end(), BUFFER_SIZE - 1);
   if (n < 0) {
     _errorMessages.emplace_back(TRI_LAST_ERROR_STR);
     return false;

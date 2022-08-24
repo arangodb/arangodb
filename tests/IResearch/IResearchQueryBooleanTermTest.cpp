@@ -1470,12 +1470,12 @@ class QueryBooleanTerm : public QueryTest {
 
 class QueryBooleanTermView : public QueryBooleanTerm {
  protected:
-  ViewType type() const final { return arangodb::ViewType::kView; }
+  ViewType type() const final { return arangodb::ViewType::kArangoSearch; }
 };
 
 class QueryBooleanTermSearch : public QueryBooleanTerm {
  protected:
-  ViewType type() const final { return arangodb::ViewType::kSearch; }
+  ViewType type() const final { return arangodb::ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryBooleanTermView, Test) {
