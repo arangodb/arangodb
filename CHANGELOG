@@ -1,5 +1,6 @@
 devel
 -----
+* Fixed BTS-951 (Sub queries with views lead to the the server crash) 
 
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
