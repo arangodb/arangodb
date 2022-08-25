@@ -4,6 +4,23 @@ devel
 * Added integration tests for `--log.escape-control-chars` and 
  `--log.escape-unicode-chars`.
 
+* Fix comparison of JSON schemas on DB servers after there was a schema change
+  via a coordinator: the schema comparison previously did not take into account
+  that some ArangoDB versions store an internal `{"type":"json"}` attribute in
+  the schema, and some don't. Thus two identical schemas could compare 
+  differently.
+  The correct schema version was always applied and used, and validation of
+  documents against the schema was also not affected. However, because two
+  schemas could compare unequal, this could have caused unnecessary repeated
+  work for background maintenance threads.
+
+* Removed transitive node dependencies.
+
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
+* Make graph search case-insensitive (fixes BTS-882).
+
 * BTS-428: Added function DATE_ISOWEEKYEAR that retrieves the number of the
   week counting from when the year started in ISO calendar and also the year
   it's in.

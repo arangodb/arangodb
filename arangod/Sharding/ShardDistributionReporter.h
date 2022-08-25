@@ -28,6 +28,9 @@
 #include "Network/Methods.h"
 
 #include <queue>
+#include <string_view>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
