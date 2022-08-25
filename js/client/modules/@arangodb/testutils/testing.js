@@ -208,7 +208,7 @@ const optionsDefaults = {
   'sniffDevice': undefined,
   'sniffProgram': undefined,
   'skipLogAnalysis': true,
-  'maxLogFileSize': 500000, // 500k
+  'maxLogFileSize': 500 * 1024,
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
