@@ -35,7 +35,7 @@ const {aql, errors} = require("@arangodb");
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
 const {getCompactStatsNodes, TraversalBlock} = require("@arangodb/testutils/aql-profiler-test-helper");
-
+const isCluster = require("internal").isCluster();
 
 /*
   TODO:
@@ -2160,6 +2160,39 @@ function testOpenDiamondKShortestPathEnabledWeightCheckLimit1Gen(testGraph, gene
 
     checkResIsValidKShortestPathListWeights(allowedPaths, actualPath, limit);
   });
+}
+
+function testSmallCircleClusterOnlyWithInvalidStartNode(testGraph) {
+  if (isCluster) {
+    assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+    try {
+      const query = aql`
+        FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A') + 'invalidNode'} ${testGraph.edgeCollectionName()}
+        RETURN v
+      `;
+      db._query(query);
+      fail();
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+    }
+  }
+}
+
+
+function testSmallCircleClusterOnlyWithoutWithClause(testGraph) {
+  if (isCluster) {
+    assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+    try {
+      const query = aql`
+        FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} ${testGraph.edgeCollectionName()}
+        RETURN v
+      `;
+      db._query(query);
+      fail();
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+    }
+  }
 }
 
 function testSmallCircleDfsUniqueVerticesPath(testGraph) {
@@ -6384,6 +6417,8 @@ const testsByGraph = {
     testOpenDiamondWeightedUniqueEdgesUniqueNoneVerticesGlobalEnableWeights
   },
   smallCircle: {
+    testSmallCircleClusterOnlyWithInvalidStartNode,
+    testSmallCircleClusterOnlyWithoutWithClause,
     testSmallCircleDfsUniqueVerticesPath,
     testSmallCircleDfsUniqueVerticesNone,
     testSmallCircleDfsUniqueEdgesPath,

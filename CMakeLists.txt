@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.21)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -25,13 +25,6 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
 endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
-
-message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
-  set(BUILDING_FOR_ARM64 ON)
-else()
-  set(BUILDING_FOR_ARM64 OFF)
-endif()
 
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -277,6 +270,8 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
+set(BUILD_SHARED_LIBS OFF)
+
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -310,11 +305,6 @@ endif ()
 # enable Enterprise Edition features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
-
-if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  add_subdirectory(enterprise)
-endif ()
 
 # we want the following definitions to be in effect for both rocksdb and arangodb
 add_definitions("-DNROCKSDB_THREAD_STATUS")
@@ -362,11 +352,7 @@ set(INSTALL_CONFIGFILES_LIST)
 # update files containing VERSION information
 # ------------------------------------------------------------------------------
 
-if (${CMAKE_MAJOR_VERSION} EQUAL 2)
-  set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
-else ()
-  string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-endif ()
+string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -598,7 +584,16 @@ set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ fl
 set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
 set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 
+include(CheckCompilerVersion)
+
+CheckCompilerVersion(
+  11.2 # GCC
+  14.0 # Clang
+  19.32 # MSVC
+)
+
 if (MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
   # Increase the reserved stack size for all threads to 4MB
@@ -611,6 +606,7 @@ if (MSVC)
   endif()
 endif ()
 
+# FIXME: refactor/cleanup check below
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
     message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")
@@ -720,6 +716,7 @@ endif ()
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
+set(BUILDING_FOR_ARM64 OFF)
 if (NOT WINDOWS)
   include(TargetArch)
 
@@ -734,6 +731,12 @@ if (NOT WINDOWS)
     set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
   endif ()
 
+  if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL CMAKE_TARGET_ARCHITECTURE_CODE)
+    # Probably we are cross-compiling or CMAKE_SYSTEM_PROCESSOR is an empty string.
+    message(WARNING "Changing CMAKE_SYSTEM_PROCESSOR from ${CMAKE_SYSTEM_PROCESSOR} to ${CMAKE_TARGET_ARCHITECTURE_CODE}")
+    set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_TARGET_ARCHITECTURE_CODE}")
+  endif()
+
   include(VcMacros)
 
   # Detect target architecture properties. This honors
@@ -747,6 +750,14 @@ if (NOT WINDOWS)
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+  set(BUILDING_FOR_ARM64 ON)
+else()
+  set(BUILDING_FOR_ARM64 OFF)
+endif()
+
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
 
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
@@ -1269,8 +1280,6 @@ add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 # RocksDB
 # ------------------------------------------------------------------------------
 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
-
 add_dependencies(rocksdb snappy)
 
 if (USE_JEMALLOC)
@@ -1412,41 +1421,6 @@ if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif ()
 
-option(BUILD_SEPP "Build SEPP (Storage Engine Performance Prediction)" OFF)
-
-if (BUILD_SEPP)
-  set(ARANGODB_SEPP_SOURCES
-    tests/sepp/main.cpp
-    tests/sepp/Execution.cpp
-    tests/sepp/ExecutionThread.cpp
-    tests/sepp/Runner.cpp
-    tests/sepp/RocksDBOptions.cpp
-    tests/sepp/Server.cpp
-    tests/sepp/ValueGenerators/RandomStringGenerator.cpp
-    tests/sepp/Workloads/GetByPrimaryKey.cpp
-    tests/sepp/Workloads/InsertDocuments.cpp
-    tests/sepp/Workloads/IterateDocuments.cpp
-  )
-
-  add_executable(
-    sepp
-    ${ARANGODB_SEPP_SOURCES}
-  )
-
-  target_include_directories(sepp PRIVATE
-    ${PROJECT_SOURCE_DIR}/arangod
-    ${PROJECT_SOURCE_DIR}/tests/sepp
-  )
-
-  target_link_libraries(sepp
-    arango_rocksdb
-    arangoserver
-    rocksdb
-    snappy
-    boost_boost
-  )
-endif()
-
 add_dependencies(arangobench   zlibstatic)
 if (USE_ENTERPRISE)
   add_dependencies(arangobackup  zlibstatic)
@@ -1517,3 +1491,8 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 add_custom_target(arangodb
         DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
+
+if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
+  add_subdirectory(enterprise)
+endif ()

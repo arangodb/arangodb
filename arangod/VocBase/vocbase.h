@@ -309,7 +309,7 @@ struct TRI_vocbase_t {
 
   /// @brief creates a new view from parameter set
   std::shared_ptr<arangodb::LogicalView> createView(
-      arangodb::velocypack::Slice parameters);
+      arangodb::velocypack::Slice parameters, bool isUserRequest);
 
   /// @brief drops a view
   arangodb::Result dropView(arangodb::DataSourceId cid, bool allowDropSystem);

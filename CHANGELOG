@@ -1,6 +1,82 @@
 devel
 -----
 
+* Disable optimization rule to avoid crash (BTS-951).
+
+* Fix comparison of JSON schemas on DB servers after there was a schema change
+  via a coordinator: the schema comparison previously did not take into account
+  that some ArangoDB versions store an internal `{"type":"json"}` attribute in
+  the schema, and some don't. Thus two identical schemas could compare 
+  differently.
+  The correct schema version was always applied and used, and validation of
+  documents against the schema was also not affected. However, because two
+  schemas could compare unequal, this could have caused unnecessary repeated
+  work for background maintenance threads.
+
+* Removed transitive node dependencies.
+
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
+* Make graph search case-insensitive (fixes BTS-882).
+
+* BTS-428: Added function DATE_ISOWEEKYEAR that retrieves the number of the
+  week counting from when the year started in ISO calendar and also the year
+  it's in.
+
+* Added handling of requests with Transfer-Encodign chunked, which is 
+  not implemented, so returns code HTTP code 501.
+
+* Add progress reporting to RocksDB WAL recovery, in case there are many WAL
+  files to recover.
+
+* Updated ArangoDB Starter to 0.15.5-preview-2.
+
+* Fixed BTS-918 (incorrectly navigating back 1 level in history when a modal-dialog element is present).
+
+* Updated arangosync to v2.12.0-preview-9.
+
+* Disallowed index creation that covers fields in which the field's name starts
+  or ends with `:` for single server or cluster when the instance is a
+  coordinator or single server. This validation only happens for index creation, 
+  so already existing indexes that might use such field names will remain as they are.
+
+* Updated arangosync to v2.12.0-preview-6.
+
+* When using `SHORTEST_PATH`, `K_SHORTEST_PATHS`, `ALL_SHORTEST_PATHS`, or
+  `K_PATHS` in an AQL Query and the query itself produced warnings during
+  execution, the type has been wrongly reported. It reported always with
+  `SHORTEST_PATH` and not the specific used one.
+
+* Updated warning messages raised for non accepted query OPTIONS,
+  distinguishing between when the OPTIONS attribute is correct, but the value
+  is in incorrect format, and when the OPTIONS attribute itself is incorrect.
+
+* Since ArangoDB 3.8 there was a loophole for creating duplicate keys in the
+  same collection. The requirements were:
+  - cluster deployment
+  - needs at least two collections (source and target), and the target
+    collection must have more than one shard and must use a custom shard key.
+  - inserting documents into the target collection must have happened via an
+    AQL query like `FOR doc IN source INSERT doc INTO target`.
+  In this particular combination, the document keys (`_key` attribute) from 
+  the source collection were used as-is for insertion into the target 
+  collection. However, as the target collection is not sharded by `_key` and
+  uses a custom shard key, it is actually not allowed to specify user-defined 
+  values for `_key`. That check was missing since 3.8 in this particular
+  combination and has now been added back. AQL queries attempting to insert 
+  documents into a collection like this will now fail with the error "must not
+  specifiy _key for this collection", as they used to do before 3.8.
+
+* Updated ArangoDB Starter to 0.15.5-preview-1.
+
+* Updated arangosync to v2.12.0-preview-4.
+
+* Improve error handling for passing wrong transaction ids / cursor ids / pregel
+  job ids to request forwarding. Also prevent the error "transaction id not
+  found" in cases when request forwarding was tried to a coordinator that was
+  recently restarted.
+
 * Added startup option `--rocksdb.verify-sst` to validate sst files already 
   present in the database directory on startup. Default: false.
 
@@ -16,6 +92,9 @@ devel
   highliting.
 
 * Updated Rclone to v1.59.0.
+
+* Add serverId parameter to _admin/log/level. Allows you to forward the request to
+  other servers.
 
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
 

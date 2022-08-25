@@ -47,14 +47,30 @@ class ViewSnapshotCookie final : public ViewSnapshotImpl,
   bool compute(bool sync, std::string_view name);
 
  private:
-  std::vector<irs::directory_reader> _readers;
+  [[nodiscard]] irs::sub_reader const& operator[](
+      std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return *(_segments[i].second);
+  }
+
+  [[nodiscard]] std::size_t size() const noexcept final {
+    return _segments.size();
+  }
+
+  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i].first;
+  }
+
   // prevent data-store deallocation (lock @ AsyncSelf)
-  Links _links;
+  Links _links;  // should be first
+  std::vector<irs::directory_reader> _readers;
+  Segments _segments;
 };
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
     : _links{std::move(links)} {
-  _readers.reserve(links.size());
+  _readers.reserve(_links.size());
 }
 
 void ViewSnapshotCookie::clear() noexcept {
@@ -122,12 +138,21 @@ ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
   return basics::downCast<ViewSnapshotCookie>(state.cookie(key));
 }
 
-FilterCookie* getFilterCookie(transaction::Methods& trx,
-                              void const* key) noexcept {
+FilterCookie& ensureFilterCookie(transaction::Methods& trx, void const* key) {
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
-  return basics::downCast<FilterCookie>(state.cookie(key));
+
+  if (auto* cookie = state.cookie(key); !cookie) {
+    auto filterCookie = std::make_unique<FilterCookie>();
+    auto* p = filterCookie.get();
+    [[maybe_unused]] auto const old =
+        state.cookie(key, std::move(filterCookie));
+    TRI_ASSERT(!old);
+    return *p;
+  } else {
+    return *basics::downCast<FilterCookie>(cookie);
+  }
 }
 
 void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
@@ -139,12 +164,6 @@ void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                bool sync, std::string_view name,
                                ViewSnapshot::Links&& links) noexcept {
-  if (links.empty()) {
-    // cannot be a const, we can call syncViewSnapshot on it,
-    // that should do nothing but in generally we cannot prove it
-    static ViewSnapshotCookie empty;
-    return &empty;  // TODO(MBkkt) Maybe nullptr?
-  }
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
   TRI_ASSERT(state.cookie(key) == nullptr);

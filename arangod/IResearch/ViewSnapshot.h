@@ -49,6 +49,7 @@ namespace iresearch {
 class ViewSnapshot : public irs::index_reader {
  public:
   using Links = std::vector<LinkLock>;
+  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
@@ -58,11 +59,8 @@ using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
 
 class ViewSnapshotImpl : public ViewSnapshot {
  protected:
-  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
-
   std::uint64_t _live_docs_count = 0;
   std::uint64_t _docs_count = 0;
-  Segments _segments;
 
  private:
   [[nodiscard]] std::uint64_t live_docs_count() const noexcept final {
@@ -71,21 +69,6 @@ class ViewSnapshotImpl : public ViewSnapshot {
 
   [[nodiscard]] std::uint64_t docs_count() const noexcept final {
     return _docs_count;
-  }
-
-  [[nodiscard]] irs::sub_reader const& operator[](
-      std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return *(_segments[i].second);
-  }
-
-  [[nodiscard]] std::size_t size() const noexcept final {
-    return _segments.size();
-  }
-
-  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return _segments[i].first;
   }
 };
 
@@ -102,6 +85,24 @@ class ViewSnapshotView final : public ViewSnapshotImpl {
   ViewSnapshotView(
       const ViewSnapshot& rhs,
       containers::FlatHashSet<DataSourceId> const& collections) noexcept;
+
+ private:
+  [[nodiscard]] irs::sub_reader const& operator[](
+      std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return *(_segments[i].second);
+  }
+
+  [[nodiscard]] std::size_t size() const noexcept final {
+    return _segments.size();
+  }
+
+  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i].first;
+  }
+
+  Segments _segments;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,8 +146,7 @@ struct FilterCookie : TransactionState::Cookie {
   irs::filter::prepared const* filter{};
 };
 
-FilterCookie* getFilterCookie(transaction::Methods& trx,
-                              void const* key) noexcept;
+FilterCookie& ensureFilterCookie(transaction::Methods& trx, void const* key);
 
 }  // namespace iresearch
 }  // namespace arangodb

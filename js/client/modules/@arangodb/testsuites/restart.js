@@ -70,6 +70,9 @@ function restart (options) {
   clonedOpts.disableClusterMonitor = true;
   clonedOpts.skipLogAnalysis = true;
   clonedOpts.skipReconnect = true;
+  if (clonedOpts.cluster && clonedOpts.coordinators < 2) {
+    clonedOpts.coordinators = 2;
+  }
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
   global.obj = new broadcastInstance(clonedOpts, 'restart', Object.assign(
     {},
