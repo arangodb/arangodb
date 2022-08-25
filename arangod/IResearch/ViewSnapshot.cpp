@@ -20,10 +20,14 @@
 ///
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "IResearch/ViewSnapshot.h"
 #include "Basics/DownCast.h"
+#include "Basics/Exceptions.h"
 #include "Containers/FlatHashMap.h"
 #include "Transaction/Methods.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
 namespace {
@@ -163,10 +167,21 @@ void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
 
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                bool sync, std::string_view name,
-                               ViewSnapshot::Links&& links) noexcept {
+                               ViewSnapshot::Links&& links) {
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
   TRI_ASSERT(state.cookie(key) == nullptr);
+
+  for (auto const& link : links) {
+    if (link->hasFailed()) {
+      // link has failed, we cannot use it for querying
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+          absl::StrCat("link ", std::to_string(link->id().id()),
+                       " has been marked as failed and needs to be recreated"));
+    }
+  }
+
   auto cookie = std::make_unique<ViewSnapshotCookie>(std::move(links));
   auto& ctx = *cookie;
   try {

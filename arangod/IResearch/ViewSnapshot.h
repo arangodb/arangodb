@@ -140,7 +140,7 @@ void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name);
 ////////////////////////////////////////////////////////////////////////////////
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                bool sync, std::string_view name,
-                               ViewSnapshot::Links&& links) noexcept;
+                               ViewSnapshot::Links&& links);
 
 struct FilterCookie : TransactionState::Cookie {
   irs::filter::prepared const* filter{};

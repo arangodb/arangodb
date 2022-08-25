@@ -569,6 +569,7 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
         << id() << "'";
     return {};  // return an empty reader
   }
+
   auto reader = IResearchDataStore::reader(linkLock);
   return {std::move(linkLock), std::move(reader)};
 }
@@ -1175,13 +1176,18 @@ Result IResearchDataStore::initDataStore(
                   std::to_string(linkLock->id().id()) + "'"};
         }
 
-        if (asyncFeature->linkFailedDuringRecovery(linkLock->id())) {
-          LOG_DEVEL << "LINK FAILED DURING RECOVERY: " << linkLock->id().id();
-        }
-
         auto& dataStore = linkLock->_dataStore;
 
-        if (dataStore._recoveryTick > linkLock->_engine->recoveryTick()) {
+        if (asyncFeature->linkFailedDuringRecovery(linkLock->id())) {
+          LOG_TOPIC("2721a", WARN, iresearch::TOPIC)
+              << "marking link '" << linkLock->id().id() << "' as failed. "
+              << "consider to re-create the link in order to synchronize "
+              << "it.";
+
+          // mark link as failed
+          linkLock->setFailed();
+        } else if (dataStore._recoveryTick >
+                   linkLock->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
               << "arangosearch link '" << linkLock->id()
               << "' is recovered at tick '" << dataStore._recoveryTick
@@ -1191,7 +1197,7 @@ Result IResearchDataStore::initDataStore(
               << "' is out of sync with the underlying collection '"
               << linkLock->collection().name()
               << "', consider to re-create the link in order to synchronize "
-                 "them.";
+                 "it.";
         }
 
         // recovery finished

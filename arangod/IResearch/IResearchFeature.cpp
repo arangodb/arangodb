@@ -85,6 +85,8 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace std::chrono_literals;
 
 namespace arangodb::aql {
