@@ -10,3 +10,6 @@
 [submodule "3rdParty/rocksdb"]
 	path = 3rdParty/rocksdb
 	url = https://github.com/arangodb/rocksdb.git
+[submodule "3rdParty/gtest"]
+	path = 3rdParty/gtest
+	url = https://github.com/google/googletest.git
