@@ -172,8 +172,6 @@ bool EnsureIndex::first() {
       log += (created.isBool() && created.getBool() ? std::string(" created")
                                                     : std::string(" updated"));
       LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
-      LOG_DEVEL << log << " " << vocbase->name() << "/" << collection << "/"
-                << shard;
     } else {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
