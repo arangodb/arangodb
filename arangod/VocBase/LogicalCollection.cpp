@@ -361,6 +361,36 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
+void LogicalCollection::shardsToVelocyPack(
+    arangodb::velocypack::Builder& result, bool details) const {
+  TRI_ASSERT(result.isOpenObject());
+
+  result.add(VPackValue("shards"));
+
+  // Important: We need this variable here to keep track of the pointer.
+  // Otherwise, it is allowed to be freed.
+  auto shardids = shardIds();
+  if (details) {
+    result.openObject();
+
+    for (auto const& shards : *shardids) {
+      result.add(VPackValue(shards.first));
+      result.openArray();  // server array
+      for (auto servers : shards.second) {
+        result.add(VPackValue(servers));
+      }
+      result.close();  // server array
+    }
+  } else {
+    result.openArray();
+    for (auto const& shards : *shardids) {
+      result.add(VPackValue(shards.first));
+    }
+  }
+
+  result.close();  // shards (object in details true case, else array)
+}
+
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(std::move(map));

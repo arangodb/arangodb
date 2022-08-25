@@ -227,7 +227,10 @@ class LogicalCollection : public LogicalDataSource {
   bool isSatellite() const noexcept;
   bool usesDefaultShardKeys() const noexcept;
   std::vector<std::string> const& shardKeys() const noexcept;
-  TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
+
+  virtual std::shared_ptr<ShardMap> shardIds() const;
+  void shardsToVelocyPack(arangodb::velocypack::Builder& result,
+                          bool details = true) const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
