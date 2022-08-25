@@ -20,6 +20,11 @@ const LinkPropertiesForm = ({ name }: ViewProps) => {
     role={'dialog'}
     aria-labelledby={'myModalLabel'}
     aria-hidden={'true'}
+    style={{
+      width: 1024,
+      marginLeft: 'auto',
+      marginRight: 'auto'
+    }}
   >
     <div className="modal-body" style={{ overflowY: 'visible' }}>
       <div className={'tab-content'}>

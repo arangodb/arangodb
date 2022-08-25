@@ -49,18 +49,16 @@ const ViewLinksReactView = ({ name }) => {
       setChanged
     }}
   >
-    <div className={'centralContent'} id={'content'}>
-      <HashRouter basename={`view/${name}/links`} hashType={'noslash'}>
-        <Switch>
-          <Route path={'/:link'}>
-            <LinkPropertiesForm name={name}/>
-          </Route>
-          <Route exact path={'/'}>
-            <LinkList name={name}/>
-          </Route>
-        </Switch>
-      </HashRouter>
-    </div>
+    <HashRouter basename={`view/${name}/links`} hashType={'noslash'}>
+      <Switch>
+        <Route path={'/:link'}>
+          <LinkPropertiesForm name={name}/>
+        </Route>
+        <Route exact path={'/'}>
+          <LinkList name={name}/>
+        </Route>
+      </Switch>
+    </HashRouter>
   </ViewContext.Provider>;
 };
 

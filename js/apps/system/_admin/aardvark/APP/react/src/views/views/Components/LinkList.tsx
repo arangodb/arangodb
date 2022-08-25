@@ -57,7 +57,11 @@ const LinkList = ({ name }: ViewProps) => {
     value: <Link to={`${match.url}${pair[0]}`}>{pair[0]}</Link>
   })).value();
 
-  return <div id="modal-dialog">
+  return <div id="modal-dialog" style={{
+    width: 1024,
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  }}>
     <div className="modal-body" style={{
       minHeight: 300,
       border: 'none',

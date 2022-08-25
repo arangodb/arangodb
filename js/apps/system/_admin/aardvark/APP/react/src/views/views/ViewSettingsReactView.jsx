@@ -3,12 +3,14 @@
 import { cloneDeep } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import ToolTip from '../../components/arango/tootip';
+import Fieldset from '../../components/pure-css/form/Fieldset';
 import Textbox from '../../components/pure-css/form/Textbox';
 import {
   getNumericFieldSetter, getNumericFieldValue, getReducer, isAdminUser as userIsAdmin,
   usePermissions
 } from '../../utils/helpers';
 import { DeleteButton, SaveButton } from './Actions';
+import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
 import { postProcessor, useNavbar, useView } from './helpers';
 
 const ViewSettingsReactView = ({ name }) => {
@@ -53,12 +55,22 @@ const ViewSettingsReactView = ({ name }) => {
   const formState = state.formState;
   const nameEditDisabled = frontendConfig.isCluster || !isAdminUser;
 
-  return <div className={'centralContent'} id={'content'}>
-    <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
-         aria-labelledby={'myModalLabel'} aria-hidden={'true'}>
-      <div className="modal-body">
-        <div className={'tab-content'}>
-          <div className="tab-pane tab-pane-modal active" id="General">
+  return <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
+              aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
+    width: 1024,
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  }}>
+    <div className="modal-body">
+      <div className={'tab-content'} style={{
+        overflowX: 'hidden'
+      }}>
+        <div className="tab-pane tab-pane-modal active" id="General" style={{
+          borderBottom: '1px solid rgba(64, 74, 83, 0.2)'
+        }}>
+          <Fieldset legend={'General'} style={{
+            fontWeight: 'bold'
+          }}>
             <table>
               <tbody>
               <tr className="tableRow" id="row_change-view-name">
@@ -137,21 +149,33 @@ const ViewSettingsReactView = ({ name }) => {
               </tr>
               </tbody>
             </table>
-          </div>
-          {
-            isAdminUser
-              ? <div className="tab-pane tab-pane-modal active" id="Actions">
-                {
-                  changed
-                    ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
-                    : null
-                }
-                <DeleteButton view={formState}
-                              modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
-              </div>
-              : null
-          }
+          </Fieldset>
         </div>
+
+        <div className="tab-pane tab-pane-modal active" id="Consolidation">
+          <Fieldset legend={'Consolidation Policy'} style={{
+            fontWeight: 'bold'
+          }}>
+            <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
+                                     disabled={!isAdminUser}/>
+          </Fieldset>
+        </div>
+
+        {
+          isAdminUser
+            ? <div className="tab-pane tab-pane-modal active" id="Actions" style={{
+              paddingLeft: 10
+            }}>
+              {
+                changed
+                  ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+                  : null
+              }
+              <DeleteButton view={formState}
+                            modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
+            </div>
+            : null
+        }
       </div>
     </div>
   </div>;
