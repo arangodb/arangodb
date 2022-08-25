@@ -123,7 +123,10 @@ const LinkPropertiesInput = ({
           </Cell>
 
           <Cell size={"1"}>
-            <span style={{ float: 'left' }}>
+            <span style={{
+              float: 'left',
+              width: '84%'
+            }}>
               <AutoCompleteMultiSelect
                 values={fields}
                 onRemove={removeField}
@@ -131,6 +134,9 @@ const LinkPropertiesInput = ({
                 label={"Fields"}
                 disabled={disabled}
                 readOnly={true}
+                style={{
+                  width: '100%'
+                }}
               />
             </span>
             <span style={{

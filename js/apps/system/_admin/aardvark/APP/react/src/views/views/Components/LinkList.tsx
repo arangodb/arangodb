@@ -77,6 +77,7 @@ const LinkList = ({ name }: ViewProps) => {
             label={'Links'}
             disabled={!isAdminUser}
             errorMsg={'Collection does not exist'}
+            placeholder={'Enter a collection name'}
           />
         </Cell>
         {

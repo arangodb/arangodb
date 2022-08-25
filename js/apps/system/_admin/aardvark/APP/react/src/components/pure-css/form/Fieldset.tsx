@@ -6,7 +6,8 @@ const StyledLegend = styled.legend`
   border-bottom: none;
   line-height: normal;
   color: inherit;
-  margin: 12px;
+  margin: 12px 12px 12px 0;
+  width: fit-content;
 `;
 
 type FieldsetProps = {
