@@ -36,12 +36,7 @@
 
 namespace arangodb::pregel {
 
-enum class MessageType {
-  GraphLoaded,
-  CleanupFinished,
-  RecoveryFinished,
-  GssFinished
-};
+enum class MessageType { GraphLoaded, CleanupFinished, GssFinished };
 
 struct Message {
   virtual auto type() const -> MessageType = 0;
@@ -125,32 +120,6 @@ auto inspect(Inspector& f, CleanupFinished& x) {
       f.field("reports", x.reports));
 }
 
-struct RecoveryFinished : Message {
-  std::string senderId;
-  ExecutionNumber executionNumber;
-  uint64_t gss;
-  VPackBuilder aggregators;
-  RecoveryFinished(){};
-  RecoveryFinished(std::string const& senderId, ExecutionNumber executionNumber,
-                   uint64_t gss, VPackBuilder aggregators)
-      : senderId{senderId},
-        executionNumber{executionNumber},
-        gss{gss},
-        aggregators{std::move(aggregators)} {}
-  auto type() const -> MessageType override {
-    return MessageType::RecoveryFinished;
-  }
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, RecoveryFinished& x) {
-  return f.object(x).fields(
-      f.field(Utils::senderKey, x.senderId),
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field(Utils::globalSuperstepKey, x.gss),
-      f.field("aggregators", x.aggregators));
-}
-
 struct StatusUpdated {
   std::string senderId;
   ExecutionNumber executionNumer;
@@ -207,18 +176,6 @@ auto inspect(Inspector& f, CleanupStarted& x) {
 struct GssCanceled {};
 template<typename Inspector>
 auto inspect(Inspector& f, GssCanceled& x) {
-  return f.object(x).fields();
-}
-
-struct RecoveryFinalized {};
-template<typename Inspector>
-auto inspect(Inspector& f, RecoveryFinalized& x) {
-  return f.object(x).fields();
-}
-
-struct RecoveryContinued {};
-template<typename Inspector>
-auto inspect(Inspector& f, RecoveryContinued& x) {
   return f.object(x).fields();
 }
 
@@ -284,30 +241,6 @@ auto inspect(Inspector& f, StartCleanup& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("withStoring", x.withStoring));
-}
-
-struct ContinueRecovery {
-  ExecutionNumber executionNumber;
-  VPackBuilder aggregators;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, ContinueRecovery& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field("aggregators", x.aggregators));
-}
-
-struct FinalizeRecovery {
-  ExecutionNumber executionNumber;
-  uint64_t gss;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, FinalizeRecovery& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field(Utils::globalSuperstepKey, x.gss));
 }
 
 struct CollectPregelResults {

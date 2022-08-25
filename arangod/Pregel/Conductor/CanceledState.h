@@ -39,7 +39,6 @@ struct Canceled : State {
   ~Canceled() = default;
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
-  auto recover() -> void override{};
   auto name() const -> std::string override { return "canceled"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const
