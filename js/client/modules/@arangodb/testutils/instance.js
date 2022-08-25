@@ -794,6 +794,8 @@ class instance {
     };
     if (this.args.hasOwnProperty('authOpts')) {
       opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    } else if (this.args.hasOwnProperty('server.jwt-secret')) {
+      opts['jwt'] = crypto.jwtEncode(this.args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
     }
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
     let agencyReply = download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
