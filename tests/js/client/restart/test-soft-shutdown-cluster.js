@@ -420,6 +420,7 @@ function testSuite() {
 function testSuitePregel() {
   'use strict';
   let oldLogLevel;
+  let oldLogLevelRequests;
   return {
 
     /////////////////////////////////////////////////////////////////////////
@@ -428,12 +429,13 @@ function testSuitePregel() {
 
     setUpAll : function() {
       oldLogLevel = arango.GET("/_admin/log/level").general;
-      arango.PUT("/_admin/log/level", { general: "info" });
+      oldLogLevelRequests = arango.GET("/_admin/log/level").requests;
+      arango.PUT("/_admin/log/level", { general: "info", requests: "debug" });
     },
 
     tearDownAll : function () {
       // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", { general: oldLogLevel });
+      arango.PUT("/_admin/log/level", { general: oldLogLevel, requests: oldLogLevelRequests });
     },
 
     setUp: function () {
