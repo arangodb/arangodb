@@ -1682,7 +1682,7 @@ class QueryJoin : public QueryTest {
 
 class QueryJoinView : public QueryJoin {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView1() {
     {
@@ -1750,7 +1750,7 @@ class QueryJoinView : public QueryJoin {
 
 class QueryJoinSearch : public QueryJoin {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createSearch1() {
     auto createIndexName = [&](std::string_view name) {
@@ -1767,9 +1767,9 @@ class QueryJoinSearch : public QueryJoin {
       ASSERT_TRUE(created);
     };
     auto createSearchName = [&](std::string_view name) {
-      auto createJson = velocypack::Parser::fromJson(
-          absl::Substitute(R"({ "name": "$0_view", "type": "search" })", name));
-      auto logicalView = _vocbase.createView(createJson->slice());
+      auto createJson = velocypack::Parser::fromJson(absl::Substitute(
+          R"({ "name": "$0_view", "type": "search-alias" })", name));
+      auto logicalView = _vocbase.createView(createJson->slice(), false);
       ASSERT_FALSE(!logicalView);
       auto& implView = basics::downCast<iresearch::Search>(*logicalView);
       auto updateJson = velocypack::Parser::fromJson(absl::Substitute(

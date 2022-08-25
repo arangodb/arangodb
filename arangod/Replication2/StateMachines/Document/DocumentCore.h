@@ -25,12 +25,14 @@
 
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IDocumentStateAgencyHandler;
+struct IDocumentStateShardHandler;
 
 struct DocumentCore {
   explicit DocumentCore(

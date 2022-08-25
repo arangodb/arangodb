@@ -7,3 +7,4 @@ set TESTS "$TESTS""250,runClusterTest1 auto rlog-cluster - --dumpAgencyOnError t
 set TESTS "$TESTS""250,runClusterTest1 auto prototype-state-cluster - --dumpAgencyOnError true --test tests/js/common/shell/shell-prototype-state-cluster.js\n"
 set TESTS "$TESTS""250,runClusterTest1 auto shell-transaction - --dumpAgencyOnError true --test tests/js/client/shell/transaction/shell-transaction.js\n"
 set TESTS "$TESTS""250,runClusterTest1 auto shell-transaction-cluster - --dumpAgencyOnError true --test tests/js/client/shell/transaction/shell-transaction-cluster.js\n"
+set TESTS "$TESTS""250,runClusterTest1 auto shell-transaction-replication2-recovery - --dumpAgencyOnError true --test tests/js/client/shell/transaction/replication2_recovery/shell-transaction-replication2-recovery.js\n"

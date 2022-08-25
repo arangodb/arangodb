@@ -4880,6 +4880,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
           stopSearching = true;
           break;
 
+        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::CALCULATION:
         case EN::FILTER: {
           if (inspectNode->getType() == EN::CALCULATION) {
@@ -4999,6 +5000,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::OFFSET_INFO_MATERIALIZE:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -5053,7 +5055,6 @@ void arangodb::aql::distributeSortToClusterRule(
         // distributed in cluster as it accounts this disctribution. So we
         // should not encounter this kind of nodes for now
         case EN::MATERIALIZE:
-        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
@@ -5983,7 +5984,7 @@ struct RemoveRedundantOr {
             type == NODE_TYPE_OPERATOR_BINARY_LE);
   }
 
-  int isCompatibleBound(AstNodeType type, AstNode const* value) {
+  int isCompatibleBound(AstNodeType type, AstNode const*) {
     if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE ||
          comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
         (type == NODE_TYPE_OPERATOR_BINARY_LE ||
@@ -7399,6 +7400,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
     case ExecutionNode::ASYNC:
@@ -7437,7 +7439,6 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     // TODO: As soon as materialize does no longer have to filter out
     //  non-existent documents, move MATERIALIZE to the allowed nodes!
     case ExecutionNode::MATERIALIZE:
-    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::MUTEX:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:

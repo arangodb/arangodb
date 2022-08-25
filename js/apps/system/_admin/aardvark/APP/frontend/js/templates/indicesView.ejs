@@ -185,7 +185,7 @@
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
-                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index. Sparse indexes do not include documents for which the index attributes do not exist or have a value of null. Sparse indexes will exclude any such documents, so they can save space, but are less versatile than non-sparse indexes. For example, sparse indexes may not be usable for sort operations, range or point lookup queries if the query optimizer cannot prove that the index query range excludes null values.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
