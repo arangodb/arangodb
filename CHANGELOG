@@ -1,5 +1,6 @@
 devel
 -----
+* Updated Views UI with all changes necessary for the 3.10.0 launch.
 
 * Disable optimization rule to avoid crash (BTS-951).
 
