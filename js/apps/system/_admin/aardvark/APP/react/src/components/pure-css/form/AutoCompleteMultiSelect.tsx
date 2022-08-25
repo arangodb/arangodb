@@ -73,12 +73,16 @@ const AutoCompleteMultiSelect = ({
       }}>
         {
           values.map(value => isString(value) || isNumber(value)
-            ? <li className={'select2-search-choice'} key={value}>
+            ? <li className={'select2-search-choice'} key={value} style={{
+              paddingLeft: 25
+            }}>
               <div>{value}</div>
               <a href={'#'} className={'select2-search-choice-close'} tabIndex={-1}
                  onClick={getRemoveHandler(value)}/>
             </li>
-            : <li className={'select2-search-choice'} key={value.key}>
+            : <li className={'select2-search-choice'} key={value.key} style={{
+              paddingLeft: 25
+            }}>
               <div>{value.value}</div>
               <a href={'#'} className={'select2-search-choice-close'} tabIndex={-1}
                  onClick={getRemoveHandler(value.key)}/>

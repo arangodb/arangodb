@@ -62,14 +62,13 @@ const ViewSettingsReactView = ({ name }) => {
     marginRight: 'auto'
   }}>
     <div className="modal-body">
-      <div className={'tab-content'} style={{
-        overflowX: 'hidden'
-      }}>
+      <div className={'tab-content'}>
         <div className="tab-pane tab-pane-modal active" id="General" style={{
           borderBottom: '1px solid rgba(64, 74, 83, 0.2)'
         }}>
           <Fieldset legend={'General'} style={{
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            marginLeft: 10
           }}>
             <table>
               <tbody>
@@ -154,7 +153,8 @@ const ViewSettingsReactView = ({ name }) => {
 
         <div className="tab-pane tab-pane-modal active" id="Consolidation">
           <Fieldset legend={'Consolidation Policy'} style={{
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            marginLeft: 10
           }}>
             <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
                                      disabled={!isAdminUser}/>
