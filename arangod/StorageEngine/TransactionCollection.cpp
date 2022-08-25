@@ -78,7 +78,3 @@ Result TransactionCollection::updateUsage(AccessMode::Type accessType) {
   // all correct
   return {};
 }
-
-Result TransactionCollection::lockUsage(transaction::Hints const& hints) {
-  return lockUsage();
-}

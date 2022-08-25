@@ -121,8 +121,18 @@ bool EnsureIndex::first() {
       body.add(VPackObjectIterator(props));
     }
 
-    if (_priority != maintenance::SLOW_OP_PRIORITY &&
-        vocbase->replicationVersion() != replication::Version::TWO) {
+    if (_priority != maintenance::SLOW_OP_PRIORITY) {
+      if (vocbase->replicationVersion() == replication::Version::TWO &&
+          !col->hasDocumentStateLeader()) {
+        // arangodb::maintenance::collectionCount creates a transaction, which
+        // does not work on replication2 followers. In that case, we reschedule
+        // directly with slow priority.
+        requeueMe(maintenance::SLOW_OP_PRIORITY);
+        result(TRI_ERROR_ACTION_UNFINISHED,
+               "EnsureIndex action rescheduled to slow operation priority");
+        return false;
+      }
+
       uint64_t docCount = 0;
       if (Result res = arangodb::maintenance::collectionCount(*col, docCount);
           res.fail()) {

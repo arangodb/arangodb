@@ -32,7 +32,6 @@
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
-#include "Transaction/Hints.h"
 
 #include <algorithm>
 
@@ -156,10 +155,13 @@ auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
   return _leaderState;
 }
 
-auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
+auto ReplicatedRocksDBTransactionCollection::ensureCollection(
+    transaction::Hints hints) -> Result {
   auto res = RocksDBTransactionCollection::ensureCollection();
 
-  if (res.fail()) {
+  // We do not need a leaderState for INDEX_CREATION transactions. These are
+  // created on followers as well.
+  if (res.fail() || hints.has(transaction::Hints::Hint::INDEX_CREATION)) {
     return res;
   }
 
@@ -175,12 +177,4 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   }
 
   return res;
-}
-
-auto ReplicatedRocksDBTransactionCollection::ensureCollection(
-    transaction::Hints const& hints) -> Result {
-  if (hints.has(transaction::Hints::Hint::INDEX_CREATION)) {
-    return RocksDBTransactionCollection::ensureCollection();
-  }
-  return ensureCollection();
 }

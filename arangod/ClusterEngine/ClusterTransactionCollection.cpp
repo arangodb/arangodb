@@ -59,7 +59,7 @@ bool ClusterTransactionCollection::canAccess(
 }
 
 // simon: actually probably never called on coordinator
-Result ClusterTransactionCollection::lockUsage() {
+Result ClusterTransactionCollection::lockUsage(transaction::Hints hints) {
   if (_collection == nullptr) {
     // open the collection
     if (_transaction->vocbase().server().isStopping()) {

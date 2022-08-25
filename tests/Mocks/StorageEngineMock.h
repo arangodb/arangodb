@@ -187,7 +187,9 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
   virtual bool hasOperations() const override;
   virtual void releaseUsage() override;
-  virtual arangodb::Result lockUsage() override;
+  virtual arangodb::Result lockUsage(
+      arangodb::transaction::Hints hints =
+          arangodb::transaction::Hints()) override;
 
  private:
   arangodb::Result doLock(arangodb::AccessMode::Type type) override;

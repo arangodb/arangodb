@@ -67,8 +67,7 @@ class ReplicatedRocksDBTransactionCollection final
       replication2::replicated_state::document::DocumentLeaderState>;
 
  protected:
-  auto ensureCollection() -> Result override;
-  auto ensureCollection(transaction::Hints const& hints) -> Result override;
+  auto ensureCollection(transaction::Hints hints) -> Result override;
 
  private:
   void maybeDisableIndexing();

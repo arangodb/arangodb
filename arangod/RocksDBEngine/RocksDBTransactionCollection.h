@@ -52,8 +52,7 @@ class RocksDBTransactionCollection : public TransactionCollection {
   bool hasOperations() const override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  Result lockUsage() override;
-  virtual Result lockUsage(transaction::Hints const& hits) override;
+  Result lockUsage(transaction::Hints hints = transaction::Hints()) override;
   void releaseUsage() override;
 
   RevisionId revision() const { return _revision; }
@@ -138,8 +137,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
   }
 
  protected:
-  virtual Result ensureCollection();
-  virtual Result ensureCollection(transaction::Hints const& hints);
+  virtual Result ensureCollection(
+      transaction::Hints hints = transaction::Hints());
 
  private:
   /// @brief request a lock for a collection

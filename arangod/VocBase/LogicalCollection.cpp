@@ -1272,13 +1272,15 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, fmt::format_string<Args...> formatString,
-      Args && ... args) {
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
-  };
+  static constexpr auto throwUnavailable =
+      []<typename... Args>(basics::SourceLocation location,
+                           fmt::format_string<Args...> formatString,
+                           Args&&... args) {
+        throw basics::Exception(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            fmt::vformat(formatString, fmt::make_format_args(args...)),
+            location);
+      };
 
   auto const status = stateMachine->getStatus();
   if (status == std::nullopt) {
@@ -1317,6 +1319,12 @@ auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<
   ADB_PROD_ASSERT(follower != nullptr)
       << "Cannot get DocumentFollowerState in shard " << name();
   return follower;
+}
+
+bool LogicalCollection::hasDocumentStateLeader() {
+  auto stateMachine = getDocumentState();
+  auto const status = stateMachine->getStatus();
+  return status.has_value() && status->asLeaderStatus() != nullptr;
 }
 
 #ifndef USE_ENTERPRISE

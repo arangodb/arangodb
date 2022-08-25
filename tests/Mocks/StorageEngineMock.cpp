@@ -1991,7 +1991,8 @@ void TransactionCollectionMock::releaseUsage() {
   }
 }
 
-arangodb::Result TransactionCollectionMock::lockUsage() {
+arangodb::Result TransactionCollectionMock::lockUsage(
+    arangodb::transaction::Hints hints) {
   bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
 
   if (shouldLock && !isLocked()) {
