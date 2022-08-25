@@ -443,26 +443,29 @@ bool InvertedIndexField::json(
     arangodb::ArangodServer& server, VPackBuilder& builder,
     InvertedIndexField const& parent, bool rootMode,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
-  if (rootMode || parent._isArray != _isArray) {
-    builder.add(kIsArrayFieldName, VPackValue(_isArray));
-  }
+  // FIXME: uncomment once parameter is supported
+  //if (rootMode || parent._isArray != _isArray) {
+  //  builder.add(kIsArrayFieldName, VPackValue(_isArray));
+  //}
   if (rootMode || parent._trackListPositions != _trackListPositions) {
     builder.add(kTrackListPositionsFieldName, VPackValue(_trackListPositions));
   }
   if (rootMode || parent._includeAllFields != _includeAllFields) {
     builder.add(kIncludeAllFieldsFieldName, VPackValue(_includeAllFields));
   }
-  if (rootMode || parent._overrideValue != _overrideValue) {
-    builder.add(kOverrideFieldName, VPackValue(_overrideValue));
-  }
+  // FIXME: uncomment once parameter is supported
+  //if (rootMode || parent._overrideValue != _overrideValue) {
+  //  builder.add(kOverrideFieldName, VPackValue(_overrideValue));
+  //}
   if (rootMode || parent._features != _features) {
     VPackBuilder tmp;
     _features.toVelocyPack(tmp);
     builder.add(kFeaturesFieldName, tmp.slice());
   }
-  if (parent._expression != _expression) {
-    builder.add(kExpressionFieldName, VPackValue(_expression));
-  }
+  // FIXME: uncomment once parameter is supported
+  //if (parent._expression != _expression) {
+  //  builder.add(kExpressionFieldName, VPackValue(_expression));
+  //}
 
   if (rootMode || _analyzers.size() != parent._analyzers.size() ||
       _analyzers[0]._pool->name() != parent._analyzers[0]._pool->name()) {
