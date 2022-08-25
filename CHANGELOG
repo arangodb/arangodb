@@ -1,6 +1,11 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* When using `SHORTEST_PATH`, `K_SHORTEST_PATHS`, `ALL_SHORTEST_PATHS`, or
+  `K_PATHS` in an AQL Query and the query itself produced warnings during
+  execution, the type has been wrongly reported. It reported always with
+  `SHORTEST_PATH` and not the specific used one.
+
 * Fix comparison of JSON schemas on DB servers after there was a schema change
   via a coordinator: the schema comparison previously did not take into account
   that some ArangoDB versions store an internal `{"type":"json"}` attribute in
