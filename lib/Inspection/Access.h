@@ -329,6 +329,18 @@ struct Access<VPackBuilder> : AccessBase<VPackBuilder> {
   }
 };
 
+// only works for serialization: a reference cannot be default constructed
+// which is required for the deserialization result type
+template<typename T>
+struct Access<std::reference_wrapper<T>>
+    : AccessBase<std::reference_wrapper<T>> {
+  template<class Inspector>
+  static auto apply(Inspector& f, std::reference_wrapper<T>& x) {
+    static_assert(!Inspector::isLoading);
+    return f.apply(x.get());
+  }
+};
+
 template<class T, class StorageT>
 struct StorageTransformerAccess {
   static_assert(std::is_same_v<T, typename StorageT::MemoryType>);

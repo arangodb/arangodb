@@ -23,6 +23,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -37,12 +38,14 @@
 #include <velocypack/velocypack-memory.h>
 
 #include "Inspection/Access.h"
+#include "Inspection/Status.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
 #include "velocypack/Builder.h"
 
 #include "Logger/LogMacros.h"
+#include "velocypack/Slice.h"
 
 namespace {
 
@@ -2091,6 +2094,67 @@ TEST_F(VPackInspectionTest, StructIncludingVPackBuilder) {
     ASSERT_TRUE(deserializedMyStruct.builder.slice().binaryEquals(
         myStruct.builder.slice()));
   }
+}
+
+TEST(VPackInspectionTest, Result) {
+  arangodb::Result result = {TRI_ERROR_INTERNAL, "some error message"};
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add("message", "some error message");
+    expectedSerlized.add("number", TRI_ERROR_INTERNAL);
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::Result>(slice);
+  EXPECT_EQ(result, deserialized);
+}
+
+TEST(VPackInspectionTest, ResultTWithResultInside) {
+  arangodb::ResultT<uint64_t> result =
+      arangodb::Result{TRI_ERROR_INTERNAL, "some error message"};
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add(VPackValue("error"));
+    {
+      VPackObjectBuilder ob2(&expectedSerlized);
+      expectedSerlized.add("message", "some error message");
+      expectedSerlized.add("number", TRI_ERROR_INTERNAL);
+    }
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
+  EXPECT_EQ(result, deserialized);
+}
+
+TEST(VPackInspectionTest, ResultTWithTInside) {
+  arangodb::ResultT<uint64_t> result = 45;
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add("value", 45);
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
+  EXPECT_EQ(result, deserialized);
 }
 
 }  // namespace

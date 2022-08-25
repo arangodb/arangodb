@@ -181,6 +181,7 @@ class Result final {
 
     return *this;
   }
+  bool operator==(const Result&) const;
 
  private:
   std::unique_ptr<arangodb::result::Error> _error = nullptr;
@@ -192,5 +193,40 @@ class Result final {
  */
 auto operator<<(std::ostream& out, arangodb::Result const& result)
     -> std::ostream&;
+
+struct ResultSerializer {
+  int number;
+  std::string_view message;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, arangodb::ResultSerializer& x) {
+  return f.object(x).fields(f.field("number", x.number),
+                            f.field("message", x.message));
+}
+struct ResultDeserializer {
+  int number;
+  std::string message;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, arangodb::ResultDeserializer& x) {
+  return f.object(x).fields(f.field("number", x.number),
+                            f.field("message", x.message));
+}
+template<typename Inspector>
+auto inspect(Inspector& f, arangodb::Result& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = ResultDeserializer{};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = arangodb::Result{ErrorCode{std::move(v.number)},
+                           std::move(v.message)};
+    }
+    return res;
+  } else {
+    auto v = ResultSerializer{.number = (int)x.errorNumber(),
+                              .message = x.errorMessage()};
+    return f.apply(v);
+  }
+}
 
 }  // namespace arangodb
