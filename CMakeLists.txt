@@ -123,68 +123,6 @@ message(STATUS "ARANGODB PLAIN VERSION: ${ARANGODB_PLAIN_VERSION}")
 message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
 message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
 
-################################################################################
-# DEBIAN, RPM, MacOS version
-################################################################################
-
-if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
-
-  # devel
-  if (ARANGODB_VERSION_PATCH STREQUAL "0" AND ARANGODB_VERSION_RELEASE_TYPE STREQUAL "devel")
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "devel")
-
-  # nightly
-  elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "nightly")
-
-  # unstable version
-  elseif (   ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
-    if (NOT DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
-      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER is missing")
-    endif()
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-
-  # hot-fix
-  else()
-    if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
-      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER must be empty for type ${ARANGODB_VERSION_RELEASE_TYPE}")
-    endif()
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_DARWIN_REVISION "")
-  endif()
-else()
-
-  set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_DARWIN_REVISION "")
-endif()
-
-message(STATUS "DARWIN VERSION: ${ARANGODB_DARWIN_UPSTREAM} / ${ARANGODB_DARWIN_REVISION}")
-
-
-################################################################################
-# Windows version
-################################################################################
-
-# PATCH needs to be numeric for the windows rc file
-set(ARANGODB_WINDOWS_UPSTREAM "${ARANGODB_VERSION}")
-
-if (ARANGODB_VERSION_PATCH GREATER -1)
-  set(ARANGODB_WINDOWS_PATCH "${ARANGODB_VERSION_PATCH}")
-else()
-  set(ARANGODB_WINDOWS_PATCH 1337)
-endif()
-
-message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
-
 if (MSVC)
   option(USE_CLCACHE_MODE
     "whether we want to use CLCACHE-specific build options"
