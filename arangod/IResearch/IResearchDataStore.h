@@ -54,32 +54,8 @@ class IResearchDataStore;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchDataStore handle to use with asynchronous tasks
 ////////////////////////////////////////////////////////////////////////////////
-class AsyncLinkHandle final {
- public:
-  explicit AsyncLinkHandle(IResearchDataStore* link);
-  ~AsyncLinkHandle();
-  [[nodiscard]] bool empty() const noexcept { return _link.empty(); }
-  [[nodiscard]] auto lock() noexcept { return _link.lock(); }
-  [[nodiscard]] bool terminationRequested() const noexcept {
-    return _asyncTerminate.load(std::memory_order_acquire);
-  }
-
-  AsyncLinkHandle(AsyncLinkHandle const&) = delete;
-  AsyncLinkHandle(AsyncLinkHandle&&) = delete;
-  AsyncLinkHandle& operator=(AsyncLinkHandle const&) = delete;
-  AsyncLinkHandle& operator=(AsyncLinkHandle&&) = delete;
-
- private:
-  friend class IResearchDataStore;
-
-  void reset();
-
-  AsyncValue<IResearchDataStore> _link;
-  // trigger termination of long-running async jobs
-  std::atomic_bool _asyncTerminate{false};
-};
-
-using LinkLock = AsyncValue<IResearchDataStore>::Value;
+using AsyncLinkHandle = AsyncValue<IResearchDataStore>;
+using LinkLock = AsyncLinkHandle::Value;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the index state for a given TransactionState
