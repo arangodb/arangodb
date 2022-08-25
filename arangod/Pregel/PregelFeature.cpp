@@ -765,6 +765,9 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
         c->_state == ExecutionState::RUNNING ||
         c->_state == ExecutionState::STORING) {
       ++nr;
+      LOG_TOPIC("41564", WARN, Logger::PREGEL)
+          << fmt::format("Conductor for executionNumber {} is in state {}.",
+                         c->_executionNumber, ExecutionStateNames[c->_state]);
     }
   }
   return nr;

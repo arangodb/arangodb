@@ -202,6 +202,32 @@ function optimizerRuleInvertedIndexTestSuite() {
         assertTrue(executeRes[i-1].count > executeRes[i].count);
       }
     },
+    testIndexHintedRemove: function () {
+      col.save({data_field:'remove_me'});
+      let syncWait = 100;
+      const syncQuery = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER STARTS_WITH(d.data_field, 'remove') COLLECT WITH COUNT INTO c  RETURN c`;
+      let count  = db._query(syncQuery).toArray()[0];
+      while (count < 1 && (--syncWait) > 0) {
+        sleep(1);
+        count  = db._query(syncQuery).toArray()[0];
+      }
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER d.data_field == 'remove_me'
+           REMOVE d IN ${col}`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      db._query(query.query, query.bindVars);
+      const checkQuery = aql`
+        FOR d IN ${col} 
+          FILTER STARTS_WITH(d.data_field, 'remove') COLLECT WITH COUNT INTO c  RETURN c`;
+      count  = db._query(checkQuery).toArray()[0];
+      assertEqual(0, count);
+    },
     testEmptyFields: function() {
       col.ensureIndex({type: 'inverted',
                        name: 'AllFieldsEmpty',

@@ -831,6 +831,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::unordered_map<std::string, std::string> headerFields;
   double timeout = 10.0;
+  bool addContentLength = true;
   bool returnBodyAsBuffer = false;
   bool followRedirects = true;
   rest::RequestType method = rest::RequestType::GET;
@@ -906,6 +907,13 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
     }
     timeout = correctTimeoutToExecutionDeadlineS(timeout);
+
+    // insert content-length when not provided?
+    if (TRI_HasProperty(context, isolate, options, "addContentLength")) {
+      addContentLength = TRI_ObjectToBoolean(
+          isolate,
+          TRI_GetProperty(context, isolate, options, "addContentLength"));
+    }
 
     // return body as a buffer?
     if (TRI_HasProperty(context, isolate, options, "returnBodyAsBuffer")) {
@@ -1024,7 +1032,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    SimpleHttpClientParams params(timeout, false);
+    SimpleHttpClientParams params(timeout, false, addContentLength);
     params.setSupportDeflate(false);
     // security by obscurity won't work. Github requires a useragent nowadays.
     params.setExposeArangoDB(true);
