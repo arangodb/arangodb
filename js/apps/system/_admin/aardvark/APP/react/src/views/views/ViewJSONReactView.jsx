@@ -67,7 +67,7 @@ const ViewJSONReactView = ({ name }) => {
     marginLeft: 'auto',
     marginRight: 'auto'
   }}>
-    <div className="modal-body" style={{ display: 'unset' }}>
+    <div className="modal-body" style={{ display: 'unset' }} id={'view-json'}>
       <div className={'tab-content'} style={{ display: 'unset' }}>
         <div className="tab-pane tab-pane-modal active" id="JSON">
           <Grid>
