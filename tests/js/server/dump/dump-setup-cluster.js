@@ -61,12 +61,15 @@ const setup = require(base);
 
   // all types of enterprise related graphs
   setup.createEmptySmartGraph();
+  setup.createEmptyEnterpriseGraph();
   setup.createEmptySatelliteGraph();
   setup.createEmptyDisjointGraph();
   setup.createSmartGraphWithoutData();
+  setup.createEnterpriseGraphWithoutData();
   setup.createSatelliteGraphWithoutData();
   setup.createDisjointGraphWithoutData();
   setup.createSmartGraphSingleServer();
+  setup.createEnterpriseGraphSingleServer();
   setup.createSatelliteGraphSingleServer();
   setup.createDisjointGraphSingleServer();
   setup.createHybridSmartGraphSingleServer();

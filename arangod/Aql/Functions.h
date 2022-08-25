@@ -209,6 +209,8 @@ AqlValue DateDayOfYear(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView);
 AqlValue DateIsoWeek(arangodb::aql::ExpressionContext*, AstNode const&,
                      VPackFunctionParametersView);
+AqlValue DateIsoWeekYear(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParametersView);
 AqlValue DateLeapYear(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 AqlValue DateQuarter(arangodb::aql::ExpressionContext*, AstNode const&,
