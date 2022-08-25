@@ -515,7 +515,7 @@ class instance {
 
   readAssertLogLines () {
     let size = fs.size(this.logFile);
-    if (this.options.maxLogFileSize != 0 && size > this.options.maxLogFileSize) {
+    if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.
       let err=`ERROR: ${this.logFile} is bigger than ${this.options.maxLogFileSize/1024}kB! - %{size/1024} Bytes!`;
       this.assertLines.push(err);
