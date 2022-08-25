@@ -34,7 +34,8 @@ struct IWorker {
   virtual ~IWorker() = default;
 };
 
-template <typename Algorithm> struct Worker : IWorker {
+template <typename Algorithm>
+struct Worker : IWorker, enable_shared_from_this<Worker> {
   //  GraphStorage<...> graphShard;
 
   auto loadGraphShard() -> void override {
