@@ -5058,7 +5058,7 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
       ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE,
-		        false /* do not go into Subqueries */);
+                        false /* do not go into Subqueries */);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
