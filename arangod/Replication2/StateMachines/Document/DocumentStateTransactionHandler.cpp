@@ -165,4 +165,9 @@ void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
   _transactions.erase(tid);
 }
 
+auto DocumentStateTransactionHandler::getActiveTransactions() const
+    -> TransactionMap const& {
+  return _transactions;
+}
+
 }  // namespace arangodb::replication2::replicated_state::document
