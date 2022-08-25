@@ -57,13 +57,21 @@ const setup = require(base);
   setup.createSmartGraph();
   setup.createSmartArangoSearch();
 
+  // Enterprise-Only backbone graph creation tests
   setup.createEmptySmartGraph();
+  setup.createEmptyEnterpriseGraph();
   setup.createEmptySatelliteGraph();
   setup.createEmptyDisjointGraph();
+
+  // Enterprise-Only graph creation tests without data
   setup.createSmartGraphWithoutData();
+  setup.createEnterpriseGraphWithoutData();
   setup.createSatelliteGraphWithoutData();
   setup.createDisjointGraphWithoutData();
+
+  // Enterprise-Only graph creation tests on single-server
   setup.createSmartGraphSingleServer();
+  setup.createEnterpriseGraphSingleServer();
   setup.createSatelliteGraphSingleServer();
   setup.createDisjointGraphSingleServer();
   setup.createHybridSmartGraphSingleServer();

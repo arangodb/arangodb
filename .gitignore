@@ -101,6 +101,8 @@ js/apps/system/_admin/aardvark/APP/react/node_modules/*
 !js/apps/system/_admin/aardvark/APP/react/build/**
 !js/apps/system/_admin/aardvark/APP/react/build/static
 !js/apps/system/_admin/aardvark/APP/react/build/static/**
+js/node/**/node_modules/.bin/
+js/node/node_modules/**/*.md
 
 .gdb-history
 npm-debug.log
