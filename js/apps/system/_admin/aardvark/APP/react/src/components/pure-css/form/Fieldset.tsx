@@ -12,10 +12,11 @@ const StyledLegend = styled.legend`
 type FieldsetProps = {
   children: ReactNode;
   legend?: string;
+  [key: string]: any;
 };
 
-const Fieldset = ({ children, legend }: FieldsetProps) => (
-  <fieldset>
+const Fieldset = ({ children, legend, ...rest }: FieldsetProps) => (
+  <fieldset {...rest}>
     {legend ? <StyledLegend>{legend}</StyledLegend> : null}
     {children}
   </fieldset>
