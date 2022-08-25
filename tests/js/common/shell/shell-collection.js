@@ -549,56 +549,7 @@ function CollectionSuite () {
 
       db._drop(cn);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with type
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingTypeDocument : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn, { }, "document");
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with type
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingTypeEdge : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn, { }, "edge");
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertEqual(ArangoCollection.TYPE_EDGE, c1.type());
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creating with type
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreatingTypeInvalid : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      // invalid type defaults to type "document"
-      var c1 = db._create(cn, { }, "foobar");
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      db._drop(cn);
-    },
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check that properties include syncByRevision
 ////////////////////////////////////////////////////////////////////////////////
