@@ -409,12 +409,12 @@ bool IResearchInvertedIndexMeta::json(
 
 bool IResearchInvertedIndexMeta::operator==(
     IResearchInvertedIndexMeta const& other) const noexcept {
-  return (*static_cast<IResearchDataStoreMeta const*>(this) ==
+  return _consistency == other._consistency && _version == other._version &&
+         (static_cast<IResearchDataStoreMeta const&>(*this) ==
           static_cast<IResearchDataStoreMeta const&>(other)) &&
-         (*static_cast<InvertedIndexField const*>(this) ==
+         (static_cast<InvertedIndexField const&>(*this) ==
           static_cast<InvertedIndexField const&>(other)) &&
-         _sort == other._sort && _consistency == other._consistency &&
-         _storedValues == other._storedValues && _version == other._version;
+         _sort == other._sort && _storedValues == other._storedValues;
 }
 
 bool IResearchInvertedIndexMeta::matchesDefinition(
@@ -444,7 +444,7 @@ bool InvertedIndexField::json(
     InvertedIndexField const& parent, bool rootMode,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
   // FIXME: uncomment once parameter is supported
-  //if (rootMode || parent._isArray != _isArray) {
+  // if (rootMode || parent._isArray != _isArray) {
   //  builder.add(kIsArrayFieldName, VPackValue(_isArray));
   //}
   if (rootMode || parent._trackListPositions != _trackListPositions) {
@@ -454,7 +454,7 @@ bool InvertedIndexField::json(
     builder.add(kIncludeAllFieldsFieldName, VPackValue(_includeAllFields));
   }
   // FIXME: uncomment once parameter is supported
-  //if (rootMode || parent._overrideValue != _overrideValue) {
+  // if (rootMode || parent._overrideValue != _overrideValue) {
   //  builder.add(kOverrideFieldName, VPackValue(_overrideValue));
   //}
   if (rootMode || parent._features != _features) {
@@ -463,7 +463,7 @@ bool InvertedIndexField::json(
     builder.add(kFeaturesFieldName, tmp.slice());
   }
   // FIXME: uncomment once parameter is supported
-  //if (parent._expression != _expression) {
+  // if (parent._expression != _expression) {
   //  builder.add(kExpressionFieldName, VPackValue(_expression));
   //}
 
@@ -816,16 +816,13 @@ bool InvertedIndexField::operator==(
         _fields.size() == other._fields.size())) {
     return false;
   }
-  size_t matched{0};
-  for (auto const& thisField : _fields) {
-    for (auto const& otherField : other._fields) {
-      if (thisField == otherField) {
-        matched++;
-        break;
-      }
+  for (auto const& otherField : other._fields) {
+    if (std::end(_fields) ==
+        std::find(std::begin(_fields), std::end(_fields), otherField)) {
+      return false;
     }
   }
-  return matched == _fields.size();
+  return true;
 }
 
 bool IResearchInvertedIndexSort::toVelocyPack(
