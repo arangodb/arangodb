@@ -3,7 +3,6 @@
 import { cloneDeep } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import ToolTip from '../../components/arango/tootip';
-import Fieldset from '../../components/pure-css/form/Fieldset';
 import Textbox from '../../components/pure-css/form/Textbox';
 import {
   getNumericFieldSetter, getNumericFieldValue, getReducer, isAdminUser as userIsAdmin,
@@ -63,102 +62,109 @@ const ViewSettingsReactView = ({ name }) => {
   }}>
     <div className="modal-body">
       <div className={'tab-content'}>
-        <div className="tab-pane tab-pane-modal active" id="General" style={{
-          borderBottom: '1px solid rgba(64, 74, 83, 0.2)'
-        }}>
-          <Fieldset legend={'General'} style={{
-            fontWeight: 'bold',
-            marginLeft: 10
+        <div className="tab-pane tab-pane-modal active" id="General">
+          <div style={{
+            color: '#717d90',
+            fontWeight: 600,
+            fontSize: '12.5pt',
+            padding: 10,
+            borderBottom: '1px solid rgba(0, 0, 0, .3)'
           }}>
-            <table>
-              <tbody>
-              <tr className="tableRow" id="row_change-view-name">
-                <th className="collectionTh">
-                  Name*:
-                </th>
-                <th className="collectionTh">
-                  <Textbox type={'text'} value={formState.name} onChange={updateName}
-                           required={true} disabled={nameEditDisabled}/>
-                </th>
-                <th className="collectionTh">
-                  <ToolTip
-                    title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-              </tr>
+            General
+          </div>
+          <table>
+            <tbody>
+            <tr className="tableRow" id="row_change-view-name">
+              <th className="collectionTh">
+                Name*:
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'text'} value={formState.name} onChange={updateName}
+                         required={true} disabled={nameEditDisabled}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
 
-              <tr className="tableRow" id="row_change-view-cleanupIntervalStep">
-                <th className="collectionTh">
-                  Cleanup Interval Step:
-                </th>
-                <th className="collectionTh">
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
-                           value={getNumericFieldValue(formState.cleanupIntervalStep)}
-                           onChange={getNumericFieldSetter('cleanupIntervalStep', dispatch)}/>
-                </th>
-                <th className="collectionTh">
-                  <ToolTip
-                    title={`ArangoSearch waits at least this many commits between removing unused files in its data directory.`}
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-              </tr>
+            <tr className="tableRow" id="row_change-view-cleanupIntervalStep">
+              <th className="collectionTh">
+                Cleanup Interval Step:
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                         value={getNumericFieldValue(formState.cleanupIntervalStep)}
+                         onChange={getNumericFieldSetter('cleanupIntervalStep', dispatch)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title={`ArangoSearch waits at least this many commits between removing unused files in its data directory.`}
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
 
-              <tr className="tableRow" id="row_change-view-commitIntervalMsec">
-                <th className="collectionTh">
-                  Commit Interval (msec):
-                </th>
-                <th className="collectionTh" style={{ width: '100%' }}>
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
-                           value={getNumericFieldValue(formState.commitIntervalMsec)}
-                           onChange={getNumericFieldSetter('commitIntervalMsec', dispatch)}/>
-                </th>
-                <th className="collectionTh">
-                  <ToolTip
-                    title="Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-              </tr>
+            <tr className="tableRow" id="row_change-view-commitIntervalMsec">
+              <th className="collectionTh">
+                Commit Interval (msec):
+              </th>
+              <th className="collectionTh" style={{ width: '100%' }}>
+                <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                         value={getNumericFieldValue(formState.commitIntervalMsec)}
+                         onChange={getNumericFieldSetter('commitIntervalMsec', dispatch)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title="Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
 
-              <tr className="tableRow" id="row_change-view-consolidationIntervalMsec">
-                <th className="collectionTh">
-                  Consolidation Interval (msec):
-                </th>
-                <th className="collectionTh">
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
-                           value={getNumericFieldValue(formState.consolidationIntervalMsec)}
-                           onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
-                </th>
-                <th className="collectionTh">
-                  <ToolTip
-                    title="Wait at least this many milliseconds between index segments consolidations."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-              </tr>
-              </tbody>
-            </table>
-          </Fieldset>
+            <tr className="tableRow" id="row_change-view-consolidationIntervalMsec">
+              <th className="collectionTh">
+                Consolidation Interval (msec):
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                         value={getNumericFieldValue(formState.consolidationIntervalMsec)}
+                         onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title="Wait at least this many milliseconds between index segments consolidations."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
+            </tbody>
+          </table>
         </div>
 
         <div className="tab-pane tab-pane-modal active" id="Consolidation">
-          <Fieldset legend={'Consolidation Policy'} style={{
-            fontWeight: 'bold',
-            marginLeft: 10
+          <div style={{
+            color: '#717d90',
+            fontWeight: 600,
+            fontSize: '12.5pt',
+            padding: 10,
+            borderBottom: '1px solid rgba(0, 0, 0, .3)',
+            marginTop: 20
           }}>
-            <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
-                                     disabled={!isAdminUser}/>
-          </Fieldset>
+            Consolidation Policy
+          </div>
+          <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
+                                   disabled={!isAdminUser}/>
         </div>
 
         {

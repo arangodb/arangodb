@@ -119,6 +119,7 @@ const LinkPropertiesInput = ({
               label={"Analyzers"}
               disabled={disabled}
               errorMsg={'Analyzer does not exist.'}
+              placeholder={'Start typing for suggestions.'}
             />
           </Cell>
 
@@ -134,6 +135,7 @@ const LinkPropertiesInput = ({
                 label={"Fields"}
                 disabled={disabled}
                 readOnly={true}
+                placeholder={'Click on the ⊕ button to add a field.'}
                 style={{
                   width: '100%'
                 }}
