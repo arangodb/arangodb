@@ -34,9 +34,9 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
-#include "Pregel/Utils.h"
-#include "Pregel/Status/Status.h"
 #include "Pregel/Status/ConductorStatus.h"
+#include "Pregel/Status/Status.h"
+#include "Pregel/Utils.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
@@ -47,8 +47,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Metrics/Gauge.h"
 #include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -358,6 +358,10 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     return;
   }
 
+  ServerID sender = data.get(Utils::senderKey).copyString();
+  LOG_PREGEL("08142", WARN)
+      << fmt::format("finishedWorkerStartup, got response from {}.", sender);
+
   _totalVerticesCount += data.get(Utils::vertexCountKey).getUInt();
   _totalEdgesCount += data.get(Utils::edgeCountKey).getUInt();
   if (_respondedServers.size() != _dbServers.size()) {
@@ -408,6 +412,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   _statistics.accumulateMessageStats(data);
   if (_asyncMode == false) {  // in async mode we wait for all responded
     _ensureUniqueResponse(data);
+    ServerID sender = data.get(Utils::senderKey).copyString();
+    LOG_PREGEL("08142", WARN)
+        << fmt::format("finishedWorkerStep, got response from {}.", sender);
+
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
       return VPackBuilder();
@@ -852,7 +860,12 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     }
   }
 
+  ServerID sender = data.get(Utils::senderKey).copyString();
+  LOG_PREGEL("08142", WARN)
+      << fmt::format("finishedWorkerFinalize, got response from {}.", sender);
+
   _ensureUniqueResponse(data);
+
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
