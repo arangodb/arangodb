@@ -86,6 +86,9 @@ function chaos (options) {
         global.currentTestConfig = configs.shift();
       }
     }
+    translateResult(testName) {
+      return `${testName}_${global.currentTestConfig.suffix}`;
+    }
   };
 
   return new chaosRunner(options, 'chaos', {}).run(testCases);

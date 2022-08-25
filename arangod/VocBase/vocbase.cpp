@@ -1233,6 +1233,7 @@ TRI_vocbase_t::createCollectionObjectForStorage(
   parameters = merged.slice();
 
   // Try to create a new collection. This is not registered yet
+  // This is always a new and empty collection.
   return createCollectionObject(parameters, /*isAStub*/ false);
 }
 
@@ -1322,6 +1323,7 @@ TRI_vocbase_t::createCollections(
       // create a non-augmented collection object. on coordinators,
       // we do not persist any data, so we can get away with a lightweight
       // object (isAStub = true).
+      // This is always a new and empty collection.
       col = createCollectionObject(slice, /*isAStub*/ true);
     } else {
       // if we are not on a coordinator, we want to store the collection,

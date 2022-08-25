@@ -57,10 +57,6 @@ class ShardingFeature : public ArangodFeature {
       VPackSlice const& properties) const;
 
  private:
-  /// @brief returns the name of the default sharding strategy for existing
-  /// collections without a sharding strategy assigned
-  std::string getDefaultShardingStrategy(ShardingInfo const* sharding) const;
-
   std::unordered_map<std::string, ShardingStrategy::FactoryFunction> _factories;
 };
 
