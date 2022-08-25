@@ -39,6 +39,8 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include <atomic>
+
 namespace arangodb {
 
 struct FlushSubscription;
@@ -288,16 +290,18 @@ class IResearchDataStore {
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
-    IResearchDataStoreMeta
-        _meta;  // runtime meta for a data store (not persisted)
+    // runtime meta for a data store (not persisted)
+    IResearchDataStoreMeta _meta;
     irs::directory::ptr _directory;
-    basics::ReadWriteLock _mutex;  // for use with member '_meta'
+    // for use with member '_meta'
+    basics::ReadWriteLock _mutex;
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
     TRI_voc_tick_t _recoveryTick{0};
-    std::atomic_bool _inRecovery{false};  // data store is in recovery
+    // data store is in recovery
+    std::atomic_bool _inRecovery{false};
     explicit operator bool() const noexcept { return _directory && _writer; }
 
     void resetDataStore() noexcept {
@@ -388,6 +392,18 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result deleteDataStore() noexcept;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the data store to failed. if a data store is failed, it cannot
+  /// serve queries anymore.
+  //////////////////////////////////////////////////////////////////////////////
+  void setFailed() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the data store has failed (i.e. cannot be used for
+  /// queries)
+  //////////////////////////////////////////////////////////////////////////////
+  bool hasFailed() const noexcept;
+
  public:  // TODO(MBkkt) public only for tests, make protected
   // These methods only for tests
   ////////////////////////////////////////////////////////////////////////////////
@@ -442,6 +458,9 @@ class IResearchDataStore {
   // protected by _commitMutex
   TRI_voc_tick_t _lastCommittedTick;
   size_t _cleanupIntervalCount;
+
+  // data store is failed (i.e. is inconsistent and cannot be used for queries)
+  std::atomic_bool _failed;
 
   // prevents data store sequential commits
   std::mutex _commitMutex;

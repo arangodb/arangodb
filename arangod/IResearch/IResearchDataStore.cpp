@@ -544,6 +544,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _id(iid),
       _lastCommittedTick(0),
       _cleanupIntervalCount{0},
+      _failed{false},
       _numFailedCommits{nullptr},
       _numFailedCleanups{nullptr},
       _numFailedConsolidations{nullptr},
@@ -929,6 +930,19 @@ Result IResearchDataStore::deleteDataStore() noexcept {
   return {};
 }
 
+void IResearchDataStore::setFailed() noexcept {
+  // this is expected to be set only once during the recovery phase.
+  // view queries will start much later.
+  _failed.store(true);
+}
+
+bool IResearchDataStore::hasFailed() const noexcept {
+  // the failed flag is expected to be set only once during the
+  // recovery phase. view queries will start much later, so we should
+  // get away here with using relaxed memory order.
+  return _failed.load(std::memory_order_relaxed);
+}
+
 Result IResearchDataStore::initDataStore(
     bool& pathExists, InitCallback const& initCallback, uint32_t version,
     bool sorted, bool nested,
@@ -1170,7 +1184,8 @@ Result IResearchDataStore::initDataStore(
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
-      [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
+      [asyncSelf = _asyncSelf, &flushFeature,
+       asyncFeature = _asyncFeature]() -> Result {
         auto linkLock = asyncSelf->lock();
         // ensure link does not get deallocated before callback finishes
 
@@ -1184,6 +1199,10 @@ Result IResearchDataStore::initDataStore(
               TRI_ERROR_INTERNAL,
               "failed to register flush subscription for arangosearch link '" +
                   std::to_string(linkLock->id().id()) + "'"};
+        }
+
+        if (asyncFeature->linkFailedDuringRecovery(linkLock->id())) {
+          LOG_DEVEL << "LINK FAILED DURING RECOVERY: " << linkLock->id().id();
         }
 
         auto& dataStore = linkLock->_dataStore;

@@ -28,6 +28,11 @@
 #include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
+#include <atomic>
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace arangodb {
 struct IndexTypeFactory;
 
@@ -42,6 +47,7 @@ namespace iresearch {
 class IResearchAsync;
 class IResearchLink;
 class ResourceMutex;
+class IResearchRocksDBRecoveryHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -114,7 +120,11 @@ class IResearchFeature final : public ArangodFeature {
                                      int> = 0>
   IndexTypeFactory& factory();
 
+  bool linkFailedDuringRecovery(arangodb::IndexId id) const noexcept;
+
  private:
+  void registerRecoveryHelper();
+
   struct State {
     std::mutex mtx;
     std::condition_variable cv;
@@ -124,6 +134,11 @@ class IResearchFeature final : public ArangodFeature {
   std::shared_ptr<State> _startState;
   std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
+  // names of links/indexes to *NOT* recovery. all entries should
+  // be in format "collection-name/index-name" or "collection/index-id".
+  // the pseudo-entry "all" skips recovering data for all links/indexes
+  // found during recovery.
+  std::vector<std::string> _skipRecoveryItems;
   uint32_t _consolidationThreads;
   uint32_t _consolidationThreadsIdle;
   uint32_t _commitThreads;
@@ -131,6 +146,8 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _threads;
   uint32_t _threadsLimit;
   std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
+
+  std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
 };
 
 }  // namespace iresearch

@@ -49,6 +49,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #ifdef USE_ENTERPRISE
@@ -86,15 +87,76 @@
 
 using namespace std::chrono_literals;
 
-namespace arangodb {
-namespace aql {
-
+namespace arangodb::aql {
 class Query;
+}  // namespace arangodb::aql
 
-}  // namespace aql
-}  // namespace arangodb
 namespace arangodb::iresearch {
 namespace {
+
+// Log topic implementation for IResearch
+class IResearchLogTopic final : public LogTopic {
+ public:
+  explicit IResearchLogTopic(std::string const& name)
+      : LogTopic(name, kDefaultLevel) {
+    setIResearchLogLevel(kDefaultLevel);
+  }
+
+  virtual void setLogLevel(LogLevel level) override {
+    LogTopic::setLogLevel(level);
+    setIResearchLogLevel(level);
+  }
+
+ private:
+  static LogLevel const kDefaultLevel = LogLevel::INFO;
+
+  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
+  typedef std::underlying_type<LogLevel>::type arangoLogLevelType;
+
+  static_assert(static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) ==
+                        static_cast<arangoLogLevelType>(LogLevel::FATAL) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) ==
+                        static_cast<arangoLogLevelType>(LogLevel::ERR) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_WARN) ==
+                        static_cast<arangoLogLevelType>(LogLevel::WARN) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_INFO) ==
+                        static_cast<arangoLogLevelType>(LogLevel::INFO) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) ==
+                        static_cast<arangoLogLevelType>(LogLevel::DEBUG) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) ==
+                        static_cast<arangoLogLevelType>(LogLevel::TRACE) - 1,
+                "inconsistent log level mapping");
+
+  static void log_appender(void* context, const char* function,
+                           const char* file, int line,
+                           irs::logger::level_t level, const char* message,
+                           size_t message_len);
+  static void setIResearchLogLevel(LogLevel level) {
+    if (level == LogLevel::DEFAULT) {
+      level = kDefaultLevel;
+    }
+
+    auto irsLevel = static_cast<irs::logger::level_t>(
+        static_cast<arangoLogLevelType>(level) - 1);  // -1 for DEFAULT
+
+    irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
+    irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
+    irs::logger::output_le(irsLevel, log_appender, nullptr);
+  }
+};
+
+IResearchLogTopic LIBIRESEARCH("libiresearch");
+
+std::string const THREADS_PARAM("--arangosearch.threads");
+std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
+std::string const COMMIT_THREADS_PARAM("--arangosearch.commit-threads");
+std::string const COMMIT_THREADS_IDLE_PARAM(
+    "--arangosearch.commit-threads-idle");
+std::string const CONSOLIDATION_THREADS_PARAM(
+    "--arangosearch.consolidation-threads");
+std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
+    "--arangosearch.consolidation-threads-idle");
+std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -228,57 +290,6 @@ aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const& node,
       "view. Please ensure function signature is correct.",
       aql::getFunctionName(node).data());
 }
-
-// Log topic implementation for IResearch
-class IResearchLogTopic final : public LogTopic {
- public:
-  explicit IResearchLogTopic(std::string const& name)
-      : LogTopic(name, kDefaultLevel) {
-    setIResearchLogLevel(kDefaultLevel);
-  }
-
-  virtual void setLogLevel(LogLevel level) override {
-    LogTopic::setLogLevel(level);
-    setIResearchLogLevel(level);
-  }
-
- private:
-  static LogLevel const kDefaultLevel = LogLevel::INFO;
-
-  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
-  typedef std::underlying_type<LogLevel>::type arangoLogLevelType;
-
-  static_assert(static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) ==
-                        static_cast<arangoLogLevelType>(LogLevel::FATAL) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) ==
-                        static_cast<arangoLogLevelType>(LogLevel::ERR) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_WARN) ==
-                        static_cast<arangoLogLevelType>(LogLevel::WARN) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_INFO) ==
-                        static_cast<arangoLogLevelType>(LogLevel::INFO) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) ==
-                        static_cast<arangoLogLevelType>(LogLevel::DEBUG) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) ==
-                        static_cast<arangoLogLevelType>(LogLevel::TRACE) - 1,
-                "inconsistent log level mapping");
-
-  static void log_appender(void* context, const char* function,
-                           const char* file, int line,
-                           irs::logger::level_t level, const char* message,
-                           size_t message_len);
-  static void setIResearchLogLevel(LogLevel level) {
-    if (level == LogLevel::DEFAULT) {
-      level = kDefaultLevel;
-    }
-
-    auto irsLevel = static_cast<irs::logger::level_t>(
-        static_cast<arangoLogLevelType>(level) - 1);  // -1 for DEFAULT
-
-    irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
-    irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
-    irs::logger::output_le(irsLevel, log_appender, nullptr);
-  }
-};
 
 uint32_t computeIdleThreadsCount(uint32_t idleThreads,
                                  uint32_t threads) noexcept {
@@ -662,15 +673,6 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
       });
 }
 
-void registerRecoveryHelper(ArangodServer& server) {
-  auto helper = std::make_shared<IResearchRocksDBRecoveryHelper>(server);
-  auto res = RocksDBEngine::registerRecoveryHelper(helper);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res.errorNumber(), "failed to register RocksDB recovery helper");
-  }
-}
-
 void registerUpgradeTasks(ArangodServer& server) {
   if (!server.hasFeature<UpgradeFeature>()) {
     return;  // nothing to register with (OK if no tasks actually need to be
@@ -787,18 +789,6 @@ void registerTransactionDataSourceRegistrationCallback() {
         &transactionDataSourceRegistrationCallback);
   }
 }
-
-IResearchLogTopic LIBIRESEARCH("libiresearch");
-
-std::string const THREADS_PARAM("--arangosearch.threads");
-std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
-std::string const COMMIT_THREADS_PARAM("--arangosearch.commit-threads");
-std::string const COMMIT_THREADS_IDLE_PARAM(
-    "--arangosearch.commit-threads-idle");
-std::string const CONSOLIDATION_THREADS_PARAM(
-    "--arangosearch.consolidation-threads");
-std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
-    "--arangosearch.consolidation-threads-idle");
 
 void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
                                      const char* file, int line,
@@ -936,10 +926,42 @@ void IResearchFeature::collectOptions(
                   "for commit tasks (0 == autodetect)",
                   new options::UInt32Parameter(&_commitThreadsIdle))
       .setIntroducedIn(30705);
+  options
+      ->addOption(
+          SKIP_RECOVERY,
+          "skip data recovery for the specified view links and inverted "
+          "indexes on startup. "
+          "entries here should have the format '<collection-name>/<index-id>' "
+          "or '<collection-name>/<index-name>'. "
+          "the pseudo-entry 'all' will disable recovery for all view "
+          "links/inverted indexes. "
+          "all links/inverted indexes skipped during recovery will be marked "
+          "as failed when "
+          "the recovery is completed. these links/indexes will need to be "
+          "recreated manually "
+          "afterwards (note: using this option will cause data of affected "
+          "links/inverted indexes to become unavailable for querying until "
+          "they have been manually recreated)",
+          new options::VectorParameter<options::StringParameter>(
+              &_skipRecoveryItems))
+      .setIntroducedIn(31100);
 }
 
 void IResearchFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
+  // validate all entries in _skipRecoveryItems for formal correctness
+  for (auto const& item : _skipRecoveryItems) {
+    if (item != "all" && basics::StringUtils::split(item, '/').size() != 2) {
+      LOG_TOPIC("b9f28", FATAL, arangodb::iresearch::TOPIC)
+          << "invalid format for '" << SKIP_RECOVERY
+          << "' parameter. expecting '"
+          << "<collection-name>/<index-id>' or "
+             "'<collection-name>/<index-name>' or "
+          << "'all', got: '" << item << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   auto const& args = options->processingResult();
   bool const threadsSet = args.touched(THREADS_PARAM);
   bool const threadsLimitSet = args.touched(THREADS_LIMIT_PARAM);
@@ -999,7 +1021,7 @@ void IResearchFeature::prepare() {
   // register 'arangosearch' Transaction DataSource registration callback
   registerTransactionDataSourceRegistrationCallback();
 
-  registerRecoveryHelper(server());
+  registerRecoveryHelper();
 
   // register filters
   if (server().hasFeature<aql::AqlFunctionFeature>()) {
@@ -1157,6 +1179,36 @@ std::tuple<size_t, size_t, size_t> IResearchFeature::stats(
 
 std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
   return _async->get(id).limits();
+}
+
+bool IResearchFeature::linkFailedDuringRecovery(
+    arangodb::IndexId id) const noexcept {
+  if (_recoveryHelper != nullptr) {
+    return _recoveryHelper->failed(id);
+  }
+  return false;
+}
+
+void IResearchFeature::registerRecoveryHelper() {
+  if (!_skipRecoveryItems.empty()) {
+    LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
+        << "arangosearch recovery explicitly disabled via the '"
+        << SKIP_RECOVERY << "' startup option for the following links/indexes: "
+        << _skipRecoveryItems
+        << ". all affected links/indexes that are touched during "
+           "recovery will be marked as failed and will need to be recreated "
+           "manually when the recovery is finished.";
+  }
+
+  _recoveryHelper = std::make_shared<IResearchRocksDBRecoveryHelper>(
+      server(), _skipRecoveryItems);
+  auto res = RocksDBEngine::registerRecoveryHelper(_recoveryHelper);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        res.errorNumber(),
+        absl::StrCat("failed to register RocksDB recovery helper: ",
+                     res.errorMessage()));
+  }
 }
 
 template<typename Engine, typename std::enable_if_t<

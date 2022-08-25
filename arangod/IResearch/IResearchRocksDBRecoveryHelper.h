@@ -24,17 +24,18 @@
 #pragma once
 
 #include <cstdint>
-#include <set>
 
 #include <rocksdb/slice.h>
 #include <rocksdb/types.h>
 
-#include "Basics/Identifier.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
+#include "Containers/SmallVector.h"
+#include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/voc-types.h"
 
 namespace arangodb {
 namespace application_features {
@@ -46,24 +47,12 @@ class RocksDBEngine;
 
 namespace iresearch {
 
+// recovery helper that replays/buffers all operations for links/indexes
+// found during recovery
 class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
-  struct IndexId {
-    TRI_voc_tick_t db;
-    DataSourceId cid;
-    arangodb::IndexId iid;
-
-    IndexId(TRI_voc_tick_t db, DataSourceId cid, arangodb::IndexId iid) noexcept
-        : db(db), cid(cid), iid(iid) {}
-
-    bool operator<(IndexId const& rhs) const noexcept {
-      return (db < rhs.db) ||
-             (db == rhs.db &&
-              (cid < rhs.cid || (cid == rhs.cid && iid < rhs.iid)));
-    }
-  };
-
-  explicit IResearchRocksDBRecoveryHelper(ArangodServer&);
+  explicit IResearchRocksDBRecoveryHelper(
+      ArangodServer&, std::vector<std::string> const& skipRecoveryItems);
 
   virtual void prepare() override;
 
@@ -85,15 +74,36 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   virtual void LogData(const rocksdb::Slice& blob,
                        rocksdb::SequenceNumber tick) override;
 
+  virtual bool failed(IndexId id) const noexcept override {
+    return _failedIndexes.contains(id);
+  }
+
  private:
   void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                       rocksdb::SequenceNumber tick);
 
+  using LinkContainer =
+      containers::SmallVector<std::pair<std::shared_ptr<arangodb::Index>, bool>,
+                              8>;
+
+  bool lookupLinks(LinkContainer& result,
+                   arangodb::LogicalCollection& coll) const;
+
+ protected:
   ArangodServer& _server;
-  std::set<IndexId> _recoveredIndexes;  // set of already recovered indexes
   DatabaseFeature* _dbFeature{};
   RocksDBEngine* _engine{};
   uint32_t _documentCF{};
+
+  // skip recovery of all links/indexes
+  bool _skipAllItems;
+
+  // skip recovery of dedicated links/indexes
+  // maps from collection name => index ids / index names
+  containers::FlatHashMap<std::string, containers::FlatHashSet<std::string>>
+      _skipRecoveryItems;
+
+  containers::FlatHashSet<IndexId> _failedIndexes;
 };
 
 }  // end namespace iresearch
