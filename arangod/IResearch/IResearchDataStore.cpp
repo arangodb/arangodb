@@ -124,7 +124,7 @@ struct Task {
         << T::typeName()
         << " pool: " << ThreadGroupStats{async->stats(T::threadGroup())};
 
-    if (!asyncLink->terminationRequested()) {
+    if (!asyncLink->empty()) {
       async->queue(T::threadGroup(), delay, static_cast<const T&>(*this));
     }
   }
@@ -244,19 +244,8 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   }
   return {};
 }
+
 }  // namespace
-
-AsyncLinkHandle::AsyncLinkHandle(IResearchDataStore* link) : _link{link} {}
-
-AsyncLinkHandle::~AsyncLinkHandle() = default;
-
-void AsyncLinkHandle::reset() {
-  // mark long-running async jobs for termination
-  _asyncTerminate.store(true, std::memory_order_release);
-  // the data-store is being deallocated, link use is no longer valid
-  // (wait for all the view users to finish)
-  _link.reset();
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct MaintenanceState
@@ -330,13 +319,6 @@ void CommitTask::finalize(IResearchDataStore& link,
 void CommitTask::operator()() {
   const char runId = 0;
   state->pendingCommits.fetch_sub(1, std::memory_order_release);
-
-  if (asyncLink->terminationRequested()) {
-    LOG_TOPIC("eba1a", DEBUG, TOPIC)
-        << "termination requested while committing the link '" << id
-        << "', runId '" << size_t(&runId) << "'";
-    return;
-  }
 
   auto linkLock = asyncLink->lock();
   if (!linkLock) {
@@ -439,13 +421,6 @@ struct ConsolidationTask : Task<ConsolidationTask> {
 void ConsolidationTask::operator()() {
   const char runId = 0;
   state->pendingConsolidations.fetch_sub(1, std::memory_order_release);
-
-  if (asyncLink->terminationRequested()) {
-    LOG_TOPIC("eba2a", DEBUG, TOPIC)
-        << "termination requested while consolidating the link '" << id
-        << "', runId '" << size_t(&runId) << "'";
-    return;
-  }
 
   auto linkLock = asyncLink->lock();
   if (!linkLock) {
@@ -622,9 +597,7 @@ void IResearchDataStore::scheduleConsolidation(
   task.async = _asyncFeature;
   task.id = id();
   task.state = _maintenanceState;
-  task.progress = [link = _asyncSelf.get()] {
-    return !link->terminationRequested();
-  };
+  task.progress = [link = _asyncSelf.get()] { return !link->empty(); };
 
   _maintenanceState->pendingConsolidations.fetch_add(1,
                                                      std::memory_order_release);
@@ -899,19 +872,19 @@ Result IResearchDataStore::consolidateUnsafeImpl(
 
 void IResearchDataStore::shutdownDataStore() noexcept {
   std::atomic_store(&_flushSubscription, {});  // reset together with _asyncSelf
+  // the data-store is being deallocated, link use is no longer valid
+  _asyncSelf->reset();  // wait for all the view users to finish
   try {
-    // the data-store is being deallocated, link use is no longer valid
-    _asyncSelf->reset();  // wait for all the view users to finish
     if (_dataStore) {
       removeMetrics();  // TODO(MBkkt) Should be noexcept?
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("bad00", ERR, TOPIC)
-        << "caught exception while waiting reset arangosearch data store '"
+        << "caught exception while removeMetrics arangosearch data store '"
         << std::to_string(id().id()) << "': " << e.what();
   } catch (...) {
     LOG_TOPIC("bad01", ERR, TOPIC)
-        << "caught something while waiting reset arangosearch data store '"
+        << "caught something while removeMetrics arangosearch data store '"
         << std::to_string(id().id()) << "'";
   }
   _dataStore.resetDataStore();
@@ -1154,6 +1127,7 @@ Result IResearchDataStore::initDataStore(
   _dataStore._meta._writebufferSizeMax = options.segment_memory_max;
 
   // create a new 'self' (previous was reset during unload() above)
+  TRI_ASSERT(_asyncSelf->empty());
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
   // register metrics before starting any background threads

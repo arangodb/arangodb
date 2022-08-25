@@ -553,7 +553,6 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
         vocbase.server().getFeature<IResearchAnalyzerFeature>();
     TRI_ASSERT(_trx.state());
     auto const& revision = _trx.state()->analyzersRevision();
-
     auto getAnalyzer = [&](std::string_view shortName) {
       auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
       if (!analyzer) {
@@ -561,26 +560,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
       }
       return FieldMeta::Analyzer{std::move(analyzer), std::string{shortName}};
     };
-
-    FieldMeta::Analyzer rootAnalyzer{emptyAnalyzer()};
-    containers::FlatHashMap<std::string_view, FieldMeta::Analyzer>
-        fieldToAnalyzer;
-
-    if (auto it = meta->fieldToAnalyzer.begin();
-        it != meta->fieldToAnalyzer.end() && it->first == "") {
-      rootAnalyzer = getAnalyzer(it->second.analyzer);
-    }
-    for (auto const& [name, field] : meta->fieldToAnalyzer) {
-      fieldToAnalyzer.emplace(name, getAnalyzer(field.analyzer));
-    }
-    _provider = [rootAnalyzer = std::move(rootAnalyzer),
-                 fieldToAnalyzer = std::move(fieldToAnalyzer)](
-                    std::string_view field) -> FieldMeta::Analyzer const& {
-      if (auto it = fieldToAnalyzer.find(field); it != fieldToAnalyzer.end()) {
-        return it->second;
-      }
-      return rootAnalyzer;
-    };
+    _provider = meta->createProvider(getAnalyzer);
   }
 }
 
@@ -762,7 +742,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
     FieldMeta::Analyzer const identity{IResearchAnalyzerFeature::identity()};
-    AnalyzerProvider const* fieldAnalyzerProvider = nullptr;
+    AnalyzerProvider* fieldAnalyzerProvider = nullptr;
     auto const* contextAnalyzer = &identity;
     if (!infos().isOldMangling()) {
       fieldAnalyzerProvider = &_provider;

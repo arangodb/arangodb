@@ -139,21 +139,39 @@ std::shared_ptr<Index> getIndex(LogicalCollection const& collection,
   return nullptr;
 }
 
-template<typename V>
-auto Find(SearchMeta::Map const& map, V&& v) noexcept {
-  return map.find(std::forward<V>(v));
+auto find(SearchMeta::Map const& map, std::string_view key) noexcept {
+  return map.find(key);
 }
 
-template<typename V>
-auto Find(auto const& vector, V const& v) noexcept {
-  auto last = end(vector);
+auto find(auto const& vector, std::string_view key) noexcept {
+  auto last = vector.end();
   auto it = std::lower_bound(
-      begin(vector), last, v,
+      vector.begin(), last, key,
       [](auto const& field, auto const& value) { return field.first < value; });
-  if (it != last && it->first == v) {
+  if (it != last && it->first == key) {
     return it;
   }
   return last;
+}
+
+std::string_view findLongestCommonPrefix(ExplicitMatcher& matcher,
+                                         std::string_view key) noexcept {
+  auto const& fst = matcher.GetFst();
+  auto const start = fst.Start();
+  matcher.SetState(start);
+  size_t lastIndex = 0;
+  for (size_t matched = 0; matched < key.size();) {
+    if (!matcher.Find(key[matched])) {
+      break;
+    }
+    ++matched;
+    auto const nextstate = matcher.Value().nextstate;
+    if (fst.Final(nextstate)) {
+      lastIndex = matched;
+    }
+    matcher.SetState(nextstate);
+  }
+  return key.substr(0, lastIndex);
 }
 
 std::string checkFields(SearchMeta const& search,
@@ -169,39 +187,25 @@ std::string checkFields(SearchMeta const& search,
     }
     builder.finish();
 
-    auto start = fst.Start();
     ExplicitMatcher matcher{&fst, fst::MATCH_INPUT};
     for (auto const& field : rhs) {
-      auto const fieldName = field.first;
-      matcher.SetState(start);
-
-      size_t lastKey = 0;
-      for (size_t matched = 0; matched < fieldName.size();) {
-        if (!matcher.Find(fieldName[matched])) {
-          break;
-        }
-        ++matched;
-        auto const nextstate = matcher.Value().nextstate;
-        if (fst.Final(nextstate)) {
-          lastKey = matched;
-        }
-        matcher.SetState(nextstate);
-      }
-      auto it = Find(lhs, fieldName.substr(0, lastKey));
+      auto const name = field.first;
+      auto const prefix = findLongestCommonPrefix(matcher, name);
+      auto it = find(lhs, prefix);
       if (it == lhs.end()) {
-        TRI_ASSERT(lastKey == 0);
+        TRI_ASSERT(prefix.empty());
         continue;
       }
       if (it->second.analyzer == field.second.analyzer) {
         continue;
       }
-      if (it->first == fieldName) {
-        return absl::StrCat(rhsIs, " field '", fieldName, "' analyzer '",
+      if (it->first == name) {
+        return absl::StrCat(rhsIs, " field '", name, "' analyzer '",
                             field.second.analyzer, "' mismatches ", lhsIs,
                             " field analyzer '", it->second.analyzer, "'");
       } else if (it->second.includeAllFields) {
         return absl::StrCat(
-            rhsIs, " field '", fieldName, "' analyzer '", field.second.analyzer,
+            rhsIs, " field '", name, "' analyzer '", field.second.analyzer,
             "' mismatches ", lhsIs, " field '", it->first,
             "' with includeAllFields analyzer '", it->second.analyzer, "'");
       }
@@ -259,6 +263,55 @@ void add(SearchMeta& search, IResearchInvertedIndexMeta const& index) {
 }
 
 }  // namespace
+
+struct MetaFst : VectorFst {};
+
+std::shared_ptr<SearchMeta> SearchMeta::make() {
+  return std::make_shared<SearchMeta>();
+}
+
+void SearchMeta::createFst() {
+  auto fst = std::make_unique<MetaFst>();
+  FstBuilder builder{*fst};
+  for (auto const& field : fieldToAnalyzer) {
+    builder.add(field.first, true);
+  }
+  builder.finish();
+  _fst = std::move(fst);
+}
+
+MetaFst const* SearchMeta::getFst() const { return _fst.get(); }
+
+AnalyzerProvider SearchMeta::createProvider(
+    std::function<FieldMeta::Analyzer(std::string_view)> getAnalyzer) const {
+  struct Field final {
+    FieldMeta::Analyzer analyzer;
+    bool includeAllFields;
+  };
+  containers::FlatHashMap<std::string_view, Field> analyzers;
+  for (auto const& [name, field] : fieldToAnalyzer) {
+    analyzers.emplace(
+        name, Field{getAnalyzer(field.analyzer), field.includeAllFields});
+  }
+  VectorFst const* fst = getFst();
+  TRI_ASSERT(fst);
+  // we don't use provider in parallel, so create matcher here is thread safe
+  auto matcher = std::make_unique<ExplicitMatcher>(fst, fst::MATCH_INPUT);
+  return [analyzers = std::move(analyzers), matcher = std::move(matcher)](
+             std::string_view field) mutable -> FieldMeta::Analyzer const& {
+    auto it = analyzers.find(field);  // fast-path O(1)
+    if (it != analyzers.end()) {
+      return it->second.analyzer;
+    }
+    // Omega(prefix.size())
+    auto const prefix = findLongestCommonPrefix(*matcher, field);
+    it = analyzers.find(prefix);
+    if (it != analyzers.end() && it->second.includeAllFields) {
+      return it->second.analyzer;
+    }
+    return emptyAnalyzer();
+  };
+}
 
 class SearchFactory final : public ViewFactory {
   // LogicalView factory for end-user validation instantiation and
@@ -627,7 +680,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     return {};
   };
 
-  auto searchMeta = std::make_shared<SearchMeta>();
+  auto searchMeta = SearchMeta::make();
   auto r = iterate(
       [&](auto const& indexMeta) {
         searchMeta->primarySort = indexMeta._sort;
@@ -645,9 +698,13 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
                 }
                 return error;
               });
-  if (r.ok()) {
-    _meta = std::move(searchMeta);
+  if (!r.ok()) {
+    return r;
   }
+  if (ServerState::instance()->isSingleServer()) {
+    searchMeta->createFst();
+  }  // else we don't create provider from this SearchMeta
+  _meta = std::move(searchMeta);
   return r;
 }
 
