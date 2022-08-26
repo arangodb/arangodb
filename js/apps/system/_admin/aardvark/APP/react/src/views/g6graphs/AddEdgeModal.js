@@ -1,5 +1,6 @@
 /* global arangoHelper, $ */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
+import { UrlParametersContext } from "./url-parameters-context";
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import { Input, Select, Tooltip } from 'antd';
@@ -30,6 +31,7 @@ const StyledButton = styled.button`
 
 export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onRequestClose, edge, edgeCollections, edgeData, editorContent, children, edgeKey, edgeCollection, onEdgeCreation, graphName, graphData, nodeFrom, nodeTo, onEdgeCreationCancellation }) => {
 
+  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const { Option } = Select;
   const keyInputRef = useRef();
   const jsonEditorRef = useRef();
@@ -55,16 +57,29 @@ export const AddEdgeModal = ({ edgeModelToAdd, shouldShow, onUpdateEdge, onReque
       data: JSON.stringify(json),
       processData: true,
       success: function (response) {
+        console.log("repsonse in AddEdgeModal: ", response);
+        /*
+        if(urlParameters.nodeLabelByCollection) {
+          
+        }
+        */
         const edgeModel = {
           id: response.edge._id,
           label: response.edge._key,
           source: edgeModelToAdd.source,
           target: edgeModelToAdd.target,
+          labelCfg: {
+            autoRotate: true,
+            refY: 10,
+            style: {
+              fill: '#' + urlParameters.edgeColor,
+              fontStyle: 'regular',
+              fontFamily: 'Roboto',
+              fontSize: 12
+            },
+          },
           style: {
-            aaaaaa: this.props.edgeColor,
-            //stroke: '#' + this.props.edgeColor,
-            stroke: '#ff00ff',
-            cursor: 'help',
+            stroke: '#' + urlParameters.edgeColor,
           },
         };
         openNotificationWithIcon(response.edge._id);
