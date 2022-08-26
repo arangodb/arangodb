@@ -1,6 +1,8 @@
 devel
 -----
 
+* A new Pregel algorithm: the version of Hypertext-Induced Topic Search (HITS) as described in the original paper.
+
 * Make graph search case-insensitive (fixes BTS-882).
 
 * BTS-428: Added function DATE_ISOWEEKYEAR that retrieves the number of the
