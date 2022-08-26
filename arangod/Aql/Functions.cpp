@@ -2615,7 +2615,7 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
     }
   }();
 
-  if (length < 0 || offset >= str.size()) {
+  if (length <= 0 || offset >= str.size()) {
     return AqlValue{velocypack::Slice::emptyStringSlice()};
   }
 
