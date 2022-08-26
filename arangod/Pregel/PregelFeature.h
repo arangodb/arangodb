@@ -49,7 +49,6 @@ namespace arangodb::pregel {
 
 class Conductor;
 class IWorker;
-class RecoveryManager;
 
 class PregelFeature final : public ArangodFeature {
  public:
@@ -88,10 +87,6 @@ class PregelFeature final : public ArangodFeature {
 
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
-
-  RecoveryManager* recoveryManager() {
-    return _recoveryManagerPtr.load(std::memory_order_acquire);
-  }
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
@@ -141,15 +136,6 @@ class PregelFeature final : public ArangodFeature {
   bool _useMemoryMaps;
 
   mutable Mutex _mutex;
-
-  std::unique_ptr<RecoveryManager> _recoveryManager;
-  /// @brief _recoveryManagerPtr always points to the same object as
-  /// _recoveryManager, but allows the pointer to be read atomically. This is
-  /// necessary because _recoveryManager is initialized lazily at a time when
-  /// other threads are already running and potentially trying to read the
-  /// pointer. This only works because _recoveryManager is only initialzed once
-  /// and lives until the owning PregelFeature instance is also destroyed.
-  std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
 
   Scheduler::WorkHandle _gcHandle;
 

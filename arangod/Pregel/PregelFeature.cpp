@@ -51,7 +51,6 @@
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/WorkerConductorMessages.h"
@@ -472,13 +471,6 @@ void PregelFeature::start() {
       << ", memory mapping: " << (_useMemoryMaps ? "on" : "off")
       << ", temp path: " << tempDirectory;
 
-  if (ServerState::instance()->isCoordinator()) {
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    _recoveryManager = std::make_unique<RecoveryManager>(ci);
-    _recoveryManagerPtr.store(_recoveryManager.get(),
-                              std::memory_order_release);
-  }
-
   if (!ServerState::instance()->isAgent()) {
     scheduleGarbageCollection();
   }
@@ -684,8 +676,6 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
     outBuilder = co->finishedWorkerStep(body);
   } else if (path == Utils::finishedWorkerFinalizationPath) {
     co->finishedWorkerFinalize(body);
-  } else if (path == Utils::finishedRecoveryPath) {
-    co->finishedRecoveryStep(body);
   }
 }
 
@@ -720,13 +710,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     worker(exeNum)->setupWorker();  // will call conductor
 
     return;
-  } else if (path == Utils::startRecoveryPath) {
-    if (!w) {
-      addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
-    }
-
-    worker(exeNum)->startRecovery(body);
-    return;
   } else if (!w) {
     // any other call should have a working worker instance
     if (path == Utils::finalizeExecutionPath) {
@@ -759,14 +742,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   } else if (path == Utils::finalizeExecutionPath) {
     w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
     auto response = CleanupStarted{};
-    serialize(outBuilder, response);
-  } else if (path == Utils::continueRecoveryPath) {
-    w->compensateStep(body);
-    auto response = RecoveryContinued{};
-    serialize(outBuilder, response);
-  } else if (path == Utils::finalizeRecoveryPath) {
-    w->finalizeRecovery(body);
-    auto response = RecoveryFinalized{};
     serialize(outBuilder, response);
   } else if (path == Utils::aqlResultsPath) {
     auto command = deserialize<CollectPregelResults>(body);
