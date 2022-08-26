@@ -156,14 +156,9 @@ class ResultT {
 
   // Default constructor calls default constructor of T
   // If T is not default constructable, ResultT cannot be default constructable
-  template<typename U = T,
-           std::enable_if_t<std::is_nothrow_default_constructible<U>::value,
-                            bool> = true>
-  ResultT() : _val{T{}} {}
-  template<typename U = T,
-           std::enable_if_t<!std::is_nothrow_default_constructible<U>::value,
-                            bool> = true>
-  ResultT() = delete;
+  ResultT() requires(std::is_nothrow_default_constructible<T>::value)
+      : _val{T{}} {}
+  ResultT() requires(!std::is_nothrow_default_constructible<T>::value) = delete;
 
   ResultT& operator=(T const& val_) {
     _val = val_;
@@ -293,6 +288,7 @@ class ResultT {
       : _result(std::move(result)), _val(std::move(val_)) {}
 };
 
+namespace detail {
 template<typename T>
 struct ResultTSerializer
     : std::variant<std::reference_wrapper<const arangodb::Result>,
@@ -312,10 +308,11 @@ auto inspect(Inspector& f, ResultTDeserializer<T>& x) {
       arangodb::inspection::type<T>("value"),
       arangodb::inspection::type<arangodb::Result>("error"));
 }
+}  // namespace detail
 template<typename Inspector, typename T>
 auto inspect(Inspector& f, arangodb::ResultT<T>& x) {
   if constexpr (Inspector::isLoading) {
-    auto v = ResultTDeserializer<T>{};
+    auto v = detail::ResultTDeserializer<T>{};
     auto res = f.apply(v);
     if (res.ok()) {
       if (std::holds_alternative<arangodb::Result>(v)) {
@@ -326,7 +323,7 @@ auto inspect(Inspector& f, arangodb::ResultT<T>& x) {
     }
     return res;
   } else {
-    auto variant = [&]() -> ResultTSerializer<T> {
+    auto variant = [&]() -> detail::ResultTSerializer<T> {
       if (x.fail()) {
         return {std::ref(x.result())};
       }

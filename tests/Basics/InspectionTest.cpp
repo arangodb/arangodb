@@ -2096,13 +2096,13 @@ TEST_F(VPackInspectionTest, StructIncludingVPackBuilder) {
   }
 }
 
-TEST(VPackInspectionTest, Result) {
+TEST_F(VPackInspectionTest, Result) {
   arangodb::Result result = {TRI_ERROR_INTERNAL, "some error message"};
   VPackBuilder expectedSerlized;
   {
     VPackObjectBuilder ob(&expectedSerlized);
-    expectedSerlized.add("message", "some error message");
     expectedSerlized.add("number", TRI_ERROR_INTERNAL);
+    expectedSerlized.add("message", "some error message");
   }
 
   VPackBuilder serialized;
@@ -2115,7 +2115,7 @@ TEST(VPackInspectionTest, Result) {
   EXPECT_EQ(result, deserialized);
 }
 
-TEST(VPackInspectionTest, ResultTWithResultInside) {
+TEST_F(VPackInspectionTest, ResultTWithResultInside) {
   arangodb::ResultT<uint64_t> result =
       arangodb::Result{TRI_ERROR_INTERNAL, "some error message"};
   VPackBuilder expectedSerlized;
@@ -2124,8 +2124,8 @@ TEST(VPackInspectionTest, ResultTWithResultInside) {
     expectedSerlized.add(VPackValue("error"));
     {
       VPackObjectBuilder ob2(&expectedSerlized);
-      expectedSerlized.add("message", "some error message");
       expectedSerlized.add("number", TRI_ERROR_INTERNAL);
+      expectedSerlized.add("message", "some error message");
     }
   }
 
@@ -2139,7 +2139,7 @@ TEST(VPackInspectionTest, ResultTWithResultInside) {
   EXPECT_EQ(result, deserialized);
 }
 
-TEST(VPackInspectionTest, ResultTWithTInside) {
+TEST_F(VPackInspectionTest, ResultTWithTInside) {
   arangodb::ResultT<uint64_t> result = 45;
   VPackBuilder expectedSerlized;
   {
