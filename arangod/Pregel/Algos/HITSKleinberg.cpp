@@ -114,6 +114,10 @@ struct HITSKleinbergComputation
     : public VertexComputation<VertexType, int8_t, SenderMessage<double>> {
   HITSKleinbergComputation() = default;
 
+  // sends auth to all in-neighbors. note that all vertices send messages
+  // to all out-neighbors in all iterations (there are no inactive vertices),
+  // so the set of in-neighbors can be determined by iterating over received
+  // messages
   void sendAuthToInNeighbors(
       MessageIterator<SenderMessage<double>> const& receivedMessages,
       double auth) {
