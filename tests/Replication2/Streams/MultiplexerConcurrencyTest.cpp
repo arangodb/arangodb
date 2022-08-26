@@ -32,6 +32,7 @@
 
 #include "Replication2/Streams/TestLogSpecification.h"
 #include "Replication2/Mocks/AsyncLeader.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -133,6 +134,18 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   constexpr auto lastIndex = LogIndex{num_threads * num_inserts_per_thread + 1};
 
   std::vector<std::thread> threads;
+  threads.reserve(num_threads);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   std::generate_n(std::back_inserter(threads), num_threads, [&] {
     return std::thread([&, producer] {
       auto index = LogIndex{0};
@@ -143,8 +156,8 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
     });
   });
 
-  std::for_each(std::begin(threads), std::end(threads),
-                [](std::thread& t) { t.join(); });
+  scope.fire();
+
   asyncFollower->waitFor(lastIndex).wait();
   asyncFollower->stop();
   asyncLeader->waitFor(lastIndex).wait();

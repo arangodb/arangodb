@@ -27,6 +27,7 @@
 
 #include "gtest/gtest.h"
 #include "ConnectionTest.h"
+#include "Basics/ScopeGuard.h"
 
 // Tesuite checks the thread-safety properties of the connection
 // implementations. Try to send requests on the same connection object
@@ -73,6 +74,18 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
   }
 
   std::vector<std::thread> joins;
+  joins.reserve(threads());
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (std::thread& t : joins) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t t = 0; t < threads(); t++) {
     const size_t rep = repeat();
     wg.add((unsigned)rep);
@@ -91,9 +104,7 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
       std::chrono::seconds(300)));  // wait for all threads to return
 
   // wait for all threads to end
-  for (std::thread& t : joins) {
-    t.join();
-  }
+  scope.fire();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }
@@ -128,6 +139,18 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
   }
 
   std::vector<std::thread> joins;
+  joins.reserve(threads());
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (std::thread& t : joins) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t t = 0; t < threads(); t++) {
     wg.add(repeat());
     joins.emplace_back([=, this] {
@@ -147,9 +170,7 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
       std::chrono::seconds(300)));  // wait for all threads to return
 
   // wait for all threads to end
-  for (std::thread& t : joins) {
-    t.join();
-  }
+  scope.fire();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }

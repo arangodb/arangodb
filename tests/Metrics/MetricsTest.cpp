@@ -30,6 +30,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LinScale.h"
 #include "Metrics/LogScale.h"
+#include "Basics/ScopeGuard.h"
 
 #include <algorithm>
 #include <atomic>
@@ -57,6 +58,17 @@ TEST(MetricsTest, test_counter_concurrency) {
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
@@ -71,9 +83,7 @@ TEST(MetricsTest, test_counter_concurrency) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  scope.fire();
 
   ASSERT_EQ(c.load(), ::numThreads * ::numOpsPerThread);
 }
@@ -91,6 +101,17 @@ TEST(MetricsTest, test_histogram_concurrency_same) {
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
@@ -105,9 +126,7 @@ TEST(MetricsTest, test_histogram_concurrency_same) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  scope.fire();
 
   ASSERT_EQ(h.load(0), ::numThreads * ::numOpsPerThread);
   ASSERT_EQ(h.load(1), 0);
@@ -128,6 +147,17 @@ TEST(MetricsTest, test_histogram_concurrency_distributed) {
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back(
         [&](uint64_t value) {
@@ -144,9 +174,7 @@ TEST(MetricsTest, test_histogram_concurrency_distributed) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  scope.fire();
 
   ASSERT_EQ(h.load(0), ::numOpsPerThread);
   ASSERT_EQ(h.load(1), (::numThreads > 1 ? 1 : 0) * ::numOpsPerThread);

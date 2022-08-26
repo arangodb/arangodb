@@ -232,6 +232,18 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
       std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
 
   std::vector<std::thread> clientThreads;
+  clientThreads.reserve(2);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : clientThreads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   auto threadCounter = uint16_t{0};
   clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++,
                              std::ref(data));
@@ -247,9 +259,7 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   }
   data.stopClientThreads.store(true);
 
-  for (auto& thread : clientThreads) {
-    thread.join();
-  }
+  scope.fire();
 
   // stop replication only after all client threads joined, so we don't block
   // them in some intermediate state
@@ -295,6 +305,18 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
       std::vector{follower1.get(), follower2.get()}, std::ref(data)};
 
   std::vector<std::thread> clientThreads;
+  clientThreads.reserve(2);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : clientThreads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   auto threadCounter = uint16_t{0};
   clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++,
                              std::ref(data));
@@ -310,9 +332,7 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   }
   data.stopClientThreads.store(true);
 
-  for (auto& thread : clientThreads) {
-    thread.join();
-  }
+  scope.fire();
 
   // stop replication only after all client threads joined, so we don't block
   // them in some intermediate state

@@ -25,6 +25,7 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/SourceLocation.h"
 #include "Random/RandomGenerator.h"
+#include "Basics/ScopeGuard.h"
 
 #include <chrono>
 #include <cstdint>
@@ -585,6 +586,17 @@ struct RandomEnumerator {
         NumberOfCores::getValue(), randomParameters.iterations);
     auto threads = std::vector<std::thread>();
     threads.reserve(numThreads);
+    arangodb::ScopeGuard scope{[&]() noexcept {
+      for (auto& t : threads) {
+        if (t.joinable()) {
+          try {
+            t.join();
+          } catch (...) {
+          }
+        }
+      }
+    }};
+
     auto results = std::vector<std::optional<Result>>(numThreads, std::nullopt);
     auto iterationsLeftToDistribute = randomParameters.iterations;
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
@@ -620,9 +632,7 @@ struct RandomEnumerator {
 
     TRI_ASSERT(iterationsLeftToDistribute == 0);
 
-    for (auto& thr : threads) {
-      thr.join();
-    }
+    scope.fire();
 
     for (auto const& result : results) {
       TRI_ASSERT(result.has_value());

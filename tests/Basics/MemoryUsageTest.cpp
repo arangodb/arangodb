@@ -28,6 +28,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/voc-errors.h"
+#include "Basics/ScopeGuard.h"
 
 #include <algorithm>
 #include <atomic>
@@ -199,6 +200,17 @@ TEST(ResourceUsageTest, testConcurrencyRestricted) {
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
@@ -224,9 +236,7 @@ TEST(ResourceUsageTest, testConcurrencyRestricted) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  scope.fire();
 
   // should be down to 0 now
   EXPECT_EQ(0, monitor.current());
@@ -246,6 +256,17 @@ TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
@@ -262,9 +283,7 @@ TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  scope.fire();
 
   // should be down to 0 now
   ASSERT_EQ(0, monitor.current());
@@ -475,6 +494,17 @@ TEST(GlobalResourceMonitorTest, testConcurrencyRestricted) {
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
@@ -500,9 +530,7 @@ TEST(GlobalResourceMonitorTest, testConcurrencyRestricted) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  scope.fire();
 
   // should be down to 0 now
   ASSERT_EQ(0, monitor.current());
@@ -518,6 +546,17 @@ TEST(GlobalResourceMonitorTest, testConcurrencyUnrestricted) {
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
+
   for (size_t i = 0; i < ::numThreads; ++i) {
     threads.emplace_back([&]() {
       while (!go.load()) {
@@ -535,9 +574,7 @@ TEST(GlobalResourceMonitorTest, testConcurrencyUnrestricted) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  scope.fire();
 
   // should be down to 0 now
   ASSERT_EQ(0, monitor.current());

@@ -28,6 +28,7 @@
 #include "Basics/RecursiveLocker.h"
 
 #include "gtest/gtest.h"
+#include "Basics/ScopeGuard.h"
 
 #include <atomic>
 #include <thread>
@@ -121,6 +122,17 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
   constexpr int iterations = 100000;
 
   std::vector<std::thread> threads;
+  threads.reserve(n);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
 
   for (int i = 0; i < n; ++i) {
     threads.emplace_back([&]() {
@@ -145,9 +157,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
     });
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  scope.fire();
 
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations * 2, x);
@@ -239,6 +249,17 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
   constexpr int iterations = 100000;
 
   std::vector<std::thread> threads;
+  threads.reserve(n);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
 
   for (int i = 0; i < n; ++i) {
     threads.emplace_back([&]() {
@@ -263,9 +284,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
     });
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  scope.fire();
 
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations * 2, x);
@@ -302,6 +321,17 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteRead) {
   constexpr int iterations = 100000;
 
   std::vector<std::thread> threads;
+  threads.reserve(n);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
 
   for (int i = 0; i < n; ++i) {
     threads.emplace_back([&]() {
@@ -326,9 +356,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteRead) {
     });
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  scope.fire();
 
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations, x);
@@ -349,6 +377,17 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteAndReadMix) {
   constexpr int iterations = 100000;
 
   std::vector<std::thread> threads;
+  threads.reserve(n);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
 
   for (int i = 0; i < n; ++i) {
     threads.emplace_back(
@@ -378,9 +417,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteAndReadMix) {
         i);
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  scope.fire();
 
   ASSERT_EQ((n / 2) * iterations, total);
   ASSERT_EQ((n / 2) * iterations, x);
@@ -401,6 +438,17 @@ TEST(RecursiveLockerTest, testRecursiveReadLockMultiThreadedWriteAndReadMix) {
   constexpr int iterations = 100000;
 
   std::vector<std::thread> threads;
+  threads.reserve(n);
+  arangodb::ScopeGuard scope{[&]() noexcept {
+    for (auto& t : threads) {
+      if (t.joinable()) {
+        try {
+          t.join();
+        } catch (...) {
+        }
+      }
+    }
+  }};
 
   for (int i = 0; i < n; ++i) {
     threads.emplace_back(
@@ -454,9 +502,7 @@ TEST(RecursiveLockerTest, testRecursiveReadLockMultiThreadedWriteAndReadMix) {
         i);
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  scope.fire();
 
   ASSERT_EQ(iterations, total);
   ASSERT_EQ(iterations, x);
