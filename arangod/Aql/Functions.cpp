@@ -2593,23 +2593,31 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
     return AqlValue{AqlValueHintNull{}};
   }
 
-  int32_t const start = static_cast<int32_t>(
-      extractFunctionParameterValue(parameters, 1).toInt64());
-  int32_t const end = static_cast<int32_t>(
-      extractFunctionParameterValue(parameters, 2).toInt64());
-
-  if (end < 0 || start < 0 || end < start) {
-    registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
-    return AqlValue{AqlValueHintNull{}};
-  }
-
   auto const str = value.slice().stringView();
 
-  if (str.size() < uint32_t(end)) {
+  uint32_t const offset = [&]() {
+    auto offset = static_cast<int32_t>(
+        extractFunctionParameterValue(parameters, 1).toInt64());
+
+    if (offset < 0) {
+      offset = std::max(0, static_cast<int32_t>(str.size() + offset));
+    }
+
+    return offset;
+  }();
+
+  int32_t const length = [&]() {
+    if (parameters.size() >= 3) {
+      return static_cast<int32_t>(
+          extractFunctionParameterValue(parameters, 2).toInt64());
+    } else {
+      return static_cast<int32_t>(str.size());
+    }
+  }();
+
+  if (length < 0 || offset >= str.size()) {
     return AqlValue{velocypack::Slice::emptyStringSlice()};
   }
-
-  auto const subStr = str.substr(start, end - start);
 
   auto validate = [](std::string_view str) noexcept {
     auto* begin = reinterpret_cast<irs::byte_type const*>(str.data());
@@ -2624,6 +2632,8 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
     }
     return true;
   };
+
+  auto const subStr = str.substr(offset, length);
 
   if (!validate(subStr)) {
     registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);

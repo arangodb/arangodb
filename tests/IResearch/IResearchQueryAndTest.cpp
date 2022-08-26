@@ -23,6 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchQueryCommon.h"
+#include "utils/index_utils.hpp"
+#include "store/mmap_directory.hpp"
+#include "IResearch/IResearchVPackComparer.h"
+#include "IResearch/IResearchViewSort.h"
 
 namespace arangodb::tests {
 namespace {
@@ -269,6 +273,59 @@ class QueryAndSearch : public QueryAnd {
  protected:
   ViewType type() const final { return arangodb::ViewType::kSearchAlias; }
 };
+
+template<typename NormyType>
+auto getIndexFeatures() {
+  return [](irs::type_info::type_id id) {
+    TRI_ASSERT(irs::type<NormyType>::id() == id ||
+               irs::type<irs::granularity_prefix>::id() == id);
+    const irs::column_info info{
+        irs::type<irs::compression::none>::get(), {}, false};
+
+    if (irs::type<NormyType>::id() == id) {
+      return std::make_pair(info, &NormyType::MakeWriter);
+    }
+
+    return std::make_pair(info, irs::feature_writer_factory_t{});
+  };
+}
+
+TEST_P(QueryAndView, ggg) {
+  irs::mmap_directory dir{
+      "/home/gnusi/Downloads/database-21960739/arangosearch-24030124_19751373"};
+
+  auto rdr = irs::directory_reader::open(dir);
+
+  std::cerr << "docs: " << rdr->docs_count() << ", segments " << rdr->size()
+            << std::endl;
+
+  arangodb::iresearch::IResearchViewSort sort;
+  sort.emplace_back(std::vector{arangodb::basics::AttributeName{"createdAt"}},
+                    true);
+  arangodb::iresearch::VPackComparer comparer{sort};
+
+  irs::index_writer::init_options options;
+  // Set 256MB limit during recovery. Actual "operational" limit will be set
+  // later when this link will be added to the view.
+  options.segment_memory_max = 256 * (size_t{1} << 20);
+  // Do not lock index, ArangoDB has its own lock.
+  options.lock_repository = false;
+  // Set comparator if requested.
+  options.comparator = &comparer;
+  // Set index features.
+  options.features = getIndexFeatures<irs::Norm2>();
+
+  auto codec = irs::formats::get("1_4simd");
+  ASSERT_NE(nullptr, codec);
+  auto writer =
+      irs::index_writer::make(dir, codec, irs::OpenMode::OM_APPEND, options);
+
+  const irs::index_utils::consolidate_count consolidate_all;
+  auto res = writer->consolidate(
+      irs::index_utils::consolidation_policy(consolidate_all));
+  ASSERT_TRUE(res);
+  writer->commit();
+}
 
 TEST_P(QueryAndView, Test) {
   createCollections();
