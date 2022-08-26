@@ -1506,7 +1506,7 @@ TEST_F(
     IResearchLinkTest,
     test_write_with_custom_compression_nondefault_mixed_with_sort_encrypted) {
   auto linkCallbackRemover =
-      arangodb::iresearch::IResearchLinkMock::setCallbakForScope([]() {
+      arangodb::iresearch::IResearchLinkMock::setCallbackForScope([]() {
         return irs::directory_attributes{
             0,
             std::make_unique<iresearch::mock::test_encryption>(kEncBlockSize)};
