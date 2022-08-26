@@ -877,10 +877,9 @@ bool IResearchInvertedIndex::covers(aql::Projections& projections) const {
   return false;
 }
 
-bool IResearchInvertedIndex::matchesFieldsDefinition(
-    VPackSlice other, LogicalCollection const& collection) const {
-  return IResearchInvertedIndexMeta::matchesFieldsDefinition(_meta, other,
-                                                             collection);
+bool IResearchInvertedIndex::matchesDefinition(
+    VPackSlice other, TRI_vocbase_t const& vocbase) const {
+  return IResearchInvertedIndexMeta::matchesDefinition(_meta, other, vocbase);
 }
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
@@ -1057,8 +1056,8 @@ bool IResearchInvertedClusterIndex::matchesDefinition(
     std::string_view idRef = value.stringView();
     return idRef == std::to_string(IResearchDataStore::id().id());
   }
-  return IResearchInvertedIndex::matchesFieldsDefinition(
-      other, IResearchDataStore::_collection);
+  return IResearchInvertedIndex::matchesDefinition(
+      other, IResearchDataStore::_collection.vocbase());
 }
 
 }  // namespace iresearch
