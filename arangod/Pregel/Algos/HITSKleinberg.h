@@ -26,6 +26,11 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
 
+/// The version of the algorithm according to
+/// J. Kleinberg, Authoritative sources in a hyperlinked environment,
+/// Journal of the ACM. 46 (5): 604–632, 1999,
+/// http://www.cs.cornell.edu/home/kleinber/auth.pdf.
+
 namespace arangodb::pregel::algos {
 
 struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
