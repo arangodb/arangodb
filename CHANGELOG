@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Updated Views UI with all changes necessary for the 3.10.0 launch.
+
 * Fix comparison of JSON schemas on DB servers after there was a schema change
   via a coordinator: the schema comparison previously did not take into account
   that some ArangoDB versions store an internal `{"type":"json"}` attribute in
