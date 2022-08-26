@@ -45,6 +45,8 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
@@ -279,6 +281,14 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
       return;
     }
+
+    if (_index->hasFailed()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+          absl::StrCat("link ", std::to_string(_index->id().id()),
+                       " has been marked as failed and needs to be recreated"));
+    }
+
     auto& state = *(_trx->state());
 
     // TODO FIXME find a better way to look up a State

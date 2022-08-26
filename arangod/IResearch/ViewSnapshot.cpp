@@ -89,7 +89,7 @@ bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
   for (auto& link : _links) {
     if (!link) {
       LOG_TOPIC("fffff", WARN, TOPIC)
-          << "failed to lock a link for view '" << name;
+          << "failed to lock a link for view '" << name << "'";
       return false;
     }
     if (sync) {
@@ -173,6 +173,12 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
   TRI_ASSERT(state.cookie(key) == nullptr);
 
   for (auto const& link : links) {
+    if (!link) {
+      LOG_TOPIC("b054e", WARN, TOPIC)
+          << "failed to lock a link for view '" << name << "'";
+      return nullptr;
+    }
+
     if (link->hasFailed()) {
       // link has failed, we cannot use it for querying
       THROW_ARANGO_EXCEPTION_MESSAGE(

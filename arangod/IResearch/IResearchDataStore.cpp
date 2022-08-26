@@ -25,6 +25,7 @@
 #include "IResearchKludge.h"
 #include "IResearchFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/DownCast.h"
@@ -52,6 +53,8 @@
 #include <utils/singleton.hpp>
 #include <utils/file_utils.hpp>
 #include <chrono>
+
+#include <absl/strings/str_cat.h>
 
 using namespace std::literals;
 
@@ -568,6 +571,13 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
            "arangosearch link '"
         << id() << "'";
     return {};  // return an empty reader
+  }
+  if (linkLock->hasFailed()) {
+    // link has failed, we cannot use it for querying
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+        absl::StrCat("link ", std::to_string(linkLock->id().id()),
+                     " has been marked as failed and needs to be recreated"));
   }
 
   auto reader = IResearchDataStore::reader(linkLock);
