@@ -70,7 +70,7 @@ using GeoJSONTypeEnumDeserializer =
 
 struct GeoOptionsValidator {
   std::optional<deserialize_error> operator()(GeoOptions const& opts) const {
-    if (opts.minLevel < 0 || opts.maxCells < 0 || opts.maxCells < 0) {
+    if (opts.minLevel < 0 || opts.maxLevel < 0 || opts.maxCells < 0) {
       return deserialize_error{
           "'minLevel', 'maxLevel', 'maxCells' must be a positive integer"};
     }
