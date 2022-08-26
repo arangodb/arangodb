@@ -18,11 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Roman Rabinovich
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HITSKleinberg.h"
 #include <cmath>
+#include <utility>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
@@ -73,7 +74,7 @@ struct HITSKleinbergWorkerContext : public WorkerContext {
     double const authMaxDiff =
         *getAggregatedValue<double>(maxDiffAuthAggregator);
     double const hubMaxDiff = *getAggregatedValue<double>(maxDiffHubAggregator);
-    const double diff = std::max(authMaxDiff, hubMaxDiff);
+    double const diff = std::max(authMaxDiff, hubMaxDiff);
 
     if (diff < epsilon) {
       if (state == State::updateAuthNormalizeHub) {
@@ -133,8 +134,8 @@ struct HITSKleinbergComputation
         dynamic_cast<HITSKleinbergWorkerContext const*>(context());
     switch (ctx->state) {
       case State::sendInitialHubs: {
-        const double auth = 1.0;
-        const double hub = 1.0;
+        double const auth = 1.0;
+        double const hub = 1.0;
 
         // these are not normalized, but according to the description of the
         // algorithm in the paper, the 1.0's are used in place of normalized
@@ -172,9 +173,9 @@ struct HITSKleinbergComputation
         aggregate<double>(hubAggregator, nonNormalizedHub * nonNormalizedHub);
 
         // normalize auth (hubDivisor is not ready yet, cannot normalize hubs)
-        const auto nonNormalizedAuth = mutableVertexData()->nonNormalizedAuth;
-        const auto normalizedUpdatedAuth = nonNormalizedAuth / ctx->authDivisor;
-        const auto diff =
+        auto const nonNormalizedAuth = mutableVertexData()->nonNormalizedAuth;
+        auto const normalizedUpdatedAuth = nonNormalizedAuth / ctx->authDivisor;
+        auto const diff =
             fabs(mutableVertexData()->normalizedAuth - normalizedUpdatedAuth);
         mutableVertexData()->normalizedAuth = normalizedUpdatedAuth;
 
@@ -192,9 +193,9 @@ struct HITSKleinbergComputation
         // authorities and hubs are updated to the same iteration,
         // authorities are normalized, hubs are not normalized
         updateStoreAndSendAuth(messages, ctx->hubDivisor);
-        const auto nonNormalizedHub = mutableVertexData()->nonNormalizedHub;
-        const auto normalizedUpdatedHub = nonNormalizedHub / ctx->hubDivisor;
-        const auto diff =
+        auto const nonNormalizedHub = mutableVertexData()->nonNormalizedHub;
+        auto const normalizedUpdatedHub = nonNormalizedHub / ctx->hubDivisor;
+        auto const diff =
             fabs(mutableVertexData()->normalizedHub - normalizedUpdatedHub);
         mutableVertexData()->normalizedHub = normalizedUpdatedHub;
         aggregate<double>(maxDiffHubAggregator, diff);
@@ -259,14 +260,14 @@ HITSKleinberg::createComputation(WorkerConfig const* config) const {
 }
 
 struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
-  const std::string _resultField;
+  std::string const _resultField;
 
   explicit HITSKleinbergGraphFormat(
-      application_features::ApplicationServer& server,
-      std::string const& result)
-      : GraphFormat<VertexType, int8_t>(server), _resultField(result) {}
+      application_features::ApplicationServer& server, std::string result)
+      : GraphFormat<VertexType, int8_t>(server),
+        _resultField(std::move(result)) {}
 
-  size_t estimatedEdgeSize() const override { return 0; }
+  [[nodiscard]] size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
@@ -297,7 +298,7 @@ struct HITSKleinbergMasterContext : public MasterContext {
     double const authMaxDiff =
         *getAggregatedValue<double>(maxDiffAuthAggregator);
     double const hubMaxDiff = *getAggregatedValue<double>(maxDiffHubAggregator);
-    const double diff = std::max(authMaxDiff, hubMaxDiff);
+    double const diff = std::max(authMaxDiff, hubMaxDiff);
 
     bool converged = diff < epsilon;
 
