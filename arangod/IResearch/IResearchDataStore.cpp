@@ -28,7 +28,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/DownCast.h"
-
+#include "Cluster/ServerState.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Guard.h"
 #include "RestServer/FlushFeature.h"
@@ -911,6 +911,10 @@ Result IResearchDataStore::deleteDataStore() noexcept {
 }
 
 void IResearchDataStore::setFailed() noexcept {
+  // should never be called on coordinators, only on DB servers and
+  // single servers
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
   // this is expected to be set only once during the recovery phase or
   // link loading phase.
   if (!_failed.exchange(true)) {
@@ -1197,8 +1201,21 @@ Result IResearchDataStore::initDataStore(
 
           // mark link as failed
           linkLock->setFailed();
-        } else if (dataStore._recoveryTick >
-                   linkLock->_engine->recoveryTick()) {
+          // persist "failed" flag in RocksDB. note: if this fails, it will
+          // throw an exception and abort the recovery & startup.
+          linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
+                                              linkLock->collection(), true);
+
+          // recovery finished
+          dataStore._inRecovery.store(linkLock->_engine->inRecovery(),
+                                      std::memory_order_release);
+
+          // we cannot return an error from here as this would abort the
+          // entire recovery and fail the startup.
+          return {};
+        }
+
+        if (dataStore._recoveryTick > linkLock->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
               << "arangosearch link '" << linkLock->id()
               << "' is recovered at tick '" << dataStore._recoveryTick
@@ -1209,6 +1226,7 @@ Result IResearchDataStore::initDataStore(
               << linkLock->collection().name()
               << "', consider to re-create the link in order to synchronize "
                  "it.";
+          // TODO: should we set the link to "failed" in this case as well?
         }
 
         // recovery finished
