@@ -59,6 +59,46 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(VPackSlice input) {
   }
 }
 
+auto PlanCollection::Invariants::isNonEmpty(std::string const& value)
+    -> inspection::Status {
+  if (value.empty()) {
+    return {"Value cannot be empty."};
+  }
+  return inspection::Status::Success{};
+}
+
+auto PlanCollection::Invariants::isGreaterZero(uint64_t const& value)
+    -> inspection::Status {
+  if (value > 0) {
+    return inspection::Status::Success{};
+  }
+  return {"Value has to be > 0"};
+}
+
+auto PlanCollection::Invariants::isValidShardingStrategy(
+    std::string const& strat) -> inspection::Status {
+  // Note we may be better off with a lookup list here
+  // Hash is first on purpose (default)
+  if (strat == "hash" || strat == "enterprise-hash-smart-edge" ||
+      strat == "community-compat" || strat == "enterprise-compat" ||
+      strat == "enterprise-smart-edge-compat") {
+    return inspection::Status::Success{};
+  }
+  return {
+      "Please use 'hash' or remove, advanced users please "
+      "pick a strategy from the documentation, " +
+      strat + " is not allowed."};
+}
+
+auto PlanCollection::Invariants::isValidCollectionType(
+    std::underlying_type_t<TRI_col_type_e> const& type) -> inspection::Status {
+  if (type == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT ||
+      type == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    return inspection::Status::Success{};
+  }
+  return {"Only 2 (document) and 3 (edge) are allowed."};
+}
+
 arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::serialize(builder, *this);

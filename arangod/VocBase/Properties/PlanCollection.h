@@ -42,6 +42,20 @@ class Slice;
 }
 
 struct PlanCollection {
+  struct Invariants {
+    [[nodiscard]] static auto isNonEmpty(std::string const& value)
+        -> inspection::Status;
+
+    [[nodiscard]] static auto isGreaterZero(uint64_t const& value)
+        -> inspection::Status;
+
+    [[nodiscard]] static auto isValidShardingStrategy(std::string const& value)
+        -> inspection::Status;
+
+    [[nodiscard]] static auto isValidCollectionType(
+        std::underlying_type_t<TRI_col_type_e> const& value)
+        -> inspection::Status;
+  };
   PlanCollection();
 
   static ResultT<PlanCollection> fromCreateAPIBody(
@@ -98,12 +112,7 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
   return f.object(planCollection)
       .fields(
           f.field("name", planCollection.name)
-              .invariant([](auto const& n) -> inspection::Status {
-                if (n.empty()) {
-                  return {"Name cannot be empty."};
-                }
-                return inspection::Status::Success{};
-              }),
+              .invariant(PlanCollection::Invariants::isNonEmpty),
           f.field("id", planCollection.id).fallback(""),
           f.field("waitForSync", planCollection.waitForSync).fallback(false),
           f.field("isSystem", planCollection.isSystem).fallback(false),
@@ -117,12 +126,7 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               .fallback(true),
           f.field("numberOfShards", planCollection.numberOfShards)
               .fallback(1ULL)
-              .invariant([](auto const& value) -> inspection::Status {
-                if (value > 0) {
-                  return inspection::Status::Success{};
-                }
-                return {"Value has to be > 0"};
-              }),
+              .invariant(PlanCollection::Invariants::isGreaterZero),
           // Deprecated, and not documented anymore
           // The ordering is important here, minReplicationFactor
           // has to be before writeConcern, this way we ensure that writeConcern
@@ -136,20 +140,10 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           // values.
           f.field("writeConcern", planCollection.writeConcern)
               .fallback(f.keep())
-              .invariant([](auto const& value) -> inspection::Status {
-                if (value > 0) {
-                  return inspection::Status::Success{};
-                }
-                return {"Value has to be > 0"};
-              }),
+              .invariant(PlanCollection::Invariants::isGreaterZero),
           f.field("replicationFactor", planCollection.replicationFactor)
               .fallback(1ULL)
-              .invariant([](auto const& value) -> inspection::Status {
-                if (value > 0) {
-                  return inspection::Status::Success{};
-                }
-                return {"Value has to be > 0"};
-              }),
+              .invariant(PlanCollection::Invariants::isGreaterZero),
           f.field("distributeShardsLike", planCollection.distributeShardsLike)
               .fallback(""),
           f.field("smartJoinAttribute", planCollection.smartJoinAttribute)
@@ -158,31 +152,12 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               .fallback(""),
           f.field("shardingStrategy", planCollection.shardingStrategy)
               .fallback("hash")
-              .invariant([](auto const& strat) -> inspection::Status {
-                // Note we may be better off with a lookup list here
-                // Hash is first on purpose (default)
-                if (strat == "hash" || strat == "enterprise-hash-smart-edge" ||
-                    strat == "community-compat" ||
-                    strat == "enterprise-compat" ||
-                    strat == "enterprise-smart-edge-compat") {
-                  return inspection::Status::Success{};
-                }
-                return {
-                    "Please use 'hash' or remove, advanced users please "
-                    "pick a strategy from the documentation, " +
-                    strat + " is not allowed."};
-              }),
+              .invariant(PlanCollection::Invariants::isValidShardingStrategy),
           f.field("shardKeys", planCollection.shardKeys)
               .fallback(std::vector<std::string>{StaticStrings::KeyString}),
           f.field("type", planCollection.type)
               .fallback(TRI_col_type_e::TRI_COL_TYPE_DOCUMENT)
-              .invariant([](auto t) -> inspection::Status {
-                if (t == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT ||
-                    t == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-                  return inspection::Status::Success{};
-                }
-                return {"Only 2 (document) and 3 (edge) are allowed."};
-              }),
+              .invariant(PlanCollection::Invariants::isValidCollectionType),
           f.field("schema", planCollection.schema)
               .fallback(VPackSlice::emptyObjectSlice()),
           f.field("keyOptions", planCollection.keyOptions)
