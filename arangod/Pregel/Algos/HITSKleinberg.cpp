@@ -87,25 +87,25 @@ struct HITSKleinbergWorkerContext : public WorkerContext {
 
   void postGlobalSuperstep(uint64_t gss) override {
     switch (state) {
-      case State::sendInitialHubs:
+      case State::sendInitialHubs: {
         state = State::updateAuth;
-        break;
+      } break;
       case State::updateAuth:
-      case State::updateAuthNormalizeHub:
+      case State::updateAuthNormalizeHub: {
         state = State::updateHubNormalizeAuth;
-        break;
-      case State::updateHubNormalizeAuth:
+      } break;
+      case State::updateHubNormalizeAuth: {
         ++currentIteration;
         if (currentIteration == numIterations) {
           state = State::finallyNormalizeHubs;
         } else {
           state = State::updateAuthNormalizeHub;
         }
-        break;
+      } break;
       case State::finallyNormalizeHubs:
-      case State::finallyNormalizeAuths:
+      case State::finallyNormalizeAuths: {
         aggregate(isLastIterationAggregator, true);
-        break;
+      } break;
     }
   }
 };
@@ -138,19 +138,15 @@ struct HITSKleinbergComputation
         dynamic_cast<HITSKleinbergWorkerContext const*>(context());
     switch (ctx->state) {
       case State::sendInitialHubs: {
-        double const auth = 1.0;
-        double const hub = 1.0;
-
         // these are not normalized, but according to the description of the
         // algorithm in the paper, the 1.0's are used in place of normalized
         // values
-        mutableVertexData()->normalizedAuth = auth;  // needed for the next diff
-        mutableVertexData()->normalizedHub = hub;
+        mutableVertexData()->normalizedAuth = 1.0;
+        mutableVertexData()->normalizedHub = 1.0;
         reportFakeDifference();
 
-        sendHubToOutNeighbors(hub);
-        break;
-      }
+        sendHubToOutNeighbors(1.0);
+      } break;
 
       case State::updateAuth: {
         // We enter this state when all authorities and all hubs are 1.0
@@ -160,8 +156,7 @@ struct HITSKleinbergComputation
         // authorities are not normalized, hubs are 1.0
 
         // Next state: updateHubNormalizeAuth
-        break;
-      }
+      } break;
 
       case State::updateHubNormalizeAuth: {
         // authorities are updated one iteration more than hubs,
@@ -170,6 +165,7 @@ struct HITSKleinbergComputation
         // update local hub
         double nonNormalizedHub = 0.0;
         for (SenderMessage<double> const* message : messages) {
+          TRI_ASSERT(message != nullptr);
           nonNormalizedHub += message->value;  // auth from our out-neighbors
         }
         mutableVertexData()->nonNormalizedHub = nonNormalizedHub;
@@ -190,8 +186,7 @@ struct HITSKleinbergComputation
         // authorities are normalized, hubs are not normalized
 
         // Next state: updateAuthNormalizeHub or finallyNormalizeHubs
-        break;
-      }
+      } break;
 
       case State::updateAuthNormalizeHub: {
         // authorities and hubs are updated to the same iteration,
@@ -208,24 +203,23 @@ struct HITSKleinbergComputation
         // authorities are not normalized, hubs are normalized
 
         // next state: updateHubNormalizeAuth
-        break;
-      }
+      } break;
 
-      case State::finallyNormalizeHubs:
+      case State::finallyNormalizeHubs: {
         // authorities and hubs are updated to the same iteration,
         // authorities are normalized, hubs are not normalized
         // last iteration
         mutableVertexData()->normalizedHub =
             mutableVertexData()->nonNormalizedHub / ctx->hubDivisor;
-        break;
+      } break;
 
-      case State::finallyNormalizeAuths:
+      case State::finallyNormalizeAuths: {
         // authorities and hubs are updated to the same iteration,
         // authorities are not normalized, hubs are normalized
         // last iteration
         mutableVertexData()->normalizedAuth =
             mutableVertexData()->nonNormalizedAuth / ctx->authDivisor;
-        break;
+      } break;
     }
   }
 
@@ -244,6 +238,7 @@ struct HITSKleinbergComputation
     // compute the new auth
     double auth = 0.0;
     for (SenderMessage<double> const* message : messages) {
+      TRI_ASSERT(message != nullptr);
       auth += message->value / hubDivisor;  // normalized hub from in-neighbors
     }
     // note: auth are preliminary values of an iteration of the

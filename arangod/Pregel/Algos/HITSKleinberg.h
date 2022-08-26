@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Roman Rabinovich
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,20 +27,6 @@
 #include "Pregel/CommonFormats.h"
 
 namespace arangodb::pregel::algos {
-
-/// Finds strongly connected components of the graph.
-///
-/// 1. Each vertex starts with its vertex id as its "color".
-/// 2. Remove vertices which cannot be in a SCC (no incoming or no outgoing
-/// edges)
-/// 3. Propagate the color forward from each vertex, accept a neighbor's color
-/// if it's smaller than yours.
-///    At convergence, vertices with the same color represents all nodes that
-///    are visitable from the root of that color.
-/// 4. Reverse the graph.
-/// 5. Start at all roots, walk the graph. Visit a neighbor if it has the same
-/// color as you.
-///    All nodes visited belongs to the SCC identified by the root color.
 
 struct HITSKleinberg : public SimpleAlgorithm<HITSKleinbergValue, int8_t,
                                               SenderMessage<double>> {
