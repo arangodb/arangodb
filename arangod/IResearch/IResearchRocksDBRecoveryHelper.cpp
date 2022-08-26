@@ -81,7 +81,7 @@ std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
 namespace arangodb::iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
-    ArangodServer& server, std::vector<std::string> const& skipRecoveryItems)
+    ArangodServer& server, std::span<std::string const> skipRecoveryItems)
     : _server(server), _skipAllItems(false) {
   for (auto const& item : skipRecoveryItems) {
     if (item == "all") {

@@ -1,0 +1,22 @@
+name: arangodb_search_num_failed_links
+introducedIn: "3.11.0"
+help: |
+  Number of failed links/inverted indexes.
+unit: number
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of currently of failed arangosearch links and
+  inverted indexes. A link or inverted index can be set 
+  to failed if the recovery for it is intentionally skipped.
+  A failed link/inverted index cannot be used for querying
+  and should be recreated.
+troubleshoot: |
+  If this metric contains a value greater than zero, the
+  log files should be checked to find out which links/indexes
+  should be recreated. The failed links/indexes should then
+  be dropped and later recreated.

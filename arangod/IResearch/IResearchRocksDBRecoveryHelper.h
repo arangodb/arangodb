@@ -24,6 +24,9 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+#include <span>
+#include <string>
 
 #include <rocksdb/slice.h>
 #include <rocksdb/types.h>
@@ -52,7 +55,7 @@ namespace iresearch {
 class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
   explicit IResearchRocksDBRecoveryHelper(
-      ArangodServer&, std::vector<std::string> const& skipRecoveryItems);
+      ArangodServer&, std::span<std::string const> skipRecoveryItems);
 
   virtual void prepare() override;
 

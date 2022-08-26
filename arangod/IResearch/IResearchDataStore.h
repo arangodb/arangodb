@@ -428,15 +428,15 @@ class IResearchDataStore {
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
+  // data store is failed (i.e. is inconsistent and cannot be used for queries)
+  std::atomic_bool _failed;
+
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;
   // protected by _commitMutex
   TRI_voc_tick_t _lastCommittedTick;
   size_t _cleanupIntervalCount;
-
-  // data store is failed (i.e. is inconsistent and cannot be used for queries)
-  std::atomic_bool _failed;
 
   // prevents data store sequential commits
   std::mutex _commitMutex;

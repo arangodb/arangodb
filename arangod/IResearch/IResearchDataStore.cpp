@@ -515,11 +515,11 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       // mark as data store not initialized
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
       _collection(collection),
+      _failed{false},
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
       _cleanupIntervalCount{0},
-      _failed{false},
       _numFailedCommits{nullptr},
       _numFailedCleanups{nullptr},
       _numFailedConsolidations{nullptr},
@@ -893,6 +893,12 @@ void IResearchDataStore::shutdownDataStore() noexcept {
 }
 
 Result IResearchDataStore::deleteDataStore() noexcept {
+  if (hasFailed()) {
+    TRI_ASSERT(_asyncFeature != nullptr);
+    // count down the number of failed links
+    _asyncFeature->untrackFailedLink();
+  }
+
   shutdownDataStore();
   bool exists;
   // remove persisted data store directory if present
@@ -1186,6 +1192,8 @@ Result IResearchDataStore::initDataStore(
 
           // mark link as failed
           linkLock->setFailed();
+          // increase metric for number of failed links
+          asyncFeature->trackFailedLink();
         } else if (dataStore._recoveryTick >
                    linkLock->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)

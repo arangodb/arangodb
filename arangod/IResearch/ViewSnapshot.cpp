@@ -184,24 +184,9 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
 
   auto cookie = std::make_unique<ViewSnapshotCookie>(std::move(links));
   auto& ctx = *cookie;
-  try {
-    if (ctx.compute(sync, name)) {
-      state.cookie(key, std::move(cookie));
-      return &ctx;
-    }
-  } catch (basics::Exception const& e) {
-    LOG_TOPIC("29b30", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of view '"
-        << name << "', tid '" << state.id() << "': " << e.code() << " "
-        << e.what();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("ffe73", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of view '"
-        << name << "', tid '" << state.id() << "': " << e.what();
-  } catch (...) {
-    LOG_TOPIC("c54e8", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of view '"
-        << name << "', tid '" << state.id() << "'";
+  if (ctx.compute(sync, name)) {
+    state.cookie(key, std::move(cookie));
+    return &ctx;
   }
   return nullptr;
 }

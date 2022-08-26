@@ -25,10 +25,12 @@
 #pragma once
 
 #include "StorageEngine/StorageEngine.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -122,6 +124,9 @@ class IResearchFeature final : public ArangodFeature {
 
   bool linkFailedDuringRecovery(arangodb::IndexId id) const noexcept;
 
+  void trackFailedLink() noexcept;
+  void untrackFailedLink() noexcept;
+
  private:
   void registerRecoveryHelper();
 
@@ -147,6 +152,10 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _threadsLimit;
   std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
 
+  // number of currently failed links/indexes
+  metrics::Gauge<uint64_t>& _failedLinks;
+
+  // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
 };
 

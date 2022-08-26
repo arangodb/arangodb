@@ -58,6 +58,8 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -88,6 +90,9 @@
 #include <absl/strings/str_cat.h>
 
 using namespace std::chrono_literals;
+
+DECLARE_GAUGE(arangodb_search_num_failed_links, uint64_t,
+              "Number of currently failed links");
 
 namespace arangodb::aql {
 class Query;
@@ -879,7 +884,9 @@ IResearchFeature::IResearchFeature(Server& server)
       _commitThreads(0),
       _commitThreadsIdle(0),
       _threads(0),
-      _threadsLimit(0) {
+      _threadsLimit(0),
+      _failedLinks(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_num_failed_links{})) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -933,7 +940,8 @@ void IResearchFeature::collectOptions(
           SKIP_RECOVERY,
           "skip data recovery for the specified view links and inverted "
           "indexes on startup. "
-          "entries here should have the format '<collection-name>/<index-id>' "
+          "entries here should have the format "
+          "'<collection-name>/<index-id>' "
           "or '<collection-name>/<index-name>'. "
           "the pseudo-entry 'all' will disable recovery for all view "
           "links/inverted indexes. "
@@ -1189,6 +1197,13 @@ bool IResearchFeature::linkFailedDuringRecovery(
     return _recoveryHelper->failed(id);
   }
   return false;
+}
+
+void IResearchFeature::trackFailedLink() noexcept { ++_failedLinks; }
+
+void IResearchFeature::untrackFailedLink() noexcept {
+  uint64_t previous = _failedLinks.fetch_sub(1);
+  TRI_ASSERT(previous > 0);
 }
 
 void IResearchFeature::registerRecoveryHelper() {
