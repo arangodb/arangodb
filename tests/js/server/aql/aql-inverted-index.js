@@ -353,7 +353,8 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
-      assertEqual(docs/50, executeRes.length);
+      // value0 will be rejected
+      assertEqual(docs - docs/100, executeRes.length);
     },
     testIndexHintedArrayComparisonAnyLT: function () {
       const query = aql`
@@ -366,6 +367,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
+      // value0 and value 1will be rejected
       assertEqual(docs - docs/50, executeRes.length);
     },
         testIndexHintedArrayComparisonAnyEQ: function () {
