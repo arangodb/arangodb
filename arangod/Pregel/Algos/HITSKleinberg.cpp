@@ -68,6 +68,8 @@ struct HITSKleinbergWorkerContext : public WorkerContext {
     //  difficulty: the parent class WorkerContext doesn't know the current gss
     auto const* authNorm = getAggregatedValue<double>(authAggregator);
     auto const* hubNorm = getAggregatedValue<double>(hubAggregator);
+    ADB_PROD_ASSERT(authNorm != nullptr);
+    ADB_PROD_ASSERT(hubNorm != nullptr);
     authDivisor = std::sqrt(*authNorm);
     hubDivisor = std::sqrt(*hubNorm);
 
