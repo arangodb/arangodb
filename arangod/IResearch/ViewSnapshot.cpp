@@ -47,14 +47,30 @@ class ViewSnapshotCookie final : public ViewSnapshotImpl,
   bool compute(bool sync, std::string_view name);
 
  private:
-  std::vector<irs::directory_reader> _readers;
+  [[nodiscard]] irs::sub_reader const& operator[](
+      std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return *(_segments[i].second);
+  }
+
+  [[nodiscard]] std::size_t size() const noexcept final {
+    return _segments.size();
+  }
+
+  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i].first;
+  }
+
   // prevent data-store deallocation (lock @ AsyncSelf)
-  Links _links;
+  Links _links;  // should be first
+  std::vector<irs::directory_reader> _readers;
+  Segments _segments;
 };
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
     : _links{std::move(links)} {
-  _readers.reserve(links.size());
+  _readers.reserve(_links.size());
 }
 
 void ViewSnapshotCookie::clear() noexcept {
