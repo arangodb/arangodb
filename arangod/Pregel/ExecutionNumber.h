@@ -25,6 +25,8 @@
 #include <Inspection/VPack.h>
 
 #include <ostream>
+#include <fmt/core.h>
+#include <fmt/format.h>
 
 namespace arangodb::pregel {
 struct ExecutionNumber {
@@ -39,7 +41,7 @@ struct ExecutionNumber {
 template<class Inspector>
 auto inspect(Inspector& f, ExecutionNumber& x) {
   if constexpr (Inspector::isLoading) {
-    uint64_t v;
+    uint64_t v = 0;
     auto res = f.apply(v);
     if (res.ok()) {
       x = ExecutionNumber(v);
@@ -49,10 +51,23 @@ auto inspect(Inspector& f, ExecutionNumber& x) {
     return f.apply(x.value);
   }
 }
+
 auto operator<<(std::ostream&, arangodb::pregel::ExecutionNumber const&)
     -> std::ostream&;
 
 }  // namespace arangodb::pregel
+
+template<>
+struct fmt::formatter<arangodb::pregel::ExecutionNumber> {
+  template<typename FormatContext>
+  auto format(arangodb::pregel::ExecutionNumber number, FormatContext& ctx) {
+    return fmt::format_to(ctx.out(), "{}", number.value);
+  }
+  template<typename ParseContext>
+  constexpr auto parse(ParseContext& ctx) {
+    return ctx.begin();
+  }
+};
 
 namespace std {
 template<>

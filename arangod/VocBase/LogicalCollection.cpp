@@ -536,15 +536,6 @@ bool LogicalCollection::determineSyncByRevision() const {
   return false;
 }
 
-IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating,
-                                                     TransactionId tid) {
-  return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
-}
-
-void LogicalCollection::flushClusterIndexEstimates() {
-  getPhysical()->flushClusterIndexEstimates();
-}
-
 std::vector<std::shared_ptr<Index>> LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
 }

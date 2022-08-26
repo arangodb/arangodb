@@ -46,6 +46,8 @@
 #include "Inspection/VPack.h"
 #include "velocypack/Builder.h"
 
+#include "fmt/core.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
@@ -179,6 +181,9 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
   std::function<void()> graphLoadedCallback = [self = shared_from_this(),
                                                this] {
+    LOG_PREGEL("52062", WARN)
+        << fmt::format("Worker for execution number {} has finished loading.",
+                       _config.executionNumber());
     auto graphLoadedEvent = GraphLoaded{
         ServerState::instance()->getId(), _config.executionNumber(),
         _graphStore->localVertexCount(), _graphStore->localEdgeCount()};
@@ -192,6 +197,8 @@ void Worker<V, E, M>::setupWorker() {
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  LOG_PREGEL("52070", WARN) << fmt::format(
+      "Worker for execution number {} is loading", _config.executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,

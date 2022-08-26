@@ -172,10 +172,9 @@ Unknown documents:
 
     var body = [ "1", "other/2" ];
     var response = logCurlRequest('DELETE', url, body);
-    var parsedBody = JSON.parse(response.body);
 
     assert(response.code === 202);
-  | parsedBody.forEach(function(doc) {
+  | response.parsedBody.forEach(function(doc) {
   |   assert(doc.error === true);
   |   assert(doc.errorNum === 1202);
     });
@@ -232,10 +231,9 @@ Revision conflict:
     ];
 
     var response = logCurlRequest('DELETE', url, body);
-    var parsedBody = JSON.parse(response.body);
 
     assert(response.code === 202);
-  | parsedBody.forEach(function(doc) {
+  | response.parsedBody.forEach(function(doc) {
   |   assert(doc.error === true);
   |   assert(doc.errorNum === 1200);
     });
