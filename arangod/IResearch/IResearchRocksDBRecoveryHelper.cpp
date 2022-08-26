@@ -306,7 +306,9 @@ bool IResearchRocksDBRecoveryHelper::lookupLinks(
       indexes.begin(), indexes.end(),
       [](std::shared_ptr<arangodb::Index> const& idx) {
         return idx->type() !=
-               arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK;
+                   arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK &&
+               idx->type() !=
+                   arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX;
       });
   indexes.erase(it, indexes.end());
 

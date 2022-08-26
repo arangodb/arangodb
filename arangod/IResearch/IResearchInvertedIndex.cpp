@@ -797,6 +797,12 @@ Result IResearchInvertedIndex::init(
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }
+
+  if (auto s = definition.get(StaticStrings::LinkFailed); s.isTrue()) {
+    // mark index as failed
+    setFailed();
+  }
+
   properties(_meta);
   return r;
 }
@@ -1033,6 +1039,11 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (hasFailed()) {
+    // link has failed - we need to report that
+    builder.add(StaticStrings::LinkFailed, VPackValue(true));
+  }
 }
 
 bool IResearchInvertedClusterIndex::matchesDefinition(

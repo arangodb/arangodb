@@ -911,9 +911,14 @@ Result IResearchDataStore::deleteDataStore() noexcept {
 }
 
 void IResearchDataStore::setFailed() noexcept {
-  // this is expected to be set only once during the recovery phase.
-  // view queries will start much later.
-  _failed.store(true);
+  // this is expected to be set only once during the recovery phase or
+  // link loading phase.
+  if (!_failed.exchange(true)) {
+    // increase metric for number of failed links
+    // track failure only once per link
+    TRI_ASSERT(_asyncFeature != nullptr);
+    _asyncFeature->trackFailedLink();
+  }
 }
 
 bool IResearchDataStore::hasFailed() const noexcept {
@@ -1192,8 +1197,6 @@ Result IResearchDataStore::initDataStore(
 
           // mark link as failed
           linkLock->setFailed();
-          // increase metric for number of failed links
-          asyncFeature->trackFailedLink();
         } else if (dataStore._recoveryTick >
                    linkLock->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)

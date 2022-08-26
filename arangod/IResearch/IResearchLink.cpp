@@ -365,6 +365,12 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
   }
   TRI_ASSERT(_meta._sortCompression);
   _viewGuid = definition.get(StaticStrings::ViewIdField).stringView();
+
+  if (auto s = definition.get(StaticStrings::LinkFailed); s.isTrue()) {
+    // mark index as failed
+    setFailed();
+  }
+
   Result r;
   if (isSingleServer) {
     r = initSingleServer(pathExists, init);
@@ -437,6 +443,11 @@ Result IResearchLink::properties(velocypack::Builder& builder,
               velocypack::Value(
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType));
   builder.add(StaticStrings::ViewIdField, velocypack::Value(_viewGuid));
+
+  if (hasFailed()) {
+    // link has failed - we need to report that
+    builder.add(StaticStrings::LinkFailed, VPackValue(true));
+  }
 
   return {};
 }
