@@ -262,7 +262,7 @@ function optimizerRuleInvertedIndexTestSuite() {
                     e.errorNum);
       }
     },
-        testIndexHintedArrayComparisonAnyIn: function () {
+    testIndexHintedArrayComparisonAnyIn: function () {
       const query = aql`
         FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
           FILTER [NOEVAL('value1'), 'value2'] ANY IN d.data_field
