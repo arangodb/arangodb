@@ -58,8 +58,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
   static std::vector<std::vector<arangodb::basics::AttributeName>> sortedFields(
       IResearchInvertedIndexMeta const& meta);
 
-  bool matchesFieldsDefinition(VPackSlice other,
-                               LogicalCollection const& collection) const;
+  bool matchesDefinition(VPackSlice other, TRI_vocbase_t const& vocbase) const;
 
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const override;
 
