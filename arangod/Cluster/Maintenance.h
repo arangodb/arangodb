@@ -166,7 +166,7 @@ arangodb::Result diffPlanLocal(
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
     ReplicatedStateStatusMapByDatabase const& localStates,
-    replication::Version defaultReplicationVersion = replication::Version::ONE);
+    replication::Version defaultReplicationVersion);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run

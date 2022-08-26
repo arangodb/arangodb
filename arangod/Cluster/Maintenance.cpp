@@ -1145,9 +1145,13 @@ arangodb::Result arangodb::maintenance::executePlan(
     bool callNotify = false;
     auto& engine =
         feature.server().getFeature<EngineSelectorFeature>().engine();
+    auto defaultReplicationVersion = feature.server()
+                                         .getFeature<DatabaseFeature>()
+                                         .defaultReplicationVersion();
     diffPlanLocal(engine, plan, planIndex, current, currentIndex, dirty, local,
                   serverId, errors, makeDirty, callNotify, actions,
-                  shardActionMap, localLogs, localStates);
+                  shardActionMap, localLogs, localStates,
+                  defaultReplicationVersion);
     feature.addDirty(makeDirty, callNotify);
   }
 
