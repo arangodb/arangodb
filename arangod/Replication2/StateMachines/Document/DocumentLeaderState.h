@@ -29,6 +29,11 @@
 #include "Basics/UnshackledMutex.h"
 
 #include <memory>
+#include <unordered_set>
+
+namespace arangodb::transaction {
+struct IManager;
+}
 
 namespace arangodb::replication2::replicated_state::document {
 struct DocumentLeaderState
@@ -36,7 +41,8 @@ struct DocumentLeaderState
       std::enable_shared_from_this<DocumentLeaderState> {
   explicit DocumentLeaderState(
       std::unique_ptr<DocumentCore> core,
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+      transaction::IManager& transactionManager);
 
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
@@ -63,5 +69,7 @@ struct DocumentLeaderState
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
+  Guarded<std::unordered_set<TransactionId>, std::mutex> _activeTransactions;
+  transaction::IManager& _transactionManager;
 };
 }  // namespace arangodb::replication2::replicated_state::document

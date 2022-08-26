@@ -24,9 +24,11 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Transaction/Manager.h"
 
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
@@ -35,16 +37,29 @@ using namespace arangodb::replication2::replicated_state::document;
 
 DocumentLeaderState::DocumentLeaderState(
     std::unique_ptr<DocumentCore> core,
-    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+    transaction::IManager& transactionManager)
     : loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
       shardId(core->getShardId()),
       gid(core->getGid()),
       _handlersFactory(std::move(handlersFactory)),
-      _guardedData(std::move(core)) {}
+      _guardedData(std::move(core)),
+      _transactionManager(transactionManager) {}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
+  _activeTransactions.doUnderLock([this](auto& transactions) {
+    for (auto trx : transactions) {
+      try {
+        _transactionManager.abortManagedTrx(trx, gid.database);
+      } catch (...) {
+        LOG_CTX("7341f", WARN, loggerContext)
+            << "failed to abort active transaction " << gid << " during resign";
+      }
+    }
+  });
+
   return _guardedData.doUnderLock([](auto& data) {
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
@@ -91,6 +106,14 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
     -> futures::Future<LogIndex> {
   auto entry = DocumentLogEntry{std::string(shardId), operation,
                                 std::move(payload), transactionId};
+
+  TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
+  if (operation == OperationType::kCommit ||
+      operation == OperationType::kAbort) {
+    _activeTransactions.getLockedGuard()->erase(transactionId);
+  } else {
+    _activeTransactions.getLockedGuard()->emplace(transactionId);
+  }
   auto stream = getStream();
   auto idx = stream->insert(entry);
 
