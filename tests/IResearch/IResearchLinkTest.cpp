@@ -1937,7 +1937,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
     // ensure no commit is scheduled after dropping a link
     {
       ASSERT_TRUE(link->drop().ok());
-      ASSERT_TRUE(asyncSelf->terminationRequested());
+      ASSERT_TRUE(asyncSelf->empty());
 
       ASSERT_TRUE(cv.wait_for(lock, 10s, [&feature]() {
         return std::make_tuple(size_t(0), size_t(0), size_t(1)) ==
@@ -2146,7 +2146,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
     // ensure no commit is scheduled after dropping a link
     {
       ASSERT_TRUE(link->drop().ok());
-      ASSERT_TRUE(asyncSelf->terminationRequested());
+      ASSERT_TRUE(asyncSelf->empty());
 
       ASSERT_TRUE(cv.wait_for(lock, 10s, [&feature]() {
         return std::make_tuple(size_t(0), size_t(0), size_t(1)) ==
