@@ -1,10 +1,10 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* Fixed SEARCH-347 Cycle variable reference in nested search query is
-  properly detected and rejected.
+* Fixed SEARCH-347 Cycle variable reference in nested search query is properly
+  detected and rejected.
   
-* Fixed SEARCH-364 Fixed index fields match check for inverted index
+* Fixed SEARCH-364 Fixed index fields match check for inverted index.
 
 * Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
 
