@@ -2633,7 +2633,9 @@ AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
     return true;
   };
 
-  auto const subStr = str.substr(offset, length);
+  auto const subStr =
+      str.substr(offset, std::min(static_cast<uint32_t>(length),
+                                  static_cast<uint32_t>(str.size()) - offset));
 
   if (!validate(subStr)) {
     registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);

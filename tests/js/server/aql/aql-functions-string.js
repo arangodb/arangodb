@@ -1879,12 +1879,13 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ '🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0)`));
       assertEqual([ '🤡f' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 0, 5)`));
       assertEqual([ 'fo'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 4, 2)`));
+      assertEqual([ ''  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 42, 2)`));
       assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('', 0, 0)`));
       assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('', 0, 1)`));
 
       // negative offsets
       assertEqual([ 'o' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -1, 1)`));
-      assertEqual([ 'oo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -2, 2)`));
+      assertEqual([ 'vo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡fvo', -2, 2)`));
       assertEqual([ '🤡foo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -42)`));
       assertEqual([ '🤡foo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 0)`));
       assertEqual([ 'fo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -3, 2)`));
