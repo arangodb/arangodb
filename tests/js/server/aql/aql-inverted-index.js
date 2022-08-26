@@ -367,7 +367,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
-      // value0 and value 1will be rejected
+      // value0 and value1 will be rejected
       assertEqual(docs - docs/50, executeRes.length);
     },
         testIndexHintedArrayComparisonAnyEQ: function () {
