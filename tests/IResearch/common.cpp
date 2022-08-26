@@ -1117,10 +1117,14 @@ void assertFilterParseFail(
 VPackBuilder getInvertedIndexPropertiesSlice(
     IndexId iid, std::vector<std::string> const& fields,
     std::vector<std::vector<std::string>> const* storedFields,
-    std::vector<std::pair<std::string, bool>> const* sortedFields) {
+    std::vector<std::pair<std::string, bool>> const* sortedFields,
+    std::string_view name) {
   VPackBuilder vpack;
   {
     VPackObjectBuilder obj(&vpack);
+    if (!name.empty()) {
+      vpack.add(arangodb::StaticStrings::IndexName, VPackValue{name});
+    }
     vpack.add(arangodb::StaticStrings::IndexId, VPackValue(iid.id()));
     vpack.add(arangodb::StaticStrings::IndexType, VPackValue("inverted"));
 
