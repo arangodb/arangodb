@@ -46,6 +46,7 @@ function resignServer(server) {
       return;
     }
   }
+  assertTrue(false, `We failed to resign a leader in 50s. We cannot reliably test rebalancing of shards now.`);
 }
 
 function clusterRebalanceSuite() {
@@ -55,7 +56,7 @@ function clusterRebalanceSuite() {
       db._createDatabase(database);
       db._useDatabase(database);
       for (let i = 0; i < 20; i++) {
-        db._create("col" + i);
+        db._create("col" + i, {replicationFactor: 2});
       }
       // resign one server
       resignServer(getDBServers()[0].id);
