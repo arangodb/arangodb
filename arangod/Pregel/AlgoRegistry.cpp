@@ -67,7 +67,7 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::AsyncSCC(server, userParams);
   } else if (algorithm == "hits") {
     return new algos::HITS(server, userParams);
-  } else if (algorithm == "hitsKleinberg") {
+  } else if (algorithm == "hitskleinberg") {
     return new algos::HITSKleinberg(server, userParams);
   } else if (algorithm == "labelpropagation") {
     return new algos::LabelPropagation(server, userParams);

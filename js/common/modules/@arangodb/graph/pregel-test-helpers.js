@@ -789,37 +789,6 @@ class HITS {
 
         return maxDiff;
     }
-
-    /**
-     * Perform one step of the HITS algorithm and return the new value of the given vertex.
-     * @returns {*}
-     * @param vKey vertex key
-     * @param graph a graph containing a vertex with this key
-     */
-    doOneHITSStep(vKey, graph) {
-
-        const authNorm = this.computeAuthNorm(graph);
-        const hubNorm = this.computeHubNorm(graph);
-        const v = graph.vertex(vKey);
-
-        // auth
-        let sumAuth = 0.0;
-        for (const predKey of v.inNeighbors) {
-            const pred = graph.vertex(predKey);
-            assertTrue(pred.hasOwnProperty("value"));
-            sumAuth += pred.value.hits_hub;
-        }
-        sumAuth /= authNorm;
-        // hub
-        let sumHub = 0.0;
-        for (const predKey of v.outNeighbors) {
-            const pred = graph.vertex(predKey);
-            assertTrue(pred.hasOwnProperty("value"));
-            sumHub += pred.value.hits_auth;
-        }
-        sumHub /= hubNorm;
-        return {hits_hub: sumHub, hits_auth: sumAuth};
-    }
 }
 
 function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
