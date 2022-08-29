@@ -2149,6 +2149,28 @@
         };
 
         s.bind('clickNode', function (e) {
+          console.log("self.currentGraph.graph.nodes(): ", self.currentGraph.graph.nodes());
+          console.log("s.graph.nodes(): ", s.graph.nodes());
+          console.log("e: ", e);
+          console.log("e.data.node.id: ", e.data.node.id);
+          
+          s.graph.nodes().forEach(function (n) {
+            console.log("n: ", n);
+            n.color = "#ff00ff";
+            //if(e.data.node.id.includes("country")) {
+            if(n.id.includes("country")) {
+              n.color = "#ff0000";
+              n.sortColor = "#ff0000";
+              s.refresh();
+            } else if(n.id.includes("capital")) {
+              n.color = "#ff00ff";
+              n.sortColor = "#ff00ff";
+            } else if(n.id.includes("continent")) {
+              n.color = "#ffff00";
+              n.sortColor = "#ffff00";
+            }
+          });
+          s.refresh();
           if (self.contextState.createEdge === true) {
             self.clearMouseCanvas();
             self.removeHelp();
