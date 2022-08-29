@@ -33,7 +33,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 
 #include "Logger/Logger.h"
 

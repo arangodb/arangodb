@@ -25,7 +25,7 @@
 #include "Pregel/CommonFormats.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/Utils.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"

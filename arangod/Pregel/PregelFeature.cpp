@@ -52,7 +52,7 @@
 #include "Pregel/Conductor.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"

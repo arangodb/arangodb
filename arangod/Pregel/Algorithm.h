@@ -32,8 +32,8 @@
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/Statistics.h"
-#include "Pregel/WorkerConfig.h"
-#include "Pregel/WorkerContext.h"
+#include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/Worker/WorkerContext.h"
 
 namespace arangodb {
 namespace application_features {

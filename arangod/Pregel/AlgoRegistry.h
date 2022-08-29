@@ -25,7 +25,7 @@
 
 #include <string>
 #include "Algorithm.h"
-#include "Worker.h"
+#include "Pregel/Worker/Worker.h"
 
 struct TRI_vocbase_t;
 

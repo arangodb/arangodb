@@ -29,8 +29,8 @@
 #include "Pregel/Graph.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/OutgoingCache.h"
-#include "Pregel/WorkerConfig.h"
-#include "Pregel/WorkerContext.h"
+#include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/Worker/WorkerContext.h"
 #include "Reports.h"
 
 namespace arangodb {

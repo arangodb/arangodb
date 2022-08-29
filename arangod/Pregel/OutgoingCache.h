@@ -30,7 +30,7 @@
 #include "Pregel/GraphStore.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 namespace arangodb {
 namespace pregel {

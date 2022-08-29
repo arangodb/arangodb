@@ -21,7 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"

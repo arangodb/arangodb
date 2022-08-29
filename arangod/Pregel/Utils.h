@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 struct TRI_vocbase_t;
 
