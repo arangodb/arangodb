@@ -27,6 +27,7 @@
 #include <string_view>
 
 #include "Basics/ErrorCode.h"
+#include "Basics/voc-errors.h"
 
 namespace arangodb::result {
 
@@ -36,6 +37,8 @@ class Error final {
  public:
   explicit Error(ErrorCode errorNumber) noexcept(
       noexcept(std::string::allocator_type()));
+
+  Error() : _errorNumber{TRI_ERROR_NO_ERROR}, _errorMessage{""} {};
 
   Error(ErrorCode errorNumber, std::string_view errorMessage);
 
@@ -60,9 +63,17 @@ class Error final {
     _errorMessage += std::forward<S>(msg);
   }
 
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, Error& x);
+
  private:
   ErrorCode _errorNumber;
   std::string _errorMessage;
 };
 
+template<typename Inspector>
+auto inspect(Inspector& f, Error& x) {
+  return f.object(x).fields(f.field("number", x._errorNumber),
+                            f.field("message", x._errorMessage));
+}
 }  // namespace arangodb::result
