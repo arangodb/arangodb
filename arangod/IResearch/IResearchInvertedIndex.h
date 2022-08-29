@@ -43,8 +43,6 @@ class IResearchInvertedIndex : public IResearchDataStore {
  public:
   explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection);
 
-  virtual ~IResearchInvertedIndex() = default;
-
   void toVelocyPack(ArangodServer& server, TRI_vocbase_t const* defaultVocbase,
                     velocypack::Builder& builder, bool forPersistence) const;
 
