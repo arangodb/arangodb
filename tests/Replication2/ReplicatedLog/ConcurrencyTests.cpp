@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/types.h"
 #include "TestHelper.h"
 
+#include <Basics/ThreadGuard.h>
 #include <Basics/ScopeGuard.h>
 #include <Basics/application-exit.h>
 
@@ -231,24 +232,12 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   auto replicationThread =
       std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
 
-  std::vector<std::thread> clientThreads;
-  clientThreads.reserve(2);
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (auto& t : clientThreads) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
+  auto clientThreads = ThreadGuard(2);
 
   auto threadCounter = uint16_t{0};
-  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++,
-                             std::ref(data));
-  clientThreads.emplace_back(insertManyThenRead, threadCounter++,
-                             std::ref(data));
+  clientThreads.emplace(alternatinglyInsertAndRead, threadCounter++,
+                        std::ref(data));
+  clientThreads.emplace(insertManyThenRead, threadCounter++, std::ref(data));
 
   ASSERT_EQ(clientThreads.size(), threadCounter);
   while (data.threadsReady.load() < clientThreads.size()) {
@@ -259,7 +248,7 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   }
   data.stopClientThreads.store(true);
 
-  scope.fire();
+  clientThreads.joinAll();
 
   // stop replication only after all client threads joined, so we don't block
   // them in some intermediate state
@@ -304,24 +293,12 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
       runFollowerReplicationWithIntermittentPauses,
       std::vector{follower1.get(), follower2.get()}, std::ref(data)};
 
-  std::vector<std::thread> clientThreads;
-  clientThreads.reserve(2);
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (auto& t : clientThreads) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
+  auto clientThreads = ThreadGuard(2);
 
   auto threadCounter = uint16_t{0};
-  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++,
-                             std::ref(data));
-  clientThreads.emplace_back(insertManyThenRead, threadCounter++,
-                             std::ref(data));
+  clientThreads.emplace(alternatinglyInsertAndRead, threadCounter++,
+                        std::ref(data));
+  clientThreads.emplace(insertManyThenRead, threadCounter++, std::ref(data));
 
   ASSERT_EQ(clientThreads.size(), threadCounter);
   while (data.threadsReady.load() < clientThreads.size()) {
@@ -332,7 +309,7 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   }
   data.stopClientThreads.store(true);
 
-  scope.fire();
+  clientThreads.joinAll();
 
   // stop replication only after all client threads joined, so we don't block
   // them in some intermediate state

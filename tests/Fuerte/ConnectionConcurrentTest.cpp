@@ -27,7 +27,9 @@
 
 #include "gtest/gtest.h"
 #include "ConnectionTest.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/ThreadGuard.h"
+
+using namespace arangodb;
 
 // Tesuite checks the thread-safety properties of the connection
 // implementations. Try to send requests on the same connection object
@@ -73,23 +75,12 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
     connections.push_back(createConnection());
   }
 
-  std::vector<std::thread> joins;
-  joins.reserve(threads());
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (std::thread& t : joins) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
+  auto joins = ThreadGuard(threads());
 
   for (size_t t = 0; t < threads(); t++) {
     const size_t rep = repeat();
     wg.add((unsigned)rep);
-    joins.emplace_back([=] {
+    joins.emplace([&] {
       for (size_t i = 0; i < rep; i++) {
         auto request = fu::createRequest(fu::RestVerb::Get, "/_api/version");
         auto& conn = *connections[i % connections.size()];
@@ -104,7 +95,7 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
       std::chrono::seconds(300)));  // wait for all threads to return
 
   // wait for all threads to end
-  scope.fire();
+  joins.joinAll();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }
@@ -138,22 +129,11 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
     connections.push_back(createConnection());
   }
 
-  std::vector<std::thread> joins;
-  joins.reserve(threads());
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (std::thread& t : joins) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
+  auto joins = ThreadGuard(threads());
 
   for (size_t t = 0; t < threads(); t++) {
     wg.add(repeat());
-    joins.emplace_back([=, this] {
+    joins.emplace([=, this] {
       for (size_t i = 0; i < repeat(); i++) {
         auto request =
             fu::createRequest(fu::RestVerb::Post, "/_api/document/concurrent");
@@ -170,7 +150,7 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
       std::chrono::seconds(300)));  // wait for all threads to return
 
   // wait for all threads to end
-  scope.fire();
+  joins.joinAll();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }

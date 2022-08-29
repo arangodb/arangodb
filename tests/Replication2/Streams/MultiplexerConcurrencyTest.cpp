@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 
 #include <Basics/VelocyPackHelper.h>
+#include "Basics/ThreadGuard.h"
 #include <Replication2/Mocks/AsyncFollower.h>
 #include <utility>
 
@@ -32,7 +33,6 @@
 
 #include "Replication2/Streams/TestLogSpecification.h"
 #include "Replication2/Mocks/AsyncLeader.h"
-#include "Basics/ScopeGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -133,30 +133,19 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   constexpr std::size_t num_inserts_per_thread = 10000;
   constexpr auto lastIndex = LogIndex{num_threads * num_inserts_per_thread + 1};
 
-  std::vector<std::thread> threads;
-  threads.reserve(num_threads);
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (auto& t : threads) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
+  auto threads = ThreadGuard(num_threads);
 
-  std::generate_n(std::back_inserter(threads), num_threads, [&] {
-    return std::thread([&, producer] {
+  for (size_t n = 0; n < num_threads; ++n) {
+    threads.emplace([&, producer] {
       auto index = LogIndex{0};
       for (std::size_t i = 0; i < num_inserts_per_thread; i++) {
         index = producer->insert((int)i);
       }
       producer->waitFor(index).wait();
     });
-  });
+  }
 
-  scope.fire();
+  threads.joinAll();
 
   asyncFollower->waitFor(lastIndex).wait();
   asyncFollower->stop();

@@ -28,7 +28,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/voc-errors.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/ThreadGuard.h"
 
 #include <algorithm>
 #include <atomic>
@@ -198,21 +198,10 @@ TEST(ResourceUsageTest, testConcurrencyRestricted) {
   std::atomic<bool> go = false;
   std::atomic<size_t> globalRejections = 0;
 
-  std::vector<std::thread> threads;
-  threads.reserve(::numThreads);
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (auto& t : threads) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
+  auto threads = ThreadGuard(::numThreads);
 
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       while (!go.load()) {
         // wait until all threads are created, so they can
         // start at the approximate same time
@@ -236,7 +225,7 @@ TEST(ResourceUsageTest, testConcurrencyRestricted) {
 
   go.store(true);
 
-  scope.fire();
+  threads.joinAll();
 
   // should be down to 0 now
   EXPECT_EQ(0, monitor.current());
@@ -254,21 +243,10 @@ TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
   std::atomic<bool> go = false;
   constexpr size_t amount = 123;
 
-  std::vector<std::thread> threads;
-  threads.reserve(::numThreads);
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (auto& t : threads) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
+  auto threads = ThreadGuard(::numThreads);
 
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       while (!go.load()) {
         // wait until all threads are created, so they can
         // start at the approximate same time
@@ -283,7 +261,7 @@ TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
 
   go.store(true);
 
-  scope.fire();
+  threads.joinAll();
 
   // should be down to 0 now
   ASSERT_EQ(0, monitor.current());
@@ -492,21 +470,10 @@ TEST(GlobalResourceMonitorTest, testConcurrencyRestricted) {
   std::atomic<bool> go = false;
   std::atomic<size_t> globalRejections = 0;
 
-  std::vector<std::thread> threads;
-  threads.reserve(::numThreads);
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (auto& t : threads) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
+  auto threads = ThreadGuard(::numThreads);
 
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       while (!go.load()) {
         // wait until all threads are created, so they can
         // start at the approximate same time
@@ -530,7 +497,7 @@ TEST(GlobalResourceMonitorTest, testConcurrencyRestricted) {
 
   go.store(true);
 
-  scope.fire();
+  threads.joinAll();
 
   // should be down to 0 now
   ASSERT_EQ(0, monitor.current());
@@ -544,21 +511,9 @@ TEST(GlobalResourceMonitorTest, testConcurrencyUnrestricted) {
 
   std::atomic<bool> go = false;
 
-  std::vector<std::thread> threads;
-  threads.reserve(::numThreads);
-  arangodb::ScopeGuard scope{[&]() noexcept {
-    for (auto& t : threads) {
-      if (t.joinable()) {
-        try {
-          t.join();
-        } catch (...) {
-        }
-      }
-    }
-  }};
-
+  auto threads = ThreadGuard(::numThreads);
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       while (!go.load()) {
         // wait until all threads are created, so they can
         // start at the approximate same time
@@ -574,7 +529,7 @@ TEST(GlobalResourceMonitorTest, testConcurrencyUnrestricted) {
 
   go.store(true);
 
-  scope.fire();
+  threads.joinAll();
 
   // should be down to 0 now
   ASSERT_EQ(0, monitor.current());
