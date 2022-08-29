@@ -1,8 +1,7 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* Fixed SEARCH-368 Fixed handling of array comparison
-  for inverted index
+* Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
 
