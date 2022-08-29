@@ -2153,9 +2153,23 @@
           console.log("s.graph.nodes(): ", s.graph.nodes());
           console.log("e: ", e);
           console.log("e.data.node.id: ", e.data.node.id);
+
+          const nodeColorAttributes = [];
           
           s.graph.nodes().forEach(function (n) {
+            //if(!nodeColorAttributes.includes(n.nodeColorAttributeValue)) {
+            if(!nodeColorAttributes.some(node => node.name === n.nodeColorAttributeValue)) {
+              const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+              const nodeColorAttributeObj = {
+                'name': n.nodeColorAttributeValue || '',
+                'color': tempNodeColor
+              };
+              nodeColorAttributes.push(nodeColorAttributeObj);
+            }
             console.log("n: ", n);
+            const categoryColor = nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue) ? '#' + nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue).color : '#f00';
+            n.color = categoryColor;
+            /*
             n.color = "#ff00ff";
             //if(e.data.node.id.includes("country")) {
             if(n.id.includes("country")) {
@@ -2169,8 +2183,10 @@
               n.color = "#ffff00";
               n.sortColor = "#ffff00";
             }
+            */
           });
           s.refresh();
+          console.log("nodeColorAttributes: ", nodeColorAttributes);
           if (self.contextState.createEdge === true) {
             self.clearMouseCanvas();
             self.removeHelp();

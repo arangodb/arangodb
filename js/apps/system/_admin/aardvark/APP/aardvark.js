@@ -948,6 +948,9 @@ authRouter.get('/graph/:name', function (req, res) {
             var attr = node[config.nodeColorAttribute];
             if (attr) {
               if (tmpObjNodes.hasOwnProperty(attr)) {
+                nodeObj[config.nodeColorAttribute] = attr;
+                nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
+                nodeObj['nodeColorAttributeValue'] = attr;
                 nodeObj.color = tmpObjNodes[attr];
               } else {
                 tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
