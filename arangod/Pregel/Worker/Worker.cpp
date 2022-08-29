@@ -26,7 +26,6 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/Conductor/State.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"

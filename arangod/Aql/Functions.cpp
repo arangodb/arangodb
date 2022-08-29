@@ -61,7 +61,7 @@
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
 #include "Logger/Logger.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/WorkerConductorMessages.h"

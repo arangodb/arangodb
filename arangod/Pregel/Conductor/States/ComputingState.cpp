@@ -1,6 +1,6 @@
 #include "ComputingState.h"
 
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"

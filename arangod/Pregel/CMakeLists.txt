@@ -1,7 +1,6 @@
 add_library(arango_pregel STATIC
   AggregatorHandler.cpp
   AlgoRegistry.cpp
-  Conductor.cpp
   ExecutionNumber.cpp
   GraphStore.cpp
   IncomingCache.cpp

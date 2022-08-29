@@ -24,8 +24,7 @@
 
 #include <chrono>
 
-#include "Pregel/Conductor/State.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "State.h"
 
 namespace arangodb::pregel {
 
@@ -33,15 +32,14 @@ class Conductor;
 
 namespace conductor {
 
-struct FatalError : State {
+struct InError : State {
   std::chrono::system_clock::time_point expiration;
   Conductor& conductor;
-  FatalError(Conductor& conductor, std::chrono::seconds const& ttl);
-  ~FatalError(){};
+  InError(Conductor& conductor, std::chrono::seconds const& ttl);
+  ~InError(){};
   auto run() -> void override{};
   auto receive(Message const& message) -> void override;
-  auto getResults(bool withId) -> PregelResults override;
-  auto name() const -> std::string override { return "fatal error"; };
+  auto name() const -> std::string override { return "in error"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const
       -> std::optional<std::chrono::system_clock::time_point> override {

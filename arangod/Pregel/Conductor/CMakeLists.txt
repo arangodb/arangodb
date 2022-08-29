@@ -1,9 +1,4 @@
 target_sources(arango_pregel PRIVATE
-  InitialState.cpp
-  LoadingState.cpp
-  ComputingState.cpp
-  StoringState.cpp
-  CanceledState.cpp
-  DoneState.cpp
-  InErrorState.cpp
-  FatalErrorState.cpp)
+	Conductor.cpp)
+
+add_subdirectory(States)

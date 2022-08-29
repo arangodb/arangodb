@@ -1,9 +1,8 @@
 #include "LoadingState.h"
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Conductor/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/WorkerConductorMessages.h"

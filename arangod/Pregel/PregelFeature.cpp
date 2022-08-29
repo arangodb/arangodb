@@ -49,7 +49,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Worker.h"

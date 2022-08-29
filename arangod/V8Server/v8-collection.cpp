@@ -38,7 +38,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Pregel/AggregatorHandler.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker/Worker.h"
 #include "RestServer/DatabaseFeature.h"
