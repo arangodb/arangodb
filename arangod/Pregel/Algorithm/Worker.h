@@ -25,6 +25,7 @@
 #pragma once
 
 #include <Algorithm/Algorithm.h>
+#include <memory>
 
 struct IWorker {
   virtual auto loadGraphShard() -> void = 0;
@@ -35,7 +36,7 @@ struct IWorker {
 };
 
 template <typename Algorithm>
-struct Worker : IWorker, enable_shared_from_this<Worker> {
+struct Worker : IWorker, std::enable_shared_from_this<Worker<Algorithm>> {
   //  GraphStorage<...> graphShard;
 
   auto loadGraphShard() -> void override {
