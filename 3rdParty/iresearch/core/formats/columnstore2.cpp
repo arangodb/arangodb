@@ -944,7 +944,7 @@ bytes_ref sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
     block.last_size = in.read_long();
     block.last = column::kBlockSize - 1;
   }
-  blocks.back().last = (hdr.docs_count % column::kBlockSize - 1);
+  blocks.back().last = uint16_t(hdr.docs_count % column::kBlockSize - 1U);
 
   return blocks;
 }
