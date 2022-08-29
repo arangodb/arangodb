@@ -42,8 +42,8 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
  public:
   IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection);
 
-  [[nodiscard]] static auto setCallbakForScope(
-      std::function<irs::directory_attributes()> callback) {
+  [[nodiscard]] static auto setCallbackForScope(
+      std::function<irs::directory_attributes()> const& callback) {
     InitCallback = callback;
     return irs::make_finally([]() noexcept { InitCallback = nullptr; });
   }

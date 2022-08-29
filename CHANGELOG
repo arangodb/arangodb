@@ -1,6 +1,8 @@
 devel
 -----
 
+* SEARCH-357: Added SUBSTRING_BYTES function.
+
 * A new Pregel algorithm: the version of Hypertext-Induced Topic Search (HITS)
 as described in the original paper.
 
