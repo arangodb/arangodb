@@ -152,20 +152,24 @@ bool ReplicatedRocksDBTransactionCollection::ensureSnapshot() {
 
 auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
+  // leaderState should only be requested in cases where we are expected to be
+  // leader, in which case _leaderState should always be initialized!
+  ADB_PROD_ASSERT(_leaderState != nullptr);
   return _leaderState;
 }
 
-auto ReplicatedRocksDBTransactionCollection::ensureCollection(
-    transaction::Hints hints) -> Result {
+auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   auto res = RocksDBTransactionCollection::ensureCollection();
 
-  // We do not need a leaderState for INDEX_CREATION transactions. These are
-  // created on followers as well.
-  if (res.fail() || hints.has(transaction::Hints::Hint::INDEX_CREATION)) {
+  if (res.fail()) {
     return res;
   }
 
-  if (_leaderState == nullptr) {
+  // We only need to fetch the leaderState for non-read accesses. Note that this
+  // also covers the case that ReplicatedRocksDBTransactionState instances can
+  // be created on followers (but just for read-only access) in which case we
+  // obviously must not attempt to fetch the leaderState.
+  if (accessType() != AccessMode::Type::READ && _leaderState == nullptr) {
     // Note that doing this here is only correct as long as we're not supporting
     // distributeShardsLike.
     // Later, we must make sure to get the very same state for all collections

@@ -283,7 +283,7 @@ Result TransactionState::useCollections() {
   // process collections in forward order
 
   for (TransactionCollection* trxCollection : _collections) {
-    res = trxCollection->lockUsage(_hints);
+    res = trxCollection->lockUsage();
 
     if (!res.ok()) {
       break;

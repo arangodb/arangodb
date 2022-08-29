@@ -37,8 +37,7 @@ namespace arangodb {
 struct RocksDBDocumentOperation;
 namespace transaction {
 class Methods;
-class Hints;
-}  // namespace transaction
+}
 class TransactionState;
 
 /// @brief collection used in a transaction
@@ -52,7 +51,7 @@ class RocksDBTransactionCollection : public TransactionCollection {
   bool hasOperations() const override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  Result lockUsage(transaction::Hints hints = transaction::Hints()) override;
+  Result lockUsage() override;
   void releaseUsage() override;
 
   RevisionId revision() const { return _revision; }
@@ -137,8 +136,7 @@ class RocksDBTransactionCollection : public TransactionCollection {
   }
 
  protected:
-  virtual Result ensureCollection(
-      transaction::Hints hints = transaction::Hints());
+  virtual Result ensureCollection();
 
  private:
   /// @brief request a lock for a collection

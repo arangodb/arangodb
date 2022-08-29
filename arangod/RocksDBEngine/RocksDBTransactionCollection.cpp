@@ -80,12 +80,12 @@ bool RocksDBTransactionCollection::canAccess(
   return true;
 }
 
-Result RocksDBTransactionCollection::lockUsage(transaction::Hints hints) {
+Result RocksDBTransactionCollection::lockUsage() {
   Result res;
 
   bool doSetup = false;
   if (_collection == nullptr) {
-    res = ensureCollection(hints);
+    res = ensureCollection();
     if (res.fail()) {
       return res;
     }
@@ -418,8 +418,7 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   return {};
 }
 
-Result RocksDBTransactionCollection::ensureCollection(
-    transaction::Hints hints) {
+Result RocksDBTransactionCollection::ensureCollection() {
   if (_collection == nullptr) {
     // open the collection
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&

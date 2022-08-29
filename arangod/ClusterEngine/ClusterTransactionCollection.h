@@ -45,7 +45,7 @@ class ClusterTransactionCollection final : public TransactionCollection {
   bool hasOperations() const override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  Result lockUsage(transaction::Hints hints = transaction::Hints()) override;
+  Result lockUsage() override;
   void releaseUsage() override;
 
  private:

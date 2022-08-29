@@ -1327,12 +1327,6 @@ auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<
   return follower;
 }
 
-bool LogicalCollection::hasDocumentStateLeader() {
-  auto stateMachine = getDocumentState();
-  auto const status = stateMachine->getStatus();
-  return status.has_value() && status->asLeaderStatus() != nullptr;
-}
-
 #ifndef USE_ENTERPRISE
 void LogicalCollection::decorateWithInternalEEValidators() {
   // Only available in Enterprise Mode

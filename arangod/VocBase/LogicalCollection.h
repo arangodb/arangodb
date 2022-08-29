@@ -250,7 +250,6 @@ class LogicalCollection : public LogicalDataSource {
       replication2::replicated_state::document::DocumentLeaderState>;
   auto getDocumentStateFollower() -> std::shared_ptr<
       replication2::replicated_state::document::DocumentFollowerState>;
-  bool hasDocumentStateLeader();
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 

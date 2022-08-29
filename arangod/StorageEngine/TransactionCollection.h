@@ -26,7 +26,6 @@
 #include <memory>
 
 #include "Basics/Common.h"
-#include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
@@ -35,7 +34,7 @@ namespace arangodb {
 class LogicalCollection;
 namespace transaction {
 class Methods;
-}  // namespace transaction
+}
 
 class TransactionState;
 
@@ -78,9 +77,7 @@ class TransactionCollection {
 
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
 
-  // The hints parameter was added for replication2. Without it, we could not
-  // ensure indexes on followers.
-  virtual Result lockUsage(transaction::Hints hints = transaction::Hints()) = 0;
+  virtual Result lockUsage() = 0;
   virtual void releaseUsage() = 0;
 
  protected:
