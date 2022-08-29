@@ -147,7 +147,7 @@ const testHITSKleinbergOnGraph = function (vertices, edges) {
     const numberIterations = 50;
 
     let parameters = {resultField: "hits", maxNumIterations: numberIterations};
-    let algName = "hitsKleinberg";
+    let algName = "hitskleinberg";
     const result = runPregelInstance(algName, graphName, parameters, query);
 
     const hits = new HITS();
