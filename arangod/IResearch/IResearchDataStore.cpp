@@ -670,6 +670,7 @@ Result IResearchDataStore::commit(bool wait /*= true*/) {
 Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
+
   // must be valid if _asyncSelf->lock() is valid
   CommitResult code = CommitResult::UNDEFINED;
   auto result = linkLock->commitUnsafe(wait, &code).result;
@@ -688,6 +689,16 @@ Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
     linkLock->_cleanupIntervalCount = 0;
     std::ignore = linkLock->cleanupUnsafe();
   }
+
+  if (result.fail()) {
+    TRI_ASSERT(linkLock->hasFailed());
+
+    // persist "failed" flag in RocksDB. note: if this fails, it will
+    // throw an exception and abort the recovery & startup.
+    linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
+                                        linkLock->collection(), true);
+  }
+
   return result;
 }
 
@@ -701,6 +712,16 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
   uint64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - begin)
                         .count();
+
+  TRI_IF_FAILURE("ArangoSearch::FailOnCommit") {
+    // intentionally mark the commit as failed
+    result.reset(TRI_ERROR_DEBUG);
+  }
+
+  if (result.fail()) {
+    // mark DataStore as failed
+    setFailed();
+  }
 
   if (bool ok = result.ok(); !ok && _numFailedCommits != nullptr) {
     _numFailedCommits->fetch_add(1, std::memory_order_relaxed);

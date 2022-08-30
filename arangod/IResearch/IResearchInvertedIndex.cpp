@@ -760,6 +760,10 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
         TRI_ERROR_INTERNAL,
         std::string("Failed to generate inverted index field definition")));
   }
+  if (hasFailed()) {
+    // index has failed - we need to report that
+    builder.add(StaticStrings::LinkFailed, VPackValue(true));
+  }
 }
 
 std::vector<std::vector<basics::AttributeName>> IResearchInvertedIndex::fields(

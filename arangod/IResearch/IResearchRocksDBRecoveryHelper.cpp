@@ -42,6 +42,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -170,8 +171,14 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       _failedIndexes.emplace(link.first->id());
     } else {
       // link participates in recovery
-      basics::downCast<IResearchRocksDBLink>(*(link.first))
-          .insert(trx, nullptr, docId, doc, {}, false);
+      if (link.first->type() ==
+          arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+        basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first))
+            .insert(trx, nullptr, docId, doc, {}, false);
+      } else {
+        basics::downCast<IResearchRocksDBLink>(*(link.first))
+            .insert(trx, nullptr, docId, doc, {}, false);
+      }
     }
   }
 
@@ -237,9 +244,16 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
       _failedIndexes.emplace(link.first->id());
     } else {
       // link participates in recovery
-      IResearchLink& impl =
-          basics::downCast<IResearchRocksDBLink>(*(link.first));
-      impl.remove(trx, docId, false);
+      if (link.first->type() ==
+          arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+        IResearchRocksDBInvertedIndex& impl =
+            basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
+        impl.remove(trx, nullptr, docId, VPackSlice::emptyObjectSlice());
+      } else {
+        IResearchLink& impl =
+            basics::downCast<IResearchRocksDBLink>(*(link.first));
+        impl.remove(trx, docId, false);
+      }
     }
   }
 
