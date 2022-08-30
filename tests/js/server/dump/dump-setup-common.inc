@@ -361,6 +361,16 @@ function createView() {
   try {
     let c = db._create("UnitTestsDumpViewCollection");
 
+    let i = db.UnitTestsDumpViewCollection.ensureIndex({
+        type: "inverted",
+        name: "pupa",
+        consolidationIntervalMsec: 0,
+        primarySort: { fields: [ { field: "_key", direction:"asc"} ] },
+        fields: [ "_key", "value", { name: "text", analyzer: "text_en" } ]
+      });
+
+    let viewAlias = db._createView("UnitTestsDumpViewAlias", "search-alias", { indexes: [ { collection: c.name(), index: i.name } ] });
+
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});
     view.properties({
       // choose non default values to check if they are correctly dumped and imported
