@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PlanCollection.h"
+#include "Cluster/ServerDefaults.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 
@@ -31,7 +32,8 @@ using namespace arangodb;
 
 PlanCollection::PlanCollection() {}
 
-ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(VPackSlice input) {
+ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
+    VPackSlice input, ServerDefaults defaultValues) {
   if (!input.isObject()) {
     // Special handling to be backwards compatible error reporting
     // on "name"
@@ -39,6 +41,13 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(VPackSlice input) {
   }
   try {
     PlanCollection res;
+    // Inject certain default values.
+    // This will make sure the default configuration for Sharding attributes are
+    // applied
+    res.numberOfShards = defaultValues.numberOfShards;
+    res.replicationFactor = defaultValues.replicationFactor;
+    res.writeConcern = defaultValues.writeConcern;
+
     auto status = velocypack::deserializeWithStatus(input, res);
     if (status.ok()) {
       return res;

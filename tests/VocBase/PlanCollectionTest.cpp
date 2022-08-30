@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerDefaults.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/Properties/PlanCollection.h"
 #include <velocypack/Builder.h>
@@ -72,7 +73,7 @@ namespace tests {
 #define GenerateBoolAttributeTest(attributeName)                              \
   TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, bool expected) { \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice());          \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});      \
       EXPECT_EQ(testee->attributeName, expected)                              \
           << "Parsing error in " << body.toJson();                            \
     };                                                                        \
@@ -95,7 +96,7 @@ namespace tests {
   TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
                                    uint64_t expected) {                        \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice());           \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});       \
       EXPECT_EQ(testee->valueName, expected)                                   \
           << "Parsing error in " << body.toJson();                             \
     };                                                                         \
@@ -120,7 +121,7 @@ namespace tests {
   TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
                                    std::string const& expected) {              \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice());           \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});       \
       EXPECT_EQ(testee->attributeName, expected)                               \
           << "Parsing error in " << body.toJson();                             \
     };                                                                         \
@@ -165,7 +166,7 @@ class PlanCollectionUserAPITest : public ::testing::Test {
   }
 
   static void assertParsingThrows(VPackBuilder const& body) {
-    auto p = PlanCollection::fromCreateAPIBody(body.slice());
+    auto p = PlanCollection::fromCreateAPIBody(body.slice(), {});
     EXPECT_TRUE(p.fail()) << " On body " << body.toJson();
   }
 };
@@ -183,7 +184,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
     VPackObjectBuilder guard(&body);
     body.add("name", VPackValue(colName));
   }
-  auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
   ASSERT_TRUE(testee.ok());
   EXPECT_EQ(testee->name, colName);
   // Test Default values
@@ -240,7 +241,7 @@ TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
 TEST_F(PlanCollectionUserAPITest, test_collection_type) {
   auto shouldBeEvaluatedToType = [&](VPackBuilder const& body,
                                      TRI_col_type_e type) {
-    auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
     EXPECT_EQ(testee->type, type) << "Parsing error in " << body.toJson();
   };
 
@@ -270,7 +271,7 @@ TEST_F(PlanCollectionUserAPITest, test_collection_type) {
 TEST_F(PlanCollectionUserAPITest, test_shardingStrategy) {
   auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,
                                  std::string const& expected) {
-    auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
     EXPECT_EQ(testee->shardingStrategy, expected)
         << "Parsing error in " << body.toJson();
   };
@@ -305,7 +306,7 @@ TEST_F(PlanCollectionUserAPITest,
       body.add("replicationFactor", VPackValue(4));
     }
 
-    auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
     EXPECT_EQ(testee->writeConcern, 3);
@@ -323,7 +324,7 @@ TEST_F(PlanCollectionUserAPITest,
       body.add("writeConcern", VPackValue(3));
     }
 
-    auto testee = PlanCollection::fromCreateAPIBody(body.slice());
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
     EXPECT_EQ(testee->writeConcern, 3);

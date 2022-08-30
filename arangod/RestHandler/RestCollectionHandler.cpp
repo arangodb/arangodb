@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/MaintenanceStrings.h"
+#include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -350,7 +351,8 @@ void RestCollectionHandler::handleCommandPost() {
       _request->parsedValue("enforceReplicationFactor", true);
 
 #if true
-  auto planCollection = PlanCollection::fromCreateAPIBody(body);
+  auto planCollection =
+      PlanCollection::fromCreateAPIBody(body, ServerDefaults(_vocbase));
   if (planCollection.fail()) {
     // error message generated in inspect
     generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),

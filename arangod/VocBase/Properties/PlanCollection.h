@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Status.h"
+#include "Inspection/VPackLoadInspector.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -33,6 +34,8 @@
 namespace arangodb {
 template<typename T>
 class ResultT;
+
+struct ServerDefaults;
 
 namespace inspection {
 struct Status;
@@ -59,7 +62,8 @@ struct PlanCollection {
   PlanCollection();
 
   static ResultT<PlanCollection> fromCreateAPIBody(
-      arangodb::velocypack::Slice input);
+      arangodb::velocypack::Slice input,
+      arangodb::ServerDefaults defaultValues);
 
   // Temporary method to handOver information from
   arangodb::velocypack::Builder toCollectionsCreate();
@@ -107,6 +111,9 @@ struct PlanCollection {
   }
 };
 
+// Please note in the following inspect, there are some `f.keep()` calls
+// This is used for parameters that have configurable defaults. The defaults
+// are set on planCollection before calling the inspect.
 template<class Inspector>
 auto inspect(Inspector& f, PlanCollection& planCollection) {
   return f.object(planCollection)
@@ -125,14 +132,14 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
                   planCollection.usesRevisionsAsDocumentIds)
               .fallback(true),
           f.field("numberOfShards", planCollection.numberOfShards)
-              .fallback(1ULL)
+              .fallback(f.keep())
               .invariant(PlanCollection::Invariants::isGreaterZero),
           // Deprecated, and not documented anymore
           // The ordering is important here, minReplicationFactor
           // has to be before writeConcern, this way we ensure that writeConcern
           // will overwrite the minReplicationFactor value if present
           f.field("minReplicationFactor", planCollection.writeConcern)
-              .fallback(1ULL),
+              .fallback(f.keep()),
           // Now check the new attribute, if it is not there,
           // fallback to minReplicationFactor / default, whatever
           // is set already.
@@ -142,7 +149,7 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               .fallback(f.keep())
               .invariant(PlanCollection::Invariants::isGreaterZero),
           f.field("replicationFactor", planCollection.replicationFactor)
-              .fallback(1ULL)
+              .fallback(f.keep())
               .invariant(PlanCollection::Invariants::isGreaterZero),
           f.field("distributeShardsLike", planCollection.distributeShardsLike)
               .fallback(""),
