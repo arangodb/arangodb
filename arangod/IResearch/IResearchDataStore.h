@@ -137,7 +137,15 @@ class IResearchDataStore {
 
   IResearchDataStore(IndexId iid, LogicalCollection& collection);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  virtual ~IResearchDataStore() {
+    // if triggered  - no unload was called prior to deleting index object
+    TRI_ASSERT(!_dataStore);
+  }
+#else
   virtual ~IResearchDataStore() = default;
+#endif
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
   ///        for use with asynchronous calls, e.g. callbacks, view
@@ -332,6 +340,8 @@ class IResearchDataStore {
       IResearchDataStoreMeta::ConsolidationPolicy const& policy,
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
+
+  void initAsyncSelf();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
