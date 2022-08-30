@@ -333,6 +333,8 @@ class IResearchDataStore {
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
 
+  void initAsyncSelf();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////

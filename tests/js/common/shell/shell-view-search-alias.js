@@ -150,7 +150,8 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.properties().indexes, idxs);
         c1.drop();
       } catch (e) {
-        fail(e.errorMessage);
+        print(e);
+        fail();
       } finally {
         assertEqual(v1.properties().indexes, []);
         v1.drop();
@@ -170,11 +171,12 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.name(), "v1");
         var idxs = [{collection: "c1", index: "i1"}, {collection: "c1", index: "i2"}];
         v1.properties({indexes: idxs});
-        assertEqual(v1.properties().indexes, idxs);
+        assertEqual(v1.properties().indexes.sort(), idxs);
         c1.drop();
         assertEqual(v1.properties().indexes, []);
       } catch (e) {
-        fail(e.errorMessage);
+        print(e);
+        fail();
       } finally {
         v1.drop();
         try {
@@ -250,13 +252,14 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.name(), "v1");
         var idxs = [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}];
         v1.properties({indexes: idxs});
-        assertEqual(v1.properties().indexes, idxs);
+        assertEqual(v1.properties().indexes.sort(), idxs);
         c2.drop();
         assertEqual(v1.properties().indexes, [{collection: "c1", index: "i1"}]);
         c1.drop();
         assertEqual(v1.properties().indexes, []);
       } catch (e) {
-        fail(e.errorMessage);
+        print(e);
+        fail();
       } finally {
         v1.drop();
         try {

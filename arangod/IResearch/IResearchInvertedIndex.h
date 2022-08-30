@@ -102,54 +102,54 @@ class IResearchInvertedIndex : public IResearchDataStore {
 class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
                                             public Index {
  public:
-  Index::IndexType type() const override {
+  Index::IndexType type() const final {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
   }
 
   ~IResearchInvertedClusterIndex() final {
     // should be in final dtor, otherwise its vtable already destroyed
-    _asyncSelf->reset();
+    unload();
   }
 
   void toVelocyPack(
       VPackBuilder& builder,
-      std::underlying_type<Index::Serialize>::type flags) const override;
+      std::underlying_type<Index::Serialize>::type flags) const final;
 
-  size_t memory() const override {
+  size_t memory() const final {
     // FIXME return in memory size
     // return stats().indexSize;
     return 0;
   }
 
-  bool isHidden() const override { return false; }
+  bool isHidden() const final { return false; }
 
-  char const* typeName() const override { return oldtypeName(); }
+  char const* typeName() const final { return oldtypeName(); }
 
-  bool canBeDropped() const override { return true; }
+  bool canBeDropped() const final { return true; }
 
-  bool isSorted() const override { return IResearchInvertedIndex::isSorted(); }
+  bool isSorted() const final { return IResearchInvertedIndex::isSorted(); }
 
-  bool hasSelectivityEstimate() const override { return false; }
+  bool hasSelectivityEstimate() const final { return false; }
 
-  bool inProgress() const override {
-    return IResearchInvertedIndex::inProgress();
-  }
+  bool inProgress() const final { return IResearchInvertedIndex::inProgress(); }
 
-  bool covers(arangodb::aql::Projections& projections) const override {
+  bool covers(arangodb::aql::Projections& projections) const final {
     return IResearchInvertedIndex::covers(projections);
   }
 
-  Result drop() override { return {}; }
-  void load() override {}
-  void unload() override {}
+  Result drop() final {
+    unload();
+    return {};
+  }
+  void load() final {}
+  void unload() final { _asyncSelf->reset(); }
 
-  bool matchesDefinition(
-      arangodb::velocypack::Slice const& other) const override;
+  bool matchesDefinition(arangodb::velocypack::Slice const& other) const final;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, aql::AstNode const* node,
       aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx) override {
+      ReadOwnWrites readOwnWrites, int mutableConditionIdx) final {
     TRI_ASSERT(readOwnWrites ==
                ReadOwnWrites::no);  // FIXME: check - should we ever care?
     return IResearchInvertedIndex::iteratorForCondition(
@@ -159,7 +159,7 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
 
   Index::SortCosts supportsSortCondition(
       aql::SortCondition const* sortCondition, aql::Variable const* reference,
-      size_t itemsInIndex) const override {
+      size_t itemsInIndex) const final {
     return IResearchInvertedIndex::supportsSortCondition(
         sortCondition, reference, itemsInIndex);
   }
@@ -167,14 +167,14 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
   Index::FilterCosts supportsFilterCondition(
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const override {
+      size_t itemsInIndex) const final {
     return IResearchInvertedIndex::supportsFilterCondition(
         IResearchDataStore::id(), Index::fields(), allIndexes, node, reference,
         itemsInIndex);
   }
 
   aql::AstNode* specializeCondition(
-      aql::AstNode* node, aql::Variable const* reference) const override {
+      aql::AstNode* node, aql::Variable const* reference) const final {
     return IResearchInvertedIndex::specializeCondition(node, reference);
   }
 
