@@ -131,42 +131,38 @@ class AsyncValue {
   /// @brief Denies access to resource granted by a lock,
   ///        and waits until all locks on resource have been released.
   //////////////////////////////////////////////////////////////////////////////
-  void reset() noexcept {
+  void reset() {
     auto count = _count.fetch_or(kReset, std::memory_order_release);
-    if ((count & kDestroy) == kDestroy) {
-      return;
+    if (!(count & kReset)) {
+      destroy();
     }
-    if ((count & kReset) != kReset) {  // handle first reset
-      if (destroy()) {                 // handle successfully destroy
-        return;
-      }
-      count -= kRef - kReset;
+    std::unique_lock lock{_m};
+    while (_resource != nullptr) {
+      _cv.wait(lock);
     }
-    do {  // wait destroy
-      _count.wait(count, std::memory_order_relaxed);
-      count = _count.load(std::memory_order_acquire);
-    } while ((count & kDestroy) != kDestroy);
   }
 
  private:
-  static constexpr uint32_t kReset = 1;
-  static constexpr uint32_t kDestroy = 2;
-  static constexpr uint32_t kRef = 4;
+  static constexpr size_t kReset = 1;
+  static constexpr size_t kDestroy = 2;
+  static constexpr size_t kRef = 4;
 
-  bool destroy() noexcept {
+  void destroy() {
     auto count = _count.fetch_sub(kRef, std::memory_order_release) - kRef;
-    if (count == kReset &&
-        _count.compare_exchange_strong(count, kReset | kDestroy,
-                                       std::memory_order_acq_rel,
-                                       std::memory_order_relaxed)) {
-      _count.notify_all();
-      return true;
+    if (count == kReset  // acquire for fetch_sub, release for fetch_add
+        && _count.compare_exchange_strong(count, kReset | kDestroy,
+                                          std::memory_order_acq_rel,
+                                          std::memory_order_relaxed)) {
+      std::lock_guard lock{_m};
+      _resource = nullptr;
+      _cv.notify_all();  // should be under lock
     }
-    return false;
   }
 
   T* _resource;
-  mutable std::atomic_uint32_t _count;  // linux futex handle only 32 bit
+  mutable std::atomic_size_t _count;
+  std::mutex _m;
+  std::condition_variable _cv;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
