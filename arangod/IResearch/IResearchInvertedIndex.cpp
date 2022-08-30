@@ -282,7 +282,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       return;
     }
 
-    if (_index->isOutOfSync()) {
+    if (_index->failQueriesOnOutOfSync() && _index->isOutOfSync()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
           absl::StrCat("link ", std::to_string(_index->id().id()),

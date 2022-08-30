@@ -572,7 +572,7 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
         << id() << "'";
     return {};  // return an empty reader
   }
-  if (linkLock->isOutOfSync()) {
+  if (failQueriesOnOutOfSync() && linkLock->isOutOfSync()) {
     // link has failed, we cannot use it for querying
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
@@ -943,6 +943,10 @@ Result IResearchDataStore::deleteDataStore() noexcept {
                                     std::to_string(id().id()) + "'"};
   }
   return {};
+}
+
+bool IResearchDataStore::failQueriesOnOutOfSync() const noexcept {
+  return _asyncFeature->failQueriesOnOutOfSync();
 }
 
 bool IResearchDataStore::setOutOfSync() noexcept {

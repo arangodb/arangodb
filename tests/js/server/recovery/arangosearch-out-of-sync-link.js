@@ -45,12 +45,12 @@ function runSetup () {
   v = db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
   v.properties({ links: { UnitTestsRecovery3: { includeAllFields: true } } });
      
-  // set failure point
+  // set failure point that makes commits go wrong
   internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
   db['UnitTestsRecovery1'].insert({});
   db['UnitTestsRecovery2'].insert({});
-
+      
   // wait for synchronization of links
   try {
     db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
@@ -86,7 +86,10 @@ function recoverySuite () {
       assertTrue(p.links.UnitTestsRecovery1.outOfSync);
       assertTrue(p.links.UnitTestsRecovery2.hasOwnProperty('outOfSync'));
       assertTrue(p.links.UnitTestsRecovery2.outOfSync);
-  
+ 
+      // set failure point that makes querying failed links go wrong
+      internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
+
       // queries must fail because links are marked as out of sync
       try {
         db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
@@ -108,6 +111,16 @@ function recoverySuite () {
       // query must not fail
       let result = db._query("FOR doc IN UnitTestsRecoveryView3 OPTIONS {waitForSync: true} RETURN doc").toArray();
       assertEqual(1, result.length);
+    
+      // clear all failure points
+      internal.debugClearFailAt();
+      
+      // queries must not fail now because we removed the failure point
+      result = db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
+      assertEqual(1, result.length);
+        
+      result = db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc").toArray();
+      assertEqual(2, result.length);
     }
 
   };

@@ -163,6 +163,8 @@ std::string const CONSOLIDATION_THREADS_PARAM(
     "--arangosearch.consolidation-threads");
 std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
     "--arangosearch.consolidation-threads-idle");
+std::string const FAIL_ON_OUT_OF_SYNC(
+    "--arangosearch.fail-queries-on-out-of-sync");
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
@@ -879,6 +881,7 @@ IResearchFeature::IResearchFeature(Server& server)
     : ArangodFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
+      _failQueriesOnOutOfSync(false),
       _consolidationThreads(0),
       _consolidationThreadsIdle(0),
       _commitThreads(0),
@@ -954,6 +957,12 @@ void IResearchFeature::collectOptions(
           "they have been manually recreated)",
           new options::VectorParameter<options::StringParameter>(
               &_skipRecoveryItems))
+      .setIntroducedIn(31100);
+  options
+      ->addOption(FAIL_ON_OUT_OF_SYNC,
+                  "whether or not retrieval queries on out of sync "
+                  "links/indexes should fail",
+                  new options::BooleanParameter(&_failQueriesOnOutOfSync))
       .setIntroducedIn(31100);
 }
 
@@ -1204,6 +1213,14 @@ void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }
 void IResearchFeature::untrackOutOfSyncLink() noexcept {
   uint64_t previous = _outOfSyncLinks.fetch_sub(1);
   TRI_ASSERT(previous > 0);
+}
+
+bool IResearchFeature::failQueriesOnOutOfSync() const noexcept {
+  TRI_IF_FAILURE("ArangoSearch::FailQueriesOnOutOfSync") {
+    // here to test --arangosearch.fail-queries-on-out-of-sync
+    return true;
+  }
+  return _failQueriesOnOutOfSync;
 }
 
 void IResearchFeature::registerRecoveryHelper() {

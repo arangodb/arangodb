@@ -179,7 +179,7 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
       return nullptr;
     }
 
-    if (link->isOutOfSync()) {
+    if (link->failQueriesOnOutOfSync() && link->isOutOfSync()) {
       // link is out of sync, we cannot use it for querying
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,

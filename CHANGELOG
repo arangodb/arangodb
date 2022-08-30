@@ -1,12 +1,46 @@
 devel
 -----
 
+* Added startup option `--arangosearch.skip-recovery` to skip the recovery 
+  of arangosearch view links or inverted indexes.
+  The startup option can be specified multiple times and is expected to either
+  contain the string `all` (will skip the recovery for all view links and 
+  inverted indexes) or a collection name + link id/name pair (e.g. 
+  `testCollection/123456`, where `123456` is a link/index id or an index name). 
+  This new startup option is an emergency means to speed up lengthy recovery 
+  procedures when there is a large WAL backlog to replay. The normal recovery 
+  will still take place even with the option set, but recovery data for 
+  links/indexes can be skipped. This can improve the recovery speed and reduce 
+  memory usage during the recovery process.
+  All links or inverted indexes that are marked as to-be-skipped via the 
+  option, but for which there is recovery data, will be marked as "out of sync"
+  at the end of the recovery. 
+  The recovery procedure will also print a list of links/indexes which it has 
+  marked as out-of-sync.
+  Additionally, if committing data for a link/index fails for whatever reason,
+  the link/index is also marked as being out-of-sync.
+
+  If an out-of-sync link or index can be used in queries depends on another new
+  startup option `--arangosearch.fail-queries-on-out-of-sync`. It defaults to
+  `false`, meaning that out-of-sync links/indexes can still be queries. It the
+  option is set to `true`, queries on such links/indexes will fail with error
+  "collection/view is out of sync" (error code 1481).
+
+  Links/indexes that are marked out-of-sync will keep the out-of-sync flag
+  until they are dropped. To get rid of an out-of-sync link/index it is 
+  recommended to manually drop and recreate it. As recreating a link/index may
+  cause high load, this is not done automatically but requires explicit user
+  opt-in.
+
+  The number of out-of-sync links/indexes is also observable via a new metric
+  `arangodb_search_num_out_of_sync_links`.
+
 * Fix SEARCH-350: Crash during consolidation.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
 
 * A new Pregel algorithm: the version of Hypertext-Induced Topic Search (HITS)
-as described in the original paper.
+  as described in the original paper.
 
 * Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
 

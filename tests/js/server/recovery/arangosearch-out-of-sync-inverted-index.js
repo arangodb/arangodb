@@ -35,8 +35,11 @@ function runSetup () {
   let c = db._create('UnitTestsRecovery1');
   c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
 
-  // set failure point
+  // set failure point that makes commit fail
   internal.debugSetFailAt("ArangoSearch::FailOnCommit");
+      
+  // set failure point that makes querying failed links go wrong
+  internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
 
   c.insert({ value: 'testi' });
 
@@ -51,7 +54,7 @@ function runSetup () {
     internal.sleep(0.5);
   }
 
-  // remove failure point 
+  // remove failure points 
   internal.debugClearFailAt();
   
   c = db._create('UnitTestsRecovery2');
@@ -72,6 +75,9 @@ function recoverySuite () {
       let idx = db['UnitTestsRecovery1'].indexes()[1];
       assertTrue(idx.hasOwnProperty('outOfSync'));
       assertTrue(idx.outOfSync);
+      
+      // set failure point that makes querying failed links go wrong
+      internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
   
       // queries must fail because index is marked as out of sync
       try {
@@ -87,6 +93,12 @@ function recoverySuite () {
       // query should produce no results, but at least shouldn't fail
       let result = db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();
       assertEqual(0, result.length);
+      
+      // clear all failure points
+      internal.debugClearFailAt();
+
+      result = db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();
+      assertEqual([], result);
     }
 
   };

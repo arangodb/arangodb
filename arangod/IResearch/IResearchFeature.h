@@ -127,6 +127,8 @@ class IResearchFeature final : public ArangodFeature {
   void trackOutOfSyncLink() noexcept;
   void untrackOutOfSyncLink() noexcept;
 
+  bool failQueriesOnOutOfSync() const noexcept;
+
  private:
   void registerRecoveryHelper();
 
@@ -139,11 +141,17 @@ class IResearchFeature final : public ArangodFeature {
   std::shared_ptr<State> _startState;
   std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
-  // names of links/indexes to *NOT* recovery. all entries should
+
+  // whether or not to fail queries on links/indexes that are marked as
+  // out of sync
+  bool _failQueriesOnOutOfSync;
+
+  // names/ids of links/indexes to *NOT* recover. all entries should
   // be in format "collection-name/index-name" or "collection/index-id".
   // the pseudo-entry "all" skips recovering data for all links/indexes
   // found during recovery.
   std::vector<std::string> _skipRecoveryItems;
+
   uint32_t _consolidationThreads;
   uint32_t _consolidationThreadsIdle;
   uint32_t _commitThreads;
