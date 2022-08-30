@@ -1530,7 +1530,7 @@ index_writer::consolidation_result index_writer::consolidate(
   consolidation_result result { candidates.size(),  ConsolidationError::FAIL };
 
   index_meta::index_segment_t consolidation_segment;
-  consolidation_segment.meta.codec = codec_; // should use new codec
+  consolidation_segment.meta.codec = codec; // should use new codec
   consolidation_segment.meta.version = 0; // reset version for new segment
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
