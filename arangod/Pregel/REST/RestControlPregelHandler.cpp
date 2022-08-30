@@ -31,7 +31,7 @@
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Transaction/StandaloneContext.h"
 

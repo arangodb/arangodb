@@ -2,7 +2,7 @@
 #include <chrono>
 
 #include "Basics/FunctionUtils.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/PregelFeature.h"
 

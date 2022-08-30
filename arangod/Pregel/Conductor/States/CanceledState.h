@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Conductor/State.h"
+#include <chrono>
+
+#include "State.h"
 
 namespace arangodb::pregel {
 
@@ -30,18 +32,19 @@ class Conductor;
 
 namespace conductor {
 
-struct Computing : State {
+struct Canceled : State {
+  std::chrono::system_clock::time_point expiration;
   Conductor& conductor;
-  Computing(Conductor& conductor);
-  ~Computing();
+  Canceled(Conductor& conductor, std::chrono::seconds const& ttl);
+  ~Canceled() = default;
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
-  auto name() const -> std::string override { return "running"; };
-  auto isRunning() const -> bool override { return true; }
+  auto name() const -> std::string override { return "canceled"; };
+  auto isRunning() const -> bool override { return false; }
   auto getExpiration() const
       -> std::optional<std::chrono::system_clock::time_point> override {
-    return std::nullopt;
-  }
+    return expiration;
+  };
 };
 
 }  // namespace conductor

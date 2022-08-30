@@ -2,7 +2,7 @@
 
 #include <chrono>
 
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
 
 using namespace arangodb::pregel::conductor;

@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include "Pregel/AggregatorHandler.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
