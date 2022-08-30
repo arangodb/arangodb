@@ -39,6 +39,21 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: view search-alias
 ////////////////////////////////////////////////////////////////////////////////
+function compareIndexes(a, b) {
+  if (a.collection < b.collection) {
+    return -1;
+  }
+  if (a.collection > b.collection) {
+    return 1;
+  }
+  if (a.index < b.index) {
+    return -1;
+  }
+  if (a.index > b.index) {
+    return 1;
+  }
+  return 0;
+}
 
 function ViewSearchAliasSuite() {
   'use strict';
@@ -171,7 +186,7 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.name(), "v1");
         var idxs = [{collection: "c1", index: "i1"}, {collection: "c1", index: "i2"}];
         v1.properties({indexes: idxs});
-        assertEqual(v1.properties().indexes.sort(), idxs);
+        assertEqual(v1.properties().indexes.sort(compareIndexes), idxs);
         c1.drop();
         assertEqual(v1.properties().indexes, []);
       } catch (e) {
@@ -252,7 +267,7 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.name(), "v1");
         var idxs = [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}];
         v1.properties({indexes: idxs});
-        assertEqual(v1.properties().indexes.sort(), idxs);
+        assertEqual(v1.properties().indexes.sort(compareIndexes), idxs);
         c2.drop();
         assertEqual(v1.properties().indexes, [{collection: "c1", index: "i1"}]);
         c1.drop();
