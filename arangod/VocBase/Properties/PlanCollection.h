@@ -59,6 +59,20 @@ struct PlanCollection {
         std::underlying_type_t<TRI_col_type_e> const& value)
         -> inspection::Status;
   };
+
+  struct Transformers {
+    struct ReplicationSatellite {
+      using MemoryType = uint64_t;
+      using SerializedType = arangodb::velocypack::Builder;
+
+      static arangodb::inspection::Status toSerialized(MemoryType v,
+                                                       SerializedType& result);
+
+      static arangodb::inspection::Status fromSerialized(
+          SerializedType const& v, MemoryType& result);
+    };
+  };
+
   PlanCollection();
 
   static ResultT<PlanCollection> fromCreateAPIBody(
@@ -150,7 +164,8 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               .invariant(PlanCollection::Invariants::isGreaterZero),
           f.field("replicationFactor", planCollection.replicationFactor)
               .fallback(f.keep())
-              .invariant(PlanCollection::Invariants::isGreaterZero),
+              .transformWith(
+                  PlanCollection::Transformers::ReplicationSatellite{}),
           f.field("distributeShardsLike", planCollection.distributeShardsLike)
               .fallback(""),
           f.field("smartJoinAttribute", planCollection.smartJoinAttribute)

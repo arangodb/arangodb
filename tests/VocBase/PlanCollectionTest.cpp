@@ -331,6 +331,19 @@ TEST_F(PlanCollectionUserAPITest,
   }
 }
 
+TEST_F(PlanCollectionUserAPITest, test_satelliteReplicationFactor) {
+  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, uint64_t number) {
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+    ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+    EXPECT_EQ(testee->replicationFactor, number)
+        << "Parsing error in " << body.toJson();
+  };
+
+  // Special handling for "satellite" string
+  shouldBeEvaluatedTo(
+      createMinimumBodyWithOneValue("replicationFactor", "satellite"), 0);
+}
+
 // Tests for generic attributes without special needs
 GenerateBoolAttributeTest(waitForSync);
 GenerateBoolAttributeTest(doCompact);

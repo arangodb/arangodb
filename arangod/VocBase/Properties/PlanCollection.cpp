@@ -108,6 +108,28 @@ auto PlanCollection::Invariants::isValidCollectionType(
   return {"Only 2 (document) and 3 (edge) are allowed."};
 }
 
+auto PlanCollection::Transformers::ReplicationSatellite::toSerialized(
+    MemoryType v, SerializedType& result) -> arangodb::inspection::Status {
+  result.add(VPackValue(v));
+  return {};
+}
+
+auto PlanCollection::Transformers::ReplicationSatellite::fromSerialized(
+    SerializedType const& b, MemoryType& result)
+    -> arangodb::inspection::Status {
+  auto v = b.slice();
+  if (v.isString() && v.isEqualString("satellite")) {
+    result = 0;
+    return {};
+  } else if (v.isNumber()) {
+    result = v.getNumber<MemoryType>();
+    if (result != 0) {
+      return {};
+    }
+  }
+  return {"Only an integer number or 'satellite' is allowed"};
+}
+
 arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::serialize(builder, *this);
