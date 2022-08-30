@@ -112,10 +112,11 @@ struct PlanCollection {
   // Did a short_cut here to avoid concatenated changes
   arangodb::velocypack::Builder keyOptions;
 
-  // NOTE: This attributes are not documented
+  // NOTE: These attributes are not documented
   bool syncByRevision;
   bool usesRevisionsAsDocumentIds;
   bool isSmart;
+  bool isDisjoint;
   std::string smartGraphAttribute;
   // Deprecated, and not documented anymore
 
@@ -148,6 +149,7 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
                   planCollection.usesRevisionsAsDocumentIds)
               .fallback(true),
           f.field("isSmart", planCollection.isSmart).fallback(false),
+          f.field("isDisjoint", planCollection.isDisjoint).fallback(false),
           f.field("smartGraphAttribute", planCollection.smartGraphAttribute)
               .fallback(""),
           f.field("numberOfShards", planCollection.numberOfShards)

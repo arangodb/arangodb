@@ -221,6 +221,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_TRUE(testee->syncByRevision);
   EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
   EXPECT_FALSE(testee->isSmart);
+  EXPECT_FALSE(testee->isDisjoint);
   EXPECT_EQ(testee->id, "");
   EXPECT_EQ(testee->smartGraphAttribute, "");
 }
@@ -371,6 +372,7 @@ GenerateStringAttributeTest(globallyUniqueId);
 GenerateBoolAttributeTest(syncByRevision);
 GenerateBoolAttributeTest(usesRevisionsAsDocumentIds);
 GenerateBoolAttributeTest(isSmart);
+GenerateBoolAttributeTest(isDisjoint);
 GenerateStringAttributeTest(id);
 GenerateStringAttributeTest(smartGraphAttribute);
 
