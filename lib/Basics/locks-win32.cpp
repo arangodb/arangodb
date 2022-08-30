@@ -30,8 +30,7 @@ void TRI_InitCondition(TRI_condition_t* cond) noexcept {
 }
 
 /// @brief destroys a condition variable
-void TRI_DestroyCondition(TRI_condition_t* cond) noexcept {
-}
+void TRI_DestroyCondition(TRI_condition_t* cond) noexcept {}
 
 /// @brief signals a condition variable
 ///
