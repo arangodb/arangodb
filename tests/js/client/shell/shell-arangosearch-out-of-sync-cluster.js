@@ -27,7 +27,8 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
-const errors = require("internal").errors;
+const internal = require("internal");
+const errors = internal.errors;
   
 const {
   getCoordinators,
@@ -45,14 +46,6 @@ function ArangoSearchOutOfSyncSuite () {
   'use strict';
   
   return {
-    setUp : function () {
-      clearFailurePoints([]);
-      db._dropView('UnitTestsRecoveryView1');
-      db._dropView('UnitTestsRecoveryView2');
-      db._drop('UnitTestsRecovery1');
-      db._drop('UnitTestsRecovery2');
-    },
-
     tearDown : function () {
       clearFailurePoints([]);
       db._dropView('UnitTestsRecoveryView1');
@@ -63,6 +56,7 @@ function ArangoSearchOutOfSyncSuite () {
 
     testMarkLinksAsOutOfSync : function () {
       let c = db._create('UnitTestsRecovery1', { numberOfShards: 5 });
+      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
 
       let v = db._createView('UnitTestsRecoveryView1', 'arangosearch', {});
       v.properties({ links: { UnitTestsRecovery1: { includeAllFields: true } } });
@@ -82,15 +76,26 @@ function ArangoSearchOutOfSyncSuite () {
       
       c.insert({});
   
-      // wait for synchronization of links
+      // wait for synchronization of link/index
       try {
         db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
       } catch (err) {
+      }
+
+      let tries = 0;
+      while (tries++ <= 30) {
+        try {
+          db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == '1' RETURN doc");
+        } catch (err) {
+          break;
+        }
+        internal.sleep(0.5);
       }
  
       clearFailurePoints();
       
       c = db._create('UnitTestsRecovery2', { numberOfShards: 5 });
+      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       c.insert({});
       
       v = db._createView('UnitTestsRecoveryView2', 'arangosearch', {});
@@ -98,9 +103,14 @@ function ArangoSearchOutOfSyncSuite () {
      
       db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc");
 
+      // now check properties of out-of-sync link
       let p = db._view('UnitTestsRecoveryView1').properties();
       // in a cluster, the coordinator doesn't make the outOfSync flag available
       assertFalse(p.links.UnitTestsRecovery1.hasOwnProperty('outOfSync'));
+      
+      let idx = db['UnitTestsRecovery1'].indexes()[1];
+      // in a cluster, the coordinator doesn't make the outOfSync flag available
+      assertFalse(idx.hasOwnProperty('outOfSync'));
       
       shards.forEach((s) => {
         let leader = shardInfo[s][0];
@@ -111,9 +121,17 @@ function ArangoSearchOutOfSyncSuite () {
         assertEqual(200, result.status);
       });
       
-      // query must fail because links are marked as out of sync
+      // query must fail because the link is marked as out of sync
       try {
         db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC.code, err.errorNum);
+      }
+      
+      // query must fail because index is marked as out of sync
+      try {
+        db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc");
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC.code, err.errorNum);
@@ -135,6 +153,14 @@ function ArangoSearchOutOfSyncSuite () {
         
       result = db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc").toArray();
       assertEqual(1, result.length);
+      
+      // query should produce no results, but at least shouldn't fail
+      result = db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();
+      assertEqual(0, result.length);
+      
+      // query should produce no results, but at least shouldn't fail
+      result = db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();
+      assertEqual(0, result.length);
     },
 
   };

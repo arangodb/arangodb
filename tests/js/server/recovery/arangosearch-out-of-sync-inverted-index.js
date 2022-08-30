@@ -79,7 +79,7 @@ function recoverySuite () {
       // set failure point that makes querying failed links go wrong
       internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
   
-      // queries must fail because index is marked as out of sync
+      // query must fail because index is marked as out of sync
       try {
         db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc");
         fail();
