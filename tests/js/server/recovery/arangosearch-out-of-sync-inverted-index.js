@@ -68,18 +68,21 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    testIndexHasFailedFlag: function () {
+    testIndexHasOutOfSyncFlag: function () {
       let idx = db['UnitTestsRecovery1'].indexes()[1];
-      assertTrue(idx.hasOwnProperty('failed'));
-      assertTrue(idx.failed);
+      assertTrue(idx.hasOwnProperty('outOfSync'));
+      assertTrue(idx.outOfSync);
   
-      // queries must fail because index is marked as failed
+      // queries must fail because index is marked as out of sync
       try {
         db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc");
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC.code, err.errorNum);
       }
+      
+      idx = db['UnitTestsRecovery2'].indexes()[1];
+      assertFalse(idx.hasOwnProperty('outOfSync'));
 
       // query should produce no results, but at least shouldn't fail
       let result = db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();

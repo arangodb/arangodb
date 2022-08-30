@@ -77,8 +77,8 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   virtual void LogData(const rocksdb::Slice& blob,
                        rocksdb::SequenceNumber tick) override;
 
-  virtual bool failed(IndexId id) const noexcept override {
-    return _failedIndexes.contains(id);
+  virtual bool wasSkipped(IndexId id) const noexcept override {
+    return _skippedIndexes.contains(id);
   }
 
  private:
@@ -106,7 +106,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   containers::FlatHashMap<std::string, containers::FlatHashSet<std::string>>
       _skipRecoveryItems;
 
-  containers::FlatHashSet<IndexId> _failedIndexes;
+  containers::FlatHashSet<IndexId> _skippedIndexes;
 };
 
 }  // end namespace iresearch

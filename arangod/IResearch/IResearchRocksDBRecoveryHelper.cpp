@@ -141,10 +141,10 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
   if (!mustReplay) {
     // links found, but the recovery for all of them will be skipped.
-    // so we need to mark all the links as failed
+    // so we need to mark all the links as out-of-sync
     for (auto const& link : links) {
       TRI_ASSERT(link.second);
-      _failedIndexes.emplace(link.first->id());
+      _skippedIndexes.emplace(link.first->id());
     }
     return;
   }
@@ -168,7 +168,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   for (auto const& link : links) {
     if (link.second) {
       // link excluded from recovery
-      _failedIndexes.emplace(link.first->id());
+      _skippedIndexes.emplace(link.first->id());
     } else {
       // link participates in recovery
       if (link.first->type() ==
@@ -215,10 +215,10 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
   if (!mustReplay) {
     // links found, but the recovery for all of them will be skipped.
-    // so we need to mark all the links as failed
+    // so we need to mark all the links as out of sync
     for (auto const& link : links) {
       TRI_ASSERT(link.second);
-      _failedIndexes.emplace(link.first->id());
+      _skippedIndexes.emplace(link.first->id());
     }
     return;
   }
@@ -241,7 +241,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
   for (auto const& link : links) {
     if (link.second) {
       // link excluded from recovery
-      _failedIndexes.emplace(link.first->id());
+      _skippedIndexes.emplace(link.first->id());
     } else {
       // link participates in recovery
       if (link.first->type() ==
@@ -295,7 +295,7 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob,
 
       for (auto const& link : links) {
         if (link.second) {
-          _failedIndexes.emplace(link.first->id());
+          _skippedIndexes.emplace(link.first->id());
         } else {
           link.first->afterTruncate(tick, nullptr);
         }

@@ -76,18 +76,18 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    testLinksHaveFailedFlag: function () {
+    testLinksHaveOutOfSyncFlag: function () {
       let p = db._view('UnitTestsRecoveryView1').properties();
-      assertTrue(p.links.UnitTestsRecovery1.hasOwnProperty('failed'));
-      assertTrue(p.links.UnitTestsRecovery1.failed);
+      assertTrue(p.links.UnitTestsRecovery1.hasOwnProperty('outOfSync'));
+      assertTrue(p.links.UnitTestsRecovery1.outOfSync);
       
       p = db._view('UnitTestsRecoveryView2').properties();
-      assertTrue(p.links.UnitTestsRecovery1.hasOwnProperty('failed'));
-      assertTrue(p.links.UnitTestsRecovery1.failed);
-      assertTrue(p.links.UnitTestsRecovery2.hasOwnProperty('failed'));
-      assertTrue(p.links.UnitTestsRecovery2.failed);
+      assertTrue(p.links.UnitTestsRecovery1.hasOwnProperty('outOfSync'));
+      assertTrue(p.links.UnitTestsRecovery1.outOfSync);
+      assertTrue(p.links.UnitTestsRecovery2.hasOwnProperty('outOfSync'));
+      assertTrue(p.links.UnitTestsRecovery2.outOfSync);
   
-      // queries must fail because links are marked as failed
+      // queries must fail because links are marked as out of sync
       try {
         db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
         fail();
@@ -102,6 +102,10 @@ function recoverySuite () {
         assertEqual(errors.ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC.code, err.errorNum);
       }
   
+      p = db._view('UnitTestsRecoveryView3').properties();
+      assertFalse(p.links.UnitTestsRecovery3.hasOwnProperty('outOfSync'));
+      
+      // query must not fail
       let result = db._query("FOR doc IN UnitTestsRecoveryView3 OPTIONS {waitForSync: true} RETURN doc").toArray();
       assertEqual(1, result.length);
     }

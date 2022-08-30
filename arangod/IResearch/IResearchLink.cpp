@@ -362,9 +362,9 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
   TRI_ASSERT(_meta._sortCompression);
   _viewGuid = definition.get(StaticStrings::ViewIdField).stringView();
 
-  if (auto s = definition.get(StaticStrings::LinkFailed); s.isTrue()) {
-    // mark index as failed
-    setFailed();
+  if (auto s = definition.get(StaticStrings::LinkOutOfSync); s.isTrue()) {
+    // mark index as out of sync
+    setOutOfSync();
   }
 
   Result r;
@@ -440,9 +440,9 @@ Result IResearchLink::properties(velocypack::Builder& builder,
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType));
   builder.add(StaticStrings::ViewIdField, velocypack::Value(_viewGuid));
 
-  if (hasFailed()) {
-    // link has failed - we need to report that
-    builder.add(StaticStrings::LinkFailed, VPackValue(true));
+  if (isOutOfSync()) {
+    // link is out of sync - we need to report that
+    builder.add(StaticStrings::LinkOutOfSync, VPackValue(true));
   }
 
   return {};

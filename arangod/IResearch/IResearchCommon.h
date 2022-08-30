@@ -115,9 +115,10 @@ struct StaticStrings {
   static constexpr std::string_view ViewIdField{"view"};
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief attribute name for storing that a link/inverted index has failed
+  /// @brief attribute name for storing that a link/inverted index is out of
+  /// sync
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view LinkFailed{"failed"};
+  static constexpr std::string_view LinkOutOfSync{"outOfSync"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the

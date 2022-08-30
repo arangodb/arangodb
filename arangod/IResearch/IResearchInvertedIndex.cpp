@@ -282,7 +282,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       return;
     }
 
-    if (_index->hasFailed()) {
+    if (_index->isOutOfSync()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
           absl::StrCat("link ", std::to_string(_index->id().id()),
@@ -760,9 +760,9 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
         TRI_ERROR_INTERNAL,
         std::string("Failed to generate inverted index field definition")));
   }
-  if (hasFailed()) {
-    // index has failed - we need to report that
-    builder.add(StaticStrings::LinkFailed, VPackValue(true));
+  if (isOutOfSync()) {
+    // index is out of sync - we need to report that
+    builder.add(StaticStrings::LinkOutOfSync, VPackValue(true));
   }
 }
 
@@ -812,9 +812,9 @@ Result IResearchInvertedIndex::init(
     _comparer.reset(_meta._sort);
   }
 
-  if (auto s = definition.get(StaticStrings::LinkFailed); s.isTrue()) {
-    // mark index as failed
-    setFailed();
+  if (auto s = definition.get(StaticStrings::LinkOutOfSync); s.isTrue()) {
+    // mark index as out of sync
+    setOutOfSync();
   }
 
   properties(_meta);
@@ -1054,9 +1054,9 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 
-  if (hasFailed()) {
-    // link has failed - we need to report that
-    builder.add(StaticStrings::LinkFailed, VPackValue(true));
+  if (isOutOfSync()) {
+    // link is out of sync - we need to report that
+    builder.add(StaticStrings::LinkOutOfSync, VPackValue(true));
   }
 }
 

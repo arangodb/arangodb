@@ -518,7 +518,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       // mark as data store not initialized
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
       _collection(collection),
-      _failed{false},
+      _outOfSync{false},
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
@@ -572,7 +572,7 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
         << id() << "'";
     return {};  // return an empty reader
   }
-  if (linkLock->hasFailed()) {
+  if (linkLock->isOutOfSync()) {
     // link has failed, we cannot use it for querying
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
@@ -709,20 +709,20 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
     result.reset(TRI_ERROR_DEBUG);
   }
 
-  if (result.fail() && !hasFailed()) {
-    // mark DataStore as failed if it wasn't marked as failed before.
+  if (result.fail() && !isOutOfSync()) {
+    // mark DataStore as out of sync if it wasn't marked like that before.
 
-    // persist "failed" flag in RocksDB once. note: if this fails, it will
-    // throw an exception
-    if (setFailed()) {
+    if (setOutOfSync()) {
+      // persist "outOfSync" flag in RocksDB once. note: if this fails, it will
+      // throw an exception
       try {
         _engine->changeCollection(collection().vocbase(), collection(), true);
       } catch (std::exception const& ex) {
-        // we couldn't persist the failed flag, but we can't mark the data
-        // store as "not failed" again. not much we can do except logging.
+        // we couldn't persist the outOfSync flag, but we can't mark the data
+        // store as "not outOfSync" again. not much we can do except logging.
         LOG_TOPIC("211d2", WARN, iresearch::TOPIC)
-            << "failed to store 'failed' flag for arangosearch link '" << id()
-            << "': " << ex.what();
+            << "failed to store 'outOfSync' flag for arangosearch link '"
+            << id() << "': " << ex.what();
       }
     }
   }
@@ -928,10 +928,10 @@ void IResearchDataStore::shutdownDataStore() noexcept {
 }
 
 Result IResearchDataStore::deleteDataStore() noexcept {
-  if (hasFailed()) {
+  if (isOutOfSync()) {
     TRI_ASSERT(_asyncFeature != nullptr);
-    // count down the number of failed links
-    _asyncFeature->untrackFailedLink();
+    // count down the number of out of sync links
+    _asyncFeature->untrackOutOfSyncLink();
   }
 
   shutdownDataStore();
@@ -945,18 +945,15 @@ Result IResearchDataStore::deleteDataStore() noexcept {
   return {};
 }
 
-bool IResearchDataStore::setFailed() noexcept {
+bool IResearchDataStore::setOutOfSync() noexcept {
   // should never be called on coordinators, only on DB servers and
   // single servers
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  // this is expected to be set only once during the recovery phase or
-  // link loading phase.
-  if (!_failed.exchange(true)) {
-    // increase metric for number of failed links
-    // track failure only once per link
+  if (!_outOfSync.exchange(true)) {
+    // increase metric for number of out-of-sync links, only once per link
     TRI_ASSERT(_asyncFeature != nullptr);
-    _asyncFeature->trackFailedLink();
+    _asyncFeature->trackOutOfSyncLink();
 
     return true;
   }
@@ -964,11 +961,10 @@ bool IResearchDataStore::setFailed() noexcept {
   return false;
 }
 
-bool IResearchDataStore::hasFailed() const noexcept {
-  // the failed flag is expected to be set only once during the
-  // recovery phase. view queries will start much later, so we should
-  // get away here with using relaxed memory order.
-  return _failed.load(std::memory_order_relaxed);
+bool IResearchDataStore::isOutOfSync() const noexcept {
+  // the out of sync flag is expected to be set either during the
+  // recovery phase, or when a commit goes wrong.
+  return _outOfSync.load(std::memory_order_acquire);
 }
 
 Result IResearchDataStore::initDataStore(
@@ -1234,29 +1230,21 @@ Result IResearchDataStore::initDataStore(
 
         auto& dataStore = linkLock->_dataStore;
 
-        if (asyncFeature->linkFailedDuringRecovery(linkLock->id())) {
+        // recovery finished
+        dataStore._inRecovery.store(linkLock->_engine->inRecovery(),
+                                    std::memory_order_release);
+
+        bool outOfSync = false;
+        if (asyncFeature->linkSkippedDuringRecovery(linkLock->id())) {
           LOG_TOPIC("2721a", WARN, iresearch::TOPIC)
-              << "marking link '" << linkLock->id().id() << "' as failed. "
-              << "consider to re-create the link in order to synchronize "
+              << "marking link '" << linkLock->id().id() << "' as out of sync. "
+              << "consider to drop and re-create the link in order to "
+                 "synchronize "
               << "it.";
 
-          // mark link as failed
-          linkLock->setFailed();
-          // persist "failed" flag in RocksDB. note: if this fails, it will
-          // throw an exception and abort the recovery & startup.
-          linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
-                                              linkLock->collection(), true);
-
-          // recovery finished
-          dataStore._inRecovery.store(linkLock->_engine->inRecovery(),
-                                      std::memory_order_release);
-
-          // we cannot return an error from here as this would abort the
-          // entire recovery and fail the startup.
-          return {};
-        }
-
-        if (dataStore._recoveryTick > linkLock->_engine->recoveryTick()) {
+          outOfSync = true;
+        } else if (dataStore._recoveryTick >
+                   linkLock->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
               << "arangosearch link '" << linkLock->id()
               << "' is recovered at tick '" << dataStore._recoveryTick
@@ -1267,12 +1255,22 @@ Result IResearchDataStore::initDataStore(
               << linkLock->collection().name()
               << "', consider to re-create the link in order to synchronize "
                  "it.";
-          // TODO: should we set the link to "failed" in this case as well?
+
+          outOfSync = true;
         }
 
-        // recovery finished
-        dataStore._inRecovery.store(linkLock->_engine->inRecovery(),
-                                    std::memory_order_release);
+        if (outOfSync) {
+          // mark link as out of sync
+          linkLock->setOutOfSync();
+          // persist "failed" flag in RocksDB. note: if this fails, it will
+          // throw an exception and abort the recovery & startup.
+          linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
+                                              linkLock->collection(), true);
+
+          // we cannot return an error from here as this would abort the
+          // entire recovery and fail the startup.
+          return {};
+        }
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
             << "starting sync for arangosearch link '" << linkLock->id() << "'";

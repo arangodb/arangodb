@@ -91,8 +91,8 @@
 
 using namespace std::chrono_literals;
 
-DECLARE_GAUGE(arangodb_search_num_failed_links, uint64_t,
-              "Number of currently failed links");
+DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
+              "Number of arangosearch links/indexes currently out of sync");
 
 namespace arangodb::aql {
 class Query;
@@ -885,8 +885,8 @@ IResearchFeature::IResearchFeature(Server& server)
       _commitThreadsIdle(0),
       _threads(0),
       _threadsLimit(0),
-      _failedLinks(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_num_failed_links{})) {
+      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_num_out_of_sync_links{})) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -1191,18 +1191,18 @@ std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
   return _async->get(id).limits();
 }
 
-bool IResearchFeature::linkFailedDuringRecovery(
+bool IResearchFeature::linkSkippedDuringRecovery(
     arangodb::IndexId id) const noexcept {
   if (_recoveryHelper != nullptr) {
-    return _recoveryHelper->failed(id);
+    return _recoveryHelper->wasSkipped(id);
   }
   return false;
 }
 
-void IResearchFeature::trackFailedLink() noexcept { ++_failedLinks; }
+void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }
 
-void IResearchFeature::untrackFailedLink() noexcept {
-  uint64_t previous = _failedLinks.fetch_sub(1);
+void IResearchFeature::untrackOutOfSyncLink() noexcept {
+  uint64_t previous = _outOfSyncLinks.fetch_sub(1);
   TRI_ASSERT(previous > 0);
 }
 

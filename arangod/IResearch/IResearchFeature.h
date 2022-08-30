@@ -122,10 +122,10 @@ class IResearchFeature final : public ArangodFeature {
                                      int> = 0>
   IndexTypeFactory& factory();
 
-  bool linkFailedDuringRecovery(arangodb::IndexId id) const noexcept;
+  bool linkSkippedDuringRecovery(arangodb::IndexId id) const noexcept;
 
-  void trackFailedLink() noexcept;
-  void untrackFailedLink() noexcept;
+  void trackOutOfSyncLink() noexcept;
+  void untrackOutOfSyncLink() noexcept;
 
  private:
   void registerRecoveryHelper();
@@ -152,8 +152,8 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _threadsLimit;
   std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
 
-  // number of currently failed links/indexes
-  metrics::Gauge<uint64_t>& _failedLinks;
+  // number of links/indexes currently out of sync
+  metrics::Gauge<uint64_t>& _outOfSyncLinks;
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;

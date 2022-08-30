@@ -234,17 +234,19 @@ class IResearchDataStore {
   virtual Stats stats() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief set the data store to failed. if a data store is failed, it cannot
-  /// serve queries anymore. returns true if the call set the data store to
-  /// failed, and false if the data store was already marked as failed before.
+  /// @brief set the data store to out of sync. if a data store is out of sync,
+  /// it is known to have incomplete data and may refuse to serve queries
+  /// (depending on settings). returns true if the call set the data store to
+  /// out of sync, and false if the data store was already marked as out of
+  /// sync before.
   //////////////////////////////////////////////////////////////////////////////
-  bool setFailed() noexcept;
+  bool setOutOfSync() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the data store has failed (i.e. cannot be used for
-  /// queries)
+  /// @brief whether or not the data store is out of sync (i.e. has incomplete
+  /// data)
   //////////////////////////////////////////////////////////////////////////////
-  bool hasFailed() const noexcept;
+  bool isOutOfSync() const noexcept;
 
  protected:
   friend struct CommitTask;
@@ -429,8 +431,8 @@ class IResearchDataStore {
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
-  // data store is failed (i.e. is inconsistent and cannot be used for queries)
-  std::atomic_bool _failed;
+  // data store is out of sync (i.e. has incomplete data)
+  std::atomic_bool _outOfSync;
 
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
