@@ -1,7 +1,10 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
+* Fixed SEARCH-366: Fixed extracting sub-attributes using projections for
+  the `_id` attribute (e.g. `RETURN doc.sub._id`).
+
+* Fixed SEARCH-368: Fixed handling of array comparison for inverted index.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
 
