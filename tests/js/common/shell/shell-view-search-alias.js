@@ -164,9 +164,6 @@ function ViewSearchAliasSuite() {
         v1.properties({indexes: idxs});
         assertEqual(v1.properties().indexes, idxs);
         c1.drop();
-      } catch (e) {
-        print(e);
-        fail();
       } finally {
         assertEqual(v1.properties().indexes, []);
         v1.drop();
@@ -189,9 +186,6 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.properties().indexes.sort(compareIndexes), idxs);
         c1.drop();
         assertEqual(v1.properties().indexes, []);
-      } catch (e) {
-        print(e);
-        fail();
       } finally {
         v1.drop();
         try {
@@ -272,9 +266,6 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.properties().indexes, [{collection: "c1", index: "i1"}]);
         c1.drop();
         assertEqual(v1.properties().indexes, []);
-      } catch (e) {
-        print(e);
-        fail();
       } finally {
         v1.drop();
         try {
