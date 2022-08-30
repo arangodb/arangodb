@@ -404,8 +404,6 @@ bool IResearchInvertedIndexMeta::json(
   //  }
   //}
 
-  builder.add(kVersionFieldName, VPackValue(static_cast<uint32_t>(_version)));
-
   return InvertedIndexField::json(server, builder, *this, true, defaultVocbase);
 }
 
