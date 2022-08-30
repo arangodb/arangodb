@@ -235,9 +235,10 @@ class IResearchDataStore {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the data store to failed. if a data store is failed, it cannot
-  /// serve queries anymore.
+  /// serve queries anymore. returns true if the call set the data store to
+  /// failed, and false if the data store was already marked as failed before.
   //////////////////////////////////////////////////////////////////////////////
-  void setFailed() noexcept;
+  bool setFailed() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the data store has failed (i.e. cannot be used for

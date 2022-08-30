@@ -1,4 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
+/* global fail, assertTrue, assertFalse, assertEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -34,27 +35,30 @@ function runSetup () {
   let c = db._create('UnitTestsRecovery1');
   c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
 
-  c = db._create('UnitTestsRecovery2');
-  c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
-
   // set failure point
   internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
-  db['UnitTestsRecovery1'].insert({ value: 'testi' });
-
-  internal.sleep(5);
+  c.insert({ value: 'testi' });
 
   // wait for synchronization of links
-  try {
-    db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc");
-  } catch (err) {
+  let tries = 0;
+  while (tries++ <= 30) {
+    try {
+      db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == '1' RETURN doc");
+    } catch (err) {
+      break;
+    }
+    internal.sleep(0.5);
   }
 
   // remove failure point 
   internal.debugClearFailAt();
+  
+  c = db._create('UnitTestsRecovery2');
+  c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
 
-  db['UnitTestsRecovery2'].insert({ value: 'testi' });
-  db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc");
+  c.insert({ value: 'testi' });
+  db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == '1' RETURN doc");
 
   internal.debugTerminate('crashing server');
 }
@@ -66,7 +70,6 @@ function recoverySuite () {
   return {
     testIndexHasFailedFlag: function () {
       let idx = db['UnitTestsRecovery1'].indexes()[1];
-      print(idx);
       assertTrue(idx.hasOwnProperty('failed'));
       assertTrue(idx.failed);
   
@@ -78,8 +81,9 @@ function recoverySuite () {
         assertEqual(errors.ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC.code, err.errorNum);
       }
 
+      // query should produce no results, but at least shouldn't fail
       let result = db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();
-      assertEqual(1, result.length);
+      assertEqual(0, result.length);
     }
 
   };

@@ -690,15 +690,6 @@ Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
     std::ignore = linkLock->cleanupUnsafe();
   }
 
-  if (result.fail()) {
-    TRI_ASSERT(linkLock->hasFailed());
-
-    // persist "failed" flag in RocksDB. note: if this fails, it will
-    // throw an exception and abort the recovery & startup.
-    linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
-                                        linkLock->collection(), true);
-  }
-
   return result;
 }
 
@@ -718,9 +709,22 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
     result.reset(TRI_ERROR_DEBUG);
   }
 
-  if (result.fail()) {
-    // mark DataStore as failed
-    setFailed();
+  if (result.fail() && !hasFailed()) {
+    // mark DataStore as failed if it wasn't marked as failed before.
+
+    // persist "failed" flag in RocksDB once. note: if this fails, it will
+    // throw an exception
+    if (setFailed()) {
+      try {
+        _engine->changeCollection(collection().vocbase(), collection(), true);
+      } catch (std::exception const& ex) {
+        // we couldn't persist the failed flag, but we can't mark the data
+        // store as "not failed" again. not much we can do except logging.
+        LOG_TOPIC("211d2", WARN, iresearch::TOPIC)
+            << "failed to store 'failed' flag for arangosearch link '" << id()
+            << "': " << ex.what();
+      }
+    }
   }
 
   if (bool ok = result.ok(); !ok && _numFailedCommits != nullptr) {
@@ -941,7 +945,7 @@ Result IResearchDataStore::deleteDataStore() noexcept {
   return {};
 }
 
-void IResearchDataStore::setFailed() noexcept {
+bool IResearchDataStore::setFailed() noexcept {
   // should never be called on coordinators, only on DB servers and
   // single servers
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -953,7 +957,11 @@ void IResearchDataStore::setFailed() noexcept {
     // track failure only once per link
     TRI_ASSERT(_asyncFeature != nullptr);
     _asyncFeature->trackFailedLink();
+
+    return true;
   }
+
+  return false;
 }
 
 bool IResearchDataStore::hasFailed() const noexcept {
@@ -1004,8 +1012,8 @@ Result IResearchDataStore::initDataStore(
 
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 
-  // must manually ensure that the data store directory exists (since not using
-  // a lockfile)
+  // must manually ensure that the data store directory exists (since not
+  // using a lockfile)
   if (!irs::file_utils::exists_directory(pathExists,
                                          _dataStore._path.c_str()) ||
       (!pathExists &&
@@ -1040,7 +1048,8 @@ Result IResearchDataStore::initDataStore(
       break;
     }
 
-    case RecoveryState::IN_PROGRESS: {  // link is being created during recovery
+    case RecoveryState::IN_PROGRESS: {  // link is being created during
+                                        // recovery
       _dataStore._inRecovery.store(false, std::memory_order_release);
       _dataStore._recoveryTick = _engine->releasedTick();
       break;
@@ -1211,15 +1220,16 @@ Result IResearchDataStore::initDataStore(
         // ensure link does not get deallocated before callback finishes
 
         if (!linkLock) {
-          return {};  // link no longer in recovery state, i.e. during recovery
+          return {};  // link no longer in recovery state, i.e. during
+                      // recovery
           // it was created and later dropped
         }
 
         if (!linkLock->_flushSubscription) {
-          return {
-              TRI_ERROR_INTERNAL,
-              "failed to register flush subscription for arangosearch link '" +
-                  std::to_string(linkLock->id().id()) + "'"};
+          return {TRI_ERROR_INTERNAL,
+                  "failed to register flush subscription for arangosearch "
+                  "link '" +
+                      std::to_string(linkLock->id().id()) + "'"};
         }
 
         auto& dataStore = linkLock->_dataStore;
@@ -1294,7 +1304,8 @@ Result IResearchDataStore::properties(IResearchDataStoreMeta const& meta) {
   auto linkLock = _asyncSelf->lock();
   // '_dataStore' can be asynchronously modified
   if (!linkLock) {
-    // the current link is no longer valid (checked after ReadLock acquisition)
+    // the current link is no longer valid (checked after ReadLock
+    // acquisition)
     return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
             "failed to lock arangosearch link while modifying properties "
             "of arangosearch link '" +
@@ -1551,7 +1562,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   }
 
   if (!linkLock) {
-    // the current link is no longer valid (checked after ReadLock acquisition)
+    // the current link is no longer valid (checked after ReadLock
+    // acquisition)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
                                    "failed to lock arangosearch link while "
                                    "truncating arangosearch link '" +
