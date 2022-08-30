@@ -912,7 +912,7 @@ Result IResearchDataStore::initDataStore(
   _asyncSelf->reset();
   // the data-store is being deallocated, link use is no longer valid
   // (wait for all the view users to finish)
-
+  _hasNestedFields = nested;
   auto& server = _collection.vocbase().server();
   if (!server.hasFeature<DatabasePathFeature>()) {
     return {TRI_ERROR_INTERNAL,
