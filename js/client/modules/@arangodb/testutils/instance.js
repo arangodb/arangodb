@@ -820,7 +820,7 @@ class instance {
       print(RED + Date() + this.name + " is not running, doesn't have a PID" + RESET);
       return;
     }
-    crashUtils.generateCrashDump(pu.ARANGOD_BIN, this.instanceInfo, this.options, message);
+    crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief commands a server to shut down via webcall

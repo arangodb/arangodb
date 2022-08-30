@@ -149,7 +149,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
   command += 'sleep 10;';
   command += 'echo quit;';
   command += 'sleep 2';
-  command += ') | gdb ' + storeArangodPath + ' ';
+  command += ') | gdb ' + storeArangodPath + ' -p ' + instanceInfo.pid;
 
 
   const args = ['-c', command];
