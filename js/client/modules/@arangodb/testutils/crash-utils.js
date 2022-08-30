@@ -416,19 +416,17 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
   return 'cdb ' + args.join(' ');
 }
 
-function generateCoreDumpWindows (instanceInfo, generateCoreDump) {
+function generateCoreDumpWindows (instanceInfo) {
   let cdbOutputFile = fs.getTempFile();
   let dbgCmds = [
     '.logopen ' + cdbOutputFile,
     '!analyze -v', // print verbose analysis
     'dv', // analyze local variables (if)
     '~*kb', // print all threads stack traces
+    `.dump /mFhtipcy ${instanceInfo.coreFilePattern}`, // write a compact dump file
+    '.kill', // terminate the debugged process
+    'q' // quit the debugger
   ];
-  if (generateCoreDump) {
-    dbgCmds.push(`.dump /mFhtipcy ${instanceInfo.coreFilePattern}`);
-  }
-  dbgCmds.push('.kill');
-  dbgCmds.push('q'); // quit the debugger
 
   const args = [
     '-p',
@@ -585,7 +583,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     if (!options.disableMonitor) {
       stopProcdump(options, instanceInfo, true);
     }
-    generateCoreDumpWindows(instanceInfo, generateCoreDump);
+    generateCoreDumpWindows(instanceInfo);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
   } else if (platform === 'darwin') {
     generateCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
