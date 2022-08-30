@@ -77,6 +77,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   // send some line breaks in case of gdb wanting to paginate...
   command += 'printf \'\\n\\n\\n\\n' +
     'set pagination off\\n' +
+    'set confirm off\\n' +
     'set logging file ' + gdbOutputFile + '\\n' +
     'set logging on\\n' +
     'bt\\n' +
@@ -137,6 +138,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
   // send some line breaks in case of gdb wanting to paginate...
   command += 'printf \'\\n\\n\\n\\n' +
     'set pagination off\\n' +
+    'set confirm off\\n' +
     'set logging file ' + gdbOutputFile + '\\n' +
     'set logging on\\n' +
     'bt\\n' +
