@@ -45,6 +45,8 @@
 #include "Pregel/Conductor/States/LoadingState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/Conductor/States/StoringState.h"
+#include "Pregel/Conductor/ClusterWorkerApi.h"
+#include "Pregel/Conductor/SingleServerWorkerApi.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
@@ -172,42 +174,7 @@ void Conductor::start() {
   state->run();
 }
 
-// only called by the conductor, is protected by the
-// mutex locked in finishedGlobalStep
-bool Conductor::_startGlobalStep() {
-  if (_feature.isStopping()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
-  // send prepare GSS notice
-  auto prepareGssCommand = PrepareGss{.executionNumber = _executionNumber,
-                                      .gss = _globalSuperstep,
-                                      .vertexCount = _totalVerticesCount,
-                                      .edgeCount = _totalEdgesCount};
-
-  /// collect the aggregators
-  _aggregators->resetValues();
-  _statistics.resetActiveCount();
-  _totalVerticesCount = 0;  // might change during execution
-  _totalEdgesCount = 0;
-
-  auto response = _sendToAllDBServers<GssPrepared>(Utils::prepareGSSPath,
-                                                   prepareGssCommand);
-  if (response.fail()) {
-    LOG_PREGEL("04189", ERR)
-        << "Seems there is at least one worker out of order";
-    changeState(conductor::StateType::InError);
-    return false;
-  }
-  VPackBuilder messagesFromWorkers;
-  for (auto const& message : response.get()) {
-    _aggregators->aggregateValues(message.aggregators.slice());
-    messagesFromWorkers.add(message.messages.slice());
-    _statistics.accumulateActiveCounts(message.senderId, message.activeCount);
-    _totalVerticesCount += message.vertexCount;
-    _totalEdgesCount += message.edgeCount;
-  }
-
+bool Conductor::_startGlobalStep(VPackBuilder messagesFromWorkers) {
   // workers are done if all messages were processed and no active vertices
   // are left to process
   bool activateAll = false;
@@ -431,9 +398,7 @@ static void resolveInfo(
 }
 
 /// should cause workers to start a new execution
-auto Conductor::_initializeWorkers(VPackSlice additional)
-    -> futures::Future<std::vector<
-        futures::Try<arangodb::ResultT<arangodb::pregel::GraphLoaded>>>> {
+auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
   _callbackMutex.assertLockedByCurrentThread();
 
   // int64_t vertexCount = 0, edgeCount = 0;
@@ -458,15 +423,17 @@ auto Conductor::_initializeWorkers(VPackSlice additional)
     TRI_ASSERT(vertexMap.size() == 1);
     auto [server, _] = *vertexMap.begin();
     _dbServers.push_back(server);
-    workers.emplace(server, std::make_unique<SingleServerWorkerOnConductor>(
-                                _executionNumber, server, _feature,
-                                _vocbaseGuard.database()));
+    workers.emplace(server,
+                    std::make_unique<conductor::SingleServerWorkerApi>(
+                        _executionNumber, _feature, _vocbaseGuard.database()));
   } else {
     for (auto const& [server, _] : vertexMap) {
       _dbServers.push_back(server);
-      workers.emplace(server,
-                      std::make_unique<ClusterWorkerOnConductor>(
-                          _executionNumber, server, _vocbaseGuard.database()));
+      workers.emplace(
+          server,
+          std::make_unique<conductor::ClusterWorkerApi>(
+              Connection::create(server, Utils::baseUrl(Utils::workerPrefix),
+                                 _vocbaseGuard.database())));
     }
   }
   _status = ConductorStatus::forWorkers(_dbServers);
@@ -786,9 +753,9 @@ auto Conductor::changeState(conductor::StateType name) -> void {
   run();
 }
 
-template auto Conductor::_sendToAllDBServers(std::string const& path,
-                                             PrepareGss const& message)
-    -> ResultT<std::vector<GssPrepared>>;
+template auto Conductor::_sendToAllDBServers(
+    std::string const& path, PrepareGlobalSuperStep const& message)
+    -> ResultT<std::vector<GlobalSuperStepPrepared>>;
 template auto Conductor::_sendToAllDBServers(
     std::string const& path, CollectPregelResults const& message)
     -> ResultT<std::vector<PregelResults>>;
@@ -803,64 +770,3 @@ template auto Conductor::_sendToAllDBServers(std::string const& path,
 template auto Conductor::_sendToAllDBServers(std::string const& path,
                                              CancelGss const& message)
     -> ResultT<std::vector<GssCanceled>>;
-
-[[nodiscard]] auto ClusterWorkerOnConductor::loadGraph(LoadGraph const& graph)
-    -> futures::Future<ResultT<GraphLoaded>> {
-  network::RequestOptions reqOpts;
-  reqOpts.timeout = network::Timeout(5.0 * 60.0);
-  reqOpts.database = _vocbaseGuard.database().name();
-  auto const& nf =
-      _vocbaseGuard.database().server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder message(buffer);
-  serialize(message, graph);
-  auto request = network::sendRequestRetry(
-      pool, "server:" + _serverId, fuerte::RestVerb::Post,
-      Utils::baseUrl(Utils::workerPrefix) + Utils::startExecutionPath,
-      std::move(buffer), reqOpts);
-  LOG_PREGEL("6ae66", DEBUG) << "Initializing Server " << _serverId;
-
-  return std::move(request).thenValue(
-      [](auto&& result) -> futures::Future<ResultT<GraphLoaded>> {
-        if (result.fail()) {
-          return {Result{TRI_ERROR_INTERNAL,
-                         fmt::format("REST request to worker failed: {}",
-                                     fuerte::to_string(result.error))}};
-        }
-        if (result.statusCode() >= 400) {
-          return {
-              Result{TRI_ERROR_FAILED,
-                     fmt::format(
-                         "REST request to worker returned an error code {}: {}",
-                         result.statusCode(), result.slice().toJson())}};
-        }
-        return deserialize<ResultT<GraphLoaded>>(result.slice());
-      });
-}
-
-[[nodiscard]] auto SingleServerWorkerOnConductor::loadGraph(
-    LoadGraph const& graph) -> futures::Future<ResultT<GraphLoaded>> {
-  if (_feature.isStopping()) {
-    return Result{TRI_ERROR_SHUTTING_DOWN};
-  }
-
-  std::shared_ptr<IWorker> worker = _feature.worker(_executionNumber);
-  if (worker) {
-    return Result{TRI_ERROR_INTERNAL,
-                  "a worker with this execution number already exists."};
-  }
-
-  try {
-    auto created = AlgoRegistry::createWorker(_vocbaseGuard.database(),
-                                              graph.details.slice(), _feature);
-    TRI_ASSERT(created.get() != nullptr);
-    _feature.addWorker(std::move(created), _executionNumber);
-    worker = _feature.worker(_executionNumber);
-    TRI_ASSERT(worker);
-    return worker->loadGraph(graph);
-  } catch (basics::Exception& e) {
-    return Result{e.code(), e.message()};
-  }
-}

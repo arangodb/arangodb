@@ -57,39 +57,6 @@
 namespace arangodb {
 namespace pregel {
 
-struct ClusterWorkerOnConductor : NewIWorker {
-  ClusterWorkerOnConductor(ExecutionNumber executionNumber, ServerID serverId,
-                           TRI_vocbase_t& vocbase)
-      : _executionNumber{std::move(executionNumber)},
-        _serverId{std::move(serverId)},
-        _vocbaseGuard{vocbase} {}
-  [[nodiscard]] auto loadGraph(LoadGraph const& graph)
-      -> futures::Future<ResultT<GraphLoaded>> override;
-
- private:
-  ExecutionNumber _executionNumber;
-  ServerID _serverId;
-  const DatabaseGuard _vocbaseGuard;
-};
-
-struct SingleServerWorkerOnConductor : NewIWorker {
-  SingleServerWorkerOnConductor(ExecutionNumber executionNumber,
-                                ServerID serverId, PregelFeature& feature,
-                                TRI_vocbase_t& vocbase)
-      : _executionNumber{std::move(executionNumber)},
-        _serverId{std::move(serverId)},
-        _feature{feature},
-        _vocbaseGuard{vocbase} {}
-  [[nodiscard]] auto loadGraph(LoadGraph const& graph)
-      -> futures::Future<ResultT<GraphLoaded>> override;
-
- private:
-  ExecutionNumber _executionNumber;
-  ServerID _serverId;
-  PregelFeature& _feature;
-  const DatabaseGuard _vocbaseGuard;
-};
-
 enum ExecutionState {
   DEFAULT = 0,  // before calling start
   LOADING,      // load graph into memory
@@ -173,9 +140,11 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   // with the Inspecotr framework
   ConductorStatus _status;
 
-  bool _startGlobalStep();
-  auto _initializeWorkers(VPackSlice additional) -> futures::Future<std::vector<
+  using GraphLoadedFuture = futures::Future<std::vector<
       futures::Try<arangodb::ResultT<arangodb::pregel::GraphLoaded>>>>;
+
+  bool _startGlobalStep(VPackBuilder messageFromWorkers);
+  auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
   template<typename OutType, typename InType>
   auto _sendToAllDBServers(std::string const& path, InType const& message)
       -> ResultT<std::vector<OutType>>;

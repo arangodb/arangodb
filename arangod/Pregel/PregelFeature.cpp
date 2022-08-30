@@ -731,7 +731,9 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::prepareGSSPath) {
-    w->prepareGlobalStep(body, outBuilder);
+    auto message = deserialize<PrepareGlobalSuperStep>(body);
+    auto response = w->prepareGlobalSuperStep(message).get();
+    serialize(outBuilder, response);
   } else if (path == Utils::startGSSPath) {
     w->startGlobalStep(body);
     auto response = GssStarted{};

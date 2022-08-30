@@ -10,7 +10,8 @@ add_library(arango_pregel STATIC
   PregelMetrics.cpp
   Reports.cpp
   Reports.h
-  Utils.cpp)
+  Utils.cpp
+  NetworkConnection.cpp)
 
 target_link_libraries(arango_pregel
 	arango

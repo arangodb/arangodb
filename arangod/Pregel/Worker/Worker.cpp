@@ -166,34 +166,33 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
-                                        VPackBuilder& response) {
-  // Only expect serial calls from the conductor.
-  // Lock to prevent malicous activity
-  MUTEX_LOCKER(guard, _commandMutex);
+auto Worker<V, E, M>::prepareGlobalSuperStep(
+    PrepareGlobalSuperStep const& message)
+    -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
   if (_state != WorkerState::IDLE) {
-    LOG_PREGEL("b8506", ERR)
-        << "Cannot prepare a gss when the worker is not idle";
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
+    return Result{TRI_ERROR_INTERNAL,
+                  "Cannot prepare a gss when the worker is not idle"};
   }
+  VPackBuilder serializedMessage;
+  serialize(serializedMessage, message);
   _state = WorkerState::PREPARING;  // stop any running step
-  LOG_PREGEL("f16f2", DEBUG) << "Received prepare GSS: " << data.toJson();
-  auto const command = deserialize<PrepareGss>(data);
-  const uint64_t gss = command.gss;
+  LOG_PREGEL("f16f2", DEBUG)
+      << "Received prepare GSS: " << serializedMessage.toJson();
+  const uint64_t gss = message.gss;
   if (_expectedGSS != gss) {
-    THROW_ARANGO_EXCEPTION_FORMAT(
+    return Result{
         TRI_ERROR_BAD_PARAMETER,
-        "Seems like this worker missed a gss, expected %u. Data = %s ",
-        _expectedGSS, data.toJson().c_str());
+        fmt::format(
+            "Seems like this worker missed a gss, expected %u. Data = %s ",
+            _expectedGSS, serializedMessage.toJson().c_str())};
   }
 
   // initialize worker context
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
     _workerContext->_readAggregators = _conductorAggregators.get();
     _workerContext->_writeAggregators = _workerAggregators.get();
-    _workerContext->_vertexCount = command.vertexCount;
-    _workerContext->_edgeCount = command.edgeCount;
+    _workerContext->_vertexCount = message.vertexCount;
+    _workerContext->_edgeCount = message.edgeCount;
     _workerContext->preApplication();
   }
 
@@ -223,13 +222,13 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
     VPackObjectBuilder ob(&aggregators);
     _workerAggregators->serializeValues(aggregators);
   }
-  auto gssPrepared = GssPrepared{.senderId = ServerState::instance()->getId(),
-                                 .activeCount = _activeCount,
-                                 .vertexCount = _graphStore->localVertexCount(),
-                                 .edgeCount = _graphStore->localEdgeCount(),
-                                 .messages = std::move(messageToMaster),
-                                 .aggregators = aggregators};
-  serialize(response, gssPrepared);
+  auto gssPrepared = GlobalSuperStepPrepared{
+      ServerState::instance()->getId(), _activeCount,
+      _graphStore->localVertexCount(),  _graphStore->localEdgeCount(),
+      std::move(messageToMaster),       aggregators};
+  futures::Promise<ResultT<GlobalSuperStepPrepared>> promise;
+  promise.setValue(ResultT<GlobalSuperStepPrepared>{gssPrepared});
+  return promise.getFuture();
 }
 
 template<typename V, typename E, typename M>
@@ -711,7 +710,6 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
     -> futures::Future<ResultT<GraphLoaded>> {
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("52070", WARN) << fmt::format(

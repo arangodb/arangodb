@@ -136,16 +136,26 @@ auto inspect(Inspector& f, StatusUpdated& x) {
 
 // worker -> conductor as immediate answer
 
-struct GssPrepared {
+struct GlobalSuperStepPrepared {
   std::string senderId;
   uint64_t activeCount;
   uint64_t vertexCount;
   uint64_t edgeCount;
   VPackBuilder messages;
   VPackBuilder aggregators;
+  GlobalSuperStepPrepared() noexcept = default;
+  GlobalSuperStepPrepared(std::string senderId, uint64_t activeCount,
+                          uint64_t vertexCount, uint64_t edgeCount,
+                          VPackBuilder messages, VPackBuilder aggregators)
+      : senderId{std::move(senderId)},
+        activeCount{activeCount},
+        vertexCount{vertexCount},
+        edgeCount{edgeCount},
+        messages{std::move(messages)},
+        aggregators{std::move(aggregators)} {}
 };
 template<typename Inspector>
-auto inspect(Inspector& f, GssPrepared& x) {
+auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
   return f.object(x).fields(
       f.field(Utils::senderKey, x.senderId),
       f.field("activeCount", x.activeCount),
@@ -184,6 +194,7 @@ auto inspect(Inspector& f, GssCanceled& x) {
 struct LoadGraph {
   ExecutionNumber executionNumber;
   VPackBuilder details;
+  const std::string path = Utils::startExecutionPath;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, LoadGraph& x) {
@@ -192,15 +203,16 @@ auto inspect(Inspector& f, LoadGraph& x) {
       f.field("details", x.details));
 }
 
-struct PrepareGss {
+struct PrepareGlobalSuperStep {
   ExecutionNumber executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
   uint64_t edgeCount;
+  const std::string path = Utils::prepareGSSPath;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, PrepareGss& x) {
+auto inspect(Inspector& f, PrepareGlobalSuperStep& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),

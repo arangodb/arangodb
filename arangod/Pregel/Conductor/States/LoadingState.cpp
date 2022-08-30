@@ -34,7 +34,6 @@ auto Loading::run() -> void {
             conductor.changeState(StateType::Canceled);
           }
           auto graphLoaded = result.get().get();
-          auto sender = graphLoaded.senderId;
           conductor._totalVerticesCount += graphLoaded.vertexCount;
           conductor._totalEdgesCount += graphLoaded.edgeCount;
         }
