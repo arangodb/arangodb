@@ -994,7 +994,8 @@ authRouter.get('/graph/:name', function (req, res) {
       edges: edgesArr,
       settings: {
         vertexCollections: vertexCollections,
-        startVertex: startVertex
+        startVertex: startVertex,
+        nodeColorAttribute: config.nodeColorAttribute
       }
     };
     if (isEnterprise) {

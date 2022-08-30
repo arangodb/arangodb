@@ -63,6 +63,8 @@
       ]
     },
 
+    nodeColorAttributes: [],
+
     activeNodes: [],
     selectedNodes: {},
 
@@ -166,6 +168,7 @@
     },
 
     render: function (toFocus) {
+      console.log("Graph is getting rendered");
       this.$el.html(this.template.render({}));
 
       // render navigation
@@ -570,6 +573,7 @@
     },
 
     rerender: function () {
+      console.log("Graph is getting RErendered");
       this.fetchGraph();
     },
 
@@ -1662,7 +1666,14 @@
         });
 
         if (found === false) {
-          newNode.originalColor = newNode.color;
+          //newNode.originalColor = newNode.color;
+          // Viking
+          console.log("self.colors: ", self.colors);
+          console.log("self.nodeColorAttributes (in checkExpand): ", self.nodeColorAttributes);
+          //newNode.originalColor = '#00ff00';
+          //newNode.color = '#00ff00';
+          const categoryColor = self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue).color : '#f00';
+          newNode.color = categoryColor;
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
         }
@@ -1900,6 +1911,35 @@
 
       return lasso;
       */
+    },
+
+    colorNodesByAttribute: function(s, attribute) {
+      var self = this;
+
+      console.log("in colorNodesByAttribute (s): ", s);
+      console.log("in colorNodesByAttribute (s.graph): ", s.graph);
+      console.log("in colorNodesByAttribute (s.graph.nodes()): ", s.graph.nodes());
+      console.log("in colorNodesByAttribute (attribute): ", attribute);
+      console.log("self.colors: ", self.colors);
+      console.log("self.nodeColorAttributes: ", self.nodeColorAttributes);
+
+      //const nodeColorAttributes = [];
+          
+      s.graph.nodes().forEach(function (n) {
+        if(!self.nodeColorAttributes.some(node => node.name === n.nodeColorAttributeValue)) {
+          const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+          const nodeColorAttributeObj = {
+            'name': n.nodeColorAttributeValue || '',
+            'color': tempNodeColor
+          };
+          self.nodeColorAttributes.push(nodeColorAttributeObj);
+        }
+        console.log("n: ", n);
+        const categoryColor = self.nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue).color : '#f00';
+        n.color = categoryColor;
+      });
+      s.refresh();
+      console.log("self.nodeColorAttributes: ", self.nodeColorAttributes);
     },
 
     renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
@@ -2149,44 +2189,6 @@
         };
 
         s.bind('clickNode', function (e) {
-          console.log("self.currentGraph.graph.nodes(): ", self.currentGraph.graph.nodes());
-          console.log("s.graph.nodes(): ", s.graph.nodes());
-          console.log("e: ", e);
-          console.log("e.data.node.id: ", e.data.node.id);
-
-          const nodeColorAttributes = [];
-          
-          s.graph.nodes().forEach(function (n) {
-            //if(!nodeColorAttributes.includes(n.nodeColorAttributeValue)) {
-            if(!nodeColorAttributes.some(node => node.name === n.nodeColorAttributeValue)) {
-              const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
-              const nodeColorAttributeObj = {
-                'name': n.nodeColorAttributeValue || '',
-                'color': tempNodeColor
-              };
-              nodeColorAttributes.push(nodeColorAttributeObj);
-            }
-            console.log("n: ", n);
-            const categoryColor = nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue) ? '#' + nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue).color : '#f00';
-            n.color = categoryColor;
-            /*
-            n.color = "#ff00ff";
-            //if(e.data.node.id.includes("country")) {
-            if(n.id.includes("country")) {
-              n.color = "#ff0000";
-              n.sortColor = "#ff0000";
-              s.refresh();
-            } else if(n.id.includes("capital")) {
-              n.color = "#ff00ff";
-              n.sortColor = "#ff00ff";
-            } else if(n.id.includes("continent")) {
-              n.color = "#ffff00";
-              n.sortColor = "#ffff00";
-            }
-            */
-          });
-          s.refresh();
-          console.log("nodeColorAttributes: ", nodeColorAttributes);
           if (self.contextState.createEdge === true) {
             self.clearMouseCanvas();
             self.removeHelp();
@@ -2441,6 +2443,20 @@
         $('#toggleForce').fadeIn('fast');
       } else {
         $('#toggleForce').fadeOut('fast');
+      }
+
+      console.log("renderGraph (graph): ", graph);
+      console.log("renderGraph (toFocus): ", toFocus);
+      console.log("renderGraph (aqlMode): ", aqlMode);
+      console.log("renderGraph (layout): ", layout);
+      console.log("renderGraph (renderer): ", renderer);
+      console.log("renderGraph (edgeType): ", edgeType);
+      console.log("renderGraph (graph.settings.nodeColorAttribute): ", graph.settings.nodeColorAttribute);
+      if(graph.settings.nodeColorAttribute !== undefined && graph.settings.nodeColorAttribute !== '') {
+        console.log("graph.settings.nodeColorAttribute IS SET: ", graph.settings.nodeColorAttribute);
+        this.colorNodesByAttribute(s, graph.settings.nodeColorAttribute);
+      } else {
+        console.log("graph.settings.nodeColorAttribute is UNDEFINED!");
       }
     },
 
