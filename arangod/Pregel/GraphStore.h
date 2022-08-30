@@ -33,6 +33,7 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Worker/WorkerConfig.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -130,9 +131,9 @@ class GraphStore final {
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
   // ====================== NOT THREAD SAFE ===========================
-  void loadShards(WorkerConfig* config,
-                  std::function<void()> const& statusUpdateCallback,
-                  std::function<void()> const& finishedLoadingCallback);
+  auto loadShards(WorkerConfig* config,
+                  std::function<void()> const& statusUpdateCallback)
+      -> futures::Future<ResultT<GraphLoaded>>;
   void loadDocument(WorkerConfig* config, std::string const& documentID);
   void loadDocument(WorkerConfig* config, PregelShard sourceShard,
                     std::string_view key);

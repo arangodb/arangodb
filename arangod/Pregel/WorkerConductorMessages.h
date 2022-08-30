@@ -50,7 +50,7 @@ struct GraphLoaded : Message {
   ExecutionNumber executionNumber;
   uint64_t vertexCount;
   uint64_t edgeCount;
-  GraphLoaded(){};
+  GraphLoaded() noexcept {};
   GraphLoaded(std::string const& senderId, ExecutionNumber executionNumber,
               uint64_t vertexCount, uint64_t edgeCount)
       : senderId{senderId},
@@ -180,6 +180,17 @@ auto inspect(Inspector& f, GssCanceled& x) {
 }
 
 // ------ commands sent from conductor to worker -------
+
+struct LoadGraph {
+  ExecutionNumber executionNumber;
+  VPackBuilder details;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, LoadGraph& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("details", x.details));
+}
 
 struct PrepareGss {
   ExecutionNumber executionNumber;

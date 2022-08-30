@@ -1,5 +1,6 @@
 #include "LoadingState.h"
 
+#include <fmt/format.h>
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
@@ -22,38 +23,33 @@ Loading::~Loading() {
 
 auto Loading::run() -> void {
   LOG_PREGEL_CONDUCTOR("3a255", DEBUG) << "Telling workers to load the data";
-  auto res =
-      conductor._initializeWorkers(Utils::startExecutionPath, VPackSlice());
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_PREGEL_CONDUCTOR("30171", ERR)
-        << "Not all DBServers started the execution";
-    conductor.changeState(StateType::Canceled);
-  }
-}
-
-auto Loading::receive(Message const& message) -> void {
-  if (message.type() != MessageType::GraphLoaded) {
-    LOG_PREGEL_CONDUCTOR("14df4", WARN)
-        << "When loading, we expect a GraphLoaded "
-           "message, but we received message type "
-        << static_cast<int>(message.type());
-    return;
-  }
-  auto loadedMessage = static_cast<GraphLoaded const&>(message);
-  conductor._ensureUniqueResponse(loadedMessage.senderId);
-  conductor._totalVerticesCount += loadedMessage.vertexCount;
-  conductor._totalEdgesCount += loadedMessage.edgeCount;
-  if (conductor._respondedServers.size() != conductor._dbServers.size()) {
-    return;
-  }
-  LOG_PREGEL_CONDUCTOR("76631", INFO)
-      << "Running Pregel " << conductor._algorithm->name() << " with "
-      << conductor._totalVerticesCount << " vertices, "
-      << conductor._totalEdgesCount << " edges";
-  if (conductor._masterContext) {
-    conductor._masterContext->initialize(conductor._totalVerticesCount,
-                                         conductor._totalEdgesCount,
-                                         conductor._aggregators.get());
-  }
-  conductor.changeState(StateType::Computing);
+  conductor._initializeWorkers(VPackSlice())
+      .thenValue([&](auto results) {
+        for (auto const& result : results) {
+          if (result.get().fail()) {
+            LOG_PREGEL_CONDUCTOR("8e855", ERR) << fmt::format(
+                "Got unsuccessful response from worker while loading graph: "
+                "{}\n",
+                result.get().errorMessage());
+            conductor.changeState(StateType::Canceled);
+          }
+          auto graphLoaded = result.get().get();
+          auto sender = graphLoaded.senderId;
+          conductor._totalVerticesCount += graphLoaded.vertexCount;
+          conductor._totalEdgesCount += graphLoaded.edgeCount;
+        }
+      })
+      .thenValue([&](auto _) {
+        LOG_PREGEL_CONDUCTOR("76631", INFO)
+            << "Running Pregel " << conductor._algorithm->name() << " with "
+            << conductor._totalVerticesCount << " vertices, "
+            << conductor._totalEdgesCount << " edges";
+        if (conductor._masterContext) {
+          conductor._masterContext->initialize(conductor._totalVerticesCount,
+                                               conductor._totalEdgesCount,
+                                               conductor._aggregators.get());
+        }
+        conductor.changeState(StateType::Computing);
+      })
+      .wait();
 }

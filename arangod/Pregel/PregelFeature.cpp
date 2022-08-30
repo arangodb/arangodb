@@ -670,8 +670,6 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
 
   if (path == Utils::statusUpdatePath) {
     co->workerStatusUpdate(body);
-  } else if (path == Utils::finishedStartupPath) {
-    co->finishedWorkerStartup(body);
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);
   } else if (path == Utils::finishedWorkerFinalizationPath) {
@@ -706,8 +704,13 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           "Worker with this execution number already exists.");
     }
 
-    addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
-    worker(exeNum)->setupWorker();  // will call conductor
+    auto command = deserialize<LoadGraph>(body);
+    addWorker(
+        AlgoRegistry::createWorker(vocbase, command.details.slice(), *this),
+        exeNum);
+
+    auto graphLoaded = worker(exeNum)->loadGraph(command).get();
+    serialize(outBuilder, graphLoaded);
 
     return;
   } else if (!w) {

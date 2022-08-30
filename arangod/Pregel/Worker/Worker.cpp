@@ -21,6 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Worker.h"
+
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
@@ -33,7 +35,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/VertexComputation.h"
-#include "Worker.h"
+#include "Pregel/WorkerInterface.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
@@ -173,50 +175,6 @@ void Worker<V, E, M>::_initializeMessageCaches() {
       incoming.release();
     }
   }
-}
-
-// @brief load the initial worker data, call conductor eventually
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::setupWorker() {
-  std::function<void()> graphLoadedCallback = [self = shared_from_this(),
-                                               this] {
-    LOG_PREGEL("52062", WARN)
-        << fmt::format("Worker for execution number {} has finished loading.",
-                       _config.executionNumber());
-    auto graphLoadedEvent = GraphLoaded{
-        ServerState::instance()->getId(), _config.executionNumber(),
-        _graphStore->localVertexCount(), _graphStore->localEdgeCount()};
-    VPackBuilder event;
-    serialize(event, graphLoadedEvent);
-    _callConductor(Utils::finishedStartupPath, event);
-
-    _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
-  };
-
-  // initialization of the graphstore might take an undefined amount
-  // of time. Therefore this is performed asynchronously
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  LOG_PREGEL("52070", WARN) << fmt::format(
-      "Worker for execution number {} is loading", _config.executionNumber());
-  _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW,
-                   [this, self = shared_from_this(),
-                    statusCallback = std::move(_makeStatusCallback()),
-                    graphLoadedCallback = std::move(graphLoadedCallback)] {
-                     try {
-                       _graphStore->loadShards(&_config, statusCallback,
-                                               graphLoadedCallback);
-                     } catch (std::exception const& ex) {
-                       LOG_PREGEL("a47c4", WARN)
-                           << "caught exception in loadShards: " << ex.what();
-                       throw;
-                     } catch (...) {
-                       LOG_PREGEL("e932d", WARN)
-                           << "caught unknown exception in loadShards";
-                       throw;
-                     }
-                   });
 }
 
 template<typename V, typename E, typename M>
@@ -858,6 +816,25 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
                 .allGssStatus = fullGssStatus.gss.size() > 0
                                     ? std::optional{fullGssStatus}
                                     : std::nullopt};
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
+    -> futures::Future<ResultT<GraphLoaded>> {
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
+
+  LOG_PREGEL("52070", WARN) << fmt::format(
+      "Worker for execution number {} is loading", _config.executionNumber());
+  return std::move(_graphStore->loadShards(&_config, _makeStatusCallback()))
+      .then([&](auto&& result) {
+        LOG_PREGEL("52062", WARN) << fmt::format(
+            "Worker for execution number {} has finished loading.",
+            _config.executionNumber());
+        _makeStatusCallback()();
+        _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
+        return result.get();
+      });
 }
 
 // template types to create
