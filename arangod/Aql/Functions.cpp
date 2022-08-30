@@ -89,6 +89,7 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
+#include "utils/utf8_utils.hpp"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -2585,8 +2586,67 @@ AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
 
   return AqlValue(utf8);
 }
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
+
+AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
+                                   VPackFunctionParametersView parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString()) {
+    registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  auto const str = value.slice().stringView();
+
+  uint32_t const offset = [&]() {
+    auto offset = static_cast<int32_t>(
+        extractFunctionParameterValue(parameters, 1).toInt64());
+
+    if (offset < 0) {
+      offset = std::max(0, static_cast<int32_t>(str.size() + offset));
+    }
+
+    return offset;
+  }();
+
+  int32_t const length = [&]() {
+    if (parameters.size() >= 3) {
+      return static_cast<int32_t>(
+          extractFunctionParameterValue(parameters, 2).toInt64());
+    } else {
+      return static_cast<int32_t>(str.size());
+    }
+  }();
+
+  if (length <= 0 || offset >= str.size()) {
+    return AqlValue{velocypack::Slice::emptyStringSlice()};
+  }
+
+  auto validate = [](std::string_view str) noexcept {
+    auto* begin = reinterpret_cast<irs::byte_type const*>(str.data());
+    auto* end = begin + str.size();
+
+    while (begin != end) {
+      const auto c = irs::utf8_utils::next_checked(begin, end);
+
+      if (irs::utf8_utils::INVALID_CODE_POINT == c) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  auto const subStr =
+      str.substr(offset, std::min(static_cast<uint32_t>(length),
+                                  static_cast<uint32_t>(str.size()) - offset));
+
+  if (!validate(subStr)) {
+    registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  return AqlValue{subStr};
+}
 
 AqlValue functions::Substitute(ExpressionContext* expressionContext,
                                AstNode const&,

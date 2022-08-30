@@ -239,15 +239,6 @@ void appendTerms(irs::by_phrase& filter, irs::string_ref value,
   }
 }
 
-FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
-                                   aql::AstNode const& node,
-                                   QueryContext const& ctx,
-                                   FilterContext const& filterCtx) {
-  auto& exprFilter = filter.add<ByExpression>();
-  exprFilter.init(*ctx.ast, const_cast<aql::AstNode&>(node));
-  exprFilter.boost(filterCtx.boost);
-}
-
 Result byTerm(irs::by_term* filter, std::string&& name,
               ScopedAqlValue const& value, QueryContext const& ctx,
               FilterContext const& filterCtx) {
@@ -4076,6 +4067,13 @@ Result fromExpansion(irs::boolean_filter* filter, QueryContext const& ctx,
 
 namespace arangodb {
 namespace iresearch {
+
+void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
+                      QueryContext const& ctx, FilterContext const& filterCtx) {
+  auto& exprFilter = filter.add<ByExpression>();
+  exprFilter.init(*ctx.ast, const_cast<aql::AstNode&>(node));
+  exprFilter.boost(filterCtx.boost);
+}
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx,

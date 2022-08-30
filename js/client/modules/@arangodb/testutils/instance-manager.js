@@ -955,7 +955,7 @@ class instanceManager {
         }
         count --;
         if (count === 0) {
-          throw "Leader is not selected";
+          throw new Error("Leader is not selected");
         }
         sleep(0.5);
       }
@@ -971,7 +971,7 @@ class instanceManager {
             res = JSON.parse(reply.body);
           }
           catch (x) {
-            throw "Failed to parse endpoints reply: " + JSON.stringify(reply);
+            throw new Error("Failed to parse endpoints reply: " + JSON.stringify(reply));
           }
           let leaderEndpoint = res.endpoints[0].endpoint;
           let leaderInstance;
@@ -1118,7 +1118,7 @@ class instanceManager {
       internal.wait(5.0, false);
       let d = this.detectCurrentLeader();
       if (d === undefined) {
-        throw "failed to detect a leader";
+        throw new Error("failed to detect a leader");
       }
       this.endpoint = d.endpoint;
       this.url = d.url;
