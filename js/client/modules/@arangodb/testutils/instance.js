@@ -815,23 +815,12 @@ class instance {
       print(agencyReply);
     }
   }
-  killWithCoreDump () {
+  killWithCoreDump (message) {
     if (this.pid === null) {
       print(RED + Date() + this.name + " is not running, doesn't have a PID" + RESET);
       return;
     }
-    if (platform.substr(0, 3) === 'win') {
-      if (!this.options.disableMonitor) {
-        crashUtils.stopProcdump (this.options, this, true);
-      }
-      crashUtils.runProcdump (this.options, this, this.coreDirectory, this.pid, true);
-    }
-    if (this.options.test !== undefined) {
-      print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
-      this.exitStatus = killExternal(this.pid, termSignal);
-    } else {
-      this.exitStatus = killExternal(this.pid, abortSignal);
-    }
+    crashUtils.generateCrashDump(pu.ARANGOD_BIN, this.instanceInfo, this.options, message);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief commands a server to shut down via webcall
@@ -858,8 +847,7 @@ class instance {
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
         let sockStat = this.getSockStat("Force killing - sockstat before: ");
-        this.killWithCoreDump();
-        this.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
         this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
@@ -978,11 +966,9 @@ class instance {
               ' after ' + timeout + 's grace period; marking crashy.');
         this.serverCrashedLocal = true;
         counters.shutdownSuccess = false;
-        this.killWithCoreDump();
-        this.analyzeServerCrash('shutdown timeout; instance "' +
-                                   this.name +
-                                   '" forcefully KILLED after 60s - ' +
-                                   this.exitStatus.signal);
+        this.killWithCoreDump('shutdown timeout; instance "' +
+                              this.name +
+                              '" forcefully KILLED after 60s');
         if (!this.isAgent()) {
           counters.nonAgenciesCount--;
         }

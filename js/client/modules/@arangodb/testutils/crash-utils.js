@@ -28,18 +28,22 @@
 const fs = require('fs');
 const yaml = require('js-yaml');
 const internal = require('internal');
-const platform = internal.platform;
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const statusExternal = internal.statusExternal;
-const killExternal = internal.killExternal;
-const sleep = internal.sleep;
+const {
+  executeExternal,
+  executeExternalAndWait,
+  statusExternal,
+  killExternal,
+  statisticsExternal,
+  platform,
+  sleep
+} = internal;
 const pu = require('@arangodb/testutils/process-utils');
 
 const abortSignal = 6;
 const termSignal = 15;
 
 
+const CYAN = internal.COLORS.COLOR_CYAN;
 const RED = internal.COLORS.COLOR_RED;
 const GREEN = internal.COLORS.COLOR_GREEN;
 const RESET = internal.COLORS.COLOR_RESET;
@@ -118,6 +122,63 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
   return command;
 }
 
+
+function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, generateCoreDump) {
+  let gdbOutputFile = fs.getTempFile();
+  let gcore = '';
+  if (generateCoreDump) {
+    if (options.coreDirectory === '') {
+      gcore = `generate-core-file core.${instanceInfo.pid}\\n`;
+    } else {
+      gcore = `generate-core-file ${options.coreDirectory}\\n`;
+    }
+  }
+  let command = 'ulimit -c 0; sleep 10;(';
+  // send some line breaks in case of gdb wanting to paginate...
+  command += 'printf \'\\n\\n\\n\\n' +
+    'set pagination off\\n' +
+    'set logging file ' + gdbOutputFile + '\\n' +
+    'set logging on\\n' +
+    'bt\\n' +
+    'thread apply all bt\\n'+
+    'bt full\\n' +
+    gcore +
+    'kill \\n' +
+    '\';';
+
+  command += 'sleep 10;';
+  command += 'echo quit;';
+  command += 'sleep 2';
+  command += ') | gdb ' + storeArangodPath + ' ';
+
+
+  const args = ['-c', command];
+  print(JSON.stringify(args));
+  
+  sleep(5);
+  executeExternalAndWait('/bin/bash', args);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+  if (!fs.exists(gdbOutputFile)) {
+    print("Failed to generate GDB output file?");
+    return "";
+  }
+  let thisDump = fs.read(gdbOutputFile);
+  GDB_OUTPUT += thisDump;
+  if (options.extremeVerbosity === true) {
+    print(thisDump);
+  }
+
+  command = 'gdb ' + storeArangodPath + ' ';
+
+  if (options.coreDirectory === '') {
+    command += 'core';
+  } else {
+    command += options.coreDirectory;
+  }
+  return command;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief analyzes a core dump using lldb (macos)
 // /
@@ -141,6 +202,47 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   command += 'sleep 2';
   command += ') | lldb ' + storeArangodPath;
   command += ' -c /cores/core.' + pid;
+  command += ' > ' + lldbOutputFile + ' 2>&1';
+  const args = ['-c', command];
+  print(JSON.stringify(args));
+
+  sleep(5);
+  executeExternalAndWait('/bin/bash', args);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+  let thisDump = fs.read(lldbOutputFile);
+  GDB_OUTPUT += thisDump;
+  if (options.extremeVerbosity === true) {
+    print(thisDump);
+  }
+  return 'lldb ' + storeArangodPath + ' -c /cores/core.' + pid;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief analyzes a core dump using lldb (macos)
+// /
+// / We assume the system has core files in /cores/, and we have a lldb.
+// //////////////////////////////////////////////////////////////////////////////
+
+function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
+  let lldbOutputFile = fs.getTempFile();
+
+  let command;
+  command = '(';
+  command += 'printf \'bt \n\n';
+  // LLDB doesn't have an equivilant of `bt full` so we try to show the upper
+  // most 5 frames with all variables
+  for (var i = 0; i < 5; i++) {
+    command += 'frame variable\\n up \\n';
+  }
+  command += ' thread backtrace all\\n\';';
+  command += 'sleep 10;';
+  command += `process save-core /cores/core.${pid};`;
+  command += 'kill;';
+  command += 'echo quit;';
+  command += 'sleep 2';
+  command += ') | lldb ' + storeArangodPath;
+  command += ` --pid ${pid}`;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
   print(JSON.stringify(args));
@@ -315,6 +417,42 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
   return 'cdb ' + args.join(' ');
 }
 
+function generateCoreDumpWindows (instanceInfo, generateCoreDump) {
+  let cdbOutputFile = fs.getTempFile();
+  let dbgCmds = [
+    '.logopen ' + cdbOutputFile,
+    'kp', // print curren threads backtrace with arguments
+    '~*kb', // print all threads stack traces
+    'dv', // analyze local variables (if)
+    '!analyze -v', // print verbose analysis
+  ];
+  if (generateCoreDump) {
+    dbgCmds.push(`.dump ${instanceInfo.coreFilePattern}`);
+  }
+  dbgCmds.push('.kill');
+  dbgCmds.push('q'); // quit the debugger
+
+  const args = [
+    '-p',
+    instanceInfo.pid,
+    '-lines',
+    '-logo',
+    cdbOutputFile,
+    '-c',
+    dbgCmds.join('; ')
+  ];
+
+  sleep(5);
+  print('running cdb ' + JSON.stringify(args));
+  process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
+  executeExternalAndWait('cdb', args);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+  // cdb will output to stdout anyways, so we can't turn this off here.
+  GDB_OUTPUT += fs.read(cdbOutputFile);
+  return 'cdb ' + args.join(' ');
+}
+
 function checkMonitorAlive (binary, instanceInfo, options, res) {
   if (instanceInfo.hasOwnProperty('monitor') ) {
     // Windows: wait for procdump to do its job...
@@ -407,13 +545,6 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     }
   }
 
-  let pathParts = binary.split(fs.pathSeparator);
-  let bareBinary = binary;
-  if (pathParts.length > 0) {
-    bareBinary = pathParts[pathParts.length - 1];
-  }
-  const storeArangodPath = instanceInfo.rootDir + '/' + bareBinary + '_' + instanceInfo.pid;
-
   print(RED + message + RESET);
 
   sleep(5);
@@ -434,16 +565,40 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     }
     hint = analyzeCoreDumpWindows(instanceInfo);
   } else if (platform === 'darwin') {
-    // fs.copyFile(binary, storeArangodPath);
     hint = analyzeCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid);
   } else {
-    // fs.copyFile(binary, storeArangodPath);
     hint = analyzeCoreDump(instanceInfo, options, binary, instanceInfo.pid);
   }
   instanceInfo.exitStatus.gdbHint = 'Run debugger with "' + hint + '"';
 
 }
 
+function generateCrashDump (binary, instanceInfo, options, checkStr) {
+  const stats = statisticsExternal(instanceInfo.pid);
+  // picking some arbitrary number of a running arangod doubling it
+  const generateCoreDump = (
+    stats.virtualSize < 3100000 &&
+    stats.residentSize < 1400000
+  ) || stats.virtualSize === 0;
+  if (options.test !== undefined) {
+    print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
+    instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
+  } else if (platform.substr(0, 3) === 'win') {
+    if (!options.disableMonitor) {
+      stopProcdump(options, instanceInfo, true);
+    }
+    generateCoreDumpWindows(instanceInfo, generateCoreDump);
+    instanceInfo.exitStatus = { status: 'TERMINATED'};
+  } else if (platform === 'darwin') {
+    generateCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
+    instanceInfo.exitStatus = { status: 'TERMINATED'};
+  } else {
+    generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
+    instanceInfo.exitStatus = { status: 'TERMINATED'};
+  }
+}
+
+exports.generateCrashDump = generateCrashDump;
 exports.checkMonitorAlive = checkMonitorAlive;
 exports.analyzeCrash = analyzeCrash;
 exports.runProcdump = runProcdump;
