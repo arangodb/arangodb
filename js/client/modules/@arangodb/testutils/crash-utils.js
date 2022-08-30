@@ -389,10 +389,9 @@ function analyzeCoreDumpWindows (instanceInfo) {
 
   const dbgCmds = [
     '.logopen ' + cdbOutputFile,
-    'kp', // print curren threads backtrace with arguments
-    '~*kb', // print all threads stack traces
-    'dv', // analyze local variables (if)
     '!analyze -v', // print verbose analysis
+    'dv', // analyze local variables (if)
+    '~*kb', // print all threads stack traces
     'q' // quit the debugger
   ];
 
@@ -421,13 +420,12 @@ function generateCoreDumpWindows (instanceInfo, generateCoreDump) {
   let cdbOutputFile = fs.getTempFile();
   let dbgCmds = [
     '.logopen ' + cdbOutputFile,
-    'kp', // print curren threads backtrace with arguments
-    '~*kb', // print all threads stack traces
-    'dv', // analyze local variables (if)
     '!analyze -v', // print verbose analysis
+    'dv', // analyze local variables (if)
+    '~*kb', // print all threads stack traces
   ];
   if (generateCoreDump) {
-    dbgCmds.push(`.dump ${instanceInfo.coreFilePattern}`);
+    dbgCmds.push(`.dump /mFhtipcy ${instanceInfo.coreFilePattern}`);
   }
   dbgCmds.push('.kill');
   dbgCmds.push('q'); // quit the debugger
