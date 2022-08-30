@@ -182,6 +182,11 @@ class Result final {
     return *this;
   }
 
+  bool operator==(const Result&) const;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, Result& x);
+
  private:
   std::unique_ptr<arangodb::result::Error> _error = nullptr;
 };
@@ -192,5 +197,23 @@ class Result final {
  */
 auto operator<<(std::ostream& out, arangodb::Result const& result)
     -> std::ostream&;
+
+template<typename Inspector>
+auto inspect(Inspector& f, arangodb::Result& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = arangodb::result::Error{};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = arangodb::Result{v};
+    }
+    return res;
+  } else {
+    if (x._error == nullptr) {
+      auto v = arangodb::result::Error{};
+      return f.apply(v);
+    }
+    return f.apply(x._error);
+  }
+}
 
 }  // namespace arangodb

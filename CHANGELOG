@@ -1,6 +1,8 @@
 devel
 -----
 
+* SEARCH-357: Added SUBSTRING_BYTES function.
+
 * Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
 
 * Disable optimization rule to avoid crash (BTS-951).

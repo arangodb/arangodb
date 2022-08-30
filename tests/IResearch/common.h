@@ -229,7 +229,8 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
 VPackBuilder getInvertedIndexPropertiesSlice(
     arangodb::IndexId iid, std::vector<std::string> const& fields,
     std::vector<std::vector<std::string>> const* storedFields = nullptr,
-    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr);
+    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr,
+    std::string_view name = "");
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
                                         std::string const& name, uint64_t id);
