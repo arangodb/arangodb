@@ -27,6 +27,7 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
+const getMetric = require('@arangodb/test-helper').getMetric;
 const internal = require("internal");
 const errors = internal.errors;
   
@@ -55,7 +56,7 @@ function ArangoSearchOutOfSyncSuite () {
     },
 
     testMarkLinksAsOutOfSync : function () {
-      let c = db._create('UnitTestsRecovery1', { numberOfShards: 5 });
+      let c = db._create('UnitTestsRecovery1', { numberOfShards: 5, replicationFactor: 1 });
       c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
 
       let v = db._createView('UnitTestsRecoveryView1', 'arangosearch', {});
@@ -65,14 +66,21 @@ function ArangoSearchOutOfSyncSuite () {
       let shardInfo = c.shards(true);
       let shards = Object.keys(shardInfo);
 
+      let leaderUrls = new Set();
       shards.forEach((s) => {
         let leader = shardInfo[s][0];
         let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+        leaderUrls.add(leaderUrl);
+      });
 
+      for (let leaderUrl of leaderUrls) {
         // break search commit on the DB servers
         let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/" + encodeURIComponent("ArangoSearch::FailOnCommit"), body: {} });
         assertEqual(200, result.status);
-      });
+        
+        result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/" + encodeURIComponent("ArangoSearch::FailQueriesOnOutOfSync"), body: {} });
+        assertEqual(200, result.status);
+      }
       
       c.insert({});
   
@@ -81,7 +89,7 @@ function ArangoSearchOutOfSyncSuite () {
         db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
       } catch (err) {
       }
-
+      
       let tries = 0;
       while (tries++ <= 30) {
         try {
@@ -91,10 +99,9 @@ function ArangoSearchOutOfSyncSuite () {
         }
         internal.sleep(0.5);
       }
- 
       clearFailurePoints();
       
-      c = db._create('UnitTestsRecovery2', { numberOfShards: 5 });
+      c = db._create('UnitTestsRecovery2', { numberOfShards: 5, replicationFactor: 1 });
       c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       c.insert({});
       
@@ -112,14 +119,11 @@ function ArangoSearchOutOfSyncSuite () {
       // in a cluster, the coordinator doesn't make the outOfSync flag available
       assertFalse(idx.hasOwnProperty('outOfSync'));
       
-      shards.forEach((s) => {
-        let leader = shardInfo[s][0];
-        let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
-
+      for (let leaderUrl of leaderUrls) {
         // break search commit on the DB servers
         let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/" + encodeURIComponent("ArangoSearch::FailQueriesOnOutOfSync"), body: {} });
         assertEqual(200, result.status);
-      });
+      }
       
       // query must fail because the link is marked as out of sync
       try {
@@ -161,6 +165,14 @@ function ArangoSearchOutOfSyncSuite () {
       // query should produce no results, but at least shouldn't fail
       result = db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();
       assertEqual(0, result.length);
+      
+      let outOfSync = 0;
+      for (let leaderUrl of leaderUrls) {
+        let m = getMetric(leaderUrl, "arangodb_search_num_out_of_sync_links");
+        outOfSync += parseInt(m);
+      }
+      // 5 shards, counted twice, because the is out of sync per shard plus the inverted index
+      assertEqual(2 * 5, outOfSync);
     },
 
   };
