@@ -152,6 +152,7 @@ void Projections::toVelocyPackFromDocument(
       TRI_ASSERT(it.path.size() == 1);
       b.add(it.path[0], VPackValue(transaction::helpers::extractIdString(
                             trxPtr->resolver(), slice, slice)));
+
     } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
       // projection for "_key"
       TRI_ASSERT(it.path.size() == 1);
@@ -188,10 +189,12 @@ void Projections::toVelocyPackFromDocument(
       TRI_ASSERT(it.path.size() > 1);
       size_t level = 0;
       VPackSlice found = slice;
+      VPackSlice prev;
       size_t const n = it.path.size();
       while (level < n) {
         // look up attribute/sub-attribute
         found = found.get(it.path[level]);
+
         if (found.isNone()) {
           // not found. we can exit early
           b.add(it.path[level], VPackValue(VPackValueType::Null));
@@ -205,13 +208,20 @@ void Projections::toVelocyPackFromDocument(
         }
         if (level == n - 1) {
           // target value
-          b.add(it.path[level], found);
+          if (found.isCustom()) {
+            b.add(it.path[level],
+                  VPackValue(transaction::helpers::extractIdString(
+                      trxPtr->resolver(), found, prev)));
+          } else {
+            b.add(it.path[level], found);
+          }
           break;
         }
         // recurse into sub-attribute object
         TRI_ASSERT(level < n - 1);
         b.add(it.path[level], VPackValue(VPackValueType::Object));
         ++level;
+        prev = found;
       }
 
       // close all that we opened ourselves, so that the next projection can
