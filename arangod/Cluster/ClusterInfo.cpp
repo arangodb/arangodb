@@ -1536,7 +1536,7 @@ void ClusterInfo::loadPlan() {
         }
 
         auto shardIDs = newCollection->shardIds();
-        auto shards = std::make_shared<std::vector<std::string>>();
+        auto shards = std::make_shared<std::vector<ServerID>>();
         shards->reserve(shardIDs->size());
         newShardToName.reserve(shardIDs->size());
 
