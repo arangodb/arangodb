@@ -99,11 +99,16 @@ class IResearchInvertedIndex : public IResearchDataStore {
   VPackComparer<IResearchInvertedIndexSort> _comparer;
 };
 
-class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
-                                      public Index {
+class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
+                                            public Index {
  public:
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
+  }
+
+  ~IResearchInvertedClusterIndex() final {
+    // should be in final dtor, otherwise its vtable already destroyed
+    _asyncSelf->reset();
   }
 
   void toVelocyPack(

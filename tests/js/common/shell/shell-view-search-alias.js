@@ -69,8 +69,8 @@ function ViewSearchAliasSuite() {
       try {
         db._createView("", "search-alias", {});
         fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, e.errorNum);
       }
     },
 
@@ -82,10 +82,11 @@ function ViewSearchAliasSuite() {
         db._createView("v1", "search-alias", {});
         db._createView("v1", "search-alias", {});
         fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, e.errorNum);
       } finally {
         var v1 = db._view("v1");
+        assertEqual(v1.properties().indexes, []);
         v1.drop();
       }
     },
@@ -100,8 +101,8 @@ function ViewSearchAliasSuite() {
         db._create("v1");
         db._createView("v1", "search-alias", {});
         fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, e.errorNum);
       } finally {
         var v1 = db._collection("v1");
         v1.drop();
@@ -114,9 +115,10 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.name(), "v1");
         v1.properties({indexes: [{collection: "c1", index: "i1"}]});
         fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
       } finally {
+        assertEqual(v1.properties().indexes, []);
         v1.drop();
       }
     },
@@ -128,9 +130,10 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.name(), "v1");
         v1.properties({indexes: [{collection: "c1", index: "i1"}]});
         fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
       } finally {
+        assertEqual(v1.properties().indexes, []);
         v1.drop();
         c1.drop();
       }
@@ -142,10 +145,19 @@ function ViewSearchAliasSuite() {
       var v1 = db._createView("v1", "search-alias", {});
       try {
         assertEqual(v1.name(), "v1");
-        v1.properties({indexes: [{collection: "c1", index: "i1"}]});
-      } finally {
-        v1.drop();
+        var idxs = [{collection: "c1", index: "i1"}];
+        v1.properties({indexes: idxs});
+        assertEqual(v1.properties().indexes, idxs);
         c1.drop();
+      } catch (e) {
+        fail(e.errorMessage);
+      } finally {
+        assertEqual(v1.properties().indexes, []);
+        v1.drop();
+        try {
+          c1.drop();
+        } catch (_) {
+        }
       }
     },
 
@@ -156,10 +168,19 @@ function ViewSearchAliasSuite() {
       var v1 = db._createView("v1", "search-alias", {});
       try {
         assertEqual(v1.name(), "v1");
-        v1.properties({indexes: [{collection: "c1", index: "i1"}, {collection: "c1", index: "i2"}]});
+        var idxs = [{collection: "c1", index: "i1"}, {collection: "c1", index: "i2"}];
+        v1.properties({indexes: idxs});
+        assertEqual(v1.properties().indexes, idxs);
+        c1.drop();
+        assertEqual(v1.properties().indexes, []);
+      } catch (e) {
+        fail(e.errorMessage);
       } finally {
         v1.drop();
-        c1.drop();
+        try {
+          c1.drop();
+        } catch (_) {
+        }
       }
     },
 
@@ -172,9 +193,10 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.name(), "v1");
         v1.properties({indexes: [{collection: "c1", index: "i1"}, {collection: "c1", index: "i2"}]});
         fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
       } finally {
+        assertEqual(v1.properties().indexes, []);
         v1.drop();
         c1.drop();
       }
@@ -189,9 +211,29 @@ function ViewSearchAliasSuite() {
       try {
         assertEqual(v1.name(), "v1");
         v1.properties({indexes: [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}]});
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
       } finally {
+        assertEqual(v1.properties().indexes, []);
+        v1.drop();
+        c1.drop();
+        c2.drop();
+      }
+    },
+
+    testAddNonCompatibleIndexes2: function () {
+      var c1 = db._create("c1");
+      var c2 = db._create("c2");
+      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_en"}]});
+      c2.ensureIndex({name: "i2", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_ru"}]});
+      var v1 = db._createView("v1", "search-alias", {});
+      try {
+        assertEqual(v1.name(), "v1");
+        v1.properties({indexes: [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}]});
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
+      } finally {
+        assertEqual(v1.properties().indexes, []);
         v1.drop();
         c1.drop();
         c2.drop();
@@ -206,11 +248,25 @@ function ViewSearchAliasSuite() {
       var v1 = db._createView("v1", "search-alias", {});
       try {
         assertEqual(v1.name(), "v1");
-        v1.properties({indexes: [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}]});
+        var idxs = [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}];
+        v1.properties({indexes: idxs});
+        assertEqual(v1.properties().indexes, idxs);
+        c2.drop();
+        assertEqual(v1.properties().indexes, [{collection: "c1", index: "i1"}]);
+        c1.drop();
+        assertEqual(v1.properties().indexes, []);
+      } catch (e) {
+        fail(e.errorMessage);
       } finally {
         v1.drop();
-        c1.drop();
-        c2.drop();
+        try {
+          c1.drop();
+        } catch (_) {
+        }
+        try {
+          c2.drop();
+        } catch (_) {
+        }
       }
     },
 
@@ -223,9 +279,10 @@ function ViewSearchAliasSuite() {
         assertEqual(v1.name(), "v1");
         v1.properties({indexes: [{collection: "c1", index: "i1"}, {collection: "c1", index: "i2"}]});
         fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
       } finally {
+        assertEqual(v1.properties().indexes, []);
         v1.drop();
         c1.drop();
       }
