@@ -281,16 +281,15 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
     : IResearchDataStore(iid, collection) {}
 
 IResearchLink::~IResearchLink() {
-  Result res;
-  try {
-    res = unload();  // disassociate from view if it has not been done yet
-  } catch (...) {
-  }
-
-  if (!res.ok()) {
-    LOG_TOPIC("2b41f", ERR, TOPIC)
-        << "failed to unload arangodb_search link in link destructor: "
-        << res.errorNumber() << " " << res.errorMessage();
+  // disassociate from view if it has not been done yet
+  auto r = unload();
+  if (!r.ok()) {
+    try {
+      LOG_TOPIC("2b41f", ERR, TOPIC)
+          << "failed to unload arangodb_search link in link destructor: "
+          << r.errorNumber() << " " << r.errorMessage();
+    } catch (...) {
+    }
   }
 }
 
@@ -472,7 +471,7 @@ Result IResearchLink::unload() noexcept {
   // the collection was already lazily deleted.
   if (_collection.deleted()  // collection deleted
       || _collection.status() == TRI_VOC_COL_STATUS_DELETED) {
-    return drop();
+    return basics::catchToResult([&] { return drop(); });
   }
   shutdownDataStore();
   return {};
