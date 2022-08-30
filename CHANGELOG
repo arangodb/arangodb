@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix SEARCH-350: Crash during consolidation.
+
 * SEARCH-357: Added SUBSTRING_BYTES function.
 
 * Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
