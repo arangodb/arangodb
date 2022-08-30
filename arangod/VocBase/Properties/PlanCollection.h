@@ -115,6 +115,8 @@ struct PlanCollection {
   // NOTE: This attributes are not documented
   bool syncByRevision;
   bool usesRevisionsAsDocumentIds;
+  bool isSmart;
+  std::string smartGraphAttribute;
   // Deprecated, and not documented anymore
 
   std::string id;
@@ -145,6 +147,9 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("usesRevisionsAsDocumentIds",
                   planCollection.usesRevisionsAsDocumentIds)
               .fallback(true),
+          f.field("isSmart", planCollection.isSmart).fallback(false),
+          f.field("smartGraphAttribute", planCollection.smartGraphAttribute)
+              .fallback(""),
           f.field("numberOfShards", planCollection.numberOfShards)
               .fallback(f.keep())
               .invariant(PlanCollection::Invariants::isGreaterZero),
@@ -173,7 +178,7 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("globallyUniqueId", planCollection.globallyUniqueId)
               .fallback(""),
           f.field("shardingStrategy", planCollection.shardingStrategy)
-              .fallback("hash")
+              .fallback("")
               .invariant(PlanCollection::Invariants::isValidShardingStrategy),
           f.field("shardKeys", planCollection.shardKeys)
               .fallback(std::vector<std::string>{StaticStrings::KeyString}),

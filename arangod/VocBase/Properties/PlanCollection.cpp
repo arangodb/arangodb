@@ -88,7 +88,7 @@ auto PlanCollection::Invariants::isValidShardingStrategy(
     std::string const& strat) -> inspection::Status {
   // Note we may be better off with a lookup list here
   // Hash is first on purpose (default)
-  if (strat == "hash" || strat == "enterprise-hash-smart-edge" ||
+  if (strat == "" || strat == "hash" || strat == "enterprise-hash-smart-edge" ||
       strat == "community-compat" || strat == "enterprise-compat" ||
       strat == "enterprise-smart-edge-compat") {
     return inspection::Status::Success{};
@@ -133,6 +133,9 @@ auto PlanCollection::Transformers::ReplicationSatellite::fromSerialized(
 arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::serialize(builder, *this);
+  // TODO: This is a hack to erase attributes that are not expected by follow up
+  // APIS, it should be obsolete after refactoring is completed
+  std::vector<std::string> attributesToErase{};
   if (builder.slice().hasKey(StaticStrings::SmartJoinAttribute) &&
       builder.slice()
           .get(StaticStrings::SmartJoinAttribute)
@@ -140,9 +143,25 @@ arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {
     // TODO: This is a hack to erase the SmartJoin attribute if it was not set
     // We need this to satisfy the API checks in LogicalCollection
     // `initializeSmartAttributes`
-    return VPackCollection::remove(
-        builder.slice(),
-        std::vector<std::string>{StaticStrings::SmartJoinAttribute});
+    attributesToErase.emplace_back(StaticStrings::SmartJoinAttribute);
+  }
+  if (builder.slice().hasKey(StaticStrings::ShardingStrategy) &&
+      builder.slice().get(StaticStrings::ShardingStrategy).isEqualString("")) {
+    // TODO: This is a hack to erase the ShardingStrategy attribute if it was
+    // not set
+    attributesToErase.emplace_back(StaticStrings::ShardingStrategy);
+  }
+
+  if (builder.slice().hasKey(StaticStrings::GraphSmartGraphAttribute) &&
+      builder.slice()
+          .get(StaticStrings::GraphSmartGraphAttribute)
+          .isEqualString("")) {
+    // TODO: This is a hack to erase the SmartGraphAttribute attribute if it was
+    // not set
+    attributesToErase.emplace_back(StaticStrings::GraphSmartGraphAttribute);
+  }
+  if (!attributesToErase.empty()) {
+    return VPackCollection::remove(builder.slice(), attributesToErase);
   }
   return builder;
 }

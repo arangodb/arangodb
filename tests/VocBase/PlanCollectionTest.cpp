@@ -53,11 +53,14 @@ namespace tests {
   assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0.2)); \
   assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -0.3));
 
-#define GenerateFailsOnString(attributeName)                                  \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, ""));     \
+#define GenerateFailsOnNonEmptyString(attributeName)                          \
   assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, "test")); \
   assertParsingThrows(                                                        \
       createMinimumBodyWithOneValue(#attributeName, "dogfather"));
+
+#define GenerateFailsOnString(attributeName)                              \
+  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, "")); \
+  GenerateFailsOnNonEmptyString(attribtueName)
 
 #define GenerateFailsOnArray(attributeName)          \
   assertParsingThrows(createMinimumBodyWithOneValue( \
@@ -202,7 +205,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_EQ(testee->distributeShardsLike, "");
   EXPECT_EQ(testee->smartJoinAttribute, "");
   EXPECT_EQ(testee->globallyUniqueId, "");
-  EXPECT_EQ(testee->shardingStrategy, "hash");
+  EXPECT_EQ(testee->shardingStrategy, "");
 
   // TODO: We only test defaults here, not all possible options
   ASSERT_EQ(testee->shardKeys.size(), 1);
@@ -217,7 +220,9 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   // This covers only non-documented APIS
   EXPECT_TRUE(testee->syncByRevision);
   EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
+  EXPECT_FALSE(testee->isSmart);
   EXPECT_EQ(testee->id, "");
+  EXPECT_EQ(testee->smartGraphAttribute, "");
 }
 
 TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
@@ -275,9 +280,12 @@ TEST_F(PlanCollectionUserAPITest, test_shardingStrategy) {
     EXPECT_EQ(testee->shardingStrategy, expected)
         << "Parsing error in " << body.toJson();
   };
-  std::vector<std::string> allowedStrategies{
-      "hash", "enterprise-hash-smart-edge", "community-compat",
-      "enterprise-compat", "enterprise-smart-edge-compat"};
+  std::vector<std::string> allowedStrategies{"",
+                                             "hash",
+                                             "enterprise-hash-smart-edge",
+                                             "community-compat",
+                                             "enterprise-compat",
+                                             "enterprise-smart-edge-compat"};
 
   for (auto const& strategy : allowedStrategies) {
     shouldBeEvaluatedTo(
@@ -285,7 +293,7 @@ TEST_F(PlanCollectionUserAPITest, test_shardingStrategy) {
   }
 
   GenerateFailsOnBool(shardingStrategy);
-  GenerateFailsOnString(shardingStrategy);
+  GenerateFailsOnNonEmptyString(shardingStrategy);
   GenerateFailsOnInteger(shardingStrategy);
   GenerateFailsOnDouble(shardingStrategy);
   GenerateFailsOnArray(shardingStrategy);
@@ -362,7 +370,9 @@ GenerateStringAttributeTest(globallyUniqueId);
 // Covers a non-documented API
 GenerateBoolAttributeTest(syncByRevision);
 GenerateBoolAttributeTest(usesRevisionsAsDocumentIds);
+GenerateBoolAttributeTest(isSmart);
 GenerateStringAttributeTest(id);
+GenerateStringAttributeTest(smartGraphAttribute);
 
 GeneratePositiveIntegerAttributeTestInternal(minReplicationFactor,
                                              writeConcern);
