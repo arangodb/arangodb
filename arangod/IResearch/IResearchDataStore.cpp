@@ -902,6 +902,11 @@ Result IResearchDataStore::deleteDataStore() noexcept {
   return {};
 }
 
+void IResearchDataStore::initAsyncSelf() {
+  _asyncSelf->reset();
+  _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
+}
+
 Result IResearchDataStore::initDataStore(
     bool& pathExists, InitCallback const& initCallback, uint32_t version,
     bool sorted, bool nested,
