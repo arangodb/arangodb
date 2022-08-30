@@ -954,7 +954,7 @@ bool IResearchDataStore::setOutOfSync() noexcept {
   // single servers
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  if (!_outOfSync.exchange(true)) {
+  if (!_outOfSync.exchange(true, std::memory_order_release)) {
     // increase metric for number of out-of-sync links, only once per link
     TRI_ASSERT(_asyncFeature != nullptr);
     _asyncFeature->trackOutOfSyncLink();
@@ -969,6 +969,11 @@ bool IResearchDataStore::isOutOfSync() const noexcept {
   // the out of sync flag is expected to be set either during the
   // recovery phase, or when a commit goes wrong.
   return _outOfSync.load(std::memory_order_acquire);
+}
+
+void IResearchDataStore::initAsyncSelf() {
+  _asyncSelf->reset();
+  _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 }
 
 Result IResearchDataStore::initDataStore(

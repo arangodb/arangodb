@@ -802,23 +802,28 @@ Result IResearchInvertedIndex::init(
                    errField + "': " + definition.toString()));
     return {TRI_ERROR_BAD_PARAMETER, errField};
   }
+  if (ServerState::instance()->isSingleServer() ||
+      ServerState::instance()->isDBServer()) {
+    TRI_ASSERT(_meta._sort.sortCompression());
+    auto r = initDataStore(pathExists, initCallback,
+                           static_cast<uint32_t>(_meta._version), isSorted(),
+                           _meta.hasNested(), _meta._storedValues.columns(),
+                           _meta._sort.sortCompression());
+    if (r.ok()) {
+      _comparer.reset(_meta._sort);
+    }
 
-  TRI_ASSERT(_meta._sort.sortCompression());
-  auto r = initDataStore(pathExists, initCallback,
-                         static_cast<uint32_t>(_meta._version), isSorted(),
-                         _meta.hasNested(), _meta._storedValues.columns(),
-                         _meta._sort.sortCompression());
-  if (r.ok()) {
-    _comparer.reset(_meta._sort);
+    if (auto s = definition.get(StaticStrings::LinkOutOfSync); s.isTrue()) {
+      // mark index as out of sync
+      setOutOfSync();
+    }
+
+    properties(_meta);
+    return r;
   }
 
-  if (auto s = definition.get(StaticStrings::LinkOutOfSync); s.isTrue()) {
-    // mark index as out of sync
-    setOutOfSync();
-  }
-
-  properties(_meta);
-  return r;
+  initAsyncSelf();
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

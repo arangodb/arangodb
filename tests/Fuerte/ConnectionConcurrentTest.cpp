@@ -77,10 +77,10 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
 
   auto joins = ThreadGuard(threads());
 
+  const size_t rep = repeat();
   for (size_t t = 0; t < threads(); t++) {
-    const size_t rep = repeat();
     wg.add((unsigned)rep);
-    joins.emplace([&] {
+    joins.emplace([&connections, rep, &cb] {
       for (size_t i = 0; i < rep; i++) {
         auto request = fu::createRequest(fu::RestVerb::Get, "/_api/version");
         auto& conn = *connections[i % connections.size()];
