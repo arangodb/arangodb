@@ -317,6 +317,29 @@ function optimizerRuleTestSuite () {
       assertEqual({ resultStatus: "ok", requestStatus: "ok", count: 1 }, result[1]);
     },
 
+    testSearch366: function () {
+      c.truncate();
+      let doc = c.insert({ i:0 }); 
+      // store document as sub-document
+      db._query("FOR doc IN @@cn UPDATE doc WITH { sub: doc } IN @@cn", { "@cn": cn }); 
+
+      let results = db._query("FOR doc IN @@cn RETURN doc.sub._id", { "@cn": cn }).toArray();
+      assertEqual(1, results.length);
+      assertEqual(doc._id, results[0]);
+      
+      results = db._query("FOR doc IN @@cn RETURN doc.sub._key", { "@cn": cn }).toArray();
+      assertEqual(1, results.length);
+      assertEqual(doc._key, results[0]);
+      
+      results = db._query("FOR doc IN @@cn RETURN doc.sub._rev", { "@cn": cn }).toArray();
+      assertEqual(1, results.length);
+      assertEqual(doc._rev, results[0]);
+      
+      results = db._query("FOR doc IN @@cn RETURN doc.sub.i", { "@cn": cn }).toArray();
+      assertEqual(1, results.length);
+      assertEqual(0, results[0]);
+    },
+
   };
 }
 
