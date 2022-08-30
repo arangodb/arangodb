@@ -3,6 +3,8 @@ v3.9.3 (XXXX-XX-XX)
 
 * Disable optimization rule to avoid crash (BTS-951).
 
+* Fix SEARCH-350: Crash during consolidation.
+
 * Fix comparison of JSON schemas on DB servers after there was a schema change
   via a coordinator: the schema comparison previously did not take into account
   that some ArangoDB versions store an internal `{"type":"json"}` attribute in
