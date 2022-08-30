@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix SEARCH-350: Crash during consolidation.
+
 * SEARCH-357: Added SUBSTRING_BYTES function.
 
 * A new Pregel algorithm: the version of Hypertext-Induced Topic Search (HITS)
