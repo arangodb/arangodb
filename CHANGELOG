@@ -1,6 +1,10 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed SEARCH-369: add a compatibility check to the search-alias view for indexes from the same collection.
+
+* Fixed BTS-959: no one call shutdown and delete datastore for the inverted index in some C++ tests.
+
 * Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
