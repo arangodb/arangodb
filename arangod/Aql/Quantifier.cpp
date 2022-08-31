@@ -91,10 +91,10 @@ std::pair<size_t, size_t> Quantifier::requiredMatches(size_t inputSize,
     Type type = static_cast<Type>(quantifier->getIntValue(true));
 
     if (type == Quantifier::Type::kAll) {
-      return {inputSize, inputSize};
+      return {std::max<size_t>(inputSize, 1), std::max<size_t>(inputSize, 1)};
     }
     if (type == Quantifier::Type::kAny) {
-      return {1, inputSize == 0 ? 1 : inputSize};
+      return {1, std::max<size_t>(1, inputSize)};
     }
     if (type == Quantifier::Type::kNone) {
       return {0, 0};

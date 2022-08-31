@@ -347,7 +347,7 @@ function arrayAccessTestSuite () {
      
       // ALL|ANY|NONE
       result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT == 1]", { values: [] }).json;
-      assertEqual([ true ], result);
+      assertEqual([ false ], result);
 
       result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT == 1]", { values }).json;
       assertEqual([ false ], result);
