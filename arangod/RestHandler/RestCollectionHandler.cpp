@@ -380,7 +380,7 @@ void RestCollectionHandler::handleCommandPost() {
     TRI_ASSERT(result.get().size() == 1);
     coll = result.get().at(0);
   }
-  
+
   if (res.ok()) {
     TRI_ASSERT(coll);
     collectionRepresentation(coll->name(),
