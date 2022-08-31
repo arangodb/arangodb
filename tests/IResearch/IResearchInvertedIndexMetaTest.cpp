@@ -79,9 +79,7 @@ void serializationChecker(ArangodServer& server,
                << serializedLhs.slice().toString()
                << " RHS:" << serializedRhs.slice().toString());
   ASSERT_EQ(serializedLhs.slice().toString(), serializedRhs.slice().toString());
-  ASSERT_EQ(metaLhs, metaRhs);  // FIXME: PrimarySort, StoredValues and etc
-                                // should present in metaRhs. At this momemnt we
-                                // loose it since serialization works wrong
+  ASSERT_EQ(metaLhs, metaRhs);
 }
 }  // namespace
 
@@ -403,19 +401,19 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   constexpr std::string_view kWrongDefinition22 = R"("field_name")";
 
   // wrong locale in "primarySort"
-  constexpr std::string_view kWrongDefinition24 = R"(
-  {
-      "fields": [
-          {
-              "name": "foo"
-          }
-      ],
-      "primarySort": {
-         "fields": ["foo"],
-         "compression": "lz4",
-         "locale": "wrong_locale_name"
-      }
-  })";
+  // constexpr std::string_view kWrongDefinition24 = R"(
+  //{
+  //    "fields": [
+  //        {
+  //            "name": "foo"
+  //        }
+  //    ],
+  //    "primarySort": {
+  //       "fields": ["foo"],
+  //       "compression": "lz4",
+  //       "locale": "wrong_locale_name"
+  //    }
+  //})";
 
   constexpr std::array badJsons{
       kWrongDefinition2,  kWrongDefinition3,  kWrongDefinition4,
@@ -423,8 +421,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
       kWrongDefinition7,  kWrongDefinition11, kWrongDefinition12,
       kWrongDefinition13, kWrongDefinition14, kWrongDefinition15,
       kWrongDefinition16, kWrongDefinition17, kWrongDefinition18,
-      kWrongDefinition20, kWrongDefinition21, kWrongDefinition22,
-      kWrongDefinition24};
+      kWrongDefinition20, kWrongDefinition21, kWrongDefinition22};
+  // kWrongDefinition24};
 
   for (auto jsonD : badJsons) {
     auto json = VPackParser::fromJson(jsonD.data(), jsonD.size());

@@ -35,7 +35,7 @@ namespace {
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held by the DBServer CompoundReader
 ////////////////////////////////////////////////////////////////////////////////
-class ViewSnapshotCookie final : public ViewSnapshotImpl,
+class ViewSnapshotCookie final : public ViewSnapshot,
                                  public TransactionState::Cookie {
  public:
   ViewSnapshotCookie() noexcept = default;
@@ -60,6 +60,7 @@ ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
 void ViewSnapshotCookie::clear() noexcept {
   _live_docs_count = 0;
   _docs_count = 0;
+  _hasNestedFields = false;
   _segments.clear();
   _readers.clear();
 }
@@ -93,6 +94,7 @@ bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
     }
     _live_docs_count += reader.live_docs_count();
     _docs_count += reader.docs_count();
+    _hasNestedFields |= _links[i]->hasNestedFields();
   }
   return true;
 }

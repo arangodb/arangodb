@@ -49,22 +49,13 @@ namespace iresearch {
 class ViewSnapshot : public irs::index_reader {
  public:
   using Links = std::vector<LinkLock>;
+  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
-};
 
-using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
+  bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
-class ViewSnapshotImpl : public ViewSnapshot {
- protected:
-  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
-
-  std::uint64_t _live_docs_count = 0;
-  std::uint64_t _docs_count = 0;
-  Segments _segments;
-
- private:
   [[nodiscard]] std::uint64_t live_docs_count() const noexcept final {
     return _live_docs_count;
   }
@@ -87,7 +78,15 @@ class ViewSnapshotImpl : public ViewSnapshot {
     TRI_ASSERT(i < _segments.size());
     return _segments[i].first;
   }
+
+ protected:
+  Segments _segments;
+  std::uint64_t _live_docs_count = 0;
+  std::uint64_t _docs_count = 0;
+  bool _hasNestedFields{false};
 };
+
+using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation over multiple irs::index_reader
@@ -95,7 +94,7 @@ class ViewSnapshotImpl : public ViewSnapshot {
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held
 ////////////////////////////////////////////////////////////////////////////////
-class ViewSnapshotView final : public ViewSnapshotImpl {
+class ViewSnapshotView final : public ViewSnapshot {
  public:
   /// @brief constructs snapshot from a given snapshot
   ///        according to specified set of collections
