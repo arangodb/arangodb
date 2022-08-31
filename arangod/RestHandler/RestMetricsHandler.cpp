@@ -33,6 +33,7 @@
 #include "Network/Utils.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Types.h"
 

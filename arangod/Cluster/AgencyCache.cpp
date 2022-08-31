@@ -26,6 +26,7 @@
 #include "Agency/AgencyStrings.h"
 #include "Agency/Node.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCallback.h"
 #include "Basics/application-exit.h"
 #include "GeneralServer/RestHandler.h"
 #include "Metrics/GaugeBuilder.h"

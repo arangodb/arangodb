@@ -39,6 +39,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/arangod.h"
+#include "VocBase/ticks.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>

@@ -23,16 +23,7 @@
 
 #pragma once
 
-#include <cstdint>
-#include <cstdlib>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-
 #include <velocypack/Slice.h>
-#include <velocypack/Value.h>
-
-#include "Basics/Identifier.h"
 
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;

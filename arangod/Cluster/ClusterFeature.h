@@ -43,6 +43,7 @@ class MetricsFeature;
 }
 
 class AgencyCache;
+class AgencyCallback;
 class AgencyCallbackRegistry;
 class DatabaseFeature;
 class HeartbeatThread;
