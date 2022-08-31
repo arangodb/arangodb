@@ -23,7 +23,6 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -38,14 +37,13 @@
 #include <velocypack/velocypack-memory.h>
 
 #include "Inspection/Access.h"
-#include "Inspection/Status.h"
+#include "Inspection/ValidateInspector.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
 #include "velocypack/Builder.h"
 
 #include "Logger/LogMacros.h"
-#include "velocypack/Slice.h"
 
 namespace {
 
@@ -2096,65 +2094,57 @@ TEST_F(VPackInspectionTest, StructIncludingVPackBuilder) {
   }
 }
 
-TEST_F(VPackInspectionTest, Result) {
-  arangodb::Result result = {TRI_ERROR_INTERNAL, "some error message"};
-  VPackBuilder expectedSerlized;
-  {
-    VPackObjectBuilder ob(&expectedSerlized);
-    expectedSerlized.add("number", TRI_ERROR_INTERNAL);
-    expectedSerlized.add("message", "some error message");
-  }
+struct ValidateInspectorTest : public ::testing::Test {
+  arangodb::inspection::ValidateInspector inspector;
+};
 
-  VPackBuilder serialized;
-  arangodb::velocypack::serialize(serialized, result);
-  auto slice = serialized.slice();
-  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
-
-  auto deserialized =
-      arangodb::velocypack::deserialize<arangodb::Result>(slice);
-  EXPECT_EQ(result, deserialized);
+TEST_F(ValidateInspectorTest, load_object_with_invariant_fulfilled) {
+  Invariant i{.i = 42, .s = "foobar"};
+  auto result = inspector.apply(i);
+  ASSERT_TRUE(result.ok());
 }
 
-TEST_F(VPackInspectionTest, ResultTWithResultInside) {
-  arangodb::ResultT<uint64_t> result =
-      arangodb::Result{TRI_ERROR_INTERNAL, "some error message"};
-  VPackBuilder expectedSerlized;
+TEST_F(ValidateInspectorTest, load_object_with_invariant_not_fulfilled) {
   {
-    VPackObjectBuilder ob(&expectedSerlized);
-    expectedSerlized.add(VPackValue("error"));
-    {
-      VPackObjectBuilder ob2(&expectedSerlized);
-      expectedSerlized.add("number", TRI_ERROR_INTERNAL);
-      expectedSerlized.add("message", "some error message");
-    }
+    Invariant i{.i = 0, .s = "foobar"};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i", result.path());
   }
 
-  VPackBuilder serialized;
-  arangodb::velocypack::serialize(serialized, result);
-  auto slice = serialized.slice();
-  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
-
-  auto deserialized =
-      arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
-  EXPECT_EQ(result, deserialized);
+  {
+    Invariant i{.i = 42, .s = ""};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("s", result.path());
+  }
 }
 
-TEST_F(VPackInspectionTest, ResultTWithTInside) {
-  arangodb::ResultT<uint64_t> result = 45;
-  VPackBuilder expectedSerlized;
+TEST_F(ValidateInspectorTest, load_object_with_invariant_Result_not_fulfilled) {
   {
-    VPackObjectBuilder ob(&expectedSerlized);
-    expectedSerlized.add("value", 45);
+    InvariantWithResult i{.i = 0};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Must not be zero", result.error());
+    EXPECT_EQ("i", result.path());
   }
 
-  VPackBuilder serialized;
-  arangodb::velocypack::serialize(serialized, result);
-  auto slice = serialized.slice();
-  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+  {
+    Invariant i{.i = 42, .s = ""};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("s", result.path());
+  }
+}
 
-  auto deserialized =
-      arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
-  EXPECT_EQ(result, deserialized);
+TEST_F(ValidateInspectorTest, load_object_with_object_invariant) {
+  ObjectInvariant o{.i = 42, .s = ""};
+  auto result = inspector.apply(o);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
 }
 
 }  // namespace
