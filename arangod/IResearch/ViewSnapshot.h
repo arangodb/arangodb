@@ -49,7 +49,6 @@ namespace iresearch {
 class ViewSnapshot : public irs::index_reader {
  public:
   using Links = std::vector<LinkLock>;
-  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
@@ -80,6 +79,8 @@ class ViewSnapshot : public irs::index_reader {
   }
 
  protected:
+  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
+  
   Segments _segments;
   std::uint64_t _live_docs_count = 0;
   std::uint64_t _docs_count = 0;

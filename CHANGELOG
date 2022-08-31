@@ -1,6 +1,10 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed SEARCH-343 Fixed iterating all documents with nested fields
+
+* Fixed SEARCH-322 Fixed executing empty nested condition
+
 * Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
