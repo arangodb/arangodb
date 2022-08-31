@@ -35,6 +35,11 @@ devel
   The number of out-of-sync links/indexes is also observable via a new metric
   `arangodb_search_num_out_of_sync_links`.
 
+* Updated arangosync to v2.12.0-preview-11.
+
+* Added integration tests for `--log.escape-control-chars` and 
+ `--log.escape-unicode-chars`.
+
 * Fix SEARCH-350: Crash during consolidation.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
