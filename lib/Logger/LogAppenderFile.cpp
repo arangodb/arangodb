@@ -41,7 +41,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
 #include "Logger/Logger.h"
 
@@ -58,45 +57,21 @@ LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
     : LogAppender(),
       _bufferSize(0),
       _fd(fd),
-      _useColors(false),
-      _controlEscape(Logger::getUseControlEscaped()),
-      _unicodeEscape(Logger::getUseUnicodeEscaped()) {
-  if (_controlEscape) {
-    if (_unicodeEscape) {
-      _escaper =
-          std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
-    } else {
-      _escaper = std::make_unique<
-          Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
-    }
-  } else {
-    if (_unicodeEscape) {
-      _escaper = std::make_unique<
-          Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
-    } else {
-      _escaper = std::make_unique<
-          Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
-    }
-  }
-}
-
-size_t LogAppenderStream::determineOutputBufferSize(
-    std::string const& message) const {
-  return _escaper->determineOutputBufferSize(message) +
-         2;  //+2 bytes because it needs to end with '\n' and '\0'
-}
+      _useColors(false) {}
 
 size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
+  std::string formattedMsg = message + '\n';
   char* output = _buffer.get();
-  _escaper->writeIntoOutputBuffer(message, output);
-  *output++ = '\n';
-  *output = '\0';
-  return (output - _buffer.get());
+
+  strncpy(output, formattedMsg.data(), formattedMsg.size());
+  output[formattedMsg.size()] = '\0';
+
+  return (output + strlen(output) - _buffer.get());
 }
 
 void LogAppenderStream::logMessage(LogMessage const& message) {
   // check max. required output length
-  size_t const neededBufferSize = determineOutputBufferSize(message._message);
+  size_t const neededBufferSize = message._message.size() + 2;
 
   // check if we can re-use our already existing buffer
   if (neededBufferSize > _bufferSize) {
@@ -119,6 +94,7 @@ void LogAppenderStream::logMessage(LogMessage const& message) {
   TRI_ASSERT(_buffer != nullptr);
 
   size_t length = writeIntoOutputBuffer(message._message);
+
   TRI_ASSERT(length <= neededBufferSize);
 
   this->writeLogMessage(message._level, message._topicId, _buffer.get(),

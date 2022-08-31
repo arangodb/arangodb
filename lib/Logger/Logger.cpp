@@ -504,7 +504,10 @@ void Logger::log(char const* logid, char const* function, char const* file,
   if (Logger::_useJson) {
     // construct JSON output
     arangodb::velocypack::StringSink sink(&out);
-    arangodb::velocypack::Dumper dumper(&sink);
+    arangodb::velocypack::Options options;
+    options.escapeControl = _useControlEscaped;
+    options.escapeUnicode = _useUnicodeEscaped;
+    arangodb::velocypack::Dumper dumper(&sink, &options);
 
     out.push_back('{');
 
@@ -663,6 +666,25 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     TRI_ASSERT(offset == 0);
   } else {
+    std::unique_ptr<GeneralEscaper> escaper;
+    if (_useControlEscaped) {
+      if (_useUnicodeEscaped) {
+        escaper = std::make_unique<
+            Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
+      } else {
+        escaper = std::make_unique<
+            Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
+      }
+    } else {
+      if (_useUnicodeEscaped) {
+        escaper = std::make_unique<
+            Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
+      } else {
+        escaper = std::make_unique<
+            Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
+      }
+    }
+
     // hostname
     if (!_hostname.empty()) {
       out.append(_hostname);
@@ -761,13 +783,34 @@ void Logger::log(char const* logid, char const* function, char const* file,
     {
       READ_LOCKER(guard, _structuredParamsLock);
       //  meta data from log
-      LogContext::OverloadVisitor visitor([&out](std::string_view const& key,
-                                                 auto&& value) {
+      LogContext::OverloadVisitor visitor([&out, &escaper](
+                                              std::string_view const& key,
+                                              auto&& value) {
         if (!_structuredLogParams.contains({key.data(), key.size()})) {
           return;
         }
         out.push_back('[');
         out.append(key).append(": ", 2);
+
+        std::string newValue;
+        if constexpr (std::is_same_v<std::string_view,
+                                     std::remove_cv_t<std::remove_reference_t<
+                                         decltype(value)>>>) {
+          newValue = std::move((value));
+        } else {
+          newValue = std::move(std::to_string(value));
+        }
+
+        size_t neededBufferSize = escaper->determineOutputBufferSize(newValue);
+        char* buffer = (new char[neededBufferSize + 1]);  // \0
+        char* bufferFirst = buffer;
+
+        escaper->writeIntoOutputBuffer(newValue, buffer);
+
+        *(buffer) = '\0';
+        out.append(bufferFirst);
+        out.append("] ", 2);
+
         if constexpr (std::is_same_v<std::string_view,
                                      std::remove_cv_t<std::remove_reference_t<
                                          decltype(value)>>>) {
@@ -775,13 +818,21 @@ void Logger::log(char const* logid, char const* function, char const* file,
         } else {
           out.append(std::to_string(value));
         }
+
         out.append("] ", 2);
       });
       logContext.visit(visitor);
     }
 
     // generate the complete message
-    out.append(message);
+    size_t neededBufferSize = escaper->determineOutputBufferSize(message);
+    char* buffer = (new char[neededBufferSize + 1]);  // \0
+    char* bufferFirst = buffer;
+
+    escaper->writeIntoOutputBuffer(message, buffer);
+    *(buffer) = '\0';
+    out.append(bufferFirst);
+    // free(buffer);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);
@@ -810,8 +861,8 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
   }
 
   // first log to all "global" appenders, which are the in-memory ring buffer
-  // logger plus some Windows-specifc appenders for the debug output window and
-  // the Windows event log. note that these loggers do not require any
+  // logger plus some Windows-specifc appenders for the debug output window
+  // and the Windows event log. note that these loggers do not require any
   // configuration so we can always and safely invoke them.
   LogAppender::logGlobal(group, *msg);
 
@@ -880,20 +931,22 @@ void Logger::shutdown() {
   }
   // logging is now inactive
 
-  // reset the instance variable in Logger, so that others won't see it anymore
+  // reset the instance variable in Logger, so that others won't see it
+  // anymore
   std::unique_ptr<LogThread> loggingThread(
       _loggingThread.exchange(nullptr, std::memory_order_relaxed));
 
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
   if (loggingThread != nullptr) {
-    // (5) - this release-fetch-add synchronizes with the acquire-fetch-add (1)
-    // Even though a fetch-add with 0 is essentially a noop, this is necessary
-    // to ensure that threads which try to get a reference to the _loggingThread
-    // actually see the new nullptr value.
+    // (5) - this release-fetch-add synchronizes with the acquire-fetch-add
+    // (1) Even though a fetch-add with 0 is essentially a noop, this is
+    // necessary to ensure that threads which try to get a reference to the
+    // _loggingThread actually see the new nullptr value.
     _loggingThreadRefs.fetch_add(0, std::memory_order_release);
 
-    // wait until all threads have dropped their reference to the logging thread
+    // wait until all threads have dropped their reference to the logging
+    // thread
     while (_loggingThreadRefs.load(std::memory_order_relaxed)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
@@ -902,8 +955,8 @@ void Logger::shutdown() {
     std::string_view currentThreadName = nameFetcher.get();
     if (logThreadName == currentThreadName) {
       // oops, the LogThread itself crashed...
-      // so we need to flush the log messages here ourselves - if we waited for
-      // the LogThread to flush them, we would wait forever.
+      // so we need to flush the log messages here ourselves - if we waited
+      // for the LogThread to flush them, we would wait forever.
       loggingThread->processPendingMessages();
       loggingThread->beginShutdown();
     } else {

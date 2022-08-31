@@ -120,6 +120,7 @@ struct LogMessage {
   /// @brief whether or not the log message was already shrunk (used to
   /// prevent duplicate shrinking of message)
   bool _shrunk;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
