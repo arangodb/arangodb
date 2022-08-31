@@ -137,7 +137,15 @@ class IResearchDataStore {
 
   IResearchDataStore(IndexId iid, LogicalCollection& collection);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  virtual ~IResearchDataStore() {
+    // if triggered  - no unload was called prior to deleting index object
+    TRI_ASSERT(!_dataStore);
+  }
+#else
   virtual ~IResearchDataStore() = default;
+#endif
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
   ///        for use with asynchronous calls, e.g. callbacks, view
@@ -164,6 +172,8 @@ class IResearchDataStore {
   LogicalCollection& collection() const noexcept { return _collection; }
 
   static bool hasSelectivityEstimate();  // arangodb::Index override
+
+  bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
   void afterTruncate(TRI_voc_tick_t tick,
                      transaction::Methods* trx);  // arangodb::Index override
@@ -333,6 +343,8 @@ class IResearchDataStore {
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
 
+  void initAsyncSelf();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
@@ -418,6 +430,8 @@ class IResearchDataStore {
   // protected by _commitMutex
   TRI_voc_tick_t _lastCommittedTick;
   size_t _cleanupIntervalCount;
+
+  bool _hasNestedFields{false};
 
   // prevents data store sequential commits
   std::mutex _commitMutex;

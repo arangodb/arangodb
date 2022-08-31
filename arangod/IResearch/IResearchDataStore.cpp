@@ -902,6 +902,11 @@ Result IResearchDataStore::deleteDataStore() noexcept {
   return {};
 }
 
+void IResearchDataStore::initAsyncSelf() {
+  _asyncSelf->reset();
+  _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
+}
+
 Result IResearchDataStore::initDataStore(
     bool& pathExists, InitCallback const& initCallback, uint32_t version,
     bool sorted, bool nested,
@@ -912,7 +917,7 @@ Result IResearchDataStore::initDataStore(
   _asyncSelf->reset();
   // the data-store is being deallocated, link use is no longer valid
   // (wait for all the view users to finish)
-
+  _hasNestedFields = nested;
   auto& server = _collection.vocbase().server();
   if (!server.hasFeature<DatabasePathFeature>()) {
     return {TRI_ERROR_INTERNAL,

@@ -4,6 +4,9 @@ devel
 * Moved the handling of escaping control and unicode chars in the log to 
   the Logger instead of LogAppenderFile.
 
+* Added integration tests for `--log.escape-control-chars` and 
+ `--log.escape-unicode-chars`.
+
 * Fix SEARCH-350: Crash during consolidation.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
