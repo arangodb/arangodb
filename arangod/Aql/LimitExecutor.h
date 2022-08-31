@@ -27,7 +27,7 @@
 #pragma once
 
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"

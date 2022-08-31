@@ -25,7 +25,7 @@
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
 #include "Aql/RegisterInfos.h"
 
 namespace arangodb {
