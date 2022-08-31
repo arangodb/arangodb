@@ -281,16 +281,12 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
     : IResearchDataStore(iid, collection) {}
 
 IResearchLink::~IResearchLink() {
-  Result res;
-  try {
-    res = unload();  // disassociate from view if it has not been done yet
-  } catch (...) {
-  }
-
-  if (!res.ok()) {
+  // disassociate from view if it has not been done yet
+  auto r = unload();
+  if (!r.ok()) {
     LOG_TOPIC("2b41f", ERR, TOPIC)
         << "failed to unload arangodb_search link in link destructor: "
-        << res.errorNumber() << " " << res.errorMessage();
+        << r.errorNumber() << " " << r.errorMessage();
   }
 }
 
