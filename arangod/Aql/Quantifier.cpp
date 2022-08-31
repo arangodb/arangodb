@@ -94,7 +94,7 @@ std::pair<size_t, size_t> Quantifier::requiredMatches(size_t inputSize,
       return {inputSize, inputSize};
     }
     if (type == Quantifier::Type::kAny) {
-      return {inputSize == 0 ? 0 : 1, inputSize};
+      return {1, inputSize == 0 ? 1 : inputSize};
     }
     if (type == Quantifier::Type::kNone) {
       return {0, 0};
