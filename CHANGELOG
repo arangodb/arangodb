@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Do not drop follower shard after too many failed shard synchronization
+  attempts.
+
 * Updated arangosync to v2.12.0-preview-11.
 
 * Fixed SEARCH-369: add a compatibility check to the search-alias view for
