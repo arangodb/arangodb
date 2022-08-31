@@ -789,17 +789,22 @@ Result IResearchInvertedIndex::init(
                    errField + "': " + definition.toString()));
     return {TRI_ERROR_BAD_PARAMETER, errField};
   }
-
-  TRI_ASSERT(_meta._sort.sortCompression());
-  auto r = initDataStore(pathExists, initCallback,
-                         static_cast<uint32_t>(_meta._version), isSorted(),
-                         _meta.hasNested(), _meta._storedValues.columns(),
-                         _meta._sort.sortCompression());
-  if (r.ok()) {
-    _comparer.reset(_meta._sort);
+  if (ServerState::instance()->isSingleServer() ||
+      ServerState::instance()->isDBServer()) {
+    TRI_ASSERT(_meta._sort.sortCompression());
+    auto r = initDataStore(pathExists, initCallback,
+                           static_cast<uint32_t>(_meta._version), isSorted(),
+                           _meta.hasNested(), _meta._storedValues.columns(),
+                           _meta._sort.sortCompression());
+    if (r.ok()) {
+      _comparer.reset(_meta._sort);
+    }
+    properties(_meta);
+    return r;
+  } else {
+    initAsyncSelf();
+    return {};
   }
-  properties(_meta);
-  return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
