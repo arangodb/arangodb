@@ -176,6 +176,8 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first))
             .insert(trx, nullptr, docId, doc, {}, false);
       } else {
+        TRI_ASSERT(link.first->type() ==
+                   arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK);
         basics::downCast<IResearchRocksDBLink>(*(link.first))
             .insert(trx, nullptr, docId, doc, {}, false);
       }
@@ -250,6 +252,8 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
             basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
         impl.remove(trx, nullptr, docId, VPackSlice::emptyObjectSlice());
       } else {
+        TRI_ASSERT(link.first->type() ==
+                   arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK);
         IResearchLink& impl =
             basics::downCast<IResearchRocksDBLink>(*(link.first));
         impl.remove(trx, docId, false);
