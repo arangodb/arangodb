@@ -15,6 +15,7 @@ else
   files=( arangod/ client-tools/ lib/ enterprise/ )
 fi
 
+echo "cppcheck version: $(cppcheck --version)"
 cppcheck "$@" \
   -j $threads \
   --xml --xml-version=2 \
