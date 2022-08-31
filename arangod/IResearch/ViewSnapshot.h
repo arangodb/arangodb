@@ -49,6 +49,7 @@ namespace iresearch {
 class ViewSnapshot : public irs::index_reader {
  public:
   using Links = std::vector<LinkLock>;
+  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
@@ -63,25 +64,7 @@ class ViewSnapshot : public irs::index_reader {
     return _docs_count;
   }
 
-  [[nodiscard]] irs::sub_reader const& operator[](
-      std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return *(_segments[i].second);
-  }
-
-  [[nodiscard]] std::size_t size() const noexcept final {
-    return _segments.size();
-  }
-
-  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return _segments[i].first;
-  }
-
  protected:
-  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
-  
-  Segments _segments;
   std::uint64_t _live_docs_count = 0;
   std::uint64_t _docs_count = 0;
   bool _hasNestedFields{false};
@@ -102,8 +85,25 @@ class ViewSnapshotView final : public ViewSnapshot {
   ViewSnapshotView(
       const ViewSnapshot& rhs,
       containers::FlatHashSet<DataSourceId> const& collections) noexcept;
-};
 
+  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i].first;
+  }
+
+  [[nodiscard]] irs::sub_reader const& operator[](
+      std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return *(_segments[i].second);
+  }
+
+  [[nodiscard]] std::size_t size() const noexcept final {
+    return _segments.size();
+  }
+
+ private:
+  Segments _segments;
+};
 ////////////////////////////////////////////////////////////////////////////////
 /// Get view snapshot from transaction state
 ///
