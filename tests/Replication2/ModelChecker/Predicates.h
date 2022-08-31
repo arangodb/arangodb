@@ -241,7 +241,7 @@ combined(Os...) -> combined<Os...>;
 
 }  // namespace arangodb::test::model_checker
 
-template <char... Chars>
+template<char... Chars>
 struct Str {
   static constexpr char value[sizeof...(Chars)] = {Chars...};
 };
@@ -255,7 +255,7 @@ struct StringBuffer<File, std::index_sequence<Idxs...>> {
 
 template<const char File[], std::size_t FileLen, std::size_t Line>
 struct FileLineType {
-    static inline constexpr auto filename =
+  static inline constexpr auto filename =
       StringBuffer<File, std::make_index_sequence<FileLen>>::buffer.value;
   static inline constexpr std::size_t line = Line;
 
