@@ -3,6 +3,17 @@ v3.10.0 (XXXX-XX-XX)
 
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
+* Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
+
+* SEARCH-357: Added SUBSTRING_BYTES function.
+
+* Fixed SEARCH-347 Cycle variable reference in nested search query is properly
+  detected and rejected.
+  
+* Fixed SEARCH-364 Fixed index fields match check for inverted index.
+
+* Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
+
 * Fix comparison of JSON schemas on DB servers after there was a schema change
   via a coordinator: the schema comparison previously did not take into account
   that some ArangoDB versions store an internal `{"type":"json"}` attribute in
