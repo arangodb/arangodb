@@ -517,7 +517,7 @@ class instance {
     let size = fs.size(this.logFile);
     if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.
-      let err=`ERROR: ${this.logFile} is bigger than ${this.options.maxLogFileSize/1024}kB! - %{size/1024} Bytes!`;
+      let err=`ERROR: ${this.logFile} is bigger than ${this.options.maxLogFileSize/1024}kB! - ${size/1024} kBytes!`;
       this.assertLines.push(err);
       print(RED + err + RESET);
       return;
