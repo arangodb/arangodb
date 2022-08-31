@@ -1,6 +1,13 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fix SEARCH-350: Crash during consolidation.
+
+* When using `SHORTEST_PATH`, `K_SHORTEST_PATHS`, `ALL_SHORTEST_PATHS`, or
+  `K_PATHS` in an AQL Query and the query itself produced warnings during
+  execution, the type has been wrongly reported. It reported always with
+  `SHORTEST_PATH` and not the specific used one.
+
 * Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
