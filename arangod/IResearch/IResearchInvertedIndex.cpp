@@ -305,7 +305,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                                 .index = _reader,
                                 .ref = _variable,
                                 .isSearchQuery = false,
-                                .isOldMangling = false};
+                                .isOldMangling = false,
+                                .hasNestedFields = _index->meta().hasNested()};
 
     AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_index->meta());
 
@@ -427,7 +428,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       }
     } else {
       // sorting case
-      root.add<irs::all>();
+      addAllFilter(root, _index->meta().hasNested());
     }
     _filter = root.prepare(*_reader, _order, irs::kNoBoost, nullptr);
     TRI_ASSERT(_filter);

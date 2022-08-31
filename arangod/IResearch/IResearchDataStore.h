@@ -173,6 +173,8 @@ class IResearchDataStore {
 
   static bool hasSelectivityEstimate();  // arangodb::Index override
 
+  bool hasNestedFields() const noexcept { return _hasNestedFields; }
+
   void afterTruncate(TRI_voc_tick_t tick,
                      transaction::Methods* trx);  // arangodb::Index override
 
@@ -428,6 +430,8 @@ class IResearchDataStore {
   // protected by _commitMutex
   TRI_voc_tick_t _lastCommittedTick;
   size_t _cleanupIntervalCount;
+
+  bool _hasNestedFields{false};
 
   // prevents data store sequential commits
   std::mutex _commitMutex;
