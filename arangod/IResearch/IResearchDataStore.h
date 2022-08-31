@@ -412,6 +412,15 @@ class IResearchDataStore {
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  protected:
+  enum class DataStoreError : uint8_t {
+    // data store has no issues
+    kNoError = 0,
+    // data store is out of sync
+    kOutOfSync = 1,
+    // data store is failed (currently not used)
+    kFailed = 2,
+  };
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
@@ -447,8 +456,8 @@ class IResearchDataStore {
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
-  // data store is out of sync (i.e. has incomplete data)
-  std::atomic_bool _outOfSync;
+  // data store error state
+  std::atomic<DataStoreError> _error;
 
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;

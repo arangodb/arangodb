@@ -365,9 +365,13 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
   TRI_ASSERT(_meta._sortCompression);
   _viewGuid = definition.get(StaticStrings::ViewIdField).stringView();
 
-  if (auto s = definition.get(StaticStrings::LinkOutOfSync); s.isTrue()) {
-    // mark index as out of sync
-    setOutOfSync();
+  if (auto s = definition.get(StaticStrings::LinkError); s.isString()) {
+    if (s.stringView() == StaticStrings::LinkErrorOutOfSync) {
+      // mark index as out of sync
+      setOutOfSync();
+    } else if (s.stringView() == StaticStrings::LinkErrorFailed) {
+      // TODO: not implemented yet
+    }
   }
 
   Result r;
@@ -445,7 +449,8 @@ Result IResearchLink::properties(velocypack::Builder& builder,
 
   if (isOutOfSync()) {
     // link is out of sync - we need to report that
-    builder.add(StaticStrings::LinkOutOfSync, VPackValue(true));
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
   }
 
   return {};

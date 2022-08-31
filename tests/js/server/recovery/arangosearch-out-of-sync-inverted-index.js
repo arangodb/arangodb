@@ -73,8 +73,8 @@ function recoverySuite () {
   return {
     testIndexHasOutOfSyncFlag: function () {
       let idx = db['UnitTestsRecovery1'].indexes()[1];
-      assertTrue(idx.hasOwnProperty('outOfSync'));
-      assertTrue(idx.outOfSync);
+      assertTrue(idx.hasOwnProperty('error'));
+      assertEqual(idx.error, "outOfSync");
       
       // set failure point that makes querying failed links go wrong
       internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
@@ -88,7 +88,7 @@ function recoverySuite () {
       }
       
       idx = db['UnitTestsRecovery2'].indexes()[1];
-      assertFalse(idx.hasOwnProperty('outOfSync'));
+      assertFalse(idx.hasOwnProperty('error'));
 
       // query should produce no results, but at least shouldn't fail
       let result = db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();

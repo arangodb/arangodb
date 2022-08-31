@@ -78,14 +78,14 @@ function recoverySuite () {
   return {
     testLinksHaveOutOfSyncFlag: function () {
       let p = db._view('UnitTestsRecoveryView1').properties();
-      assertTrue(p.links.UnitTestsRecovery1.hasOwnProperty('outOfSync'));
-      assertTrue(p.links.UnitTestsRecovery1.outOfSync);
+      assertTrue(p.links.UnitTestsRecovery1.hasOwnProperty('error'));
+      assertEqual(p.links.UnitTestsRecovery1.error, "outOfSync");
       
       p = db._view('UnitTestsRecoveryView2').properties();
-      assertTrue(p.links.UnitTestsRecovery1.hasOwnProperty('outOfSync'));
-      assertTrue(p.links.UnitTestsRecovery1.outOfSync);
-      assertTrue(p.links.UnitTestsRecovery2.hasOwnProperty('outOfSync'));
-      assertTrue(p.links.UnitTestsRecovery2.outOfSync);
+      assertTrue(p.links.UnitTestsRecovery1.hasOwnProperty('error'));
+      assertEqual(p.links.UnitTestsRecovery1.error, "outOfSync");
+      assertTrue(p.links.UnitTestsRecovery2.hasOwnProperty('error'));
+      assertEqual(p.links.UnitTestsRecovery2.error, "outOfSync");
  
       // set failure point that makes querying failed links go wrong
       internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
@@ -106,7 +106,7 @@ function recoverySuite () {
       }
   
       p = db._view('UnitTestsRecoveryView3').properties();
-      assertFalse(p.links.UnitTestsRecovery3.hasOwnProperty('outOfSync'));
+      assertFalse(p.links.UnitTestsRecovery3.hasOwnProperty('error'));
       
       // query must not fail
       let result = db._query("FOR doc IN UnitTestsRecoveryView3 OPTIONS {waitForSync: true} RETURN doc").toArray();

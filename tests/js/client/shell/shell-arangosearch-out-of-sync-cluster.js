@@ -112,12 +112,12 @@ function ArangoSearchOutOfSyncSuite () {
 
       // now check properties of out-of-sync link
       let p = db._view('UnitTestsRecoveryView1').properties();
-      // in a cluster, the coordinator doesn't make the outOfSync flag available
-      assertFalse(p.links.UnitTestsRecovery1.hasOwnProperty('outOfSync'));
+      // in a cluster, the coordinator doesn't make the outOfSync error flag available
+      assertFalse(p.links.UnitTestsRecovery1.hasOwnProperty('error'));
       
       let idx = db['UnitTestsRecovery1'].indexes()[1];
-      // in a cluster, the coordinator doesn't make the outOfSync flag available
-      assertFalse(idx.hasOwnProperty('outOfSync'));
+      // in a cluster, the coordinator doesn't make the outOfSync error flag available
+      assertFalse(idx.hasOwnProperty('error'));
       
       for (let leaderUrl of leaderUrls) {
         // break search commit on the DB servers
@@ -142,7 +142,7 @@ function ArangoSearchOutOfSyncSuite () {
       }
       
       p = db._view('UnitTestsRecoveryView2').properties();
-      assertFalse(p.links.UnitTestsRecovery2.hasOwnProperty('outOfSync'));
+      assertFalse(p.links.UnitTestsRecovery2.hasOwnProperty('error'));
       
       // query must not fail
       let result = db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc").toArray();

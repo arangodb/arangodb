@@ -518,7 +518,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       // mark as data store not initialized
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
       _collection(collection),
-      _outOfSync{false},
+      _error(DataStoreError::kNoError),
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
@@ -954,12 +954,16 @@ bool IResearchDataStore::setOutOfSync() noexcept {
   // single servers
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  if (!_outOfSync.exchange(true, std::memory_order_release)) {
-    // increase metric for number of out-of-sync links, only once per link
-    TRI_ASSERT(_asyncFeature != nullptr);
-    _asyncFeature->trackOutOfSyncLink();
+  auto error = _error.load(std::memory_order_acquire);
+  if (error == DataStoreError::kNoError) {
+    if (_error.exchange(DataStoreError::kOutOfSync,
+                        std::memory_order_release) == error) {
+      // increase metric for number of out-of-sync links, only once per link
+      TRI_ASSERT(_asyncFeature != nullptr);
+      _asyncFeature->trackOutOfSyncLink();
 
-    return true;
+      return true;
+    }
   }
 
   return false;
@@ -968,7 +972,7 @@ bool IResearchDataStore::setOutOfSync() noexcept {
 bool IResearchDataStore::isOutOfSync() const noexcept {
   // the out of sync flag is expected to be set either during the
   // recovery phase, or when a commit goes wrong.
-  return _outOfSync.load(std::memory_order_acquire);
+  return _error.load(std::memory_order_acquire) == DataStoreError::kOutOfSync;
 }
 
 void IResearchDataStore::initAsyncSelf() {

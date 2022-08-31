@@ -762,7 +762,8 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
   }
   if (isOutOfSync()) {
     // index is out of sync - we need to report that
-    builder.add(StaticStrings::LinkOutOfSync, VPackValue(true));
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
   }
 }
 
@@ -813,9 +814,13 @@ Result IResearchInvertedIndex::init(
       _comparer.reset(_meta._sort);
     }
 
-    if (auto s = definition.get(StaticStrings::LinkOutOfSync); s.isTrue()) {
-      // mark index as out of sync
-      setOutOfSync();
+    if (auto s = definition.get(StaticStrings::LinkError); s.isString()) {
+      if (s.stringView() == StaticStrings::LinkErrorOutOfSync) {
+        // mark index as out of sync
+        setOutOfSync();
+      } else if (s.stringView() == StaticStrings::LinkErrorFailed) {
+        // not implemented yet
+      }
     }
 
     properties(_meta);
@@ -1061,7 +1066,8 @@ void IResearchInvertedClusterIndex::toVelocyPack(
 
   if (isOutOfSync()) {
     // link is out of sync - we need to report that
-    builder.add(StaticStrings::LinkOutOfSync, VPackValue(true));
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
   }
 }
 
