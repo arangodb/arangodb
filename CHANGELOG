@@ -4,6 +4,8 @@ devel
 * Moved the handling of escaping control and unicode chars in the log to 
   the Logger instead of LogAppenderFile.
 
+* Updated arangosync to v2.12.0-preview-11.
+
 * Added integration tests for `--log.escape-control-chars` and 
  `--log.escape-unicode-chars`.
 
