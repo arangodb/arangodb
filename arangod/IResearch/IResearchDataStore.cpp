@@ -562,6 +562,18 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
   };
 }
 
+IResearchDataStore::~IResearchDataStore() {
+  if (isOutOfSync()) {
+    TRI_ASSERT(_asyncFeature != nullptr);
+    // count down the number of out of sync links
+    _asyncFeature->untrackOutOfSyncLink();
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // if triggered  - no unload was called prior to deleting index object
+  TRI_ASSERT(!_dataStore);
+#endif
+}
+
 IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
   auto linkLock = _asyncSelf->lock();
   // '_dataStore' can be asynchronously modified
@@ -928,12 +940,6 @@ void IResearchDataStore::shutdownDataStore() noexcept {
 }
 
 Result IResearchDataStore::deleteDataStore() noexcept {
-  if (isOutOfSync()) {
-    TRI_ASSERT(_asyncFeature != nullptr);
-    // count down the number of out of sync links
-    _asyncFeature->untrackOutOfSyncLink();
-  }
-
   shutdownDataStore();
   bool exists;
   // remove persisted data store directory if present
@@ -956,8 +962,8 @@ bool IResearchDataStore::setOutOfSync() noexcept {
 
   auto error = _error.load(std::memory_order_acquire);
   if (error == DataStoreError::kNoError) {
-    if (_error.exchange(DataStoreError::kOutOfSync,
-                        std::memory_order_release) == error) {
+    if (_error.compare_exchange_strong(error, DataStoreError::kOutOfSync,
+                                       std::memory_order_release)) {
       // increase metric for number of out-of-sync links, only once per link
       TRI_ASSERT(_asyncFeature != nullptr);
       _asyncFeature->trackOutOfSyncLink();

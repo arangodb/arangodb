@@ -139,14 +139,7 @@ class IResearchDataStore {
 
   IResearchDataStore(IndexId iid, LogicalCollection& collection);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  virtual ~IResearchDataStore() {
-    // if triggered  - no unload was called prior to deleting index object
-    TRI_ASSERT(!_dataStore);
-  }
-#else
-  virtual ~IResearchDataStore() = default;
-#endif
+  virtual ~IResearchDataStore();
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
