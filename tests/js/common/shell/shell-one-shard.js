@@ -159,22 +159,6 @@ function OneShardPropertiesSuite () {
       assertTrue(db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2, sharding: "flexible" }));
     },
     
-    testDeviatingWriteConcernAndMinReplicationFactorForCollection : function () {
-      if (!isCluster) {
-        return;
-      }
-      assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
-      db._useDatabase(dn);
-      try {
-        db._create("test", { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2 });
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-        
-      db._create("test", { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2 });
-    },
-    
     testNormalDBAndTooManyServers : function () {
       if (!isCluster) {
         return;
