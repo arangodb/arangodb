@@ -190,7 +190,7 @@ struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
       -> std::unique_ptr<IDocumentStateTransactionHandler> override {
     auto th = std::make_unique<MockDocumentStateTransactionHandler>();
     transactionHandler = th.get();
-    return std::move(th);
+    return th;
   }
 
   std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler;

@@ -2,6 +2,18 @@ devel
 -----
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
+* Added integration tests for `--log.escape-control-chars` and 
+ `--log.escape-unicode-chars`.
+
+* Fix SEARCH-350: Crash during consolidation.
+
+* SEARCH-357: Added SUBSTRING_BYTES function.
+
+* A new Pregel algorithm: the version of Hypertext-Induced Topic Search (HITS)
+as described in the original paper.
+
+* Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
+
 * Disable optimization rule to avoid crash (BTS-951).
 
 * Fix comparison of JSON schemas on DB servers after there was a schema change
