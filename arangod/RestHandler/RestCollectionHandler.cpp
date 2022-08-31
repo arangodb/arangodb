@@ -350,7 +350,6 @@ void RestCollectionHandler::handleCommandPost() {
   bool enforceReplicationFactor =
       _request->parsedValue("enforceReplicationFactor", true);
 
-#if true
   auto planCollection =
       PlanCollection::fromCreateAPIBody(body, ServerDefaults(_vocbase));
   if (planCollection.fail()) {
@@ -381,59 +380,7 @@ void RestCollectionHandler::handleCommandPost() {
     TRI_ASSERT(result.get().size() == 1);
     coll = result.get().at(0);
   }
-
-#else
-  VPackSlice nameSlice;
-  if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
-      nameSlice.getStringLength() == 0) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    events::CreateCollection(_vocbase.name(), "",
-                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return;
-  }
-
-  TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
-  VPackSlice typeSlice = body.get("type");
-  if (typeSlice.isString()) {
-    if (typeSlice.compareString("edge") == 0 ||
-        typeSlice.compareString("3") == 0) {
-      type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
-    }
-  } else if (typeSlice.isNumber()) {
-    uint32_t t = typeSlice.getNumber<uint32_t>();
-    if (t == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-      type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
-    }
-  }
-
-  bool isDC2DCContext = ExecContext::current().isSuperuser();
-
-  // for some "security" a list of allowed parameters (i.e. all
-  // others are disallowed!)
-  VPackBuilder filtered =
-      methods::Collections::filterInput(body, isDC2DCContext);
-  VPackSlice const parameters = filtered.slice();
-
-  bool allowSystem = VelocyPackHelper::getBooleanValue(
-      parameters, StaticStrings::DataSourceSystem, false);
-
-  // now we can create the collection
-  std::string const& name = nameSlice.copyString();
-  _builder.clear();
-  std::shared_ptr<LogicalCollection> coll;
-  OperationOptions options(_context);
-
-  Result res = methods::Collections::create(
-      _vocbase,  // collection vocbase
-      options,
-      name,                      // colection name
-      type,                      // collection type
-      parameters,                // collection properties
-      waitForSyncReplication,    // replication wait flag
-      enforceReplicationFactor,  // replication factor flag
-      /*isNewDatabase*/ false,   // here always false
-      coll, allowSystem);
-#endif
+  
   if (res.ok()) {
     TRI_ASSERT(coll);
     collectionRepresentation(coll->name(),
