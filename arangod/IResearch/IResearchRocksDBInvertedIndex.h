@@ -59,6 +59,25 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
   }
 
+  void insertMetrics() final;
+  void removeMetrics() final;
+
+  auto const& getDbName() const { return Index::_collection.vocbase().name(); }
+
+  std::string getCollectionName() const {
+    if (ServerState::instance()->isSingleServer()) {
+      return std::to_string(Index::_collection.id().id());
+    }
+    return _collectionName;
+  }
+
+  auto const& getShardName() const noexcept {
+    if (ServerState::instance()->isDBServer()) {
+      return Index::_collection.name();
+    }
+    return arangodb::StaticStrings::Empty;
+  }
+
   void toVelocyPack(
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
@@ -151,6 +170,9 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     *const_cast<std::vector<std::vector<arangodb::basics::AttributeName>>*>(
         &_fields) = IResearchInvertedIndex::fields(meta());
   }
+
+  std::string _collectionName;
 };
+
 }  // namespace iresearch
 }  // namespace arangodb

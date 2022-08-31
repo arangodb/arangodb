@@ -43,6 +43,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchDocumentEE.h"
+#include "Cluster/ClusterMethods.h"
 #endif
 
 #include <index/column_info.hpp>
@@ -246,6 +247,33 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
 }
 
 }  // namespace
+
+void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
+                           uint64_t id, bool indexIdAttribute,
+                           std::string& name) {
+  // Upgrade step for old link definition without collection name
+  // could be received from agency while shard of the collection was moved
+  // or added to the server. New links already has collection name set,
+  // but here we must get this name on our own.
+  if (name.empty()) {
+    name = ci ? ci->getCollectionNameForShard(collection.name())
+              : collection.name();
+    LOG_TOPIC("86ece", TRACE, TOPIC) << "Setting collection name '" << name
+                                     << "' for new index '" << id << "'";
+    if (ADB_UNLIKELY(name.empty())) {
+      LOG_TOPIC_IF("67da6", WARN, TOPIC, indexIdAttribute)
+          << "Failed to init collection name for the index '" << id
+          << "'. Index will not index '_id' attribute."
+             "Please recreate the link if this is necessary!";
+    }
+#ifdef USE_ENTERPRISE
+    // enterprise name is not used in _id so should not be here!
+    if (ADB_LIKELY(!name.empty())) {
+      ClusterMethods::realNameFromSmartName(name);
+    }
+#endif
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct MaintenanceState

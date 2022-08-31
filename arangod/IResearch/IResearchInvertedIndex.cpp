@@ -36,6 +36,7 @@
 #include "IResearchDocument.h"
 #include "IResearchFilterFactory.h"
 #include "IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "Transaction/Methods.h"
 
 #include "analysis/token_attributes.hpp"
