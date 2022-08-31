@@ -1,6 +1,9 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Do not drop follower shard after too many failed shard synchronization
+  attempts.
+
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
 
