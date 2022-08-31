@@ -575,8 +575,8 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   const stats = statisticsExternal(instanceInfo.pid);
   // picking some arbitrary number of a running arangod doubling it
   const generateCoreDump = (
-    stats.virtualSize < 3100000 &&
-    stats.residentSize < 1400000
+    stats.virtualSize  < 310000000 &&
+    stats.residentSize < 140000000
   ) || stats.virtualSize === 0;
   if (options.test !== undefined) {
     print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
