@@ -237,14 +237,14 @@ function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   for (var i = 0; i < 5; i++) {
     command += 'frame variable\\n up \\n';
   }
-  command += ' thread backtrace all\\n\';';
+  command += ` thread backtrace all\\n`;
+  command += ` process save-core /cores/core.${pid}\\n`;
+  command += ` kill\\n';`;
   command += 'sleep 10;';
-  command += `process save-core /cores/core.${pid};`;
-  command += 'kill;';
   command += 'echo quit;';
   command += 'sleep 2';
   command += ') | lldb ' + storeArangodPath;
-  command += ` --pid ${pid}`;
+  command += ` --attach-pid ${pid}`;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
   print(JSON.stringify(args));
