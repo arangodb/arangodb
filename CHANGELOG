@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added integration tests for `--log.escape-control-chars` and 
+ `--log.escape-unicode-chars`.
+
 * Fix SEARCH-350: Crash during consolidation.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
