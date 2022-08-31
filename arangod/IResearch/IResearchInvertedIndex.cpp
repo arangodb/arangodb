@@ -1040,6 +1040,12 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 bool IResearchInvertedClusterIndex::matchesDefinition(

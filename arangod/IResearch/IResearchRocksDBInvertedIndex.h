@@ -62,6 +62,10 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   void insertMetrics() final;
   void removeMetrics() final;
 
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
+  }
+
   auto const& getDbName() const { return Index::_collection.vocbase().name(); }
 
   std::string getCollectionName() const {

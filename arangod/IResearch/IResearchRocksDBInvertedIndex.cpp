@@ -315,6 +315,12 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
               arangodb::velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 Result IResearchRocksDBInvertedIndex::drop() /*noexcept*/ {

@@ -113,6 +113,10 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const final;
 
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
+  }
+
   size_t memory() const final {
     // FIXME return in memory size
     // return stats().indexSize;
