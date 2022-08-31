@@ -1302,11 +1302,11 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
 
   AstNode const* q = node->getMember(2);
   if (n == 0) {
-    if (Quantifier::isAll(q) || Quantifier::isNone(q)) {
-      // [] ALL ...
+    if (Quantifier::isNone(q)) {
       // [] NONE ...
       return AqlValue(AqlValueHintBool(true));
-    } else if (Quantifier::isAny(q)) {
+    } else if (Quantifier::isAny(q) || Quantifier::isAll(q)) {
+      // [] ALL ...
       // [] ANY ...
       return AqlValue(AqlValueHintBool(false));
     }
