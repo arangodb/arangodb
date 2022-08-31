@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,16 +19,24 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Markus Pfeiffer
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-// Macro defined to avoid duplicate symbols when linking
-#define ARANGODB_INCLUDED_FROM_GTESTS
-#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp"
-#undef ARANGODB_INCLUDED_FROM_GTESTS
+#include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
+#include <Aql/IdExecutor.h>
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
 
-#include "TestEmptyExecutorHelper.h"
-#include "TestLambdaExecutor.h"
+// IndexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one
+template class ::arangodb::aql::ExecutionBlockImpl<
+    SingleRemoteModificationExecutor<IndexTag>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    SingleRemoteModificationExecutor<Insert>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    SingleRemoteModificationExecutor<Remove>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    SingleRemoteModificationExecutor<Update>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    SingleRemoteModificationExecutor<Replace>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    SingleRemoteModificationExecutor<Upsert>>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<TestLambdaExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<TestLambdaSkipExecutor>;
+#endif

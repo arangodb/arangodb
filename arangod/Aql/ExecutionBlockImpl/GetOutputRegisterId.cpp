@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,16 +19,31 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Markus Pfeiffer
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-// Macro defined to avoid duplicate symbols when linking
-#define ARANGODB_INCLUDED_FROM_GTESTS
-#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp"
-#undef ARANGODB_INCLUDED_FROM_GTESTS
+#include <Aql/IdExecutor.h>
+#include <Aql/RegisterId.h>
+#include <Aql/SingleRowFetcher.h>
+#include <Aql/types.h>
 
-#include "TestEmptyExecutorHelper.h"
-#include "TestLambdaExecutor.h"
+namespace arangodb::aql {
+// Avoid duplicate symbols when linking: This file is directly included by
+// ExecutionBlockImplTestInstances.cpp
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
+template <>
+template <>
+RegisterId
+ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
+    getOutputRegisterId() const noexcept {
+  return _executorInfos.getOutputRegister();
+}
+#else
+// Just predeclare the specializations for the tests.
 
-template class ::arangodb::aql::ExecutionBlockImpl<TestLambdaExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<TestLambdaSkipExecutor>;
+template <>
+template <>
+RegisterId
+ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
+    getOutputRegisterId() const noexcept;
+#endif
+} // namespace arangodb::aql
