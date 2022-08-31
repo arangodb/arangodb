@@ -30,20 +30,20 @@ namespace arangodb {
 
 struct ControlCharsSuppressor {  // control chars that will not be escaped
   size_t maxCharLength() const { return 1; }
-  void writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes);
+  void writeCharIntoOutputBuffer(uint32_t c, std::string& output, int numBytes);
 };
 struct ControlCharsEscaper {  //\x07 worst case
   size_t maxCharLength() const { return 4; }
-  void writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes);
+  void writeCharIntoOutputBuffer(uint32_t c, std::string& output, int numBytes);
 };
 struct UnicodeCharsRetainer {  // worst case 4 digits
   size_t maxCharLength() const { return 4; }
-  void writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes);
+  void writeCharIntoOutputBuffer(uint32_t c, std::string& output, int numBytes);
 };
 struct UnicodeCharsEscaper {  //\u +4 digits
   size_t maxCharLength() const { return 6; }
-  void writeCharIntoOutputBuffer(uint32_t c, char*& output, int numBytes);
-  void writeCharHelper(uint16_t c, char*& output);
+  void writeCharIntoOutputBuffer(uint32_t c, std::string& output, int numBytes);
+  void writeCharHelper(uint16_t c, std::string& output);
 };
 
 class GeneralEscaper {
@@ -52,7 +52,7 @@ class GeneralEscaper {
   virtual size_t determineOutputBufferSize(
       std::string const& message) const = 0;
   virtual void writeIntoOutputBuffer(std::string const& message,
-                                     char*& buffer) = 0;
+                                     std::string& buffer) = 0;
 };
 
 template<typename ControlCharHandler, typename UnicodeCharHandler>
@@ -65,7 +65,7 @@ class Escaper : public GeneralEscaper {
   size_t determineOutputBufferSize(std::string const& message) const override;
 
   void writeIntoOutputBuffer(std::string const& message,
-                             char*& buffer) override;
+                             std::string& buffer) override;
 };
 
 }  // namespace arangodb

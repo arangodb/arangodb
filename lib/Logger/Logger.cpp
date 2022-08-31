@@ -801,38 +801,13 @@ void Logger::log(char const* logid, char const* function, char const* file,
           newValue = std::move(std::to_string(value));
         }
 
-        size_t neededBufferSize = escaper->determineOutputBufferSize(newValue);
-        char* buffer = (new char[neededBufferSize + 1]);  // \0
-        char* bufferFirst = buffer;
-
-        escaper->writeIntoOutputBuffer(newValue, buffer);
-
-        *(buffer) = '\0';
-        out.append(bufferFirst);
-        out.append("] ", 2);
-
-        if constexpr (std::is_same_v<std::string_view,
-                                     std::remove_cv_t<std::remove_reference_t<
-                                         decltype(value)>>>) {
-          out.append(value);
-        } else {
-          out.append(std::to_string(value));
-        }
-
+        escaper->writeIntoOutputBuffer(newValue, out);
         out.append("] ", 2);
       });
       logContext.visit(visitor);
     }
 
-    // generate the complete message
-    size_t neededBufferSize = escaper->determineOutputBufferSize(message);
-    char* buffer = (new char[neededBufferSize + 1]);  // \0
-    char* bufferFirst = buffer;
-
-    escaper->writeIntoOutputBuffer(message, buffer);
-    *(buffer) = '\0';
-    out.append(bufferFirst);
-    // free(buffer);
+    escaper->writeIntoOutputBuffer(message, out);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);
