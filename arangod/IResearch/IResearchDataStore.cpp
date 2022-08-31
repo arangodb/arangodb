@@ -577,7 +577,7 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
         absl::StrCat("link ", std::to_string(linkLock->id().id()),
-                     " has been marked as failed and needs to be recreated"));
+                     " is out of sync and needs to be recreated"));
   }
 
   auto reader = IResearchDataStore::reader(linkLock);
