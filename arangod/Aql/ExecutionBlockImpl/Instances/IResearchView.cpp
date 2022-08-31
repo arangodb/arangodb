@@ -21,7 +21,6 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
 
 // Avoid compiling everything again in the tests
@@ -152,6 +151,4 @@ template class ::arangodb::aql::ExecutionBlockImpl<
         arangodb::iresearch::MaterializeType::LateMaterialize |
             arangodb::iresearch::MaterializeType::UseStoredValues>>>;
 
-
 #endif
-

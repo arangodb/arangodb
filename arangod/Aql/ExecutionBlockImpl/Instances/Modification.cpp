@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
-#include <Aql/IdExecutor.h>
 #ifndef ARANGODB_INCLUDED_FROM_GTESTS
 
 // IndexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one

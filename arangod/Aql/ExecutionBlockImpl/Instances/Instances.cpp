@@ -65,7 +65,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
 template class ::arangodb::aql::ExecutionBlockImpl<
     MaterializeExecutor<RegisterId>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
-    MaterializeExecutor<std::string const &>>;
+    MaterializeExecutor<std::string const&>>;
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::aql::ExecutionBlockImpl<
