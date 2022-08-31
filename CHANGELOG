@@ -1,6 +1,9 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Do not drop follower shard after too many failed shard synchronization
+  attempts.
+
 * Disable optimization rule to avoid crash (BTS-951).
 
 * Fix SEARCH-350: Crash during consolidation.
