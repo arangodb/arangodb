@@ -91,6 +91,8 @@ class IResearchInvertedIndexConditionTest
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
         inverted.get());
     ASSERT_TRUE(index);
+    auto scope = irs::make_finally(
+        [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); });
 
     ASSERT_TRUE(index->covers(projections));
     ASSERT_EQ(expected.size(), projections.size());
@@ -101,7 +103,6 @@ class IResearchInvertedIndexConditionTest
       ASSERT_EQ(expected[i].coveringIndexPosition,
                 projections[i].coveringIndexPosition);
     }
-    ASSERT_TRUE(inverted->drop().ok());
   }
 
   template<typename Fields>
@@ -124,6 +125,8 @@ class IResearchInvertedIndexConditionTest
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
         inverted.get());
     ASSERT_TRUE(index);
+    auto scope = irs::make_finally(
+        [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); });
 
     auto indexFields =
         arangodb::iresearch::IResearchInvertedIndex::fields(index->meta());
@@ -173,7 +176,6 @@ class IResearchInvertedIndexConditionTest
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
-    inverted->drop();
   }
 
   void estimateSortCondition(
@@ -200,6 +202,8 @@ class IResearchInvertedIndexConditionTest
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
         inverted.get());
     ASSERT_TRUE(index);
+    auto scope = irs::make_finally(
+        [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); });
 
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
@@ -262,7 +266,6 @@ class IResearchInvertedIndexConditionTest
       ASSERT_EQ(expectedCosts.estimatedCosts, costs.estimatedCosts);
     }
     // runtime is not intended - we must decide during optimize time!
-    inverted->drop();
   }
 
   arangodb::LogicalCollection& collection() { return *_collection; }
