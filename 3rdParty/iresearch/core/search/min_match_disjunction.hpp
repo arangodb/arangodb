@@ -292,6 +292,7 @@ class min_match_disjunction
         if (doc_limits::eof(top()->seek(doc_.value))) {
           // iterator exhausted
           remove_top();
+          lead = this->lead();
         } else {
           refresh_top();
         }
