@@ -454,12 +454,22 @@ IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
   return _meta._storedValues;
 }
 
+std::string const& IResearchLink::getDbName() const noexcept {
+  return _collection.vocbase().name();
+}
+
 std::string const& IResearchLink::getViewId() const noexcept {
   return _viewGuid;
 }
 
-std::string const& IResearchLink::getDbName() const {
-  return _collection.vocbase().name();
+std::string IResearchLink::getCollectionName() const {
+  if (ServerState::instance()->isSingleServer()) {
+    return std::to_string(_collection.id().id());
+  }
+  if (ServerState::instance()->isDBServer()) {
+    return _meta._collectionName;
+  }
+  return _collection.name();
 }
 
 std::string const& IResearchLink::getShardName() const noexcept {
@@ -467,13 +477,6 @@ std::string const& IResearchLink::getShardName() const noexcept {
     return _collection.name();
   }
   return arangodb::StaticStrings::Empty;
-}
-
-std::string IResearchLink::getCollectionName() const {
-  if (ServerState::instance()->isSingleServer()) {
-    return std::to_string(_collection.id().id());
-  }
-  return _meta._collectionName;
 }
 
 bool IResearchLink::hasNested() const noexcept {

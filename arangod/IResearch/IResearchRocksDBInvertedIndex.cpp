@@ -225,19 +225,36 @@ template<typename T>
 T getMetric(IResearchRocksDBInvertedIndex const& index) {
   T metric;
   metric.addLabel("db", index.getDbName());
+  metric.addLabel("index", index.name());
   metric.addLabel("collection", index.getCollectionName());
   metric.addLabel("shard", index.getShardName());
-  metric.addLabel("index", index.name());
   return metric;
 }
 
 std::string getLabels(IResearchRocksDBInvertedIndex const& index) {
-  return absl::StrCat("db=\"", index.getDbName(), "\",collection=\"",
-                      index.getCollectionName(), "\",shard=\"",
-                      index.getShardName(), "\",index=\"", index.name(), "\"");
+  return absl::StrCat(  // clang-format off
+      "db=\"", index.getDbName(), "\","
+      "index=\"", index.name(), "\","
+      "collection=\"", index.getCollectionName(), "\","
+      "shard=\"", index.getShardName(), "\"");  // clang-format on
 }
 
 }  // namespace
+
+std::string IResearchRocksDBInvertedIndex::getCollectionName() const {
+  if (ServerState::instance()->isSingleServer()) {
+    return std::to_string(Index::_collection.id().id());
+  }
+  return _collectionName;
+}
+
+std::string const& IResearchRocksDBInvertedIndex::getShardName()
+    const noexcept {
+  if (ServerState::instance()->isDBServer()) {
+    return Index::_collection.name();
+  }
+  return arangodb::StaticStrings::Empty;
+}
 
 void IResearchRocksDBInvertedIndex::insertMetrics() {
   auto& metric = Index::_collection.vocbase()
@@ -355,5 +372,6 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(
   return IResearchInvertedIndex::matchesDefinition(
       other, IResearchDataStore::_collection.vocbase());
 }
+
 }  // namespace iresearch
 }  // namespace arangodb

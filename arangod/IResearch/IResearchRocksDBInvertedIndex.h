@@ -59,27 +59,14 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
   }
 
+  std::string getCollectionName() const;
+  std::string const& getShardName() const noexcept;
+
   void insertMetrics() final;
   void removeMetrics() final;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const final {
     IResearchDataStore::toVelocyPackStats(builder);
-  }
-
-  auto const& getDbName() const { return Index::_collection.vocbase().name(); }
-
-  std::string getCollectionName() const {
-    if (ServerState::instance()->isSingleServer()) {
-      return std::to_string(Index::_collection.id().id());
-    }
-    return _collectionName;
-  }
-
-  auto const& getShardName() const noexcept {
-    if (ServerState::instance()->isDBServer()) {
-      return Index::_collection.name();
-    }
-    return arangodb::StaticStrings::Empty;
   }
 
   void toVelocyPack(
