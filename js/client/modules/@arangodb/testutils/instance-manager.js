@@ -725,7 +725,7 @@ class instanceManager {
     }
     try {
       if (forceTerminate) {
-        this._forceTerminate();
+        return this._forceTerminate();
       } else {
         return this._shutdownInstance();
       }
@@ -736,7 +736,10 @@ class instanceManager {
         if (timeoutReached) {
           print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
         }
-        return this._shutdownInstance(true);
+        return this._forceTerminate(true);
+      } else {
+        print("caught error during shutdown: " + e);
+        print(e.stack);
       }
     }
   }
@@ -751,7 +754,9 @@ class instanceManager {
       crashUtils.aggregateDebugger(arangod, this.options);
       arangod.waitForExitAfterDebugKill();
     });
+    return true;
   }
+
   _shutdownInstance () {
     let forceTerminate = false;  
     let crashed = false;
@@ -804,13 +809,6 @@ class instanceManager {
       }
     }
 
-    if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
-      this.dumpAgency();
-    }
-    if (forceTerminate) {
-      this._forceTerminate();
-    }
-
     // Shut down all non-agency servers:
     const n = this.arangods.length;
 
@@ -845,24 +843,28 @@ class instanceManager {
       timeout *= 2;
     }
 
+    if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
+      this.dumpAgency();
+    }
+    if (forceTerminate) {
+      return this._forceTerminate();
+    }
+
     var shutdownTime = internal.time();
+
     while (toShutdown.length > 0) {
       toShutdown = toShutdown.filter(arangod => {
         if (arangod.exitStatus === null) {
           if ((nonAgenciesCount > 0) && arangod.isAgent()) {
             return true;
           }
-          arangod.shutdownArangod(forceTerminate);
-          if (forceTerminate) {
-            print(Date() + " FORCED shut down: " + JSON.stringify(arangod.getStructure()));
-          } else {
-            arangod.exitStatus = {
-              status: 'RUNNING'
-            };
+          arangod.shutdownArangod(false);
+          arangod.exitStatus = {
+            status: 'RUNNING'
+          };
 
-            if (!this.options.noStartStopLogs) {
-              print(Date() + " Commanded shut down: " + arangod.name);
-            }
+          if (!this.options.noStartStopLogs) {
+            print(Date() + " Commanded shut down: " + arangod.name);
           }
           return true;
         }
