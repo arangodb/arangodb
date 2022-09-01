@@ -5,6 +5,8 @@ v3.10.0 (XXXX-XX-XX)
 
 * Fixed SEARCH-322 Fixed executing empty nested condition
 
+* Updated arangosync to v2.12.0-preview-11.
+
 * Fixed SEARCH-369: add a compatibility check to the search-alias view for
   indexes from the same collection.
 
