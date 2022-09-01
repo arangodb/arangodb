@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix for the Pregel's HITS algorithm using a fixed value instead of the
+  passed "threshold" parameter. The same applied to the new HITSKleinberg.
+
 * Fix SEARCH-350: Crash during consolidation.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
