@@ -165,8 +165,7 @@ arangodb::Result diffPlanLocal(
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ReplicatedStateStatusMapByDatabase const& localStates,
-    replication::Version defaultReplicationVersion);
+    ReplicatedStateStatusMapByDatabase const& localStates);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -302,8 +301,7 @@ arangodb::Result reportInCurrent(
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ReplicatedStateStatusMapByDatabase const& localStates,
-    replication::Version defaultReplicationVersion);
+    ReplicatedStateStatusMapByDatabase const& localStates);
 
 /**
  * @brief            Schedule synchroneous replications
