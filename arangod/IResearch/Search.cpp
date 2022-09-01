@@ -196,6 +196,15 @@ std::string abstractCheckFields(auto const& lhs, auto const& rhs,
       continue;
     }
     TRI_ASSERT(it->first == prefix);
+
+    if (SkipSameAnalyzer &&
+        it->second.isSearchField != field.second.isSearchField) {
+      return absl::StrCat(rhsIs, " field '", name, "' searchField '",
+                          field.second.isSearchField, "' mismatches ", lhsIs,
+                          " field searchField '", it->second.isSearchField,
+                          "'");
+    }
+
     if (SkipSameAnalyzer && it->second.analyzer == field.second.analyzer) {
       continue;
     }
@@ -226,13 +235,14 @@ auto createSortedFields(IResearchInvertedIndexMeta const& index) {
   std::vector<std::pair<std::string, SearchMeta::Field>> fields;
   fields.reserve(index._fields.size() + index._includeAllFields);
   for (auto const& field : index._fields) {
-    fields.emplace_back(field.path(),
-                        SearchMeta::Field{field.analyzer()._shortName,
-                                          field._includeAllFields});
+    fields.emplace_back(
+        field.path(),
+        SearchMeta::Field{field.analyzer()._shortName, field._includeAllFields,
+                          field._isSearchField});
   }
   if (index._includeAllFields) {
-    fields.emplace_back("",
-                        SearchMeta::Field{index.analyzer()._shortName, true});
+    fields.emplace_back("", SearchMeta::Field{index.analyzer()._shortName, true,
+                                              index._isSearchField});
   }
   std::sort(fields.begin(), fields.end(), [](auto const& lhs, auto const& rhs) {
     return lhs.first < rhs.first;

@@ -250,6 +250,25 @@ function ViewSearchAliasSuite() {
         c2.drop();
       }
     },
+    // different Search field
+    testAddNonCompatibleIndexes3: function () {
+      var c1 = db._create("c1");
+      var c2 = db._create("c2");
+      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_en", searchField:true}]});
+      c2.ensureIndex({name: "i2", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_en"}]});
+      var v1 = db._createView("v1", "search-alias", {});
+      try {
+        assertEqual(v1.name(), "v1");
+        v1.properties({indexes: [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}]});
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
+      } finally {
+        assertEqual(v1.properties().indexes, []);
+        v1.drop();
+        c1.drop();
+        c2.drop();
+      }
+    },
 
     testAddCompatibleIndexes1: function () {
       var c1 = db._create("c1");
@@ -292,6 +311,26 @@ function ViewSearchAliasSuite() {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
       } finally {
         assertEqual(v1.properties().indexes, []);
+        v1.drop();
+        c1.drop();
+      }
+    },
+    
+    testQuerySearchField: function () {
+      var c1 = db._create("c1");
+      c1.save({i:1, a:"aaa"});
+      c1.save({i:2, a:["aaa", "bbb"]});
+      c1.save({i:3, a:["ccc", "bbb"]});
+      c1.save({i:4, a:1});
+      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a", analyzer: "text_en", searchField:true}]});
+      var v1 = db._createView("v1", "search-alias", {});
+      try {
+        v1.properties({indexes: [{collection: "c1", index: "i1"}]});
+        let res = db._query("FOR d IN v1 SEARCH d.a == 'aaa' SORT d.i ASC RETURN d").toArray();
+        assertEqual(2, res.length);
+        assertEqual(1, res[0].i);
+        assertEqual(2, res[1].i);
+      } finally {
         v1.drop();
         c1.drop();
       }

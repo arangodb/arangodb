@@ -763,6 +763,9 @@ bool nameFromAttributeAccess(
   if (visitRes && !ctx.isSearchQuery) {
     auto it = getNested(name, fields);
     visitRes = it != std::end(fields);
+    if (visitRes && it->_isSearchField) {
+      visitRes = false;
+    }
     if (visitRes && subFields) {
       *subFields = it->_fields;
     }

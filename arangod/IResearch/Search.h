@@ -52,6 +52,7 @@ class SearchMeta final {
   struct Field final {
     std::string analyzer;
     bool includeAllFields{false};
+    bool isSearchField{false};
   };
   using Map = std::map<std::string, Field, std::less<>>;
   Map fieldToAnalyzer;
