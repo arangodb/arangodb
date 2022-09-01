@@ -23,7 +23,7 @@
 
 #include "IResearchQueryCommon.h"
 #include "Aql/AqlCall.h"
-#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
