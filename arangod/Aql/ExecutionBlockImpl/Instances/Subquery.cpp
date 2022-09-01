@@ -22,9 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
-// Avoid duplicate symbols when linking: This file is directly included by
-// ExecutionBlockImplTestInstances.cpp
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
+
 template<>
 auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
     AqlCallStack& stack) -> ExecState {
@@ -144,14 +142,3 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
     return ExecState::NEXTSUBQUERY;
   }
 }
-#else
-// Just predeclare the specializations for the tests.
-template<>
-auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
-    AqlCallStack& stack) -> ExecState;
-
-template<>
-auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
-    AqlCallStack& stack) -> ExecState;
-
-#endif

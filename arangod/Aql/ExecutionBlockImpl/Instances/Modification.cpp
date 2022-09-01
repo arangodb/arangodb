@@ -21,8 +21,22 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Aql/InsertModifier.h>
+#include <Aql/RemoveModifier.h>
+#include <Aql/UpdateReplaceModifier.h>
+#include <Aql/UpsertModifier.h>
+
 #include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
 #ifndef ARANGODB_INCLUDED_FROM_GTESTS
+
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
+    SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
+    SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
+    SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
+    SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 // IndexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one
 template class ::arangodb::aql::ExecutionBlockImpl<

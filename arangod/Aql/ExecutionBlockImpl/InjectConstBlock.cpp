@@ -24,12 +24,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 #include <Aql/ConstFetcher.h>
-#include <Aql/IdExecutor.h>
 #include <Aql/ExecutionEngine.h>
-
-// Avoid duplicate symbols when linking: This file is directly included by
-// ExecutionBlockImplTestInstances.cpp
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
+#include <Aql/IdExecutor.h>
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
 // Without the namespaces it fails with
@@ -93,21 +89,3 @@ ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
 }
 
 }  // namespace arangodb::aql
-#else
-// Just predeclare the specializations for the tests.
-
-namespace arangodb::aql {
-template<>
-template<>
-auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
-    IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block, SkipResult skipped)
-    -> void;
-
-template<>
-std::pair<ExecutionState, Result>
-ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    InputAqlItemRow const& input);
-
-}  // namespace arangodb::aql
-
-#endif

@@ -27,9 +27,7 @@
 #include <Aql/types.h>
 
 namespace arangodb::aql {
-// Avoid duplicate symbols when linking: This file is directly included by
-// ExecutionBlockImplTestInstances.cpp
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
+
 template<>
 template<>
 RegisterId
@@ -37,13 +35,5 @@ ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
     getOutputRegisterId() const noexcept {
   return _executorInfos.getOutputRegister();
 }
-#else
-// Just predeclare the specializations for the tests.
 
-template<>
-template<>
-RegisterId
-ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
-    getOutputRegisterId() const noexcept;
-#endif
 }  // namespace arangodb::aql
