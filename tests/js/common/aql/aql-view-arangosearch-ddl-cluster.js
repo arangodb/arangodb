@@ -1002,7 +1002,7 @@ function IResearchFeatureDDLTestSuite() {
         FOR d IN TestCollection OPTIONS {indexHint: "TestIndex"}
           FILTER d.foo != "unknown" COLLECT WITH COUNT INTO c RETURN c`;
         let syncWait = 100;
-        let count = 0;
+        let count = db._query(syncQuery).toArray()[0];
         while (count < expected && (--syncWait) > 0) {
           require("internal").sleep(1);
           count = db._query(syncQuery).toArray()[0];
