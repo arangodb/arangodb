@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"

@@ -24,6 +24,7 @@
 #include "NoResultsExecutor.h"
 
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 

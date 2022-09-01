@@ -37,7 +37,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"

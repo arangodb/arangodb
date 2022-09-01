@@ -21,7 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
+#include <Aql/ExecutionBlockImpl.tpp>
 
 namespace arangodb::aql {
 template<>

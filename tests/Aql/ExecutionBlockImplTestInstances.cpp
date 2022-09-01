@@ -23,9 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Macro defined to avoid duplicate symbols when linking
-#define ARANGODB_INCLUDED_FROM_GTESTS
-#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp"
-#undef ARANGODB_INCLUDED_FROM_GTESTS
+#include "Aql/ExecutionBlockImpl.tpp"
 
 #include "TestEmptyExecutorHelper.h"
 #include "TestLambdaExecutor.h"
