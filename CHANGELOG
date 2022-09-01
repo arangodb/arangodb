@@ -1,6 +1,9 @@
 devel
 -----
 
+* Do not drop follower shard after too many failed shard synchronization
+  attempts.
+
 * Added startup option `--arangosearch.skip-recovery` to skip the recovery 
   of arangosearch view links or inverted indexes.
   The startup option can be specified multiple times and is expected to either
