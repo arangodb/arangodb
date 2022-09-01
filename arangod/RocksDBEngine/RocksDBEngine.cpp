@@ -862,6 +862,9 @@ void RocksDBEngine::start() {
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
+  LOG_TOPIC("ab45b", DEBUG, Logger::STARTUP)
+      << "opening RocksDB instance in '" << _path << "'";
+
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
