@@ -14,6 +14,8 @@ struct ClusterWorkerApi : NewIWorker {
       -> futures::Future<ResultT<GraphLoaded>> override;
   [[nodiscard]] auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
+  [[nodiscard]] auto runGlobalSuperStep(RunGlobalSuperStep const& data)
+      -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
 
  private:
   Connection _connection;

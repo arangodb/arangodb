@@ -7,7 +7,7 @@
 
 using namespace arangodb::pregel::conductor;
 
-[[nodiscard]] auto SingleServerWorkerApi::loadGraph(LoadGraph const& graph)
+auto SingleServerWorkerApi::loadGraph(LoadGraph const& graph)
     -> futures::Future<ResultT<GraphLoaded>> {
   if (_feature.isStopping()) {
     return Result{TRI_ERROR_SHUTTING_DOWN};
@@ -32,10 +32,18 @@ using namespace arangodb::pregel::conductor;
   }
 }
 
-[[nodiscard]] auto SingleServerWorkerApi::prepareGlobalSuperStep(
+auto SingleServerWorkerApi::prepareGlobalSuperStep(
     PrepareGlobalSuperStep const& message)
     -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
   VPackBuilder out;
   auto worker = _feature.worker(_executionNumber);
   return worker->prepareGlobalSuperStep(message);
+}
+
+auto SingleServerWorkerApi::runGlobalSuperStep(
+    RunGlobalSuperStep const& message)
+    -> futures::Future<ResultT<GlobalSuperStepFinished>> {
+  VPackBuilder out;
+  auto worker = _feature.worker(_executionNumber);
+  return worker->runGlobalSuperStep(message);
 }

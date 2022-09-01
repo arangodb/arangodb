@@ -69,3 +69,5 @@ template auto Connection::post(LoadGraph const& message)
     -> futures::Future<ResultT<GraphLoaded>>;
 template auto Connection::post(PrepareGlobalSuperStep const& message)
     -> futures::Future<ResultT<GlobalSuperStepPrepared>>;
+template auto Connection::post(RunGlobalSuperStep const& message)
+    -> futures::Future<ResultT<GlobalSuperStepFinished>>;

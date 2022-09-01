@@ -57,8 +57,8 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   [[nodiscard]] virtual auto prepareGlobalSuperStep(
       PrepareGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepPrepared>> = 0;
-  virtual void startGlobalStep(
-      VPackSlice const& data) = 0;  // called by coordinator
+  [[nodiscard]] virtual auto runGlobalSuperStep(RunGlobalSuperStep const& data)
+      -> futures::Future<ResultT<GlobalSuperStepFinished>> = 0;
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice const& data) = 0;
@@ -81,6 +81,13 @@ class RangeIterator;
 
 template<typename V, typename E, typename M>
 class VertexContext;
+
+struct VerticesProcessed {
+  VPackBuilder aggregator;
+  MessageStats stats;
+  size_t activeCount;
+  ReportManager reports;
+};
 
 template<typename V, typename E, typename M>
 class Worker : public IWorker {
@@ -139,12 +146,16 @@ class Worker : public IWorker {
   std::atomic<bool> _requestedNextGSS;
   Scheduler::WorkHandle _workHandle;
 
+  using VerticesProcessedFuture =
+      futures::Future<std::vector<futures::Try<ResultT<VerticesProcessed>>>>;
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
-  void _startProcessing();
-  bool _processVertices(size_t threadId,
-                        RangeIterator<Vertex<V, E>>& vertexIterator);
-  void _finishedProcessing();
+  auto _preGlobalSuperStep(RunGlobalSuperStep const& message) -> Result;
+  auto _processVerticesInThreads() -> VerticesProcessedFuture;
+  auto _processVertices(size_t threadId,
+                        RangeIterator<Vertex<V, E>>& vertexIterator)
+      -> futures::Future<ResultT<VerticesProcessed>>;
+  auto _finishProcessing() -> ResultT<GlobalSuperStepFinished>;
   void _callConductor(std::string const& path, VPackBuilder const& message);
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
@@ -152,7 +163,7 @@ class Worker : public IWorker {
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
-  auto _gssFinishedEvent() const -> GssFinished;
+  auto _gssFinishedEvent() const -> GlobalSuperStepFinished;
   auto _cleanupFinishedEvent() const -> CleanupFinished;
 
  public:
@@ -165,7 +176,8 @@ class Worker : public IWorker {
       -> futures::Future<ResultT<GraphLoaded>> override;
   auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
-  void startGlobalStep(VPackSlice const& data) override;
+  auto runGlobalSuperStep(RunGlobalSuperStep const& data)
+      -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(VPackSlice const& data) override;
   void finalizeExecution(VPackSlice const& data,

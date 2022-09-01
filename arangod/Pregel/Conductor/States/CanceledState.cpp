@@ -18,7 +18,6 @@ Canceled::Canceled(Conductor& conductor, std::chrono::seconds const& ttl)
 }
 
 auto Canceled::run() -> void {
-  conductor._callbackMutex.assertLockedByCurrentThread();
   LOG_PREGEL_CONDUCTOR("dd721", WARN)
       << "Execution was canceled, results will be discarded.";
 

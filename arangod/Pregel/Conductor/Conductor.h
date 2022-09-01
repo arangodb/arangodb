@@ -77,6 +77,11 @@ struct Error {
   std::string message;
 };
 
+struct PostGlobalSuperStepResult {
+  bool activateAll;
+  bool finished;
+};
+
 class Conductor : public std::enable_shared_from_this<Conductor> {
   friend class PregelFeature;
   friend struct conductor::Initial;
@@ -143,13 +148,14 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   using GraphLoadedFuture = futures::Future<std::vector<
       futures::Try<arangodb::ResultT<arangodb::pregel::GraphLoaded>>>>;
 
-  bool _startGlobalStep(VPackBuilder messageFromWorkers);
+  auto _postGlobalSuperStep(VPackBuilder messagesFromWorkers)
+      -> PostGlobalSuperStepResult;
+  auto _preGlobalSuperStep() -> bool;
   auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
   template<typename OutType, typename InType>
   auto _sendToAllDBServers(std::string const& path, InType const& message)
       -> ResultT<std::vector<OutType>>;
   void _ensureUniqueResponse(std::string const& body);
-  auto _startGssEvent(bool activateAll) const -> StartGss;
 
   // === REST callbacks ===
   void workerStatusUpdate(VPackSlice const& data);

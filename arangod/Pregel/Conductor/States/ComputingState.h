@@ -35,7 +35,7 @@ struct Computing : State {
   Computing(Conductor& conductor);
   ~Computing();
   auto run() -> void override;
-  auto receive(Message const& message) -> void override;
+  auto receive(Message const& message) -> void override{};
   auto name() const -> std::string override { return "running"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const
@@ -48,6 +48,10 @@ struct Computing : State {
       futures::Future<std::vector<futures::Try<
           arangodb::ResultT<arangodb::pregel::GlobalSuperStepPrepared>>>>;
   auto _prepareGlobalSuperStep() -> GlobalSuperStepPreparedFuture;
+
+  using GlobalSuperStepFinishedFuture = futures::Future<
+      std::vector<futures::Try<ResultT<GlobalSuperStepFinished>>>>;
+  auto _runGlobalSuperStep(bool activateAll) -> GlobalSuperStepFinishedFuture;
 };
 
 }  // namespace conductor

@@ -670,8 +670,6 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
 
   if (path == Utils::statusUpdatePath) {
     co->workerStatusUpdate(body);
-  } else if (path == Utils::finishedWorkerStepPath) {
-    outBuilder = co->finishedWorkerStep(body);
   } else if (path == Utils::finishedWorkerFinalizationPath) {
     co->finishedWorkerFinalize(body);
   }
@@ -735,8 +733,8 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     auto response = w->prepareGlobalSuperStep(message).get();
     serialize(outBuilder, response);
   } else if (path == Utils::startGSSPath) {
-    w->startGlobalStep(body);
-    auto response = GssStarted{};
+    auto message = deserialize<RunGlobalSuperStep>(body);
+    auto response = w->runGlobalSuperStep(message).get();
     serialize(outBuilder, response);
   } else if (path == Utils::messagesPath) {
     w->receivedMessages(body);
