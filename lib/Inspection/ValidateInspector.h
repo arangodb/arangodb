@@ -34,10 +34,13 @@
 
 namespace arangodb::inspection {
 
-/// @brief A simple Inspector that only checks the configured field and object
-/// invariants.
 struct ValidateInspector : InspectorBase<ValidateInspector> {
   static constexpr bool isLoading = true;
+
+  template<class T>
+  [[nodiscard]] Status::Success value(T&) {
+    return {};
+  }
 
   [[nodiscard]] Status::Success beginObject() { return {}; }
 
@@ -115,10 +118,14 @@ struct ValidateInspector : InspectorBase<ValidateInspector> {
 
   template<class T>
   [[nodiscard]] Status validateField(T&& field) {
-    auto res = checkInvariant(field);
+    auto name = getFieldName(field);
+    auto& value = getFieldValue(field);
+
+    auto res = loadField(*this, name, true, value)         //
+               | [&]() { return checkInvariant(field); };  //
 
     if (!res.ok()) {
-      return {std::move(res), getFieldName(field), Status::AttributeTag{}};
+      return {std::move(res), name, Status::AttributeTag{}};
     }
     return res;
   }

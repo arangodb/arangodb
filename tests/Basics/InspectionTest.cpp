@@ -238,6 +238,16 @@ auto inspect(Inspector& f, ObjectInvariant& x) {
       .invariant([](ObjectInvariant& o) { return o.i != 0 && !o.s.empty(); });
 }
 
+struct NestedInvariant {
+  Invariant i;
+  ObjectInvariant o;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, NestedInvariant& x) {
+  return f.object(x).fields(f.field("i", x.i), f.field("o", x.o));
+}
+
 struct FallbackReference {
   int x;
   int y;
@@ -2098,13 +2108,13 @@ struct ValidateInspectorTest : public ::testing::Test {
   arangodb::inspection::ValidateInspector inspector;
 };
 
-TEST_F(ValidateInspectorTest, load_object_with_invariant_fulfilled) {
+TEST_F(ValidateInspectorTest, validate_object_with_invariant_fulfilled) {
   Invariant i{.i = 42, .s = "foobar"};
   auto result = inspector.apply(i);
   ASSERT_TRUE(result.ok());
 }
 
-TEST_F(ValidateInspectorTest, load_object_with_invariant_not_fulfilled) {
+TEST_F(ValidateInspectorTest, validate_object_with_invariant_not_fulfilled) {
   {
     Invariant i{.i = 0, .s = "foobar"};
     auto result = inspector.apply(i);
@@ -2122,7 +2132,8 @@ TEST_F(ValidateInspectorTest, load_object_with_invariant_not_fulfilled) {
   }
 }
 
-TEST_F(ValidateInspectorTest, load_object_with_invariant_Result_not_fulfilled) {
+TEST_F(ValidateInspectorTest,
+       validate_object_with_invariant_Result_not_fulfilled) {
   {
     InvariantWithResult i{.i = 0};
     auto result = inspector.apply(i);
@@ -2140,11 +2151,29 @@ TEST_F(ValidateInspectorTest, load_object_with_invariant_Result_not_fulfilled) {
   }
 }
 
-TEST_F(ValidateInspectorTest, load_object_with_object_invariant) {
+TEST_F(ValidateInspectorTest, validate_object_with_object_invariant) {
   ObjectInvariant o{.i = 42, .s = ""};
   auto result = inspector.apply(o);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Object invariant failed", result.error());
+}
+
+TEST_F(ValidateInspectorTest, validate_object_with_nested_invariant) {
+  {
+    NestedInvariant n{.i = {.i = 0, .s = "x"}, .o = {.i = 42, .s = "x"}};
+    auto result = inspector.apply(n);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i.i", result.path());
+  }
+
+  {
+    NestedInvariant n{.i = {.i = 42, .s = "x"}, .o = {.i = 0, .s = "x"}};
+    auto result = inspector.apply(n);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Object invariant failed", result.error());
+    EXPECT_EQ("o", result.path());
+  }
 }
 
 }  // namespace
