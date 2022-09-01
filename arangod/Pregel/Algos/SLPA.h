@@ -58,7 +58,7 @@ namespace algos {
  * contains only its own ID that was saved once. In an iteration, the vertices
  * are processed in a random order, which is chosen for each iteration
  * separately. A vertex v gets from each of its in-neighbors one of their saved
- * IDs. Which if the saved IDs is sent by an in-neighbor w is chosen randomly
+ * IDs. Which of the saved IDs is sent by an in-neighbor w is chosen randomly
  * with the probability
  *
  * <number of times the ID was saved by w> / <number of times any ID
