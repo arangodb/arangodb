@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"

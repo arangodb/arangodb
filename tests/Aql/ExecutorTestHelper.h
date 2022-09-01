@@ -37,6 +37,7 @@
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"

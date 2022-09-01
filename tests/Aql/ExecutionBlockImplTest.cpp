@@ -37,6 +37,7 @@
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/Query.h"

@@ -24,6 +24,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include "ExecutionBlockImpl.h"
 
 #include "Aql/AqlCallStack.h"

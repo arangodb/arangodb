@@ -33,6 +33,7 @@
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
@@ -126,6 +127,8 @@ std::unordered_map<int, std::string const> const typeNames{
 };
 
 }  // namespace
+
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 
 namespace arangodb::aql {
 ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);

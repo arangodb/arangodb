@@ -28,6 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"

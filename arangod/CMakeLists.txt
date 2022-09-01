@@ -362,8 +362,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ExecutionBlockImpl/InjectConstBlock.cpp
   Aql/ExecutionBlockImpl/GetOutputRegisterId.cpp
   Aql/ExecutionBlockImpl/Subquery.cpp
-  Aql/ExecutionBlockImpl/Instances/Instances.cpp
-  Aql/ExecutionBlockImpl/Instances/Modification.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
   Aql/ExecutionNodeId.cpp
