@@ -106,8 +106,6 @@ class IResearchInvertedIndexMock final : public Index,
 
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const final;
 
-  void toVelocyPackFigures(velocypack::Builder& builder) const final;
-
   void unload() final;
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) final;

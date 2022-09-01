@@ -246,6 +246,8 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   return {};
 }
 
+static std::atomic_bool kHasClusterMetrics{false};
+
 }  // namespace
 
 void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
@@ -1651,6 +1653,60 @@ std::tuple<uint64_t, uint64_t, uint64_t> IResearchDataStore::avgTime() const {
       _avgConsolidationTimeMs
           ? _avgConsolidationTimeMs->load(std::memory_order_relaxed)
           : 0};
+}
+
+void IResearchDataStore::initClusterMetrics() const {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  if (kHasClusterMetrics.load(std::memory_order_relaxed)) {
+    return;
+  }
+  if (kHasClusterMetrics.exchange(true)) {
+    return;
+  }
+  using namespace metrics;
+  auto& metric =
+      _collection.vocbase().server().getFeature<ClusterMetricsFeature>();
+
+  auto batchToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
+                               std::string_view name, velocypack::Slice labels,
+                               velocypack::Slice value) {
+    auto& v = metrics.values[{std::string{name}, labels.copyString()}];
+    std::get<uint64_t>(v) += value.getNumber<uint64_t>();
+  };
+  auto batchToPrometheus = [](std::string& result, std::string_view globals,
+                              std::string_view name, std::string_view labels,
+                              ClusterMetricsFeature::MetricValue const& value) {
+    Metric::addMark(result, name, globals, labels);
+    absl::StrAppend(&result, std::get<uint64_t>(value), "\n");
+  };
+  metric.add("arangodb_search_num_docs", batchToCoordinator, batchToPrometheus);
+  metric.add("arangodb_search_num_live_docs", batchToCoordinator,
+             batchToPrometheus);
+  metric.add("arangodb_search_num_segments", batchToCoordinator,
+             batchToPrometheus);
+  metric.add("arangodb_search_num_files", batchToCoordinator,
+             batchToPrometheus);
+  metric.add("arangodb_search_index_size", batchToCoordinator,
+             batchToPrometheus);
+  auto gaugeToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
+                               std::string_view name, velocypack::Slice labels,
+                               velocypack::Slice value) {
+    auto labelsStr = labels.stringView();
+    auto end = labelsStr.find(",shard=\"");
+    if (end == std::string_view::npos) {
+      TRI_ASSERT(false);
+      return;
+    }
+    labelsStr = labelsStr.substr(0, end);
+    auto& v = metrics.values[{std::string{name}, std::string{labelsStr}}];
+    std::get<uint64_t>(v) += value.getNumber<uint64_t>();
+  };
+  metric.add("arangodb_search_num_failed_commits", gaugeToCoordinator);
+  metric.add("arangodb_search_num_failed_cleanups", gaugeToCoordinator);
+  metric.add("arangodb_search_num_failed_consolidations", gaugeToCoordinator);
+  metric.add("arangodb_search_commit_time", gaugeToCoordinator);
+  metric.add("arangodb_search_cleanup_time", gaugeToCoordinator);
+  metric.add("arangodb_search_consolidation_time", gaugeToCoordinator);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
