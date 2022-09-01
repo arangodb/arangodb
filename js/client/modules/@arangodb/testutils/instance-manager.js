@@ -639,6 +639,10 @@ class instanceManager {
         print(Date() + " Killing in the name of: ");
         arangod.killWithCoreDump();
       });
+      this.arangods.forEach((arangod) => {
+        crashUtils.aggregateDebugger(arangod, this.options);
+        arangod.waitForExitAfterDebugKill();
+      });
     }
     return rc;
   }
@@ -720,7 +724,11 @@ class instanceManager {
       forceTerminate = true;
     }
     try {
-      return this._shutdownInstance(forceTerminate);
+      if (forceTerminate) {
+        this._forceTerminate();
+      } else {
+        return this._shutdownInstance();
+      }
     }
     catch (e) {
       if (e instanceof ArangoError && e.errorNum === internal.errors.ERROR_DISABLED.code) {
@@ -733,7 +741,20 @@ class instanceManager {
     }
   }
 
-  _shutdownInstance (forceTerminate) {
+  _forceTerminate() {
+    print("Aggregating coredumps");
+    this.arangods.forEach((arangod) => {
+      arangod.killWithCoreDump('forced shutdown');
+      arangod.serverCrashedLocal = true;
+    });
+    this.arangods.forEach((arangod) => {
+      crashUtils.aggregateDebugger(arangod, this.options);
+      arangod.waitForExitAfterDebugKill();
+    });
+  }
+  _shutdownInstance () {
+    let forceTerminate = false;  
+    let crashed = false;
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
@@ -783,6 +804,13 @@ class instanceManager {
       }
     }
 
+    if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
+      this.dumpAgency();
+    }
+    if (forceTerminate) {
+      this._forceTerminate();
+    }
+
     // Shut down all non-agency servers:
     const n = this.arangods.length;
 
@@ -815,10 +843,6 @@ class instanceManager {
     }
     if (this.options.sanitizer) {
       timeout *= 2;
-    }
-
-    if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
-      this.dumpAgency();
     }
 
     var shutdownTime = internal.time();
@@ -863,11 +887,8 @@ class instanceManager {
                   ' after ' + timeout + 's grace period; marking crashy.');
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
-            arangod.killWithCoreDump();
-            arangod.analyzeServerCrash('shutdown timeout; instance "' +
-                                       arangod.name +
-                                       '" forcefully KILLED after 60s - ' +
-                                       arangod.exitStatus.signal);
+            arangod.killWithCoreDump('forced shutdown');
+            crashed = true;
             if (!arangod.isAgent()) {
               nonAgenciesCount--;
             }
@@ -917,7 +938,6 @@ class instanceManager {
         require('internal').wait(1, false);
       }
     }
-
     if (!this.options.skipLogAnalysis) {
       this.arangods.forEach(arangod => {
         let errorEntries = arangod.readImportantLogLines();
@@ -1068,8 +1088,11 @@ class instanceManager {
       // Didn't startup in 10 minutes? kill it, give up.
       if (count > 1200) {
         this.arangods.forEach(arangod => {
-          arangod.killWithCoreDump();
-          arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
+          arangod.killWithCoreDump('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
+        });
+        this.arangods.forEach((arangod) => {
+          crashUtils.aggregateDebugger(arangod, this.options);
+          arangod.waitForExitAfterDebugKill();
         });
         this.cleanup = false;
         throw new Error('cluster startup timed out after 10 minutes!');

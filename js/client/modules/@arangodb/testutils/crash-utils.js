@@ -156,21 +156,6 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
 
   const args = ['-c', command];
   print(JSON.stringify(args));
-  
-  sleep(5);
-  executeExternalAndWait('/bin/bash', args);
-  GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
-  if (!fs.exists(gdbOutputFile)) {
-    print("Failed to generate GDB output file?");
-    return "";
-  }
-  let thisDump = fs.read(gdbOutputFile);
-  GDB_OUTPUT += thisDump;
-  if (options.extremeVerbosity === true) {
-    print(thisDump);
-  }
-
   command = 'gdb ' + storeArangodPath + ' ';
 
   if (options.coreDirectory === '') {
@@ -178,7 +163,12 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
   } else {
     command += options.coreDirectory;
   }
-  return command;
+  return {
+    pid: executeExternal('/bin/bash', args),
+    file: gdbOutputFile,
+    hint: command,
+    verbosePrint: true
+  };
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -243,22 +233,18 @@ function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   command += 'sleep 10;';
   command += 'echo quit;';
   command += 'sleep 2';
-  command += ') | lldb ' + storeArangodPath;
+  command += ') | lldb ';
   command += ` --attach-pid ${pid}`;
+  command += storeArangodPath;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
   print(JSON.stringify(args));
-
-  sleep(5);
-  executeExternalAndWait('/bin/bash', args);
-  GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
-  let thisDump = fs.read(lldbOutputFile);
-  GDB_OUTPUT += thisDump;
-  if (options.extremeVerbosity === true) {
-    print(thisDump);
-  }
-  return 'lldb ' + storeArangodPath + ' -c /cores/core.' + pid;
+  return {
+    pid: executeExternal('/bin/bash', args),
+    file: lldbOutputFile,
+    hint:  'lldb ' + storeArangodPath + ' -c /cores/core.' + pid,
+    verbosePrint: true
+  };
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -440,15 +426,14 @@ function generateCoreDumpWindows (instanceInfo) {
     dbgCmds.join('; ')
   ];
 
-  sleep(5);
   print('running cdb ' + JSON.stringify(args));
   process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
-  executeExternalAndWait('cdb', args);
-  GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
-  // cdb will output to stdout anyways, so we can't turn this off here.
-  GDB_OUTPUT += fs.read(cdbOutputFile);
-  return 'cdb ' + args.join(' ');
+  return {
+    pid: executeExternal('cdb', args),
+    file: cdbOutputFile,
+    hint: 'cdb ' + args.join(' '),
+    verbosePrint: false
+  };
 }
 
 function checkMonitorAlive (binary, instanceInfo, options, res) {
@@ -585,17 +570,43 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     if (!options.disableMonitor) {
       stopProcdump(options, instanceInfo, true);
     }
-    generateCoreDumpWindows(instanceInfo);
+    instanceInfo.debuggerInfo = generateCoreDumpWindows(instanceInfo);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
   } else if (platform === 'darwin') {
-    generateCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
+    instanceInfo.debuggerInfo = generateCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
   } else {
-    generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
+    instanceInfo.debuggerInfo = generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
   }
 }
 
+function aggregateDebugger(instanceInfo, options) {
+  print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
+  if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
+    print("No debugger info persisted to " + instanceInfo.debuggerInfo.getStructure());
+    return false;
+  }
+  print("waiting for debugger to terminate: " + JSON.stringify(instanceInfo.debuggerInfo));
+  print(statusExternal(instanceInfo.debuggerInfo.pid.pid, true));
+  if (!fs.exists(instanceInfo.debuggerInfo.file)) {
+    print("Failed to generate the debbugers output file for " +
+          JSON.stringify(instanceInfo.getStructure()) + '\n');
+    return "";
+  }
+
+  GDB_OUTPUT += `
+--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+  let thisDump = fs.read(instanceInfo.debuggerInfo.file);
+  GDB_OUTPUT += thisDump;
+  if (options.extremeVerbosity === true && instanceInfo.debuggerInfo.verbosePrint) {
+    print(thisDump);
+  }
+  return instanceInfo.debuggerInfo.hint;
+}
+
+exports.aggregateDebugger = aggregateDebugger;
 exports.generateCrashDump = generateCrashDump;
 exports.checkMonitorAlive = checkMonitorAlive;
 exports.analyzeCrash = analyzeCrash;

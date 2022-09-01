@@ -694,6 +694,17 @@ class instance {
     this.url = pu.endpointToURL(this.endpoint);
   };
 
+  waitForExitAfterDebugKill() {
+    // Crashutils debugger kills our instance, but we neet to get
+    // testing.js sapwned-PID-monitoring adjusted.
+    print("waiting for exit - " + this.pid);
+    try {
+      print(statusExternal(this.pid, true));
+    } catch(ex) {
+      print(ex);
+    }
+    print('done');
+  }
   waitForExit() {
     if (this.pid === null) {
       this.exitStatus = null;
