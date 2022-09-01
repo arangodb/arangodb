@@ -315,7 +315,6 @@ function ViewSearchAliasSuite() {
         c1.drop();
       }
     },
-    
     testQuerySearchField: function () {
       var c1 = db._create("c1");
       c1.save({i:1, a:"aaa"});
@@ -335,7 +334,25 @@ function ViewSearchAliasSuite() {
         c1.drop();
       }
     },
-
+    testQuerySearchFieldSubfield: function () {
+      var c1 = db._create("c1");
+      c1.save({i:1, a:[{b:"aaa"}]});
+      c1.save({i:2, a:[{b:"bbb"}, {b:"aaa"}]});
+      c1.save({i:3, a:[{b:"ccc"}, {b:"bbb"}]});
+      c1.save({i:4, a:1});
+      c1.ensureIndex({name: "i1", type: "inverted", searchField:true, fields: [{name: "a.b", analyzer: "text_en"}]});
+      var v1 = db._createView("v1", "search-alias", {});
+      try {
+        v1.properties({indexes: [{collection: "c1", index: "i1"}]});
+        let res = db._query("FOR d IN v1 SEARCH d.a.b == 'aaa' SORT d.i ASC RETURN d").toArray();
+        assertEqual(2, res.length);
+        assertEqual(1, res[0].i);
+        assertEqual(2, res[1].i);
+      } finally {
+        v1.drop();
+        c1.drop();
+      }
+    },
   };
 }
 

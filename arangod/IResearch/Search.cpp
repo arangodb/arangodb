@@ -285,15 +285,17 @@ void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
   for (auto const& field : index._fields) {
     auto it = search.lower_bound(field.path());
     if (it == search.end() || it->first != field.path()) {
-      search.emplace_hint(it, field.path(),
-                          SearchMeta::Field{field.analyzer()._shortName,
-                                            field._includeAllFields});
+      search.emplace_hint(
+          it, field.path(),
+          SearchMeta::Field{field.analyzer()._shortName,
+                            field._includeAllFields, field._isSearchField});
     } else {
       it->second.includeAllFields |= field._includeAllFields;
     }
   }
   if (index._includeAllFields) {
-    search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true});
+    search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,
+                                         index._isSearchField});
   }
 }
 
