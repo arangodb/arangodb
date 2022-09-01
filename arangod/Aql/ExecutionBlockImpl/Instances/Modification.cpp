@@ -27,7 +27,6 @@
 #include <Aql/UpsertModifier.h>
 
 #include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
 
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
@@ -51,5 +50,3 @@ template class ::arangodb::aql::ExecutionBlockImpl<
     SingleRemoteModificationExecutor<Replace>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
     SingleRemoteModificationExecutor<Upsert>>;
-
-#endif

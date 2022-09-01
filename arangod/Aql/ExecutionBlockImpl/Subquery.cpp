@@ -23,6 +23,7 @@
 
 #include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
 
+namespace arangodb::aql {
 template<>
 auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
     AqlCallStack& stack) -> ExecState {
@@ -142,3 +143,4 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
     return ExecState::NEXTSUBQUERY;
   }
 }
+}  // namespace arangodb::aql

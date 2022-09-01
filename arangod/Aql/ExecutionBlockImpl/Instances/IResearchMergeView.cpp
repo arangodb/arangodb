@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
-// Avoid compiling everything again in the tests
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
 
 template class ::arangodb::aql::ExecutionBlockImpl<
     IResearchViewMergeExecutor<aql::ExecutionTraits<
@@ -149,5 +147,3 @@ template class ::arangodb::aql::ExecutionBlockImpl<
         true, true, true,
         arangodb::iresearch::MaterializeType::LateMaterialize |
             arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-
-#endif

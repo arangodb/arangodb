@@ -1,8 +1,5 @@
 #include <Aql/ExecutionBlockImpl/ExecutionBlockImpl.tpp>
 
-// Avoid compiling everything again in the tests
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
-
 template class ::arangodb::aql::ExecutionBlockImpl<
     CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
@@ -53,15 +50,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<
     ParallelUnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
-    SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
-    SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
-    SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
-    SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
-
 template class ::arangodb::aql::ExecutionBlockImpl<
     MaterializeExecutor<RegisterId>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
@@ -70,6 +58,4 @@ template class ::arangodb::aql::ExecutionBlockImpl<
 #ifdef USE_ENTERPRISE
 template class ::arangodb::aql::ExecutionBlockImpl<
     ::arangodb::iresearch::OffsetMaterializeExecutor>;
-#endif
-
 #endif
