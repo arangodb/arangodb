@@ -1,6 +1,12 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
+* Make AQL query explainer display "index scan + document lookup" for queries
+  that use an index for filtering, but need to fetch more document data from
+  the storage engine. Previously, those were labeled only as "index scan",
+  obfuscating the fact that there are document lookups needed.
+  Covering-index queries are still labeled "index scan, index only" as before.
+
 * Disable optimization rule to avoid crash (BTS-951).
 
 * Fix SEARCH-350: Crash during consolidation.
