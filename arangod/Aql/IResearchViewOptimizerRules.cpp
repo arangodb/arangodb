@@ -234,7 +234,9 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
         .trx = &query.trxForOptimization(),
         .ref = &viewNode.outVariable(),
         .isSearchQuery = true,
-        .isOldMangling = (viewNode.meta() == nullptr)};
+        .isOldMangling = (viewNode.meta() == nullptr),
+        // we don't care here- we are checking condition in general
+        .hasNestedFields = false};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.

@@ -396,11 +396,12 @@ bool IResearchInvertedIndexMeta::json(
     }
   }
 
-  for (auto const& it : consistencyTypeMap) {
-    if (it.second == _consistency) {
-      builder.add(kConsistencyFieldName, VPackValue(it.first));
-    }
-  }
+  // FIXME: Uncomment once support is done
+  // for (auto const& it : consistencyTypeMap) {
+  //  if (it.second == _consistency) {
+  //    builder.add(kConsistencyFieldName, VPackValue(it.first));
+  //  }
+  //}
 
   builder.add(kVersionFieldName, VPackValue(static_cast<uint32_t>(_version)));
 
@@ -842,9 +843,10 @@ bool IResearchInvertedIndexSort::toVelocyPack(
     addStringRef(builder, kCompressionFieldName, compression);
   }
 
-  if (!_locale.isBogus()) {
-    builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
-  }
+  // FIXME: Uncomment once support is done
+  // if (!_locale.isBogus()) {
+  //  builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
+  //}
   return true;
 }
 
