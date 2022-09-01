@@ -45,6 +45,8 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
@@ -279,6 +281,14 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
       return;
     }
+
+    if (_index->failQueriesOnOutOfSync() && _index->isOutOfSync()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+          absl::StrCat("link ", std::to_string(_index->id().id()),
+                       " has been marked as failed and needs to be recreated"));
+    }
+
     auto& state = *(_trx->state());
 
     // TODO FIXME find a better way to look up a State
@@ -751,6 +761,11 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
         TRI_ERROR_INTERNAL,
         std::string("Failed to generate inverted index field definition")));
   }
+  if (isOutOfSync()) {
+    // index is out of sync - we need to report that
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
+  }
 }
 
 std::vector<std::vector<basics::AttributeName>> IResearchInvertedIndex::fields(
@@ -799,12 +814,22 @@ Result IResearchInvertedIndex::init(
     if (r.ok()) {
       _comparer.reset(_meta._sort);
     }
+
+    if (auto s = definition.get(StaticStrings::LinkError); s.isString()) {
+      if (s.stringView() == StaticStrings::LinkErrorOutOfSync) {
+        // mark index as out of sync
+        setOutOfSync();
+      } else if (s.stringView() == StaticStrings::LinkErrorFailed) {
+        // not implemented yet
+      }
+    }
+
     properties(_meta);
     return r;
-  } else {
-    initAsyncSelf();
-    return {};
   }
+
+  initAsyncSelf();
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1039,6 +1064,12 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (isOutOfSync()) {
+    // link is out of sync - we need to report that
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
+  }
 }
 
 bool IResearchInvertedClusterIndex::matchesDefinition(

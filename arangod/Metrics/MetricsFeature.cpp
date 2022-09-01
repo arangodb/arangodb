@@ -81,7 +81,7 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   std::lock_guard lock{_mutex};
   if (!_registry.try_emplace(key, metric).second) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string{builder.type()} +
+                                   std::string{builder.type()} + " " +
                                        std::string{builder.name()} +
                                        " already exists");
   }
