@@ -2168,3 +2168,11 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
     _bell.notify_one();
   }
 }
+
+template<>
+auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
+    AqlCallStack& stack) -> ExecState;
+
+template<>
+auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
+    AqlCallStack& stack) -> ExecState;
