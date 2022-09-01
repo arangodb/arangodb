@@ -807,6 +807,8 @@ void Logger::log(char const* logid, char const* function, char const* file,
       logContext.visit(visitor);
     }
 
+    // json format uses internal options for escaping control and unicode chars,
+    // in this case, we use the Escaper class
     escaper->writeIntoOutputBuffer(message, out);
   }
 
