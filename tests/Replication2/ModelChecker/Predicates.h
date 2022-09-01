@@ -250,13 +250,13 @@ template<const char File[], typename>
 struct StringBuffer;
 template<const char File[], std::size_t... Idxs>
 struct StringBuffer<File, std::index_sequence<Idxs...>> {
-  static inline constexpr Str<File[Idxs]...> buffer;
+  using Data = Str<File[Idxs]...>;
 };
 
 template<const char File[], std::size_t FileLen, std::size_t Line>
 struct FileLineType {
   static inline constexpr auto filename =
-      StringBuffer<File, std::make_index_sequence<FileLen>>::buffer.value;
+      StringBuffer<File, std::make_index_sequence<FileLen>>::Data::value;
   static inline constexpr std::size_t line = Line;
 
   static auto annotate(std::string_view message) -> std::string {
