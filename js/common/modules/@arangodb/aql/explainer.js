@@ -1124,7 +1124,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   var iterateIndexes = function (idx, i, node, types, variable) {
-    var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
+    var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : ' + document lookup') : ', scan only');
     if (node.readOwnWrites) {
       what += "; read own writes";
     }
@@ -1971,7 +1971,6 @@ function processQuery(query, explain, planIndex) {
     if (['EnumerateCollectionNode',
       'EnumerateListNode',
       'EnumerateViewNode',
-      'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
       'SubqueryStartNode',
