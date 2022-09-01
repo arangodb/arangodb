@@ -363,9 +363,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ExecutionBlockImpl/GetOutputRegisterId.cpp
   Aql/ExecutionBlockImpl/Subquery.cpp
   Aql/ExecutionBlockImpl/Instances/Instances.cpp
-  Aql/ExecutionBlockImpl/Instances/IResearchMergeView.cpp
-  Aql/ExecutionBlockImpl/Instances/IResearchView.cpp
-  Aql/ExecutionBlockImpl/Instances/IResearchViewHeapSort.cpp
   Aql/ExecutionBlockImpl/Instances/Modification.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
