@@ -182,12 +182,7 @@ class min_match_disjunction
           return (doc_.value = doc_limits::eof());
         }
 
-#ifdef _MSC_VER
-        // Microsoft invalidates iterator
         it = lead();
-#endif
-
-        // update end
         end = heap_.end();
       } else { // doc != target
         // move back to head
@@ -348,12 +343,7 @@ class min_match_disjunction
           return false;
         }
 
-#ifdef _MSC_VER
-        // Microsoft invalidates iterator
         it = lead();
-#endif
-
-        // update end
         end = heap_.end();
       } else {
         // push back to head

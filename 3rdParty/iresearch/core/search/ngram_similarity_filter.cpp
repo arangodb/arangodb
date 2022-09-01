@@ -431,6 +431,11 @@ class ngram_similarity_query : public filter::prepared {
       const order::prepared& ord) const {
     approximation::doc_iterators_t itrs;
     itrs.reserve(query_state.terms.size());
+
+    auto validate = [](const auto& it) noexcept {
+      return it.it && it.doc && irs::get<irs::position>(*it.it);
+    };
+
     const IndexFeatures features = ord.features() | by_ngram_similarity::required();
     for (auto& term_state : query_state.terms) {
       if (term_state == nullptr) {
@@ -446,6 +451,10 @@ class ngram_similarity_query : public filter::prepared {
 
       // add iterator
       itrs.emplace_back(std::move(docs));
+
+      if (!validate(itrs.back())) {
+        itrs.pop_back();
+      }
     }
 
     if (itrs.size() < min_match_count_) {
