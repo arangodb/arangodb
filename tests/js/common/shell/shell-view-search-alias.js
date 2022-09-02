@@ -352,7 +352,7 @@ function ViewSearchAliasSuite() {
       var v1 = db._createView("v1", "search-alias", {});
       try {
         v1.properties({indexes: [{collection: "c1", index: "i1"}]});
-        let res = db._query("FOR d IN v1 SEARCH d.a == 'aaa' SORT d.i ASC RETURN d").toArray();
+        let res = db._query("FOR d IN v1 SEARCH d.a == 'aaa' OPTIONS {waitForSync:true} SORT d.i ASC RETURN d").toArray();
         assertEqual(2, res.length);
         assertEqual(1, res[0].i);
         assertEqual(2, res[1].i);
@@ -371,7 +371,7 @@ function ViewSearchAliasSuite() {
       var v1 = db._createView("v1", "search-alias", {});
       try {
         v1.properties({indexes: [{collection: "c1", index: "i1"}]});
-        let res = db._query("FOR d IN v1 SEARCH d.a.b == 'aaa' SORT d.i ASC RETURN d").toArray();
+        let res = db._query("FOR d IN v1 SEARCH d.a.b == 'aaa' OPTIONS {waitForSync:true} SORT d.i ASC RETURN d").toArray();
         assertEqual(2, res.length);
         assertEqual(1, res[0].i);
         assertEqual(2, res[1].i);
