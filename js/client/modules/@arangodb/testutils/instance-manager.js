@@ -270,8 +270,8 @@ class instanceManager {
       return false;
     }
   }
-  launchInstance() {
 
+  launchInstance() {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
@@ -281,7 +281,15 @@ class instanceManager {
 
     const startTime = time();
     try {
-      this.arangods.forEach(arangod => arangod.startArango());
+      let count = 0;
+      this.arangods.forEach(arangod => {
+        arangod.startArango();
+        count += 1;
+        if (this.options.agency &&
+            count === this.agencyConfig.agencySize) {
+          this.detectAgencyAlive();
+        }
+      });
       if (this.options.cluster) {
         this.checkClusterAlive();
       } else if (this.options.activefailover) {
@@ -954,6 +962,31 @@ class instanceManager {
     });
     this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
+  }
+
+  detectAgencyAlive() {
+    let count = 20;
+    while (count > 0) {
+      for (let agentIndex = 0; agentIndex < this.agencyConfig.agencySize; agentIndex ++) {
+        let reply = this.agencyConfig.agencyInstances[agentIndex].getAgent('/_api/agency/state', 'GET');
+        if (!reply.error && reply.code === 200) {
+          let res = JSON.parse(reply.body);
+          if (this.options.extremeVerbosity) {
+            print("Response ====> ");
+            print(res);
+          }
+          if (res.hasOwnProperty('agency')){
+            print("Agency Up!");
+            return;
+          }
+          count --;
+          if (count === 0) {
+            throw new Error("Agency didn't come alive in time!");
+          }
+        }
+        sleep(0.5);
+      }
+    }
   }
 
   detectCurrentLeader(instanceInfo) {

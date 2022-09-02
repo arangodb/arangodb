@@ -395,13 +395,13 @@ class instance {
         let l = [];
         this.agencyConfig.agencyInstances.forEach(agentInstance => {
           l.push(agentInstance.endpoint);
+          this.agencyConfig.urls.push(agentInstance.url);
+          this.agencyConfig.endpoints.push(agentInstance.endpoint);
         });
         this.agencyConfig.agencyInstances.forEach(agentInstance => {
           agentInstance.args['agency.endpoint'] = _.clone(l);
         });
         this.agencyConfig.agencyEndpoint = this.agencyConfig.agencyInstances[0].endpoint;
-        this.agencyConfig.urls.push(this.url);
-        this.agencyConfig.endpoints.push(this.endpoint);
       }
     } else if (this.instanceRole === instanceRole.dbServer) {
       this.args = Object.assign(this.args, {
@@ -806,6 +806,17 @@ class instance {
       count --;
     }
     throw new Error(`unable to connect in ${count}s`);
+  }
+  getAgent(path, method) {
+    let opts = {
+      method: method
+    };
+    if (this.args.hasOwnProperty('authOpts')) {
+      opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    } else if (this.args.hasOwnProperty('server.jwt-secret')) {
+      opts['jwt'] = crypto.jwtEncode(this.args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    }
+    return download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
   }
 
   dumpAgent(path, method, fn) {
