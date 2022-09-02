@@ -259,6 +259,7 @@
 
       arangoHelper.checkDatabasePermissions(function () {
         $('#indexEditView #addIndex').hide();
+        $('.deleteIndex').hide();
       }, function () {
         $('#indexEditView #addIndex').bind('click', function () {
           self.toggleNewIndexView();
@@ -274,14 +275,14 @@
             self.createIndex();
           });
         });
+
+        $('.deleteIndex').bind('click', function (e) {
+          self.prepDeleteIndex(e);
+        });
       });
 
       $('#newIndexType').bind('change', function () {
         self.selectIndexType();
-      });
-
-      $('.deleteIndex').bind('click', function (e) {
-        self.prepDeleteIndex(e);
       });
 
       $('#infoTab a').bind('click', function (e) {
