@@ -145,7 +145,7 @@
         $.ajax({
           cache: false,
           type: 'POST',
-          url: arangoHelper.databaseUrl('/_api/index#general?collection=' + encodeURIComponent(self.get('name'))),
+          url: arangoHelper.databaseUrl('/_api/index?collection=' + encodeURIComponent(self.get('id'))),
           headers: {
             'x-arango-async': 'store'
           },
@@ -174,32 +174,35 @@
 
     deleteIndex: function (id, callback) {
       var self = this;
-
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        url: arangoHelper.databaseUrl('/_api/index/' + encodeURIComponent(this.get('name')) + '/' + encodeURIComponent(id)),
-        headers: {
-          'x-arango-async': 'store'
-        },
-        success: function (data, textStatus, xhr) {
-          if (xhr.getResponseHeader('x-arango-async-id')) {
-            window.arangoHelper.addAardvarkJob({
-              id: xhr.getResponseHeader('x-arango-async-id'),
-              type: 'index',
-              desc: 'Removing Index',
-              collection: self.get('id')
-            });
-            callback(false, data);
-          } else {
+      arangoHelper.checkDatabasePermissions(function () {
+          arangoHelper.arangoError("You do not have permission to delete indexes in this" +
+            " database.");
+        }, function () {
+        $.ajax({
+          cache: false,
+          type: 'DELETE',
+          url: arangoHelper.databaseUrl('/_api/index/' + encodeURIComponent(self.get('name')) + '/' + encodeURIComponent(id)),
+          headers: {
+            'x-arango-async': 'store'
+          },
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Removing Index',
+                collection: self.get('id')
+              });
+              callback(false, data);
+            } else {
+              callback(true, data);
+            }
+          },
+          error: function (data) {
             callback(true, data);
           }
-        },
-        error: function (data) {
-          callback(true, data);
-        }
+        });
       });
-      callback();
     },
 
     truncateCollection: function () {
