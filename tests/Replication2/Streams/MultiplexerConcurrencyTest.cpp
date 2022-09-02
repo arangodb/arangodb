@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 
 #include <Basics/VelocyPackHelper.h>
+#include "Basics/ThreadGuard.h"
 #include <Replication2/Mocks/AsyncFollower.h>
 #include <utility>
 
@@ -132,19 +133,20 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   constexpr std::size_t num_inserts_per_thread = 10000;
   constexpr auto lastIndex = LogIndex{num_threads * num_inserts_per_thread + 1};
 
-  std::vector<std::thread> threads;
-  std::generate_n(std::back_inserter(threads), num_threads, [&] {
-    return std::thread([&, producer] {
+  auto threads = ThreadGuard(num_threads);
+
+  for (size_t n = 0; n < num_threads; ++n) {
+    threads.emplace([&, producer] {
       auto index = LogIndex{0};
       for (std::size_t i = 0; i < num_inserts_per_thread; i++) {
         index = producer->insert((int)i);
       }
       producer->waitFor(index).wait();
     });
-  });
+  }
 
-  std::for_each(std::begin(threads), std::end(threads),
-                [](std::thread& t) { t.join(); });
+  threads.joinAll();
+
   asyncFollower->waitFor(lastIndex).wait();
   asyncFollower->stop();
   asyncLeader->waitFor(lastIndex).wait();

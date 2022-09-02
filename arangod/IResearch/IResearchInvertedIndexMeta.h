@@ -44,6 +44,8 @@ using MissingFieldsMap =
 
 class IResearchInvertedIndexSort final : public IResearchSortBase {
  public:
+  IResearchInvertedIndexSort() { _locale.setToBogus(); }
+
   bool operator==(IResearchInvertedIndexSort const& rhs) const noexcept {
     return IResearchSortBase::operator==(rhs) &&
            std::string_view{_locale.getName()} == rhs._locale.getName();
@@ -98,10 +100,7 @@ struct InvertedIndexField {
     return _analyzers[0]._pool->name();
   }
 
-  bool namesMatch(InvertedIndexField const& other) const noexcept;
-
-  bool isIdentical(std::vector<basics::AttributeName> const& path,
-                   irs::string_ref analyzerName) const noexcept;
+  bool operator==(InvertedIndexField const& other) const noexcept;
 
   FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzers[0]; }
 
@@ -204,9 +203,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
 
   bool operator==(IResearchInvertedIndexMeta const& other) const noexcept;
 
-  static bool matchesFieldsDefinition(IResearchInvertedIndexMeta const& meta,
-                                      VPackSlice other,
-                                      LogicalCollection const& collection);
+  static bool matchesDefinition(IResearchInvertedIndexMeta const& meta,
+                                VPackSlice other, TRI_vocbase_t const& vocbase);
 
   bool hasNested() const noexcept { return _hasNested; }
 

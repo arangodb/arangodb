@@ -39,15 +39,19 @@ let internal = require("internal");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
 
+const Kleinberg = "Kleinberg";
+const Graetzer = "Graetzer";
+const Wiki = "Wiki";
+
 const graphGenerator = graphGeneration.graphGenerator;
 
 const loadGraphGenerators = function (isSmart) {
     if (isSmart) {
         return {
             makeEdgeBetweenVertices:
-                require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
+            require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
             verticesEdgesGenerator:
-                require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
+            require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
         };
     }
     return {
@@ -56,11 +60,27 @@ const loadGraphGenerators = function (isSmart) {
     };
 };
 
-// This function does not assert the equality itself (this should be done
-// in the caller) to allow the caller to output information
-// on error in addition to expected and actual.
-const amostEquals = function(expected, actual, epsilon) {
-    return (Math.abs(expected - actual) < epsilon);
+/**
+ * Assert that expected and actual are equal up to the tolerance epsilon.
+ * @param expected the expected value, a number
+ * @param actual the actual value, a number
+ * @param epsilon the tolerance, a number
+ * @param msg the message to prepend th output of the values
+ * @param expectedDescription the description of expected
+ * @param actualDescription the description of actual
+ * @param context the context in that the test is performed, output after the values
+ */
+const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDescription, actualDescription, context) {
+    if (Math.abs(expected - actual) >= epsilon) {
+        console.error(msg + ":");
+        console.error("    " + expectedDescription + ":");
+        console.error("        " + expected);
+        console.error("    " + actualDescription + ":");
+        console.error("        " + actual);
+        console.error("    Difference: " + Math.abs(actual - expected));
+        console.error(context);
+        assertTrue(false);
+    }
 };
 
 const runPregelInstance = function (algName, graphName, parameters, query, maxWaitTimeSecs = 120) {
@@ -77,16 +97,16 @@ const runPregelInstance = function (algName, graphName, parameters, query, maxWa
 };
 
 const dampingFactor = 0.85;
-const epsilon = 0.0001;
+let epsilon = 0.00001;
 
-const testPageRankOnGraph = function(vertices, edges, seeded = false) {
+const testPageRankOnGraph = function (vertices, edges, seeded = false) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
     const query = `
                   FOR v in ${vColl}
                   RETURN {"_key": v._key, "value": v.pagerank}  
               `;
-    let parameters = {maxGSS:100, resultField: "pagerank"};
+    let parameters = {maxGSS: 100, resultField: "pagerank"};
     if (seeded) {
         parameters.sourceField = "input";
     }
@@ -98,13 +118,69 @@ const testPageRankOnGraph = function(vertices, edges, seeded = false) {
     }
     const pr = new PageRank(dampingFactor, vertices.length);
     for (const resultV of result) {
-        if (!amostEquals(resultV.value, pr.doOnePagerankStep(resultV._key, graph), epsilon)) {
-            console.error(`The Pagerank algorithm 
-            did not find a fixed point: it returned ' +
-                    '${resultV.value}, but another test iteration returned ' + 
-                    '${pr.doOnePagerankStep(resultV._key, graph)} for vertex ${JSON.stringify(resultV)}. ' +
-                    'The ranks returned by the algorithm are ${JSON.stringify(result)}.`);
-        }
+        assertAlmostEquals(resultV.value, pr.doOnePagerankStep(resultV._key, graph), epsilon,
+            "The Pagerank algorithm did not find a fixed point",
+            "it returned",
+            "but another test iteration returned",
+            `for vertex ${JSON.stringify(resultV)}. The ranks returned by the algorithm are ${JSON.stringify(result)}.`
+        );
+    }
+};
+
+/**
+ * Save vertices and edges, perform 100 steps HITS and 100 steps self-made algorithm. Test that the results are equal
+ * up to epsilon if compare is true. Test that the self-made result is a fixed point (up to epsilon in each vertex).
+ * @param vertices
+ * @param edges
+ * @param compare if true, compares if the result is the same as of a testing sequential algorithm
+ * @param variant "Kleinberg": after Jon M. Kleinberg, Authoritative Sources in a Hyperlinked Environment, 1998;
+ *                "Wiki": after the variant described in the Wikipedia (Pregel cannot do this yet), or
+ *                "Graetzer": the original ArangoDB Pregel version
+ */
+const testHITSKleinbergOnGraph = function (vertices, edges) {
+    db[vColl].save(vertices);
+    db[eColl].save(edges);
+    const query = `
+                  FOR v in ${vColl}
+                  RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
+              `;
+    const numberIterations = 50;
+
+    let parameters = {resultField: "hits", maxNumIterations: numberIterations};
+    let algName = "hitskleinberg";
+    const result = runPregelInstance(algName, graphName, parameters, query);
+
+    const hits = new HITS();
+    const graph = new Graph(vertices, edges);
+
+    let maxDiff = hits.computeFixedPointKleinberg(graph, numberIterations, epsilon);
+
+
+    // check that the test algorithm reached a fixed point
+    // (in principle, it is possible that it reached the maximum number of steps before a fixed point,
+    // but we should give it it tests enough steps to converge)
+    assertTrue(maxDiff < epsilon,
+        `Test algorithm computeFixedPointKleinberg: the maximum difference ${maxDiff} between two last iterations is bigger than ${epsilon}.`);
+
+    // check that Pregel returned the same result as our test algorithm.
+    for (const resultV of result) {
+        const vKey = resultV._key;
+        const v = graph.vertex(resultV._key);
+        // auth
+        assertAlmostEquals(resultV.value.hits_auth, v.value.hits_auth, epsilon,
+            `Different authority values for vertex ${vKey}`,
+            "Pregel returned",
+            "test returned",
+            ""
+        );
+
+        // hub
+        assertAlmostEquals(resultV.value.hits_hub, v.value.hits_hub, epsilon,
+            `Different hub values for vertex ${vKey}`,
+            "Pregel returned",
+            "test returned",
+            ""
+        );
     }
 };
 
@@ -183,7 +259,9 @@ const testSubgraphs = function (algName, graphName, parameters, expectedSizes) {
     parameters.resultField = "result"; // ignore passed resultField if any
     // sorting in the descending order is needed because pregelRunSmallInstanceGetComponents
     // sorts the results like this
-    expectedSizes.sort(function (a, b) {return b - a;});
+    expectedSizes.sort(function (a, b) {
+        return b - a;
+    });
     if (parameters.hasOwnProperty("test") && parameters.test) {
         delete parameters.test;
         const query = `
@@ -245,7 +323,10 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
     }
 
     // Get the result of Pregel's algorithm.
-    const computedComponents = pregelRunSmallInstanceGetComponents(algorithmName, graphName, {resultField: "result", store: true});
+    const computedComponents = pregelRunSmallInstanceGetComponents(algorithmName, graphName, {
+        resultField: "result",
+        store: true
+    });
     assertEqual(computedComponents.length, componentGenerators.length,
         `We expected ${componentGenerators.length} components, instead got ${JSON.stringify(computedComponents)}`);
 
@@ -276,7 +357,8 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
 
 
 class Vertex {
-    constructor(key, label, value=0) {
+
+    constructor(key, label, value = 0) {
         this.outEdges = [];
         this.outNeighbors = new Set();
         this.inEdges = [];
@@ -297,12 +379,24 @@ class Graph {
         return this.vertices.get(key);
     }
 
-    printVertices() {
-        let listVertices = [];
-        for (const [vKey, v] of this.vertices) {
-            listVertices.push([vKey, v.label, v.value, v.outNeighbors, v.inNeighbors]);
+    printVertices(onlyKeys = false) {
+        if (onlyKeys) {
+            let listVertices = [];
+            for (const [vKey,] of this.vertices) {
+                listVertices.push(vKey);
+            }
+            console.warn(listVertices);
+        } else {
+            console.warn(`Vertices: `);
+            for (const [vKey, v] of this.vertices) {
+                console.warn(`  ${vKey} : `);
+                console.warn(`    label: ${v.label}`);
+                console.warn(`    value: ${JSON.stringify(v.value)}$`);
+                console.warn(`    outNeighbs: ${JSON.stringify(v.outNeighbors)}`);
+                console.warn(`    inNeighbs:  ${JSON.stringify(v.inNeighbors)}`);
+            }
+            console.warn("End vertices");
         }
-        console.warn(listVertices);
     }
 
     /**
@@ -316,7 +410,7 @@ class Graph {
             return v.substr(v.indexOf('/') + 1);
         };
 
-        this.vertices = new Map();
+        this.vertices = new Map(); // maps vertex key to the vertex object
         for (const v of vertices) {
             this.vertices.set(v._key, new Vertex(v._key, v.label));
         }
@@ -353,8 +447,10 @@ class Graph {
      * @param cbOnPopVertex Either undefined or the callback function to run on a vertex
      *              that is being popped from the queue. The function must have one argument: the vertex being popped.
      */
-    bfs (source, cbOnFindVertex, cbOnPopVertex) {
-        assertTrue(this.vertices.has(source), `bfs: the given source "${source}" is not a vertex`);
+    bfs(source, cbOnFindVertex, cbOnPopVertex) {
+        assertTrue(typeof (source) === `string`, `${source} is not a string`);
+        assertTrue(this.vertices.has(`${source}`), `bfs: the given source "${JSON.stringify(source)}" is not a vertex`);
+
         let visited = new Set();
         visited.add(source);
         if (cbOnFindVertex !== undefined) {
@@ -367,8 +463,9 @@ class Graph {
             if (cbOnPopVertex !== undefined) {
                 cbOnPopVertex(v);
             }
-                for (const wKey of v.outNeighbors) {
-                if (! visited.has(wKey)) {
+            for (const wKey of v.outNeighbors) {
+                if (!visited.has(wKey)) {
+
                     visited.add(wKey);
                     if (cbOnFindVertex !== undefined) {
                         cbOnFindVertex(this.vertex(wKey), v);
@@ -383,7 +480,8 @@ class Graph {
      * Performs DFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
      * when the vertex is popped from the queue.
      */
-    dfs (source, cbOnFindVertex, cbOnPopVertex) {
+    dfs(source, cbOnFindVertex, cbOnPopVertex) {
+
         assertTrue(this.vertices.has(source), `dfs: the given source "${source}" is not a vertex`);
         let visited = new Set();
         visited.add(source);
@@ -398,7 +496,8 @@ class Graph {
                 cbOnPopVertex(v);
             }
             for (const wKey of v.outNeighbors) {
-                if (! visited.has(wKey)) {
+                if (!visited.has(wKey)) {
+
                     visited.add(wKey);
                     if (cbOnFindVertex !== undefined) {
                         cbOnFindVertex(this.vertex(wKey), v);
@@ -434,6 +533,262 @@ class PageRank {
         return this.dampingFactor * sum + this.commonProbability;
     }
 
+}
+
+// This class only accumulates functions that belong to the HITS algorithm, it has no data
+class HITS {
+
+    computeAuthNorm(graph) {
+        let sum = 0.0;
+        for (const [, vertex] of graph.vertices) {
+            assertTrue(vertex.hasOwnProperty("value"));
+            sum += vertex.value.hits_auth * vertex.value.hits_auth;
+        }
+        return Math.sqrt(sum);
+    }
+
+    computeHubNorm(graph) {
+        let sum = 0.0;
+        for (const [, vertex] of graph.vertices) {
+            sum += vertex.value.hits_hub * vertex.value.hits_hub;
+        }
+        return Math.sqrt(sum);
+    }
+
+    computeFixedPointKleinberg(graph, numSteps, epsilon) {
+        for (let [, vertex] of graph.vertices) {
+            vertex.value = {hits_auth: 1.0, hits_hub: 1.0, old_hits_auth: 1.0, old_hits_hub: 1.0};
+        }
+        const computeAuth = function () {
+            let authNorm = 0.0;
+            for (let [, vertex] of graph.vertices) {
+                let sumAuth = 0.0;
+                for (const predKey of vertex.inNeighbors) {
+                    const pred = graph.vertex(predKey);
+                    assertTrue(pred.hasOwnProperty("value"));
+                    sumAuth += pred.value.hits_hub;
+                }
+
+                vertex.value.old_hits_auth = vertex.value.hits_auth;
+                vertex.value.hits_auth = sumAuth;
+
+                authNorm += sumAuth * sumAuth;
+            }
+
+            authNorm = Math.sqrt(authNorm);
+            return {authNorm};
+        };
+
+        const computeHub = function () {
+            let hubNorm = 0.0;
+            for (let [, vertex] of graph.vertices) {
+                let sumHub = 0.0;
+                for (const succKey of vertex.outNeighbors) {
+                    const succ = graph.vertex(succKey);
+                    assertTrue(succ.hasOwnProperty("value"));
+                    sumHub += succ.value.hits_auth;
+                }
+
+                vertex.value.old_hits_hub = vertex.value.hits_hub;
+                vertex.value.hits_hub = sumHub;
+
+                hubNorm += sumHub * sumHub;
+            }
+
+            hubNorm = Math.sqrt(hubNorm);
+
+            return {hubNorm};
+        };
+
+        assertTrue(epsilon > 0);
+        assertTrue(numSteps > 0);
+        // initialize
+        for (let [, vertex] of graph.vertices) {
+            vertex.value = {hits_auth: 1.0, hits_hub: 1.0};
+        }
+
+        let step = 0;
+        let maxDiff = 0.0;
+        do {
+            maxDiff = 0.0;
+            const {authNorm} = computeAuth();
+            // based on values computed in computeAuth()
+            const {hubNorm} = computeHub();
+            for (let [, vertex] of graph.vertices) {
+                vertex.value.hits_auth /= authNorm;
+                maxDiff = Math.max(maxDiff, Math.abs(vertex.value.hits_auth - vertex.value.old_hits_auth));
+                vertex.value.hits_hub /= hubNorm;
+                maxDiff = Math.max(maxDiff, Math.abs(vertex.value.hits_hub - vertex.value.old_hits_hub));
+            }
+            ++step;
+        } while (step < numSteps && maxDiff > epsilon);
+        return maxDiff;
+    }
+
+    computeFixedPointWiki(graph, numSteps, epsilon) {
+        for (let [, vertex] of graph.vertices) {
+            vertex.value = {hits_auth: 1.0, hits_hub: 1.0, old_hits_auth: 1.0, old_hits_hub: 1.0};
+        }
+        const computeAuth = function () {
+            let authNorm = 0.0;
+
+            for (let [, vertex] of graph.vertices) {
+                vertex.value.old_hits_auth = vertex.value.hits_auth;
+
+                let sumAuth = 0.0;
+                for (const predKey of vertex.inNeighbors) {
+                    const pred = graph.vertex(predKey);
+                    assertTrue(pred.hasOwnProperty("value"));
+                    sumAuth += pred.value.hits_hub;
+                }
+                vertex.value.hits_auth = sumAuth;
+                authNorm += sumAuth * sumAuth;
+            }
+
+            authNorm = Math.sqrt(authNorm);
+
+            let maxDiffAuth = 0.0;
+            for (let [, vertex] of graph.vertices) {
+                vertex.value.hits_auth /= authNorm;
+                const diff = Math.abs(vertex.value.hits_auth - vertex.value.old_hits_auth);
+                if (maxDiffAuth < diff && diff - maxDiffAuth > epsilon) {
+                    // console.warn(`vertex: ${vertex._key}, maxDiffAuth: ${maxDiffAuth}, diff: ${diff}, hits_auth ${vertex.value.hits_auth}, oldValue: ${vertex.value.old_hits_auth}`);
+                    maxDiffAuth = diff;
+
+                }
+            }
+            return {maxDiffAuth};
+        };
+
+        const computeHub = function () {
+            let hubNorm = 0.0;
+            for (let [, vertex] of graph.vertices) {
+                vertex.value.old_hits_hub = vertex.value.hits_hub;
+
+                let sumHub = 0.0;
+                for (const succKey of vertex.outNeighbors) {
+                    const succ = graph.vertex(succKey);
+                    assertTrue(succ.hasOwnProperty("value"));
+                    sumHub += succ.value.hits_auth;
+                }
+
+                vertex.value.hits_hub = sumHub;
+                hubNorm += sumHub * sumHub;
+            }
+
+            hubNorm = Math.sqrt(hubNorm);
+
+            let maxDiffHub = 0.0;
+            for (let [, vertex] of graph.vertices) {
+                vertex.value.hits_hub /= hubNorm;
+                const diff = Math.abs(vertex.value.hits_hub - vertex.value.old_hits_hub);
+                if (maxDiffHub < diff && diff - maxDiffHub > epsilon) {
+                    maxDiffHub = diff;
+
+                }
+            }
+            return {maxDiffHub};
+        };
+
+        assertTrue(epsilon > 0);
+        assertTrue(numSteps > 0);
+        // initialize
+        for (let [, vertex] of graph.vertices) {
+            vertex.value.hits_auth = 1.0;
+            vertex.value.hits_hub = 1.0;
+        }
+
+        let step = 0;
+        let maxDiff = 0.0;
+        do {
+            const {maxDiffAuth} = computeAuth();
+            const {maxDiffHub} = computeHub();
+            maxDiff = Math.max(maxDiffAuth, maxDiffHub);
+            ++step;
+        } while (step < numSteps && maxDiff > epsilon);
+
+        return maxDiff;
+    }
+
+    computeFixedPointGraetzer(graph, numSteps, epsilon) {
+        for (let [, vertex] of graph.vertices) {
+            vertex.value = {hits_auth: 1.0, hits_hub: 1.0, old_hits_auth: 1.0, old_hits_hub: 1.0};
+        }
+
+        const computeAuth = function (authDivisor) {
+            let maxDiffAuth = 0.0;
+            for (let [, vertex] of graph.vertices) {
+                let sumAuth = 0.0;
+                for (const predKey of vertex.inNeighbors) {
+                    const pred = graph.vertex(predKey);
+                    assertTrue(pred.hasOwnProperty("value"));
+                    sumAuth += pred.value.old_hits_hub;
+                }
+                vertex.value.hits_auth = sumAuth / authDivisor;
+                maxDiffAuth = Math.max(maxDiffAuth, Math.abs(vertex.value.hits_auth - vertex.value.old_hits_auth));
+            }
+
+            return {maxDiffAuth};
+        };
+
+        const computeHub = function (hubDivisor) {
+            let maxDiffHub = 0.0;
+            for (let [, vertex] of graph.vertices) {
+                let sumHub = 0.0;
+                for (const succKey of vertex.outNeighbors) {
+                    const succ = graph.vertex(succKey);
+                    assertTrue(succ.hasOwnProperty("value"));
+                    sumHub += succ.value.old_hits_auth;
+                }
+
+                vertex.value.hits_hub = sumHub / hubDivisor;
+                maxDiffHub = Math.max(maxDiffHub, Math.abs(vertex.value.hits_hub - vertex.value.old_hits_hub));
+            }
+
+            return {maxDiffHub};
+        };
+
+        const getAuthDivisorFromHub = function () {
+            let divisor = 0.0;
+            for (const [, v] of graph.vertices) {
+                divisor += v.value.hits_hub * v.value.hits_hub;
+            }
+            return Math.sqrt(divisor);
+        };
+
+        const getHubDivisorFromAuth = function () {
+            let divisor = 0.0;
+            for (const [, v] of graph.vertices) {
+                divisor += v.value.hits_auth * v.value.hits_auth;
+            }
+            return Math.sqrt(divisor);
+        };
+
+        const saveOldValues = function () {
+            for (let [, v] of graph.vertices) {
+                v.value.old_hits_auth = v.value.hits_auth;
+                v.value.old_hits_hub = v.value.hits_hub;
+            }
+        };
+
+        assertTrue(epsilon > 0);
+        assertTrue(numSteps > 0);
+
+        let step = 0;
+        let maxDiff = 0.0;
+        do {
+            maxDiff = 0.0;
+            const authDivisor = getAuthDivisorFromHub();
+            const hubDivisor = getHubDivisorFromAuth();
+            saveOldValues();
+            const {maxDiffAuth} = computeAuth(authDivisor);
+            const {maxDiffHub} = computeHub(hubDivisor);
+            maxDiff = Math.max(maxDiff, maxDiffAuth, maxDiffHub);
+            ++step;
+        } while (step < numSteps && maxDiff > epsilon);
+
+        return maxDiff;
+    }
 }
 
 function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
@@ -507,7 +862,10 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
             },
@@ -520,7 +878,10 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const edges = [];
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 2,
                     `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1);
@@ -536,7 +897,10 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
@@ -552,7 +916,10 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
@@ -567,7 +934,10 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
@@ -589,7 +959,10 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(resultC.vertices);
                 db[eColl].save(resultC.edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
 
                 assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
@@ -616,7 +989,10 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const connectingEdge = makeEdgeBetweenVertices(vColl, "0", "c0", "0", "c1");
                 db[eColl].save([connectingEdge]);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {resultField: "result", store: true});
+                const computedComponents = pregelRunSmallInstanceGetComponents("wcc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, size0 + size1);
             },
@@ -638,7 +1014,7 @@ function makeHeavyWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             tearDown: makeTearDown(isSmart),
 
-            testWCC10BidirectedCliques: function() {
+            testWCC10BidirectedCliques: function () {
                 let componentSizes = [];
                 for (let i = 120; i < 130; ++i) {
                     componentSizes.push(i);
@@ -675,7 +1051,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             // todo: refactor s.t. one can pass the generator without set unique label
             //  then the first lines of the following can be abstracted into a function
-            testSCCFourDirectedCycles: function() {
+            testSCCFourDirectedCycles: function () {
                 let componentGenerators = [];
                 const sizes = [2, 10, 5, 23];
                 let uniqueLabel = 0;
@@ -686,7 +1062,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 testComponentsAlgorithmOnDisjointComponents(componentGenerators, "scc");
             },
 
-            testSCC20DirectedCycles: function() {
+            testSCC20DirectedCycles: function () {
                 let componentGenerators = [];
                 let uniqueLabel = 0;
                 for (let size = 2; size < 22; ++size) {
@@ -707,17 +1083,20 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 testComponentsAlgorithmOnDisjointComponents(componentGenerators, "scc");
             },
 
-            testSCCOneSingleVertex: function() {
+            testSCCOneSingleVertex: function () {
                 let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeSingleVertexNoEdges("v");
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 1, `We expected 1 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1, `We expected 1 element, instead got ${JSON.stringify(computedComponents[0])}`);
             },
 
-            testSCCTwoIsolatedVertices: function() {
+            testSCCTwoIsolatedVertices: function () {
                 let isolatedVertex0 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeOneVertex();
                 let isolatedVertex1 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeOneVertex();
                 const vertices = [isolatedVertex0, isolatedVertex1];
@@ -725,13 +1104,16 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const edges = [];
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1);
                 assertEqual(computedComponents[1].size, 1);
             },
 
-            testSCCOneEdge: function() {
+            testSCCOneEdge: function () {
                 let vertex0 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeOneVertex();
                 let vertex1 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeOneVertex();
                 const vertices = [vertex0, vertex1];
@@ -739,19 +1121,25 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const edges = [makeEdgesBetweenVertices(vColl, 0, "v0", 0, "v1")];
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, 1);
                 assertEqual(computedComponents[1].size, 1);
             },
 
-            testSCCOneDirected10Path: function() {
+            testSCCOneDirected10Path: function () {
                 const length = 10;
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length);
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, length,
                     `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
                 for (const component of computedComponents) {
@@ -759,25 +1147,37 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 }
             },
 
-            testSCCOneBidirected10Path: function() {
+            testSCCOneBidirected10Path: function () {
                 const length = 10;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length, "bidirected");
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length, "bidirected");
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, 1,
                     `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, length);
             },
 
-            testSCCOneAlternated10Path: function() {
+            testSCCOneAlternated10Path: function () {
                 const length = 10;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length, "alternating");
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length, "alternating");
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, length,
                     `We expected ${length} components, instead got ${JSON.stringify(computedComponents)}`);
                 for (const component of computedComponents) {
@@ -785,14 +1185,20 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 }
             },
 
-            testSCCOneDirectedTree: function()  {
+            testSCCOneDirectedTree: function () {
                 // Each vertex induces its own strongly connected component.
                 const depth = 3;
-                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeFullBinaryTree(depth, false);
+                let {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeFullBinaryTree(depth, false);
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 // number of vertices in a full binary tree
                 const numVertices = Math.pow(2, depth + 1) - 1;
                 assertEqual(computedComponents.length, numVertices,
@@ -804,14 +1210,20 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             },
 
-            testSCCOneDepth3AlternatingTree: function() {
+            testSCCOneDepth3AlternatingTree: function () {
                 // Each vertex induces its own strongly connected component.
                 const depth = 3;
-                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeFullBinaryTree(depth, true);
+                let {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeFullBinaryTree(depth, true);
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 // number of vertices in a full binary tree
                 const numVertices = Math.pow(2, depth + 1) - 1;
                 assertEqual(computedComponents.length, numVertices,
@@ -822,14 +1234,20 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 }
             },
 
-            testSCCOneDepth4AlternatingTree: function() {
+            testSCCOneDepth4AlternatingTree: function () {
                 const depth = 4;
                 // Each vertex induces its own strongly connected component.
-                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeFullBinaryTree(depth, true);
+                let {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeFullBinaryTree(depth, true);
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 // number of vertices in a full binary tree
                 const numVertices = Math.pow(2, depth + 1) - 1;
                 assertEqual(computedComponents.length, numVertices,
@@ -840,10 +1258,13 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 }
             },
 
-            testSCCAlternatingTreeAlternatingCycle: function() {
+            testSCCAlternatingTreeAlternatingCycle: function () {
                 // tree
                 const depth = 3;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "t")).makeFullBinaryTree(depth, true);
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, "t")).makeFullBinaryTree(depth, true);
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
@@ -853,7 +1274,10 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 db[vColl].save(resultC.vertices);
                 db[eColl].save(resultC.edges);
 
-                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, { resultField: "result", store: true });
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
                 assertEqual(computedComponents.length, Math.pow(2, depth + 1) - 1 + length,
                     `We expected ${Math.pow(2, depth + 1) - 1 + length} components, instead got ${JSON.stringify(computedComponents)}`);
 
@@ -953,7 +1377,10 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
 
             testLPTwo4CliquesConnectedByDirectedEdge: function () {
                 const size = 4;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
                 const verticesEdges = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeBidirectedClique(size);
@@ -962,12 +1389,15 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
 
                 db[eColl].save(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
 
-                testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [size, size]);
+                testSubgraphs("labelpropagation", graphName, {maxGSS: 100}, [size, size]);
             },
 
             testLPTwo4CliquesConnectedBy2DirectedEdges: function () {
                 const size = 4;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
                 const verticesEdges = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeBidirectedClique(size);
@@ -978,35 +1408,41 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
 
                 db[eColl].save(makeEdgeBetweenVertices(vColl, 1, "v0", 0, "v1"));
 
-                testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [size, size]);
+                testSubgraphs("labelpropagation", graphName, {maxGSS: 100}, [size, size]);
             },
 
             testLPThree4_5_6CliquesConnectedByUndirectedTriangle: function () {
                 const expectedSizes = [4, 5, 6];
                 for (let i = 0; i < 3; ++i) {
-                    const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v${i}`)).makeBidirectedClique(expectedSizes[i]);
+                    const {
+                        vertices,
+                        edges
+                    } = graphGenerator(verticesEdgesGenerator(vColl, `v${i}`)).makeBidirectedClique(expectedSizes[i]);
                     db[vColl].save(vertices);
                     db[eColl].save(edges);
                 }
 
-                for (let i = 0; i < 3; ++i){
-                    for (let j = i+1; j < 3; ++j){
+                for (let i = 0; i < 3; ++i) {
+                    for (let j = i + 1; j < 3; ++j) {
                         db[eColl].save(makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`));
                         db[eColl].save(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
                     }
                 }
 
-                testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, expectedSizes);
+                testSubgraphs("labelpropagation", graphName, {maxGSS: 100}, expectedSizes);
             },
 
             testLP10Star: function () {
                 const numberLeaves = 10;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
                 // expect that all 11 vertices are in the same community
-                testSubgraphs("labelpropagation", graphName,{maxGSS: 100}, [numberLeaves + 1]);
+                testSubgraphs("labelpropagation", graphName, {maxGSS: 100}, [numberLeaves + 1]);
             },
         };
     };
@@ -1068,8 +1504,8 @@ function makePagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
                 }
                 let {vertices, edges} = unionGraph(subgraphs);
 
-                for (let i = 0; i < 3; ++i){
-                    for (let j = i+1; j < 3; ++j){
+                for (let i = 0; i < 3; ++i) {
+                    for (let j = i + 1; j < 3; ++j) {
                         edges.push(makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`));
                         edges.push(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
                     }
@@ -1079,7 +1515,10 @@ function makePagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             testPR10Star: function () {
                 const numberLeaves = 10;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
                 testPageRankOnGraph(vertices, edges);
             },
 
@@ -1109,12 +1548,12 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             let totalProbability = 0;
             for (const vertexName of seeds) {
-                if (! verticesCopy.contains(vertexName)) {
+                if (!verticesCopy.contains(vertexName)) {
                     console.error(`Error: seeds should not contain probabilities` +
                         ` for vertices that do not appear in vertices: ${vertexName}`);
                     assertTrue(false);
                 }
-                if (! seeds[vertexName].isNumber) {
+                if (!seeds[vertexName].isNumber) {
                     console.error(`Error: the value ${seeds[vertexName]} of ${vertexName} is not a number.`);
                     assertTrue(false);
                 }
@@ -1228,8 +1667,8 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
                 // the third clique has no probability
                 setSeeds(vertices, seeds);
 
-                for (let i = 0; i < 3; ++i){
-                    for (let j = i+1; j < 3; ++j){
+                for (let i = 0; i < 3; ++i) {
+                    for (let j = i + 1; j < 3; ++j) {
                         edges.push(makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`));
                         edges.push(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
                     }
@@ -1239,7 +1678,10 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             testSPR10Star: function () {
                 const numberLeaves = 10;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
                 let seeds = new Map();
                 // put all probability on the leaves
                 for (let i = 1; i < numberLeaves; ++i) {
@@ -1257,7 +1699,11 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             testSPR10StarMultipleEdges: function () {
                 const numberLeaves = 10;
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+
                 // insert each edge twice
                 let edges2 = [];
                 for (const e of edges) {
@@ -1302,7 +1748,9 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
      * @param edges
      * @param source
      */
-    const testSSSPOnGraph = function(vertices, edges, source) {
+    const testSSSPOnGraph = function (vertices, edges, source) {
+        assertEqual(typeof (source), 'string', `${source} is not a string`);
+
         db[vColl].save(vertices);
         db[eColl].save(edges);
         const query = `
@@ -1316,7 +1764,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
         // (This is what Pregel, in fact, returns if a vertex is not reachable.
         // The documentation says "length above 9007199254740991 (max safe integer)".)
         const infinity = 9223372036854776000;
-        for (let [ , vertex] of graph.vertices) {
+        for (let [, vertex] of graph.vertices) {
+
             vertex.value = infinity;
         }
         graph.bfs(source, writeDistance, undefined);
@@ -1340,7 +1789,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
 
             tearDown: makeTearDown(isSmart),
 
-            testDirectedCrystalGraphWithAdditionalEdge: function () {
+            testSSSPDirectedCrystalGraphWithAdditionalEdge: function () {
+
                 // directed crystal graph (vertical edges go down):
                 //   ->0 -> 3 -> 6 ->
                 //     |    |    |
@@ -1356,26 +1806,28 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const numberLayers = 3;
                 const thickness = 3;
 
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v"))
-                    .makeCrystal(numberLayers, thickness, "directed");
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
+                const {vertices, edges} = generator.makeCrystal(numberLayers, thickness, "directed");
                 // add an edge
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "7", "v"));
-                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                const source = generator.makeVertex("0")._key;
                 testSSSPOnGraph(vertices, edges, source);
 
             },
 
             testSSSPTwoEdges: function () {
-                const vertices = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeVertices(3);
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
+                const vertices = generator.makeVertices(3);
                 let edges = [];
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "1", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "1", "v"));
-                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                const source = generator.makeVertex("0")._key;
                 testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSPTwoEdgesWithSelfloops: function () {
-                const vertices = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeVertices(3);
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
+                const vertices = generator.makeVertices(3);
                 let edges = [];
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "1", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "1", "v"));
@@ -1383,43 +1835,46 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
                 edges.push(makeEdgeBetweenVertices(vColl, "0", "v", "0", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "1", "v", "1", "v"));
                 edges.push(makeEdgeBetweenVertices(vColl, "2", "v", "2", "v"));
-                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                const source = generator.makeVertex("0")._key;
                 testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSPTwoDisjointDirectedCycles: function () {
 
                 const length = 3;
-                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
-                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
+                const generator0 = graphGenerator(verticesEdgesGenerator(vColl, "v0"));
+                const subgraph01 = generator0.makeDirectedCycle(length);
+                const generator1 = graphGenerator(verticesEdgesGenerator(vColl, "v1"));
+                const subgraph02 = generator1.makeDirectedCycle(length);
                 const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
-                const source = verticesEdgesGenerator(vColl, "v0").makeVertex('0')._key;
+                const source = generator0.makeVertex("0")._key;
                 testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSP10Star: function () {
                 const numberLeaves = 10;
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
                 const {
                     vertices,
                     edges
-                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
-                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                } = generator.makeStar(numberLeaves, "bidirected");
+                const source = generator.makeVertex("0")._key;
                 testSSSPOnGraph(vertices, edges, source);
             },
 
             testSSSP10StarMultipleEdges: function () {
                 const numberLeaves = 10;
-
+                const generator = graphGenerator(verticesEdgesGenerator(vColl, "v"));
                 const {
                     vertices,
                     edges
-                } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+                } = generator.makeStar(numberLeaves, "bidirected");
                 // insert each edge twice
                 let edges2 = edges.slice();
                 for (const e of edges) {
-                    edges2.push({... e});
+                    edges2.push({...e});
                 }
-                const source = verticesEdgesGenerator(vColl, "v").makeVertex('0')._key;
+                const source = generator.makeVertex("0")._key;
                 testSSSPOnGraph(vertices, edges2, source);
             }
 
@@ -1428,6 +1883,93 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
     };
 }
 
+function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
+
+    const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+    const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
+
+    return function () {
+        'use strict';
+
+        const unionGraph = graphGeneration.unionGraph;
+
+        return {
+
+            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+
+            tearDown: makeTearDown(isSmart),
+
+            testHITSOneDirectedCycle: function () {
+                const length = 3;
+                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+                testHITSKleinbergOnGraph(vertices, edges);
+
+            },
+            testHITSTwoDisjointDirectedCycles: function () {
+                const length = 3;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
+                const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                testHITSKleinbergOnGraph(vertices, edges);
+            },
+            testHITSTwoDirectedCyclesConnectedByDirectedEdge: function () {
+                const size = 2;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(size);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(size);
+                let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
+                testHITSKleinbergOnGraph(vertices, edges);
+            },
+            testHITSTwo4CliquesConnectedByDirectedEdge: function () {
+                const size = 4;
+                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeBidirectedClique(size);
+                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeBidirectedClique(size);
+                let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
+                testHITSKleinbergOnGraph(vertices, edges);
+            },
+            testHITSThree4_5_6CliquesConnectedByUndirectedTriangle: function () {
+                const sizes = [4, 5, 6];
+                let subgraphs = [];
+                for (let i = 0; i < 3; ++i) {
+                    subgraphs.push(graphGenerator(verticesEdgesGenerator(vColl, `v${i}`)).makeBidirectedClique(sizes[i]));
+                }
+                let {vertices, edges} = unionGraph(subgraphs);
+
+                for (let i = 0; i < 3; ++i) {
+                    for (let j = i + 1; j < 3; ++j) {
+                        edges.push(makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`));
+                        edges.push(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
+                    }
+                }
+                testHITSKleinbergOnGraph(vertices, edges);
+            },
+            testHITS10Star: function () {
+                const numberLeaves = 10;
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, `v0`)).makeStar(numberLeaves, "bidirected");
+                testHITSKleinbergOnGraph(vertices, edges);
+            },
+            testHITS10MultiEdgesStar: function () {
+                const numberLeaves = 10;
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, `v0`)).makeStar(numberLeaves, "bidirected");
+                let edges2 = edges.slice();
+                for (const e of edges) {
+                    edges2.push(e);
+                }
+                testHITSKleinbergOnGraph(vertices, edges2);
+            },
+
+        };
+    };
+}
+
+
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
 exports.makeSCCTestSuite = makeSCCTestSuite;
@@ -1435,3 +1977,4 @@ exports.makeLabelPropagationTestSuite = makeLabelPropagationTestSuite;
 exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
+exports.makeHITSTestSuite = makeHITSTestSuite;

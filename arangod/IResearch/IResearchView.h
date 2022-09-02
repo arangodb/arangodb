@@ -55,7 +55,6 @@ namespace iresearch {
 ///////////////////////////////////////////////////////////////////////////////
 
 class IResearchFeature;
-class AsyncLinkHandle;
 template<typename T>
 class AsyncValue;
 
