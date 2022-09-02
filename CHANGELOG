@@ -1,5 +1,6 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
+* Fixed BTS-926: UI showing the "create index" form to non-admin users.
 
 * Fixed SEARCH-366: Fixed extracting sub-attributes using projections for the
   `_id` attribute (e.g. `RETURN doc.sub._id`).
