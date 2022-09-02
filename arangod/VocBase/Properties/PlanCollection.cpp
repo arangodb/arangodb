@@ -191,10 +191,15 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
                   std::to_string(config.minReplicationFactor) + ")"};
     }
 
-    if (replicationFactor < writeConcern) {
+    if (replicationFactor > 0 && replicationFactor < writeConcern) {
       return {TRI_ERROR_BAD_PARAMETER,
               "writeConcern must not be higher than replicationFactor"};
     }
+  }
+
+  if (isSmart && replicationFactor == 0) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "'isSmart' and replicationFactor 'satellite' cannot be combined"};
   }
   return {};
 }

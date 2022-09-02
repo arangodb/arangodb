@@ -409,6 +409,29 @@ TEST_F(PlanCollectionUserAPITest, test_configureMaxNumberOfShards) {
   }
 }
 
+TEST_F(PlanCollectionUserAPITest, test_isSmartCannotBeSatellite) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    // has to be greater or equal to used writeConcern
+    body.add("name", VPackValue("test"));
+    body.add("isSmart", VPackValue(true));
+    body.add("replicationFactor", VPackValue("satellite"));
+  }
+
+  // Note: We can also make this parsing fail in the first place.
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
+                           << testee.result().errorMessage();
+  EXPECT_EQ(testee->isSmart, true);
+  EXPECT_EQ(testee->replicationFactor, 0);
+
+  // No special config required, this always fails
+  PlanCollection::DatabaseConfiguration config{};
+  auto res = testee->validateDatabaseConfiguration(config);
+  EXPECT_FALSE(res.ok()) << "Configured smartCollection as 'satellite'.";
+}
+
 // Tests for generic attributes without special needs
 GenerateBoolAttributeTest(waitForSync);
 GenerateBoolAttributeTest(doCompact);
