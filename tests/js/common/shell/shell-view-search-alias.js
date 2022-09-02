@@ -297,6 +297,33 @@ function ViewSearchAliasSuite() {
         }
       }
     },
+    testAddCompatibleIndexesExpansion: function () {
+      var c1 = db._create("c1");
+      var c2 = db._create("c2");
+      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a.b.c"}]});
+      c2.ensureIndex({name: "i2", type: "inverted", fields: [{name: "a.b.c[*]"}]});
+      var v1 = db._createView("v1", "search-alias", {});
+      try {
+        assertEqual(v1.name(), "v1");
+        var idxs = [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}];
+        v1.properties({indexes: idxs});
+        assertEqual(v1.properties().indexes.sort(compareIndexes), idxs);
+        c2.drop();
+        assertEqual(v1.properties().indexes, [{collection: "c1", index: "i1"}]);
+        c1.drop();
+        assertEqual(v1.properties().indexes, []);
+      } finally {
+        v1.drop();
+        try {
+          c1.drop();
+        } catch (_) {
+        }
+        try {
+          c2.drop();
+        } catch (_) {
+        }
+      }
+    },
 
     testAddNonCompatibleIndexesSameCollection2: function () {
       var c1 = db._create("c1");

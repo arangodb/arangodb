@@ -201,9 +201,8 @@ std::string abstractCheckFields(auto const& lhs, auto const& rhs,
         it->second.isSearchField != field.second.isSearchField ||
         it->second.analyzer != field.second.analyzer) {
       if (it->first.size() == name.size()) {
-        // format error
         if (SameCollection) {
-          return absl::StrCat(" same field '", name, "', collection '");
+          return absl::StrCat("same field '", name, "', collection '");
         } else if (it->second.isSearchField != field.second.isSearchField) {
           return absl::StrCat(rhsIs, " field '", name, "' searchField '",
                               field.second.isSearchField, "' mismatches ",
@@ -216,7 +215,7 @@ std::string abstractCheckFields(auto const& lhs, auto const& rhs,
         }
       } else if (it->second.includeAllFields) {
         if (SameCollection) {
-          return absl::StrCat(" field '", name, "' and field '", it->first,
+          return absl::StrCat("field '", name, "' and field '", it->first,
                               "' with includeAllFields, collection '");
         } else if (it->second.isSearchField != field.second.isSearchField) {
           return absl::StrCat(rhsIs, " field '", name, "' searchField '",
@@ -300,7 +299,7 @@ void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
   }
   if (index._includeAllFields) {
     search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,
-                                         index._isSearchField});
+                                             index._isSearchField});
   }
 }
 
