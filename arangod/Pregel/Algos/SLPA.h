@@ -64,7 +64,7 @@ namespace algos {
  * <number of times the ID was saved by w> / <number of times any ID
  * was saved by w>.
  *
- * Vertex w chooses one of the received IDs to save in the
+ * Vertex v chooses one of the received IDs to save in the
  * iteration and discards the others: it chooses the least ID out of those that
  * arrived most often. For example, if v received (3, 3, 2, 4, 4), it chooses 3.
  *
