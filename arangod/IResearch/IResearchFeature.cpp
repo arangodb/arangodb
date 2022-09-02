@@ -957,13 +957,13 @@ void IResearchFeature::collectOptions(
           "they have been manually recreated)",
           new options::VectorParameter<options::StringParameter>(
               &_skipRecoveryItems))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30904);
   options
       ->addOption(FAIL_ON_OUT_OF_SYNC,
                   "whether or not retrieval queries on out of sync "
                   "links/indexes should fail",
                   new options::BooleanParameter(&_failQueriesOnOutOfSync))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30904);
 }
 
 void IResearchFeature::validateOptions(
