@@ -33,8 +33,10 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
+#include "Random/RandomGenerator.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -113,6 +115,17 @@ VPackSlice planShardEntry(arangodb::LogicalCollection const& col,
 }
 
 }  // namespace
+
+FollowerInfo::FollowerInfo(arangodb::LogicalCollection* d)
+    : _followers(std::make_shared<std::vector<ServerID>>()),
+      _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
+      _docColl(d),
+      _theLeader(""),
+      _theLeaderTouched(false),
+      _canWrite(_docColl->replicationFactor() <= 1) {
+  // On replicationfactor 1 we do not have any failover servers to maintain.
+  // This should also disable satellite tracking.
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side

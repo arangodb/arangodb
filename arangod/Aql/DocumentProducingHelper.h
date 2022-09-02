@@ -35,6 +35,7 @@
 #include "Aql/Projections.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/IndexIterator.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
@@ -46,6 +47,7 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+class PhysicalCollection;
 namespace aql {
 struct AqlValue;
 class DocumentProducingExpressionContext;

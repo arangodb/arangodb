@@ -57,6 +57,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 #include "Inspection/VPack.h"
 
