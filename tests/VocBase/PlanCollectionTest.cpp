@@ -28,8 +28,7 @@
 #include "VocBase/Properties/PlanCollection.h"
 #include <velocypack/Builder.h>
 
-namespace arangodb {
-namespace tests {
+namespace arangodb::tests {
 
 /**********************
  * MACRO SECTION
@@ -161,6 +160,12 @@ class PlanCollectionUserAPITest : public ::testing::Test {
       }
       if constexpr (std::is_same_v<T, VPackSlice>) {
         body.add(attributeName, attributeValue);
+      } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
+        body.add(VPackValue(attributeName));
+        VPackArrayBuilder arrayGuard(&body);
+        for (auto const& val : attributeValue) {
+          body.add(VPackValue(val));
+        }
       } else {
         body.add(attributeName, VPackValue(attributeValue));
       }
@@ -430,6 +435,124 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartCannotBeSatellite) {
   PlanCollection::DatabaseConfiguration config{};
   auto res = testee->validateDatabaseConfiguration(config);
   EXPECT_FALSE(res.ok()) << "Configured smartCollection as 'satellite'.";
+}
+
+TEST_F(PlanCollectionUserAPITest, test_atMost8ShardKeys) {
+  // We split this string up into characters, to use those as shardKey
+  // attributes Just for simplicity reasons, and to avoid having duplicates
+  std::string shardKeySelection = "abcdefghijklm";
+
+  std::vector<std::string> shardKeysToTest{};
+  for (size_t i = 0; i < 8; ++i) {
+    // Always add one character from above string, no character is used twice
+    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
+    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
+
+    // The first 8 have to be allowed
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+    ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+    EXPECT_EQ(testee->shardKeys, shardKeysToTest)
+        << "Parsing error in " << body.toJson();
+  }
+
+  for (size_t i = 8; i < 10; ++i) {
+    // Always add one character from above string, no character is used twice
+    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
+    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
+
+    // The first 8 have to be allowed
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+    EXPECT_FALSE(testee.ok())
+        << "Created too many shard keys: " << shardKeysToTest.size();
+  }
+}
+
+TEST_F(PlanCollectionUserAPITest, test_shardKeyOnSatellites) {
+  // We do not need any special configuration
+  // default is good enough
+  PlanCollection::DatabaseConfiguration config{};
+
+  // Sharding by specific shardKey, or prefix/postfix of _key is not allowed
+  for (auto const& key : {"testKey", "a", ":_key", "_key:"}) {
+    // Specific shardKey is disallowed
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      // has to be greater or equal to used writeConcern
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add(VPackValue("shardKeys"));
+      {
+        VPackArrayBuilder arrayGuard{&body};
+        body.add(VPackValue("testKey"));
+      }
+    }
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+    auto result = testee.result();
+    if (result.ok()) {
+      result = testee->validateDatabaseConfiguration(config);
+    }
+    EXPECT_FALSE(result.ok())
+        << "Created a satellite collection with a shardkey: " << key;
+  }
+  {
+    // Shard by _key is allowed
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      // has to be greater or equal to used writeConcern
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add(VPackValue("shardKeys"));
+      {
+        VPackArrayBuilder arrayGuard{&body};
+        body.add(VPackValue("_key"));
+      }
+    }
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+    auto result = testee.result();
+    if (result.ok()) {
+      result = testee->validateDatabaseConfiguration(config);
+    }
+    EXPECT_TRUE(result.ok())
+        << "Failed to created a satellite collection with default sharding "
+        << result.errorMessage();
+  }
+
+  {
+    // Shard by _key + something is not allowed
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      // has to be greater or equal to used writeConcern
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add(VPackValue("shardKeys"));
+      {
+        VPackArrayBuilder arrayGuard{&body};
+        body.add(VPackValue("_key"));
+        body.add(VPackValue("testKey"));
+      }
+    }
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+    auto result = testee.result();
+    if (result.ok()) {
+      result = testee->validateDatabaseConfiguration(config);
+    }
+    EXPECT_FALSE(result.ok())
+        << "Created a satellite collection with a shardkeys [_key, testKey]";
+  }
+}
+
+TEST_F(PlanCollectionUserAPITest, test_internal_values_as_shardkeys) {
+  // Sharding by internal keys, or prefix/postfix of them is not allowed
+  for (auto const& key : {"_id", "_rev", ":_id", "_id:", ":_rev", "_rev:"}) {
+    // Specific shardKey is disallowed
+    auto body = createMinimumBodyWithOneValue("shardKeys",
+                                              std::vector<std::string>{key});
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+    EXPECT_FALSE(testee.ok()) << "Created a collection with shardkey: " << key;
+  }
 }
 
 // Tests for generic attributes without special needs
@@ -786,5 +909,4 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   }
 }
 
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests

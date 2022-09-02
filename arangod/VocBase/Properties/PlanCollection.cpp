@@ -136,6 +136,33 @@ auto PlanCollection::Invariants::isValidCollectionType(
   return {"Only 2 (document) and 3 (edge) are allowed."};
 }
 
+auto PlanCollection::Invariants::areShardKeysValid(
+    std::vector<std::string> const& keys) -> inspection::Status {
+  if (keys.empty() || keys.size() > 8) {
+    return {"invalid number of shard keys for collection"};
+  }
+  for (auto const& sk : keys) {
+    auto key = std::string_view{sk};
+    // remove : char at the beginning or end (for enterprise)
+    std::string_view stripped;
+    if (!key.empty()) {
+      if (key.front() == ':') {
+        stripped = key.substr(1);
+      } else if (key.back() == ':') {
+        stripped = key.substr(0, key.size() - 1);
+      } else {
+        stripped = key;
+      }
+    }
+    // system attributes are not allowed (except _key, _from and _to)
+    if (stripped == StaticStrings::IdString ||
+        stripped == StaticStrings::RevString) {
+      return {"_id or _rev cannot be used as shard keys"};
+    }
+  }
+  return inspection::Status::Success{};
+}
+
 auto PlanCollection::Transformers::ReplicationSatellite::toSerialized(
     MemoryType v, SerializedType& result) -> arangodb::inspection::Status {
   result.add(VPackValue(v));
@@ -197,10 +224,17 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
     }
   }
 
-  if (isSmart && replicationFactor == 0) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'isSmart' and replicationFactor 'satellite' cannot be combined"};
+  if (replicationFactor == 0) {
+    // We are a satellite, we cannot be smart at the same time
+    if (isSmart) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "'isSmart' and replicationFactor 'satellite' cannot be combined"};
+    }
+    if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
+      return {TRI_ERROR_BAD_PARAMETER, "'satellite' cannot use shardKeys"};
+    }
   }
+
   return {};
 }
 

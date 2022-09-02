@@ -78,6 +78,9 @@ struct PlanCollection {
     [[nodiscard]] static auto isValidCollectionType(
         std::underlying_type_t<TRI_col_type_e> const& value)
         -> inspection::Status;
+
+    [[nodiscard]] static auto areShardKeysValid(
+        std::vector<std::string> const& value) -> inspection::Status;
   };
 
   struct Transformers {
@@ -209,7 +212,8 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               .fallback("")
               .invariant(PlanCollection::Invariants::isValidShardingStrategy),
           f.field("shardKeys", planCollection.shardKeys)
-              .fallback(std::vector<std::string>{StaticStrings::KeyString}),
+              .fallback(std::vector<std::string>{StaticStrings::KeyString})
+              .invariant(PlanCollection::Invariants::areShardKeysValid),
           f.field("type", planCollection.type)
               .fallback(TRI_col_type_e::TRI_COL_TYPE_DOCUMENT)
               .invariant(PlanCollection::Invariants::isValidCollectionType),
