@@ -52,6 +52,12 @@ void IResearchInvertedIndexMock::toVelocyPack(
               arangodb::velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 Index::IndexType IResearchInvertedIndexMock::type() const {
@@ -139,11 +145,6 @@ Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
 AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(
     AnalyzerPool const& analyzer) const {
   return IResearchInvertedIndex::findAnalyzer(analyzer);
-}
-
-void IResearchInvertedIndexMock::toVelocyPackFigures(
-    velocypack::Builder& builder) const {
-  IResearchInvertedIndex::toVelocyPackStats(builder);
 }
 
 void IResearchInvertedIndexMock::unload() { shutdownDataStore(); }
