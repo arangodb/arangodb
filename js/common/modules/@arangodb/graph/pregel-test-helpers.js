@@ -39,22 +39,13 @@ let internal = require("internal");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
 
-const graphGenerator = graphGeneration.graphGenerator;
+const graphInDatabase = require("@arangodb/graph/graph-in-database");
+const graphName = graphInDatabase.graphName;
+const vColl = graphInDatabase.vColl;
+const eColl = graphInDatabase.eColl;
 
-const loadGraphGenerators = function (isSmart) {
-    if (isSmart) {
-        return {
-            makeEdgeBetweenVertices:
-            require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
-            verticesEdgesGenerator:
-            require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
-        };
-    }
-    return {
-        makeEdgeBetweenVertices: graphGeneration.makeEdgeBetweenVertices,
-        verticesEdgesGenerator: graphGeneration.communityGenerator
-    };
-};
+const graphGenerator = graphGeneration.graphGenerator;
+const loadGraphGenerators = graphGeneration.loadGraphGenerators;
 
 /**
  * Assert that expected and actual are equal up to the tolerance epsilon.
@@ -240,9 +231,6 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
       `;
     return runPregelInstance(algName, graphName, parameters, query);
 };
-
-const graphName = "UnitTest_pregel";
-const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function makeSetUp(smart, smartAttribute, numberOfShards) {
     return function () {
@@ -1835,3 +1823,4 @@ exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
 exports.makeHITSTestSuite = makeHITSTestSuite;
+exports.runPregelInstance = runPregelInstance;

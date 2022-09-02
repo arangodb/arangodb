@@ -421,10 +421,25 @@ const printTopology = function (vertices, edges) {
     }
 };
 
+const loadGraphGenerators = function (isSmart) {
+    if (isSmart) {
+        return {
+            makeEdgeBetweenVertices:
+            require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
+            verticesEdgesGenerator:
+            require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
+        };
+    }
+    return {
+        makeEdgeBetweenVertices: makeEdgeBetweenVertices,
+        verticesEdgesGenerator: communityGenerator
+    };
+};
+
 exports.communityGenerator = communityGenerator;
 exports.graphGenerator = graphGenerator;
 exports.makeEdgeBetweenVertices = makeEdgeBetweenVertices;
 exports.unionGraph = unionGraph;
 exports.printTopology = printTopology;
 exports.unionGraph = unionGraph;
-
+exports.loadGraphGenerators=loadGraphGenerators;
