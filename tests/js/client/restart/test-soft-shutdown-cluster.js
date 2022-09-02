@@ -116,9 +116,8 @@ function testSuite() {
       let res = arango.DELETE("/_admin/shutdown?soft=true");
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
-      assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(0, status.transactions);
+      assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");
+      assertEqual(0, status.AQLcursors, "expect status.AQLcursors == 0");
     },
 
     testSoftShutdownWithAQLCursor : function() {
@@ -135,8 +134,9 @@ function testSuite() {
       assertEqual("OK", res);
       let status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
-      assertEqual(1, status.AQLcursors);
-      assertEqual(1, status.transactions);
+      // Expect our cursor and transaction to still be there
+      assertTrue(status.AQLcursors >= 1, "expect status.AQLcursors >= 1");
+      assertTrue(status.transactions >= 1, "expect status.transactions >= 1");
 
       // It should fail to create a new cursor:
       let respFailed = arango.POST("/_api/cursor", data);
@@ -176,8 +176,8 @@ function testSuite() {
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
-      assertEqual(1, status.AQLcursors);
-      assertEqual(1, status.transactions);
+      assertTrue(status.AQLcursors >= 1, "expect status.AQLcursors >= 1");
+      assertEqual(status.transactions >= 1, "expect status.transactions >= 1");
 
       // It should fail to create a new cursor:
       let respFailed = arango.POST("/_api/cursor", data);
@@ -213,9 +213,8 @@ function testSuite() {
       let res = arango.DELETE("/_admin/shutdown?soft=true");
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
-      assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(1, status.transactions);
+      assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");
+      assertTrue(status.transactions >= 1, "expect status.transactions >= 1");
 
       // It should fail to create a new trx:
       let respFailed = arango.POST("/_api/transaction/begin", data);
@@ -245,9 +244,8 @@ function testSuite() {
       let res = arango.DELETE("/_admin/shutdown?soft=true");
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
-      assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(1, status.transactions);
+      assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");
+      assertTrue(status.transactions >= 1, "expect status.transactions >= 1");
 
       // It should fail to create a new trx:
       let respFailed = arango.POST("/_api/transaction/begin", data);
@@ -277,9 +275,9 @@ function testSuite() {
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       console.warn("status1:", status);
-      assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors, "expect status.AQLcursors == 1");
-      assertEqual(1, status.transactions, "expect status.transactions == 1");
+      assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");
+      assertTrue(status.transactions >= 1, "expect status.transactions >= 1");
+      // TODO: could the job already be done here? (yes if we for some reason slept for 15 secs)
       assertEqual(1, status.pendingJobs, "expect status.pendingJobs == 1");
       assertEqual(0, status.doneJobs, "expect status.doneJobs == 0");
       assertFalse(status.allClear);
@@ -295,8 +293,9 @@ function testSuite() {
       status = arango.GET("/_admin/shutdown");
       console.warn("status2:", status);
       assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors, "expect status.AQLCursors == 0");
-      assertEqual(0, status.transactions, "expect status.transactions == 0");
+      // TODO: could there be pending jobs? probably not if there was just one
+      // ongoing up when we started the soft shutdown (number of jobs should
+      // only be going down)
       assertEqual(0, status.pendingJobs, "expect status.pendingJobs == 0");
       assertEqual(1, status.doneJobs, "expect status.doneJobs == 1");
       assertFalse(status.allClear);
