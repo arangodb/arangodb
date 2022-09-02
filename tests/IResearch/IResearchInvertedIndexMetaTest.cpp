@@ -403,19 +403,19 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   constexpr std::string_view kWrongDefinition22 = R"("field_name")";
 
   // wrong locale in "primarySort"
-  constexpr std::string_view kWrongDefinition24 = R"(
-  {
-      "fields": [
-          {
-              "name": "foo"
-          }
-      ],
-      "primarySort": {
-         "fields": ["foo"],
-         "compression": "lz4",
-         "locale": "wrong_locale_name"
-      }
-  })";
+  // constexpr std::string_view kWrongDefinition24 = R"(
+  //{
+  //    "fields": [
+  //        {
+  //            "name": "foo"
+  //        }
+  //    ],
+  //    "primarySort": {
+  //       "fields": ["foo"],
+  //       "compression": "lz4",
+  //       "locale": "wrong_locale_name"
+  //    }
+  //})";
 
   // wrong 'searchField' field with expansion
   constexpr std::string_view kWrongDefinition25 = R"(
