@@ -2551,7 +2551,8 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
 
   ASSERT_TRUE(ci.createCollectionCoordinator(
                     vocbase->name(), collectionId, 0, 1, 1, false,
-                    collectionJson->slice(), 0.0, false, nullptr)
+                    collectionJson->slice(), 0.0, false, nullptr,
+                    arangodb::replication::Version::ONE)
                   .ok());
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);

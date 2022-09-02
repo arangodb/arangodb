@@ -168,21 +168,24 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 
   ASSERT_TRUE(ci.createCollectionCoordinator(
                     vocbase->name(), collectionId0, 0, 1, 1, false,
-                    collectionJson0->slice(), 0.0, false, nullptr)
+                    collectionJson0->slice(), 0.0, false, nullptr,
+                    arangodb::replication::Version::ONE)
                   .ok());
 
   auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
   ASSERT_TRUE((ci.createCollectionCoordinator(
                      vocbase->name(), collectionId1, 0, 1, 1, false,
-                     collectionJson1->slice(), 0.0, false, nullptr)
+                     collectionJson1->slice(), 0.0, false, nullptr,
+                     arangodb::replication::Version::ONE)
                    .ok()));
 
   auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
   ASSERT_TRUE((false == !logicalCollection1));
   ASSERT_TRUE((ci.createCollectionCoordinator(
                      vocbase->name(), collectionId2, 0, 1, 1, false,
-                     collectionJson2->slice(), 0.0, false, nullptr)
+                     collectionJson2->slice(), 0.0, false, nullptr,
+                     arangodb::replication::Version::ONE)
                    .ok()));
 
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId2);
@@ -380,7 +383,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -413,7 +417,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -462,7 +467,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -669,7 +675,8 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
 
   ASSERT_TRUE((ci.createCollectionCoordinator(
                      vocbase->name(), collectionId, 0, 1, 1, false,
-                     collectionJson->slice(), 0.0, false, nullptr)
+                     collectionJson->slice(), 0.0, false, nullptr,
+                     arangodb::replication::Version::ONE)
                    .ok()));
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_NE(nullptr, logicalCollection);
@@ -777,7 +784,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
 
   EXPECT_TRUE((ci.createCollectionCoordinator(
                      vocbase->name(), collectionId, 0, 1, 1, false,
-                     collectionJson->slice(), 0.0, false, nullptr)
+                     collectionJson->slice(), 0.0, false, nullptr,
+                     arangodb::replication::Version::ONE)
                    .ok()));
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_TRUE((false == !logicalCollection));
@@ -1071,7 +1079,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -1439,7 +1448,8 @@ TEST_F(IResearchViewCoordinatorTest,
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -1807,7 +1817,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -2175,7 +2186,8 @@ TEST_F(IResearchViewCoordinatorTest,
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -3008,7 +3020,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
@@ -3025,7 +3038,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -3042,7 +3056,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection3 = ci.getCollection(vocbase->name(), collectionId);
@@ -3689,7 +3704,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
@@ -3706,7 +3722,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -3723,7 +3740,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection3 = ci.getCollection(vocbase->name(), collectionId);
@@ -4430,7 +4448,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
@@ -4447,7 +4466,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -4464,7 +4484,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection3 = ci.getCollection(vocbase->name(), collectionId);
@@ -5116,7 +5137,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
@@ -5133,7 +5155,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -5150,7 +5173,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection3 = ci.getCollection(vocbase->name(), collectionId);
@@ -5641,7 +5665,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -6036,7 +6061,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6103,7 +6129,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6265,7 +6292,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6333,7 +6361,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6491,7 +6520,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId0, 0, 1, 1, false,
-                       collection0Json->slice(), 0.0, false, nullptr)
+                       collection0Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -6501,7 +6531,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId1, 0, 1, 1, false,
-                       collection1Json->slice(), 0.0, false, nullptr)
+                       collection1Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -6674,7 +6705,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId0, 0, 1, 1, false,
-                       collection0Json->slice(), 0.0, false, nullptr)
+                       collection0Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -6684,7 +6716,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId1, 0, 1, 1, false,
-                       collection1Json->slice(), 0.0, false, nullptr)
+                       collection1Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -6924,7 +6957,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6990,7 +7024,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -7152,7 +7187,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -7220,7 +7256,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -7375,7 +7412,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId0, 0, 1, 1, false,
-                       collection0Json->slice(), 0.0, false, nullptr)
+                       collection0Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -7385,7 +7423,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId1, 0, 1, 1, false,
-                       collection1Json->slice(), 0.0, false, nullptr)
+                       collection1Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -7567,7 +7606,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId0, 0, 1, 1, false,
-                       collection0Json->slice(), 0.0, false, nullptr)
+                       collection0Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -7577,7 +7617,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId1, 0, 1, 1, false,
-                       collection1Json->slice(), 0.0, false, nullptr)
+                       collection1Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
