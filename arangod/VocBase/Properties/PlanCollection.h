@@ -57,6 +57,8 @@ struct PlanCollection {
     explicit DatabaseConfiguration(TRI_vocbase_t const& database);
 
     bool allowExtendedNames = false;
+    bool shouldValidateClusterSettings = false;
+    uint32_t maxNumberOfShards = 0;
   };
 
   struct Invariants {

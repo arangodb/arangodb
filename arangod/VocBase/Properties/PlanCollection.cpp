@@ -21,15 +21,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PlanCollection.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerDefaults.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
+
+PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
+    TRI_vocbase_t const& database) {
+  auto& server = database.server();
+  auto& cl = server.getFeature<ClusterFeature>();
+  auto& db = server.getFeature<DatabaseFeature>();
+  maxNumberOfShards = cl.maxNumberOfShards();
+  allowExtendedNames = db.extendedNamesForCollections();
+}
 
 PlanCollection::PlanCollection() {}
 
@@ -51,6 +64,8 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
 
     auto status = velocypack::deserializeWithStatus(input, res);
     if (status.ok()) {
+      // TODO: We can actually call validateDatabaseConfiguration
+      // here, to make sure everything is correct from the very beginning
       return res;
     }
     if (status.path() == "name") {
@@ -148,6 +163,15 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
   if (!CollectionNameValidator::isAllowedName(
           isSystem, config.allowExtendedNames, name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+  if (config.shouldValidateClusterSettings) {
+    if (config.maxNumberOfShards > 0 &&
+        numberOfShards > config.maxNumberOfShards) {
+      return Result(
+          TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
+          std::string("too many shards. maximum number of shards is ") +
+              std::to_string(config.maxNumberOfShards));
+    }
   }
   return {};
 }

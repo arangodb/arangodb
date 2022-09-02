@@ -353,17 +353,60 @@ TEST_F(PlanCollectionUserAPITest, test_satelliteReplicationFactor) {
       createMinimumBodyWithOneValue("replicationFactor", "satellite"), 0);
 }
 
-TEST_F(PlanCollectionUserAPITest, test_tooHighNumberOfShards) {
-  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, uint64_t number) {
-    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
-    ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    EXPECT_EQ(testee->replicationFactor, number)
-        << "Parsing error in " << body.toJson();
-  };
+TEST_F(PlanCollectionUserAPITest, test_configureMaxNumberOfShards) {
+  auto body = createMinimumBodyWithOneValue("numberOfShards", 1024);
 
-  // Special handling for "satellite" string
-  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("numberOfShards", 1024),
-                      1024);
+  // First Step of parsing has to pass
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_EQ(testee->numberOfShards, 1024)
+      << "Parsing error in " << body.toJson();
+
+  PlanCollection::DatabaseConfiguration config{};
+  EXPECT_EQ(config.maxNumberOfShards, 0);
+  EXPECT_EQ(config.shouldValidateClusterSettings, false);
+
+  {
+    config.shouldValidateClusterSettings = false;
+    // If shouldValidateClusterSettings is false, numberOfShards should not have
+    // effect
+    for (uint32_t maxShards : std::vector<uint32_t>{0, 16, 1023, 1024, 1025}) {
+      config.maxNumberOfShards = maxShards;
+      auto res = testee->validateDatabaseConfiguration(config);
+      EXPECT_TRUE(res.ok()) << res.errorMessage();
+    }
+  }
+  {
+    config.shouldValidateClusterSettings = true;
+    // If shouldValidateClusterSettings is true, numberOfShards should be
+    // checked
+    {
+      // 0 := unlimited shards, 1024 should be okay
+      config.maxNumberOfShards = 0;
+      auto res = testee->validateDatabaseConfiguration(config);
+      EXPECT_TRUE(res.ok()) << res.errorMessage();
+    }
+    {
+      // 1024 == 1024 should be okay
+      config.maxNumberOfShards = 1024;
+      auto res = testee->validateDatabaseConfiguration(config);
+      EXPECT_TRUE(res.ok()) << res.errorMessage();
+    }
+    {
+      // 1025 >= 1024 should be okay
+      config.maxNumberOfShards = 1025;
+      auto res = testee->validateDatabaseConfiguration(config);
+      EXPECT_TRUE(res.ok()) << res.errorMessage();
+    }
+
+    {
+      // 16 < 1024 should fail
+      config.maxNumberOfShards = 16;
+      auto res = testee->validateDatabaseConfiguration(config);
+      EXPECT_FALSE(res.ok()) << "Configured " << config.maxNumberOfShards
+                             << " but " << testee->numberOfShards << "passed.";
+    }
+  }
 }
 
 // Tests for generic attributes without special needs
