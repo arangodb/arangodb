@@ -59,6 +59,10 @@ struct PlanCollection {
     bool allowExtendedNames = false;
     bool shouldValidateClusterSettings = false;
     uint32_t maxNumberOfShards = 0;
+
+    uint32_t minReplicationFactor = 0;
+    uint32_t maxReplicationFactor = 0;
+    bool enforceReplicationFactor = true;
   };
 
   struct Invariants {

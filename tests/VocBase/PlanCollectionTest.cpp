@@ -600,5 +600,168 @@ TEST_P(PlanCollectionNamesTest,
   }
 }
 
+class PlanCollectionReplicationFactorTest
+    : public ::testing::TestWithParam<std::tuple<uint32_t, uint32_t>> {
+ protected:
+  [[nodiscard]] uint32_t writeConcern() const {
+    auto p = GetParam();
+    return std::get<0>(p);
+  };
+
+  [[nodiscard]] uint32_t replicationFactor() const {
+    auto p = GetParam();
+    return std::get<1>(p);
+  };
+
+  [[nodiscard]] VPackBuilder testBody() {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("name", VPackValue("test"));
+      body.add("writeConcern", VPackValue(writeConcern()));
+      body.add("replicationFactor", VPackValue(replicationFactor()));
+    }
+    return body;
+  }
+};
+
+INSTANTIATE_TEST_CASE_P(
+    PlanCollectionReplicationFactorTest, PlanCollectionReplicationFactorTest,
+    ::testing::Combine(::testing::Values(1ul, 2ul, 5ul, 8ul, 16ul),
+                       ::testing::Values(1ul, 3ul, 5ul, 9ul, 15ul)));
+
+TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
+  auto body = testBody();
+  PlanCollection::DatabaseConfiguration config{};
+  EXPECT_EQ(config.minReplicationFactor, 0);
+  EXPECT_EQ(config.maxReplicationFactor, 0);
+  EXPECT_EQ(config.enforceReplicationFactor, true);
+
+  config.enforceReplicationFactor = true;
+
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  // Parsing should always be okay
+
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_EQ(testee->writeConcern, writeConcern())
+      << "Parsing error in " << body.toJson();
+  EXPECT_EQ(testee->replicationFactor, replicationFactor())
+      << "Parsing error in " << body.toJson();
+
+  auto result = testee->validateDatabaseConfiguration(config);
+
+  // We only check if writeConcern is okay there is no upper bound
+  // on replicationFactor
+  bool isAllowed = writeConcern() <= replicationFactor();
+  if (isAllowed) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    EXPECT_EQ(testee->writeConcern, writeConcern());
+    EXPECT_EQ(testee->replicationFactor, replicationFactor());
+  } else {
+    EXPECT_FALSE(result.ok()) << result.errorMessage();
+  }
+}
+
+TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
+  auto body = testBody();
+  PlanCollection::DatabaseConfiguration config{};
+  EXPECT_EQ(config.minReplicationFactor, 0);
+  EXPECT_EQ(config.maxReplicationFactor, 0);
+  EXPECT_EQ(config.enforceReplicationFactor, true);
+
+  config.enforceReplicationFactor = true;
+  config.maxReplicationFactor = 5;
+
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  // Parsing should always be okay
+
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_EQ(testee->writeConcern, writeConcern())
+      << "Parsing error in " << body.toJson();
+  EXPECT_EQ(testee->replicationFactor, replicationFactor())
+      << "Parsing error in " << body.toJson();
+
+  auto result = testee->validateDatabaseConfiguration(config);
+
+  // We only check if writeConcern is okay there is no upper bound
+  // on replicationFactor
+  bool isAllowed = writeConcern() <= replicationFactor() &&
+                   replicationFactor() <= config.maxReplicationFactor;
+  if (isAllowed) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    EXPECT_EQ(testee->writeConcern, writeConcern());
+    EXPECT_EQ(testee->replicationFactor, replicationFactor());
+  } else {
+    EXPECT_FALSE(result.ok()) << result.errorMessage();
+  }
+}
+
+TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
+  auto body = testBody();
+  PlanCollection::DatabaseConfiguration config{};
+  EXPECT_EQ(config.minReplicationFactor, 0);
+  EXPECT_EQ(config.maxReplicationFactor, 0);
+  EXPECT_EQ(config.enforceReplicationFactor, true);
+
+  config.enforceReplicationFactor = true;
+  config.minReplicationFactor = 5;
+
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  // Parsing should always be okay
+
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_EQ(testee->writeConcern, writeConcern())
+      << "Parsing error in " << body.toJson();
+  EXPECT_EQ(testee->replicationFactor, replicationFactor())
+      << "Parsing error in " << body.toJson();
+
+  auto result = testee->validateDatabaseConfiguration(config);
+
+  // We only check if writeConcern is okay there is no upper bound
+  // on replicationFactor
+  bool isAllowed = writeConcern() <= replicationFactor() &&
+                   replicationFactor() >= config.minReplicationFactor;
+  if (isAllowed) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    EXPECT_EQ(testee->writeConcern, writeConcern());
+    EXPECT_EQ(testee->replicationFactor, replicationFactor());
+  } else {
+    EXPECT_FALSE(result.ok()) << result.errorMessage();
+  }
+}
+
+TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
+  auto body = testBody();
+  PlanCollection::DatabaseConfiguration config{};
+  EXPECT_EQ(config.minReplicationFactor, 0);
+  EXPECT_EQ(config.maxReplicationFactor, 0);
+  EXPECT_EQ(config.enforceReplicationFactor, true);
+
+  config.enforceReplicationFactor = false;
+  config.minReplicationFactor = 2;
+  config.maxReplicationFactor = 5;
+
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  // Parsing should always be okay
+
+  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+  EXPECT_EQ(testee->writeConcern, writeConcern())
+      << "Parsing error in " << body.toJson();
+  EXPECT_EQ(testee->replicationFactor, replicationFactor())
+      << "Parsing error in " << body.toJson();
+
+  auto result = testee->validateDatabaseConfiguration(config);
+
+  // Without enforcing you can do what you want, including illegal combinations
+  bool isAllowed = true;
+  if (isAllowed) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    EXPECT_EQ(testee->writeConcern, writeConcern());
+    EXPECT_EQ(testee->replicationFactor, replicationFactor());
+  } else {
+    EXPECT_FALSE(result.ok()) << result.errorMessage();
+  }
+}
+
 }  // namespace tests
 }  // namespace arangodb

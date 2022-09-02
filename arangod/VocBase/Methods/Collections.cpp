@@ -646,25 +646,18 @@ Collections::create(         // create collection
   }
 
   // TODO: Discuss should this be Prod Assert?
-  // We are trying to pretect against someone creating collections
+  // We are trying to protect against someone creating collections
   // in a database that is to be deleted.
   // Or should this be a possible error?
   TRI_ASSERT(!vocbase.isDangling());
 
-  {
-    bool extendedNames = vocbase.server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNamesForCollections();
-    for (auto const& col : collections) {
-      // TODO: Would be nice to include this check as an invariant
-      // in parsing, however we cannot yet give additional options into
-      // the parser to denote if extended Collection names are allowed or not
-      if (!CollectionNameValidator::isAllowedName(col.isSystem, extendedNames,
-                                                  col.name)) {
-        events::CreateCollection(vocbase.name(), col.name,
-                                 TRI_ERROR_ARANGO_ILLEGAL_NAME);
-        return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
-      }
+  PlanCollection::DatabaseConfiguration config(vocbase);
+  for (auto const& col : collections) {
+    // TODO: Maybe we can do this within the parsing Step already.
+    // but that is a cleanup for later.
+    auto res = col.validateDatabaseConfiguration(config);
+    if (res.fail()) {
+      return res;
     }
   }
 
