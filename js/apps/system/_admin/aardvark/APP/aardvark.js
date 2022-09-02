@@ -945,8 +945,14 @@ authRouter.get('/graph/:name', function (req, res) {
               nodeObj.color = tmpObjNodes[coll];
             }
           } else if (config.nodeColorAttribute !== '') {
+            nodeObj['outside'] = 'Vikingship';
+            nodeObj['fullnodedata'] = node;
+            nodeObj['fullnodedatatype'] = node.type;
+            nodeObj['configtype'] = config.nodeColorAttribute;
             var attr = node[config.nodeColorAttribute];
-            if (attr) {
+            nodeObj['attr'] = attr;
+            //if (attr) {
+            if (attr !== '') {
               if (tmpObjNodes.hasOwnProperty(attr)) {
                 nodeObj[config.nodeColorAttribute] = attr;
                 nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
