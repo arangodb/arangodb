@@ -55,25 +55,33 @@ auto DocumentLeaderState::resign() && noexcept
 
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
-  auto transactionHandler = _handlersFactory->createTransactionHandler(gid);
+  return _guardedData.doUnderLock(
+      [self = shared_from_this(),
+       ptr = std::move(ptr)](auto& data) -> futures::Future<Result> {
+        if (data.didResign()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+        }
 
-  while (auto entry = ptr->next()) {
-    auto doc = entry->second;
-    auto res = transactionHandler->applyEntry(doc);
-    if (res.fail()) {
-      return res;
-    }
-  }
+        auto transactionHandler =
+            self->_handlersFactory->createTransactionHandler(self->gid);
+        while (auto entry = ptr->next()) {
+          auto doc = entry->second;
+          auto res = transactionHandler->applyEntry(doc);
+          if (res.fail()) {
+            return res;
+          }
+        }
 
-  auto doc = DocumentLogEntry{std::string(shardId),
-                              OperationType::kAbortAllOngoingTrx,
-                              {},
-                              TransactionId{0}};
-  auto stream = getStream();
-  stream->insert(doc);
+        auto doc = DocumentLogEntry{std::string(self->shardId),
+                                    OperationType::kAbortAllOngoingTrx,
+                                    {},
+                                    TransactionId{0}};
+        auto stream = self->getStream();
+        stream->insert(doc);
 
-  // TODO Add a tombstone to the TransactionManager
-  return {TRI_ERROR_NO_ERROR};
+        // TODO Add a tombstone to the TransactionManager
+        return {TRI_ERROR_NO_ERROR};
+      });
 }
 
 auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,

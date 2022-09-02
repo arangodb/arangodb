@@ -32,7 +32,8 @@
 
 namespace arangodb::replication2::replicated_state::document {
 struct DocumentLeaderState
-    : replicated_state::IReplicatedLeaderState<DocumentState> {
+    : replicated_state::IReplicatedLeaderState<DocumentState>,
+      std::enable_shared_from_this<DocumentLeaderState> {
   explicit DocumentLeaderState(
       std::unique_ptr<DocumentCore> core,
       std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
