@@ -2104,6 +2104,67 @@ TEST_F(VPackInspectionTest, StructIncludingVPackBuilder) {
   }
 }
 
+TEST_F(VPackInspectionTest, Result) {
+  arangodb::Result result = {TRI_ERROR_INTERNAL, "some error message"};
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add("number", TRI_ERROR_INTERNAL);
+    expectedSerlized.add("message", "some error message");
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::Result>(slice);
+  EXPECT_EQ(result, deserialized);
+}
+
+TEST_F(VPackInspectionTest, ResultTWithResultInside) {
+  arangodb::ResultT<uint64_t> result =
+      arangodb::Result{TRI_ERROR_INTERNAL, "some error message"};
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add(VPackValue("error"));
+    {
+      VPackObjectBuilder ob2(&expectedSerlized);
+      expectedSerlized.add("number", TRI_ERROR_INTERNAL);
+      expectedSerlized.add("message", "some error message");
+    }
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
+  EXPECT_EQ(result, deserialized);
+}
+
+TEST_F(VPackInspectionTest, ResultTWithTInside) {
+  arangodb::ResultT<uint64_t> result = 45;
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add("value", 45);
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
+  EXPECT_EQ(result, deserialized);
+}
+
 struct ValidateInspectorTest : public ::testing::Test {
   arangodb::inspection::ValidateInspector inspector;
 };
