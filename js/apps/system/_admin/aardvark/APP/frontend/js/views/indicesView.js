@@ -283,18 +283,22 @@
       this.unbindIndexEvents();
       var self = this;
 
-      $('#indexEditView #addIndex').bind('click', function () {
-        self.toggleNewIndexView();
-
-        $('#cancelIndex').unbind('click');
-        $('#cancelIndex').bind('click', function () {
+      arangoHelper.checkDatabasePermissions(function () {
+        $('#indexEditView #addIndex').hide();
+      }, function () {
+        $('#indexEditView #addIndex').bind('click', function () {
           self.toggleNewIndexView();
-          self.render();
-        });
 
-        $('#createIndex').unbind('click');
-        $('#createIndex').bind('click', function () {
-          self.createIndex();
+          $('#cancelIndex').unbind('click');
+          $('#cancelIndex').bind('click', function () {
+            self.toggleNewIndexView();
+            self.render();
+          });
+
+          $('#createIndex').unbind('click');
+          $('#createIndex').bind('click', function () {
+            self.createIndex();
+          });
         });
       });
 
@@ -455,7 +459,7 @@
             actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
               'data-original-title="Delete index" title="Delete index"></span>';
           }
-          
+
           if (v.storedValues !== undefined) {
             storedValuesString = v.storedValues.join(', ');
           } else {
