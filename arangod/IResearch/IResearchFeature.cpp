@@ -953,7 +953,8 @@ void IResearchFeature::collectOptions(
           "the recovery is completed. these links/indexes will need to be "
           "recreated manually "
           "afterwards (note: using this option will cause data of affected "
-          "links/inverted indexes to become unavailable for querying until "
+          "links/inverted indexes to become incomplete or more incomplete "
+          "until "
           "they have been manually recreated)",
           new options::VectorParameter<options::StringParameter>(
               &_skipRecoveryItems))
