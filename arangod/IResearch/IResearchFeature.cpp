@@ -1231,7 +1231,7 @@ void IResearchFeature::registerRecoveryHelper() {
         << SKIP_RECOVERY << "' startup option for the following links/indexes: "
         << _skipRecoveryItems
         << ". all affected links/indexes that are touched during "
-           "recovery will be marked as failed and will need to be recreated "
+           "recovery will be marked as out of sync and should be recreated "
            "manually when the recovery is finished.";
   }
 
