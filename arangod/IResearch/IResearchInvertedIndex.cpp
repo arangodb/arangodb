@@ -36,6 +36,7 @@
 #include "IResearchDocument.h"
 #include "IResearchFilterFactory.h"
 #include "IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "Transaction/Methods.h"
 
 #include "analysis/token_attributes.hpp"
@@ -1070,6 +1071,12 @@ void IResearchInvertedClusterIndex::toVelocyPack(
     builder.add(StaticStrings::LinkError,
                 VPackValue(StaticStrings::LinkErrorOutOfSync));
   }
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 bool IResearchInvertedClusterIndex::matchesDefinition(
@@ -1095,6 +1102,33 @@ bool IResearchInvertedClusterIndex::matchesDefinition(
   }
   return IResearchInvertedIndex::matchesDefinition(
       other, IResearchDataStore::_collection.vocbase());
+}
+
+std::string IResearchInvertedClusterIndex::getCollectionName() const {
+  return Index::_collection.name();
+}
+
+IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
+  auto& cmf = Index::collection()
+                  .vocbase()
+                  .server()
+                  .getFeature<metrics::ClusterMetricsFeature>();
+  auto data = cmf.getData();
+  if (!data) {
+    return {};
+  }
+  auto& metrics = data->metrics;
+  auto labels = absl::StrCat(  // clang-format off
+      "db=\"", getDbName(), "\","
+      "index=\"", name(), "\","
+      "collection=\"", getCollectionName(), "\"");  // clang-format on
+  return {
+      metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_segments", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_files", labels),
+      metrics.get<std::uint64_t>("arangodb_search_index_size", labels),
+  };
 }
 
 }  // namespace iresearch
