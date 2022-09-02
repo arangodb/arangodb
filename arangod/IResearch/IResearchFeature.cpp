@@ -949,7 +949,7 @@ void IResearchFeature::collectOptions(
           "the pseudo-entry 'all' will disable recovery for all view "
           "links/inverted indexes. "
           "all links/inverted indexes skipped during recovery will be marked "
-          "as failed when "
+          "as out of sync when "
           "the recovery is completed. these links/indexes will need to be "
           "recreated manually "
           "afterwards (note: using this option will cause data of affected "
