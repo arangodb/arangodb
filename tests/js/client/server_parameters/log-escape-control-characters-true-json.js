@@ -37,26 +37,30 @@ if (getOptions === true) {
     'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
-    'log.escape-control-chars': 'false',
+    'log.escape-control-chars': 'true',
+    'log.use-json-format': 'true',
   };
 }
 
 const jsunity = require('jsunity');
 
-function EscapeControlFalseSuite() {
-  'use strict';
+function EscapeControlTrueSuite() {
 
   return {
-    testEscapeControlFalse: function() {
+    testEscapeControlTrue: function() {
+      const visibleCharCodes = ['\\u000a', '\\u000d', '\\u0009'];
+      const visibleChars = ['\\n', '\\r', '\\t'];
       const escapeCharsLength = 31;
-      const res = arango.POST("/_admin/execute", `
+      const res = arango.POST("/_admin/execute", `   
         require('console').log("testmann: start");
         for (let i = 1; i <= 31; ++i) {
-          require('console').log("testmann: testi" + String.fromCharCode(i) + " abc123");
+         let controlChar = '"\\\\u' + i.toString(16).padStart(4, '0') + '"'; 
+         controlChar = JSON.parse(controlChar); 
+         require('console').log("testmann: testi" + controlChar + " abc123");
         }
         require('console').log("testmann: done");
         return require('internal').options()["log.output"];
-     `);
+      `);
 
       assertTrue(Array.isArray(res));
       assertTrue(res.length > 0);
@@ -84,8 +88,22 @@ function EscapeControlFalseSuite() {
 
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
-        const msg = filtered[i];
-        assertTrue(msg.endsWith("testmann: testi  abc123"));
+        const msg = JSON.parse(filtered[i]);
+
+        const controlChar = ("0" + (Number(i).toString(16))).slice(-2).toUpperCase();
+        const controlCharPadding = controlChar.padStart(4, '0');
+        const charUnicode = "\\u" + controlCharPadding;
+
+        const foundIdx = visibleCharCodes.indexOf(String.fromCharCode(i));
+        let matchMsg = "";
+
+        if (foundIdx !== -1) {
+          matchMsg = "testmann: testi" + visibleChars[foundIdx] + " abc123";
+        } else {
+          matchMsg = "testmann: testi" + charUnicode + " abc123";
+        }
+
+        assertEqual(msg.message, matchMsg);
       }
       assertTrue(filtered[escapeCharsLength + 1].match(/testmann: done/));
 
@@ -95,5 +113,5 @@ function EscapeControlFalseSuite() {
 }
 
 
-jsunity.run(EscapeControlFalseSuite);
+jsunity.run(EscapeControlTrueSuite);
 return jsunity.done();

@@ -38,6 +38,7 @@ if (getOptions === true) {
     'log.foreground-tty': 'false',
     'log.level': 'debug',
     'log.escape-control-chars': 'false',
+    'log.use-json-format': 'true',
   };
 }
 
@@ -52,11 +53,14 @@ function EscapeControlFalseSuite() {
       const res = arango.POST("/_admin/execute", `
         require('console').log("testmann: start");
         for (let i = 1; i <= 31; ++i) {
-          require('console').log("testmann: testi" + String.fromCharCode(i) + " abc123");
+          const controlChar = ("0"+(Number(i).toString(16))).slice(-2).toUpperCase();
+          const controlCharPadding = controlChar.padStart(4, '0');
+          const charUnicode = "\\\\u" + controlCharPadding;
+          require('console').log("testmann: testi" + charUnicode + " abc123");
         }
         require('console').log("testmann: done");
         return require('internal').options()["log.output"];
-     `);
+      `);
 
       assertTrue(Array.isArray(res));
       assertTrue(res.length > 0);
@@ -84,8 +88,9 @@ function EscapeControlFalseSuite() {
 
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
-        const msg = filtered[i];
-        assertTrue(msg.endsWith("testmann: testi  abc123"));
+        const msg = JSON.parse(filtered[i]);
+        assertTrue(msg.hasOwnProperty("message"));
+        assertEqual(msg.message, "testmann: testi  abc123");
       }
       assertTrue(filtered[escapeCharsLength + 1].match(/testmann: done/));
 
