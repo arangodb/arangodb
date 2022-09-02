@@ -34,6 +34,7 @@
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 

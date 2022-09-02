@@ -35,6 +35,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Transaction/MethodsApi.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
@@ -55,6 +56,7 @@ class HashedStringRef;
 
 class ClusterFeature;
 struct OperationOptions;
+class LogicalCollection;
 
 /// @brief aggregate the results of multiple figures responses (e.g. from
 /// multiple shards or for a smart edge collection)

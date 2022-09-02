@@ -48,6 +48,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 class PhysicalCollection;
+enum class ReadOwnWrites : bool;
 namespace aql {
 struct AqlValue;
 class DocumentProducingExpressionContext;

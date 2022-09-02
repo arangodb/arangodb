@@ -40,6 +40,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/MethodsApi.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
 

@@ -51,6 +51,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
