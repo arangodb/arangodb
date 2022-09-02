@@ -95,6 +95,14 @@ function optimizerRuleInvertedIndexTestSuite() {
       col.drop();
       try { analyzers.remove("my_geo", true); } catch (e) {}
     },
+    testCreateDuplicate: function () {
+       let idx = col.ensureIndex({type: 'inverted',
+                        name: 'InvertedIndexUnsorted_duplicate',
+                        fields: ['data_field',
+                                {name:'geo_field', analyzer:'my_geo'},
+                                {name:'custom_field', analyzer:'text_en'}]});
+       assertEqual("InvertedIndexUnsorted", idx.name);       
+    },
     testIndexNotHinted: function () {
       const query = aql`
         FOR d IN ${col}
@@ -194,6 +202,32 @@ function optimizerRuleInvertedIndexTestSuite() {
         assertTrue(executeRes[i-1].count > executeRes[i].count);
       }
     },
+    testIndexHintedRemove: function () {
+      col.save({data_field:'remove_me'});
+      let syncWait = 100;
+      const syncQuery = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER STARTS_WITH(d.data_field, 'remove') COLLECT WITH COUNT INTO c  RETURN c`;
+      let count  = db._query(syncQuery).toArray()[0];
+      while (count < 1 && (--syncWait) > 0) {
+        sleep(1);
+        count  = db._query(syncQuery).toArray()[0];
+      }
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER d.data_field == 'remove_me'
+           REMOVE d IN ${col}`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      db._query(query.query, query.bindVars);
+      const checkQuery = aql`
+        FOR d IN ${col} 
+          FILTER STARTS_WITH(d.data_field, 'remove') COLLECT WITH COUNT INTO c  RETURN c`;
+      count  = db._query(checkQuery).toArray()[0];
+      assertEqual(0, count);
+    },
     testEmptyFields: function() {
       col.ensureIndex({type: 'inverted',
                        name: 'AllFieldsEmpty',
@@ -227,7 +261,141 @@ function optimizerRuleInvertedIndexTestSuite() {
         assertEqual(errors.ERROR_BAD_PARAMETER.code,
                     e.errorNum);
       }
-    }
+    },
+    testIndexHintedArrayComparisonAnyIn: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ANY IN d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs / 50, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAllIn: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ALL IN d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(0, executeRes.length);
+    },
+    testIndexHintedArrayComparisonNoneIn: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] NONE IN d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs - docs / 50, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAnyNotIn: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ANY NOT IN d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAnyGE: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ANY >= d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      // value2, value1, value0, value10..value19
+      assertEqual(1300, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAnyGT: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ANY > d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      // value1, value0, value10..value19
+      assertEqual(docs/100 * 12, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAnyLE: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ANY <= d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      // value0 will be rejected
+      assertEqual(docs - docs/100, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAnyLT: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ANY < d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      // value0 and value1 will be rejected
+      assertEqual(docs - docs/50, executeRes.length);
+    },
+        testIndexHintedArrayComparisonAnyEQ: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ANY == d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs/50, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAnyNE: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [NOEVAL('value1'), 'value2'] ANY != d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs, executeRes.length);
+    },
   };
 }
 

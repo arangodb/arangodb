@@ -55,7 +55,7 @@ constexpr std::string_view kIncludeAllFieldsFieldName = "includeAllFields";
 constexpr std::string_view kTrackListPositionsFieldName = "trackListPositions";
 constexpr std::string_view kFieldName = "field";
 constexpr std::string_view kFieldsFieldName = "fields";
-constexpr std::string_view kSortCompressionFieldName = "primarySortCompression";
+constexpr std::string_view kCompressionFieldName = "compression";
 constexpr std::string_view kLocaleFieldName = "locale";
 constexpr std::string_view kOverrideFieldName = "override";
 constexpr std::string_view kPrimarySortFieldName = "primarySort";
@@ -396,11 +396,12 @@ bool IResearchInvertedIndexMeta::json(
     }
   }
 
-  for (auto const& it : consistencyTypeMap) {
-    if (it.second == _consistency) {
-      builder.add(kConsistencyFieldName, VPackValue(it.first));
-    }
-  }
+  // FIXME: Uncomment once support is done
+  // for (auto const& it : consistencyTypeMap) {
+  //  if (it.second == _consistency) {
+  //    builder.add(kConsistencyFieldName, VPackValue(it.first));
+  //  }
+  //}
 
   builder.add(kVersionFieldName, VPackValue(static_cast<uint32_t>(_version)));
 
@@ -409,46 +410,17 @@ bool IResearchInvertedIndexMeta::json(
 
 bool IResearchInvertedIndexMeta::operator==(
     IResearchInvertedIndexMeta const& other) const noexcept {
-  if (*static_cast<IResearchDataStoreMeta const*>(this) !=
-      static_cast<IResearchDataStoreMeta const&>(other)) {
-    return false;
-  }
-
-  if (_sort != other._sort) {
-    return false;
-  }
-
-  if (_consistency != other._consistency) {
-    return false;
-  }
-
-  if (_storedValues != other._storedValues) {
-    return false;
-  }
-
-  if (_version != other._version) {
-    return false;
-  }
-
-  if (_fields.size() != other._fields.size()) {
-    return false;
-  }
-
-  size_t matched{0};
-  for (auto const& thisField : _fields) {
-    for (auto const& otherField : _fields) {
-      if (thisField.namesMatch(otherField)) {
-        matched++;
-        break;
-      }
-    }
-  }
-  return matched == _fields.size();
+  return _consistency == other._consistency && _version == other._version &&
+         (static_cast<IResearchDataStoreMeta const&>(*this) ==
+          static_cast<IResearchDataStoreMeta const&>(other)) &&
+         (static_cast<InvertedIndexField const&>(*this) ==
+          static_cast<InvertedIndexField const&>(other)) &&
+         _sort == other._sort && _storedValues == other._storedValues;
 }
 
-bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
+bool IResearchInvertedIndexMeta::matchesDefinition(
     IResearchInvertedIndexMeta const& meta, VPackSlice other,
-    LogicalCollection const& collection) {
+    TRI_vocbase_t const& vocbase) {
   auto value = other.get(arangodb::StaticStrings::IndexFields);
 
   if (!value.isArray()) {
@@ -462,7 +434,6 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
   }
 
   IResearchInvertedIndexMeta otherMeta;
-  auto& vocbase = collection.vocbase();
   std::string errorField;
   return otherMeta.init(vocbase.server(), other, true, errorField,
                         vocbase.name()) &&
@@ -473,26 +444,29 @@ bool InvertedIndexField::json(
     arangodb::ArangodServer& server, VPackBuilder& builder,
     InvertedIndexField const& parent, bool rootMode,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
-  if (rootMode || parent._isArray != _isArray) {
-    builder.add(kIsArrayFieldName, VPackValue(_isArray));
-  }
+  // FIXME: uncomment once parameter is supported
+  // if (rootMode || parent._isArray != _isArray) {
+  //  builder.add(kIsArrayFieldName, VPackValue(_isArray));
+  //}
   if (rootMode || parent._trackListPositions != _trackListPositions) {
     builder.add(kTrackListPositionsFieldName, VPackValue(_trackListPositions));
   }
   if (rootMode || parent._includeAllFields != _includeAllFields) {
     builder.add(kIncludeAllFieldsFieldName, VPackValue(_includeAllFields));
   }
-  if (rootMode || parent._overrideValue != _overrideValue) {
-    builder.add(kOverrideFieldName, VPackValue(_overrideValue));
-  }
+  // FIXME: uncomment once parameter is supported
+  // if (rootMode || parent._overrideValue != _overrideValue) {
+  //  builder.add(kOverrideFieldName, VPackValue(_overrideValue));
+  //}
   if (rootMode || parent._features != _features) {
     VPackBuilder tmp;
     _features.toVelocyPack(tmp);
     builder.add(kFeaturesFieldName, tmp.slice());
   }
-  if (parent._expression != _expression) {
-    builder.add(kExpressionFieldName, VPackValue(_expression));
-  }
+  // FIXME: uncomment once parameter is supported
+  // if (parent._expression != _expression) {
+  //  builder.add(kExpressionFieldName, VPackValue(_expression));
+  //}
 
   if (rootMode || _analyzers.size() != parent._analyzers.size() ||
       _analyzers[0]._pool->name() != parent._analyzers[0]._pool->name()) {
@@ -831,29 +805,25 @@ std::string_view InvertedIndexField::attributeString() const {
 
 std::string_view InvertedIndexField::path() const noexcept { return _path; }
 
-bool InvertedIndexField::namesMatch(
+bool InvertedIndexField::operator==(
     InvertedIndexField const& other) const noexcept {
-  return analyzerName() == other.analyzerName() &&
-         basics::AttributeName::namesMatch(_attribute, other._attribute);
-}
-
-bool InvertedIndexField::isIdentical(
-    std::vector<basics::AttributeName> const& path,
-    irs::string_ref analyzerName) const noexcept {
-  if (_analyzers.front()._shortName == analyzerName &&
-      path.size() == _attribute.size()) {
-    auto it = path.begin();
-    auto atr = _attribute.begin();
-    while (it != path.end() && atr != _attribute.end()) {
-      if (it->name != atr->name || it->shouldExpand != atr->shouldExpand) {
-        return false;
-      }
-      ++atr;
-      ++it;
-    }
-    return true;
+  if (!(analyzerName() == other.analyzerName() &&
+        basics::AttributeName::namesMatch(_attribute, other._attribute) &&
+        _includeAllFields == other._includeAllFields &&
+        _trackListPositions == other._trackListPositions &&
+        _features == other._features && _isArray == other._isArray &&
+        _overrideValue == other._overrideValue &&
+        _expression == other._expression &&
+        _fields.size() == other._fields.size())) {
+    return false;
   }
-  return false;
+  for (auto const& otherField : other._fields) {
+    if (std::end(_fields) ==
+        std::find(std::begin(_fields), std::end(_fields), otherField)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool IResearchInvertedIndexSort::toVelocyPack(
@@ -870,12 +840,13 @@ bool IResearchInvertedIndexSort::toVelocyPack(
 
   {
     auto compression = columnCompressionToString(_sortCompression);
-    addStringRef(builder, kSortCompressionFieldName, compression);
+    addStringRef(builder, kCompressionFieldName, compression);
   }
 
-  if (!_locale.isBogus()) {
-    builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
-  }
+  // FIXME: Uncomment once support is done
+  // if (!_locale.isBogus()) {
+  //  builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
+  //}
   return true;
 }
 
@@ -895,15 +866,15 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
     return false;
   }
 
-  auto const compression = slice.get(kSortCompressionFieldName);
+  auto const compression = slice.get(kCompressionFieldName);
   if (!compression.isNone()) {
     if (!compression.isString()) {
-      error = kSortCompressionFieldName;
+      error = kCompressionFieldName;
       return false;
     }
     auto sort = columnCompressionFromString(compression.stringView());
     if (!sort) {
-      error = kSortCompressionFieldName;
+      error = kCompressionFieldName;
       return false;
     }
     _sortCompression = sort;

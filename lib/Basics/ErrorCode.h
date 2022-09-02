@@ -65,6 +65,9 @@ class ErrorCode {
 
   friend auto to_string(::ErrorCode value) -> std::string;
 
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, ErrorCode& x);
+
  private:
   ValueType _value;
 };
@@ -79,3 +82,17 @@ struct hash<ErrorCode> {
 }  // namespace std
 
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream&;
+
+template<typename Inspector>
+auto inspect(Inspector& f, ErrorCode& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = 0;
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = ErrorCode{v};
+    }
+    return res;
+  } else {
+    return f.apply(x._value);
+  }
+}

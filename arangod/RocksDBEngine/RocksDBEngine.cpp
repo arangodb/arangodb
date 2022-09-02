@@ -862,6 +862,9 @@ void RocksDBEngine::start() {
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
+  LOG_TOPIC("ab45b", DEBUG, Logger::STARTUP)
+      << "opening RocksDB instance in '" << _path << "'";
+
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
@@ -1338,7 +1341,7 @@ ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
     if (ServerState::instance()->isDBServer() &&
         arangodb::basics::VelocyPackHelper::getStringView(
             slice, StaticStrings::DataSourceType, {}) !=
-            arangodb::iresearch::StaticStrings::ViewType) {
+            arangodb::iresearch::StaticStrings::ViewArangoSearchType) {
       continue;
     }
     result.add(slice);
@@ -2702,7 +2705,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   };
 
   // scan the database path for "arangosearch" views
-  scanViews(iresearch::StaticStrings::ViewType);
+  scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
   // scan the database path for replicated logs
   try {
@@ -2779,9 +2782,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     throw;
   }
 
-  // scan the database path for "search" views
+  // scan the database path for "search-alias" views
   if (ServerState::instance()->isSingleServer()) {
-    scanViews(iresearch::StaticStrings::SearchType);
+    scanViews(iresearch::StaticStrings::ViewSearchAliasType);
   }
 
   return vocbase;

@@ -32,6 +32,8 @@
 
 #include "search/filter.hpp"
 
+#include <function2.hpp>
+
 namespace iresearch {
 
 class boolean_filter;  // forward declaration
@@ -52,13 +54,13 @@ namespace iresearch {
 struct QueryContext;
 
 using AnalyzerProvider =
-    std::function<FieldMeta::Analyzer const&(std::string_view)>;
+    fu2::unique_function<FieldMeta::Analyzer const&(std::string_view)>;
 
 struct FilterContext {
   FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name,
                                            Result& r) const noexcept;
 
-  AnalyzerProvider const* fieldAnalyzerProvider{};
+  AnalyzerProvider* fieldAnalyzerProvider{};
   // need shared_ptr since pool could be deleted from the feature
   FieldMeta::Analyzer const& contextAnalyzer;
   std::span<const InvertedIndexField> fields{};
@@ -84,6 +86,11 @@ struct FilterConstants {
   static constexpr double_t DefaultNgramMatchThreshold{0.7};
   static constexpr int64_t DefaultStartsWithMinMatchCount{1};
 };
+
+void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
+                      QueryContext const& ctx, FilterContext const& filterCtx);
+
+irs::filter& addAllFilter(irs::boolean_filter& filter, bool hasNestedFields);
 
 }  // namespace iresearch
 }  // namespace arangodb
