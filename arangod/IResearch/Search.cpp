@@ -299,7 +299,7 @@ void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
   }
   if (index._includeAllFields) {
     search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,
-                                             index._isSearchField});
+                                         index._isSearchField});
   }
 }
 
