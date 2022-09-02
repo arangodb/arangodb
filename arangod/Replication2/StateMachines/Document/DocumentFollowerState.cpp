@@ -59,14 +59,22 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  while (auto entry = ptr->next()) {
-    auto doc = entry->second;
-    auto res = _transactionHandler->applyEntry(doc);
-    if (res.fail()) {
-      return res;
-    }
-  }
-  return {TRI_ERROR_NO_ERROR};
+  return _guardedData.doUnderLock(
+      [self = shared_from_this(),
+       ptr = std::move(ptr)](auto& data) -> futures::Future<Result> {
+        if (data.didResign()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+        }
+
+        while (auto entry = ptr->next()) {
+          auto doc = entry->second;
+          auto res = self->_transactionHandler->applyEntry(doc);
+          if (res.fail()) {
+            return res;
+          }
+        }
+        return {TRI_ERROR_NO_ERROR};
+      });
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
