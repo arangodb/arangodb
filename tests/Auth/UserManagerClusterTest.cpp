@@ -25,6 +25,7 @@
 #include "Mocks/Servers.h"
 
 #include "Auth/UserManager.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 
 namespace arangodb {

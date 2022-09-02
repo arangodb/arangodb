@@ -40,6 +40,7 @@
 #include "Cluster/AutoRebalance.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"

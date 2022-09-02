@@ -23,11 +23,10 @@
 
 #pragma once
 
-#include "Agency/AgencyComm.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Cluster/ClusterFeature.h"
+#include "Indexes/IndexIterator.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Parse.h"
@@ -36,7 +35,6 @@
 #include "Transaction/MethodsApi.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/TransactionId.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -55,6 +53,7 @@ class HashedStringRef;
 }  // namespace velocypack
 
 class ClusterFeature;
+class NetworkFeature;
 struct OperationOptions;
 class LogicalCollection;
 

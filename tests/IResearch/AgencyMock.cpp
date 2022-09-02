@@ -34,6 +34,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 

@@ -31,6 +31,7 @@
 #include "Basics/files.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"

@@ -28,6 +28,8 @@
 #include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
+#include <typeindex>
+
 namespace arangodb {
 struct IndexTypeFactory;
 
