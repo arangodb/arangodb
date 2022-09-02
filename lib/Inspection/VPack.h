@@ -43,10 +43,18 @@ void serialize(Builder& builder, T& value) {
 }
 
 namespace detail {
+
+template<class Inspector, class T>
+[[nodiscard]] inspection::Status deserializeWithStatus(
+    Slice slice, T& result, inspection::ParseOptions options) {
+  Inspector inspector(slice, options);
+  return inspector.apply(result);
+}
+
 template<class Inspector, class T>
 void deserialize(Slice slice, T& result, inspection::ParseOptions options) {
-  Inspector inspector(slice, options);
-  if (auto res = inspector.apply(result); !res.ok()) {
+  auto res = deserializeWithStatus<Inspector, T>(slice, result, options);
+  if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, std::string{"Error while parsing VelocyPack: "} +
                                 res.error() + "\nPath: " + res.path());
@@ -65,6 +73,13 @@ template<class T>
 void deserialize(Slice slice, T& result,
                  inspection::ParseOptions options = {}) {
   detail::deserialize<inspection::VPackLoadInspector>(slice, result, options);
+}
+
+template<class T>
+[[nodiscard]] inspection::Status deserializeWithStatus(
+    Slice slice, T& result, inspection::ParseOptions options = {}) {
+  return detail::deserializeWithStatus<inspection::VPackLoadInspector>(
+      slice, result, options);
 }
 
 template<class T>
