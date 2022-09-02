@@ -1,6 +1,8 @@
 devel
 -----
 
+* Best quality spam pushed down to DEBUG
+
 * Do not drop follower shard after too many failed shard synchronization
   attempts.
 
