@@ -42,7 +42,26 @@ static std::string const isLastIterationAggregator = "stop";
 
 using VertexType = HITSKleinbergValue;
 
-static double const epsilon = 0.00001;
+namespace {
+double const epsilon = 0.00001;
+
+/**
+ * If userParams has a threshold value, return it, otherwise return epsilon.
+ * @param userParams
+ * @return
+ */
+double getThreshold(VPackSlice userParams) {
+  if (userParams.hasKey(Utils::threshold)) {
+    if (!userParams.get(Utils::threshold).isNumber()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The threshold parameter should be a number.");
+    }
+    return userParams.get(Utils::threshold).getNumber<double>();
+  }
+  return epsilon;
+}
+}  // namespace
 
 enum class State {
   sendInitialHubs,
@@ -54,14 +73,16 @@ enum class State {
 };
 
 struct HITSKleinbergWorkerContext : public WorkerContext {
-  HITSKleinbergWorkerContext(size_t maxGSS, size_t numIterations)
-      : numIterations(numIterations){};
+  HITSKleinbergWorkerContext(size_t maxGSS, size_t numIterations,
+                             double threshold)
+      : numIterations(numIterations), threshold(threshold){};
 
   double authDivisor = 0;
   double hubDivisor = 0;
   State state = State::sendInitialHubs;
   size_t numIterations;
   size_t currentIteration = 0;
+  double const threshold;
 
   void preGlobalSuperstep(uint64_t gss) override {
     // todo: we only need this if the global super-step is odd
@@ -78,7 +99,7 @@ struct HITSKleinbergWorkerContext : public WorkerContext {
     double const hubMaxDiff = *getAggregatedValue<double>(maxDiffHubAggregator);
     double const diff = std::max(authMaxDiff, hubMaxDiff);
 
-    if (diff < epsilon) {
+    if (diff < threshold) {
       if (state == State::updateAuthNormalizeHub) {
         state = State::finallyNormalizeHubs;
       } else if (state == State::updateHubNormalizeAuth) {
@@ -145,7 +166,7 @@ struct HITSKleinbergComputation
         // values
         mutableVertexData()->normalizedAuth = 1.0;
         mutableVertexData()->normalizedHub = 1.0;
-        reportFakeDifference();
+        reportFakeDifference(ctx->threshold);
 
         sendHubToOutNeighbors(1.0);
       } break;
@@ -153,7 +174,7 @@ struct HITSKleinbergComputation
       case State::updateAuth: {
         // We enter this state when all authorities and all hubs are 1.0
         updateStoreAndSendAuth(messages, 1.0);
-        reportFakeDifference();
+        reportFakeDifference(ctx->threshold);
         // authorities are one iteration before hubs
         // authorities are not normalized, hubs are 1.0
 
@@ -229,9 +250,9 @@ struct HITSKleinbergComputation
   // At the beginning, we don't have differences between the current and the
   // previous values yet. If we don't report any difference, the default
   // difference 0 will be taken and the process terminates.
-  void reportFakeDifference() {
-    // so that 0 != diff < epsilon
-    aggregate(maxDiffAuthAggregator, epsilon + 1.0);
+  void reportFakeDifference(double threshold) {
+    // so that 0 != diff < threshold
+    aggregate(maxDiffAuthAggregator, threshold + 1000.0);
   }
 
   void updateStoreAndSendAuth(
@@ -289,11 +310,15 @@ GraphFormat<VertexType, int8_t>* HITSKleinberg::inputFormat() const {
 }
 
 WorkerContext* HITSKleinberg::workerContext(VPackSlice userParams) const {
-  return new HITSKleinbergWorkerContext(maxGSS, numIterations);
+  double const threshold = getThreshold(userParams);
+  return new HITSKleinbergWorkerContext(maxGSS, numIterations, threshold);
 }
 
 struct HITSKleinbergMasterContext : public MasterContext {
-  HITSKleinbergMasterContext() = default;
+  double const threshold;
+
+  explicit HITSKleinbergMasterContext(VPackSlice userParams)
+      : threshold(getThreshold(userParams)) {}
 
   bool postGlobalSuperstep() override {
     double const authMaxDiff =
@@ -301,7 +326,7 @@ struct HITSKleinbergMasterContext : public MasterContext {
     double const hubMaxDiff = *getAggregatedValue<double>(maxDiffHubAggregator);
     double const diff = std::max(authMaxDiff, hubMaxDiff);
 
-    bool converged = diff < epsilon;
+    bool const converged = diff < threshold;
 
     // default (if no messages have been sent) is false
     bool const stop = *getAggregatedValue<bool>(isLastIterationAggregator);
@@ -310,7 +335,7 @@ struct HITSKleinbergMasterContext : public MasterContext {
 };
 
 MasterContext* HITSKleinberg::masterContext(VPackSlice userParams) const {
-  return new HITSKleinbergMasterContext();
+  return new HITSKleinbergMasterContext(userParams);
 }
 
 IAggregator* HITSKleinberg::aggregator(std::string const& name) const {

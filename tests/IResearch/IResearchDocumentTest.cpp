@@ -3705,6 +3705,61 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
   ASSERT_THROW(++it, arangodb::basics::Exception);
 }
 
+TEST_F(IResearchDocumentTest, InvertedFieldIterator_searchField) {
+  auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
+      R"({"fields" : [{"name": "boost"},
+                      {"name": "keys", "searchField": true}]})");
+
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
+  std::string error;
+  ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
+                             error, sysVocbase.get()->name()));
+
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({"boost": 10, "keys": [1,2,3]})");
+
+  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+                                arangodb::IndexId(0));
+  it.reset(json->slice(), *indexMeta._indexingContext);
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("boost"));
+  ++it;
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("keys"));
+  ++it;
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("keys"));
+  ++it;
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("keys"));
+  ++it;
+  ASSERT_FALSE(it.valid());
+
+  auto json2 =
+      arangodb::velocypack::Parser::fromJson(R"({"boost": 10, "keys": 123})");
+  it.reset(json2->slice(), *indexMeta._indexingContext);
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("boost"));
+  ++it;
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("keys"));
+  ++it;
+  ASSERT_FALSE(it.valid());
+}
+
 TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
       R"({"fields" : [{"name": "boost"},

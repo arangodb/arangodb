@@ -99,6 +99,10 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   }
 };
 
+void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
+                           uint64_t id, bool indexIdAttribute,
+                           std::string& name);
+
 class IResearchDataStore {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
@@ -421,6 +425,8 @@ class IResearchDataStore {
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
   Stats updateStatsUnsafe() const;
+
+  void initClusterMetrics() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert metrics to MetricsFeature
