@@ -33,6 +33,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/Result.tpp"

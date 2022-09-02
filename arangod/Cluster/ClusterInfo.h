@@ -36,8 +36,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
@@ -50,7 +48,6 @@
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
-#include "Metrics/ClusterMetricsFeature.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Identifiers/IndexId.h"
