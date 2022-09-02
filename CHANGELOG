@@ -4,6 +4,8 @@ v3.9.3 (XXXX-XX-XX)
 * Fixed SEARCH-366: Fixed extracting sub-attributes using projections for the
   `_id` attribute (e.g. `RETURN doc.sub._id`).
 
+* Best quality spam pushed down to DEBUG
+
 * Do not drop follower shard after too many failed shard synchronization
   attempts.
 
