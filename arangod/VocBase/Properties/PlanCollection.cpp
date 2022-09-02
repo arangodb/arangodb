@@ -160,6 +160,7 @@ auto PlanCollection::Transformers::ReplicationSatellite::fromSerialized(
 
 arangodb::Result PlanCollection::validateDatabaseConfiguration(
     DatabaseConfiguration config) const {
+  //  Check name is allowed
   if (!CollectionNameValidator::isAllowedName(
           isSystem, config.allowExtendedNames, name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
@@ -167,10 +168,32 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
   if (config.shouldValidateClusterSettings) {
     if (config.maxNumberOfShards > 0 &&
         numberOfShards > config.maxNumberOfShards) {
-      return Result(
-          TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
-          std::string("too many shards. maximum number of shards is ") +
-              std::to_string(config.maxNumberOfShards));
+      return {TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
+              std::string("too many shards. maximum number of shards is ") +
+                  std::to_string(config.maxNumberOfShards)};
+    }
+  }
+
+  // Check Replication factor
+  if (config.enforceReplicationFactor) {
+    if (config.maxReplicationFactor > 0 &&
+        replicationFactor > config.maxReplicationFactor) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              std::string("replicationFactor must not be higher than "
+                          "maximum allowed replicationFactor (") +
+                  std::to_string(config.maxReplicationFactor) + ")"};
+    }
+
+    if (replicationFactor < config.minReplicationFactor) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              std::string("replicationFactor must not be lower than "
+                          "minimum allowed replicationFactor (") +
+                  std::to_string(config.minReplicationFactor) + ")"};
+    }
+
+    if (replicationFactor < writeConcern) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "writeConcern must not be higher than replicationFactor"};
     }
   }
   return {};
