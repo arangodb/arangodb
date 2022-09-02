@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <rocksdb/write_batch.h>
@@ -55,6 +56,8 @@ class RocksDBRecoveryHelper {
 
   virtual void LogData(const rocksdb::Slice& blob,
                        rocksdb::SequenceNumber tick) {}
+
+  virtual bool wasSkipped(IndexId /*id*/) const noexcept { return false; }
 };
 
 }  // end namespace arangodb

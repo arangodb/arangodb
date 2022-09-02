@@ -922,9 +922,10 @@ constexpr auto TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER = ErrorCode{1477};
 constexpr auto TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE = ErrorCode{1478};
 
 /// 1481: ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC
-/// "collection is out of sync"
-/// Will be raised if a collection needed during query execution is out of
-/// sync. This currently can only happen when using SatelliteCollections
+/// "collection/view is out of sync"
+/// Will be raised if a collection/view needed during query execution is out of
+/// sync. This currently can happen when using SatelliteCollections,
+/// Arangosearch links or inverted indexes.
 constexpr auto TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC = ErrorCode{1481};
 
 /// 1482: ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN

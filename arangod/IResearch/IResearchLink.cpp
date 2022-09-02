@@ -33,12 +33,14 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
 #endif
+#include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
@@ -56,6 +58,8 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/StringRef.h>
 
 using namespace std::literals;
 
@@ -446,6 +450,31 @@ void CommitTask::operator()() {
   auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - start)
                     .count();
+
+  TRI_IF_FAILURE("ArangoSearch::FailOnCommit") {
+    // intentionally mark the commit as failed
+    res.reset(TRI_ERROR_DEBUG);
+  }
+
+  if (res.fail() && !linkLock->isOutOfSync()) {
+    // mark link as out of sync if it wasn't marked like that before.
+
+    if (linkLock->setOutOfSync()) {
+      // persist "outOfSync" flag in RocksDB once. note: if this fails, it will
+      // throw an exception
+      try {
+        linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
+                                            linkLock->collection(), true);
+      } catch (std::exception const& ex) {
+        // we couldn't persist the outOfSync flag, but we can't mark the link
+        // as "not outOfSync" again. not much we can do except logging.
+        LOG_TOPIC("211d2", WARN, iresearch::TOPIC)
+            << "failed to store 'outOfSync' flag for arangosearch link '" << id
+            << "': " << ex.what();
+      }
+    }
+  }
+
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, TOPIC)
         << "successful sync of arangosearch link '" << id << "', run id '"
@@ -628,6 +657,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _asyncSelf{std::make_shared<AsyncLinkHandle>(nullptr)},
       // mark as data store not initialized
       _collection{collection},
+      _error(DataStoreError::kNoError),
       _maintenanceState{std::make_shared<MaintenanceState>()},
       _id{iid},
       _lastCommittedTick{0},
@@ -667,6 +697,12 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
 }
 
 IResearchLink::~IResearchLink() {
+  if (isOutOfSync()) {
+    TRI_ASSERT(_asyncFeature != nullptr);
+    // count down the number of out of sync links
+    _asyncFeature->untrackOutOfSyncLink();
+  }
+
   Result res;
   try {
     res = unload();  // disassociate from view if it has not been done yet
@@ -1084,6 +1120,15 @@ Result IResearchLink::init(velocypack::Slice definition,
       || !definition.get(StaticStrings::ViewIdField).isString()) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             "error finding view for link '" + std::to_string(_id.id()) + "'"};
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    if (auto s = definition.get(StaticStrings::LinkError); s.isString()) {
+      if (s.stringRef() == StaticStrings::LinkErrorOutOfSync) {
+        // mark link as out of sync
+        setOutOfSync();
+      }
+    }
   }
 
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
@@ -1570,7 +1615,8 @@ Result IResearchLink::initDataStore(
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
-      [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
+      [asyncSelf = _asyncSelf, &flushFeature,
+       asyncFeature = _asyncFeature]() -> Result {
         auto linkLock = asyncSelf->lock();
         // ensure link does not get deallocated before callback finishes
         if (!linkLock) {
@@ -1586,7 +1632,20 @@ Result IResearchLink::initDataStore(
 
         auto& dataStore = linkLock->_dataStore;
 
-        if (dataStore._recoveryTick > linkLock->_engine->recoveryTick()) {
+        // recovery finished
+        dataStore._inRecovery.store(linkLock->_engine->inRecovery(),
+                                    std::memory_order_release);
+
+        bool outOfSync = false;
+        if (asyncFeature->linkSkippedDuringRecovery(linkLock->id())) {
+          LOG_TOPIC("2721a", WARN, iresearch::TOPIC)
+              << "marking link '" << linkLock->id().id() << "' as out of sync. "
+              << "consider to drop and re-create the link in order to "
+                 "synchronize it.";
+
+          outOfSync = true;
+        } else if (dataStore._recoveryTick >
+                   linkLock->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, TOPIC)
               << "arangosearch link '" << linkLock->id()
               << "' is recovered at tick '" << dataStore._recoveryTick
@@ -1597,11 +1656,21 @@ Result IResearchLink::initDataStore(
               << linkLock->collection().name()
               << "', consider to re-create the link in order to synchronize "
                  "them.";
+          outOfSync = true;
         }
 
-        // recovery finished
-        dataStore._inRecovery.store(linkLock->_engine->inRecovery(),
-                                    std::memory_order_release);
+        if (outOfSync) {
+          // mark link as out of sync
+          linkLock->setOutOfSync();
+          // persist "failed" flag in RocksDB. note: if this fails, it will
+          // throw an exception and abort the recovery & startup.
+          linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
+                                              linkLock->collection(), true);
+
+          // we cannot return an error from here as this would abort the
+          // entire recovery and fail the startup.
+          return {};
+        }
 
         LOG_TOPIC("5b59c", TRACE, TOPIC)
             << "starting sync for arangosearch link '" << linkLock->id() << "'";
@@ -1822,6 +1891,12 @@ Result IResearchLink::properties(velocypack::Builder& builder,
               velocypack::Value(IResearchLinkHelper::type()));
   builder.add(StaticStrings::ViewIdField, velocypack::Value(_viewGuid));
 
+  if (isOutOfSync()) {
+    // link is out of sync - we need to report that
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
+  }
+
   return {};
 }
 
@@ -1969,6 +2044,13 @@ IResearchLink::Snapshot IResearchLink::snapshot() const {
         << id() << "'";
     return {};  // return an empty reader
   }
+  if (failQueriesOnOutOfSync() && linkLock->isOutOfSync()) {
+    // link has failed, we cannot use it for querying
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+        std::string("link ") + std::to_string(linkLock->id().id()) +
+            " is out of sync and needs to be recreated");
+  }
   return snapshot(std::move(linkLock));
 }
 
@@ -2089,6 +2171,36 @@ IResearchLink::Stats IResearchLink::stats() const {
   };
   reader->meta().meta.visit_segments(visitor);
   return stats;
+}
+
+bool IResearchLink::failQueriesOnOutOfSync() const noexcept {
+  return _asyncFeature->failQueriesOnOutOfSync();
+}
+
+bool IResearchLink::setOutOfSync() noexcept {
+  // should never be called on coordinators, only on DB servers and
+  // single servers
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto error = _error.load(std::memory_order_acquire);
+  if (error == DataStoreError::kNoError) {
+    if (_error.compare_exchange_strong(error, DataStoreError::kOutOfSync,
+                                       std::memory_order_release)) {
+      // increase metric for number of out-of-sync links, only once per link
+      TRI_ASSERT(_asyncFeature != nullptr);
+      _asyncFeature->trackOutOfSyncLink();
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool IResearchLink::isOutOfSync() const noexcept {
+  // the out of sync flag is expected to be set either during the
+  // recovery phase, or when a commit goes wrong.
+  return _error.load(std::memory_order_acquire) == DataStoreError::kOutOfSync;
 }
 
 void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {

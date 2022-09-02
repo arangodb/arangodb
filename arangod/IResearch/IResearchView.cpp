@@ -754,6 +754,16 @@ IResearchView::Snapshot const* IResearchView::snapshot(
           state.cookie(key, nullptr);
           return nullptr;
         }
+
+        if (linkLock->failQueriesOnOutOfSync() && linkLock->isOutOfSync()) {
+          // link is out of sync, we cannot use it for querying
+          LOG_TOPIC("6a44b", INFO, TOPIC)
+              << "link " << linkLock->id().id()
+              << " has been marked as failed and needs to be recreated";
+          state.cookie(key, nullptr);
+          return nullptr;
+        }
+
         auto snapshot = IResearchLink::snapshot(std::move(linkLock));
         if (!snapshot.getDirectoryReader()) {
           LOG_TOPIC("fffff", ERR, TOPIC)
