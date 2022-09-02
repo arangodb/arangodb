@@ -86,6 +86,8 @@ function restartInstance(arangod) {
 function testSuite() {
   let cn = "UnitTestSoftShutdown";
 
+  let coordinator;
+
   return {
     setUp : function() {
       db._drop(cn);
@@ -95,17 +97,19 @@ function testSuite() {
         docs.push({Hallo:i});
       }
       collection.save(docs);
+
+      let coordinators = getCtrlCoordinators();
+      assertTrue(coordinators.length > 0);
+      coordinator = coordinators[0];
     },
 
     tearDown : function() {
+      coordinator.waitForInstanceShutdown(30);
+      restartInstance(coordinator);
       db._drop(cn);
     },
 
     testSoftShutdownWithoutTraffic : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
       assertFalse(status.softShutdownOngoing);
@@ -115,15 +119,9 @@ function testSuite() {
       assertTrue(status.softShutdownOngoing);
       assertEqual(0, status.AQLcursors);
       assertEqual(0, status.transactions);
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithAQLCursor : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create an AQL cursor:
       let data = {
         query: `FOR x in ${cn} RETURN x`,
@@ -159,17 +157,9 @@ function testSuite() {
       assertFalse(next.hasMore);
       assertFalse(next.error);
       assertEqual(200, next.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithAQLCursorDeleted : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create an AQL cursor:
       let data = {
         query: `FOR x in ${cn} RETURN x`,
@@ -208,17 +198,9 @@ function testSuite() {
       assertFalse(next.hasMore);
       assertFalse(next.error);
       assertEqual(202, next.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithStreamingTrx : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
 
@@ -247,17 +229,9 @@ function testSuite() {
       resp = arango.PUT(`/_api/transaction/${resp.result.id}`, {});
       assertFalse(resp.error);
       assertEqual(200, resp.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithAQLStreamingTrxAborted : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
 
@@ -287,17 +261,9 @@ function testSuite() {
       resp = arango.DELETE(`/_api/transaction/${resp.result.id}`);
       assertFalse(resp.error);
       assertEqual(200, resp.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithAsyncRequest : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create a streaming transaction:
       let data = { query: `RETURN SLEEP(15)` };
 
@@ -312,10 +278,10 @@ function testSuite() {
       status = arango.GET("/_admin/shutdown");
       console.warn("status1:", status);
       assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(1, status.transactions);
-      assertEqual(1, status.pendingJobs);
-      assertEqual(0, status.doneJobs);
+      assertEqual(0, status.AQLcursors, "expect status.AQLcursors == 1");
+      assertEqual(1, status.transactions, "expect status.transactions == 1");
+      assertEqual(1, status.pendingJobs, "expect status.pendingJobs == 1");
+      assertEqual(0, status.doneJobs, "expect status.doneJobs == 0");
       assertFalse(status.allClear);
 
       // It should fail to create a new cursor:
@@ -329,27 +295,19 @@ function testSuite() {
       status = arango.GET("/_admin/shutdown");
       console.warn("status2:", status);
       assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(0, status.transactions);
-      assertEqual(0, status.pendingJobs);
-      assertEqual(1, status.doneJobs);
+      assertEqual(0, status.AQLcursors, "expect status.AQLCursors == 0");
+      assertEqual(0, status.transactions, "expect status.transactions == 0");
+      assertEqual(0, status.pendingJobs, "expect status.pendingJobs == 0");
+      assertEqual(1, status.doneJobs, "expect status.doneJobs == 1");
       assertFalse(status.allClear);
 
       // And collect the job result:
       resp = arango.PUT(`/_api/job/${resp.headers["x-arango-async-id"]}`, {});
       assertFalse(resp.error);
       assertEqual(201, resp.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithQueuedLowPrio : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create a streaming transaction:
       let op = `require("internal").wait(1); return 1;`;
 
@@ -364,7 +322,7 @@ function testSuite() {
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
       console.warn("status0:", status);
-      assertFalse(status.softShutdownOngoing);
+      assertFalse(status.softShutdownOngoing, "expecting status.softShutdownOngoing == false");
       assertTrue(status.lowPrioOngoingRequests > 0);
       assertTrue(status.lowPrioQueuedRequests > 0);
 
@@ -408,10 +366,6 @@ function testSuite() {
       assertEqual(0, status.pendingJobs);
       assertEqual(0, status.doneJobs);
       assertTrue(status.allClear);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
   };
@@ -420,6 +374,7 @@ function testSuite() {
 function testSuitePregel() {
   'use strict';
   let oldLogLevel;
+  let coordinator;
   return {
 
     /////////////////////////////////////////////////////////////////////////
@@ -429,9 +384,17 @@ function testSuitePregel() {
     setUpAll : function() {
       oldLogLevel = arango.GET("/_admin/log/level").general;
       arango.PUT("/_admin/log/level", { general: "info" });
+
+      let coordinators = getCtrlCoordinators();
+      assertTrue(coordinators.length > 0);
+      coordinator = coordinators[0];
     },
 
     tearDownAll : function () {
+      // And now it should shut down in due course...
+      coordinator.waitForInstanceShutdown(30);
+      restartInstance(coordinator);
+
       // restore previous log level for "general" topic;
       arango.PUT("/_admin/log/level", { general: oldLogLevel });
     },
@@ -501,10 +464,6 @@ function testSuitePregel() {
     },
 
     testPageRank: function () {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Start a pregel run:
       let pid = testAlgoStart("pagerank", { threshold: EPS / 1000, resultField: "result", store: true });
 
@@ -542,10 +501,6 @@ function testSuitePregel() {
 
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
   };
