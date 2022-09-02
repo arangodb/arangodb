@@ -399,6 +399,47 @@ function optimizerRuleInvertedIndexTestSuite() {
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(docs, executeRes.length);
     },
+    testIndexHintedArrayComparisonAnyNE_IndexAccess: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER [[NOEVAL('value1'), 'value2'], ['value1', 'value1']][NOEVAL(0)] ANY != d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAnyNE_Fcall: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER NOEVAL([NOEVAL('value1'), 'value2']) ANY != d.data_field
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs, executeRes.length);
+    },
+    testIndexHintedArrayComparisonAnyNE_NonArray: function () {
+      try {
+        const query = aql`
+          FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+            FILTER TOKENS("Bar", "text_en")[0] ANY != d.data_field
+            SORT d.count DESC
+            RETURN d`;
+        db._query(query.query, query.bindVars).toArray();
+        // query should fail but do not crash the server
+        fail();
+      } catch (e) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
+      }
+    },
     testIndexHintedSearchFieldIgnored: function () {
       const query = aql`
         FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}

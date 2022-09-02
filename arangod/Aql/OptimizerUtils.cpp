@@ -757,13 +757,12 @@ void extractNonConstPartsOfLeafNode(
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE: {
       TRI_ASSERT(leaf->numMembers() == 3);
-      auto arrayNode = leaf->getMemberUnchecked(0);
-      TRI_ASSERT(arrayNode);
-      TRI_ASSERT(arrayNode->type == NODE_TYPE_ARRAY);
-      if (!arrayNode->isConstant()) {
+      auto valueNode = leaf->getMemberUnchecked(0);
+      TRI_ASSERT(valueNode);
+      if (!valueNode->isConstant()) {
         auto path = selectedMembersFromRoot;
         path.emplace_back(0);
-        captureNonConstExpression(ast, varInfo, arrayNode, std::move(path),
+        captureNonConstExpression(ast, varInfo, valueNode, std::move(path),
                                   result);
       }
       return;
