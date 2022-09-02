@@ -1,4 +1,4 @@
-v3.9.3 (XXXX-XX-XX)
+v3.9.3 (2022-09-02)
 -------------------
       
 * Added startup option `--rocksdb.periodic-compaction-ttl`.
