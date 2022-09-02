@@ -32,6 +32,8 @@
 #include <string>
 
 namespace arangodb {
+class Result;
+
 template<typename T>
 class ResultT;
 
@@ -45,6 +47,18 @@ class Slice;
 }
 
 struct PlanCollection {
+  struct DatabaseConfiguration {
+#if ARANGODB_USE_GOOGLE_TESTS
+    // Default constructor for testability.
+    // In production, we need to use vocbase
+    // constructor.
+    DatabaseConfiguration() = default;
+#endif
+    explicit DatabaseConfiguration(TRI_vocbase_t const& database);
+
+    bool allowExtendedNames = false;
+  };
+
   struct Invariants {
     [[nodiscard]] static auto isNonEmpty(std::string const& value)
         -> inspection::Status;
@@ -79,8 +93,14 @@ struct PlanCollection {
       arangodb::velocypack::Slice input,
       arangodb::ServerDefaults defaultValues);
 
+  static arangodb::velocypack::Builder toCreateCollectionProperties(
+      std::vector<PlanCollection> const& collections);
+
   // Temporary method to handOver information from
-  arangodb::velocypack::Builder toCollectionsCreate();
+  [[nodiscard]] arangodb::velocypack::Builder toCollectionsCreate() const;
+
+  [[nodiscard]] arangodb::Result validateDatabaseConfiguration(
+      DatabaseConfiguration config) const;
 
   std::string name;
   std::underlying_type_t<TRI_col_type_e> type;

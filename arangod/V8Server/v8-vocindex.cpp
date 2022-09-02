@@ -211,17 +211,19 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
-    events::CreateCollection(vocbase.name(), "",
+    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
                              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   } else if (args.Length() < 1 || args.Length() > 4) {
-    events::CreateCollection(vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
+                             TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE(
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
   if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
-    events::CreateCollection(vocbase.name(), "", TRI_ERROR_FORBIDDEN);
+    events::CreateCollection(vocbase.name(), StaticStrings::Empty,
+                             TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

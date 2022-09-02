@@ -24,6 +24,7 @@
 #include "Cluster/ServerDefaults.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Utilities/NameValidator.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -66,6 +67,18 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
   } catch (std::exception const& e) {
     return Result{TRI_ERROR_INTERNAL, e.what()};
   }
+}
+
+arangodb::velocypack::Builder PlanCollection::toCreateCollectionProperties(
+    std::vector<PlanCollection> const& collections) {
+  arangodb::velocypack::Builder builder;
+  VPackArrayBuilder guard{&builder};
+  for (auto const& c : collections) {
+    // TODO: This is copying multiple times.
+    // Nevermind this is only temporary code.
+    builder.add(c.toCollectionsCreate().slice());
+  }
+  return builder;
 }
 
 auto PlanCollection::Invariants::isNonEmpty(std::string const& value)
@@ -130,7 +143,16 @@ auto PlanCollection::Transformers::ReplicationSatellite::fromSerialized(
   return {"Only an integer number or 'satellite' is allowed"};
 }
 
-arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() {
+arangodb::Result PlanCollection::validateDatabaseConfiguration(
+    DatabaseConfiguration config) const {
+  if (!CollectionNameValidator::isAllowedName(
+          isSystem, config.allowExtendedNames, name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+  return {};
+}
+
+arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() const {
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::serialize(builder, *this);
   // TODO: This is a hack to erase attributes that are not expected by follow up

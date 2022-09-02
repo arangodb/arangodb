@@ -353,6 +353,19 @@ TEST_F(PlanCollectionUserAPITest, test_satelliteReplicationFactor) {
       createMinimumBodyWithOneValue("replicationFactor", "satellite"), 0);
 }
 
+TEST_F(PlanCollectionUserAPITest, test_tooHighNumberOfShards) {
+  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, uint64_t number) {
+    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+    ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+    EXPECT_EQ(testee->replicationFactor, number)
+        << "Parsing error in " << body.toJson();
+  };
+
+  // Special handling for "satellite" string
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("numberOfShards", 1024),
+                      1024);
+}
+
 // Tests for generic attributes without special needs
 GenerateBoolAttributeTest(waitForSync);
 GenerateBoolAttributeTest(doCompact);
@@ -378,6 +391,171 @@ GenerateStringAttributeTest(smartGraphAttribute);
 
 GeneratePositiveIntegerAttributeTestInternal(minReplicationFactor,
                                              writeConcern);
+namespace {
+enum AllowedFlags : uint8_t {
+  Allways = 0,
+  Disallowed = 1 << 0,
+  AsSystem = 1 << 1,
+  WithExtension = 1 << 2
+};
+
+struct CollectionNameTestParam {
+  std::string name;
+  uint8_t allowedFlags;
+  std::string disallowReason;
+};
+}  // namespace
+class PlanCollectionNamesTest
+    : public ::testing::TestWithParam<CollectionNameTestParam> {
+ protected:
+  [[nodiscard]] std::string getName() const {
+    auto p = GetParam();
+    return p.name;
+  }
+
+  [[nodiscard]] std::string getErrorReason() const {
+    auto p = GetParam();
+    return p.disallowReason + " on collection " + p.name;
+  }
+
+  [[nodiscard]] bool isDisAllowedInGeneral() const {
+    auto p = GetParam();
+    return p.allowedFlags & AllowedFlags::Disallowed;
+  };
+
+  [[nodiscard]] bool requiresSystem() const {
+    auto p = GetParam();
+    return p.allowedFlags & AllowedFlags::AsSystem;
+  };
+
+  [[nodiscard]] bool requiresExtendedNames() const {
+    auto p = GetParam();
+    return p.allowedFlags & AllowedFlags::WithExtension;
+  };
+};
+
+INSTANTIATE_TEST_CASE_P(
+    PlanCollectionNamesTest, PlanCollectionNamesTest,
+    ::testing::Values(
+        CollectionNameTestParam{"", AllowedFlags::Disallowed,
+                                "name cannot be empty"},
+        CollectionNameTestParam{"test", AllowedFlags::Allways, ""},
+        CollectionNameTestParam{std::string(256, 'x'), AllowedFlags::Allways,
+                                "maximum allowed length"},
+        CollectionNameTestParam{std::string(257, 'x'), AllowedFlags::Disallowed,
+                                "above maximum allowed length"},
+        CollectionNameTestParam{"_test", AllowedFlags::AsSystem,
+                                "_ at the beginning requires system"},
+
+        CollectionNameTestParam{"Десятую", AllowedFlags::WithExtension,
+                                "non-ascii characters"},
+        CollectionNameTestParam{"💩🍺🌧t⛈c🌩_⚡🔥💥🌨",
+                                AllowedFlags::WithExtension,
+                                "non-ascii characters"},
+        CollectionNameTestParam{
+            "_💩🍺🌧t⛈c🌩_⚡🔥💥🌨",
+            AllowedFlags::AsSystem | AllowedFlags::WithExtension,
+            "non-ascii and system"}));
+
+TEST_P(PlanCollectionNamesTest, test_allowed_without_flags) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyGuard{&body};
+    body.add("name", VPackValue(getName()));
+  }
+  PlanCollection::DatabaseConfiguration config{};
+  EXPECT_EQ(config.allowExtendedNames, false);
+
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  auto result = testee.result();
+  if (result.ok()) {
+    result = testee->validateDatabaseConfiguration(config);
+  }
+  bool isAllowed =
+      !isDisAllowedInGeneral() && !requiresSystem() && !requiresExtendedNames();
+
+  if (isAllowed) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+  } else {
+    EXPECT_FALSE(result.ok()) << getErrorReason();
+  }
+}
+
+TEST_P(PlanCollectionNamesTest, test_allowed_with_isSystem_flag) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyGuard{&body};
+    body.add("name", VPackValue(getName()));
+    body.add("isSystem", VPackValue(true));
+  }
+  PlanCollection::DatabaseConfiguration config{};
+  EXPECT_EQ(config.allowExtendedNames, false);
+
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  auto result = testee.result();
+  if (result.ok()) {
+    result = testee->validateDatabaseConfiguration(config);
+  }
+  bool isAllowed = !isDisAllowedInGeneral() && !requiresExtendedNames();
+
+  if (isAllowed) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+  } else {
+    EXPECT_FALSE(result.ok()) << getErrorReason();
+  }
+}
+
+TEST_P(PlanCollectionNamesTest, test_allowed_with_extendendNames_flag) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyGuard{&body};
+    body.add("name", VPackValue(getName()));
+  }
+  PlanCollection::DatabaseConfiguration config{};
+  config.allowExtendedNames = true;
+
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  auto result = testee.result();
+  if (result.ok()) {
+    result = testee->validateDatabaseConfiguration(config);
+  }
+  bool isAllowed = !isDisAllowedInGeneral() && !requiresSystem();
+
+  if (isAllowed) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+  } else {
+    EXPECT_FALSE(result.ok()) << getErrorReason();
+  }
+}
+
+TEST_P(PlanCollectionNamesTest,
+       test_allowed_with_isSystem_andextendedNames_flag) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyGuard{&body};
+    body.add("name", VPackValue(getName()));
+    body.add("isSystem", VPackValue(true));
+  }
+  PlanCollection::DatabaseConfiguration config{};
+  config.allowExtendedNames = true;
+
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  auto result = testee.result();
+  if (result.ok()) {
+    result = testee->validateDatabaseConfiguration(config);
+  }
+  bool isAllowed = !isDisAllowedInGeneral();
+
+  if (isAllowed) {
+    ASSERT_TRUE(result.ok()) << result.errorMessage();
+    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+  } else {
+    EXPECT_FALSE(result.ok()) << getErrorReason();
+  }
+}
 
 }  // namespace tests
 }  // namespace arangodb

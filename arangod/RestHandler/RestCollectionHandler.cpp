@@ -340,7 +340,8 @@ void RestCollectionHandler::handleCommandPost() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    events::CreateCollection(_vocbase.name(), StaticStrings::Empty,
+                             TRI_ERROR_BAD_PARAMETER);
     return;
   }
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
@@ -356,7 +357,12 @@ void RestCollectionHandler::handleCommandPost() {
     // error message generated in inspect
     generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
                   planCollection.errorMessage());
-    events::CreateCollection(_vocbase.name(), "", planCollection.errorNumber());
+    // Try to get a name for Auditlog, if it is available, otherwise report
+    // empty string
+    auto collectionName = VelocyPackHelper::getStringView(
+        body, StaticStrings::DataSourceName, "");
+    events::CreateCollection(_vocbase.name(), collectionName,
+                             planCollection.errorNumber());
     return;
   }
   std::vector<PlanCollection> collections{std::move(planCollection.get())};
