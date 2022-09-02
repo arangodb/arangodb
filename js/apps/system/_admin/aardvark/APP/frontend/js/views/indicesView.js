@@ -257,18 +257,22 @@
       this.unbindIndexEvents();
       var self = this;
 
-      $('#indexEditView #addIndex').bind('click', function () {
-        self.toggleNewIndexView();
-
-        $('#cancelIndex').unbind('click');
-        $('#cancelIndex').bind('click', function () {
+      arangoHelper.checkDatabasePermissions(function () {
+        $('#indexEditView #addIndex').hide();
+      }, function () {
+        $('#indexEditView #addIndex').bind('click', function () {
           self.toggleNewIndexView();
-          self.render();
-        });
 
-        $('#createIndex').unbind('click');
-        $('#createIndex').bind('click', function () {
-          self.createIndex();
+          $('#cancelIndex').unbind('click');
+          $('#cancelIndex').bind('click', function () {
+            self.toggleNewIndexView();
+            self.render();
+          });
+
+          $('#createIndex').unbind('click');
+          $('#createIndex').bind('click', function () {
+            self.createIndex();
+          });
         });
       });
 
