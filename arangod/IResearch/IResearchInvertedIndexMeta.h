@@ -44,6 +44,8 @@ using MissingFieldsMap =
 
 class IResearchInvertedIndexSort final : public IResearchSortBase {
  public:
+  IResearchInvertedIndexSort() { _locale.setToBogus(); }
+
   bool operator==(IResearchInvertedIndexSort const& rhs) const noexcept {
     return IResearchSortBase::operator==(rhs) &&
            std::string_view{_locale.getName()} == rhs._locale.getName();

@@ -53,16 +53,9 @@ class ViewSnapshot : public irs::index_reader {
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
-};
 
-using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
+  bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
-class ViewSnapshotImpl : public ViewSnapshot {
- protected:
-  std::uint64_t _live_docs_count = 0;
-  std::uint64_t _docs_count = 0;
-
- private:
   [[nodiscard]] std::uint64_t live_docs_count() const noexcept final {
     return _live_docs_count;
   }
@@ -70,7 +63,14 @@ class ViewSnapshotImpl : public ViewSnapshot {
   [[nodiscard]] std::uint64_t docs_count() const noexcept final {
     return _docs_count;
   }
+
+ protected:
+  std::uint64_t _live_docs_count = 0;
+  std::uint64_t _docs_count = 0;
+  bool _hasNestedFields{false};
 };
+
+using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation over multiple irs::index_reader
@@ -78,7 +78,7 @@ class ViewSnapshotImpl : public ViewSnapshot {
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held
 ////////////////////////////////////////////////////////////////////////////////
-class ViewSnapshotView final : public ViewSnapshotImpl {
+class ViewSnapshotView final : public ViewSnapshot {
  public:
   /// @brief constructs snapshot from a given snapshot
   ///        according to specified set of collections
@@ -86,7 +86,11 @@ class ViewSnapshotView final : public ViewSnapshotImpl {
       const ViewSnapshot& rhs,
       containers::FlatHashSet<DataSourceId> const& collections) noexcept;
 
- private:
+  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i].first;
+  }
+
   [[nodiscard]] irs::sub_reader const& operator[](
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
@@ -97,11 +101,7 @@ class ViewSnapshotView final : public ViewSnapshotImpl {
     return _segments.size();
   }
 
-  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return _segments[i].first;
-  }
-
+ private:
   Segments _segments;
 };
 
@@ -140,7 +140,7 @@ void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name);
 ////////////////////////////////////////////////////////////////////////////////
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                bool sync, std::string_view name,
-                               ViewSnapshot::Links&& links) noexcept;
+                               ViewSnapshot::Links&& links);
 
 struct FilterCookie : TransactionState::Cookie {
   irs::filter::prepared const* filter{};

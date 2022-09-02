@@ -1235,12 +1235,19 @@ public:
   template <typename T, typename Allocator = std::allocator<std::decay_t<T>>>
   void assign(std::true_type /*use_bool_op*/, T&& callable,
               Allocator&& allocator_ = {}) {
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4305) // <function-style-cast>': truncation from 'XXX' to 'bool'
+#endif
     if (bool(callable)) {
       assign(std::false_type{}, std::forward<T>(callable),
              std::forward<Allocator>(allocator_));
     } else {
       operator=(nullptr);
     }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
   }
 
   /// Returns true when the erasure doesn't hold any erased object

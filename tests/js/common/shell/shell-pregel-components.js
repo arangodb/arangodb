@@ -424,6 +424,8 @@ const seededPagerankTestSuite = pregelTestHelpers.makeSeededPagerankTestSuite(fa
 
 const ssspTestSuite = pregelTestHelpers.makeSSSPTestSuite(false, "", 4);
 
+const hitsTestSuite = pregelTestHelpers.makeHITSTestSuite(false, "", 4);
+
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
 jsunity.run(wccTestSuite);
@@ -432,5 +434,5 @@ jsunity.run(labelPropagationTestSuite);
 jsunity.run(pagerankTestSuite);
 jsunity.run(seededPagerankTestSuite);
 jsunity.run(ssspTestSuite);
-
+jsunity.run(hitsTestSuite);
 return jsunity.done();
