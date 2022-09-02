@@ -52,6 +52,9 @@ class SearchMeta final {
   struct Field final {
     std::string analyzer;
     bool includeAllFields{false};
+    // intentionally not serialized as it is not
+    // used during query
+    bool isSearchField{false};
   };
   using Map = std::map<std::string, Field, std::less<>>;
   Map fieldToAnalyzer;
