@@ -901,7 +901,7 @@ void RocksDBOptionFeature::collectOptions(
                   "TTL (in seconds) for periodic compaction of .sst files, "
                   "based on file age (0 = no periodic compaction)",
                   new UInt64Parameter(&_periodicCompactionTtl))
-      .setIntroducedIn(30904);
+      .setIntroducedIn(30903);
 
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
