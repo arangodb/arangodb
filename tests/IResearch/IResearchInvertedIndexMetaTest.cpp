@@ -444,7 +444,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
       kWrongDefinition16, kWrongDefinition17, kWrongDefinition18,
       kWrongDefinition20, kWrongDefinition21, kWrongDefinition22,
       kWrongDefinition25, kWrongDefinition26};
-   // kWrongDefinition24};
+  // kWrongDefinition24};
 
   for (auto jsonD : badJsons) {
     auto json = VPackParser::fromJson(jsonD.data(), jsonD.size());
