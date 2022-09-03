@@ -234,7 +234,7 @@ function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   command += 'echo quit;';
   command += 'sleep 2';
   command += ') | lldb ';
-  command += ` --attach-pid ${pid}`;
+  command += ` --attach-pid ${pid} `;
   command += storeArangodPath;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
