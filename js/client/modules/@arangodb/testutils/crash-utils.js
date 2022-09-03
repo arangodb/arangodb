@@ -216,8 +216,16 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
 // / We assume the system has core files in /cores/, and we have a lldb.
 // //////////////////////////////////////////////////////////////////////////////
 
-function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
+function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid, generateCoreDump) {
   let lldbOutputFile = fs.getTempFile();
+  let gcore = '';
+  if (generateCoreDump) {
+    if (options.coreDirectory === '') {
+      gcore = ` process save-core core.${instanceInfo.pid}\\n`;
+    } else {
+      gcore = ` process save-core ${options.coreDirectory}/core.${instanceInfo.pid}\\n`;
+    }
+  }
 
   let command;
   command = '(';
@@ -228,7 +236,7 @@ function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
     command += 'frame variable\\n up \\n';
   }
   command += ` thread backtrace all\\n`;
-  command += ` process save-core /cores/core.${pid}\\n`;
+  command += gcore;
   command += ` kill\\n';`;
   command += 'sleep 10;';
   command += 'echo quit;';
