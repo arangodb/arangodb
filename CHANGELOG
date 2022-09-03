@@ -1,7 +1,7 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* Best quality spam pushed down to DEBUG.
+* Moved extensive log message down to DEBUG level.
 
 * Updated arangosync to v2.12.0-preview-11.
 
