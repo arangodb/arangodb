@@ -606,10 +606,22 @@ function aggregateDebugger(instanceInfo, options) {
   GDB_OUTPUT += `
 --------------------------------------------------------------------------------
 Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
-  let thisDump = fs.read(instanceInfo.debuggerInfo.file);
-  GDB_OUTPUT += thisDump;
-  if (options.extremeVerbosity === true && instanceInfo.debuggerInfo.verbosePrint) {
-    print(thisDump);
+  const buf = fs.readBuffer(instanceInfo.debuggerInfo.file);
+  let lineStart = 0;
+  let maxBuffer = buf.length;
+
+  for (let j = 0; j < maxBuffer; j++) {
+    if (buf[j] === 10) { // \n
+      const line = buf.asciiSlice(lineStart, j);
+      lineStart = j + 1;
+      if (line.search('bytes of data for memory region at') !== -1) {
+        continue;
+      }
+      GDB_OUTPUT += line + '\n';
+      if (options.extremeVerbosity === true && instanceInfo.debuggerInfo.verbosePrint) {
+        print(line);
+      }
+    }
   }
   return instanceInfo.debuggerInfo.hint;
 }
