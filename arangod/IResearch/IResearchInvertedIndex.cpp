@@ -895,7 +895,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
                      " has been marked as failed and needs to be recreated"));
   }
 
-  auto state = [trx, this, &opts]() -> IResearchSnapshotState const* {
+  auto& state = [trx, this, &opts]() -> IResearchSnapshotState& {
     auto& state = *(trx->state());
     // TODO FIXME find a better way to look up a State
     // we cannot use _index pointer as key - the same is used for storing
@@ -908,36 +908,26 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       ctx = ptr.get();
       state.cookie(key, std::move(ptr));
 
-      if (ADB_UNLIKELY(!ctx)) {
-        return nullptr;
-      }
-
       if (opts.waitForSync) {
         commit();
       }
 
       ctx->snapshot = snapshot();
     }
-    return ctx;
+    return *ctx;
   }();
-
-  if (ADB_UNLIKELY(!state)) {
-    LOG_TOPIC("d7061", WARN, arangodb::iresearch::TOPIC)
-        << "failed to store state into a TransactionState for snapshot of "
-           "inverted index ";
-
-    return std::make_unique<EmptyIndexIterator>(collection, trx);
-  }
 
   if (node) {
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
       return std::make_unique<IResearchInvertedIndexIterator>(
-          collection, state, trx, node, &_meta, reference, mutableConditionIdx);
+          collection, &state, trx, node, &_meta, reference,
+          mutableConditionIdx);
     } else {
       return std::make_unique<IResearchInvertedIndexMergeIterator>(
-          collection, state, trx, node, &_meta, reference, mutableConditionIdx);
+          collection, &state, trx, node, &_meta, reference,
+          mutableConditionIdx);
     }
   } else {
     // sorting  case
@@ -946,7 +936,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     TRI_ASSERT(!_meta._sort.empty());
 
     return std::make_unique<IResearchInvertedIndexMergeIterator>(
-        collection, state, trx, node, &_meta, reference,
+        collection, &state, trx, node, &_meta, reference,
         transaction::Methods::kNoMutableConditionIdx);
   }
 }
