@@ -75,7 +75,6 @@ class LogAppenderStream : public LogAppender {
 
   /// @brief whether or not we should use colors
   bool _useColors;
-
 };
 
 class LogAppenderFile : public LogAppenderStream {

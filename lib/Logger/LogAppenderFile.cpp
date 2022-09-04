@@ -54,10 +54,7 @@ int LogAppenderFile::_fileMode = S_IRUSR | S_IWUSR | S_IRGRP;
 int LogAppenderFile::_fileGroup = 0;
 
 LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
-    : LogAppender(),
-      _bufferSize(0),
-      _fd(fd),
-      _useColors(false) {}
+    : LogAppender(), _bufferSize(0), _fd(fd), _useColors(false) {}
 
 size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
   std::string formattedMsg = message + '\n';
