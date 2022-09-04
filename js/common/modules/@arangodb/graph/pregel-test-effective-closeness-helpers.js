@@ -29,24 +29,29 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let db = require("@arangodb").db;
-// let general_graph_module = require("@arangodb/general-graph");
 const isEnterprise = require('internal').isEnterprise();
 let smart_graph_module;
 if (isEnterprise) {
     smart_graph_module = require("@arangodb/smart-graph");
 }
-// let internal = require("internal");
-// let pregel = require("@arangodb/pregel");
-let graphGeneration = require("@arangodb/graph/graphs-generation");
 
-const graphInDatabase = require("@arangodb/graph/graph-in-database");
-const graphName = graphInDatabase.graphName;
-const vColl = graphInDatabase.vColl;
-const eColl = graphInDatabase.vColl;
+const {
+    graphName,
+    vColl,
+    eColl,
+    loadGraphGenerators,
+    unionGraph,
+    graphGenerator,
+    Graph
+} = require("@arangodb/graph/graphs-generation");
 
-const loadGraphGenerators = graphGeneration.loadGraphGenerators;
-const graphGenerator = graphGeneration.graphGenerator;
-const runPregelInstance = require("@arangodb/graphs/pregel-test-helpers").runPregelInstance;
+const {
+    runPregelInstance,
+    assertAlmostEquals,
+    epsilon,
+    makeSetUp,
+    makeTearDown
+} = require("@arangodb/graphs/pregel-test-helpers");
 
 
 const computeCloseness = function (graph) {
@@ -104,8 +109,6 @@ function makeEffectiveClosenessTestSuite(isSmart, smartAttribute, numberOfShards
 
     return function () {
         'use strict';
-
-        const unionGraph = graphGeneration.unionGraph;
 
         return {
 
