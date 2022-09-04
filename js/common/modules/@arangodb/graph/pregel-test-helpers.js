@@ -252,8 +252,7 @@ const makeSetUp = function (smart, smartAttribute, numberOfShards) {
             general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
         }
     };
-
-}
+};
 
 const makeTearDown = function (smart) {
     if (smart) {
@@ -265,7 +264,7 @@ const makeTearDown = function (smart) {
     return function () {
         general_graph_module._drop(graphName, true);
     };
-}
+};
 
 class ComponentGenerator {
     constructor(generator, parameters) {
@@ -382,25 +381,6 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
         }
     }
 };
-
-
-class Vertex {
-
-    constructor(key, label, value = 0) {
-        this.outEdges = [];
-        this.outNeighbors = new Set();
-        this.inEdges = [];
-        this.inNeighbors = new Set();
-        this._key = key;
-        this.label = label;
-        this.value = value;
-    }
-
-    outDegree() {
-        return this.outNeighbors.size;
-    }
-}
-
 
 class PageRank {
     constructor(dampingFactor, numVertices) {

@@ -436,6 +436,23 @@ const loadGraphGenerators = function (isSmart) {
     };
 };
 
+class Vertex {
+
+    constructor(key, label, value = 0) {
+        this.outEdges = [];
+        this.outNeighbors = new Set();
+        this.inEdges = [];
+        this.inNeighbors = new Set();
+        this._key = key;
+        this.label = label;
+        this.value = value;
+    }
+
+    outDegree() {
+        return this.outNeighbors.size;
+    }
+}
+
 class Graph {
 
     vertex(key) {
