@@ -4,6 +4,9 @@ devel
 * Moved the handling of escaping control and unicode chars in the log to 
   the Logger instead of LogAppenderFile.
 
+* Fix for the Pregel's HITS algorithm using a fixed value instead of the
+  passed "threshold" parameter. The same applied to the new HITSKleinberg.
+
 * Do not drop follower shard after too many failed shard synchronization
   attempts.
 
@@ -43,7 +46,7 @@ devel
 
 * Updated arangosync to v2.12.0-preview-11.
 
-* Added integration tests for `--log.escape-control-chars` and 
+* Added integration tests for `--log.escape-control-chars` and
  `--log.escape-unicode-chars`.
 
 * Fix SEARCH-350: Crash during consolidation.

@@ -39,12 +39,17 @@
 
 namespace arangodb {
 namespace iresearch {
+
 class IResearchInvertedIndex : public IResearchDataStore {
  public:
   explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection);
 
   void toVelocyPack(ArangodServer& server, TRI_vocbase_t const* defaultVocbase,
                     velocypack::Builder& builder, bool forPersistence) const;
+
+  std::string const& getDbName() const noexcept {
+    return _collection.vocbase().name();
+  }
 
   bool isSorted() const { return !_meta._sort.empty(); }
 
@@ -113,11 +118,15 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const final;
 
-  size_t memory() const final {
-    // FIXME return in memory size
-    // return stats().indexSize;
-    return 0;
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
+
+  std::string getCollectionName() const;
+
+  Stats stats() const final;
+
+  size_t memory() const final { return stats().indexSize; }
 
   bool isHidden() const final { return false; }
 
@@ -180,7 +189,9 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
                                 LogicalCollection& collection,
                                 std::string const& name)
       : IResearchInvertedIndex(iid, collection),
-        Index(iid, collection, name, {}, false, true) {}
+        Index(iid, collection, name, {}, false, true) {
+    initClusterMetrics();
+  }
 
   void initFields() {
     TRI_ASSERT(_fields.empty());
