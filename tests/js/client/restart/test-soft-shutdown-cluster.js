@@ -86,6 +86,8 @@ function restartInstance(arangod) {
 function testSuite() {
   let cn = "UnitTestSoftShutdown";
 
+  let coordinator;
+
   return {
     setUp : function() {
       db._drop(cn);
@@ -95,35 +97,30 @@ function testSuite() {
         docs.push({Hallo:i});
       }
       collection.save(docs);
+
+      let coordinators = getCtrlCoordinators();
+      assertTrue(coordinators.length > 0, "expect coordinators.length > 0");
+      coordinator = coordinators[0];
     },
 
     tearDown : function() {
+      coordinator.waitForInstanceShutdown(30);
+      restartInstance(coordinator);
       db._drop(cn);
     },
 
     testSoftShutdownWithoutTraffic : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
-      assertFalse(status.softShutdownOngoing);
+      assertFalse(status.softShutdownOngoing, "expect status.softShutdownOngoing == false");
       let res = arango.DELETE("/_admin/shutdown?soft=true");
-      assertEqual("OK", res);
+      assertEqual("OK", res, `expect res = ${res} == \"OK\"`);
       status = arango.GET("/_admin/shutdown");
-      assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(0, status.transactions);
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
+      assertTrue(status.softShutdownOngoing, `expect status.softShutdownOngoing = ${status.softShutdownOngoing} == true`);
+      assertEqual(0, status.AQLcursors, "expect status.AQLcursors == 0");
     },
 
     testSoftShutdownWithAQLCursor : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create an AQL cursor:
       let data = {
         query: `FOR x in ${cn} RETURN x`,
@@ -137,8 +134,9 @@ function testSuite() {
       assertEqual("OK", res);
       let status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
-      assertEqual(1, status.AQLcursors);
-      assertEqual(1, status.transactions);
+      // Expect our cursor and transaction to still be there
+      assertTrue(status.AQLcursors >= 1, `expect status.AQLcursors = ${status.AQLcursors} >= 1`);
+      assertTrue(status.transactions >= 1, `expect status.transactions = ${status.transactions} >= 1`);
 
       // It should fail to create a new cursor:
       let respFailed = arango.POST("/_api/cursor", data);
@@ -159,17 +157,9 @@ function testSuite() {
       assertFalse(next.hasMore);
       assertFalse(next.error);
       assertEqual(200, next.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithAQLCursorDeleted : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create an AQL cursor:
       let data = {
         query: `FOR x in ${cn} RETURN x`,
@@ -186,8 +176,8 @@ function testSuite() {
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
-      assertEqual(1, status.AQLcursors);
-      assertEqual(1, status.transactions);
+      assertTrue(status.AQLcursors >= 1, `expect status.AQLcursors = ${status.AQLcursors} >= 1`);
+      assertTrue(status.transactions >= 1, `expect status.transactions = ${status.transactions} >= 1`);
 
       // It should fail to create a new cursor:
       let respFailed = arango.POST("/_api/cursor", data);
@@ -208,17 +198,9 @@ function testSuite() {
       assertFalse(next.hasMore);
       assertFalse(next.error);
       assertEqual(202, next.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithStreamingTrx : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
 
@@ -231,9 +213,8 @@ function testSuite() {
       let res = arango.DELETE("/_admin/shutdown?soft=true");
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
-      assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(1, status.transactions);
+      assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");
+      assertTrue(status.transactions >= 1, `expect status.transactions = ${status.transactions} >= 1`);
 
       // It should fail to create a new trx:
       let respFailed = arango.POST("/_api/transaction/begin", data);
@@ -247,17 +228,9 @@ function testSuite() {
       resp = arango.PUT(`/_api/transaction/${resp.result.id}`, {});
       assertFalse(resp.error);
       assertEqual(200, resp.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithAQLStreamingTrxAborted : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
 
@@ -271,9 +244,8 @@ function testSuite() {
       let res = arango.DELETE("/_admin/shutdown?soft=true");
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
-      assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(1, status.transactions);
+      assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");
+      assertTrue(status.transactions >= 1, `expect status.transactions = ${status.transactions} >= 1`);
 
       // It should fail to create a new trx:
       let respFailed = arango.POST("/_api/transaction/begin", data);
@@ -287,17 +259,9 @@ function testSuite() {
       resp = arango.DELETE(`/_api/transaction/${resp.result.id}`);
       assertFalse(resp.error);
       assertEqual(200, resp.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithAsyncRequest : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create a streaming transaction:
       let data = { query: `RETURN SLEEP(15)` };
 
@@ -311,11 +275,11 @@ function testSuite() {
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       console.warn("status1:", status);
-      assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(1, status.transactions);
-      assertEqual(1, status.pendingJobs);
-      assertEqual(0, status.doneJobs);
+      assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");
+      assertTrue(status.transactions >= 1, `expect status.transactions = ${status.transactions} >= 1`);
+      // TODO: could the job already be done here? (yes if we for some reason slept for 15 secs)
+      assertEqual(1, status.pendingJobs, `expect status.pendingJobs = ${status.pendingJobs} == 1`);
+      assertEqual(0, status.doneJobs, `expect status.doneJobs = ${status.doneJobs} == 0`);
       assertFalse(status.allClear);
 
       // It should fail to create a new cursor:
@@ -329,27 +293,20 @@ function testSuite() {
       status = arango.GET("/_admin/shutdown");
       console.warn("status2:", status);
       assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.AQLcursors);
-      assertEqual(0, status.transactions);
-      assertEqual(0, status.pendingJobs);
-      assertEqual(1, status.doneJobs);
+      // TODO: could there be pending jobs? probably not if there was just one
+      // ongoing up when we started the soft shutdown (number of jobs should
+      // only be going down)
+      assertEqual(0, status.pendingJobs, `expect status.pendingJobs = ${status.pendingJobs} == 0`);
+      assertEqual(1, status.doneJobs, `expect status.doneJobs = ${status.doneJobs}" == 1`);
       assertFalse(status.allClear);
 
       // And collect the job result:
       resp = arango.PUT(`/_api/job/${resp.headers["x-arango-async-id"]}`, {});
       assertFalse(resp.error);
       assertEqual(201, resp.code);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
     testSoftShutdownWithQueuedLowPrio : function() {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Create a streaming transaction:
       let op = `require("internal").wait(1); return 1;`;
 
@@ -364,17 +321,17 @@ function testSuite() {
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
       console.warn("status0:", status);
-      assertFalse(status.softShutdownOngoing);
-      assertTrue(status.lowPrioOngoingRequests > 0);
-      assertTrue(status.lowPrioQueuedRequests > 0);
+      assertFalse(status.softShutdownOngoing, "expecting status.softShutdownOngoing == false");
+      assertTrue(status.lowPrioOngoingRequests > 0, `expect status.lowPrioOngoingRequests = ${status.lowPrioOngoingRequests} > 0`);
+      assertTrue(status.lowPrioQueuedRequests > 0, `expect status.lowPrioQueuedRequests = ${status.lowPrioQueuedRequests} > 0`);
 
       let res = arango.DELETE("/_admin/shutdown?soft=true");
       assertEqual("OK", res);
       status = arango.GET("/_admin/shutdown");
       console.warn("status1:", status);
       assertTrue(status.softShutdownOngoing);
-      assertTrue(status.lowPrioOngoingRequests > 0);
-      assertTrue(status.lowPrioQueuedRequests > 0);
+      assertTrue(status.lowPrioOngoingRequests > 0, `expect status.lowPrioOngoingRequests = ${status.lowPrioOngoingRequests} > 0`);
+      assertTrue(status.lowPrioQueuedRequests > 0, `expect status.lowPrioQueuedRequests = ${status.lowPrioQueuedRequests} > 0`);
       assertFalse(status.allClear);
 
       // Now until all jobs are done:
@@ -391,8 +348,8 @@ function testSuite() {
           assertTrue(false, "finishing jobs took too long");
         }
         console.warn("status2:", status);
-        assertTrue(status.softShutdownOngoing);
-        assertEqual(128, status.pendingJobs + status.doneJobs);
+        assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");
+        assertEqual(128, status.pendingJobs + status.doneJobs, `expect status.pendingJobs + status.doneJobs == 128; status.pendingJobs = ${status.pendingJobs}, status.doneJobs = ${status.doneJobs}`);
         assertFalse(status.allClear);
         wait(0.5);
       }
@@ -405,13 +362,9 @@ function testSuite() {
       status = arango.GET("/_admin/shutdown");
       console.warn("status3:", status);
       assertTrue(status.softShutdownOngoing);
-      assertEqual(0, status.pendingJobs);
-      assertEqual(0, status.doneJobs);
+      assertEqual(0, status.pendingJobs, `expect status.pendingJobs = ${status.pendingJobs} == 0`);
+      assertEqual(0, status.doneJobs, `expect status.doneJobs = ${status.doneJobs} == 0`);
       assertTrue(status.allClear);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
   };
@@ -420,6 +373,7 @@ function testSuite() {
 function testSuitePregel() {
   'use strict';
   let oldLogLevel;
+  let coordinator;
   return {
 
     /////////////////////////////////////////////////////////////////////////
@@ -429,9 +383,17 @@ function testSuitePregel() {
     setUpAll : function() {
       oldLogLevel = arango.GET("/_admin/log/level").general;
       arango.PUT("/_admin/log/level", { general: "info" });
+
+      let coordinators = getCtrlCoordinators();
+      assertTrue(coordinators.length > 0);
+      coordinator = coordinators[0];
     },
 
     tearDownAll : function () {
+      // And now it should shut down in due course...
+      coordinator.waitForInstanceShutdown(30);
+      restartInstance(coordinator);
+
       // restore previous log level for "general" topic;
       arango.PUT("/_admin/log/level", { general: oldLogLevel });
     },
@@ -501,10 +463,6 @@ function testSuitePregel() {
     },
 
     testPageRank: function () {
-      let coordinators = getCtrlCoordinators();
-      assertTrue(coordinators.length > 0);
-      let coordinator = coordinators[0];
-
       // Start a pregel run:
       let pid = testAlgoStart("pagerank", { threshold: EPS / 1000, resultField: "result", store: true });
 
@@ -513,10 +471,10 @@ function testSuitePregel() {
       // Now use soft shutdown API to shut coordinator down:
       let res = arango.DELETE("/_admin/shutdown?soft=true");
       console.warn("Shutdown got:", res);
-      assertEqual("OK", res);
+      assertEqual("OK", res, `expecting res = ${res} == "OK"`);
       let status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
-      assertEqual(1, status.pregelConductors);
+      assertEqual(1, status.pregelConductors, `expecting status.pregelConductors = ${status.pregelConductors} == 1`);
 
       // It should fail to create a new pregel run:
       let gotException = false;
@@ -526,10 +484,10 @@ function testSuitePregel() {
         console.warn("Got exception for new run, good!", JSON.stringify(e));
         gotException = true;
       }
-      assertTrue(gotException);
+      assertTrue(gotException, `expect to catch exception for new pregel run.`);
 
       status = arango.GET("/_admin/shutdown");
-      assertTrue(status.softShutdownOngoing);
+      assertTrue(status.softShutdownOngoing, `expect status.softShutdownOngoing == true`);
 
       let startTime = time();
       while (!testAlgoCheck(pid)) {
@@ -542,10 +500,6 @@ function testSuitePregel() {
 
       status = arango.GET("/_admin/shutdown");
       assertTrue(status.softShutdownOngoing);
-
-      // And now it should shut down in due course...
-      coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
     },
 
   };
