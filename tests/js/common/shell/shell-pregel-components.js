@@ -65,19 +65,11 @@ function componentsTestSuite() {
 
     return {
 
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief set up
-        ////////////////////////////////////////////////////////////////////////////////
-
         setUpAll: function () {
 
             console.log("Beginning to insert test data with " + (numComponents * n) +
                 " vertices, " + (numComponents * (m + n)) + " edges");
 
-            // var exists = graph_module._list().indexOf("random") !== -1;
-            // if (exists || db.demo_v) {
-            //   return;
-            // }
             var graph = graph_module._create(graphName);
             db._create(vColl, {numberOfShards: 4});
             graph._addVertexCollection(vColl);
@@ -194,10 +186,6 @@ function componentsTestSuite() {
                 });
             }
         },
-
-        ////////////////////////////////////////////////////////////////////////////////
-        /// @brief tear down
-        ////////////////////////////////////////////////////////////////////////////////
 
         tearDownAll: function () {
             graph_module._drop(graphName, true);

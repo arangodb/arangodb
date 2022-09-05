@@ -27,4 +27,4 @@ const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 exports.graphName = graphName;
 exports.vColl = vColl;
-exports.eColl=eColl;
+exports.eColl = eColl;

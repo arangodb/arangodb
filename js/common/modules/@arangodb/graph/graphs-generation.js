@@ -379,7 +379,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
     };
 };
 
-const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
+const makeEdgeBetweenVertices = function (vColl, from, fromLabel, to, toLabel) {
     return {
         _from: `${vColl}/${fromLabel}_${from}`,
         _to: `${vColl}/${toLabel}_${to}`,
@@ -393,7 +393,7 @@ const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
  * @param subgraphs a document containing "vertices" and "edges"
  * @returns {{vertices: *[], edges: *[]}}
  */
-const unionGraph = function(subgraphs) {
+const unionGraph = function (subgraphs) {
     let vertices = [];
     for (const subgraph of subgraphs) {
         vertices = vertices.concat(subgraph.vertices);
@@ -592,5 +592,5 @@ exports.makeEdgeBetweenVertices = makeEdgeBetweenVertices;
 exports.unionGraph = unionGraph;
 exports.printTopology = printTopology;
 exports.unionGraph = unionGraph;
-exports.loadGraphGenerators=loadGraphGenerators;
-exports.Graph=Graph;
+exports.loadGraphGenerators = loadGraphGenerators;
+exports.Graph = Graph;

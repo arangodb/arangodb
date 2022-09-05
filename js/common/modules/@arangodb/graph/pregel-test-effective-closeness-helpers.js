@@ -3,10 +3,6 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Pregel Tests: graph generation
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
 // / Copyright 2022 ArangoDB GmbH, Cologne, Germany

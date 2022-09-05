@@ -47,7 +47,7 @@ const eColl = graphInDatabase.eColl;
 const graphGenerator = graphGeneration.graphGenerator;
 const loadGraphGenerators = graphGeneration.loadGraphGenerators;
 
-const Graph=graphGeneration.Graph;
+const Graph = graphGeneration.Graph;
 
 const epsilon = 0.00001;
 
@@ -199,7 +199,7 @@ const testHITSKleinbergThresholdOnGraph = function (vertices, edges) {
         const vKey = resultV._key;
         const v = graph.vertex(resultV._key);
         // auth
-        assertAlmostEquals(v.value.hits_auth, resultV.value.hits_auth , epsilon,
+        assertAlmostEquals(v.value.hits_auth, resultV.value.hits_auth, epsilon,
             `Different authority values for vertex ${vKey}`,
             "test returned",
             "Pregel returned",
@@ -1677,6 +1677,6 @@ exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
 exports.makeHITSTestSuite = makeHITSTestSuite;
 exports.runPregelInstance = runPregelInstance;
-exports.epsilon=epsilon;
-exports.makeSetUp=makeSetUp;
-exports.makeTearDown=makeTearDown;
+exports.epsilon = epsilon;
+exports.makeSetUp = makeSetUp;
+exports.makeTearDown = makeTearDown;
