@@ -27,7 +27,7 @@ v3.10.0 (XXXX-XX-XX)
   "collection/view is out of sync" (error code 1481).
 
   Links/indexes that are marked out-of-sync will keep the out-of-sync flag
-  until they are dropped. To get rid of an out-of-sync link/index it is 
+  until they are dropped. To get rid of an out-of-sync link/index, it is 
   recommended to manually drop and recreate it. As recreating a link/index may
   cause high load, this is not done automatically but requires explicit user
   opt-in.
