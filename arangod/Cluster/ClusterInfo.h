@@ -44,7 +44,6 @@
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
 #include "Replication2/AgencyCollectionSpecification.h"
-//#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Version.h"
 
 struct TRI_vocbase_t;

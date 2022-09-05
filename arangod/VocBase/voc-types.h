@@ -23,13 +23,14 @@
 
 #pragma once
 
+#include <cstdint>
 #include <velocypack/Slice.h>
 
 /// @brief tick type (56bit)
-typedef uint64_t TRI_voc_tick_t;
+typedef std::uint64_t TRI_voc_tick_t;
 
 /// @brief enum for write operations
-enum TRI_voc_document_operation_e : uint8_t {
+enum TRI_voc_document_operation_e : std::uint8_t {
   TRI_VOC_DOCUMENT_OPERATION_UNKNOWN = 0,
   TRI_VOC_DOCUMENT_OPERATION_INSERT,
   TRI_VOC_DOCUMENT_OPERATION_UPDATE,
@@ -44,14 +45,14 @@ enum TRI_edge_direction_e {
   TRI_EDGE_OUT = 2
 };
 
-enum class ShardingPrototype : uint32_t {
+enum class ShardingPrototype : std::uint32_t {
   Undefined = 0,
   Users = 1,
   Graphs = 2
 };
 
 /// @brief collection enum
-enum TRI_col_type_e : uint32_t {
+enum TRI_col_type_e : std::uint32_t {
   TRI_COL_TYPE_UNKNOWN = 0,  // only used to signal an invalid collection type
   TRI_COL_TYPE_DOCUMENT = 2,
   TRI_COL_TYPE_EDGE = 3

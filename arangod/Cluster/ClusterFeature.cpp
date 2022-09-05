@@ -821,6 +821,10 @@ void ClusterFeature::startHeartbeatThread(
   }
 }
 
+void ClusterFeature::pruneAsyncAgencyConnectionPool() {
+  _asyncAgencyCommPool->pruneConnections();
+}
+
 void ClusterFeature::shutdownHeartbeatThread() {
   if (_heartbeatThread == nullptr) {
     return;
