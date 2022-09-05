@@ -33,7 +33,7 @@
 
 using namespace arangodb::replication2::replicated_state::document;
 
-auto DocumentCoreParameters::toSharedSlice() -> velocypack::SharedSlice {
+auto DocumentCoreParameters::toSharedSlice() const -> velocypack::SharedSlice {
   VPackBuilder builder;
   velocypack::serialize(builder, *this);
   return builder.sharedSlice();

@@ -70,7 +70,7 @@ struct DocumentCoreParameters {
                               f.field("databaseName", p.databaseName));
   }
 
-  auto toSharedSlice() -> velocypack::SharedSlice;
+  [[nodiscard]] auto toSharedSlice() const -> velocypack::SharedSlice;
 };
 
 struct DocumentFactory {
