@@ -659,6 +659,17 @@ Collections::create(         // create collection
     if (res.fail()) {
       return res;
     }
+    {
+      // Only validate computed values
+      // we do not make use of the actual ComputedValueExecutor here
+      // TODO: Can be replaced by a two step way inspect -> ComputedValuesInput
+      // -> ComputedValues
+      auto result = ComputedValues::buildInstance(vocbase, col.shardKeys,
+                                                  col.computedValues.slice());
+      if (result.fail()) {
+        return result.result();
+      }
+    }
   }
 
   /// Code from here is copy pasted from original create and
