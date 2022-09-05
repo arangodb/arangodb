@@ -94,6 +94,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         let paramsSecondRun = executeScript(content, true, te);
         let rootDir = fs.join(fs.getTempPath(), count.toString());
         let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        clonedOpts['startupMaxCount'] = 600; // Slow startups may occur on slower machines.
         if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
           clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
         }

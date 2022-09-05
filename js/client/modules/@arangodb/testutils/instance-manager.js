@@ -83,6 +83,11 @@ class instanceManager {
     this.tcpdump = null;
     this.JWT = null;
     this.cleanup = options.cleanup && options.server === undefined;
+    if (!options.hasOwnProperty('startupMaxCount')) {
+      this.startupMaxCount = 300;
+    } else {
+      this.startupMaxCount = options.startupMaxCount;
+    }
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
     }
@@ -969,22 +974,22 @@ class instanceManager {
     while (count > 0) {
       for (let agentIndex = 0; agentIndex < this.agencyConfig.agencySize; agentIndex ++) {
         let reply = this.agencyConfig.agencyInstances[agentIndex].getAgent('/_api/agency/state', 'GET');
+        if (this.options.extremeVerbosity) {
+          print("Response ====> ");
+          print(res);
+        }
         if (!reply.error && reply.code === 200) {
           let res = JSON.parse(reply.body);
-          if (this.options.extremeVerbosity) {
-            print("Response ====> ");
-            print(res);
-          }
           if (res.hasOwnProperty('agency')){
             print("Agency Up!");
             return;
           }
-          count --;
           if (count === 0) {
             throw new Error("Agency didn't come alive in time!");
           }
         }
         sleep(0.5);
+        count --;
       }
     }
   }
@@ -1275,7 +1280,7 @@ class instanceManager {
               throw new Error('startup failed! bailing out!');
             }
           }
-          if (count === 300) {
+          if (count === this.startupMaxCount) {
             throw new Error('startup timed out! bailing out!');
           }
         }
