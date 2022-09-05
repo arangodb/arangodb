@@ -40,6 +40,10 @@ const statusExternal = internal.statusExternal;
 const {
   getCtrlCoordinators
 } = require('@arangodb/test-helper');
+const {
+  getServerRebootId
+} = require('@arangodb/testutils/replicated-logs-helper');
+
 
 var graph_module = require("@arangodb/general-graph");
 var EPS = 0.0001;
@@ -78,9 +82,12 @@ function waitForAlive(timeout, baseurl, data) {
 function restartInstance(arangod) {
   let options = _.clone(global.obj.options);
   options.skipReconnect = false;
+  let rebootIdBefore = getServerRebootId(arangod.id);
   arangod.restartOneInstance();
   waitForAlive(30, arangod.url, {});
   arangod.checkArangoConnection(5);
+  let rebootIdAfter = getServerRebootId(arangod.id);
+  assertEqual(rebootIdBefore + 1, rebootIdAfter, "Expect RebootID to increase with restart");
 };
 
 function testSuite() {
@@ -462,6 +469,8 @@ function testSuitePregel() {
 
     tearDown: function () {
       graph_module._drop(graphName, true);
+      coordinator.waitForInstanceShutdown(30);
+      restartInstance(coordinator);
     },
 
     testPageRank: function () {
