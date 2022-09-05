@@ -301,6 +301,6 @@ function dropFollowersElCheapoSuite() {
 let ep = getEndpointsByType('dbserver');
 if (ep.length && debugCanUseFailAt(ep[0])) {
   // only execute if failure tests are available
-  jsunity.run(dropFollowersElCheapoSuite);
+  // jsunity.run(dropFollowersElCheapoSuite);
 }
 return jsunity.done();
