@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <functional>
 #include <limits>
 #include <optional>
 #include <string_view>
@@ -268,6 +269,22 @@ struct VPackLoadInspectorImpl
   using FallbackContainer =
       std::conditional_t<std::is_same_v<U, typename Base::Keep>,
                          EmptyFallbackContainer, ActualFallbackContainer<U>>;
+
+  template<class Fn>
+  struct FallbackFactoryContainer {
+    explicit FallbackFactoryContainer(Fn&& fn) : factory(std::move(fn)) {}
+    template<class T>
+    void apply(T& val) const noexcept {
+      if constexpr (std::is_assignable_v<T, std::invoke_result_t<Fn>>) {
+        val = std::invoke(factory);
+      } else {
+        val = T{std::invoke(factory)};
+      }
+    }
+
+   private:
+    Fn factory;
+  };
 
   template<class Invariant>
   struct InvariantContainer {

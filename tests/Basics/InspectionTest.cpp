@@ -174,13 +174,17 @@ struct Fallback {
   int i;
   std::string s;
   Dummy d = {.i = 1, .d = 4.2, .b = true, .s = "2"};
+  int dynamic;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Fallback& x) {
-  return f.object(x).fields(f.field("i", x.i).fallback(42),
-                            f.field("s", x.s).fallback("foobar"),
-                            f.field("d", x.d).fallback(f.keep()));
+  return f.object(x).fields(
+      f.field("i", x.i).fallback(42), f.field("s", x.s).fallback("foobar"),
+      f.field("d", x.d).fallback(f.keep()),
+      f.field("dynamic", x.dynamic).fallbackFactory([&x]() {
+        return x.i * 2;
+      }));
 }
 
 struct Invariant {
@@ -1524,6 +1528,7 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallbacks) {
   EXPECT_EQ(42, f.i);
   EXPECT_EQ("foobar", f.s);
   EXPECT_EQ(expected, f.d);
+  EXPECT_EQ(84, f.dynamic);  // f.i * 2
 }
 
 TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {

@@ -181,9 +181,13 @@ struct VPackSaveInspector
   struct FallbackContainer {
     explicit FallbackContainer(U&&) {}
   };
-  template<class T>
+  template<class Fn>
+  struct FallbackFactoryContainer {
+    explicit FallbackFactoryContainer(Fn&&) {}
+  };
+  template<class Fn>
   struct InvariantContainer {
-    explicit InvariantContainer(T&&) {}
+    explicit InvariantContainer(Fn&&) {}
   };
 
  private:

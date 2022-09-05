@@ -135,6 +135,9 @@ struct InspectorBase : detail::ContextContainer<Context> {
   template<class InnerField, class FallbackValue>
   struct FallbackField;
 
+  template<class InnerField, class FallbackFactory>
+  struct FallbackFactoryField;
+
   Derived& self() { return static_cast<Derived&>(*this); }
 
   template<class T>
@@ -151,6 +154,8 @@ struct InspectorBase : detail::ContextContainer<Context> {
   struct IsFallbackField : std::false_type {};
   template<class T, class U>
   struct IsFallbackField<FallbackField<T, U>> : std::true_type {};
+  template<class T, class Fn>
+  struct IsFallbackField<FallbackFactoryField<T, Fn>> : std::true_type {};
 
   template<class T>
   static std::string_view getFieldName(T& field) noexcept {
@@ -233,6 +238,15 @@ struct InspectorBase : detail::ContextContainer<Context> {
       return FallbackField<Field, U>(std::move(static_cast<Field&>(*this)),
                                      std::forward<U>(val));
     }
+
+    template<class Fn>
+    [[nodiscard]] auto fallbackFactory(Fn&& fn) && {
+      static_assert(std::is_constructible_v<typename Field::value_type,
+                                            std::invoke_result_t<Fn>>);
+
+      return FallbackFactoryField<Field, Fn>(
+          std::move(static_cast<Field&>(*this)), std::forward<Fn>(fn));
+    }
   };
 
   template<class Field, class = void>
@@ -278,6 +292,19 @@ struct InspectorBase : detail::ContextContainer<Context> {
         WithTransform<FallbackField<InnerField, FallbackValue>> {
     FallbackField(InnerField inner, FallbackValue&& val)
         : Derived::template FallbackContainer<FallbackValue>(std::move(val)),
+          inner(std::move(inner)) {}
+    using value_type = typename InnerField::value_type;
+    InnerField inner;
+  };
+
+  template<class InnerField, class FallbackFactory>
+  struct EMPTY_BASE FallbackFactoryField
+      : Derived::template FallbackFactoryContainer<FallbackFactory>,
+        WithInvariant<FallbackFactoryField<InnerField, FallbackFactory>>,
+        WithTransform<FallbackFactoryField<InnerField, FallbackFactory>> {
+    FallbackFactoryField(InnerField inner, FallbackFactory&& fn)
+        : Derived::template FallbackFactoryContainer<FallbackFactory>(
+              std::move(fn)),
           inner(std::move(inner)) {}
     using value_type = typename InnerField::value_type;
     InnerField inner;
