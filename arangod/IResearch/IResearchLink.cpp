@@ -451,30 +451,6 @@ void CommitTask::operator()() {
                     std::chrono::steady_clock::now() - start)
                     .count();
 
-  TRI_IF_FAILURE("ArangoSearch::FailOnCommit") {
-    // intentionally mark the commit as failed
-    res.reset(TRI_ERROR_DEBUG);
-  }
-
-  if (res.fail() && !linkLock->isOutOfSync()) {
-    // mark link as out of sync if it wasn't marked like that before.
-
-    if (linkLock->setOutOfSync()) {
-      // persist "outOfSync" flag in RocksDB once. note: if this fails, it will
-      // throw an exception
-      try {
-        linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
-                                            linkLock->collection(), true);
-      } catch (std::exception const& ex) {
-        // we couldn't persist the outOfSync flag, but we can't mark the link
-        // as "not outOfSync" again. not much we can do except logging.
-        LOG_TOPIC("211d2", WARN, iresearch::TOPIC)
-            << "failed to store 'outOfSync' flag for arangosearch link '" << id
-            << "': " << ex.what();
-      }
-    }
-  }
-
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, TOPIC)
         << "successful sync of arangosearch link '" << id << "', run id '"
@@ -874,6 +850,37 @@ Result IResearchLink::commit(LinkLock linkLock, bool wait) {
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
+  Result res = commitUnsafeImpl(wait, code);
+
+  TRI_IF_FAILURE("ArangoSearch::FailOnCommit") {
+    // intentionally mark the commit as failed
+    res.reset(TRI_ERROR_DEBUG);
+  }
+
+  if (res.fail() && !isOutOfSync()) {
+    // mark link as out of sync if it wasn't marked like that before.
+    if (setOutOfSync()) {
+      // persist "outOfSync" flag in RocksDB once. note: if this fails, it will
+      // throw an exception
+      try {
+        _engine->changeCollection(collection().vocbase(), collection(), true);
+      } catch (std::exception const& ex) {
+        // we couldn't persist the outOfSync flag, but we can't mark the link
+        // as "not outOfSync" again. not much we can do except logging.
+        LOG_TOPIC("211d2", WARN, iresearch::TOPIC)
+            << "failed to store 'outOfSync' flag for arangosearch link '"
+            << id() << "': " << ex.what();
+      }
+    }
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+////////////////////////////////////////////////////////////////////////////////
+Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->lock() is valid
 

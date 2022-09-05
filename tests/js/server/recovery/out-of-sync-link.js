@@ -52,14 +52,24 @@ function runSetup () {
   db['UnitTestsRecovery2'].insert({});
       
   // wait for synchronization of links
-  try {
-    db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
-  } catch (err) {
+  let res = 0;
+  let tries = 0;
+  while (tries++ < 50) {
+    res = db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc").toArray().length;
+    if (res === 1) {
+      break;
+    }
+    internal.sleep(0.25);
   }
 
-  try {
-    db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc");
-  } catch (err) {
+  res = 0;
+  tries = 0;
+  while (tries++ < 50) {
+    res = db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc").toArray().length;
+    if (res === 2) {
+      break;
+    }
+    internal.sleep(0.25);
   }
  
   // remove failure point 
