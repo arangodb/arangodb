@@ -81,9 +81,10 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
         .WillByDefault([this](TransactionId tid) {
           return _real->removeTransaction(tid);
         });
-    ON_CALL(*this, getActiveTransactions()).WillByDefault([this]() {
-      return _real->getActiveTransactions();
-    });
+    ON_CALL(*this, getActiveTransactions())
+        .WillByDefault([this]() -> TransactionMap const& {
+          return _real->getActiveTransactions();
+        });
   }
 
   MOCK_METHOD(Result, applyEntry, (DocumentLogEntry doc), (override));
