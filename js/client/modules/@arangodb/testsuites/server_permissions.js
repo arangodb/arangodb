@@ -267,9 +267,12 @@ function server_secrets(options) {
 
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
-
-  fs.write(fs.join(secretsDir, 'secret1'), 'jwtsecret-1');
-  fs.write(fs.join(secretsDir, 'secret2'), 'jwtsecret-2');
+  let secretFiles = [
+    fs.join(secretsDir, 'secret1'),
+    fs.join(secretsDir, 'secret2')
+  ];
+  fs.write(secretFiles[0], 'jwtsecret-1');
+  fs.write(secretFiles[1], 'jwtsecret-2');
 
   process.env["jwt-secret-folder"] = secretsDir;
 
@@ -285,6 +288,7 @@ function server_secrets(options) {
   let copyOptions = _.clone(options);
   // necessary to fix shitty process-utils handling
   copyOptions['server.jwt-secret-folder'] = secretsDir;
+  copyOptions['jwtFiles'] = secretFiles;
   copyOptions['protocol'] = "ssl";
 
   const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], copyOptions);

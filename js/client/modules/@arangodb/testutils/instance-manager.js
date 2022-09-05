@@ -984,9 +984,9 @@ class instanceManager {
             print("Agency Up!");
             return;
           }
-          if (count === 0) {
-            throw new Error("Agency didn't come alive in time!");
-          }
+        }
+        if (count === 0) {
+          throw new Error("Agency didn't come alive in time!");
         }
         sleep(0.5);
         count --;
