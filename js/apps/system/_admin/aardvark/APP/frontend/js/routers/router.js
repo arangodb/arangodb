@@ -3,7 +3,7 @@
 /* global window, $, Backbone, document, d3, ReactDOM, React */
 /* global arangoHelper, btoa, atob, _, frontendConfig */
 
-(function () {
+(function() {
   'use strict';
 
   let isCurrentCoordinator = false;
@@ -72,7 +72,7 @@
       'support': 'support'
     },
 
-    execute: function (callback, args, handler, skipDirtyViewCheck = false) {
+    execute: function(callback, args, handler, skipDirtyViewCheck = false) {
       const self = this;
 
       if (this.lastRoute === '#queries') {
@@ -104,7 +104,7 @@
           ];
 
           const buttons = [
-            window.modalView.createDeleteButton('Discard', function () {
+            window.modalView.createDeleteButton('Discard', function() {
               window.sessionStorage.removeItem(replaceUrlSecond);
               window.sessionStorage.removeItem(`${replaceUrlSecond}-changed`);
               goBack = false;
@@ -117,7 +117,7 @@
           window.modalView.show('modalTable.ejs', 'You have unsaved changes!', buttons, tableContent, undefined, undefined, undefined, true);
         }
 
-        $('#modal-dialog').on('hide', function () {
+        $('#modal-dialog').on('hide', function() {
           if (goBack && replaceUrlFirst === '#view') {
             window.history.back();
           }
@@ -198,21 +198,21 @@
 
     listenerFunctions: {},
 
-    listener: function (event) {
-      _.each(window.App.listenerFunctions, function (func, key) {
+    listener: function(event) {
+      _.each(window.App.listenerFunctions, function(func, key) {
         void (key);
         func(event);
       });
     },
 
-    checkUser: function () {
+    checkUser: function() {
       const self = this;
 
       if (window.location.hash === '#login') {
         return;
       }
 
-      const startInit = function () {
+      const startInit = function() {
         this.initOnce();
 
         // show hidden by default divs
@@ -220,12 +220,12 @@
         $('.navbar').show();
       }.bind(this);
 
-      const callback = function (error, user) {
+      const callback = function(error, user) {
         if (frontendConfig.authenticationEnabled) {
           self.currentUser = user;
           if (error || user === null) {
             if (window.location.hash !== '#login') {
-              this.navigate('login', { trigger: true });
+              this.navigate('login', {trigger: true});
             }
           } else {
             startInit();
@@ -246,7 +246,7 @@
       }
     },
 
-    initialize: function () {
+    initialize: function() {
       const self = this;
 
       this.init = new Promise((resolve, reject) => {
@@ -278,7 +278,7 @@
       this.foxxRepo = new window.FoxxRepository();
       if (frontendConfig.foxxStoreEnabled) {
         this.foxxRepo.fetch({
-          success: function () {
+          success: function() {
             if (self.serviceInstallView) {
               self.serviceInstallView.collection = self.foxxRepo;
             }
@@ -290,12 +290,12 @@
 
       this.userCollection = new window.ArangoUsers();
 
-      this.initOnce = _.once(function () {
-        const callback = function (error, isCoordinator) {
+      this.initOnce = _.once(function() {
+        const callback = function(error, isCoordinator) {
           if (isCoordinator === true) {
             isCurrentCoordinator = true;
             self.coordinatorCollection.fetch({
-              success: function () {
+              success: function() {
                 self.fetchDBS();
               }
             });
@@ -338,7 +338,7 @@
 
         this.currentDB.fetch({
           cache: false,
-          success: function () {
+          success: function() {
             self.naviView = new window.NavigationView({
               database: self.arangoDatabase,
               currentDB: self.currentDB,
@@ -372,43 +372,43 @@
         arangoHelper.initSigma();
       }).bind(this);
 
-      $(window).on('resize', function () {
+      $(window).on('resize', function() {
         self.handleResize();
       });
 
     },
 
-    analyzers: function () {
+    analyzers: function() {
       this.checkUser();
 
       this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
         document.getElementById('content')));
     },
 
-    cluster: function () {
+    cluster: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
           // no privileges to use cluster/nodes from the web interface
           this.routes[''] = 'collections';
-          this.navigate('#collections', { trigger: true });
+          this.navigate('#collections', {trigger: true});
           return;
         }
 
         if (!this.isCluster) {
           if (this.currentDB.get('name') === '_system') {
             this.routes[''] = 'dashboard';
-            this.navigate('#dashboard', { trigger: true });
+            this.navigate('#dashboard', {trigger: true});
           } else {
             this.routes[''] = 'collections';
-            this.navigate('#collections', { trigger: true });
+            this.navigate('#collections', {trigger: true});
           }
           return;
         }
         if (this.currentDB.get('name') !== '_system' &&
           !this.statisticsInAllDatabases) {
-          this.navigate('#nodes', { trigger: true });
+          this.navigate('#nodes', {trigger: true});
           return;
         }
 
@@ -422,20 +422,20 @@
       });
     },
 
-    node: function (id) {
+    node: function(id) {
       this.checkUser();
 
       this.init.then(() => {
         if (this.isCluster && frontendConfig.clusterApiJwtPolicy === 'jwt-all') {
           // no privileges to use cluster/nodes from the web interface
           this.routes[''] = 'collections';
-          this.navigate('#collections', { trigger: true });
+          this.navigate('#collections', {trigger: true});
           return;
         }
 
         if (this.isCluster === false) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
 
@@ -451,13 +451,13 @@
       });
     },
 
-    shards: function () {
+    shards: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (this.isCluster === false) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         // TODO re-enable React View, for now use old view:
@@ -474,20 +474,20 @@
       });
     },
 
-    rebalanceShards: function () {
+    rebalanceShards: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (this.isCluster === false || isCurrentCoordinator === false || this.maxNumberOfMoveShards === 0) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
         else if (this.userCollection.authOptions.ro) { // if user can't edit the database,
           // it goes back to the Overview page
           this.routes[''] = 'nodes';
-          this.navigate('#nodes', { trigger: true });
+          this.navigate('#nodes', {trigger: true});
           return;
         }
         if (this.rebalanceShardsView) {
@@ -500,17 +500,17 @@
       });
     },
 
-    distribution: function () {
+    distribution: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (this.currentDB.get('name') !== '_system') {
           if (!this.isCluster) {
             this.routes[''] = 'dashboard';
-            this.navigate('#dashboard', { trigger: true });
+            this.navigate('#dashboard', {trigger: true});
           } else {
             this.routes[''] = 'cluster';
-            this.navigate('#cluster', { trigger: true });
+            this.navigate('#cluster', {trigger: true});
           }
           return;
         }
@@ -523,7 +523,7 @@
       });
     },
 
-    maintenance: function () {
+    maintenance: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -531,10 +531,10 @@
           'name') !== '_system') {
           if (!this.isCluster) {
             this.routes[''] = 'dashboard';
-            this.navigate('#dashboard', { trigger: true });
+            this.navigate('#dashboard', {trigger: true});
           } else {
             this.routes[''] = 'cluster';
-            this.navigate('#cluster', { trigger: true });
+            this.navigate('#cluster', {trigger: true});
           }
 
           return;
@@ -547,13 +547,13 @@
       });
     },
 
-    nodes: function () {
+    nodes: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (this.isCluster === false) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         if (this.nodesView) {
@@ -564,13 +564,13 @@
       });
     },
 
-    cNodes: function () {
+    cNodes: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (this.isCluster === false) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         this.nodesView = new window.NodesView({
@@ -582,17 +582,17 @@
       });
     },
 
-    dNodes: function () {
+    dNodes: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (this.isCluster === false) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         if (this.dbServers.length === 0) {
-          this.navigate('#cNodes', { trigger: true });
+          this.navigate('#cNodes', {trigger: true});
           return;
         }
 
@@ -605,13 +605,13 @@
       });
     },
 
-    sNodes: function () {
+    sNodes: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (this.isCluster === false) {
           this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
 
@@ -623,7 +623,7 @@
       });
     },
 
-    addAuth: function (xhr) {
+    addAuth: function(xhr) {
       const u = this.clusterPlan.get('user');
       if (!u) {
         xhr.abort();
@@ -638,7 +638,7 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logger: function () {
+    logger: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -651,21 +651,22 @@
           loglevel: 4
         });
         this.loggerView = new window.LoggerView({
-          collection: co
+          collection: co,
+          database: this.arangoDatabase
         });
         this.loggerView.render(true);
       });
     },
 
-    applicationDetail: function (mount) {
+    applicationDetail: function(mount) {
       this.checkUser();
 
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
-        const callback = function () {
+        const callback = function() {
           if (this.hasOwnProperty('applicationDetailView')) {
             this.applicationDetailView.remove();
           }
@@ -680,7 +681,7 @@
         if (this.foxxList.length === 0) {
           this.foxxList.fetch({
             cache: false,
-            success: function () {
+            success: function() {
               callback();
             }
           });
@@ -690,15 +691,15 @@
       });
     },
 
-    storeDetail: function (mount) {
+    storeDetail: function(mount) {
       this.checkUser();
 
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
-        const callback = function () {
+        const callback = function() {
           if (this.hasOwnProperty('storeDetailView')) {
             this.storeDetailView.remove();
           }
@@ -714,7 +715,7 @@
         if (this.foxxRepo.length === 0) {
           this.foxxRepo.fetch({
             cache: false,
-            success: function () {
+            success: function() {
               callback();
             }
           });
@@ -724,8 +725,8 @@
       });
     },
 
-    login: function () {
-      const callback = function (error, user) {
+    login: function() {
+      const callback = function(error, user) {
         if (!this.loginView) {
           this.loginView = new window.LoginView({
             collection: this.userCollection
@@ -741,7 +742,7 @@
       this.userCollection.whoAmI(callback);
     },
 
-    collections: function () {
+    collections: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -754,14 +755,14 @@
         });
         this.arangoCollectionsStore.fetch({
           cache: false,
-          success: function () {
+          success: function() {
             self.collectionsView.render();
           }
         });
       });
     },
 
-    cIndices: function (colname) {
+    cIndices: function(colname) {
       const self = this;
 
       this.checkUser();
@@ -769,7 +770,7 @@
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
-          success: function () {
+          success: function() {
             if (self.indicesView) {
               self.indicesView.remove();
             }
@@ -785,7 +786,7 @@
       });
     },
 
-    cSettings: function (colname) {
+    cSettings: function(colname) {
       const self = this;
 
       this.checkUser();
@@ -793,7 +794,7 @@
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
-          success: function () {
+          success: function() {
             self.settingsView = new window.SettingsView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
@@ -806,7 +807,7 @@
       });
     },
 
-    cComputedValues: function (colname) {
+    cComputedValues: function(colname) {
       const self = this;
 
       this.checkUser();
@@ -814,7 +815,7 @@
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
-          success: function () {
+          success: function() {
             self.computedValuesView = new window.ComputedValuesView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
@@ -827,7 +828,7 @@
       });
     },
 
-    cSchema: function (colname) {
+    cSchema: function(colname) {
       const self = this;
 
       this.checkUser();
@@ -835,7 +836,7 @@
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
-          success: function () {
+          success: function() {
             self.validationView = new window.ValidationView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
@@ -848,7 +849,7 @@
       });
     },
 
-    cInfo: function (colname) {
+    cInfo: function(colname) {
       const self = this;
 
       this.checkUser();
@@ -856,7 +857,7 @@
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
-          success: function () {
+          success: function() {
             self.infoView = new window.InfoView({
               collectionName: colname,
               collection: self.arangoCollectionsStore.findWhere({
@@ -869,7 +870,7 @@
       });
     },
 
-    documents: function (colid, pageid) {
+    documents: function(colid, pageid) {
       this.checkUser();
 
       this.init.then(() => {
@@ -889,7 +890,7 @@
       });
     },
 
-    document: function (colid) {
+    document: function(colid) {
       this.checkUser();
 
       this.init.then(() => {
@@ -911,7 +912,7 @@
         this.documentView.docid = doc;
         this.documentView.render();
 
-        const callback = function (error, type) {
+        const callback = function(error, type) {
           void (type);
           if (!error) {
             this.documentView.setType();
@@ -924,7 +925,7 @@
       });
     },
 
-    query: function () {
+    query: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -937,7 +938,7 @@
       });
     },
 
-    graph: function (name) {
+    graph: function(name) {
       this.checkUser();
 
       this.init.then(() => {
@@ -961,7 +962,7 @@
       });
     },
 
-    graphSettings: function (name) {
+    graphSettings: function(name) {
       this.checkUser();
 
       this.init.then(() => {
@@ -976,7 +977,7 @@
       });
     },
 
-    helpUs: function () {
+    helpUs: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -987,7 +988,7 @@
       });
     },
 
-    support: function () {
+    support: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -998,7 +999,7 @@
       });
     },
 
-    queryManagement: function () {
+    queryManagement: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -1012,14 +1013,14 @@
       });
     },
 
-    databases: function () {
+    databases: function() {
       this.checkUser();
 
       this.init.then(() => {
-        const callback = function (error) {
+        const callback = function(error) {
           if (error) {
             arangoHelper.arangoError('DB', 'Could not get list of allowed databases');
-            this.navigate('#', { trigger: true });
+            this.navigate('#', {trigger: true});
             $('#databaseNavi').css('display', 'none');
             $('#databaseNaviSelect').css('display', 'none');
           } else {
@@ -1039,7 +1040,7 @@
       });
     },
 
-    dashboard: function () {
+    dashboard: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -1053,7 +1054,7 @@
       });
     },
 
-    replication: function () {
+    replication: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -1065,7 +1066,7 @@
       });
     },
 
-    applier: function (endpoint, database) {
+    applier: function(endpoint, database) {
       this.checkUser();
 
       this.init.then(() => {
@@ -1078,7 +1079,7 @@
       });
     },
 
-    graphManagement: function () {
+    graphManagement: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -1096,7 +1097,7 @@
       });
     },
 
-    showGraph: function (name) {
+    showGraph: function(name) {
       this.checkUser();
 
       this.init.then(() => {
@@ -1115,12 +1116,12 @@
       });
     },
 
-    applications: function () {
+    applications: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         if (this.applicationsView === undefined) {
@@ -1132,16 +1133,16 @@
       });
     },
 
-    installService: function () {
+    installService: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         if (!frontendConfig.foxxStoreEnabled) {
-          this.navigate('#services/install/upload', { trigger: true });
+          this.navigate('#services/install/upload', {trigger: true});
           return;
         }
         window.modalView.clearValidators();
@@ -1156,12 +1157,12 @@
       });
     },
 
-    installNewService: function () {
+    installNewService: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         window.modalView.clearValidators();
@@ -1175,12 +1176,12 @@
       });
     },
 
-    installGitHubService: function () {
+    installGitHubService: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         window.modalView.clearValidators();
@@ -1194,16 +1195,16 @@
       });
     },
 
-    installUrlService: function () {
+    installUrlService: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         if (!frontendConfig.foxxAllowInstallFromRemote) {
-          this.navigate('#services/install/upload', { trigger: true });
+          this.navigate('#services/install/upload', {trigger: true});
           return;
         }
         window.modalView.clearValidators();
@@ -1217,12 +1218,12 @@
       });
     },
 
-    installUploadService: function () {
+    installUploadService: function() {
       this.checkUser();
 
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
-          this.navigate('#dashboard', { trigger: true });
+          this.navigate('#dashboard', {trigger: true});
           return;
         }
         window.modalView.clearValidators();
@@ -1236,13 +1237,13 @@
       });
     },
 
-    handleSelectDatabase: function () {
+    handleSelectDatabase: function() {
       this.checkUser();
 
       this.init.then(() => this.naviView.handleSelectDatabase());
     },
 
-    handleResize: function () {
+    handleResize: function() {
       if (this.dashboardView) {
         this.dashboardView.resize();
       }
@@ -1272,7 +1273,7 @@
       }
     },
 
-    userPermission: function (name) {
+    userPermission: function(name) {
       this.checkUser();
 
       this.init.then(() => {
@@ -1290,7 +1291,7 @@
       });
     },
 
-    userView: function (name) {
+    userView: function(name) {
       this.checkUser();
 
       this.init.then(() => {
@@ -1302,7 +1303,7 @@
       });
     },
 
-    userManagement: function () {
+    userManagement: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -1317,7 +1318,7 @@
       });
     },
 
-    userProfile: function () {
+    userProfile: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -1330,47 +1331,47 @@
       });
     },
 
-    viewInfo: function (name) {
+    viewInfo: function(name) {
       this.checkUser();
 
       this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewInfoReactView, { name }),
+        () => ReactDOM.render(React.createElement(window.ViewInfoReactView, {name}),
           document.getElementById('content')));
     },
 
-    viewSettings: function (name) {
+    viewSettings: function(name) {
       this.checkUser();
 
       this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
+        () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, {name}),
           document.getElementById('content')));
     },
 
-    viewConsolidation: function (name) {
+    viewConsolidation: function(name) {
       this.checkUser();
 
       this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, { name }),
+        () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, {name}),
           document.getElementById('content')));
     },
 
-    viewLinks: function (name) {
+    viewLinks: function(name) {
       this.checkUser();
 
       this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewLinksReactView, { name }),
+        () => ReactDOM.render(React.createElement(window.ViewLinksReactView, {name}),
           document.getElementById('content')));
     },
 
-    viewJSON: function (name) {
+    viewJSON: function(name) {
       this.checkUser();
 
       this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewJSONReactView, { name }),
+        () => ReactDOM.render(React.createElement(window.ViewJSONReactView, {name}),
           document.getElementById('content')));
     },
 
-    views: function () {
+    views: function() {
       this.checkUser();
 
       this.init.then(() => {
@@ -1385,11 +1386,11 @@
       });
     },
 
-    fetchDBS: function (callback) {
+    fetchDBS: function(callback) {
       const self = this;
       let cb = false;
 
-      this.coordinatorCollection.each(function (coordinator) {
+      this.coordinatorCollection.each(function(coordinator) {
         self.dbServers.push(
           new window.ClusterServers([], {
             host: coordinator.get('address')
@@ -1399,9 +1400,9 @@
 
       this.initSucceeded(true);
 
-      _.each(this.dbServers, function (dbservers) {
+      _.each(this.dbServers, function(dbservers) {
         dbservers.fetch({
-          success: function () {
+          success: function() {
             if (cb === false) {
               if (callback) {
                 callback();
@@ -1413,11 +1414,11 @@
       });
     },
 
-    getNewRoute: function (host) {
+    getNewRoute: function(host) {
       return 'http://' + host;
     },
 
-    registerForUpdate: function (o) {
+    registerForUpdate: function(o) {
       this.toUpdate.push(o);
       o.updateUrl();
     }
