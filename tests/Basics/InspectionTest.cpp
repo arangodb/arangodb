@@ -2166,7 +2166,7 @@ TEST_F(VPackInspectionTest, ResultTWithTInside) {
 }
 
 struct ValidateInspectorTest : public ::testing::Test {
-  arangodb::inspection::ValidateInspector inspector;
+  arangodb::inspection::ValidateInspector<> inspector;
 };
 
 TEST_F(ValidateInspectorTest, validate_object_with_invariant_fulfilled) {
@@ -2245,13 +2245,17 @@ struct WithContext {
 template<class Inspector>
 auto inspect(Inspector& f, WithContext& v) {
   auto& context = f.getContext();
-  return f.object(v).fields(f.field("i", v.i).fallback(context.defaultInt),
-                            f.field("s", v.s).fallback(context.defaultString));
+  return f.object(v).fields(
+      f.field("i", v.i).fallback(context.defaultInt).invariant([&](int v) {
+        return v > context.minInt;
+      }),
+      f.field("s", v.s).fallback(context.defaultString));
 }
 
 TEST(VPackLoadInspectorContext, deserialize_with_context) {
   struct Context {
     int defaultInt;
+    int minInt;
     std::string defaultString;
   };
 
@@ -2260,14 +2264,14 @@ TEST(VPackLoadInspectorContext, deserialize_with_context) {
   builder.close();
 
   {
-    Context ctxt{.defaultInt = 42, .defaultString = "foobar"};
+    Context ctxt{.defaultInt = 42, .minInt = 0, .defaultString = "foobar"};
     auto data = velocypack::deserialize<WithContext>(builder.slice(), {}, ctxt);
     EXPECT_EQ(42, data.i);
     EXPECT_EQ("foobar", data.s);
   }
 
   {
-    Context ctxt{.defaultInt = -1, .defaultString = "blubb"};
+    Context ctxt{.defaultInt = -1, .minInt = -2, .defaultString = "blubb"};
     auto data = velocypack::deserialize<WithContext>(builder.slice(), {}, ctxt);
     EXPECT_EQ(-1, data.i);
     EXPECT_EQ("blubb", data.s);
@@ -2277,6 +2281,7 @@ TEST(VPackLoadInspectorContext, deserialize_with_context) {
 TEST(VPackSaveInspectorContext, serialize_with_context) {
   struct Context {
     int defaultInt;
+    int minInt;
     std::string defaultString;
   };
 
@@ -2289,6 +2294,31 @@ TEST(VPackSaveInspectorContext, serialize_with_context) {
   ASSERT_TRUE(res.ok());
   EXPECT_EQ(42, builder.slice()["i"].getInt());
   EXPECT_EQ("foobar", builder.slice()["s"].copyString());
+}
+
+TEST(ValidateInspectorContext, validate_with_context) {
+  struct Context {
+    int defaultInt;
+    int minInt;
+    std::string defaultString;
+  };
+  Context ctxt{.defaultInt = 0, .minInt = 42, .defaultString = ""};
+
+  {
+    inspection::ValidateInspector<Context> inspector(ctxt);
+    WithContext data{.i = 43, .s = ""};
+    auto result = inspector.apply(data);
+    EXPECT_TRUE(result.ok());
+  }
+
+  {
+    inspection::ValidateInspector inspector(ctxt);
+    WithContext data{.i = 42, .s = ""};
+    auto result = inspector.apply(data);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i", result.path());
+  }
 }
 
 }  // namespace
