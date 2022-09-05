@@ -61,7 +61,6 @@ ProgrammablePregelAlgorithm::ProgrammablePregelAlgorithm(
   parseUserParams(userParams);
 }
 
-bool ProgrammablePregelAlgorithm::supportsAsyncMode() const { return false; }
 bool ProgrammablePregelAlgorithm::supportsCompensation() const { return false; }
 
 auto ProgrammablePregelAlgorithm::createComputation(

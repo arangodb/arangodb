@@ -41,7 +41,6 @@ struct WCC
                VPackSlice userParams)
       : SimpleAlgorithm(server, "WCC", userParams) {}
 
-  bool supportsAsyncMode() const override { return false; }
   bool supportsCompensation() const override { return false; }
 
   GraphFormat<WCCValue, uint64_t>* inputFormat() const override;

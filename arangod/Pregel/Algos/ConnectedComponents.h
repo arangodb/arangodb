@@ -41,7 +41,6 @@ struct ConnectedComponents
                                VPackSlice userParams)
       : SimpleAlgorithm(server, "ConnectedComponents", userParams) {}
 
-  bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }
 
   GraphFormat<uint64_t, uint8_t>* inputFormat() const override;

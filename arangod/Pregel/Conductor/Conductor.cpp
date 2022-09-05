@@ -131,10 +131,6 @@ Conductor::Conductor(
 
   _maxSuperstep =
       VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
-  // configure the async mode as off by default
-  VPackSlice async = _userParams.slice().get("async");
-  _asyncMode =
-      _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(
       _userParams.slice(), Utils::useMemoryMapsKey, _feature.useMemoryMaps());
 
@@ -152,7 +148,7 @@ Conductor::Conductor(
   LOG_PREGEL("00f5f", INFO)
       << "Starting " << _algorithm->name() << " in database '" << vocbase.name()
       << "', ttl: " << _ttl.count() << "s"
-      << ", async: " << (_asyncMode ? "yes" : "no") << ", parallelism: "
+      << ", parallelism: "
       << WorkerConfig::parallelism(_feature, _userParams.slice())
       << ", memory mapping: " << (_useMemoryMaps ? "yes" : "no")
       << ", store: " << (_storeResults ? "yes" : "no")
@@ -345,14 +341,11 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
 }
 
 /// Will optionally send a response, to notify the worker of converging
-/// aggregator
-/// values which can be coninually updated (in async mode)
+/// aggregator values
 VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   auto finishedEvent = deserialize<GssFinished>(data);
-  // this method can be called multiple times in a superstep depending on
-  // whether we are in the async mode
   uint64_t gss = finishedEvent.gss;
   if (gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
                                    _state == ExecutionState::CANCELED)) {
@@ -366,32 +359,15 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   }
 
   // track message counts to decide when to halt or add global barriers.
-  // In normal mode this will wait for a response from each worker,
-  // in async mode this will wait until all messages were processed
+  // this will wait for a response from each worker,
   _statistics.accumulateMessageStats(finishedEvent.senderId,
                                      finishedEvent.messageStats.slice());
-  if (_asyncMode == false) {  // in async mode we wait for all responded
-    _ensureUniqueResponse(finishedEvent.senderId);
-    LOG_PREGEL("08142", WARN) << fmt::format(
-        "finishedWorkerStep, got response from {}.", finishedEvent.senderId);
-    // wait for the last worker to respond
-    if (_respondedServers.size() != _dbServers.size()) {
-      return VPackBuilder();
-    }
-  } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
-             !_statistics.allMessagesProcessed()) {  // haven't received msgs
-    VPackBuilder response;
-    _aggregators->aggregateValues(finishedEvent.aggregators.slice());
-    if (_masterContext) {
-      _masterContext->postLocalSuperstep();
-    }
-    response.openObject();
-    _aggregators->serializeValues(response);
-    if (_masterContext && _masterContext->_enterNextGSS) {
-      response.add(Utils::enterNextGSSKey, VPackValue(true));
-    }
-    response.close();
-    return response;
+  _ensureUniqueResponse(finishedEvent.senderId);
+  LOG_PREGEL("08142", WARN) << fmt::format(
+      "finishedWorkerStep, got response from {}.", finishedEvent.senderId);
+  // wait for the last worker to respond
+  if (_respondedServers.size() != _dbServers.size()) {
+    return VPackBuilder();
   }
 
   state->receive(finishedEvent);
@@ -517,7 +493,6 @@ auto Conductor::_initializeWorkers(VPackSlice additional)
     b.add(Utils::algorithmKey, VPackValue(_algorithm->name()));
     b.add(Utils::userParametersKey, _userParams.slice());
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
-    b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
     b.add(Utils::useMemoryMapsKey, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto pair : VPackObjectIterator(additional)) {
