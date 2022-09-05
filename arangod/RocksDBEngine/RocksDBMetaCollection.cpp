@@ -1604,12 +1604,30 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
       // apply inserts
       if (inserts) {
-        tree.insert(*inserts);
+        try {
+          tree.insert(*inserts);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("7a4d5", ERR, Logger::ENGINES)
+              << "unable to apply revision tree inserts for "
+              << _logicalCollection.vocbase().name() << "/"
+              << _logicalCollection.name() << " for commit seq " << commitSeq
+              << ": " << ex.what();
+          throw;
+        }
       }
 
       // apply removals
       if (removals) {
-        tree.remove(*removals);
+        try {
+          tree.remove(*removals);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("f37b2", ERR, Logger::ENGINES)
+              << "unable to apply revision tree removals for "
+              << _logicalCollection.vocbase().name() << "/"
+              << _logicalCollection.name() << " for commit seq " << commitSeq
+              << ": " << ex.what();
+          throw;
+        }
       }
     }
   });
