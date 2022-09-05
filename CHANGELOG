@@ -44,6 +44,12 @@ devel
   The number of out-of-sync links/indexes is also observable via a new metric
   `arangodb_search_num_out_of_sync_links`.
 
+* Added startup option `--rocksdb.periodic-compaction-ttl`.
+  This option controls the TTL (in seconds) for periodic compaction of 
+  .sst files in RocksDB, based on the .sst file age. The default value
+  from RocksDB is ~30 days. To avoid periodic auto-compaction, the option
+  can be set to 0.
+
 * Updated arangosync to v2.12.0-preview-11.
 
 * Added integration tests for `--log.escape-control-chars` and
