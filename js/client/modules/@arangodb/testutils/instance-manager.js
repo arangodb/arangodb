@@ -976,7 +976,7 @@ class instanceManager {
         let reply = this.agencyConfig.agencyInstances[agentIndex].getAgent('/_api/agency/state', 'GET');
         if (this.options.extremeVerbosity) {
           print("Response ====> ");
-          print(res);
+          print(reply);
         }
         if (!reply.error && reply.code === 200) {
           let res = JSON.parse(reply.body);
