@@ -350,7 +350,7 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 365> ErrorMessage
      "A cluster backend which was required for the operation could not be "
      "reached"},
     {TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,  // 1481
-     "collection/view is out of sync"},
+     "collection is out of sync"},
     {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,  // 1482
      "could not create index in plan"},
     {TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,  // 1483
