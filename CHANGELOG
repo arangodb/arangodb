@@ -22,7 +22,7 @@ v3.10.0 (XXXX-XX-XX)
 
   If an out-of-sync link or index can be used in queries depends on another new
   startup option `--arangosearch.fail-queries-on-out-of-sync`. It defaults to
-  `false`, meaning that out-of-sync links/indexes can still be queries. It the
+  `false`, meaning that out-of-sync links/indexes can still be queried. If the
   option is set to `true`, queries on such links/indexes will fail with error
   "collection/view is out of sync" (error code 1481).
 
