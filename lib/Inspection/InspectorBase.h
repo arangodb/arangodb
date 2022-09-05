@@ -43,8 +43,30 @@ namespace arangodb::inspection {
 #define EMPTY_BASE
 #endif
 
-template<class Derived>
-struct InspectorBase {
+struct NoContext {};
+
+namespace detail {
+template<class ContextT>
+struct ContextContainer {
+  static constexpr bool hasContext = true;
+  using Context = ContextT;
+  explicit ContextContainer(Context const& ctx) : _context(ctx) {}
+  Context const& getContext() const noexcept { return _context; }
+
+ private:
+  Context const& _context;
+};
+
+template<>
+struct EMPTY_BASE ContextContainer<NoContext> {
+  static constexpr bool hasContext = false;
+  ContextContainer() = default;
+  explicit ContextContainer(NoContext const&) {}
+};
+}  // namespace detail
+
+template<class Derived, class Context>
+struct InspectorBase : detail::ContextContainer<Context> {
  protected:
   template<class T>
   struct Object;
@@ -66,6 +88,11 @@ struct InspectorBase {
   // };
 
  public:
+  InspectorBase() = default;
+
+  explicit InspectorBase(Context const& ctx)
+      : detail::ContextContainer<Context>(ctx) {}
+
   template<class T>
   [[nodiscard]] Status apply(T& x) {
     return process(self(), x);

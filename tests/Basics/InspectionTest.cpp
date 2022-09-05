@@ -469,8 +469,8 @@ auto inspect(Inspector& f, Struct2& x) {
 
 namespace {
 using namespace arangodb;
-using VPackLoadInspector = inspection::VPackLoadInspector;
-using VPackSaveInspector = inspection::VPackSaveInspector;
+using VPackLoadInspector = inspection::VPackLoadInspector<>;
+using VPackSaveInspector = inspection::VPackSaveInspector<>;
 
 struct VPackSaveInspectorTest : public ::testing::Test {
   velocypack::Builder builder;
@@ -1961,7 +1961,7 @@ TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
   builder.add("slice", VPackValue("blubb"));
   builder.add("hashed", VPackValue("hashedString"));
   builder.close();
-  arangodb::inspection::VPackUnsafeLoadInspector inspector{builder};
+  arangodb::inspection::VPackUnsafeLoadInspector<> inspector{builder};
 
   Unsafe u;
   auto result = inspector.apply(u);
@@ -2155,6 +2155,60 @@ TEST_F(VPackInspectionTest, ResultTWithTInside) {
   auto deserialized =
       arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
   EXPECT_EQ(result, deserialized);
+}
+
+struct WithContext {
+  int i;
+  std::string s;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, WithContext& v) {
+  auto& context = f.getContext();
+  return f.object(v).fields(f.field("i", v.i).fallback(context.defaultInt),
+                            f.field("s", v.s).fallback(context.defaultString));
+}
+
+TEST(VPackLoadInspectorContext, deserialize_with_context) {
+  struct Context {
+    int defaultInt;
+    std::string defaultString;
+  };
+
+  velocypack::Builder builder;
+  builder.openObject();
+  builder.close();
+
+  {
+    Context ctxt{.defaultInt = 42, .defaultString = "foobar"};
+    auto data = velocypack::deserialize<WithContext>(builder.slice(), {}, ctxt);
+    EXPECT_EQ(42, data.i);
+    EXPECT_EQ("foobar", data.s);
+  }
+
+  {
+    Context ctxt{.defaultInt = -1, .defaultString = "blubb"};
+    auto data = velocypack::deserialize<WithContext>(builder.slice(), {}, ctxt);
+    EXPECT_EQ(-1, data.i);
+    EXPECT_EQ("blubb", data.s);
+  }
+}
+
+TEST(VPackSaveInspectorContext, serialize_with_context) {
+  struct Context {
+    int defaultInt;
+    std::string defaultString;
+  };
+
+  Context ctxt{};
+  velocypack::Builder builder;
+  inspection::VPackSaveInspector<Context> inspector(builder, ctxt);
+
+  WithContext data{.i = 42, .s = "foobar"};
+  auto res = inspector.apply(data);
+  ASSERT_TRUE(res.ok());
+  EXPECT_EQ(42, builder.slice()["i"].getInt());
+  EXPECT_EQ("foobar", builder.slice()["s"].copyString());
 }
 
 }  // namespace
