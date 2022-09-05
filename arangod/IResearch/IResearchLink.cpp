@@ -1669,7 +1669,7 @@ Result IResearchLink::initDataStore(
         if (outOfSync) {
           // mark link as out of sync
           linkLock->setOutOfSync();
-          // persist "failed" flag in RocksDB. note: if this fails, it will
+          // persist "out of sync" flag in RocksDB. note: if this fails, it will
           // throw an exception and abort the recovery & startup.
           linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
                                               linkLock->collection(), true);
@@ -2052,7 +2052,7 @@ IResearchLink::Snapshot IResearchLink::snapshot() const {
     return {};  // return an empty reader
   }
   if (failQueriesOnOutOfSync() && linkLock->isOutOfSync()) {
-    // link has failed, we cannot use it for querying
+    // link is out of sync, we cannot use it for querying
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
         std::string("link ") + std::to_string(linkLock->id().id()) +

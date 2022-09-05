@@ -97,7 +97,7 @@ function recoverySuite () {
       assertTrue(p.links.UnitTestsRecovery2.hasOwnProperty('error'));
       assertEqual(p.links.UnitTestsRecovery2.error, "outOfSync");
  
-      // set failure point that makes querying failed links go wrong
+      // set failure point that makes querying out-of-sync links go wrong
       internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
 
       // queries must fail because links are marked as out of sync
