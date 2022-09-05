@@ -42,6 +42,10 @@ PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
   auto& db = server.getFeature<DatabaseFeature>();
   maxNumberOfShards = cl.maxNumberOfShards();
   allowExtendedNames = db.extendedNamesForCollections();
+  shouldValidateClusterSettings = true;
+  minReplicationFactor = cl.minReplicationFactor();
+  maxReplicationFactor = cl.maxReplicationFactor();
+  enforceReplicationFactor = false;
 }
 
 PlanCollection::PlanCollection() {}
