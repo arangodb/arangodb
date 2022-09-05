@@ -953,15 +953,22 @@ authRouter.get('/graph/:name', function (req, res) {
             nodeObj['attr'] = attr;
             //if (attr) {
             if (attr !== '') {
-              if (tmpObjNodes.hasOwnProperty(attr)) {
+              nodeObj['inside'] = 'Vikingboat';
+              nodeObj['hasownpropertyresult'] = tmpObjNodes.hasOwnProperty(attr);
+              //if (tmpObjNodes.hasOwnProperty(attr)) {
+                nodeObj['insideimportant'] = 'Shieldwall';
                 nodeObj[config.nodeColorAttribute] = attr;
                 nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
                 nodeObj['nodeColorAttributeValue'] = attr;
                 nodeObj.color = tmpObjNodes[attr];
+              /*
               } else {
+                nodeObj['hasownpropertyresultfalse1'] = colors.jans[Object.keys(tmpObjNodes).length];
+                nodeObj['hasownpropertyresultfalse2'] = tmpObjNodes[attr];
                 tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
                 nodeObj.color = tmpObjNodes[attr];
               }
+              */
             }
           }
 
