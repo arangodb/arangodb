@@ -73,10 +73,15 @@ function optimizerRuleInvertedIndexTestSuite() {
       }
       col.insert(data);
 
-      const syncQuery = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync:true}
-          FILTER STARTS_WITH(d.data_field, 'value') COLLECT WITH COUNT INTO c RETURN c`;
-      db._query(syncQuery);
+      let syncIndex = function(indexName) {
+        const syncQuery = aql`
+          FOR d IN ${col} OPTIONS {indexHint: ${indexName}, waitForSync:true, forceIndexHint:true}
+            FILTER STARTS_WITH(d.data_field, 'value') COLLECT WITH COUNT INTO c RETURN c`;
+        db._query(syncQuery);
+      };
+
+      syncIndex("InvertedIndexSorted");
+      syncIndex("InvertedIndexUnsorted");
     },
     tearDownAll: function () {
       col.drop();
