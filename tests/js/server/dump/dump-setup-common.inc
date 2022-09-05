@@ -361,19 +361,9 @@ function createView() {
   try {
     let c = db._create("UnitTestsDumpViewCollection");
 
-    let i = db.UnitTestsDumpViewCollection.ensureIndex({
-        type: "inverted",
-        name: "pupa",
-        consolidationIntervalMsec: 0,
-        primarySort: { fields: [ { field: "_key", direction:"asc"} ] },
-        fields: [ "_key", "value", { name: "text", analyzer: "text_en" } ]
-      });
-
-    let viewAlias = db._createView("UnitTestsDumpViewAlias", "search-alias", { indexes: [ { collection: c.name(), index: i.name } ] });
-
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});
     view.properties({
-      // choose non default values to check if they are corretly dumped and imported
+      // choose non default values to check if they are correctly dumped and imported
       cleanupIntervalStep: 456,
       consolidationPolicy: {
         threshold: 0.3,
@@ -407,6 +397,25 @@ function createView() {
     });
   } catch (err) {
   }
+}
+
+function createSearch() {
+  db._useDatabase("UnitTestsDumpSrc");
+
+  let collection = db._create("searchCollection");
+  let index = collection.ensureIndex({
+    type: "inverted",
+    name: "searchIndex",
+    cleanupIntervalStep: 42,
+    consolidationIntervalMsec: 0,
+    includeAllFields: true,
+    analyzer: "text_en"
+  });
+  let search = db._createView("searchSearch", "search-alias",
+   { indexes: [ { collection: collection.name(), index: index.name } ] });
+
+  collection.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
+  collection.save({value: -1, text: "the red foxx jumps over the pond"});
 }
 
 function createReplicationFactors() {
@@ -1322,6 +1331,7 @@ exports.createStrings = createStrings;
 exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;
 exports.createView = createView;
+exports.createSearch = createSearch;
 exports.createReplicationFactors = createReplicationFactors;
 exports.createJobs = createJobs;
 exports.createFoxx = createFoxx;
