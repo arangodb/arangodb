@@ -199,7 +199,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   /// just name
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
-  /// @param defaultVocbase fallback vocbase
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::ArangodServer& server, VPackBuilder& builder,
             bool writeAnalyzerDefinition,
@@ -219,9 +218,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   IResearchInvertedIndexSort _sort;
   // stored values associated with the link
   IResearchViewStoredValues _storedValues;
-  // the version of the iresearch interface e.g. which how data is stored in
-  // iresearch (default == MAX) IResearchInvertedIndexMeta
-  LinkVersion _version{LinkVersion::MAX};
+  mutable std::string _collectionName;
   Consistency _consistency{Consistency::kEventual};
   bool _hasNested{false};
 };
