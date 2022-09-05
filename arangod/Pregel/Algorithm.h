@@ -56,8 +56,6 @@ struct IAlgorithm {
 
   // virtual bool isFixpointAlgorithm() const {return false;}
 
-  virtual bool supportsAsyncMode() const { return false; }
-
   virtual bool supportsCompensation() const { return false; }
 
   virtual IAggregator* aggregator(std::string const& name) const {

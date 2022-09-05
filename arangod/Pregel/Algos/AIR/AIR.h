@@ -62,7 +62,6 @@ struct ProgrammablePregelAlgorithm : public algorithm {
   explicit ProgrammablePregelAlgorithm(
       application_features::ApplicationServer& server, VPackSlice userParams);
 
-  bool supportsAsyncMode() const override;
   bool supportsCompensation() const override;
 
   graph_format* inputFormat() const override;

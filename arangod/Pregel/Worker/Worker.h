@@ -134,8 +134,6 @@ class Worker : public IWorker {
   uint64_t _activeCount = 0;
   /// current number of running threads
   size_t _runningThreads = 0;
-  /// During async mode this should keep track of the send messages
-  std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
   Scheduler::WorkHandle _workHandle;
@@ -146,7 +144,6 @@ class Worker : public IWorker {
   bool _processVertices(size_t threadId,
                         RangeIterator<Vertex<V, E>>& vertexIterator);
   void _finishedProcessing();
-  void _continueAsync();
   void _callConductor(std::string const& path, VPackBuilder const& message);
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
