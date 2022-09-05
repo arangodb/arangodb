@@ -105,8 +105,8 @@ auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry doc)
     return trx;
   }
 
-  TRI_ASSERT(doc.operation != OperationType::kCommit &&
-             doc.operation != OperationType::kAbort);
+  //TRI_ASSERT(doc.operation != OperationType::kCommit &&
+  //           doc.operation != OperationType::kAbort);
 
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
