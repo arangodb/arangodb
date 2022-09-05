@@ -34,7 +34,10 @@ if (isEnterprise) {
 const {
     graphName,
     vColl,
-    eColl,
+    eColl
+} = require("@arangodb/graph/graph-in-database");
+
+const {
     loadGraphGenerators,
     unionGraph,
     graphGenerator,
@@ -47,7 +50,7 @@ const {
     epsilon,
     makeSetUp,
     makeTearDown
-} = require("@arangodb/graphs/pregel-test-helpers");
+} = require("@arangodb/graph/pregel-test-helpers");
 
 
 const computeCloseness = function (graph) {

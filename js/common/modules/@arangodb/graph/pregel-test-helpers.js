@@ -1680,3 +1680,4 @@ exports.runPregelInstance = runPregelInstance;
 exports.epsilon = epsilon;
 exports.makeSetUp = makeSetUp;
 exports.makeTearDown = makeTearDown;
+exports.assertAlmostEquals = assertAlmostEquals;
