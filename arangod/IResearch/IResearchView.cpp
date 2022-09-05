@@ -757,9 +757,9 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
         if (linkLock->failQueriesOnOutOfSync() && linkLock->isOutOfSync()) {
           // link is out of sync, we cannot use it for querying
-          LOG_TOPIC("6a44b", INFO, TOPIC)
+          LOG_TOPIC("6a44b", WARN, TOPIC)
               << "link " << linkLock->id().id()
-              << " has been marked as failed and needs to be recreated";
+              << " has been marked as out of sync and needs to be recreated";
           state.cookie(key, nullptr);
           return nullptr;
         }
@@ -778,7 +778,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
       return ctx;
     };
     return shards ? iterate(*shards, 0) : iterate(_links, "");
-  } catch (basics::Exception& e) {
+  } catch (basics::Exception const& e) {
     LOG_TOPIC("29b30", WARN, TOPIC)
         << "caught exception while collecting readers for snapshot of "
            "arangosearch view '"
@@ -815,7 +815,7 @@ Result IResearchView::unlink(DataSourceId cid) noexcept {
           << "failed to persist logical view while unlinking collection '"
           << cid << "' from arangosearch view '" << name()
           << "': " << r.errorMessage();  // noexcept
-      _links.insert(move(link));         // noexcept
+      _links.insert(std::move(link));    // noexcept
       return r;
     }
   } catch (basics::Exception const& e) {

@@ -42,9 +42,6 @@ function runSetup () {
   v = db._createView('UnitTestsRecoveryView2', 'arangosearch', {});
   v.properties({ links: { UnitTestsRecovery1: { includeAllFields: true }, UnitTestsRecovery2: { includeAllFields: true } } });
   
-  v = db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
-  v.properties({ links: { UnitTestsRecovery3: { includeAllFields: true } } });
-     
   // set failure point that makes commits go wrong
   internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
@@ -75,6 +72,9 @@ function runSetup () {
   // remove failure point 
   internal.debugClearFailAt();
 
+  v = db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
+  v.properties({ links: { UnitTestsRecovery3: { includeAllFields: true } } });
+     
   db['UnitTestsRecovery3'].insert({});
   db._query("FOR doc IN UnitTestsRecoveryView3 OPTIONS {waitForSync: true} RETURN doc");
 
@@ -105,14 +105,14 @@ function recoverySuite () {
         db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC.code, err.errorNum);
+        assertEqual(errors.ERROR_INTERNAL.code, err.errorNum);
       }
 
       try {
         db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc");
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC.code, err.errorNum);
+        assertEqual(errors.ERROR_INTERNAL.code, err.errorNum);
       }
   
       p = db._view('UnitTestsRecoveryView3').properties();
