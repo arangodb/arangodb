@@ -762,7 +762,8 @@ Collections::create(         // create collection
           break;
         }
         if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-          LOG_TOPIC("116bb", WARN, Logger::AUTHENTICATION)
+          // This could be 116bb again, as soon as "old code" is removed
+          LOG_TOPIC("116bc", WARN, Logger::AUTHENTICATION)
               << "Updating user failed with error: " << r.errorMessage()
               << ". giving up!";
           for (auto const& col : results) {
@@ -772,7 +773,8 @@ Collections::create(         // create collection
           return r;
         }
         // try again in case of conflict
-        LOG_TOPIC("ff123", TRACE, Logger::AUTHENTICATION)
+        // This could be ff123 again, as soon as "old code" is removed
+        LOG_TOPIC("ff124", TRACE, Logger::AUTHENTICATION)
             << "Updating user failed with error: " << r.errorMessage()
             << ". trying again";
       }
