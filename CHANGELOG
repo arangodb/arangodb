@@ -1,5 +1,6 @@
 devel
 -----
+* Updated Views UI with all changes necessary for the 3.10.0 launch.
 
 * Moved the handling of escaping control and unicode chars in the log to 
   the Logger instead of LogAppenderFile.
