@@ -972,18 +972,33 @@ class instanceManager {
   detectAgencyAlive() {
     let count = 20;
     while (count > 0) {
+      let haveConfig = 0;
+      let haveLeader = 0;
+      let leaderId = null;
       for (let agentIndex = 0; agentIndex < this.agencyConfig.agencySize; agentIndex ++) {
-        let reply = this.agencyConfig.agencyInstances[agentIndex].getAgent('/_api/agency/state', 'GET');
+        let reply = this.agencyConfig.agencyInstances[agentIndex].getAgent('/_api/agency/config', 'GET');
         if (this.options.extremeVerbosity) {
           print("Response ====> ");
           print(reply);
         }
         if (!reply.error && reply.code === 200) {
           let res = JSON.parse(reply.body);
-          if (res.hasOwnProperty('agency')){
-            print("Agency Up!");
-            return;
+          if (res.hasOwnProperty('lastAcked')){
+            haveLeader += 1;
           }
+          if (res.hasOwnProperty('leaderId') && res.leaderId !== "") {
+            haveConfig += 1;
+            if (leaderId === null) {
+              leaderId = res.leaderId;
+            } else if (leaderId !== res.leaderId) {
+              haveLeader = 0;
+              haveConfig = 0;
+            }
+          }
+        }
+        if (haveLeader === 1 && haveConfig === this.agencyConfig.agencySize) {
+          print("Agency Up!");
+          return;
         }
         if (count === 0) {
           throw new Error("Agency didn't come alive in time!");
