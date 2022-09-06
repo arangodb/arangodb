@@ -31,7 +31,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -50,8 +50,7 @@ void DocumentStateMachineFeature::start() {
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
       std::make_shared<DocumentStateHandlersFactory>(
-          s, clusterFeature.agencyCache(), maintenanceFeature,
-          databaseFeature));
+          s, clusterFeature, maintenanceFeature, databaseFeature));
 }
 
 DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)

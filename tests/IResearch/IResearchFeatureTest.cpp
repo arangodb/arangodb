@@ -112,7 +112,7 @@ class IResearchFeatureTest
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
     dataPath += "-";
     dataPath += std::to_string(view.id().id());
     return dataPath;
@@ -126,7 +126,7 @@ class IResearchFeatureTest
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
     dataPath += "-";
     dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";
@@ -2345,42 +2345,40 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-TEST_F(IResearchFeatureTest, test_fail_to_submit_task) {
-  {
-    auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
-    TRI_AddFailurePointDebugging("IResearchFeature::testGroupAccess");
-    arangodb::iresearch::IResearchFeature feature(server.server());
-    feature.collectOptions(server.server().options());
-    feature.validateOptions(server.server().options());
-    ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
-  }
+TEST_F(IResearchFeatureTest, test_fail_to_submit_task1) {
+  auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
+  TRI_AddFailurePointDebugging("IResearchFeature::testGroupAccess");
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
+  ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
+}
 
-  {
-    auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
-    TRI_AddFailurePointDebugging("IResearchFeature::queue");
-    arangodb::iresearch::IResearchFeature feature(server.server());
-    feature.collectOptions(server.server().options());
-    feature.validateOptions(server.server().options());
-    ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
-  }
+TEST_F(IResearchFeatureTest, test_fail_to_submit_task2) {
+  auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
+  TRI_AddFailurePointDebugging("IResearchFeature::queue");
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
+  ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
+}
 
-  {
-    auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
-    TRI_AddFailurePointDebugging("IResearchFeature::queueGroup0");
-    arangodb::iresearch::IResearchFeature feature(server.server());
-    feature.collectOptions(server.server().options());
-    feature.validateOptions(server.server().options());
-    ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
-  }
+TEST_F(IResearchFeatureTest, test_fail_to_submit_task3) {
+  auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
+  TRI_AddFailurePointDebugging("IResearchFeature::queueGroup0");
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
+  ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
+}
 
-  {
-    auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
-    TRI_AddFailurePointDebugging("IResearchFeature::queueGroup1");
-    arangodb::iresearch::IResearchFeature feature(server.server());
-    feature.collectOptions(server.server().options());
-    feature.validateOptions(server.server().options());
-    ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
-  }
+TEST_F(IResearchFeatureTest, test_fail_to_submit_task4) {
+  auto cleanup = arangodb::scopeGuard(TRI_ClearFailurePointsDebugging);
+  TRI_AddFailurePointDebugging("IResearchFeature::queueGroup1");
+  arangodb::iresearch::IResearchFeature feature(server.server());
+  feature.collectOptions(server.server().options());
+  feature.validateOptions(server.server().options());
+  ASSERT_THROW(feature.prepare(), arangodb::basics::Exception);
 }
 
 TEST_F(IResearchFeatureTest, test_fail_to_start) {
@@ -2537,8 +2535,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
                       .factory<arangodb::ClusterEngine>();
   const_cast<arangodb::IndexFactory&>(engine.indexFactory())
-      .emplace(std::string{arangodb::iresearch::StaticStrings::ViewType},
-               factory);
+      .emplace(
+          std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
+          factory);
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -2690,7 +2689,7 @@ class IResearchFeatureTestDBServer
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
     dataPath += "-";
     dataPath += std::to_string(view.id().id());
     return dataPath;
@@ -2704,7 +2703,7 @@ class IResearchFeatureTestDBServer
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
     dataPath += "-";
     dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";

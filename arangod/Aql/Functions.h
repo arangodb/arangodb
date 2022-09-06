@@ -122,6 +122,8 @@ AqlValue Upper(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue Substring(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
+AqlValue SubstringBytes(arangodb::aql::ExpressionContext*, AstNode const&,
+                        VPackFunctionParametersView);
 AqlValue Substitute(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
 AqlValue Left(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -209,6 +211,8 @@ AqlValue DateDayOfYear(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView);
 AqlValue DateIsoWeek(arangodb::aql::ExpressionContext*, AstNode const&,
                      VPackFunctionParametersView);
+AqlValue DateIsoWeekYear(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParametersView);
 AqlValue DateLeapYear(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 AqlValue DateQuarter(arangodb::aql::ExpressionContext*, AstNode const&,

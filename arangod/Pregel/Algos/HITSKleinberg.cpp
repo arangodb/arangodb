@@ -18,11 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Roman Rabinovich
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HITSKleinberg.h"
 #include <cmath>
+#include <utility>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/GraphStore.h"
@@ -41,7 +42,26 @@ static std::string const isLastIterationAggregator = "stop";
 
 using VertexType = HITSKleinbergValue;
 
-static double const epsilon = 0.00001;
+namespace {
+double const epsilon = 0.00001;
+
+/**
+ * If userParams has a threshold value, return it, otherwise return epsilon.
+ * @param userParams
+ * @return
+ */
+double getThreshold(VPackSlice userParams) {
+  if (userParams.hasKey(Utils::threshold)) {
+    if (!userParams.get(Utils::threshold).isNumber()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "The threshold parameter should be a number.");
+    }
+    return userParams.get(Utils::threshold).getNumber<double>();
+  }
+  return epsilon;
+}
+}  // namespace
 
 enum class State {
   sendInitialHubs,
@@ -53,29 +73,33 @@ enum class State {
 };
 
 struct HITSKleinbergWorkerContext : public WorkerContext {
-  HITSKleinbergWorkerContext(size_t maxGSS, size_t numIterations)
-      : numIterations(numIterations){};
+  HITSKleinbergWorkerContext(size_t maxGSS, size_t numIterations,
+                             double threshold)
+      : numIterations(numIterations), threshold(threshold){};
 
   double authDivisor = 0;
   double hubDivisor = 0;
   State state = State::sendInitialHubs;
   size_t numIterations;
   size_t currentIteration = 0;
+  double const threshold;
 
   void preGlobalSuperstep(uint64_t gss) override {
     // todo: we only need this if the global super-step is odd
     //  difficulty: the parent class WorkerContext doesn't know the current gss
     auto const* authNorm = getAggregatedValue<double>(authAggregator);
     auto const* hubNorm = getAggregatedValue<double>(hubAggregator);
+    ADB_PROD_ASSERT(authNorm != nullptr);
+    ADB_PROD_ASSERT(hubNorm != nullptr);
     authDivisor = std::sqrt(*authNorm);
     hubDivisor = std::sqrt(*hubNorm);
 
     double const authMaxDiff =
         *getAggregatedValue<double>(maxDiffAuthAggregator);
     double const hubMaxDiff = *getAggregatedValue<double>(maxDiffHubAggregator);
-    const double diff = std::max(authMaxDiff, hubMaxDiff);
+    double const diff = std::max(authMaxDiff, hubMaxDiff);
 
-    if (diff < epsilon) {
+    if (diff < threshold) {
       if (state == State::updateAuthNormalizeHub) {
         state = State::finallyNormalizeHubs;
       } else if (state == State::updateHubNormalizeAuth) {
@@ -86,25 +110,25 @@ struct HITSKleinbergWorkerContext : public WorkerContext {
 
   void postGlobalSuperstep(uint64_t gss) override {
     switch (state) {
-      case State::sendInitialHubs:
+      case State::sendInitialHubs: {
         state = State::updateAuth;
-        break;
+      } break;
       case State::updateAuth:
-      case State::updateAuthNormalizeHub:
+      case State::updateAuthNormalizeHub: {
         state = State::updateHubNormalizeAuth;
-        break;
-      case State::updateHubNormalizeAuth:
+      } break;
+      case State::updateHubNormalizeAuth: {
         ++currentIteration;
         if (currentIteration == numIterations) {
           state = State::finallyNormalizeHubs;
         } else {
           state = State::updateAuthNormalizeHub;
         }
-        break;
+      } break;
       case State::finallyNormalizeHubs:
-      case State::finallyNormalizeAuths:
+      case State::finallyNormalizeAuths: {
         aggregate(isLastIterationAggregator, true);
-        break;
+      } break;
     }
   }
 };
@@ -113,6 +137,10 @@ struct HITSKleinbergComputation
     : public VertexComputation<VertexType, int8_t, SenderMessage<double>> {
   HITSKleinbergComputation() = default;
 
+  // sends auth to all in-neighbors. note that all vertices send messages
+  // to all out-neighbors in all iterations (there are no inactive vertices),
+  // so the set of in-neighbors can be determined by iterating over received
+  // messages
   void sendAuthToInNeighbors(
       MessageIterator<SenderMessage<double>> const& receivedMessages,
       double auth) {
@@ -133,30 +161,25 @@ struct HITSKleinbergComputation
         dynamic_cast<HITSKleinbergWorkerContext const*>(context());
     switch (ctx->state) {
       case State::sendInitialHubs: {
-        const double auth = 1.0;
-        const double hub = 1.0;
-
         // these are not normalized, but according to the description of the
         // algorithm in the paper, the 1.0's are used in place of normalized
         // values
-        mutableVertexData()->normalizedAuth = auth;  // needed for the next diff
-        mutableVertexData()->normalizedHub = hub;
-        reportFakeDifference();
+        mutableVertexData()->normalizedAuth = 1.0;
+        mutableVertexData()->normalizedHub = 1.0;
+        reportFakeDifference(ctx->threshold);
 
-        sendHubToOutNeighbors(hub);
-        break;
-      }
+        sendHubToOutNeighbors(1.0);
+      } break;
 
       case State::updateAuth: {
         // We enter this state when all authorities and all hubs are 1.0
         updateStoreAndSendAuth(messages, 1.0);
-        reportFakeDifference();
+        reportFakeDifference(ctx->threshold);
         // authorities are one iteration before hubs
         // authorities are not normalized, hubs are 1.0
 
         // Next state: updateHubNormalizeAuth
-        break;
-      }
+      } break;
 
       case State::updateHubNormalizeAuth: {
         // authorities are updated one iteration more than hubs,
@@ -165,6 +188,7 @@ struct HITSKleinbergComputation
         // update local hub
         double nonNormalizedHub = 0.0;
         for (SenderMessage<double> const* message : messages) {
+          TRI_ASSERT(message != nullptr);
           nonNormalizedHub += message->value;  // auth from our out-neighbors
         }
         mutableVertexData()->nonNormalizedHub = nonNormalizedHub;
@@ -172,9 +196,9 @@ struct HITSKleinbergComputation
         aggregate<double>(hubAggregator, nonNormalizedHub * nonNormalizedHub);
 
         // normalize auth (hubDivisor is not ready yet, cannot normalize hubs)
-        const auto nonNormalizedAuth = mutableVertexData()->nonNormalizedAuth;
-        const auto normalizedUpdatedAuth = nonNormalizedAuth / ctx->authDivisor;
-        const auto diff =
+        auto const nonNormalizedAuth = mutableVertexData()->nonNormalizedAuth;
+        auto const normalizedUpdatedAuth = nonNormalizedAuth / ctx->authDivisor;
+        auto const diff =
             fabs(mutableVertexData()->normalizedAuth - normalizedUpdatedAuth);
         mutableVertexData()->normalizedAuth = normalizedUpdatedAuth;
 
@@ -185,16 +209,15 @@ struct HITSKleinbergComputation
         // authorities are normalized, hubs are not normalized
 
         // Next state: updateAuthNormalizeHub or finallyNormalizeHubs
-        break;
-      }
+      } break;
 
       case State::updateAuthNormalizeHub: {
         // authorities and hubs are updated to the same iteration,
         // authorities are normalized, hubs are not normalized
         updateStoreAndSendAuth(messages, ctx->hubDivisor);
-        const auto nonNormalizedHub = mutableVertexData()->nonNormalizedHub;
-        const auto normalizedUpdatedHub = nonNormalizedHub / ctx->hubDivisor;
-        const auto diff =
+        auto const nonNormalizedHub = mutableVertexData()->nonNormalizedHub;
+        auto const normalizedUpdatedHub = nonNormalizedHub / ctx->hubDivisor;
+        auto const diff =
             fabs(mutableVertexData()->normalizedHub - normalizedUpdatedHub);
         mutableVertexData()->normalizedHub = normalizedUpdatedHub;
         aggregate<double>(maxDiffHubAggregator, diff);
@@ -203,24 +226,23 @@ struct HITSKleinbergComputation
         // authorities are not normalized, hubs are normalized
 
         // next state: updateHubNormalizeAuth
-        break;
-      }
+      } break;
 
-      case State::finallyNormalizeHubs:
+      case State::finallyNormalizeHubs: {
         // authorities and hubs are updated to the same iteration,
         // authorities are normalized, hubs are not normalized
         // last iteration
         mutableVertexData()->normalizedHub =
             mutableVertexData()->nonNormalizedHub / ctx->hubDivisor;
-        break;
+      } break;
 
-      case State::finallyNormalizeAuths:
+      case State::finallyNormalizeAuths: {
         // authorities and hubs are updated to the same iteration,
         // authorities are not normalized, hubs are normalized
         // last iteration
         mutableVertexData()->normalizedAuth =
             mutableVertexData()->nonNormalizedAuth / ctx->authDivisor;
-        break;
+      } break;
     }
   }
 
@@ -228,9 +250,9 @@ struct HITSKleinbergComputation
   // At the beginning, we don't have differences between the current and the
   // previous values yet. If we don't report any difference, the default
   // difference 0 will be taken and the process terminates.
-  void reportFakeDifference() {
-    // so that 0 != diff < epsilon
-    aggregate(maxDiffAuthAggregator, epsilon + 1.0);
+  void reportFakeDifference(double threshold) {
+    // so that 0 != diff < threshold
+    aggregate(maxDiffAuthAggregator, threshold + 1000.0);
   }
 
   void updateStoreAndSendAuth(
@@ -239,6 +261,7 @@ struct HITSKleinbergComputation
     // compute the new auth
     double auth = 0.0;
     for (SenderMessage<double> const* message : messages) {
+      TRI_ASSERT(message != nullptr);
       auth += message->value / hubDivisor;  // normalized hub from in-neighbors
     }
     // note: auth are preliminary values of an iteration of the
@@ -259,14 +282,14 @@ HITSKleinberg::createComputation(WorkerConfig const* config) const {
 }
 
 struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
-  const std::string _resultField;
+  std::string const _resultField;
 
   explicit HITSKleinbergGraphFormat(
-      application_features::ApplicationServer& server,
-      std::string const& result)
-      : GraphFormat<VertexType, int8_t>(server), _resultField(result) {}
+      application_features::ApplicationServer& server, std::string result)
+      : GraphFormat<VertexType, int8_t>(server),
+        _resultField(std::move(result)) {}
 
-  size_t estimatedEdgeSize() const override { return 0; }
+  [[nodiscard]] size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
@@ -287,19 +310,23 @@ GraphFormat<VertexType, int8_t>* HITSKleinberg::inputFormat() const {
 }
 
 WorkerContext* HITSKleinberg::workerContext(VPackSlice userParams) const {
-  return new HITSKleinbergWorkerContext(maxGSS, numIterations);
+  double const threshold = getThreshold(userParams);
+  return new HITSKleinbergWorkerContext(maxGSS, numIterations, threshold);
 }
 
 struct HITSKleinbergMasterContext : public MasterContext {
-  HITSKleinbergMasterContext() = default;
+  double const threshold;
+
+  explicit HITSKleinbergMasterContext(VPackSlice userParams)
+      : threshold(getThreshold(userParams)) {}
 
   bool postGlobalSuperstep() override {
     double const authMaxDiff =
         *getAggregatedValue<double>(maxDiffAuthAggregator);
     double const hubMaxDiff = *getAggregatedValue<double>(maxDiffHubAggregator);
-    const double diff = std::max(authMaxDiff, hubMaxDiff);
+    double const diff = std::max(authMaxDiff, hubMaxDiff);
 
-    bool converged = diff < epsilon;
+    bool const converged = diff < threshold;
 
     // default (if no messages have been sent) is false
     bool const stop = *getAggregatedValue<bool>(isLastIterationAggregator);
@@ -308,7 +335,7 @@ struct HITSKleinbergMasterContext : public MasterContext {
 };
 
 MasterContext* HITSKleinberg::masterContext(VPackSlice userParams) const {
-  return new HITSKleinbergMasterContext();
+  return new HITSKleinbergMasterContext(userParams);
 }
 
 IAggregator* HITSKleinberg::aggregator(std::string const& name) const {

@@ -258,6 +258,9 @@ class Index {
   /// @brief whether or not the index is unique
   inline bool unique() const { return _unique; }
 
+  /// @brief validates that field names don't start or end with ":"
+  static void validateFieldsWithSpecialCase(velocypack::Slice fields);
+
   /// @brief validate fields from slice
   static void validateFields(velocypack::Slice slice);
 
@@ -275,7 +278,8 @@ class Index {
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
             type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-            type == TRI_IDX_TYPE_PERSISTENT_INDEX);
+            type == TRI_IDX_TYPE_PERSISTENT_INDEX ||
+            type == TRI_IDX_TYPE_INVERTED_INDEX);
   }
 
   virtual IndexType type() const = 0;

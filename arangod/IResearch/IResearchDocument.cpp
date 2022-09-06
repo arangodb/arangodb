@@ -295,7 +295,8 @@ bool acceptAll(
       return false;
     }
     context = &subContext->second;
-    if (context->_isArray && !value.value.isArray()) {
+    if (!context->_isSearchField && context->_isArray &&
+        !value.value.isArray()) {
       // we were expecting an array but something else were given
       // this case is just skipped. Just like regular indicies do.
       return false;
@@ -311,6 +312,7 @@ bool acceptAll(
           " from index definition",
           buffer.c_str());
     } else if (value.value.isArray() && !context->_isArray &&
+               !context->_isSearchField &&
                !context->_analyzers->front()._pool->accepts(
                    arangodb::iresearch::AnalyzerValueType::Array)) {
       THROW_ARANGO_EXCEPTION_FORMAT(
@@ -342,7 +344,9 @@ bool inArrayInverted(
     append(buffer, value.pos);
     buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
   } else {
-    buffer += "[*]";
+    if (!context->_isSearchField) {
+      buffer += "[*]";
+    }
   }
   return true;
 }

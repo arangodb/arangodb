@@ -248,6 +248,7 @@ struct QueryContext {
   // The flag is set when a query is dedicated to a search view
   bool isSearchQuery{true};
   bool isOldMangling{true};
+  bool hasNestedFields{false};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -587,6 +588,10 @@ bool visitName(std::string_view name, Visitor&& visitor) {
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
                                          aql::Variable const& ref,
                                          bool allowExpansion) noexcept;
+
+// checks a specified args to be deterministic
+// and retuns reference to a loop variable
+aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept;
 
 }  // namespace iresearch
 }  // namespace arangodb

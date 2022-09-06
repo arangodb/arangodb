@@ -159,10 +159,10 @@ class QueryGeoInRange : public QueryTest {
         RETURN d)"));
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {
+    if (type() == ViewType::kArangoSearch) {
       EXPECT_TRUE(runQuery(
           R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)"));
-    } else if (type() == ViewType::kSearch) {
+    } else if (type() == ViewType::kSearchAlias) {
       // Because for search/inverted-index
       // we consider strings can be found as normal fields,
       // so them all have suffix \0_s,
@@ -176,7 +176,7 @@ class QueryGeoInRange : public QueryTest {
     // test missing analyzer
     {
       std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
       }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -189,7 +189,7 @@ class QueryGeoInRange : public QueryTest {
     // test missing analyzer
     {
       std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
       }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -209,7 +209,7 @@ class QueryGeoInRange : public QueryTest {
       auto view = _vocbase.lookupView("testView");
       ASSERT_TRUE(view);
       auto links = [&] {
-        if (view->type() == ViewType::kSearch) {
+        if (view->type() == ViewType::kSearchAlias) {
           auto& impl = basics::downCast<iresearch::Search>(*view);
           return impl.getLinks();
         }
@@ -254,7 +254,7 @@ class QueryGeoInRange : public QueryTest {
         RETURN d)"));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeojson')
@@ -263,7 +263,7 @@ class QueryGeoInRange : public QueryTest {
                            empty));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeojson')
@@ -461,7 +461,7 @@ class QueryGeoInRange : public QueryTest {
     auto view = _vocbase.lookupView("testView");
     ASSERT_TRUE(view);
     auto links = [&] {
-      if (view->type() == ViewType::kSearch) {
+      if (view->type() == ViewType::kSearchAlias) {
         auto& impl = basics::downCast<iresearch::Search>(*view);
         return impl.getLinks();
       }
@@ -509,7 +509,7 @@ class QueryGeoInRange : public QueryTest {
 
       ASSERT_TRUE(trx.commit().ok());
     }
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(FOR d IN testView
         SEARCH EXISTS(d.geometry)
         RETURN d)"));
@@ -521,10 +521,10 @@ class QueryGeoInRange : public QueryTest {
         RETURN d)"));
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {
+    if (type() == ViewType::kArangoSearch) {
       EXPECT_TRUE(runQuery(R"(FOR d IN testView
         SEARCH EXISTS(d.geometry.coordinates, 'string') RETURN d)"));
-    } else if (type() == ViewType::kSearch) {
+    } else if (type() == ViewType::kSearchAlias) {
       // Because for search/inverted-index
       // we consider strings can be found as normal fields,
       // so them all have suffix \0_s,
@@ -542,7 +542,7 @@ class QueryGeoInRange : public QueryTest {
         RETURN d)"));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
@@ -551,7 +551,7 @@ class QueryGeoInRange : public QueryTest {
                            empty));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
@@ -562,7 +562,7 @@ class QueryGeoInRange : public QueryTest {
     // test missing analyzer
     {
       std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
       }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -575,7 +575,7 @@ class QueryGeoInRange : public QueryTest {
     // test missing analyzer
     {
       std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
       }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -756,7 +756,7 @@ class QueryGeoInRange : public QueryTest {
     auto view = _vocbase.lookupView("testView");
     ASSERT_TRUE(view);
     auto links = [&] {
-      if (view->type() == ViewType::kSearch) {
+      if (view->type() == ViewType::kSearchAlias) {
         auto& impl = basics::downCast<iresearch::Search>(*view);
         return impl.getLinks();
       }
@@ -810,10 +810,10 @@ class QueryGeoInRange : public QueryTest {
         RETURN d)"));
     }
     // EXISTS will also work
-    if (type() == ViewType::kView) {
+    if (type() == ViewType::kArangoSearch) {
       EXPECT_TRUE(runQuery(
           R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)"));
-    } else if (type() == ViewType::kSearch) {
+    } else if (type() == ViewType::kSearchAlias) {
       // Because for search/inverted-index
       // we consider strings can be found as normal fields,
       // so them all have suffix \0_s,
@@ -831,7 +831,7 @@ class QueryGeoInRange : public QueryTest {
         RETURN d)"));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
@@ -840,7 +840,7 @@ class QueryGeoInRange : public QueryTest {
                            empty));
     }
     // test missing field
-    if (type() == ViewType::kView) {  // TODO kSearch check error
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
@@ -851,7 +851,7 @@ class QueryGeoInRange : public QueryTest {
     // test missing analyzer
     {
       std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
       }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -864,7 +864,7 @@ class QueryGeoInRange : public QueryTest {
     // test missing analyzer
     {
       std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearch) {
+      if (type() == ViewType::kSearchAlias) {
         expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
       }
       EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -987,7 +987,7 @@ class QueryGeoInRange : public QueryTest {
 
 class QueryGeoInRangeView : public QueryGeoInRange {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView(std::string_view fields) {
     auto createJson = VPackParser::fromJson(
@@ -1009,7 +1009,7 @@ class QueryGeoInRangeView : public QueryGeoInRange {
 
 class QueryGeoInRangeSearch : public QueryGeoInRange {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createIndexes(std::string_view fields) {
     bool created = false;
@@ -1026,8 +1026,8 @@ class QueryGeoInRangeSearch : public QueryGeoInRange {
   }
 
   void createSearch() {
-    auto createJson =
-        VPackParser::fromJson(R"({ "name": "testView", "type": "search" })");
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "search-alias" })");
     auto logicalView = _vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto& implView = basics::downCast<iresearch::Search>(*logicalView);
