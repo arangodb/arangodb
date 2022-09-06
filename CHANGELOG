@@ -1,5 +1,6 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
+* Disable optimization rule to avoid crash (BTS-951).
 
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
@@ -17,7 +18,6 @@ v3.10.0 (XXXX-XX-XX)
   `K_PATHS` in an AQL Query and the query itself produced warnings during
   execution, the type has been wrongly reported. It reported always with
   `SHORTEST_PATH` and not the specific used one.
-
 * Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
