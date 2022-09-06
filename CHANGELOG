@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Moved extensive log message down to DEBUG level.
+
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
 * Fixed SEARCH-343 Fixed iterating all documents with nested fields.
