@@ -76,8 +76,6 @@ function waitForAlive(timeout, baseurl, data) {
 };
 
 function restartInstance(arangod) {
-  let options = _.clone(global.obj.options);
-  options.skipReconnect = false;
   arangod.restartOneInstance();
   waitForAlive(30, arangod.url, {});
   arangod.checkArangoConnection(5);
@@ -391,8 +389,11 @@ function testSuitePregel() {
 
     tearDownAll : function () {
       // And now it should shut down in due course...
+      coordinator.shutdownArangod(false);
       coordinator.waitForInstanceShutdown(30);
-      restartInstance(coordinator);
+      coordinator.exitStatus = null;
+      coordinator.pid = null;
+      coordinator.restartOneInstance();
 
       // restore previous log level for "general" topic;
       arango.PUT("/_admin/log/level", { general: oldLogLevel });
