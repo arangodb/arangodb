@@ -1,5 +1,6 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
+
 * Fixed BTS-926: UI showing the "create index" form to non-admin users.
 
 * Updated arangosync to v2.12.0-preview-11.
