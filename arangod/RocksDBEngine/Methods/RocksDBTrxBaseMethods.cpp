@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 

@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/AttributeNamePath.h"
-#include "Transaction/Methods.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 #include <cstdint>
