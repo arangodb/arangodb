@@ -29,7 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/MutexLocker.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
@@ -817,6 +819,10 @@ void ClusterFeature::startHeartbeatThread(
     // wait until heartbeat is ready
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
+}
+
+void ClusterFeature::pruneAsyncAgencyConnectionPool() {
+  _asyncAgencyCommPool->pruneConnections();
 }
 
 void ClusterFeature::shutdownHeartbeatThread() {

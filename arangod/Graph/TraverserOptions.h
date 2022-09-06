@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 
 #include <memory>
 

@@ -32,6 +32,7 @@
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"

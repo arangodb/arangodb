@@ -1,5 +1,6 @@
 devel
 -----
+* Updated Views UI with all changes necessary for the 3.10.0 launch.
 
 * Fix for the Pregel's HITS algorithm using a fixed value instead of the
   passed "threshold" parameter. The same applied to the new HITSKleinberg.
@@ -46,6 +47,10 @@ devel
   .sst files in RocksDB, based on the .sst file age. The default value
   from RocksDB is ~30 days. To avoid periodic auto-compaction, the option
   can be set to 0.
+
+* Now the Pregel API returns `{... algorithm: "pagerank", ...}` instead of
+`{... algorithm: "PageRank", ...}` when the Page Rank algorithm is run
+(in accordance to the documentation).
 
 * Updated arangosync to v2.12.0-preview-11.
 

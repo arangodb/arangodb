@@ -27,6 +27,7 @@
 #include <list>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 
 #include "Aql/QueryExecutionState.h"
 #include "Basics/Common.h"
