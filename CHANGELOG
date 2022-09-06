@@ -3,6 +3,17 @@ v3.10.0 (XXXX-XX-XX)
 
 * Moved extensive log message down to DEBUG level.
 
+* Updated Views UI with all changes necessary for the 3.10.0 launch.
+
+* Fixed SEARCH-343 Fixed iterating all documents with nested fields.
+
+* Fixed SEARCH-322 Fixed executing empty nested condition.
+
+* Do not drop follower shard after too many failed shard synchronization
+  attempts.
+
+* Disable optimization rule to avoid crash (BTS-951).
+
 * Updated arangosync to v2.12.0-preview-11.
 
 * Fixed SEARCH-369: add a compatibility check to the search-alias view for
@@ -17,7 +28,6 @@ v3.10.0 (XXXX-XX-XX)
   `K_PATHS` in an AQL Query and the query itself produced warnings during
   execution, the type has been wrongly reported. It reported always with
   `SHORTEST_PATH` and not the specific used one.
-
 * Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
 
 * SEARCH-357: Added SUBSTRING_BYTES function.
