@@ -48,13 +48,13 @@ class IndexHint {
  public:
   IndexHint() = default;
   explicit IndexHint(QueryContext& query, AstNode const* node);
-  explicit IndexHint(arangodb::velocypack::Slice slice);
+  explicit IndexHint(velocypack::Slice slice);
 
   HintType type() const noexcept { return _type; }
   bool isForced() const noexcept { return _forced; }
   std::vector<std::string> const& hint() const noexcept;
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toVelocyPack(velocypack::Builder& builder) const;
   std::string_view typeName() const;
   std::string toString() const;
 

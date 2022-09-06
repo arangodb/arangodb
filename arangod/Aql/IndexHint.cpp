@@ -46,7 +46,6 @@ std::string_view constexpr kTypeSimple("simple");
 std::string_view constexpr kFieldContainer("indexHint");
 std::string_view constexpr kFieldForced("forced");
 std::string_view constexpr kFieldHint("hint");
-std::string_view constexpr kFieldLookahead("lookahead");
 std::string_view constexpr kFieldType("type");
 
 IndexHint::HintType fromTypeName(std::string_view typeName) noexcept {
@@ -150,7 +149,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
           // "maxProjections" and "useCache" are valid attributes,
           // but handled elsewhere
           handled = true;
-        } else if (name == kFieldLookahead) {
+        } else if (name == StaticStrings::IndexLookahead) {
           TRI_ASSERT(child->numMembers() > 0);
           AstNode const* value = child->getMember(0);
 
@@ -185,8 +184,8 @@ IndexHint::IndexHint(VPackSlice slice) {
   // are not available, so we need to be careful when reading them
   VPackSlice s = slice.get(kFieldContainer);
   if (s.isObject()) {
-    _lookahead = basics::VelocyPackHelper::getNumericValue(s, kFieldLookahead,
-                                                           _lookahead);
+    _lookahead = basics::VelocyPackHelper::getNumericValue(
+        s, StaticStrings::IndexLookahead, _lookahead);
     _type = fromTypeName(
         basics::VelocyPackHelper::getStringValue(s, kFieldType, ""));
     _forced = basics::VelocyPackHelper::getBooleanValue(s, kFieldForced, false);
@@ -232,7 +231,7 @@ void IndexHint::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   VPackObjectBuilder guard(&builder, kFieldContainer);
   builder.add(kFieldForced, VPackValue(_forced));
-  builder.add(kFieldLookahead, VPackValue(_lookahead));
+  builder.add(StaticStrings::IndexLookahead, VPackValue(_lookahead));
   builder.add(kFieldType, VPackValue(typeName()));
   if (_type == HintType::Simple) {
     VPackArrayBuilder hintGuard(&builder, kFieldHint);

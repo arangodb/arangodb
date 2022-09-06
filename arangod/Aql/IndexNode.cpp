@@ -98,6 +98,8 @@ IndexNode::IndexNode(ExecutionPlan* plan,
   _options.waitForSync = basics::VelocyPackHelper::getBooleanValue(
       base, StaticStrings::WaitForSyncString, false);
   _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
+  _options.lookahead = basics::VelocyPackHelper::getNumericValue(
+      base, StaticStrings::IndexLookahead, IndexIteratorOptions{}.lookahead);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
     // legacy
@@ -237,6 +239,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.add(StaticStrings::WaitForSyncString,
               VPackValue(_options.waitForSync));
   builder.add("limit", VPackValue(_options.limit));
+  builder.add(StaticStrings::IndexLookahead, VPackValue(_options.lookahead));
 
   if (isLateMaterialized()) {
     builder.add(VPackValue("outNmDocId"));
