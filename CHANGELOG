@@ -1,5 +1,6 @@
 devel
 -----
+* Updated Views UI with all changes necessary for the 3.10.0 launch.
 
 * Fix for the Pregel's HITS algorithm using a fixed value instead of the
   passed "threshold" parameter. The same applied to the new HITSKleinberg.
