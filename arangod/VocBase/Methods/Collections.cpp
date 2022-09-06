@@ -683,56 +683,62 @@ Collections::create(         // create collection
     }
   }
 
-  /// Code from here is copy pasted from original create and
-  /// has not been refacored yet.
-  VPackBuilder builder =
-      PlanCollection::toCreateCollectionProperties(collections);
+  arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>> results{
+      TRI_ERROR_INTERNAL};
 
-  // TODO: Need to get rid of this collection. Distribute Shards like
-  // is now denoted inside the PlanCollection
-  std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
-
-  VPackSlice infoSlice = builder.slice();
-
-  TRI_ASSERT(infoSlice.isArray());
-  TRI_ASSERT(infoSlice.length() >= 1);
-  TRI_ASSERT(infoSlice.length() == collections.size());
-
-  std::vector<std::shared_ptr<LogicalCollection>> results;
-  results.reserve(collections.size());
-
-  try {
-    if (ServerState::instance()->isCoordinator()) {
-      // Here we do have a cluster setup. In that case, we will create many
-      // collections in one go (batch-wise).
-      results = ClusterMethods::createCollectionsOnCoordinator(
-          vocbase, infoSlice, false, createWaitsForSyncReplication,
-          enforceReplicationFactor, isNewDatabase, colToDistributeShardsLike);
-
-      if (collections.empty()) {
-        for (auto const& info : collections) {
-          events::CreateCollection(vocbase.name(), info.name,
-                                   TRI_ERROR_INTERNAL);
-        }
-        return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
+  if (ServerState::instance()->isCoordinator()) {
+    // Here we do have a cluster setup. In that case, we will create many
+    // collections in one go (batch-wise).
+    results = ClusterMethods::createCollectionsOnCoordinator(
+        vocbase, collections, false, createWaitsForSyncReplication,
+        enforceReplicationFactor, isNewDatabase);
+    if (results.fail()) {
+      for (auto const& info : collections) {
+        events::CreateCollection(vocbase.name(), info.name,
+                                 results.errorNumber());
       }
-    } else {
-      TRI_ASSERT(ServerState::instance()->isSingleServer() ||
-                 ServerState::instance()->isDBServer() ||
-                 ServerState::instance()->isAgent());
-      // Here we do have a single server setup, or we're either on a DBServer /
-      // Agency. In that case, we're not batching collection creating.
+      return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
+    }
+    if (results->empty()) {
+      // TODO: CHeck if this can really happen after refactoring is completed
+      // We may be able to guarantee error when nothing could be done.
+      for (auto const& info : collections) {
+        events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
+      }
+      return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
+    }
+  } else {
+    TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+               ServerState::instance()->isDBServer() ||
+               ServerState::instance()->isAgent());
+    // TODO: Need to get rid of this collection. Distribute Shards like
+    // is now denoted inside the PlanCollection
+    std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
+    /// Code from here is copy pasted from original create and
+    /// has not been refacored yet.
+    VPackBuilder builder =
+        PlanCollection::toCreateCollectionProperties(collections);
+    VPackSlice infoSlice = builder.slice();
+
+    TRI_ASSERT(infoSlice.isArray());
+    TRI_ASSERT(infoSlice.length() >= 1);
+    TRI_ASSERT(infoSlice.length() == collections.size());
+
+    try {
+      // Here we do have a single server setup, or we're either on a DBServer
+      // / Agency. In that case, we're not batching collection creating.
       // Therefore, we need to iterate over the infoSlice and create each
       // collection one by one.
-      results = vocbase.createCollections(
-          infoSlice, allowEnterpriseCollectionsOnSingleServer);
+      results = {vocbase.createCollections(
+          infoSlice, allowEnterpriseCollectionsOnSingleServer)};
+
+    } catch (basics::Exception const& ex) {
+      return Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      return Result(TRI_ERROR_INTERNAL, "cannot create collection");
     }
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
   }
 
   // Grant access to the collections.
@@ -747,7 +753,7 @@ Collections::create(         // create collection
       int tries = 0;
       while (true) {
         Result r = um->updateUser(exec.user(), [&](auth::User& entry) {
-          for (auto const& col : results) {
+          for (auto const& col : *results) {
             // do not grant rights on system collections
             if (!col->system()) {
               entry.grantCollection(vocbase.name(), col->name(),
@@ -766,7 +772,7 @@ Collections::create(         // create collection
           LOG_TOPIC("116bc", WARN, Logger::AUTHENTICATION)
               << "Updating user failed with error: " << r.errorMessage()
               << ". giving up!";
-          for (auto const& col : results) {
+          for (auto const& col : *results) {
             events::CreateCollection(vocbase.name(), col->name(),
                                      r.errorNumber());
           }

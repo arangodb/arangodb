@@ -54,6 +54,7 @@ class HashedStringRef;
 }  // namespace velocypack
 
 class ClusterFeature;
+struct PlanCollection;
 struct OperationOptions;
 
 /// @brief aggregate the results of multiple figures responses (e.g. from
@@ -345,6 +346,24 @@ class ClusterMethods {
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
+
+  /// @brief Create many new collections on coordinator from a vector of
+  /// planCollections
+  /// @param vocbase the actual database
+  /// @param parametersOfCollections vector of parameters of collections to be
+  /// created
+  /// @param ignoreDistributeShardsLikeErrors
+  /// @param waitForSyncReplication
+  /// @param enforceReplicationFactor
+  /// @param isNewDatabase
+
+  [[nodiscard]] static arangodb::ResultT<
+      std::vector<std::shared_ptr<LogicalCollection>>>
+  createCollectionsOnCoordinator(
+      TRI_vocbase_t& vocbase,
+      std::vector<PlanCollection> const& parametersOfCollections,
+      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
+      bool enforceReplicationFactor, bool isNewDatabase);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Enterprise Relevant code to filter out hidden collections
