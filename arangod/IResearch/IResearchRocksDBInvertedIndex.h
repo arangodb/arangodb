@@ -54,17 +54,19 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
                                 uint64_t objectId, std::string const& name);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  virtual ~IResearchRocksDBInvertedIndex() {
-    // if triggered  - no unload was called prior to deleting index object
-    TRI_ASSERT(!_dataStore);
-  }
-#else
-  virtual ~IResearchRocksDBInvertedIndex() = default;
-#endif
 
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
+  }
+
+  std::string getCollectionName() const;
+  std::string const& getShardName() const noexcept;
+
+  void insertMetrics() final;
+  void removeMetrics() final;
+
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   void toVelocyPack(
@@ -159,6 +161,9 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     *const_cast<std::vector<std::vector<arangodb::basics::AttributeName>>*>(
         &_fields) = IResearchInvertedIndex::fields(meta());
   }
+
+  std::string _collectionName;
 };
+
 }  // namespace iresearch
 }  // namespace arangodb

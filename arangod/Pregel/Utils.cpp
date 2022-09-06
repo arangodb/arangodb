@@ -84,6 +84,9 @@ std::string const Utils::activeCountKey = "activeCount";
 std::string const Utils::receivedCountKey = "receivedCount";
 std::string const Utils::sendCountKey = "sendCount";
 std::string const Utils::enterNextGSSKey = "nextGSS";
+std::string const Utils::maxNumIterations = "maxNumIterations";
+std::string const Utils::threshold = "threshold";
+std::string const Utils::maxGSS = "maxGSS";
 
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";

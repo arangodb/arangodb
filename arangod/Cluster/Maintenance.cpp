@@ -800,6 +800,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       TRI_ASSERT(version.ok());
       replicationVersion.emplace(dbname, version.get());
     } else {
+      // if the "replicationVersion" field is missing this has to be an old
+      // DB which defaults to version ONE.
       replicationVersion.emplace(dbname, replication::Version::ONE);
     }
 
@@ -1344,7 +1346,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     DatabaseFeature& df, VPackSlice const& info, VPackSlice const& planServers,
     std::string const& database, std::string const& shard,
     std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors,
-    replication::Version replicationVersion = replication::Version::ONE) {
+    replication::Version replicationVersion) {
   VPackBuilder ret;
 
   try {
@@ -1865,6 +1867,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           auto result = replication::parseVersion(rv);
           TRI_ASSERT(result.ok());
           replicationVersion = std::move(result.get());
+        } else {
+          // if "replicationVersion" field is not found this must be an old DB
+          // which defaults to version ONE.
         }
       }
 

@@ -704,52 +704,82 @@ void extractNonConstPartsOfJunctionCondition(
 
 void extractNonConstPartsOfLeafNode(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* leaf,
+    bool evaluateFCalls, bool sorted, AstNode* leaf,
     Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
-  // FCALL at this level is most likely a geo index
-  if (leaf->type == NODE_TYPE_FCALL) {
-    captureFCallArgumentExpressions(ast, varInfo, leaf, selectedMembersFromRoot,
-                                    indexVariable, result);
+  if (leaf->isConstant()) {
     return;
-  } else if (leaf->type == NODE_TYPE_EXPANSION && leaf->numMembers() > 2 &&
-             leaf->isAttributeAccessForVariable(indexVariable, false)) {
-    // we need to gather all expressions from nested filter
-    auto filter = leaf->getMemberUnchecked(2);
-    TRI_ASSERT(filter->type == NODE_TYPE_ARRAY_FILTER);
-    if (ADB_LIKELY(filter->type == NODE_TYPE_ARRAY_FILTER)) {
-      auto path = selectedMembersFromRoot;
-      path.emplace_back(2);
-      captureArrayFilterArgumentExpressions(ast, varInfo, filter,
-                                            std::move(path), evaluateFCalls,
-                                            indexVariable, result);
-    }
-    return;
-  } else if (leaf->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-    TRI_ASSERT(leaf->numMembers() == 1);
-    auto negatedNode = leaf->getMemberUnchecked(0);
-    TRI_ASSERT(negatedNode);
-    if (negatedNode->isConstant()) {
+  }
+
+  switch (leaf->type) {
+    case NODE_TYPE_FCALL:
+      // FCALL at this level is most likely a geo index
+      captureFCallArgumentExpressions(
+          ast, varInfo, leaf, selectedMembersFromRoot, indexVariable, result);
       return;
-    }
-    auto path = selectedMembersFromRoot;
-    path.emplace_back(0);
-    if (negatedNode->type == NODE_TYPE_OPERATOR_NARY_AND ||
-        negatedNode->type == NODE_TYPE_OPERATOR_NARY_OR) {
-      extractNonConstPartsOfJunctionCondition(
-          ast, varInfo, evaluateFCalls, sorted, negatedNode, indexVariable,
-          std::move(path), result);
-    } else {
+    case NODE_TYPE_EXPANSION:
+      if (leaf->numMembers() > 2 &&
+          leaf->isAttributeAccessForVariable(indexVariable, false)) {
+        // we need to gather all expressions from nested filter
+        auto filter = leaf->getMemberUnchecked(2);
+        TRI_ASSERT(filter->type == NODE_TYPE_ARRAY_FILTER);
+        if (ADB_LIKELY(filter->type == NODE_TYPE_ARRAY_FILTER)) {
+          auto path = selectedMembersFromRoot;
+          path.emplace_back(2);
+          captureArrayFilterArgumentExpressions(ast, varInfo, filter,
+                                                std::move(path), evaluateFCalls,
+                                                indexVariable, result);
+        }
+      }
+      // we don't care about other expansion types
+      return;
+    case NODE_TYPE_OPERATOR_UNARY_NOT: {
+      TRI_ASSERT(leaf->numMembers() == 1);
+      auto negatedNode = leaf->getMemberUnchecked(0);
+      TRI_ASSERT(negatedNode);
+      if (ADB_UNLIKELY(negatedNode->isConstant())) {
+        return;
+      }
+      auto path = selectedMembersFromRoot;
+      path.emplace_back(0);
       extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, sorted,
                                      negatedNode, indexVariable,
                                      std::move(path), result);
+      return;
     }
-    return;
-  } else if (leaf->numMembers() != 2) {
-    // The Index cannot solve non-binary operators.
-    TRI_ASSERT(false);
-    return;
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE: {
+      TRI_ASSERT(leaf->numMembers() == 3);
+      auto valueNode = leaf->getMemberUnchecked(0);
+      TRI_ASSERT(valueNode);
+      if (!valueNode->isConstant()) {
+        auto path = selectedMembersFromRoot;
+        path.emplace_back(0);
+        captureNonConstExpression(ast, varInfo, valueNode, std::move(path),
+                                  result);
+      }
+      return;
+    }
+    case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_OPERATOR_NARY_AND:
+      extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls,
+                                              sorted, leaf, indexVariable,
+                                              selectedMembersFromRoot, result);
+      return;
+    default:
+      if (leaf->numMembers() != 2) {
+        // The Index cannot solve non-binary operators.
+        TRI_ASSERT(false);
+        return;
+      }
+      break;
   }
 
   // We only support binary conditions

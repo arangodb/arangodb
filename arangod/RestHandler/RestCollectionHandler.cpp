@@ -353,6 +353,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   auto planCollection = PlanCollection::fromCreateAPIBody(
       body, PlanCollection::DatabaseConfiguration{_vocbase});
+
   if (planCollection.fail()) {
     // error message generated in inspect
     generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
