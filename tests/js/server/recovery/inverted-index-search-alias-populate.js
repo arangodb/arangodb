@@ -106,8 +106,8 @@ function recoverySuite () {
         let i = indexes[0];
         assertEqual(includeAllFields, i.includeAllFields);
         assertEqual(analyzer, i.analyzer);
+        let fields = i.fields;
         if (hasFields) {
-          let fields = i.fields;
           assertEqual(3, fields.length);
           let fieldA = fields.find(f => f.name == "a");
           assertEqual("a", fieldA.name);
@@ -116,7 +116,7 @@ function recoverySuite () {
           let fieldC = fields.find(f => f.name == "c");
           assertEqual("c", fieldC.name);
         } else {
-          assertFalse(i.hasOwnProperty("fields"));
+          assertEqual(0, fields.length);
         }
       };
 
