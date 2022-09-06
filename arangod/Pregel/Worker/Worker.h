@@ -54,8 +54,9 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   virtual ~IWorker() = default;
   [[nodiscard]] virtual auto loadGraph(LoadGraph const& graph)
       -> futures::Future<ResultT<GraphLoaded>> = 0;
-  virtual void prepareGlobalStep(VPackSlice const& data,
-                                 VPackBuilder& result) = 0;
+  [[nodiscard]] virtual auto prepareGlobalSuperStep(
+      PrepareGlobalSuperStep const& data)
+      -> futures::Future<ResultT<GlobalSuperStepPrepared>> = 0;
   virtual void startGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
   virtual void cancelGlobalStep(
@@ -162,7 +163,8 @@ class Worker : public IWorker {
   // ====== called by rest handler =====
   auto loadGraph(LoadGraph const& graph)
       -> futures::Future<ResultT<GraphLoaded>> override;
-  void prepareGlobalStep(VPackSlice const& data, VPackBuilder& result) override;
+  auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
+      -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
   void startGlobalStep(VPackSlice const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(VPackSlice const& data) override;

@@ -22,33 +22,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "State.h"
+#include <cstdint>
+#include <string_view>
+#include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
+#include "Futures/Future.h"
+#include "Network/ConnectionPool.h"
+#include "velocypack/Builder.h"
+#include "Network/Methods.h"
 
 namespace arangodb::pregel {
 
-class Conductor;
-
-namespace conductor {
-
-struct Computing : State {
-  Conductor& conductor;
-  Computing(Conductor& conductor);
-  ~Computing();
-  auto run() -> void override;
-  auto receive(Message const& message) -> void override;
-  auto name() const -> std::string override { return "running"; };
-  auto isRunning() const -> bool override { return true; }
-  auto getExpiration() const
-      -> std::optional<std::chrono::system_clock::time_point> override {
-    return std::nullopt;
-  }
-
- private:
-  using GlobalSuperStepPreparedFuture =
-      futures::Future<std::vector<futures::Try<
-          arangodb::ResultT<arangodb::pregel::GlobalSuperStepPrepared>>>>;
-  auto _prepareGlobalSuperStep() -> GlobalSuperStepPreparedFuture;
+template<typename T>
+concept RestMessage = requires(T a) {
+  { a.path } -> std::convertible_to<std::string>;
 };
 
-}  // namespace conductor
+struct Connection {
+ public:
+  static auto create(ServerID const& destinationId, std::string const& baseUrl,
+                     TRI_vocbase_t& vocbase) -> Connection;
+  Connection(ServerID destinationId, std::string baseUrl,
+             network::RequestOptions requestOptions,
+             network::ConnectionPool* connectionPool);
+  template<typename OutType, RestMessage InType>
+  auto post(InType const& message) -> futures::Future<ResultT<OutType>>;
+
+ private:
+  ServerID _destinationId;
+  std::string _baseUrl;
+  network::RequestOptions _requestOptions;
+  network::ConnectionPool* _connectionPool;
+};
+
 }  // namespace arangodb::pregel

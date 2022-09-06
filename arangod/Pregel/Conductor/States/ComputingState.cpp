@@ -5,6 +5,7 @@
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/WorkerConductorMessages.h"
+#include "velocypack/Builder.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -23,7 +24,60 @@ Computing::~Computing() {
   conductor._feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
 }
 
-auto Computing::run() -> void { conductor._startGlobalStep(); }
+auto Computing::_prepareGlobalSuperStep() -> GlobalSuperStepPreparedFuture {
+  if (conductor._feature.isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  conductor._aggregators->resetValues();
+  conductor._statistics.resetActiveCount();
+  conductor._totalVerticesCount = 0;  // might change during execution
+  conductor._totalEdgesCount = 0;
+
+  auto prepareGssCommand =
+      PrepareGlobalSuperStep{.executionNumber = conductor._executionNumber,
+                             .gss = conductor._globalSuperstep,
+                             .vertexCount = conductor._totalVerticesCount,
+                             .edgeCount = conductor._totalEdgesCount};
+  auto results =
+      std::vector<futures::Future<ResultT<GlobalSuperStepPrepared>>>{};
+  for (auto const& [_, worker] : conductor.workers) {
+    results.emplace_back(worker->prepareGlobalSuperStep(prepareGssCommand));
+  }
+  return futures::collectAll(results);
+}
+
+auto Computing::run() -> void {
+  VPackBuilder messages =
+      _prepareGlobalSuperStep()
+          .thenValue([&](std::vector<futures::Try<arangodb::ResultT<
+                             arangodb::pregel::GlobalSuperStepPrepared>>>
+                             results) {
+            VPackBuilder messagesFromWorkers;
+            for (auto const& result : results) {
+              // TODO check try
+              if (result.get().fail()) {
+                LOG_PREGEL_CONDUCTOR("04189", ERR) << fmt::format(
+                    "Got unsuccessful response from worker while "
+                    "preparing global super step: "
+                    "{}\n",
+                    result.get().errorMessage());
+                conductor.changeState(StateType::InError);
+              }
+              auto gssPrepared = result.get().get();
+              conductor._aggregators->aggregateValues(
+                  gssPrepared.aggregators.slice());
+              messagesFromWorkers.add(gssPrepared.messages.slice());
+              conductor._statistics.accumulateActiveCounts(
+                  gssPrepared.senderId, gssPrepared.activeCount);
+              conductor._totalVerticesCount += gssPrepared.vertexCount;
+              conductor._totalEdgesCount += gssPrepared.edgeCount;
+            }
+            return messagesFromWorkers;
+          })
+          .get();
+  conductor._startGlobalStep(messages);
+}
 
 auto Computing::receive(Message const& message) -> void {
   if (message.type() != MessageType::GssFinished) {
@@ -49,7 +103,7 @@ auto Computing::receive(Message const& message) -> void {
     MUTEX_LOCKER(guard, conductor._callbackMutex);
 
     if (conductor._state == ExecutionState::RUNNING) {
-      conductor._startGlobalStep();  // trigger next superstep
+      run();  // trigger next superstep
     } else {  // this prop shouldn't occur unless we are recovering or in error
       LOG_PREGEL_CONDUCTOR("923db", WARN)
           << "No further action taken after receiving all responses";
