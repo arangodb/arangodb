@@ -33,6 +33,7 @@ auto const String_Remove = std::string_view{"Remove"};
 auto const String_Truncate = std::string_view{"Truncate"};
 auto const String_Commit = std::string_view{"Commit"};
 auto const String_Abort = std::string_view{"Abort"};
+auto const String_AbortAllOngoingTrx = std::string_view{"AbortAllOngoingTrx"};
 }  // namespace
 
 using namespace arangodb::replication2::replicated_state;
@@ -42,13 +43,13 @@ auto document::fromDocumentOperation(TRI_voc_document_operation_e& op) noexcept
     -> OperationType {
   switch (op) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-      return kInsert;
+      return OperationType::kInsert;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-      return kUpdate;
+      return OperationType::kUpdate;
     case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
-      return kReplace;
+      return OperationType::kReplace;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
-      return kRemove;
+      return OperationType::kRemove;
     default:
       ADB_PROD_ASSERT(false) << "Unexpected document operation " << op;
   }
@@ -58,22 +59,24 @@ auto document::fromDocumentOperation(TRI_voc_document_operation_e& op) noexcept
 
 auto document::to_string(OperationType op) noexcept -> std::string_view {
   switch (op) {
-    case kInsert:
+    case OperationType::kInsert:
       return String_Insert;
-    case kUpdate:
+    case OperationType::kUpdate:
       return String_Update;
-    case kReplace:
+    case OperationType::kReplace:
       return String_Replace;
-    case kRemove:
+    case OperationType::kRemove:
       return String_Remove;
-    case kTruncate:
+    case OperationType::kTruncate:
       return String_Truncate;
-    case kCommit:
+    case OperationType::kCommit:
       return String_Commit;
-    case kAbort:
+    case OperationType::kAbort:
       return String_Abort;
+    case OperationType::kAbortAllOngoingTrx:
+      return String_AbortAllOngoingTrx;
     default:
-      ADB_PROD_ASSERT(false) << "Unexpected operation " << op;
+      ADB_PROD_ASSERT(false) << "Unexpected operation " << static_cast<int>(op);
   }
   return {};  // should never be reached, but compiler complains about missing
               // return
@@ -103,6 +106,8 @@ auto OperationStringTransformer::fromSerialized(std::string const& source,
     target = OperationType::kCommit;
   } else if (source == String_Abort) {
     target = OperationType::kAbort;
+  } else if (source == String_AbortAllOngoingTrx) {
+    target = OperationType::kAbortAllOngoingTrx;
   } else {
     return inspection::Status{"Invalid operation " + std::string{source}};
   }

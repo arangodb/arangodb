@@ -112,6 +112,7 @@ struct AddLogToPlanAction {
         [&](LogCurrentSupervision& currentSupervision) {
           currentSupervision.assumedWriteConcern =
               _config.effectiveWriteConcern;
+          currentSupervision.assumedWaitForSync = _config.waitForSync;
         });
   }
 };
@@ -173,17 +174,31 @@ struct LeaderElectionAction {
   static constexpr std::string_view name = "LeaderElectionAction";
 
   LeaderElectionAction(LogPlanTermSpecification::Leader electedLeader,
+                       size_t effectiveWriteConcern, size_t assumedWriteConcern,
                        LogCurrentSupervisionElection const& electionReport)
-      : _electedLeader{electedLeader}, _electionReport(electionReport){};
+      : _electedLeader{electedLeader},
+        _effectiveWriteConcern{effectiveWriteConcern},
+        _assumedWriteConcern{assumedWriteConcern},
+        _electionReport(electionReport){};
 
   LogPlanTermSpecification::Leader _electedLeader;
+  size_t _effectiveWriteConcern;
+  size_t _assumedWriteConcern;
   LogCurrentSupervisionElection _electionReport;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
       plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
       plan.currentTerm->leader = _electedLeader;
+      plan.participantsConfig.generation =
+          plan.participantsConfig.generation + 1;
+      plan.participantsConfig.config.effectiveWriteConcern =
+          _effectiveWriteConcern;
     });
+    ctx.modify<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWriteConcern = _assumedWriteConcern;
+        });
   }
 };
 template<typename Inspector>

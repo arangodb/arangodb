@@ -42,10 +42,11 @@ function resignServer(server) {
   while (--count >= 0) {
     require("internal").wait(5.0, false);
     res = arango.GET_RAW("/_admin/cluster/queryAgencyJob?id=" + id);
-    if (res.code === 200) {
+    if (res.code === 200 && res.parsedBody.status === "Finished") {
       return;
     }
   }
+  assertTrue(false, `We failed to resign a leader in 50s. We cannot reliably test rebalancing of shards now.`);
 }
 
 function clusterRebalanceSuite() {
@@ -54,15 +55,15 @@ function clusterRebalanceSuite() {
       prevDB = db._name();
       db._createDatabase(database);
       db._useDatabase(database);
-      for (let i = 0; i < 10; i++) {
-        db._create("col" + i);
+      for (let i = 0; i < 20; i++) {
+        db._create("col" + i, {replicationFactor: 2});
       }
       // resign one server
       resignServer(getDBServers()[0].id);
     },
 
     tearDownAll: function () {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 20; i++) {
         db._drop("col" + i);
       }
       db._useDatabase(prevDB);

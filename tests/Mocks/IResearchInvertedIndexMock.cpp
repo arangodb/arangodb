@@ -24,8 +24,7 @@
 #include "IResearchInvertedIndexMock.h"
 #include "IResearch/IResearchDataStore.h"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 IResearchInvertedIndexMock::IResearchInvertedIndexMock(
     IndexId iid, arangodb::LogicalCollection& collection,
@@ -53,6 +52,12 @@ void IResearchInvertedIndexMock::toVelocyPack(
               arangodb::velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 Index::IndexType IResearchInvertedIndexMock::type() const {
@@ -142,11 +147,6 @@ AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(
   return IResearchInvertedIndex::findAnalyzer(analyzer);
 }
 
-void IResearchInvertedIndexMock::toVelocyPackFigures(
-    velocypack::Builder& builder) const {
-  IResearchInvertedIndex::toVelocyPackStats(builder);
-}
-
 void IResearchInvertedIndexMock::unload() { shutdownDataStore(); }
 
 void IResearchInvertedIndexMock::invalidateQueryCache(TRI_vocbase_t* vocbase) {
@@ -161,5 +161,4 @@ irs::comparer const* IResearchInvertedIndexMock::getComparator()
 std::function<irs::directory_attributes()>
     IResearchInvertedIndexMock::InitCallback;
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

@@ -639,6 +639,10 @@ class instanceManager {
         print(Date() + " Killing in the name of: ");
         arangod.killWithCoreDump();
       });
+      this.arangods.forEach((arangod) => {
+        crashUtils.aggregateDebugger(arangod, this.options);
+        arangod.waitForExitAfterDebugKill();
+      });
     }
     return rc;
   }
@@ -720,7 +724,11 @@ class instanceManager {
       forceTerminate = true;
     }
     try {
-      return this._shutdownInstance(forceTerminate);
+      if (forceTerminate) {
+        return this._forceTerminate();
+      } else {
+        return this._shutdownInstance();
+      }
     }
     catch (e) {
       if (e instanceof ArangoError && e.errorNum === internal.errors.ERROR_DISABLED.code) {
@@ -728,12 +736,30 @@ class instanceManager {
         if (timeoutReached) {
           print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
         }
-        return this._shutdownInstance(true);
+        return this._forceTerminate(true);
+      } else {
+        print("caught error during shutdown: " + e);
+        print(e.stack);
       }
     }
   }
 
-  _shutdownInstance (forceTerminate) {
+  _forceTerminate() {
+    print("Aggregating coredumps");
+    this.arangods.forEach((arangod) => {
+      arangod.killWithCoreDump('forced shutdown');
+      arangod.serverCrashedLocal = true;
+    });
+    this.arangods.forEach((arangod) => {
+      crashUtils.aggregateDebugger(arangod, this.options);
+      arangod.waitForExitAfterDebugKill();
+    });
+    return true;
+  }
+
+  _shutdownInstance () {
+    let forceTerminate = false;  
+    let crashed = false;
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
@@ -820,25 +846,25 @@ class instanceManager {
     if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
       this.dumpAgency();
     }
+    if (forceTerminate) {
+      return this._forceTerminate();
+    }
 
     var shutdownTime = internal.time();
+
     while (toShutdown.length > 0) {
       toShutdown = toShutdown.filter(arangod => {
         if (arangod.exitStatus === null) {
           if ((nonAgenciesCount > 0) && arangod.isAgent()) {
             return true;
           }
-          arangod.shutdownArangod(forceTerminate);
-          if (forceTerminate) {
-            print(Date() + " FORCED shut down: " + JSON.stringify(arangod.getStructure()));
-          } else {
-            arangod.exitStatus = {
-              status: 'RUNNING'
-            };
+          arangod.shutdownArangod(false);
+          arangod.exitStatus = {
+            status: 'RUNNING'
+          };
 
-            if (!this.options.noStartStopLogs) {
-              print(Date() + " Commanded shut down: " + arangod.name);
-            }
+          if (!this.options.noStartStopLogs) {
+            print(Date() + " Commanded shut down: " + arangod.name);
           }
           return true;
         }
@@ -863,11 +889,8 @@ class instanceManager {
                   ' after ' + timeout + 's grace period; marking crashy.');
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
-            arangod.killWithCoreDump();
-            arangod.analyzeServerCrash('shutdown timeout; instance "' +
-                                       arangod.name +
-                                       '" forcefully KILLED after 60s - ' +
-                                       arangod.exitStatus.signal);
+            arangod.killWithCoreDump('forced shutdown');
+            crashed = true;
             if (!arangod.isAgent()) {
               nonAgenciesCount--;
             }
@@ -917,7 +940,6 @@ class instanceManager {
         require('internal').wait(1, false);
       }
     }
-
     if (!this.options.skipLogAnalysis) {
       this.arangods.forEach(arangod => {
         let errorEntries = arangod.readImportantLogLines();
@@ -955,7 +977,7 @@ class instanceManager {
         }
         count --;
         if (count === 0) {
-          throw "Leader is not selected";
+          throw new Error("Leader is not selected");
         }
         sleep(0.5);
       }
@@ -971,7 +993,7 @@ class instanceManager {
             res = JSON.parse(reply.body);
           }
           catch (x) {
-            throw "Failed to parse endpoints reply: " + JSON.stringify(reply);
+            throw new Error("Failed to parse endpoints reply: " + JSON.stringify(reply));
           }
           let leaderEndpoint = res.endpoints[0].endpoint;
           let leaderInstance;
@@ -1068,8 +1090,11 @@ class instanceManager {
       // Didn't startup in 10 minutes? kill it, give up.
       if (count > 1200) {
         this.arangods.forEach(arangod => {
-          arangod.killWithCoreDump();
-          arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
+          arangod.killWithCoreDump('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
+        });
+        this.arangods.forEach((arangod) => {
+          crashUtils.aggregateDebugger(arangod, this.options);
+          arangod.waitForExitAfterDebugKill();
         });
         this.cleanup = false;
         throw new Error('cluster startup timed out after 10 minutes!');
@@ -1118,7 +1143,7 @@ class instanceManager {
       internal.wait(5.0, false);
       let d = this.detectCurrentLeader();
       if (d === undefined) {
-        throw "failed to detect a leader";
+        throw new Error("failed to detect a leader");
       }
       this.endpoint = d.endpoint;
       this.url = d.url;

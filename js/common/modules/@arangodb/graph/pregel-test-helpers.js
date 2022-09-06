@@ -39,26 +39,17 @@ let internal = require("internal");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
 
-const Kleinberg = "Kleinberg";
-const Graetzer = "Graetzer";
-const Wiki = "Wiki";
+const graphInDatabase = require("@arangodb/graph/graph-in-database");
+const graphName = graphInDatabase.graphName;
+const vColl = graphInDatabase.vColl;
+const eColl = graphInDatabase.eColl;
 
 const graphGenerator = graphGeneration.graphGenerator;
+const loadGraphGenerators = graphGeneration.loadGraphGenerators;
 
-const loadGraphGenerators = function (isSmart) {
-    if (isSmart) {
-        return {
-            makeEdgeBetweenVertices:
-            require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
-            verticesEdgesGenerator:
-            require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
-        };
-    }
-    return {
-        makeEdgeBetweenVertices: graphGeneration.makeEdgeBetweenVertices,
-        verticesEdgesGenerator: graphGeneration.communityGenerator
-    };
-};
+const Graph = graphGeneration.Graph;
+
+const epsilon = 0.00001;
 
 /**
  * Assert that expected and actual are equal up to the tolerance epsilon.
@@ -70,27 +61,16 @@ const loadGraphGenerators = function (isSmart) {
  * @param actualDescription the description of actual
  * @param context the context in that the test is performed, output after the values
  */
-const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDescription, actualDescription, context,
-                                     doThrow = true) {
-    if (Math.abs(expected - actual) >= epsilon
-        || (expected === undefined && actual !== undefined)
-        || (expected !== undefined && actual === undefined)) {
-        console.error(`${msg}:`);
-        console.error(`    ${expectedDescription}:`);
-        console.error(`        ${expected}`);
-        console.error(`    ${actualDescription}:`);
-        console.error(`        ${actual}`);
-        const diff = Math.abs(actual - expected);
-        const relativeDiff = 100 * diff / Math.max(expected, actual); // in percent
-        if (doThrow) {
-            assertTrue(relativeDiff < 90, `    Relative difference ${relativeDiff} is greater than 90!`);
-        }
-
-        console.error(`    Difference: ${diff} (${relativeDiff.toFixed(2)}%)`);
+const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDescription, actualDescription, context) {
+    if (Math.abs(expected - actual) >= epsilon) {
+        console.error(msg + ":");
+        console.error("    " + expectedDescription + ":");
+        console.error("        " + expected);
+        console.error("    " + actualDescription + ":");
+        console.error("        " + actual);
+        console.error("    Difference: " + Math.abs(actual - expected));
         console.error(context);
-        if (doThrow) {
-            assertTrue(false);
-        }
+        assertTrue(false);
     }
 };
 
@@ -108,7 +88,7 @@ const runPregelInstance = function (algName, graphName, parameters, query, maxWa
 };
 
 const dampingFactor = 0.85;
-let epsilon = 0.00001;
+
 
 const testPageRankOnGraph = function (vertices, edges, seeded = false) {
     db[vColl].save(vertices);
@@ -139,14 +119,10 @@ const testPageRankOnGraph = function (vertices, edges, seeded = false) {
 };
 
 /**
- * Save vertices and edges, perform 100 steps HITS and 100 steps self-made algorithm. Test that the results are equal
- * up to epsilon if compare is true. Test that the self-made result is a fixed point (up to epsilon in each vertex).
+ * Save vertices and edges, perform 50 steps HITS and 50 steps self-made algorithm. Test that the results are equal
+ * up to epsilon if compare is true. Test that the self-made result is a fixed point (up to epsilon) in each vertex.
  * @param vertices
  * @param edges
- * @param compare if true, compares if the result is the same as of a testing sequential algorithm
- * @param variant "Kleinberg": after Jon M. Kleinberg, Authoritative Sources in a Hyperlinked Environment, 1998;
- *                "Wiki": after the variant described in the Wikipedia (Pregel cannot do this yet), or
- *                "Graetzer": the original ArangoDB Pregel version
  */
 const testHITSKleinbergOnGraph = function (vertices, edges) {
     db[vColl].save(vertices);
@@ -158,7 +134,7 @@ const testHITSKleinbergOnGraph = function (vertices, edges) {
     const numberIterations = 50;
 
     let parameters = {resultField: "hits", maxNumIterations: numberIterations};
-    let algName = "hitsKleinberg";
+    let algName = "hitskleinberg";
     const result = runPregelInstance(algName, graphName, parameters, query);
 
     const hits = new HITS();
@@ -176,7 +152,7 @@ const testHITSKleinbergOnGraph = function (vertices, edges) {
     // check that Pregel returned the same result as our test algorithm.
     for (const resultV of result) {
         const vKey = resultV._key;
-        const v = graph.vertex(vKey);
+        const v = graph.vertex(resultV._key);
         // auth
         assertAlmostEquals(resultV.value.hits_auth, v.value.hits_auth, epsilon,
             `Different authority values for vertex ${vKey}`,
@@ -195,54 +171,49 @@ const testHITSKleinbergOnGraph = function (vertices, edges) {
     }
 };
 
-const computeCloseness = function (graph) {
-    for (let [vKey, v] of graph.vertices) {
-        graph.bfs(vKey, graph.writeDistance, undefined);
-        let sumOfDistances = 0;
-        let count = 0;
-        for (let [, w] of graph.vertices) {
-            if (w.distance === 0 || w.distance === undefined) { // w is not reachable from v
-                continue;
-            }
-            ++count;
-            sumOfDistances += w.distance;
-            w.distance = 0; // reset for the next v
-
-        }
-        v.closenessFromTestAlgorithm = sumOfDistances / count;
-    }
-};
-
-const testEffectiveClosenessOnGraph = function (vertices, edges) {
+const testHITSKleinbergThresholdOnGraph = function (vertices, edges) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
     const query = `
                   FOR v in ${vColl}
-                  RETURN {"_key": v._key, "closeness": v.closeness, "v": v}  
+                  RETURN {"_key": v._key, "value": {hits_hub: v.hits_hub, hits_auth: v.hits_auth}}  
               `;
+    const numberIterations = 50;
+    const threshold = 200.0; // must be less than 1000.0, the value added in HITSKleinberg in reportFakeDifference()
 
-    let parameters = {resultField: "closeness"};
-    let algName = "effectivecloseness";
+    let parameters = {resultField: "hits", maxNumIterations: numberIterations, threshold: threshold};
+    let algName = "hitskleinberg";
     const result = runPregelInstance(algName, graphName, parameters, query);
 
-    let graph = new Graph(vertices, edges);
-    computeCloseness(graph); // write result into the closenessFromTestAlgorithm field
-    // check that Pregel returned the same result as our test algorithm.
+    const hits = new HITS();
+    const graph = new Graph(vertices, edges);
 
+    hits.computeFixedPointKleinberg(graph, 1, epsilon);
+
+
+    // check that Pregel returned authority as after 1 iteration and hub = 1
+    // the reason is that the threshold is so high that the condition
+    // that the difference to the previous iteration is less than threshold
+    // is fulfilled after gss == 0
     for (const resultV of result) {
         const vKey = resultV._key;
-        const v = graph.vertex(vKey);
-        const doThrow = false;
-        assertAlmostEquals(resultV.closeness, v.closenessFromTestAlgorithm, epsilon,
-            `Different closeness values for vertex ${vKey}`,
-            "Pregel returned",
+        const v = graph.vertex(resultV._key);
+        // auth
+        assertAlmostEquals(v.value.hits_auth, resultV.value.hits_auth, epsilon,
+            `Different authority values for vertex ${vKey}`,
             "test returned",
-            "",
-            doThrow
+            "Pregel returned",
+            ""
+        );
+        // hub
+        assertAlmostEquals(1, resultV.value.hits_hub, epsilon,
+            `Different hub values for vertex ${vKey}`,
+            "test returned",
+            "Pregel returned",
+            ""
         );
     }
 };
-
 
 /**
  * Run the given algorithm, collect buckets labeled with parameters.resultField with their sizes and returns
@@ -265,10 +236,7 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
     return runPregelInstance(algName, graphName, parameters, query);
 };
 
-const graphName = "UnitTest_pregel";
-const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
-
-function makeSetUp(smart, smartAttribute, numberOfShards) {
+const makeSetUp = function (smart, smartAttribute, numberOfShards) {
     return function () {
         if (smart) {
             smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
@@ -284,10 +252,9 @@ function makeSetUp(smart, smartAttribute, numberOfShards) {
             general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
         }
     };
+};
 
-}
-
-function makeTearDown(smart) {
+const makeTearDown = function (smart) {
     if (smart) {
         graphGeneration.smart = false;
         return function () {
@@ -297,7 +264,7 @@ function makeTearDown(smart) {
     return function () {
         general_graph_module._drop(graphName, true);
     };
-}
+};
 
 class ComponentGenerator {
     constructor(generator, parameters) {
@@ -415,172 +382,6 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
     }
 };
 
-
-class Vertex {
-    constructor(key, label, value = 0) {
-        this.outEdges = [];
-        this.outNeighbors = new Set();
-        this.inEdges = [];
-        this.inNeighbors = new Set();
-        this._key = key;
-        this.label = label;
-        this.value = value;
-    }
-
-    outDegree() {
-        return this.outNeighbors.size;
-    }
-}
-
-class Graph {
-
-    vertex(key) {
-        return this.vertices.get(key);
-    }
-
-    printVertices(onlyKeys = false) {
-        if (onlyKeys) {
-            let listVertices = [];
-            for (const [vKey,] of this.vertices) {
-                listVertices.push(vKey);
-            }
-            console.warn(listVertices);
-        } else {
-            console.warn(`Vertices: `);
-            for (const [vKey, v] of this.vertices) {
-                console.warn(`  ${vKey} : `);
-                console.warn(`    label: ${v.label}`);
-                console.warn(`    value: ${JSON.stringify(v.value)}$`);
-                console.warn(`    outNeighbs: ${JSON.stringify(v.outNeighbors)}`);
-                console.warn(`    inNeighbs:  ${JSON.stringify(v.inNeighbors)}`);
-            }
-            console.warn("End vertices");
-        }
-
-    }
-
-    /**
-     * Constructs a graph.
-     * @param vertices Array of objects containing attributes "_key" (unique vertex key) and "result".
-     * @param edges Array of objects representing edges, each object should contain attributes "_from" and "_to"
-     *      and for each value of "_from" and "_to" there should be a vertex whose _key is this value.
-     */
-    constructor(vertices, edges) {
-        const getKey = function (v) {
-            return v.substr(v.indexOf('/') + 1);
-        };
-
-        this.vertices = new Map(); // maps vertex key to the vertex object
-        for (const v of vertices) {
-            this.vertices.set(v._key, new Vertex(v._key, v.label));
-        }
-
-        this.edges = new Set();
-        for (const e of edges) {
-            const from = getKey(e._from);
-            const to = getKey(e._to);
-            assertTrue(this.vertices.has(from),
-                `vertices do not contain the _from of ${JSON.stringify(e)} (which is ${from})`);
-            assertTrue(this.vertices.has(`${to}`),
-                `vertices do not contain the _to of ${JSON.stringify(e)} (which is ${to})`);
-
-            this.edges.add(e);
-
-            this.vertices.get(from).outEdges.push(e);
-            this.vertices.get(to).inEdges.push(e);
-            if (from !== to) {
-                this.vertices.get(from).outNeighbors.add(to);
-                this.vertices.get(to).inNeighbors.add(from);
-            }
-        }
-        // this.printVertices();
-    }
-
-    numVertices () {
-        return this.vertices.size;
-    }
-
-    /**
-     * A special purpose function to be used in bfs that writes, for vertex, the distance to the source of bfs.
-     * @param vertex
-     * @param parent
-     */
-    writeDistance (vertex, parent) {
-        if (parent === undefined) {
-            vertex.distance = 0;
-        } else {
-            vertex.distance = parent.distance + 1;
-        }
-    }
-
-    /**
-     * Performs BFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
-     * when the vertex is popped from the queue.
-     * @param source The key of the vertex to start the search from
-     * @param cbOnFindVertex Either undefined or the callback function to run on a vertex
-     *              that is being pushed on the queue. The function can have one or two arguments:
-     *              the vertex being pushed and its parent in the search. The second argument can be undefined.
-     * @param cbOnPopVertex Either undefined or the callback function to run on a vertex
-     *              that is being popped from the queue. The function must have one argument: the vertex being popped.
-     */
-    bfs(source, cbOnFindVertex, cbOnPopVertex) {
-        assertTrue(typeof (source) === `string`, `${JSON.stringify(source)} is not a string`);
-        assertTrue(this.vertices.has(`${source}`), `bfs: the given source "${JSON.stringify(source)}" is not a vertex`);
-        let visited = new Set();
-        visited.add(source);
-        if (cbOnFindVertex !== undefined) {
-            cbOnFindVertex(this.vertex(source));
-        }
-        let queue = [source];
-        while (queue.length !== 0) {
-            const vKey = queue.shift();
-            const v = this.vertex(vKey);
-            if (cbOnPopVertex !== undefined) {
-                cbOnPopVertex(v);
-            }
-            for (const wKey of v.outNeighbors) {
-                if (!visited.has(wKey)) {
-                    visited.add(wKey);
-                    if (cbOnFindVertex !== undefined) {
-                        cbOnFindVertex(this.vertex(wKey), v);
-                    }
-                    queue.push(wKey);
-                }
-            }
-        }
-    }
-
-    /**
-     * Performs DFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
-     * when the vertex is popped from the queue.
-     */
-    dfs(source, cbOnFindVertex, cbOnPopVertex) {
-        assertTrue(this.vertices.has(source), `dfs: the given source "${source}" is not a vertex`);
-        let visited = new Set();
-        visited.add(source);
-        let stack = [source];
-        if (cbOnFindVertex !== undefined) {
-            cbOnFindVertex(this.vertex(source));
-        }
-        while (stack.length !== 0) {
-            const vKey = stack.pop();
-            const v = this.vertex(vKey);
-            if (cbOnPopVertex !== undefined) {
-                cbOnPopVertex(v);
-            }
-            for (const wKey of v.outNeighbors) {
-                if (!visited.has(wKey)) {
-                    visited.add(wKey);
-                    if (cbOnFindVertex !== undefined) {
-                        cbOnFindVertex(this.vertex(wKey), v);
-                    }
-                    stack.push(wKey);
-                }
-            }
-        }
-    }
-}
-
 class PageRank {
     constructor(dampingFactor, numVertices) {
         this.dampingFactor = dampingFactor;
@@ -609,23 +410,6 @@ class PageRank {
 
 // This class only accumulates functions that belong to the HITS algorithm, it has no data
 class HITS {
-
-    computeAuthNorm(graph) {
-        let sum = 0.0;
-        for (const [, vertex] of graph.vertices) {
-            assertTrue(vertex.hasOwnProperty("value"));
-            sum += vertex.value.hits_auth * vertex.value.hits_auth;
-        }
-        return Math.sqrt(sum);
-    }
-
-    computeHubNorm(graph) {
-        let sum = 0.0;
-        for (const [, vertex] of graph.vertices) {
-            sum += vertex.value.hits_hub * vertex.value.hits_hub;
-        }
-        return Math.sqrt(sum);
-    }
 
     computeFixedPointKleinberg(graph, numSteps, epsilon) {
         for (let [, vertex] of graph.vertices) {
@@ -695,202 +479,6 @@ class HITS {
             ++step;
         } while (step < numSteps && maxDiff > epsilon);
         return maxDiff;
-    }
-
-    computeFixedPointWiki(graph, numSteps, epsilon) {
-        for (let [, vertex] of graph.vertices) {
-            vertex.value = {hits_auth: 1.0, hits_hub: 1.0, old_hits_auth: 1.0, old_hits_hub: 1.0};
-        }
-        const computeAuth = function () {
-            let authNorm = 0.0;
-
-            for (let [, vertex] of graph.vertices) {
-                vertex.value.old_hits_auth = vertex.value.hits_auth;
-
-                let sumAuth = 0.0;
-                for (const predKey of vertex.inNeighbors) {
-                    const pred = graph.vertex(predKey);
-                    assertTrue(pred.hasOwnProperty("value"));
-                    sumAuth += pred.value.hits_hub;
-                }
-                vertex.value.hits_auth = sumAuth;
-                authNorm += sumAuth * sumAuth;
-            }
-
-            authNorm = Math.sqrt(authNorm);
-
-            let maxDiffAuth = 0.0;
-            for (let [, vertex] of graph.vertices) {
-                vertex.value.hits_auth /= authNorm;
-                const diff = Math.abs(vertex.value.hits_auth - vertex.value.old_hits_auth);
-                if (maxDiffAuth < diff && diff - maxDiffAuth > epsilon) {
-                    // console.warn(`vertex: ${vertex._key}, maxDiffAuth: ${maxDiffAuth}, diff: ${diff}, hits_auth ${vertex.value.hits_auth}, oldValue: ${vertex.value.old_hits_auth}`);
-                    maxDiffAuth = diff;
-
-                }
-            }
-            return {maxDiffAuth};
-        };
-
-        const computeHub = function () {
-            let hubNorm = 0.0;
-            for (let [, vertex] of graph.vertices) {
-                vertex.value.old_hits_hub = vertex.value.hits_hub;
-
-                let sumHub = 0.0;
-                for (const succKey of vertex.outNeighbors) {
-                    const succ = graph.vertex(succKey);
-                    assertTrue(succ.hasOwnProperty("value"));
-                    sumHub += succ.value.hits_auth;
-                }
-
-                vertex.value.hits_hub = sumHub;
-                hubNorm += sumHub * sumHub;
-            }
-
-            hubNorm = Math.sqrt(hubNorm);
-
-            let maxDiffHub = 0.0;
-            for (let [, vertex] of graph.vertices) {
-                vertex.value.hits_hub /= hubNorm;
-                const diff = Math.abs(vertex.value.hits_hub - vertex.value.old_hits_hub);
-                if (maxDiffHub < diff && diff - maxDiffHub > epsilon) {
-                    maxDiffHub = diff;
-
-                }
-            }
-            return {maxDiffHub};
-        };
-
-        assertTrue(epsilon > 0);
-        assertTrue(numSteps > 0);
-        // initialize
-        for (let [, vertex] of graph.vertices) {
-            vertex.value.hits_auth = 1.0;
-            vertex.value.hits_hub = 1.0;
-        }
-
-        let step = 0;
-        let maxDiff = 0.0;
-        do {
-            const {maxDiffAuth} = computeAuth();
-            const {maxDiffHub} = computeHub();
-            maxDiff = Math.max(maxDiffAuth, maxDiffHub);
-            ++step;
-        } while (step < numSteps && maxDiff > epsilon);
-
-        return maxDiff;
-    }
-
-    computeFixedPointGraetzer(graph, numSteps, epsilon) {
-        for (let [, vertex] of graph.vertices) {
-            vertex.value = {hits_auth: 1.0, hits_hub: 1.0, old_hits_auth: 1.0, old_hits_hub: 1.0};
-        }
-
-        const computeAuth = function (authDivisor) {
-            let maxDiffAuth = 0.0;
-            for (let [, vertex] of graph.vertices) {
-                let sumAuth = 0.0;
-                for (const predKey of vertex.inNeighbors) {
-                    const pred = graph.vertex(predKey);
-                    assertTrue(pred.hasOwnProperty("value"));
-                    sumAuth += pred.value.old_hits_hub;
-                }
-                vertex.value.hits_auth = sumAuth / authDivisor;
-                maxDiffAuth = Math.max(maxDiffAuth, Math.abs(vertex.value.hits_auth - vertex.value.old_hits_auth));
-            }
-
-            return {maxDiffAuth};
-        };
-
-        const computeHub = function (hubDivisor) {
-            let maxDiffHub = 0.0;
-            for (let [, vertex] of graph.vertices) {
-                let sumHub = 0.0;
-                for (const succKey of vertex.outNeighbors) {
-                    const succ = graph.vertex(succKey);
-                    assertTrue(succ.hasOwnProperty("value"));
-                    sumHub += succ.value.old_hits_auth;
-                }
-
-                vertex.value.hits_hub = sumHub / hubDivisor;
-                maxDiffHub = Math.max(maxDiffHub, Math.abs(vertex.value.hits_hub - vertex.value.old_hits_hub));
-            }
-
-            return {maxDiffHub};
-        };
-
-        const getAuthDivisorFromHub = function () {
-            let divisor = 0.0;
-            for (const [, v] of graph.vertices) {
-                divisor += v.value.hits_hub * v.value.hits_hub;
-            }
-            return Math.sqrt(divisor);
-        };
-
-        const getHubDivisorFromAuth = function () {
-            let divisor = 0.0;
-            for (const [, v] of graph.vertices) {
-                divisor += v.value.hits_auth * v.value.hits_auth;
-            }
-            return Math.sqrt(divisor);
-        };
-
-        const saveOldValues = function () {
-            for (let [, v] of graph.vertices) {
-                v.value.old_hits_auth = v.value.hits_auth;
-                v.value.old_hits_hub = v.value.hits_hub;
-            }
-        };
-
-        assertTrue(epsilon > 0);
-        assertTrue(numSteps > 0);
-
-        let step = 0;
-        let maxDiff = 0.0;
-        do {
-            maxDiff = 0.0;
-            const authDivisor = getAuthDivisorFromHub();
-            const hubDivisor = getHubDivisorFromAuth();
-            saveOldValues();
-            const {maxDiffAuth} = computeAuth(authDivisor);
-            const {maxDiffHub} = computeHub(hubDivisor);
-            maxDiff = Math.max(maxDiff, maxDiffAuth, maxDiffHub);
-            ++step;
-        } while (step < numSteps && maxDiff > epsilon);
-
-        return maxDiff;
-    }
-
-    /**
-     * Perform one step of the HITS algorithm and return the new value of the given vertex.
-     * @returns {*}
-     * @param vKey vertex key
-     * @param graph a graph containing a vertex with this key
-     */
-    doOneHITSStep(vKey, graph) {
-
-        const authNorm = this.computeAuthNorm(graph);
-        const hubNorm = this.computeHubNorm(graph);
-        const v = graph.vertex(vKey);
-
-        // auth
-        let sumAuth = 0.0;
-        for (const predKey of v.inNeighbors) {
-            const pred = graph.vertex(predKey);
-            assertTrue(pred.hasOwnProperty("value"));
-            sumAuth += pred.value.hits_hub;
-        }
-        sumAuth /= authNorm;
-        // hub
-        let sumHub = 0.0;
-        for (const predKey of v.outNeighbors) {
-            const pred = graph.vertex(predKey);
-            assertTrue(pred.hasOwnProperty("value"));
-            sumHub += pred.value.hits_auth;
-        }
-        sumHub /= hubNorm;
-        return {hits_hub: sumHub, hits_auth: sumAuth};
     }
 }
 
@@ -1806,6 +1394,7 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
                     vertices,
                     edges
                 } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
+
                 // insert each edge twice
                 let edges2 = [];
                 for (const e of edges) {
@@ -1836,10 +1425,12 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
 
-
-    // only for debugging
-    const printVertexKey = function (vertex) {
-        console.warn(`printVertexKey: ${vertex._key}`);
+    const writeDistance = function (vertex, parent) {
+        if (parent === undefined) {
+            vertex.value = 0;
+        } else {
+            vertex.value = parent.value + 1;
+        }
     };
 
     /**
@@ -1850,6 +1441,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
      */
     const testSSSPOnGraph = function (vertices, edges, source) {
         assertEqual(typeof (source), 'string', `${source} is not a string`);
+
         db[vColl].save(vertices);
         db[eColl].save(edges);
         const query = `
@@ -1864,14 +1456,15 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
         // The documentation says "length above 9007199254740991 (max safe integer)".)
         const infinity = 9223372036854776000;
         for (let [, vertex] of graph.vertices) {
+
             vertex.value = infinity;
         }
-        graph.bfs(source, graph.writeDistance, undefined);
+        graph.bfs(source, writeDistance, undefined);
         for (const element of result) {
-            assertTrue(element.result === (graph.vertex(element._key)).distance
-                || (element.result > 9007199254740991 && (graph.vertex(element._key)).distance === infinity),
+            assertTrue(element.result === (graph.vertex(element._key)).value
+                || (element.result > 9007199254740991 && (graph.vertex(element._key)).value === infinity),
                 `Different distances. Pregel returned ${element.result}, ` +
-                `test computed ${(graph.vertex(element._key)).distance} for vertex ${element._key} ` +
+                `test computed ${(graph.vertex(element._key)).value} for vertex ${element._key} ` +
                 `where source is ${source}`);
         }
     };
@@ -1888,6 +1481,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
             tearDown: makeTearDown(isSmart),
 
             testSSSPDirectedCrystalGraphWithAdditionalEdge: function () {
+
                 // directed crystal graph (vertical edges go down):
                 //   ->0 -> 3 -> 6 ->
                 //     |    |    |
@@ -2000,6 +1594,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const length = 3;
                 const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
                 testHITSKleinbergOnGraph(vertices, edges);
+                testHITSKleinbergThresholdOnGraph(vertices, edges);
 
             },
             testHITSTwoDisjointDirectedCycles: function () {
@@ -2008,6 +1603,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
                 const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
                 testHITSKleinbergOnGraph(vertices, edges);
+                testHITSKleinbergThresholdOnGraph(vertices, edges);
             },
             testHITSTwoDirectedCyclesConnectedByDirectedEdge: function () {
                 const size = 2;
@@ -2016,6 +1612,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                 let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
                 edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
                 testHITSKleinbergOnGraph(vertices, edges);
+                testHITSKleinbergThresholdOnGraph(vertices, edges);
             },
             testHITSTwo4CliquesConnectedByDirectedEdge: function () {
                 const size = 4;
@@ -2024,6 +1621,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                 let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
                 edges.push(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
                 testHITSKleinbergOnGraph(vertices, edges);
+                testHITSKleinbergThresholdOnGraph(vertices, edges);
             },
             testHITSThree4_5_6CliquesConnectedByUndirectedTriangle: function () {
                 const sizes = [4, 5, 6];
@@ -2040,6 +1638,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                     }
                 }
                 testHITSKleinbergOnGraph(vertices, edges);
+                testHITSKleinbergThresholdOnGraph(vertices, edges);
             },
             testHITS10Star: function () {
                 const numberLeaves = 10;
@@ -2048,6 +1647,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                     edges
                 } = graphGenerator(verticesEdgesGenerator(vColl, `v0`)).makeStar(numberLeaves, "bidirected");
                 testHITSKleinbergOnGraph(vertices, edges);
+                testHITSKleinbergThresholdOnGraph(vertices, edges);
             },
             testHITS10MultiEdgesStar: function () {
                 const numberLeaves = 10;
@@ -2060,57 +1660,13 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                     edges2.push(e);
                 }
                 testHITSKleinbergOnGraph(vertices, edges2);
+                testHITSKleinbergThresholdOnGraph(vertices, edges);
             },
 
         };
     };
 }
 
-function makeEffectiveClosenessTestSuite(isSmart, smartAttribute, numberOfShards) {
-
-    const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
-    const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
-
-    return function () {
-        'use strict';
-
-        const unionGraph = graphGeneration.unionGraph;
-
-        return {
-
-            setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
-
-            tearDown: makeTearDown(isSmart),
-
-            testEffectiveClosenessOnPath: function () {
-                const length = 143;
-                const kind = "bidirected";
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length, kind);
-                testEffectiveClosenessOnGraph(vertices, edges);
-
-            },
-            testEffectiveClosenessOnTwoDisjointDirectedCycles: function () {
-                const length = 3;
-                const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
-                const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
-                const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
-                testEffectiveClosenessOnGraph(vertices, edges);
-            },
-            testEffectiveClosenessOnClique: function () {
-                const size = 10;
-                const kind = "bidirected";
-                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeClique(size, kind);
-                testEffectiveClosenessOnGraph(vertices, edges);
-            },
-            testEffectiveClosenessOnStar: function () {
-                const numLeaves = 10;
-                const kind = "bidirected";
-                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeStar(numLeaves, kind);
-                testEffectiveClosenessOnGraph(vertices, edges);
-            }
-        };
-    };
-}
 
 exports.makeWCCTestSuite = makeWCCTestSuite;
 exports.makeHeavyWCCTestSuite = makeHeavyWCCTestSuite;
@@ -2120,4 +1676,8 @@ exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
 exports.makeHITSTestSuite = makeHITSTestSuite;
-exports.makeEffectiveClosenessTestSuite = makeEffectiveClosenessTestSuite;
+exports.runPregelInstance = runPregelInstance;
+exports.epsilon = epsilon;
+exports.makeSetUp = makeSetUp;
+exports.makeTearDown = makeTearDown;
+exports.assertAlmostEquals = assertAlmostEquals;

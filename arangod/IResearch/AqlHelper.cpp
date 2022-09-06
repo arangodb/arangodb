@@ -762,7 +762,7 @@ bool nameFromAttributeAccess(
 
   if (visitRes && !ctx.isSearchQuery) {
     auto it = getNested(name, fields);
-    visitRes = it != std::end(fields);
+    visitRes = it != std::end(fields) && !it->_isSearchField;
     if (visitRes && subFields) {
       *subFields = it->_fields;
     }
@@ -796,6 +796,36 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
                      head->getData()  // same variable
              ? node
              : nullptr;
+}
+
+aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept {
+  if (!args || aql::NODE_TYPE_ARRAY != args->type) {
+    return nullptr;
+  }
+
+  size_t const size = args->numMembers();
+
+  if (size < 1) {
+    return nullptr;  // invalid args
+  }
+
+  // 1st argument has to be reference to `ref`
+  auto const* arg0 = args->getMemberUnchecked(0);
+
+  if (!arg0 || aql::NODE_TYPE_REFERENCE != arg0->type) {
+    return nullptr;
+  }
+
+  for (size_t i = 1, size = args->numMembers(); i < size; ++i) {
+    auto const* arg = args->getMemberUnchecked(i);
+
+    if (!arg || !arg->isDeterministic()) {
+      // we don't support non-deterministic arguments for scorers
+      return nullptr;
+    }
+  }
+
+  return reinterpret_cast<aql::Variable const*>(arg0->getData());
 }
 
 }  // namespace iresearch

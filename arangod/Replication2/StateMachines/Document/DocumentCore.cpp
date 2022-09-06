@@ -23,7 +23,10 @@
 
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 
+#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 

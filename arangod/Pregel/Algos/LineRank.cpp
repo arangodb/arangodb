@@ -41,7 +41,7 @@ static const float EPS = 0.0000001f;
 
 LineRank::LineRank(application_features::ApplicationServer& server,
                    arangodb::velocypack::Slice params)
-    : SimpleAlgorithm(server, "LineRank", params) {
+    : SimpleAlgorithm(server, "linerank", params) {
   // VPackSlice t = params.get("convergenceThreshold");
   //_threshold = t.isNumber() ? t.getNumber<float>() : 0.000002f;
 }

@@ -28,7 +28,11 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -73,19 +77,20 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
   explicit MockDocumentStateTransaction(TransactionId tid) : tid(tid) {}
 
   auto apply(DocumentLogEntry const& entry)
-      -> futures::Future<Result> override {
+      -> DocumentStateTransactionResult override {
     TRI_ASSERT(!applied);
     applied = true;
-    return Result{};
+    return DocumentStateTransactionResult{TransactionId{1},
+                                          OperationResult{Result{}, {}}};
   }
 
-  auto commit() -> futures::Future<Result> override {
+  auto commit() -> Result override {
     TRI_ASSERT(!committed);
     committed = true;
     return Result{};
   }
 
-  auto abort() -> futures::Future<Result> override {
+  auto abort() -> Result override {
     TRI_ASSERT(!aborted);
     aborted = true;
     return Result{};
@@ -100,14 +105,45 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
 };
 
 struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
-  auto ensureTransaction(DocumentLogEntry entry)
+  auto applyEntry(DocumentLogEntry doc) -> Result override {
+    auto trx = ensureTransaction(doc);
+    TRI_ASSERT(trx != nullptr);
+    switch (doc.operation) {
+      case OperationType::kInsert:
+      case OperationType::kUpdate:
+      case OperationType::kReplace:
+      case OperationType::kRemove:
+      case OperationType::kTruncate: {
+        auto res = trx->apply(doc);
+        return res.result();
+      }
+      case OperationType::kCommit: {
+        auto res = trx->commit();
+        removeTransaction(doc.tid);
+        return res;
+      }
+      case OperationType::kAbort: {
+        auto res = trx->abort();
+        removeTransaction(doc.tid);
+        return res;
+      }
+      case OperationType::kAbortAllOngoingTrx:
+        // do nothing
+        break;
+      default:
+        TRI_ASSERT(false);
+    }
+    return {};
+  }
+
+  auto ensureTransaction(DocumentLogEntry doc)
       -> std::shared_ptr<IDocumentStateTransaction> override {
-    if (auto trx = getTransaction(entry.tid)) {
+    if (auto trx = getTransaction(doc.tid)) {
       return trx;
     }
-    auto trx = std::make_shared<MockDocumentStateTransaction>(entry.tid);
+    auto trx = std::make_shared<MockDocumentStateTransaction>(doc.tid);
     trx->ensured = true;
-    transactions.emplace(entry.tid, trx);
+    transactions.emplace(doc.tid, trx);
     return trx;
   }
 
@@ -154,7 +190,7 @@ struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
       -> std::unique_ptr<IDocumentStateTransactionHandler> override {
     auto th = std::make_unique<MockDocumentStateTransactionHandler>();
     transactionHandler = th.get();
-    return std::move(th);
+    return th;
   }
 
   std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler;
@@ -233,7 +269,8 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
     builder.add("testfoo", "testbar");
     ob->close();
 
-    auto logIndex = LogIndex{2};
+    // starting from index 3 because the 2nd is an AbortAllOngoingTrx
+    auto logIndex = LogIndex{3};
     auto operation = OperationType::kInsert;
     auto tid = TransactionId{1};
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
@@ -263,7 +300,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
 
   // commit operation
   {
-    auto logIndex = LogIndex{3};
+    auto logIndex = LogIndex{4};
     auto operation = OperationType::kCommit;
     auto tid = TransactionId{1};
     auto trx = transactionHandler->getTransaction(tid);

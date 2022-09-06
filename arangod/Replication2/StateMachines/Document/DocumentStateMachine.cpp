@@ -26,7 +26,6 @@
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
@@ -52,7 +51,8 @@ auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
 
 auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentLeaderState> {
-  return std::make_shared<DocumentLeaderState>(std::move(core));
+  return std::make_shared<DocumentLeaderState>(std::move(core),
+                                               _handlersFactory);
 }
 
 auto DocumentFactory::constructCore(GlobalLogIdentifier gid,

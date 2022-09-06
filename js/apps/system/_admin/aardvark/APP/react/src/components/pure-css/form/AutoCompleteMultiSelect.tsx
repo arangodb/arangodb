@@ -1,14 +1,17 @@
 /* eslint-disable jsx-a11y/anchor-is-valid,jsx-a11y/anchor-has-content */
 import React, { MouseEvent, ReactNode, useEffect, useState } from "react";
 import AutoCompleteTextInput from "./AutoCompleteTextInput";
-import { defaultsDeep, uniqueId } from "lodash";
+import { defaultsDeep, isNumber, isString, uniqueId } from "lodash";
 import PlainLabel from "./PlainLabel";
 
 type AutoCompleteMultiSelectProps = {
   id?: string;
   label?: ReactNode;
   disabled?: boolean;
-  values: string[] | number[];
+  values: string[] | number[] | {
+    key: string;
+    value: ReactNode;
+  }[];
   onRemove: (value: string | number) => void;
   onSelect: (value: string | number) => void;
   maxOptions?: number;
@@ -69,11 +72,20 @@ const AutoCompleteMultiSelect = ({
         flexWrap: 'wrap'
       }}>
         {
-          values.map(value =>
-            <li className={'select2-search-choice'} key={value}>
+          values.map(value => isString(value) || isNumber(value)
+            ? <li className={'select2-search-choice'} key={value} style={{
+              paddingLeft: 25
+            }}>
               <div>{value}</div>
               <a href={'#'} className={'select2-search-choice-close'} tabIndex={-1}
                  onClick={getRemoveHandler(value)}/>
+            </li>
+            : <li className={'select2-search-choice'} key={value.key} style={{
+              paddingLeft: 25
+            }}>
+              <div>{value.value}</div>
+              <a href={'#'} className={'select2-search-choice-close'} tabIndex={-1}
+                 onClick={getRemoveHandler(value.key)}/>
             </li>
           )
         }
@@ -83,9 +95,9 @@ const AutoCompleteMultiSelect = ({
         }}>
           <AutoCompleteTextInput key={1} minChars={1} spacer={''} onSelect={handleSelect} matchAny={true}
                                  value={value} onChange={setValue} options={options}
-                                 disabled={disabled} {...rest}/>
+                                 disabled={disabled} style={{ cursor: 'default' }} {...rest}/>
           {
-            value && !((options || []) as string[]).includes(value as string)
+            options && value && !(options as string[]).includes(value as string)
               ? <div style={{ color: 'red' }}>{errorMsg}</div>
               : null
           }

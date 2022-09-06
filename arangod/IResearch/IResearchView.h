@@ -55,7 +55,6 @@ namespace iresearch {
 ///////////////////////////////////////////////////////////////////////////////
 
 class IResearchFeature;
-class AsyncLinkHandle;
 template<typename T>
 class AsyncValue;
 
@@ -83,7 +82,7 @@ class IResearchView final : public LogicalView {
 
  public:
   static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
-    return {ViewType::kView, StaticStrings::ViewType};
+    return {ViewType::kArangoSearch, StaticStrings::ViewArangoSearchType};
   }
 
   ~IResearchView() final;
