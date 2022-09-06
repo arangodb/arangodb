@@ -43,7 +43,6 @@ function runSetup () {
   db._dropView('UnitTestsRecoveryView2');
   try { analyzers.remove('calcAnalyzer', true); } catch(e) {}
 
-
   analyzers.save('calcAnalyzer',"aql",{queryString:"RETURN SOUNDEX(@param)"});
   var i1 = c.ensureIndex({ type: "inverted", name: "i1", fields: [ "a", "b", "c" ] });
   var i2 = c.ensureIndex({ type: "inverted", name: "i2", includeAllFields:true, analyzer: "calcAnalyzer", fields: [ "a", "b", "c" ] });
