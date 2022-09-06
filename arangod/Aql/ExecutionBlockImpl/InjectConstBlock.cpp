@@ -26,6 +26,7 @@
 #include <Aql/ConstFetcher.h>
 #include <Aql/ExecutionEngine.h>
 #include <Aql/IdExecutor.h>
+#include <Aql/ExecutionBlockImpl.tpp>
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
 // Without the namespaces it fails with
@@ -88,4 +89,5 @@ ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
   return ExecutionBlock::initializeCursor(input);
 }
 
+template class ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 }  // namespace arangodb::aql

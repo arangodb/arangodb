@@ -127,8 +127,6 @@ std::unordered_map<int, std::string const> const typeNames{
 
 }  // namespace
 
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
-
 namespace arangodb::aql {
 ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
 
