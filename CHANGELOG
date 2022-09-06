@@ -4,6 +4,10 @@ v3.10.0 (XXXX-XX-XX)
 
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
+* Fixed SEARCH-343 Fixed iterating all documents with nested fields
+
+* Fixed SEARCH-322 Fixed executing empty nested condition
+
 * Updated arangosync to v2.12.0-preview-11.
 
 * Fixed SEARCH-369: add a compatibility check to the search-alias view for
