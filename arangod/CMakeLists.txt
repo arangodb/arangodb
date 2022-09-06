@@ -359,7 +359,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/EnumerateListExecutor.cpp
   Aql/EnumeratePathsExecutor.cpp
   Aql/ExecutionBlock.cpp
-  Aql/ExecutionBlockImpl/InjectConstBlock.cpp
+  Aql/ExecutionBlockImpl/IdExecutorConstFetcher.cpp
   Aql/ExecutionBlockImpl/GetOutputRegisterId.cpp
   Aql/ExecutionBlockImpl/Subquery.cpp
   Aql/ExecutionEngine.cpp
