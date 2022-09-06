@@ -313,22 +313,16 @@ arangodb::Result applyDataSourceRegistrationCallbacks(
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
-void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
-                                arangodb::transaction::Status status) noexcept {
+Result applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
+                                  arangodb::transaction::Status status) noexcept
+    try {
   TRI_ASSERT(arangodb::transaction::Status::ABORTED == status ||
              arangodb::transaction::Status::COMMITTED == status ||
              arangodb::transaction::Status::RUNNING == status);
-  //  TRI_ASSERT(!trx.state()  // for embeded transactions status is not always
-  //  updated
-  //             || (trx.state()->isTopLevelTransaction() &&
-  //             trx.state()->status() == status) ||
-  //             (!trx.state()->isTopLevelTransaction() &&
-  //              arangodb::transaction::Status::RUNNING ==
-  //              trx.state()->status()));
 
   auto* state = trx.state();
   if (!state) {
-    return;  // nothing to apply
+    return {};  // nothing to apply
   }
 
   TRI_ASSERT(trx.isMainTransaction());
@@ -336,8 +330,10 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
   auto* callbacks = getStatusChangeCallbacks(*state);
 
   if (!callbacks) {
-    return;  // no callbacks to apply
+    return {};  // no callbacks to apply
   }
+
+  Result res;
 
   // no need to lock since transactions are single-threaded
   for (auto& callback : *callbacks) {
@@ -345,10 +341,30 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
 
     try {
       (*callback)(trx, status);
-    } catch (...) {
+    } catch (basics::Exception const& ex) {
       // we must not propagate exceptions from here
+      if (res.ok()) {
+        // only track the first error
+        res = {ex.code(), ex.what()};
+      }
+    } catch (std::exception const& ex) {
+      // we must not propagate exceptions from here
+      if (res.ok()) {
+        // only track the first error
+        res = {TRI_ERROR_INTERNAL, ex.what()};
+      }
+    } catch (...) {
+      if (res.ok()) {
+        res = {
+            TRI_ERROR_INTERNAL,
+            "caught unknown exception while applying status change callbacks"};
+      }
     }
   }
+
+  return res;
+} catch (...) {
+  return Result(TRI_ERROR_OUT_OF_MEMORY);
 }
 
 void throwCollectionNotFound(std::string const& name) {
@@ -663,6 +679,8 @@ Result transaction::Methods::begin() {
                                    "invalid transaction state");
   }
 
+  Result res;
+
   if (_mainTransaction) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     bool a = _localHints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
@@ -670,17 +688,15 @@ Result transaction::Methods::begin() {
     TRI_ASSERT(!(a && b));
 #endif
 
-    auto res = _state->beginTransaction(_localHints);
-    if (res.fail()) {
-      return res;
+    res = _state->beginTransaction(_localHints);
+    if (res.ok()) {
+      res = applyStatusChangeCallbacks(*this, Status::RUNNING);
     }
-
-    applyStatusChangeCallbacks(*this, Status::RUNNING);
   } else {
     TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   }
 
-  return Result();
+  return res;
 }
 
 auto Methods::commit() noexcept -> Result {
@@ -3235,7 +3251,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
       })
       .thenValue([this](Result res) -> Result {
         if (res.ok()) {
-          applyStatusChangeCallbacks(*this, Status::COMMITTED);
+          res = applyStatusChangeCallbacks(*this, Status::COMMITTED);
         }
         return res;
       });
@@ -3276,7 +3292,7 @@ Future<Result> Methods::abortInternal(MethodsApi api) noexcept try {
 
     res = _state->abortTransaction(this);
     if (res.ok()) {
-      applyStatusChangeCallbacks(*this, Status::ABORTED);
+      res = applyStatusChangeCallbacks(*this, Status::ABORTED);
     }
 
     return res;

@@ -36,6 +36,7 @@
 #include "IResearchDocument.h"
 #include "IResearchFilterFactory.h"
 #include "IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "Transaction/Methods.h"
 
 #include "analysis/token_attributes.hpp"
@@ -44,6 +45,8 @@
 #include <index/heap_iterator.hpp>
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 using namespace arangodb;
@@ -279,6 +282,14 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
       return;
     }
+
+    if (_index->failQueriesOnOutOfSync() && _index->isOutOfSync()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+          absl::StrCat("link ", std::to_string(_index->id().id()),
+                       " has been marked as failed and needs to be recreated"));
+    }
+
     auto& state = *(_trx->state());
 
     // TODO FIXME find a better way to look up a State
@@ -751,6 +762,11 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
         TRI_ERROR_INTERNAL,
         std::string("Failed to generate inverted index field definition")));
   }
+  if (isOutOfSync()) {
+    // index is out of sync - we need to report that
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
+  }
 }
 
 std::vector<std::vector<basics::AttributeName>> IResearchInvertedIndex::fields(
@@ -799,12 +815,22 @@ Result IResearchInvertedIndex::init(
     if (r.ok()) {
       _comparer.reset(_meta._sort);
     }
+
+    if (auto s = definition.get(StaticStrings::LinkError); s.isString()) {
+      if (s.stringView() == StaticStrings::LinkErrorOutOfSync) {
+        // mark index as out of sync
+        setOutOfSync();
+      } else if (s.stringView() == StaticStrings::LinkErrorFailed) {
+        // not implemented yet
+      }
+    }
+
     properties(_meta);
     return r;
-  } else {
-    initAsyncSelf();
-    return {};
   }
+
+  initAsyncSelf();
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1039,6 +1065,18 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (isOutOfSync()) {
+    // link is out of sync - we need to report that
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
+  }
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 bool IResearchInvertedClusterIndex::matchesDefinition(
@@ -1064,6 +1102,33 @@ bool IResearchInvertedClusterIndex::matchesDefinition(
   }
   return IResearchInvertedIndex::matchesDefinition(
       other, IResearchDataStore::_collection.vocbase());
+}
+
+std::string IResearchInvertedClusterIndex::getCollectionName() const {
+  return Index::_collection.name();
+}
+
+IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
+  auto& cmf = Index::collection()
+                  .vocbase()
+                  .server()
+                  .getFeature<metrics::ClusterMetricsFeature>();
+  auto data = cmf.getData();
+  if (!data) {
+    return {};
+  }
+  auto& metrics = data->metrics;
+  auto labels = absl::StrCat(  // clang-format off
+      "db=\"", getDbName(), "\","
+      "index=\"", name(), "\","
+      "collection=\"", getCollectionName(), "\"");  // clang-format on
+  return {
+      metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_segments", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_files", labels),
+      metrics.get<std::uint64_t>("arangodb_search_index_size", labels),
+  };
 }
 
 }  // namespace iresearch
