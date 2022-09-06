@@ -39,14 +39,13 @@ namespace algos {
 /// github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
 
 /**
- * Following the paper "Centralities in Large Networks: Algorithms and Observations",
- * linerank should be the following.
+ * Following the paper "Centralities in Large Networks: Algorithms and
+ * Observations", linerank should be the following.
  *
- * Given a directed graph G = (V, E), compute the directed graph L(G) = (V_L, E_L) as
- * V_L = E (the new vertices are the old edges) and
- * E_L = {((a,b), (b,c)) : (a,b), (b,c) in E}, i.e. there is an edge from
- * vertex (a,b) in V_L to vertex (b,c) in V_L if there are edges (a,b) and (b,c)
- * in the given graph.
+ * Given a directed graph G = (V, E), compute the directed graph L(G) = (V_L,
+ * E_L) as V_L = E (the new vertices are the old edges) and E_L = {((a,b),
+ * (b,c)) : (a,b), (b,c) in E}, i.e. there is an edge from vertex (a,b) in V_L
+ * to vertex (b,c) in V_L if there are edges (a,b) and (b,c) in the given graph.
  *
  * Now in L(G), we compute almost the pagerank, the only exception being that
  * when normalizing outgoing messages from a vertex, we divide by the total
