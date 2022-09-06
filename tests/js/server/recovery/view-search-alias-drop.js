@@ -37,20 +37,12 @@ function runSetup () {
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
-  var i1 = c.ensureIndex({ type: "inverted", name: "i3", includeAllFields:true });
 
   db._dropView('UnitTestsRecovery1');
-  var v = db._createView('UnitTestsRecovery1', 'search-alias', {});
+  var v1 = db._createView('UnitTestsRecovery1', 'search-alias', {});
+  db._dropView('UnitTestsRecovery1');
 
-  // setup link
-  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
-  v.properties(meta);
-
-  // remove link
-  var removeMeta = { indexes: [ { index: i1.name, collection: c.name(), operation: "del" } ] };
-  v.properties(removeMeta);
-
-  c.save({ name: 'crashme' }, true);
+  c.save({ _key: 'crashme' }, true);
 
   internal.debugTerminate('crashing server');
 }
@@ -63,15 +55,9 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testIResearchLinkDrop: function () {
-      let checkView = function(viewName) {
-        let v = db._view(viewName);
-        assertEqual(v.name(), viewName);
-        assertEqual(v.type(), 'search-alias');
-        let indexes = v.properties().indexes;
-        assertEqual(0, indexes.length);
-      };
-      checkView("UnitTestsRecovery1");
+    testViewDrop: function () {
+      var v1 = db._view('UnitTestsRecovery1');
+      assertEqual(v1, null);
     }
   };
 }
