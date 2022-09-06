@@ -457,7 +457,11 @@
           }
           
           if (v.storedValues !== undefined) {
-            storedValuesString = v.storedValues.join(', ');
+            if (v.type === 'inverted') {
+              storedValuesString = JSON.stringify(v.storedValues.map((v) => v.fields));
+            } else {
+              storedValuesString = v.storedValues.join(', ');
+            }
           } else {
             storedValuesString = '';
           }
