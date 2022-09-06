@@ -75,6 +75,7 @@ function recoverySuite () {
         assertEqual(indexName, indexes[0].index);
         assertEqual("UnitTestsRecoveryDummy", indexes[0].collection);
       };
+      checkView("UnitTestsRecoveryView", "i1");
 
       var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
       var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
