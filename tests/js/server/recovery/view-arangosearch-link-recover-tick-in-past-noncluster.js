@@ -1,29 +1,29 @@
 /* jshint globalstrict:false, strict:false, unused : false */
 /* global assertEqual, assertTrue, assertFalse */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief recovery tests for views
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrey Abramov
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief recovery tests for views
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;
 const internal = require('internal');
@@ -43,9 +43,8 @@ function runSetup () {
     docs.push({ value1: i, value2: "test" + i });
   }
   c.insert(docs);
-  c.ensureIndex({ type: "inverted", name: "pupa", includeAllFields:true });
 
-  let v = db._createView(vn, 'search-alias', {});
+  let v = db._createView(vn, 'arangosearch', {});
   
   internal.debugSetFailAt("StatisticsWorker::bypass");
 
@@ -55,13 +54,17 @@ function runSetup () {
   // prevent background thread from running and noting view's progress
   internal.debugSetFailAt("RocksDBBackgroundThread::run");
 
-  let meta = { indexes: [ { collection: cn, index: "pupa" } ] };
+  let meta = { links: { [cn]: { includeAllFields: true } } };
   v.properties(meta);
 
   c.insert({ _key: "lastLogTick", tick: lastTickBeforeLink }, true);
 
   internal.debugTerminate('crashing server');
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
   'use strict';
@@ -74,21 +77,17 @@ function recoverySuite () {
       let recoverTick = global.WAL_RECOVERY_START_SEQUENCE();
       assertTrue(replication.compareTicks(recoverTick, storedTick) <= 0, { recoverTick, storedTick });
 
-      let checkView = function(viewName, indexName) {
-        let v = db._view(viewName);
-        assertEqual(v.name(), viewName);
-        assertEqual(v.type(), 'search-alias');
-        let indexes = v.properties().indexes;
-        assertEqual(1, indexes.length);
-        assertEqual(indexName, indexes[0].index);
-        assertEqual(cn, indexes[0].collection);
-      };
+      let v = db._view(vn);
+      assertEqual(v.name(), vn);
+      assertEqual(v.type(), 'arangosearch');
+      let p = v.properties().links;
+      assertTrue(p.hasOwnProperty(cn));
+      assertTrue(p[cn].includeAllFields);
 
-      checkView(vn, "pupa");
-
-      let results = db._query(`FOR i IN 0..999 FOR doc IN ${vn} SEARCH doc.value1 == i RETURN doc`).toArray();
+      let results = db._query(`FOR i IN 0..999 FOR doc IN ${vn} SEARCH doc.value1 == i OPTIONS { waitForSync: true } RETURN doc`).toArray();
       assertEqual(1000, results.length);
     }
+
   };
 }
 
