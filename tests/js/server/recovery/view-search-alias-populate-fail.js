@@ -1,15 +1,12 @@
 /* jshint globalstrict:false, strict:false, unused : false */
 /* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recovery tests for views
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2022 triagens GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License")
+/// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
@@ -21,10 +18,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Copyright 2022, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -45,16 +41,21 @@ function runSetup () {
   var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
   db._view('UnitTestsRecoveryView').properties(meta);
 
-  internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushCrashAfterReleasingMinTick");
+  var tx = {
+    collections: {
+      write: ['UnitTestsRecoveryDummy']
+    },
+    action: function() {
+      var c = db.UnitTestsRecoveryDummy;
+      for (let i = 0; i < 10000; i++) {
+        c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+      }
 
-  for (let i = 0; i < 10000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-  }
-
-  c.save({ name: 'crashme' }, { waitForSync: true });
-
-  internal.debugTerminate('crashing server');
+      c.save({ name: 'crashme' }, true);
+      internal.debugTerminate('crashing server');
+    },
+    waitForSync: true
+  };
 }
 
 function recoverySuite () {
@@ -65,7 +66,7 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testIResearchLinkPopulateNoRelease: function () {
+    testIResearchLinkPopulateFail: function () {
       let checkView = function(viewName, indexName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
@@ -73,13 +74,12 @@ function recoverySuite () {
         let indexes = v.properties().indexes;
         assertEqual(1, indexes.length);
         assertEqual(indexName, indexes[0].index);
-        assertEqual("UnitTestsRecoveryView", indexes[0].collection);
+        assertEqual("UnitTestsRecoveryDummy", indexes[0].collection);
       };
       checkView("UnitTestsRecoveryView", "i1");
 
       var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(expectedResult[0], result[0]);
+      assertEqual(result[0], 0);
     }
   };
 }
