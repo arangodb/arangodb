@@ -46,7 +46,6 @@ const jsunity = require('jsunity');
 function EscapeUnicodeTrueSuite() {
   'use strict';
 
-
   return {
     testEscapeUnicodeTrue: function() {
       const testValues = ["°", "mötör", "maçã", "犬"];
