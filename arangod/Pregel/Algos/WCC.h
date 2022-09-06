@@ -39,7 +39,7 @@ struct WCC
  public:
   explicit WCC(application_features::ApplicationServer& server,
                VPackSlice userParams)
-      : SimpleAlgorithm(server, "WCC", userParams) {}
+      : SimpleAlgorithm(server, "wcc", userParams) {}
 
   bool supportsAsyncMode() const override { return false; }
   bool supportsCompensation() const override { return false; }
