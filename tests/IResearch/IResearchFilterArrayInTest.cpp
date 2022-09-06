@@ -1054,7 +1054,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                         "d['quick'].brown.fox, 2.5) RETURN d",
                         expected);
   }
-
   // empty array NONE
   {
     irs::Or expected;
@@ -4579,6 +4578,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "FOR d IN collection FILTER BOOST([] AT LEAST(0) IN d.a, 2.5) RETURN d",
         expected);
   }
+
   // 0 AT LEAST NOT IN
   {
     irs::Or expected;
@@ -4601,4 +4601,49 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
                         "IN d.a, 2.5) RETURN d",
                         expected);
   }
+
+  // array ALL with nested
+#ifdef USE_ENTERPRISE
+  {
+    irs::Or expected;
+    *expected.add<irs::by_column_existence>().mutable_field() =
+        arangodb::iresearch::DocumentPrimaryKey::PK();
+    expected.boost(2.5);
+
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER BOOST([] ALL IN "
+                        "d.quick.brown.fox, 2.5) RETURN d",
+                        expected, nullptr, nullptr, "d",
+                        arangodb::iresearch::FilterOptimization::NONE, true,
+                        true, true);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER BOOST([] NONE IN "
+                        "d.quick.brown.fox, 2.5) RETURN d",
+                        expected, nullptr, nullptr, "d",
+                        arangodb::iresearch::FilterOptimization::NONE, true,
+                        true, true);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST([] AT LEAST(0) IN d.a, 2.5) RETURN d",
+        expected, nullptr, nullptr, "d",
+        arangodb::iresearch::FilterOptimization::NONE, true, true, true);
+
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER BOOST([] AT LEAST(0) NOT "
+                        "IN d.a, 2.5) RETURN d",
+                        expected, nullptr, nullptr, "d",
+                        arangodb::iresearch::FilterOptimization::NONE, true,
+                        true, true);
+  }
+  {
+    irs::Or expected;
+    auto& all = expected.add<irs::by_column_existence>();
+    *all.mutable_field() = arangodb::iresearch::DocumentPrimaryKey::PK();
+    all.boost(2.5);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER BOOST(1..3, 2.5) RETURN d",
+        expected, nullptr, nullptr, "d",
+        arangodb::iresearch::FilterOptimization::NONE, true, true, true);
+  }
+#endif
 }
