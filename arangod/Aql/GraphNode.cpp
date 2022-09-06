@@ -375,7 +375,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
           base, StaticStrings::IsDisjoint, false)),
       _enabledClusterOneShardRule(
           arangodb::basics::VelocyPackHelper::getBooleanValue(
-              base, StaticStrings::IsDisjoint, false)) {
+              base, StaticStrings::ForceOneShardAttributeValue, false)) {
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
@@ -689,8 +689,10 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 
   // Flags
-  nodes.add("isSmart", VPackValue(_isSmart));
-  nodes.add("isDisjoint", VPackValue(_isDisjoint));
+  nodes.add(StaticStrings::IsSmart, VPackValue(_isSmart));
+  nodes.add(StaticStrings::IsDisjoint, VPackValue(_isDisjoint));
+  nodes.add(StaticStrings::ForceOneShardAttributeValue,
+            VPackValue(_enabledClusterOneShardRule));
 
   // Temporary AST Nodes for conditions
   TRI_ASSERT(_tmpObjVariable != nullptr);
@@ -715,6 +717,7 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
   clone._isSmart = _isSmart;
   clone._isDisjoint = _isDisjoint;
+  clone._enabledClusterOneShardRule = _enabledClusterOneShardRule;
 }
 
 CostEstimate GraphNode::estimateCost() const {
