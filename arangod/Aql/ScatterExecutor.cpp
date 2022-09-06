@@ -26,6 +26,7 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb;

@@ -89,5 +89,4 @@ ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
   return ExecutionBlock::initializeCursor(input);
 }
 
-template class ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 }  // namespace arangodb::aql
