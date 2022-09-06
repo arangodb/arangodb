@@ -174,7 +174,8 @@ void Conductor::start() {
   state->run();
 }
 
-bool Conductor::_startGlobalStep(VPackBuilder messagesFromWorkers) {
+auto Conductor ::_postGlobalSuperStep(VPackBuilder messagesFromWorkers)
+    -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices
   // are left to process
   bool activateAll = false;
@@ -210,74 +211,20 @@ bool Conductor::_startGlobalStep(VPackBuilder messagesFromWorkers) {
       }
     }
   }
+  return PostGlobalSuperStepResult{
+      .activateAll = activateAll,
+      .finished = !proceed || done || _globalSuperstep >= _maxSuperstep};
+}
 
-  // TODO make maximum configurable
-  if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
-    if (_storeResults) {
-      changeState(conductor::StateType::Storing);
-      return false;
-    }
-    if (_inErrorAbort) {
-      changeState(conductor::StateType::FatalError);
-      return false;
-    }
-    changeState(conductor::StateType::Done);
-    return false;
-  }
-
+auto Conductor::_preGlobalSuperStep() -> bool {
   if (_masterContext) {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
     _masterContext->_reports = &_reports;
-    if (!_masterContext->preGlobalSuperstepWithResult()) {
-      changeState(conductor::StateType::FatalError);
-      return false;
-    }
+    return _masterContext->preGlobalSuperstepWithResult();
   }
-
-  auto startGssCommand = _startGssEvent(activateAll);
-
-  VPackBuilder startCommand;
-  serialize(startCommand, startGssCommand);
-  LOG_PREGEL("d98de", DEBUG)
-      << "Initiate starting GSS: " << startCommand.slice().toJson();
-  _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
-                                    ._finish = std::nullopt});
-
-  auto startResponse =
-      _sendToAllDBServers<GssStarted>(Utils::startGSSPath, startGssCommand);
-  if (startResponse.fail()) {
-    LOG_PREGEL("f34bb", ERR)
-        << "Conductor could not start GSS " << _globalSuperstep;
-    changeState(conductor::StateType::InError);
-    return false;
-  }
-  LOG_PREGEL("411a5", DEBUG)
-      << "Conductor started new gss " << _globalSuperstep;
   return true;
-}
-
-auto Conductor::_startGssEvent(bool activateAll) const -> StartGss {
-  VPackBuilder toWorkerMessages;
-  {
-    VPackObjectBuilder ob(&toWorkerMessages);
-    if (_masterContext) {
-      _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
-    }
-  }
-  VPackBuilder aggregators;
-  {
-    VPackObjectBuilder ob(&aggregators);
-    _aggregators->serializeValues(aggregators);
-  }
-  return StartGss{.executionNumber = _executionNumber,
-                  .gss = _globalSuperstep,
-                  .vertexCount = _totalVerticesCount,
-                  .edgeCount = _totalEdgesCount,
-                  .activateAll = activateAll,
-                  .toWorkerMessages = std::move(toWorkerMessages),
-                  .aggregators = std::move(aggregators)};
 }
 
 // ============ Conductor callbacks ===============
@@ -305,41 +252,6 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
       "finishedWorkerStartup, got response from {}.", loadedEvent.senderId);
 
   state->receive(loadedEvent);
-}
-
-/// Will optionally send a response, to notify the worker of converging
-/// aggregator values
-VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _callbackMutex);
-
-  auto finishedEvent = deserialize<GssFinished>(data);
-  uint64_t gss = finishedEvent.gss;
-  if (gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
-                                   _state == ExecutionState::CANCELED)) {
-    LOG_PREGEL("dc904", WARN)
-        << "Conductor did received a callback from the wrong superstep";
-    return VPackBuilder();
-  }
-
-  if (auto reports = finishedEvent.reports.slice(); reports.isArray()) {
-    _reports.appendFromSlice(reports);
-  }
-
-  // track message counts to decide when to halt or add global barriers.
-  // this will wait for a response from each worker,
-  _statistics.accumulateMessageStats(finishedEvent.senderId,
-                                     finishedEvent.messageStats.slice());
-  _ensureUniqueResponse(finishedEvent.senderId);
-  LOG_PREGEL("08142", WARN) << fmt::format(
-      "finishedWorkerStep, got response from {}.", finishedEvent.senderId);
-  // wait for the last worker to respond
-  if (_respondedServers.size() != _dbServers.size()) {
-    return VPackBuilder();
-  }
-
-  state->receive(finishedEvent);
-
-  return VPackBuilder();
 }
 
 void Conductor::cancel() {
@@ -517,8 +429,6 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
 }
 
 void Conductor::cleanup() {
-  _callbackMutex.assertLockedByCurrentThread();
-
   if (_masterContext) {
     _masterContext->postApplication();
   }
@@ -759,10 +669,6 @@ template auto Conductor::_sendToAllDBServers(
 template auto Conductor::_sendToAllDBServers(
     std::string const& path, CollectPregelResults const& message)
     -> ResultT<std::vector<PregelResults>>;
-
-template auto Conductor::_sendToAllDBServers(std::string const& path,
-                                             StartGss const& message)
-    -> ResultT<std::vector<GssStarted>>;
 
 template auto Conductor::_sendToAllDBServers(std::string const& path,
                                              StartCleanup const& message)

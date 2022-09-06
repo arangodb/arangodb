@@ -68,17 +68,18 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
-struct GssFinished : Message {
+struct GlobalSuperStepFinished : Message {
   std::string senderId;
   ExecutionNumber executionNumber;
   uint64_t gss;
   VPackBuilder reports;
   VPackBuilder messageStats;
   VPackBuilder aggregators;
-  GssFinished(){};
-  GssFinished(std::string const& senderId, ExecutionNumber executionNumber,
-              uint64_t gss, VPackBuilder reports, VPackBuilder messageStats,
-              VPackBuilder aggregators)
+  GlobalSuperStepFinished() noexcept {};
+  GlobalSuperStepFinished(std::string const& senderId,
+                          ExecutionNumber executionNumber, uint64_t gss,
+                          VPackBuilder reports, VPackBuilder messageStats,
+                          VPackBuilder aggregators)
       : senderId{senderId},
         executionNumber{executionNumber},
         gss{gss},
@@ -89,7 +90,7 @@ struct GssFinished : Message {
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, GssFinished& x) {
+auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
   return f.object(x).fields(
       f.field(Utils::senderKey, x.senderId),
       f.field(Utils::executionNumberKey, x.executionNumber),
@@ -219,7 +220,7 @@ auto inspect(Inspector& f, PrepareGlobalSuperStep& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
-struct StartGss {
+struct RunGlobalSuperStep {
   ExecutionNumber executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
@@ -227,10 +228,11 @@ struct StartGss {
   bool activateAll;
   VPackBuilder toWorkerMessages;
   VPackBuilder aggregators;
+  const std::string path = Utils::startGSSPath;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, StartGss& x) {
+auto inspect(Inspector& f, RunGlobalSuperStep& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),

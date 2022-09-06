@@ -23,6 +23,8 @@
 
 #include "Worker.h"
 
+#include "Basics/MutexLocker.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
@@ -251,47 +253,74 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
   }
 }
 
-/// @brief Setup next superstep
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
-  // Only expect serial calls from the conductor.
-  // Lock to prevent malicous activity
-  MUTEX_LOCKER(guard, _commandMutex);
-  if (_state != WorkerState::PREPARING) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Cannot start a gss when the worker is not prepared");
-  }
-
-  LOG_PREGEL("d5e44", DEBUG) << "Starting GSS: " << data.toJson();
-  auto event = deserialize<StartGss>(data);
-
-  const uint64_t gss = event.gss;
+auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
+    -> Result {
+  const uint64_t gss = message.gss;
   if (gss != _config.globalSuperstep()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
+    return Result{TRI_ERROR_BAD_PARAMETER, "Wrong GSS"};
   }
-
-  if (event.activateAll) {
+  if (message.activateAll) {
     for (auto vertices = _graphStore->vertexIterator(); vertices.hasMore();
          ++vertices) {
       vertices->setActive(true);
     }
   }
-
   _workerAggregators->resetValues();
-  _conductorAggregators->setAggregatedValues(event.aggregators.slice());
+  _conductorAggregators->setAggregatedValues(message.aggregators.slice());
   // execute context
   if (_workerContext) {
-    _workerContext->_vertexCount = event.vertexCount;
-    _workerContext->_edgeCount = event.edgeCount;
+    _workerContext->_vertexCount = message.vertexCount;
+    _workerContext->_edgeCount = message.edgeCount;
     _workerContext->_reports = &this->_reports;
     _workerContext->preGlobalSuperstep(gss);
     _workerContext->preGlobalSuperstepMasterMessage(
-        event.toWorkerMessages.slice());
+        message.toWorkerMessages.slice());
   }
+  return Result{};
+}
 
-  LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << gss;
-  _startProcessing();  // sets _state = COMPUTING;
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
+    -> futures::Future<ResultT<GlobalSuperStepFinished>> {
+  MUTEX_LOCKER(guard, _commandMutex);
+  if (_state != WorkerState::PREPARING) {
+    return Result{TRI_ERROR_INTERNAL,
+                  "Cannot start a gss when the worker is not prepared"};
+  }
+  VPackBuilder serializedMessage;
+  serialize(serializedMessage, message);
+  LOG_PREGEL("d5e44", DEBUG) << "Starting GSS: " << serializedMessage.toJson();
+
+  auto preGss = _preGlobalSuperStep(message);
+  if (preGss.fail()) {
+    return preGss;
+  }
+  LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << message.gss;
+
+  return _processVerticesInThreads().thenValue(
+      [&](auto results) -> ResultT<GlobalSuperStepFinished> {
+        if (_state != WorkerState::COMPUTING) {
+          return Result{TRI_ERROR_INTERNAL,
+                        "Worker execution aborted prematurely."};
+        }
+        for (auto& result : results) {
+          if (result.get().fail()) {
+            return Result{result.get().errorNumber(),
+                          fmt::format("Vertices could not be processed: {}",
+                                      result.get().errorMessage())};
+          }
+          auto verticesProcessed = result.get().get();
+          _runningThreads--;
+          _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
+          _workerAggregators->aggregateValues(
+              verticesProcessed.aggregator.slice());
+          _messageStats.accumulate(verticesProcessed.stats);
+          _activeCount += verticesProcessed.activeCount;
+          _reports.append(verticesProcessed.reports);
+        }
+        return _finishProcessing();
+      });
 }
 
 template<typename V, typename E, typename M>
@@ -303,12 +332,10 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
 
 /// WARNING only call this while holding the _commandMutex
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_startProcessing() {
+auto Worker<V, E, M>::_processVerticesInThreads() -> VerticesProcessedFuture {
   _state = WorkerState::COMPUTING;
   _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
   _activeCount = 0;  // active count is only valid after the run
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   size_t total = _graphStore->localVertexCount();
   size_t numSegments = _graphStore->numberVertexSegments();
@@ -321,32 +348,23 @@ void Worker<V, E, M>::_startProcessing() {
   _feature.metrics()->pregelNumberOfThreads->fetch_add(_runningThreads);
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());
-  size_t numT = _runningThreads;
 
-  auto self = shared_from_this();
-  for (size_t i = 0; i < numT; i++) {
-    scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT,
-                                                 numSegments] {
-      if (_state != WorkerState::COMPUTING) {
-        LOG_PREGEL("f0e3d", WARN) << "Execution aborted prematurely.";
-        return;
-      }
-      size_t dividend = numSegments / numT;
-      size_t remainder = numSegments % numT;
-      size_t startI = (i * dividend) + std::min(i, remainder);
-      size_t endI = ((i + 1) * dividend) + std::min(i + 1, remainder);
-      TRI_ASSERT(endI <= numSegments);
+  auto processVertices =
+      std::vector<futures::Future<ResultT<VerticesProcessed>>>{};
+  for (size_t i = 0; i < _runningThreads; i++) {
+    size_t dividend = numSegments / _runningThreads;
+    size_t remainder = numSegments % _runningThreads;
+    size_t startI = (i * dividend) + std::min(i, remainder);
+    size_t endI = ((i + 1) * dividend) + std::min(i + 1, remainder);
+    TRI_ASSERT(endI <= numSegments);
 
-      auto vertices = _graphStore->vertexIterator(startI, endI);
-      // should work like a join operation
-      if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
-        _finishedProcessing();  // last thread turns the lights out
-      }
-    });
+    auto vertices = _graphStore->vertexIterator(startI, endI);
+    processVertices.emplace_back(_processVertices(i, vertices));
   }
 
   LOG_PREGEL("425c3", DEBUG)
-      << "Starting processing using " << numT << " threads";
+      << "Starting processing using " << _runningThreads << " threads";
+  return futures::collectAll(processVertices);
 }
 
 template<typename V, typename E, typename M>
@@ -360,8 +378,13 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
-bool Worker<V, E, M>::_processVertices(
-    size_t threadId, RangeIterator<Vertex<V, E>>& vertexIterator) {
+auto Worker<V, E, M>::_processVertices(
+    size_t threadId, RangeIterator<Vertex<V, E>>& vertexIterator)
+    -> futures::Future<ResultT<VerticesProcessed>> {
+  if (_state != WorkerState::COMPUTING) {
+    return Result{TRI_ERROR_INTERNAL, "Execution aborted prematurely"};
+  }
+
   double start = TRI_microtime();
 
   // thread local caches
@@ -411,8 +434,7 @@ bool Worker<V, E, M>::_processVertices(
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
-    return false;
+    return Result{TRI_ERROR_INTERNAL, "Worker execution aborted prematurely."};
   }
   if (vertexComputation->_enterNextGSS) {
     _requestedNextGSS = true;
@@ -434,75 +456,70 @@ bool Worker<V, E, M>::_processVertices(
   inCache->clear();
   outCache->clear();
 
-  bool lastThread = false;
-  {  // only one thread at a time
-    MUTEX_LOCKER(guard, _threadMutex);
-
-    // merge the thread local stats and aggregators
-    _workerAggregators->aggregateValues(workerAggregator);
-    _messageStats.accumulate(stats);
-    _activeCount += activeCount;
-    _runningThreads--;
-    _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
-    _reports.append(std::move(vertexComputation->_reports));
-    lastThread = _runningThreads == 0;  // should work like a join operation
+  VPackBuilder aggregatorVPack;
+  {
+    VPackObjectBuilder ob(&aggregatorVPack);
+    workerAggregator.serializeValues(aggregatorVPack);
   }
-  return lastThread;
+  auto verticesProcessed =
+      VerticesProcessed{std::move(aggregatorVPack), std::move(stats),
+                        activeCount, std::move(vertexComputation->_reports)};
+  futures::Promise<ResultT<VerticesProcessed>> promise;
+  promise.setValue(ResultT<VerticesProcessed>{verticesProcessed});
+  return promise.getFuture();
 }
 
 // called at the end of a worker thread, needs mutex
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_finishedProcessing() {
+auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   {
     MUTEX_LOCKER(guard, _threadMutex);
     if (_runningThreads != 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "only one thread should ever enter this region");
+      return Result{TRI_ERROR_INTERNAL,
+                    "only one thread should ever enter this region"};
     }
   }
 
+  _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
+  if (_state != WorkerState::COMPUTING) {
+    return Result{TRI_ERROR_INTERNAL,
+                  "Worker in wrong state"};  // probably canceled
+  }
+
+  // count all received messages
+  _messageStats.receivedCount = _readCache->containedMessageCount();
+  _feature.metrics()->pregelMessagesReceived->count(
+      _readCache->containedMessageCount());
+
+  _allGssStatus.doUnderLock([this](AllGssStatus& obj) {
+    obj.push(this->_currentGssObservables.observe());
+  });
+  _currentGssObservables.zero();
+  _makeStatusCallback()();
+
+  _readCache->clear();  // no need to keep old messages around
+  _expectedGSS = _config._globalSuperstep + 1;
+  _config._localSuperstep++;
+  // only set the state here, because _processVertices checks for it
+  _state = WorkerState::IDLE;
+
+  GlobalSuperStepFinished gssFinishedEvent = _gssFinishedEvent();
   VPackBuilder event;
-  {  // only lock after there are no more processing threads
-    MUTEX_LOCKER(guard, _commandMutex);
-    _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
-    if (_state != WorkerState::COMPUTING) {
-      return;  // probably canceled
-    }
-
-    // count all received messages
-    _messageStats.receivedCount = _readCache->containedMessageCount();
-    _feature.metrics()->pregelMessagesReceived->count(
-        _readCache->containedMessageCount());
-
-    _allGssStatus.doUnderLock([this](AllGssStatus& obj) {
-      obj.push(this->_currentGssObservables.observe());
-    });
-    _currentGssObservables.zero();
-    _makeStatusCallback()();
-
-    _readCache->clear();  // no need to keep old messages around
-    _expectedGSS = _config._globalSuperstep + 1;
-    _config._localSuperstep++;
-    // only set the state here, because _processVertices checks for it
-    _state = WorkerState::IDLE;
-
-    auto gssFinishedEvent = _gssFinishedEvent();
-    serialize(event, gssFinishedEvent);
-    _reports.clear();
-
-    uint64_t tn = _config.parallelism();
-    uint64_t s = _messageStats.sendCount / tn / 2UL;
-    _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
-    _messageStats.resetTracking();
-    LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
-  }
-
-  _callConductor(Utils::finishedWorkerStepPath, event);
+  serialize(event, gssFinishedEvent);
   LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();
+  _reports.clear();
+
+  uint64_t tn = _config.parallelism();
+  uint64_t s = _messageStats.sendCount / tn / 2UL;
+  _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
+  _messageStats.resetTracking();
+  LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
+
+  return gssFinishedEvent;
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_gssFinishedEvent() const -> GssFinished {
+auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
   VPackBuilder reports;
   {
     VPackObjectBuilder o(&reports);
@@ -516,7 +533,7 @@ auto Worker<V, E, M>::_gssFinishedEvent() const -> GssFinished {
   }
   VPackBuilder aggregators;
   { VPackObjectBuilder ob(&aggregators); }
-  return GssFinished{
+  return GlobalSuperStepFinished{
       ServerState::instance()->getId(), _config.executionNumber(),
       _config.globalSuperstep(),        std::move(reports),
       std::move(messageStats),          std::move(aggregators)};

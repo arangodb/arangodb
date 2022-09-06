@@ -20,8 +20,6 @@ Storing::~Storing() {
 }
 
 auto Storing::run() -> void {
-  conductor._callbackMutex.assertLockedByCurrentThread();
-
   conductor.cleanup();
 
   LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
