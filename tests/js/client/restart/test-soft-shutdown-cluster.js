@@ -45,24 +45,8 @@ const {
 } = require('@arangodb/testutils/replicated-logs-helper');
 
 
-var graph_module = require("@arangodb/general-graph");
-var EPS = 0.0001;
-let pregel = require("@arangodb/pregel");
-
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
-
-function testAlgoStart(a, p) {
-  let pid = pregel.start(a, graphName, p);
-  assertTrue(typeof pid === "string");
-  return pid;
-}
-
-function testAlgoCheck(pid) {
-  let stats = pregel.status(pid);
-  console.warn("Pregel status:", stats);
-  return stats.state !== "running" && stats.state !== "storing";
-}
 
 function waitForAlive(timeout, baseurl, data) {
   let res;
@@ -377,11 +361,35 @@ function testSuite() {
   };
 }
 
+
+
 function testSuitePregel() {
   'use strict';
   let oldLogLevel;
   let oldLogLevelRequests;
   let coordinator;
+  
+  var graph_module = require("@arangodb/general-graph");
+  var EPS = 0.0001;
+  let pregel = require("@arangodb/pregel");
+
+  let graphGeneration = require("@arangodb/graph/graphs-generation");
+  const graphGenerator = graphGeneration.graphGenerator;
+  const unionGraph = graphGeneration.unionGraph;
+  const makeEdgeBetweenVertices = graphGeneration.makeEdgeBetweenVertices;
+  const verticesEdgesGenerator = graphGeneration.communityGenerator;
+
+  function testAlgoStart(a, p) {
+    let pid = pregel.start(a, graphName, p);
+    assertTrue(typeof pid === "string");
+    return pid;
+  }
+
+  function testAlgoCheck(pid) {
+    let stats = pregel.status(pid);
+    console.warn("Pregel status:", stats);
+    return stats.state !== "running" && stats.state !== "storing";
+  }
   return {
 
     /////////////////////////////////////////////////////////////////////////
@@ -428,39 +436,24 @@ function testSuitePregel() {
       var rel = graph_module._relation(eColl, [vColl], [vColl]);
       graph._extendEdgeDefinitions(rel);
 
-      var vertices = db[vColl];
-      var edges = db[eColl];
+      const sizes = [50, 31, 22, 10, 24, 18, 40, 40, 40, 100, 101, 113];
+      let subgraphs = [];
+      for (let i = 0; i < sizes.length; ++i) {
+          subgraphs.push(graphGenerator(verticesEdgesGenerator(vColl, `v${i}`)).makeBidirectedClique(sizes[i]));
+      }
+      let {vertices, edges} = unionGraph(subgraphs);
 
+      for (let i = 0; i < sizes.length; ++i) {
+          for (let j = i + 1; j < sizes.length; ++j) {
+              edges.push(makeEdgeBetweenVertices(vColl, i, `v${i}`, j, `v${j}`));
+              edges.push(makeEdgeBetweenVertices(vColl, j, `v${j}`, i, `v${i}`));
+          }
+      }
 
-      vertices.insert([{ _key: 'A', sssp: 3, pagerank: 0.027645934 },
-                       { _key: 'B', sssp: 2, pagerank: 0.3241496 },
-                       { _key: 'C', sssp: 3, pagerank: 0.289220 },
-                       { _key: 'D', sssp: 2, pagerank: 0.0329636 },
-                       { _key: 'E', sssp: 1, pagerank: 0.0682141 },
-                       { _key: 'F', sssp: 2, pagerank: 0.0329636 },
-                       { _key: 'G', sssp: -1, pagerank: 0.0136363 },
-                       { _key: 'H', sssp: -1, pagerank: 0.01363636 },
-                       { _key: 'I', sssp: -1, pagerank: 0.01363636 },
-                       { _key: 'J', sssp: -1, pagerank: 0.01363636 },
-                       { _key: 'K', sssp: 0, pagerank: 0.013636363 }]);
-
-      edges.insert([{ _from: vColl + '/B', _to: vColl + '/C', vertex: 'B' },
-                    { _from: vColl + '/C', _to: vColl + '/B', vertex: 'C' },
-                    { _from: vColl + '/D', _to: vColl + '/A', vertex: 'D' },
-                    { _from: vColl + '/D', _to: vColl + '/B', vertex: 'D' },
-                    { _from: vColl + '/E', _to: vColl + '/B', vertex: 'E' },
-                    { _from: vColl + '/E', _to: vColl + '/D', vertex: 'E' },
-                    { _from: vColl + '/E', _to: vColl + '/F', vertex: 'E' },
-                    { _from: vColl + '/F', _to: vColl + '/B', vertex: 'F' },
-                    { _from: vColl + '/F', _to: vColl + '/E', vertex: 'F' },
-                    { _from: vColl + '/G', _to: vColl + '/B', vertex: 'G' },
-                    { _from: vColl + '/G', _to: vColl + '/E', vertex: 'G' },
-                    { _from: vColl + '/H', _to: vColl + '/B', vertex: 'H' },
-                    { _from: vColl + '/H', _to: vColl + '/E', vertex: 'H' },
-                    { _from: vColl + '/I', _to: vColl + '/B', vertex: 'I' },
-                    { _from: vColl + '/I', _to: vColl + '/E', vertex: 'I' },
-                    { _from: vColl + '/J', _to: vColl + '/E', vertex: 'J' },
-                    { _from: vColl + '/K', _to: vColl + '/E', vertex: 'K' }]);
+      console.warn(vertices.length);
+      console.warn(edges.length);
+      db[vColl].insert(vertices);
+      db[eColl].insert(edges);
     },
 
     //////////////////////////////////////////////////////////////////////////
@@ -475,9 +468,9 @@ function testSuitePregel() {
 
     testPageRank: function () {
       // Start a pregel run:
-      let pid = testAlgoStart("pagerank", { threshold: EPS / 1000, resultField: "result", store: true });
-
+      let pid = testAlgoStart("pagerank", { threshold: EPS, resultField: "result", store: true });
       console.warn("Started pregel run:", pid);
+      // wait(0.25);
 
       // Now use soft shutdown API to shut coordinator down:
       let res = arango.DELETE("/_admin/shutdown?soft=true");
@@ -490,7 +483,7 @@ function testSuitePregel() {
       // It should fail to create a new pregel run:
       let gotException = false;
       try {
-        testAlgoStart("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
+        testAlgoStart("pagerank", { threshold: EPS, resultField: "result", store: true });
       } catch(e) {
         console.warn("Got exception for new run, good!", JSON.stringify(e));
         gotException = true;
