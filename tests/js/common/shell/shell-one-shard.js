@@ -116,12 +116,38 @@ function OneShardPropertiesSuite () {
         assertEqual(props.replicationFactor, 2);
         assertEqual(props.writeConcern, 2);
 
-        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 2, distributeShardsLike: "" });
+        try {
+          // This is forbidden, we are using more than one shard
+          db._create("test", {
+            numberOfShards: 2
+          });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+
+        try {
+          // This is forbidden, we are setting distributeShardsLike not to
+          // system setup.
+          db._create("test", {
+            distributeShardsLike: ""
+          });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+
+        // Let us create a collection with explicit replicationFactor and writeConcern
+        let c = db._create("test", {
+          writeConcern: 1,
+          replicationFactor: 1,
+        });
+
         props = c.properties();
         assertEqual(2, props.writeConcern);
         assertEqual(2, props.replicationFactor);
         assertEqual(1, props.numberOfShards);
-     
+
         checkDBServerSharding(dn, "single");
       } else {
         assertEqual(props.sharding, undefined);
@@ -193,7 +219,7 @@ function OneShardPropertiesSuite () {
         db._create("oneshardcol", { writeConcern : 5 });
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
     
@@ -213,7 +239,7 @@ function OneShardPropertiesSuite () {
         db._create("oneshardcol", { writeConcern : 5 });
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
     
@@ -251,7 +277,7 @@ function OneShardPropertiesSuite () {
         db._create("oneshardcol", { writeConcern : 5 });
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
     
@@ -271,7 +297,7 @@ function OneShardPropertiesSuite () {
         db._create("oneshardcol", { writeConcern : 5 });
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
     
@@ -298,25 +324,25 @@ function OneShardPropertiesSuite () {
           }
         }
 
-        {
-          // we want to create a normal collection
-          let col = db._create("overrideOneShardCollection", { distributeShardsLike: ""});
-          let colProperties = col.properties();
-          let graphsProperties = db._collection("_graphs").properties();
-
-          if (isCluster) {
-            assertEqual(colProperties.distributeShardsLike, "_graphs");
-            assertEqual(colProperties.replicationFactor, db._properties().replicationFactor);
+        if (isCluster) {
+          try {
+            // We set distributeShardsLike to an illegal value
+            db._create("oneshardcol", {distributeShardsLike: ""});
+            fail();
+          } catch (err) {
+            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
           }
+        } else {
+          // Should be allowed on single server
+          db._create("overrideOneShardCollection", {distributeShardsLike: ""});
         }
 
         {
           // we want to create a normal collection and have a different replication factor
           let nonDefaultReplicationFactor = 1;
-          assertNotEqual(db._properties.ReplicationFactor, nonDefaultReplicationFactor);
-          let col = db._create("overrideOneShardAndReplicationFactor", { distributeShardsLike: "", replicationFactor: nonDefaultReplicationFactor });
+          assertNotEqual(db._properties().replicationFactor, nonDefaultReplicationFactor);
+          let col = db._create("overrideOneShardAndReplicationFactor", {replicationFactor: nonDefaultReplicationFactor});
           let colProperties = col.properties();
-          let graphsProperties = db._collection("_graphs").properties();
 
           if (isCluster) {
             assertEqual(colProperties.distributeShardsLike, "_graphs");

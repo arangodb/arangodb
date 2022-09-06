@@ -555,6 +555,57 @@ TEST_F(PlanCollectionUserAPITest, test_internal_values_as_shardkeys) {
   }
 }
 
+TEST_F(PlanCollectionUserAPITest, test_distributeShardsLike_default) {
+  // We do not need any special configuration
+  // default is good enough
+  std::string defaultShardBy = "_graphs";
+  PlanCollection::DatabaseConfiguration config{};
+  config.defaultDistributeShardsLike = defaultShardBy;
+
+  // Specific shardKey is disallowed
+  auto body = createMinimumBodyWithOneValue("name", "test");
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
+  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
+  EXPECT_EQ(testee->distributeShardsLike, defaultShardBy);
+}
+
+TEST_F(PlanCollectionUserAPITest, test_oneShard_forcesDistributeShardsLike) {
+  // We do not need any special configuration
+  // default is good enough
+  std::string defaultShardBy = "_graphs";
+  PlanCollection::DatabaseConfiguration config{};
+  config.defaultDistributeShardsLike = defaultShardBy;
+  config.isOneShardDB = true;
+
+  // Specific shardKey is disallowed
+  auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
+  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
+  EXPECT_EQ(testee->distributeShardsLike, "test");
+
+  auto res = testee->validateDatabaseConfiguration(config);
+  EXPECT_FALSE(res.ok()) << "Distribute shards like violates oneShard database";
+}
+
+TEST_F(PlanCollectionUserAPITest, test_oneShard_moreShards) {
+  // We do not need any special configuration
+  // default is good enough
+  std::string defaultShardBy = "_graphs";
+  PlanCollection::DatabaseConfiguration config{};
+  config.defaultDistributeShardsLike = defaultShardBy;
+  config.isOneShardDB = true;
+
+  // Specific shardKey is disallowed
+  auto body = createMinimumBodyWithOneValue("numberOfShards", 5);
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
+  // This could already fail, as soon as we have a context
+  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
+  EXPECT_EQ(testee->numberOfShards, 5);
+
+  auto res = testee->validateDatabaseConfiguration(config);
+  EXPECT_FALSE(res.ok()) << "Number of Shards violates oneShard database";
+}
+
 // Tests for generic attributes without special needs
 GenerateBoolAttributeTest(waitForSync);
 GenerateBoolAttributeTest(doCompact);

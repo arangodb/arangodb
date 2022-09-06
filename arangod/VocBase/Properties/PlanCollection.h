@@ -37,8 +37,6 @@ class Result;
 template<typename T>
 class ResultT;
 
-struct ServerDefaults;
-
 namespace inspection {
 struct Status;
 }
@@ -63,6 +61,12 @@ struct PlanCollection {
     uint32_t minReplicationFactor = 0;
     uint32_t maxReplicationFactor = 0;
     bool enforceReplicationFactor = true;
+
+    uint64_t defaultNumberOfShards = 1;
+    uint64_t defaultReplicationFactor = 1;
+    uint64_t defaultWriteConcern = 1;
+    std::string defaultDistributeShardsLike = "";
+    bool isOneShardDB = false;
   };
 
   struct Invariants {
@@ -99,8 +103,7 @@ struct PlanCollection {
   PlanCollection();
 
   static ResultT<PlanCollection> fromCreateAPIBody(
-      arangodb::velocypack::Slice input,
-      arangodb::ServerDefaults defaultValues);
+      arangodb::velocypack::Slice input, DatabaseConfiguration config);
 
   static arangodb::velocypack::Builder toCreateCollectionProperties(
       std::vector<PlanCollection> const& collections);
@@ -203,7 +206,7 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               .transformWith(
                   PlanCollection::Transformers::ReplicationSatellite{}),
           f.field("distributeShardsLike", planCollection.distributeShardsLike)
-              .fallback(""),
+              .fallback(f.keep()),
           f.field("smartJoinAttribute", planCollection.smartJoinAttribute)
               .fallback(""),
           f.field("globallyUniqueId", planCollection.globallyUniqueId)

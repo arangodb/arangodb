@@ -652,6 +652,8 @@ Collections::create(         // create collection
   TRI_ASSERT(!vocbase.isDangling());
 
   PlanCollection::DatabaseConfiguration config(vocbase);
+
+  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   for (auto const& col : collections) {
     // TODO: Maybe we can do this within the parsing Step already.
     // but that is a cleanup for later.
@@ -659,6 +661,15 @@ Collections::create(         // create collection
     if (res.fail()) {
       return res;
     }
+
+    // make sure we have enough servers available for the replication
+    // factor
+    if (config.enforceReplicationFactor &&
+        ServerState::instance()->isCoordinator() &&
+        col.replicationFactor > ci.getCurrentDBServers().size()) {
+      return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+    }
+
     {
       // Only validate computed values
       // we do not make use of the actual ComputedValueExecutor here

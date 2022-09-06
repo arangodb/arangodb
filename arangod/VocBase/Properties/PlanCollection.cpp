@@ -23,7 +23,6 @@
 #include "PlanCollection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ServerDefaults.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -36,8 +35,8 @@
 using namespace arangodb;
 
 PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
-    TRI_vocbase_t const& database) {
-  auto& server = database.server();
+    TRI_vocbase_t const& vocbase) {
+  auto& server = vocbase.server();
   auto& cl = server.getFeature<ClusterFeature>();
   auto& db = server.getFeature<DatabaseFeature>();
   maxNumberOfShards = cl.maxNumberOfShards();
@@ -46,12 +45,23 @@ PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
   minReplicationFactor = cl.minReplicationFactor();
   maxReplicationFactor = cl.maxReplicationFactor();
   enforceReplicationFactor = false;
+  defaultNumberOfShards = 1;
+  defaultReplicationFactor =
+      std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
+  defaultWriteConcern = vocbase.writeConcern();
+
+  isOneShardDB = cl.forceOneShard() || vocbase.isOneShard();
+  if (isOneShardDB) {
+    defaultDistributeShardsLike = vocbase.shardingPrototypeName();
+  } else {
+    defaultDistributeShardsLike = "";
+  }
 }
 
 PlanCollection::PlanCollection() {}
 
 ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
-    VPackSlice input, ServerDefaults defaultValues) {
+    VPackSlice input, DatabaseConfiguration config) {
   if (!input.isObject()) {
     // Special handling to be backwards compatible error reporting
     // on "name"
@@ -62,9 +72,10 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
     // Inject certain default values.
     // This will make sure the default configuration for Sharding attributes are
     // applied
-    res.numberOfShards = defaultValues.numberOfShards;
-    res.replicationFactor = defaultValues.replicationFactor;
-    res.writeConcern = defaultValues.writeConcern;
+    res.numberOfShards = config.defaultNumberOfShards;
+    res.replicationFactor = config.defaultReplicationFactor;
+    res.writeConcern = config.defaultWriteConcern;
+    res.distributeShardsLike = config.defaultDistributeShardsLike;
 
     auto status = velocypack::deserializeWithStatus(input, res);
     if (status.ok()) {
@@ -236,6 +247,19 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
     }
     if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
       return {TRI_ERROR_BAD_PARAMETER, "'satellite' cannot use shardKeys"};
+    }
+  }
+
+  if (config.isOneShardDB) {
+    if (numberOfShards != 1) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Collection  in a 'oneShardDatabase' must have 1 shard"};
+    }
+
+    if (distributeShardsLike != config.defaultDistributeShardsLike) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Collection  in a 'oneShardDatabase' cannot define "
+              "'distributeShardsLike'"};
     }
   }
 
