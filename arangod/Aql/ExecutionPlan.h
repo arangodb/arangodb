@@ -32,6 +32,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 

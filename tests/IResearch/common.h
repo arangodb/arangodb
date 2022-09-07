@@ -56,6 +56,7 @@ class Isolate;  // forward declaration
 
 namespace arangodb {
 
+class IndexId;
 class DatabasePathFeature;  // forward declaration
 
 namespace application_features {

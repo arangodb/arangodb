@@ -29,6 +29,8 @@
 #include "Replication/SyncerId.h"
 #include "VocBase/Identifiers/ServerId.h"
 
+#include <unordered_map>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
