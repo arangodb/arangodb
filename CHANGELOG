@@ -7,6 +7,8 @@ v3.10.0 (XXXX-XX-XX)
 
 * Fix SEARCH-340 and SEARCH-341: add stats and metrics for inverted index.
 
+* Fixed BTS-926: UI showing the "create index" form to non-admin users.
+
 * Added startup option `--arangosearch.skip-recovery` to skip the recovery of
   arangosearch view links or inverted indexes.
   The startup option can be specified multiple times and is expected to either
