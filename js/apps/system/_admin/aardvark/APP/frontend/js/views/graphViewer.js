@@ -1666,13 +1666,18 @@
         });
 
         if (found === false) {
-          //newNode.originalColor = newNode.color;
-          // Viking
-          console.log("self.colors: ", self.colors);
-          console.log("self.nodeColorAttributes (in checkExpand): ", self.nodeColorAttributes);
-          //newNode.originalColor = '#00ff00';
-          //newNode.color = '#00ff00';
-          const categoryColor = self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue).color : '#f00';
+          if(!self.nodeColorAttributes.some(node => node.name === newNode.nodeColorAttributeValue)) {
+            console.log("The nodeColorAttributeValue #" + newNode.nodeColorAttributeValue + "# doesn not exist yet");
+            const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+            const nodeColorAttributeObj = {
+              'name': newNode.nodeColorAttributeValue || '',
+              'color': tempNodeColor
+            };
+            console.log("Newly created nodeColorAttribute (nodeColorAttributeObj) in checkExpand: ", nodeColorAttributeObj);
+            self.nodeColorAttributes.push(nodeColorAttributeObj);
+          }
+
+          const categoryColor = self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue).color : '#00f';
           newNode.color = categoryColor;
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
@@ -1692,6 +1697,7 @@
 
       // rerender graph
       if (newNodeCounter > 0 || newEdgeCounter > 0) {
+        console.log("RERENDER Graph in checkExpand");
         if (self.algorithm === 'force') {
           self.startLayout(true, origin);
         } else if (self.algorithm === 'fruchtermann') {
@@ -1914,6 +1920,7 @@
     },
 
     colorNodesByAttribute: function(s, attribute) {
+      console.log("Coloring node by attribute (colorNodesByAttribute)");
       var self = this;
 
       console.log("in colorNodesByAttribute (s): ", s);
@@ -1932,6 +1939,7 @@
             'name': n.nodeColorAttributeValue || '',
             'color': tempNodeColor
           };
+          console.log("Newly created nodeColorAttribute (nodeColorAttributeObj): ", nodeColorAttributeObj);
           self.nodeColorAttributes.push(nodeColorAttributeObj);
         }
         console.log("n: ", n);
@@ -2189,6 +2197,7 @@
         };
 
         s.bind('clickNode', function (e) {
+          console.log("e: ", e);
           if (self.contextState.createEdge === true) {
             self.clearMouseCanvas();
             self.removeHelp();
