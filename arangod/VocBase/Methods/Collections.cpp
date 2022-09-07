@@ -605,34 +605,6 @@ Collections::create(         // create collection
     bool enforceReplicationFactor,            // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
     bool isRestore) {
-#if false
-  std::vector<std::shared_ptr<LogicalCollection>> results;
-  results.reserve(collections.size());
-  // This block is to be replaced by proper implementation
-  {
-    // In this rudimentary forward we only support single collection, as this is
-    // the only way it is used right now.
-    TRI_ASSERT(collections.size() == 1);
-    // Just plainly forward
-    auto& planCollection = collections.at(0);
-    auto parameters = planCollection.toCollectionsCreate();
-    std::shared_ptr<LogicalCollection> coll;
-    auto res = methods::Collections::create(
-        vocbase, options,
-        planCollection.name,            // collection name
-        planCollection.getType(),       // collection type
-        parameters.slice(),             // collection properties
-        createWaitsForSyncReplication,  // replication wait flag
-        enforceReplicationFactor,       // replication factor flag
-        /*isNewDatabase*/ false,        // here always false
-        coll, planCollection.isSystem);
-    if (res.fail()) {
-      return res;
-    }
-    results.emplace_back(coll);
-    return results;
-  }
-#else
   // Let's first check if we are allowed to create the collections
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
@@ -711,34 +683,12 @@ Collections::create(         // create collection
     TRI_ASSERT(ServerState::instance()->isSingleServer() ||
                ServerState::instance()->isDBServer() ||
                ServerState::instance()->isAgent());
-    // TODO: Need to get rid of this collection. Distribute Shards like
-    // is now denoted inside the PlanCollection
-    std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
-    /// Code from here is copy pasted from original create and
-    /// has not been refacored yet.
-    VPackBuilder builder =
-        PlanCollection::toCreateCollectionProperties(collections);
-    VPackSlice infoSlice = builder.slice();
-
-    TRI_ASSERT(infoSlice.isArray());
-    TRI_ASSERT(infoSlice.length() >= 1);
-    TRI_ASSERT(infoSlice.length() == collections.size());
-
-    try {
-      // Here we do have a single server setup, or we're either on a DBServer
-      // / Agency. In that case, we're not batching collection creating.
-      // Therefore, we need to iterate over the infoSlice and create each
-      // collection one by one.
-      results = {vocbase.createCollections(
-          infoSlice, allowEnterpriseCollectionsOnSingleServer)};
-
-    } catch (basics::Exception const& ex) {
-      return Result(ex.code(), ex.what());
-    } catch (std::exception const& ex) {
-      return Result(TRI_ERROR_INTERNAL, ex.what());
-    } catch (...) {
-      return Result(TRI_ERROR_INTERNAL, "cannot create collection");
-    }
+    // Here we do have a single server setup, or we're either on a DBServer
+    // / Agency. In that case, we're not batching collection creating.
+    // Therefore, we need to iterate over the infoSlice and create each
+    // collection one by one.
+    results = vocbase.createCollections(
+        collections, allowEnterpriseCollectionsOnSingleServer);
   }
 
   // Grant access to the collections.
@@ -816,7 +766,6 @@ Collections::create(         // create collection
   }
 
   return results;
-#endif
 }
 
 /*static*/ arangodb::Result Collections::create(  // create collection
