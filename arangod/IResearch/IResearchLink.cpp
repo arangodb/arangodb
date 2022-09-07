@@ -45,10 +45,6 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "Metrics/Batch.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/Guard.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -63,26 +59,6 @@ using namespace std::literals;
 
 namespace arangodb::iresearch {
 namespace {
-
-DECLARE_GAUGE(arangodb_search_num_docs, uint64_t, "Number of documents");
-DECLARE_GAUGE(arangodb_search_num_live_docs, uint64_t,
-              "Number of live documents");
-DECLARE_GAUGE(arangodb_search_num_segments, uint64_t, "Number of segments");
-DECLARE_GAUGE(arangodb_search_num_files, uint64_t, "Number of files");
-DECLARE_GAUGE(arangodb_search_index_size, uint64_t,
-              "Size of the index in bytes");
-DECLARE_GAUGE(arangodb_search_num_failed_commits, uint64_t,
-              "Number of failed commits");
-DECLARE_GAUGE(arangodb_search_num_failed_cleanups, uint64_t,
-              "Number of failed cleanups");
-DECLARE_GAUGE(arangodb_search_num_failed_consolidations, uint64_t,
-              "Number of failed consolidations");
-DECLARE_GAUGE(arangodb_search_commit_time, uint64_t,
-              "Average time of few last commits");
-DECLARE_GAUGE(arangodb_search_cleanup_time, uint64_t,
-              "Average time of few last cleanups");
-DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
-              "Average time of few last consolidations");
 
 // Ensures that all referenced analyzer features are consistent.
 [[maybe_unused]] void checkAnalyzerFeatures(IResearchLinkMeta const& meta) {
@@ -115,8 +91,6 @@ DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
   checkFieldFeatures(meta, checkFieldFeatures);
 }
 
-constexpr std::string_view kSearchStats = "arangodb_search_link_stats";
-
 template<typename T>
 T getMetric(IResearchLink const& link) {
   T metric;
@@ -132,33 +106,6 @@ std::string getLabels(IResearchLink const& link) {
          "\",view=\"" + link.getViewId() +                //
          "\",collection=\"" + link.getCollectionName() +  //
          "\",shard=\"" + link.getShardName() + "\"";
-}
-
-void initCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
-                        IResearchLinkMeta& meta, uint64_t linkId) {
-  // Upgrade step for old link definition without collection name
-  // could be received from agency while shard of the collection was moved
-  // or added to the server. New links already has collection name set,
-  // but here we must get this name on our own.
-  auto& name = meta._collectionName;
-  if (name.empty()) {
-    name = ci ? ci->getCollectionNameForShard(collection.name())
-              : collection.name();
-    LOG_TOPIC("86ece", TRACE, TOPIC) << "Setting collection name '" << name
-                                     << "' for new link '" << linkId << "'";
-    if (ADB_UNLIKELY(name.empty())) {
-      LOG_TOPIC_IF("67da6", WARN, TOPIC, meta.willIndexIdAttribute())
-          << "Failed to init collection name for the link '" << linkId
-          << "'. Link will not index '_id' attribute."
-             "Please recreate the link if this is necessary!";
-    }
-#ifdef USE_ENTERPRISE
-    // enterprise name is not used in _id so should not be here!
-    if (ADB_LIKELY(!name.empty())) {
-      ClusterMethods::realNameFromSmartName(name);
-    }
-#endif
-  }
 }
 
 Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
@@ -249,7 +196,8 @@ Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {
   std::shared_ptr<IResearchView> view;
   if (clusterEnabled) {
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-    initCollectionName(_collection, wide ? nullptr : &ci, _meta, id().id());
+    clusterCollectionName(_collection, wide ? nullptr : &ci, id().id(),
+                          _meta.willIndexIdAttribute(), _meta._collectionName);
     if (auto r = toView(ci.getView(vocbase.name(), _viewGuid), view); !r.ok()) {
       return r;
     }
@@ -364,6 +312,16 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
   }
   TRI_ASSERT(_meta._sortCompression);
   _viewGuid = definition.get(StaticStrings::ViewIdField).stringView();
+
+  if (auto s = definition.get(StaticStrings::LinkError); s.isString()) {
+    if (s.stringView() == StaticStrings::LinkErrorOutOfSync) {
+      // mark index as out of sync
+      setOutOfSync();
+    } else if (s.stringView() == StaticStrings::LinkErrorFailed) {
+      // TODO: not implemented yet
+    }
+  }
+
   Result r;
   if (isSingleServer) {
     r = initSingleServer(pathExists, init);
@@ -437,6 +395,12 @@ Result IResearchLink::properties(velocypack::Builder& builder,
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType));
   builder.add(StaticStrings::ViewIdField, velocypack::Value(_viewGuid));
 
+  if (isOutOfSync()) {
+    // link is out of sync - we need to report that
+    builder.add(StaticStrings::LinkError,
+                VPackValue(StaticStrings::LinkErrorOutOfSync));
+  }
+
   return {};
 }
 
@@ -506,12 +470,22 @@ IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
   return _meta._storedValues;
 }
 
+std::string const& IResearchLink::getDbName() const noexcept {
+  return _collection.vocbase().name();
+}
+
 std::string const& IResearchLink::getViewId() const noexcept {
   return _viewGuid;
 }
 
-std::string const& IResearchLink::getDbName() const {
-  return _collection.vocbase().name();
+std::string IResearchLink::getCollectionName() const {
+  if (ServerState::instance()->isSingleServer()) {
+    return std::to_string(_collection.id().id());
+  }
+  if (ServerState::instance()->isDBServer()) {
+    return _meta._collectionName;
+  }
+  return _collection.name();
 }
 
 std::string const& IResearchLink::getShardName() const noexcept {
@@ -519,13 +493,6 @@ std::string const& IResearchLink::getShardName() const noexcept {
     return _collection.name();
   }
   return arangodb::StaticStrings::Empty;
-}
-
-std::string IResearchLink::getCollectionName() const {
-  if (ServerState::instance()->isSingleServer()) {
-    return std::to_string(_collection.id().id());
-  }
-  return _meta._collectionName;
 }
 
 bool IResearchLink::hasNested() const noexcept {

@@ -1,0 +1,21 @@
+name: arangodb_search_num_out_of_sync_links
+introducedIn: "3.9.4"
+help: |
+  Number of out-of-sync arangosearch links/inverted indexes.
+unit: number
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of arangosearch links and inverted indexes that are
+  currently out of sync. A link or inverted index is out of sync
+  if the recovery for it is intentionally skipped or a commit
+  operation on the link/index has failed.
+troubleshoot: |
+  If this metric contains a value greater than zero, the
+  log files should be checked to find out which links/indexes
+  are affected. The out-of-sync links/indexes should then
+  be dropped and recreated.
