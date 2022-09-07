@@ -174,7 +174,7 @@ std::string_view findLongestCommonPrefix(ExplicitMatcher& matcher,
   return key.substr(0, lastIndex);
 }
 
-template<bool SkipSameAnalyzer>
+template<bool SameCollection>
 std::string abstractCheckFields(auto const& lhs, auto const& rhs,
                                 bool lhsView) {
   std::string_view const lhsIs = lhsView ? "view" : "index";
@@ -196,26 +196,39 @@ std::string abstractCheckFields(auto const& lhs, auto const& rhs,
       continue;
     }
     TRI_ASSERT(it->first == prefix);
-    if (SkipSameAnalyzer && it->second.analyzer == field.second.analyzer) {
-      continue;
-    }
-    if (it->first.size() == name.size()) {
-      if constexpr (SkipSameAnalyzer) {
-        return absl::StrCat(rhsIs, " field '", name, "' analyzer '",
-                            field.second.analyzer, "' mismatches ", lhsIs,
-                            " field analyzer '", it->second.analyzer, "'");
-      } else {
-        return absl::StrCat(" same field '", name, "', collection '");
-      }
-    } else if (it->second.includeAllFields) {
-      if constexpr (SkipSameAnalyzer) {
-        return absl::StrCat(
-            rhsIs, " field '", name, "' analyzer '", field.second.analyzer,
-            "' mismatches ", lhsIs, " field '", it->first,
-            "' with includeAllFields analyzer '", it->second.analyzer, "'");
-      } else {
-        return absl::StrCat(" field '", name, "' and field '", it->first,
-                            "' with includeAllFields, collection '");
+
+    if (SameCollection ||
+        it->second.isSearchField != field.second.isSearchField ||
+        it->second.analyzer != field.second.analyzer) {
+      if (it->first.size() == name.size()) {
+        if (SameCollection) {
+          return absl::StrCat("same field '", name, "', collection '");
+        } else if (it->second.isSearchField != field.second.isSearchField) {
+          return absl::StrCat(rhsIs, " field '", name, "' searchField '",
+                              field.second.isSearchField, "' mismatches ",
+                              lhsIs, " field searchField '",
+                              it->second.isSearchField, "'");
+        } else {
+          return absl::StrCat(rhsIs, " field '", name, "' analyzer '",
+                              field.second.analyzer, "' mismatches ", lhsIs,
+                              " field analyzer '", it->second.analyzer, "'");
+        }
+      } else if (it->second.includeAllFields) {
+        if (SameCollection) {
+          return absl::StrCat("field '", name, "' and field '", it->first,
+                              "' with includeAllFields, collection '");
+        } else if (it->second.isSearchField != field.second.isSearchField) {
+          return absl::StrCat(rhsIs, " field '", name, "' searchField '",
+                              field.second.isSearchField, "' mismatches ",
+                              lhsIs, " field '", it->first,
+                              "' with includeAllFields searchField '",
+                              it->second.isSearchField, "'");
+        } else {
+          return absl::StrCat(
+              rhsIs, " field '", name, "' analyzer '", field.second.analyzer,
+              "' mismatches ", lhsIs, " field '", it->first,
+              "' with includeAllFields analyzer '", it->second.analyzer, "'");
+        }
       }
     }
   }
@@ -226,13 +239,14 @@ auto createSortedFields(IResearchInvertedIndexMeta const& index) {
   std::vector<std::pair<std::string, SearchMeta::Field>> fields;
   fields.reserve(index._fields.size() + index._includeAllFields);
   for (auto const& field : index._fields) {
-    fields.emplace_back(field.path(),
-                        SearchMeta::Field{field.analyzer()._shortName,
-                                          field._includeAllFields});
+    fields.emplace_back(
+        field.path(),
+        SearchMeta::Field{field.analyzer()._shortName, field._includeAllFields,
+                          field._isSearchField});
   }
   if (index._includeAllFields) {
-    fields.emplace_back("",
-                        SearchMeta::Field{index.analyzer()._shortName, true});
+    fields.emplace_back("", SearchMeta::Field{index.analyzer()._shortName, true,
+                                              index._isSearchField});
   }
   std::sort(fields.begin(), fields.end(), [](auto const& lhs, auto const& rhs) {
     return lhs.first < rhs.first;
@@ -243,9 +257,9 @@ auto createSortedFields(IResearchInvertedIndexMeta const& index) {
 std::string checkFieldsSameCollection(SearchMeta::Map const& search,
                                       IResearchInvertedIndexMeta const& index) {
   auto const fields = createSortedFields(index);
-  auto error = abstractCheckFields<false>(search, fields, true);
+  auto error = abstractCheckFields<true>(search, fields, true);
   if (error.empty()) {
-    error = abstractCheckFields<false>(fields, search, false);
+    error = abstractCheckFields<true>(fields, search, false);
   }
   return error;
 }
@@ -253,9 +267,9 @@ std::string checkFieldsSameCollection(SearchMeta::Map const& search,
 std::string checkFieldsDifferentCollections(
     SearchMeta::Map const& search, IResearchInvertedIndexMeta const& index) {
   auto const fields = createSortedFields(index);
-  auto error = abstractCheckFields<true>(search, fields, true);
+  auto error = abstractCheckFields<false>(search, fields, true);
   if (error.empty()) {
-    error = abstractCheckFields<true>(fields, search, false);
+    error = abstractCheckFields<false>(fields, search, false);
   }
   return error;
 }
@@ -275,15 +289,17 @@ void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
   for (auto const& field : index._fields) {
     auto it = search.lower_bound(field.path());
     if (it == search.end() || it->first != field.path()) {
-      search.emplace_hint(it, field.path(),
-                          SearchMeta::Field{field.analyzer()._shortName,
-                                            field._includeAllFields});
+      search.emplace_hint(
+          it, field.path(),
+          SearchMeta::Field{field.analyzer()._shortName,
+                            field._includeAllFields, field._isSearchField});
     } else {
       it->second.includeAllFields |= field._includeAllFields;
     }
   }
   if (index._includeAllFields) {
-    search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true});
+    search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,
+                                         index._isSearchField});
   }
 }
 
