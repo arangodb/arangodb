@@ -49,7 +49,7 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
   explicit HITS(application_features::ApplicationServer& server,
                 VPackSlice userParams)
       : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(
-            server, "HITS", userParams) {}
+            server, "hits", userParams) {}
 
   [[nodiscard]] GraphFormat<HITSValue, int8_t>* inputFormat() const override;
   [[nodiscard]] MessageFormat<SenderMessage<double>>* messageFormat()

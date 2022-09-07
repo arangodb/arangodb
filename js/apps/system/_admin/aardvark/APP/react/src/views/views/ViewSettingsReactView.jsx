@@ -9,6 +9,7 @@ import {
   usePermissions
 } from '../../utils/helpers';
 import { DeleteButton, SaveButton } from './Actions';
+import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
 import { postProcessor, useNavbar, useView } from './helpers';
 
 const ViewSettingsReactView = ({ name }) => {
@@ -53,105 +54,134 @@ const ViewSettingsReactView = ({ name }) => {
   const formState = state.formState;
   const nameEditDisabled = frontendConfig.isCluster || !isAdminUser;
 
-  return <div className={'centralContent'} id={'content'}>
-    <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
-         aria-labelledby={'myModalLabel'} aria-hidden={'true'}>
-      <div className="modal-body">
-        <div className={'tab-content'}>
-          <div className="tab-pane tab-pane-modal active" id="General">
-            <table>
-              <tbody>
-              <tr className="tableRow" id="row_change-view-name">
-                <th className="collectionTh">
-                  Name*:
-                </th>
-                <th className="collectionTh">
-                  <Textbox type={'text'} value={formState.name} onChange={updateName}
-                           required={true} disabled={nameEditDisabled}/>
-                </th>
-                <th className="collectionTh">
-                  <ToolTip
-                    title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-              </tr>
-
-              <tr className="tableRow" id="row_change-view-cleanupIntervalStep">
-                <th className="collectionTh">
-                  Cleanup Interval Step:
-                </th>
-                <th className="collectionTh">
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
-                           value={getNumericFieldValue(formState.cleanupIntervalStep)}
-                           onChange={getNumericFieldSetter('cleanupIntervalStep', dispatch)}/>
-                </th>
-                <th className="collectionTh">
-                  <ToolTip
-                    title={`ArangoSearch waits at least this many commits between removing unused files in its data directory.`}
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-              </tr>
-
-              <tr className="tableRow" id="row_change-view-commitIntervalMsec">
-                <th className="collectionTh">
-                  Commit Interval (msec):
-                </th>
-                <th className="collectionTh" style={{ width: '100%' }}>
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
-                           value={getNumericFieldValue(formState.commitIntervalMsec)}
-                           onChange={getNumericFieldSetter('commitIntervalMsec', dispatch)}/>
-                </th>
-                <th className="collectionTh">
-                  <ToolTip
-                    title="Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-              </tr>
-
-              <tr className="tableRow" id="row_change-view-consolidationIntervalMsec">
-                <th className="collectionTh">
-                  Consolidation Interval (msec):
-                </th>
-                <th className="collectionTh">
-                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
-                           value={getNumericFieldValue(formState.consolidationIntervalMsec)}
-                           onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
-                </th>
-                <th className="collectionTh">
-                  <ToolTip
-                    title="Wait at least this many milliseconds between index segments consolidations."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
-              </tr>
-              </tbody>
-            </table>
+  return <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
+              aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
+    width: 1024,
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  }}>
+    <div className="modal-body">
+      <div className={'tab-content'}>
+        <div className="tab-pane tab-pane-modal active" id="General">
+          <div style={{
+            color: '#717d90',
+            fontWeight: 600,
+            fontSize: '12.5pt',
+            padding: 10,
+            borderBottom: '1px solid rgba(0, 0, 0, .3)'
+          }}>
+            General
           </div>
-          {
-            isAdminUser
-              ? <div className="tab-pane tab-pane-modal active" id="Actions">
-                {
-                  changed
-                    ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
-                    : null
-                }
-                <DeleteButton view={formState}
-                              modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
-              </div>
-              : null
-          }
+          <table>
+            <tbody>
+            <tr className="tableRow" id="row_change-view-name">
+              <th className="collectionTh">
+                Name*:
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'text'} value={formState.name} onChange={updateName}
+                         required={true} disabled={nameEditDisabled}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
+
+            <tr className="tableRow" id="row_change-view-cleanupIntervalStep">
+              <th className="collectionTh">
+                Cleanup Interval Step:
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                         value={getNumericFieldValue(formState.cleanupIntervalStep)}
+                         onChange={getNumericFieldSetter('cleanupIntervalStep', dispatch)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title={`ArangoSearch waits at least this many commits between removing unused files in its data directory.`}
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
+
+            <tr className="tableRow" id="row_change-view-commitIntervalMsec">
+              <th className="collectionTh">
+                Commit Interval (msec):
+              </th>
+              <th className="collectionTh" style={{ width: '100%' }}>
+                <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                         value={getNumericFieldValue(formState.commitIntervalMsec)}
+                         onChange={getNumericFieldSetter('commitIntervalMsec', dispatch)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title="Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
+
+            <tr className="tableRow" id="row_change-view-consolidationIntervalMsec">
+              <th className="collectionTh">
+                Consolidation Interval (msec):
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
+                         value={getNumericFieldValue(formState.consolidationIntervalMsec)}
+                         onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title="Wait at least this many milliseconds between index segments consolidations."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
+            </tbody>
+          </table>
         </div>
+
+        <div className="tab-pane tab-pane-modal active" id="Consolidation">
+          <div style={{
+            color: '#717d90',
+            fontWeight: 600,
+            fontSize: '12.5pt',
+            padding: 10,
+            borderBottom: '1px solid rgba(0, 0, 0, .3)',
+            marginTop: 20
+          }}>
+            Consolidation Policy
+          </div>
+          <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
+                                   disabled={!isAdminUser}/>
+        </div>
+
+        {
+          isAdminUser
+            ? <div className="tab-pane tab-pane-modal active" id="Actions" style={{
+              paddingLeft: 10
+            }}>
+              {
+                changed
+                  ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+                  : null
+              }
+              <DeleteButton view={formState}
+                            modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
+            </div>
+            : null
+        }
       </div>
     </div>
   </div>;

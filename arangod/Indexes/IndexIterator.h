@@ -45,9 +45,10 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
-#include "VocBase/vocbase.h"
 
 #include <cstdint>
 #include <string_view>
@@ -66,6 +67,7 @@ class Methods;
 }
 
 struct IndexIteratorOptions;
+enum class ReadOwnWrites : bool;
 
 class IndexIteratorCoveringData {
  public:

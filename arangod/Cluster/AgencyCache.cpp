@@ -27,9 +27,13 @@
 #include "Agency/Node.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
+#include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 

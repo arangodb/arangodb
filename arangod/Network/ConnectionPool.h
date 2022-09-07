@@ -34,6 +34,7 @@
 #include <fuerte/types.h>
 #include <atomic>
 #include <chrono>
+#include <unordered_map>
 
 namespace arangodb {
 namespace fuerte {
