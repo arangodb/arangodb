@@ -79,9 +79,7 @@ void serializationChecker(ArangodServer& server,
                << serializedLhs.slice().toString()
                << " RHS:" << serializedRhs.slice().toString());
   ASSERT_EQ(serializedLhs.slice().toString(), serializedRhs.slice().toString());
-  ASSERT_EQ(metaLhs, metaRhs);  // FIXME: PrimarySort, StoredValues and etc
-                                // should present in metaRhs. At this momemnt we
-                                // loose it since serialization works wrong
+  ASSERT_EQ(metaLhs, metaRhs);
 }
 }  // namespace
 
