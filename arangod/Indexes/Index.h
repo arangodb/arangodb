@@ -275,7 +275,8 @@ class Index {
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
             type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-            type == TRI_IDX_TYPE_PERSISTENT_INDEX);
+            type == TRI_IDX_TYPE_PERSISTENT_INDEX ||
+            type == TRI_IDX_TYPE_INVERTED_INDEX);
   }
 
   virtual IndexType type() const = 0;
