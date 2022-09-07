@@ -119,7 +119,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
-  Aql/ExecutionBlockImplTestInstances.cpp
   Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
