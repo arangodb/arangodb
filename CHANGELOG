@@ -1,5 +1,8 @@
 devel
 -----
+
+* Fixed BTS-926: UI showing the "create index" form to non-admin users.
+
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
 * Fix for the Pregel's HITS algorithm using a fixed value instead of the
