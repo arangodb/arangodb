@@ -257,27 +257,32 @@
       this.unbindIndexEvents();
       var self = this;
 
-      $('#indexEditView #addIndex').bind('click', function () {
-        self.toggleNewIndexView();
-
-        $('#cancelIndex').unbind('click');
-        $('#cancelIndex').bind('click', function () {
+      arangoHelper.checkDatabasePermissions(function () {
+        $('#indexEditView #addIndex').hide();
+        $('.deleteIndex').hide();
+      }, function () {
+        $('#indexEditView #addIndex').bind('click', function () {
           self.toggleNewIndexView();
-          self.render();
+
+          $('#cancelIndex').unbind('click');
+          $('#cancelIndex').bind('click', function () {
+            self.toggleNewIndexView();
+            self.render();
+          });
+
+          $('#createIndex').unbind('click');
+          $('#createIndex').bind('click', function () {
+            self.createIndex();
+          });
         });
 
-        $('#createIndex').unbind('click');
-        $('#createIndex').bind('click', function () {
-          self.createIndex();
+        $('.deleteIndex').bind('click', function (e) {
+          self.prepDeleteIndex(e);
         });
       });
 
       $('#newIndexType').bind('change', function () {
         self.selectIndexType();
-      });
-
-      $('.deleteIndex').bind('click', function (e) {
-        self.prepDeleteIndex(e);
       });
 
       $('#infoTab a').bind('click', function (e) {
