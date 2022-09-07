@@ -53,6 +53,10 @@ class IResearchInvertedIndexMock final : public Index,
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const final;
 
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
+  }
+
   IndexType type() const final;
 
   // CHECK IT
@@ -101,8 +105,6 @@ class IResearchInvertedIndexMock final : public Index,
                 velocypack::Slice doc);
 
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const final;
-
-  void toVelocyPackFigures(velocypack::Builder& builder) const final;
 
   void unload() final;
 
