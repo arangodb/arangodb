@@ -193,11 +193,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(
       InputAqlItemRow const& input) override;
 
-  template<class exec = Executor,
-           typename =
-               std::enable_if_t<std::is_same_v<exec, IdExecutor<ConstFetcher>>>>
   auto injectConstantBlock(SharedAqlItemBlockPtr block, SkipResult skipped)
-      -> void;
+      -> void requires(std::is_same_v<Executor, IdExecutor<ConstFetcher>>);
 
   [[nodiscard]] ExecutorInfos const& executorInfos() const;
 
@@ -222,10 +219,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void collectExecStats(ExecutionStats& stats) override;
 
-  template<class exec = Executor,
-           typename = std::enable_if_t<std::is_same_v<
-               exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
-  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
+  [[nodiscard]] auto
+  getOutputRegisterId() const noexcept -> RegisterId requires(
+      std::is_same_v<Executor,
+                     IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // This is a helper method to inject a prepared
