@@ -29,37 +29,36 @@
 
 namespace arangodb::pregel::algorithms::pagerank {
 
+struct Settings {
+  double epsilon;
+  double dampingFactor;
+
+  std::string resultField;
+};
+
 struct VertexProperties {
-  uint64_t val;
+  double pageRank;
 };
 
-struct Msg1 {
-  uint64_t something;
-};
-
-struct Msg2 {
-  float something_else;
-};
+struct Global {};
 
 struct Message {
-  std::variant<Msg1, Msg2> msg;
+  double pageRank;
 };
 
-enum class Phase { Phase0, Phase1 };
-
-struct Global {
-  Phase phase;
+struct Aggregators {
+  MaxAggregator<double> difference;
 };
 
 struct PageRankData {
-  using Settings = struct {};
+  using Settings = Settings;
   using VertexProperties = VertexProperties;
   using EdgeProperties = algorithm_sdk::EmptyEdgeProperties;
   using Message = Message;
 
-  using Global = struct {};
+  using Global = Global;
 
-  using Aggregators = struct { float foo; };
+  using Aggregators = Aggregators;
 };
 
 struct PageRank : arangodb::pregel::algorithm_sdk::AlgorithmBase<PageRankData> {
@@ -67,21 +66,36 @@ struct PageRank : arangodb::pregel::algorithm_sdk::AlgorithmBase<PageRankData> {
     return "PageRank";
   }
 
-  [[nodiscard]] auto readVertexDocument(VPackSlice const& doc) const
+  [[nodiscard]] auto readVertexDocument(VPackSlice const &doc) const
       -> VertexProperties override {
-    return VertexProperties{.val = 0};
+    // TODO: numberOfVertices needs to be in context
+    return VertexProperties{.pageRank = 1.0 / numberOfVertices()};
   }
-  [[nodiscard]] auto readEdgeDocument(VPackSlice const& doc) const
+  [[nodiscard]] auto readEdgeDocument(VPackSlice const &doc) const
       -> PageRankData::EdgeProperties override {
     return PageRankData::EdgeProperties{};
   }
-  [[nodiscard]] auto writeVertexDocument(VertexProperties const& prop,
-                                         VPackSlice const& doc)
+  // modify the whole document or just a pregel-defined sub-entry
+  [[nodiscard]] auto writeVertexDocument(VertexProperties const &prop,
+                                         VPackSlice const &doc)
       -> std::shared_ptr<VPackBuilder> override {
-    return std::make_shared<VPackBuilder>();
+    auto builder = std::make_shared<VPackBuilder>();
+
+    builder.add
+
+        return builder;
   }
 
-  void conductorSetup() override{};
+  virtual auto conductorSetup() -> void override {}
+  virtual auto conductorStep(typename AlgorithmData::Global const &state)
+      -> void {}
+  virtual auto vertexStep(typename AlgorithmData::Global const &global,
+                          typename AlgorithmData::VertexProperties &props) const
+      -> void {
+
+    if (gss == 0) {
+    }
+  }
 };
 
-}  // namespace arangodb::pregel::algorithms::pagerank
+} // namespace arangodb::pregel::algorithms::pagerank
