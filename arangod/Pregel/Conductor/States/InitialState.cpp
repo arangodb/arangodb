@@ -6,6 +6,7 @@ using namespace arangodb::pregel::conductor;
 
 Initial::Initial(Conductor& conductor) : conductor{conductor} {}
 
+// todo: remove Initial
 auto Initial::run() -> void { conductor.changeState(StateType::Loading); }
 
 auto Initial::receive(Message const& message) -> void {

@@ -150,6 +150,8 @@ class OptimizerRulesFeature;
 namespace pregel {
 
 class PregelFeature;
+class PregelConductorFeature;
+// class PregelWorkerFeature;
 
 }  // namespace pregel
 namespace iresearch {
@@ -264,6 +266,8 @@ using ArangodFeatures = TypeList<
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
     pregel::PregelFeature,
+    pregel::PregelConductorFeature,
+    // pregel::PregelWorkerFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
 #ifdef _WIN32

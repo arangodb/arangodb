@@ -42,6 +42,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
+#include "Cluster/ServerState.h"
+#include "Utils/ExecContext.h"
 
 struct TRI_vocbase_t;
 
@@ -50,15 +52,29 @@ namespace arangodb::pregel {
 class Conductor;
 class IWorker;
 
+//class PregelWorkerFeature : public ArangodFeature {
+// public:
+//  static constexpr std::string_view name() noexcept { return "PregelWorker"; }
+//
+//  explicit PregelWorkerFeature(Server& server);
+//  ~PregelWorkerFeature() override;
+//
+// private:
+//  std::unordered_map<ExecutionNumber,
+//                     std::pair<std::string, std::shared_ptr<IWorker>>>
+//      _workers;
+//};
+
+
 class PregelFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Pregel"; }
 
   explicit PregelFeature(Server& server);
-  ~PregelFeature();
+  ~PregelFeature() override;
 
   ResultT<ExecutionNumber> startExecution(
-      TRI_vocbase_t& vocbase, std::string algorithm,
+      TRI_vocbase_t& vocbase, const std::string& algorithm,
       std::vector<std::string> const& vertexCollections,
       std::vector<std::string> const& edgeCollections,
       std::unordered_map<std::string, std::vector<std::string>> const&
@@ -69,13 +85,13 @@ class PregelFeature final : public ArangodFeature {
                           options) override final;
   void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions>
                            options) override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void unprepare() override final;
+  void start() final;
+  void beginShutdown() final;
+  void unprepare() final;
 
   bool isStopping() const noexcept;
 
-  auto createExecutionNumber() -> ExecutionNumber;
+  static auto createExecutionNumber() -> ExecutionNumber;
   void addConductor(std::shared_ptr<Conductor>&&,
                     ExecutionNumber executionNumber);
   std::shared_ptr<Conductor> conductor(ExecutionNumber executionNumber);
@@ -153,6 +169,22 @@ class PregelFeature final : public ArangodFeature {
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
+
+  static Result _checkAccessRightsAndCollections(
+      const std::vector<std::string>& vertexCollections,
+      const std::vector<std::string>& edgeCollections, const VPackSlice& params,
+      TRI_vocbase_t& vocbase, arangodb::ServerState* serverState);
+  static Result _checkCollections(TRI_vocbase_t& vocbase,
+                           const std::vector<std::string>& vertexCollections,
+                           const std::vector<std::string>& edgeCollections,
+                           ServerState* serverState);
+  static Result _checkAccessRightsToCollections(
+      const std::vector<std::string>& vertexCollections,
+      const std::vector<std::string>& edgeCollections,
+      const VPackSlice& params);
+  static Result _checkAccessRightsToOneCollection(const std::string& collection,
+                                           const arangodb::ExecContext& exec,
+                                           bool storeResults);
 };
 
 }  // namespace arangodb::pregel

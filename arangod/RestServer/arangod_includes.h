@@ -79,6 +79,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Conductor/PregelConductorFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"

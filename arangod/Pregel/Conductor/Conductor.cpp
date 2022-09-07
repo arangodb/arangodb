@@ -171,6 +171,7 @@ Conductor::~Conductor() {
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
   _timing.total.start();
+  // state is the Initial at this point
   state->run();
 }
 

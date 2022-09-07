@@ -99,6 +99,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::chrono::seconds _ttl = std::chrono::seconds(300);
   const DatabaseGuard _vocbaseGuard;
   const ExecutionNumber _executionNumber;
+  // todo: check that _userParams is only the userConfig parameter of
+  // Conductor::Conductor
   VPackBuilder _userParams;
   std::unique_ptr<IAlgorithm> _algorithm;
   mutable Mutex

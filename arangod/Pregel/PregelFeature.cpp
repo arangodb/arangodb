@@ -104,8 +104,119 @@ network::Headers buildHeaders() {
 
 using namespace arangodb;
 
+struct startExecutionUserParams {
+  bool store;
+  std::string shardKeyAttribute;
+  // AlgoRegistry::createAlgorithm
+
+  // SimpleAlgorithm constructor
+  std::string sourceField;
+  std::string resultField;
+  // SSSP constructor
+  std::string source;
+  std::string _resultField;
+  // ShortestPathAlgorithm constructor
+  std::string target;
+  // SLPA constructor
+  uint64_t maxCommunities;
+  // ProgrammablePregelAlgorithm::parseUserParams: no parameters yet
+  // end: AlgoRegistry
+
+  // _userParams from Conductor::Conductor(...)
+  bool async;
+  bool useMemoryMapsKey;
+  size_t parallelismKey;
+};
+
+Result PregelFeature::_checkAccessRightsToOneCollection(
+    std::string const& collection, const ExecContext& exec, bool storeResults) {
+  bool canWrite = exec.canUseCollection(collection, auth::Level::RW);
+  bool canRead = exec.canUseCollection(collection, auth::Level::RO);
+  if ((storeResults && !canWrite) || !canRead) {
+    return {TRI_ERROR_FORBIDDEN};
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
+Result PregelFeature::_checkAccessRightsToCollections(
+    std::vector<std::string> const& vertexCollections,
+    std::vector<std::string> const& edgeCollections, VPackSlice const& params) {
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.isSuperuser()) {
+    TRI_ASSERT(params.isObject());
+    VPackSlice storeSlice = params.get("store");
+    bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
+    for (std::string const& vc : vertexCollections) {
+      auto res = _checkAccessRightsToOneCollection(vc, exec, storeResults);
+      if (res.fail()) {
+        return res;
+      }
+    }
+    for (std::string const& ec : edgeCollections) {
+      auto res = _checkAccessRightsToOneCollection(ec, exec, storeResults);
+      if (res.fail()) {
+        return res;
+      }
+    }
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
+Result PregelFeature::_checkCollections(
+    TRI_vocbase_t& vocbase, std::vector<std::string> const& vertexCollections,
+    std::vector<std::string> const& edgeCollections, ServerState* serverState) {
+  for (std::string const& name : vertexCollections) {
+    if (serverState->isCoordinator()) {
+      try {
+        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+        auto coll = ci.getCollection(vocbase.name(), name);
+
+        if (coll->system()) {
+          return {TRI_ERROR_BAD_PARAMETER,
+                  "Cannot use pregel on system collection"};
+        }
+
+        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
+        }
+      } catch (...) {
+        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
+      }
+    } else if (serverState->getRole() == ServerState::ROLE_SINGLE) {
+      auto coll = vocbase.lookupCollection(name);
+
+      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
+          coll->deleted()) {
+        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
+      }
+    } else {
+      return {TRI_ERROR_INTERNAL};
+    }
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
+Result PregelFeature::_checkAccessRightsAndCollections(
+    const std::vector<std::string>& vertexCollections,
+    const std::vector<std::string>& edgeCollections, VPackSlice const& params,
+    TRI_vocbase_t& vocbase, ServerState* serverState) {
+  auto res = _checkAccessRightsToCollections(vertexCollections, edgeCollections,
+                                             params);
+  if (res.fail()) {
+    return res;
+  }
+
+  res = _checkCollections(vocbase, vertexCollections, edgeCollections,
+                          serverState);
+  if (res.fail()) {
+    return res;
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
 ResultT<ExecutionNumber> PregelFeature::startExecution(
-    TRI_vocbase_t& vocbase, std::string algorithm,
+    TRI_vocbase_t& vocbase,
+    const std::string& algorithm /*todo make string_view*/,
     std::vector<std::string> const& vertexCollections,
     std::vector<std::string> const& edgeCollections,
     std::unordered_map<std::string, std::vector<std::string>> const&
@@ -116,70 +227,21 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
                                            "pregel system not available");
   }
 
-  ServerState* ss = ServerState::instance();
+  ServerState* serverState = ServerState::instance();
 
-  // check the access rights to collections
-  ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    TRI_ASSERT(params.isObject());
-    VPackSlice storeSlice = params.get("store");
-    bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
-    for (std::string const& vc : vertexCollections) {
-      bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
-      bool canRead = exec.canUseCollection(vc, auth::Level::RO);
-      if ((storeResults && !canWrite) || !canRead) {
-        return ResultT<ExecutionNumber>::error(TRI_ERROR_FORBIDDEN);
-      }
-    }
-    for (std::string const& ec : edgeCollections) {
-      bool canWrite = exec.canUseCollection(ec, auth::Level::RW);
-      bool canRead = exec.canUseCollection(ec, auth::Level::RO);
-      if ((storeResults && !canWrite) || !canRead) {
-        return ResultT<ExecutionNumber>::error(TRI_ERROR_FORBIDDEN);
-      }
-    }
-  }
-
-  for (std::string const& name : vertexCollections) {
-    if (ss->isCoordinator()) {
-      try {
-        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-        auto coll = ci.getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
-          return ResultT<ExecutionNumber>::error(
-              TRI_ERROR_BAD_PARAMETER,
-              "Cannot use pregel on system collection");
-        }
-
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return ResultT<ExecutionNumber>::error(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-        }
-      } catch (...) {
-        return ResultT<ExecutionNumber>::error(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      auto coll = vocbase.lookupCollection(name);
-
-      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
-          coll->deleted()) {
-        return ResultT<ExecutionNumber>::error(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-    } else {
-      return ResultT<ExecutionNumber>::error(TRI_ERROR_INTERNAL);
-    }
+  auto res = _checkAccessRightsAndCollections(
+      vertexCollections, edgeCollections, params, vocbase, serverState);
+  if (res.fail()) {
+    return res;
   }
 
   std::vector<CollectionID> edgeColls;
 
   // load edge collection
+  auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   for (std::string const& name : edgeCollections) {
-    if (ss->isCoordinator()) {
+    if (serverState->isCoordinator()) {
       try {
-        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
         auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
@@ -220,7 +282,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
         return ResultT<ExecutionNumber>::error(
             TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
-    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
+    } else if (serverState->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
       if (coll == nullptr || coll->deleted()) {
@@ -239,7 +301,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
       en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
       algorithm, params, *this);
   addConductor(std::move(c), en);
-  TRI_ASSERT(conductor(en));
   conductor(en)->start();
 
   return ResultT<ExecutionNumber>::success(en);
@@ -502,11 +563,11 @@ void PregelFeature::unprepare() {
   // all pending tasks should have been finished by now, and all references
   // to conductors and workers been dropped!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  for (auto& it : cs) {
+  for (auto const& it : cs) {
     TRI_ASSERT(it.second.conductor.use_count() == 1);
   }
 
-  for (auto it : _workers) {
+  for (auto const& it : _workers) {
     TRI_ASSERT(it.second.second.use_count() == 1);
   }
 #endif
