@@ -102,9 +102,9 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
 
   ResourceUsageScope guard(_infos.getResourceMonitor());
 
-
   if (_rowIndexes.capacity() < _rowIndexes.size() + numDataRows) {
-    size_t newCapacity = std::max(_rowIndexes.capacity() * 2, _rowIndexes.size() + numDataRows);
+    size_t newCapacity =
+        std::max(_rowIndexes.capacity() * 2, _rowIndexes.size() + numDataRows);
 
     // may throw
     guard.increase((newCapacity - _rowIndexes.capacity()) *

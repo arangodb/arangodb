@@ -36,6 +36,7 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/Methods.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "VocBase/vocbase.h"
 #include "Random/RandomGenerator.h"
 
