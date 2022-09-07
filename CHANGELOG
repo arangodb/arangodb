@@ -1,6 +1,11 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Added startup option `--rocksdb.periodic-compaction-ttl`.
+  This option controls the TTL (in seconds) for periodic compaction of .sst
+  files in RocksDB, based on the .sst file age. The default value from RocksDB
+  is ~30 days. To avoid periodic auto-compaction, the option can be set to 0.
+
 * Fixed SEARCH-366: Fixed extracting sub-attributes using projections for the
   `_id` attribute (e.g. `RETURN doc.sub._id`).
 
