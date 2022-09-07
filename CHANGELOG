@@ -1,6 +1,12 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fix get snapshot on single server for search-alias view when index was removed.
+
+* Fix waitForSync options for SEARCH in non-maintainer build.
+
+* Fix SEARCH-340 and SEARCH-341: add stats and metrics for inverted index.
+
 * Fixed SEARCH-334 Added searchField option for inverted index.
 
 * Fixed SEARCH-376 Assertion fixed for non-array value in array comparison.
