@@ -28,6 +28,10 @@
 #include "Metrics/Guard.h"
 #include "RestServer/arangod.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Metrics/Batch.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/Guard.h"
+#include "Metrics/MetricsFeature.h"
 
 namespace arangodb::iresearch {
 
@@ -113,5 +117,27 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
       "gauge", "gauge", "gauge", "gauge", "gauge",
   };
 };
+
+DECLARE_GAUGE(arangodb_search_num_docs, uint64_t, "Number of documents");
+DECLARE_GAUGE(arangodb_search_num_live_docs, uint64_t,
+              "Number of live documents");
+DECLARE_GAUGE(arangodb_search_num_segments, uint64_t, "Number of segments");
+DECLARE_GAUGE(arangodb_search_num_files, uint64_t, "Number of files");
+DECLARE_GAUGE(arangodb_search_index_size, uint64_t,
+              "Size of the index in bytes");
+DECLARE_GAUGE(arangodb_search_num_failed_commits, uint64_t,
+              "Number of failed commits");
+DECLARE_GAUGE(arangodb_search_num_failed_cleanups, uint64_t,
+              "Number of failed cleanups");
+DECLARE_GAUGE(arangodb_search_num_failed_consolidations, uint64_t,
+              "Number of failed consolidations");
+DECLARE_GAUGE(arangodb_search_commit_time, uint64_t,
+              "Average time of few last commits");
+DECLARE_GAUGE(arangodb_search_cleanup_time, uint64_t,
+              "Average time of few last cleanups");
+DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
+              "Average time of few last consolidations");
+
+inline constexpr std::string_view kSearchStats = "arangodb_search_link_stats";
 
 }  // namespace arangodb::iresearch

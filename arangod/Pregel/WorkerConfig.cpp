@@ -26,6 +26,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -36,6 +37,8 @@ std::vector<ShardID> const emptyEdgeCollectionRestrictions;
 }
 
 WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
+
+std::string const& WorkerConfig::database() const { return _vocbase->name(); }
 
 void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);

@@ -39,6 +39,8 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include <atomic>
+
 namespace arangodb {
 
 struct FlushSubscription;
@@ -97,6 +99,10 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   }
 };
 
+void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
+                           uint64_t id, bool indexIdAttribute,
+                           std::string& name);
+
 class IResearchDataStore {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
@@ -137,14 +143,7 @@ class IResearchDataStore {
 
   IResearchDataStore(IndexId iid, LogicalCollection& collection);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  virtual ~IResearchDataStore() {
-    // if triggered  - no unload was called prior to deleting index object
-    TRI_ASSERT(!_dataStore);
-  }
-#else
-  virtual ~IResearchDataStore() = default;
-#endif
+  virtual ~IResearchDataStore();
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
@@ -241,6 +240,27 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   virtual Stats stats() const;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the data store to out of sync. if a data store is out of sync,
+  /// it is known to have incomplete data and may refuse to serve queries
+  /// (depending on settings). returns true if the call set the data store to
+  /// out of sync, and false if the data store was already marked as out of
+  /// sync before.
+  //////////////////////////////////////////////////////////////////////////////
+  bool setOutOfSync() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the data store is out of sync (i.e. has incomplete
+  /// data)
+  //////////////////////////////////////////////////////////////////////////////
+  bool isOutOfSync() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not queries on this data store fail should fail with an
+  /// error if the data store is out of sync.
+  //////////////////////////////////////////////////////////////////////////////
+  bool failQueriesOnOutOfSync() const noexcept;
+
  protected:
   friend struct CommitTask;
   friend struct ConsolidationTask;
@@ -274,16 +294,18 @@ class IResearchDataStore {
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
-    IResearchDataStoreMeta
-        _meta;  // runtime meta for a data store (not persisted)
+    // runtime meta for a data store (not persisted)
+    IResearchDataStoreMeta _meta;
     irs::directory::ptr _directory;
-    basics::ReadWriteLock _mutex;  // for use with member '_meta'
+    // for use with member '_meta'
+    basics::ReadWriteLock _mutex;
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
     TRI_voc_tick_t _recoveryTick{0};
-    std::atomic_bool _inRecovery{false};  // data store is in recovery
+    // data store is in recovery
+    std::atomic_bool _inRecovery{false};
     explicit operator bool() const noexcept { return _directory && _writer; }
 
     void resetDataStore() noexcept {
@@ -389,11 +411,22 @@ class IResearchDataStore {
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  protected:
+  enum class DataStoreError : uint8_t {
+    // data store has no issues
+    kNoError = 0,
+    // data store is out of sync
+    kOutOfSync = 1,
+    // data store is failed (currently not used)
+    kFailed = 2,
+  };
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
   Stats updateStatsUnsafe() const;
+
+  void initClusterMetrics() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert metrics to MetricsFeature
@@ -423,6 +456,9 @@ class IResearchDataStore {
 
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
+
+  // data store error state
+  std::atomic<DataStoreError> _error;
 
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;

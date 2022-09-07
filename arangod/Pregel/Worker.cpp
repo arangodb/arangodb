@@ -39,6 +39,7 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include "Inspection/VPack.h"
