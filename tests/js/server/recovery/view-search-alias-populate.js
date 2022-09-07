@@ -95,7 +95,7 @@ function recoverySuite () {
 
       let checkIndex = function(indexName, analyzer, includeAllFields, hasFields) {
         let c = db._collection("UnitTestsRecoveryDummy");
-        let indexes = c.getIndexes().filter(i => i.type == "inverted" && i.name == indexName);
+        let indexes = c.getIndexes().filter(i => i.type === "inverted" && i.name === indexName);
         assertEqual(1, indexes.length);
 
         let i = indexes[0];
@@ -104,11 +104,11 @@ function recoverySuite () {
         let fields = i.fields;
         if (hasFields) {
           assertEqual(3, fields.length);
-          let fieldA = fields.find(f => f.name == "a");
+          let fieldA = fields.find(f => f.name === "a");
           assertEqual("a", fieldA.name);
-          let fieldB = fields.find(f => f.name == "b");
+          let fieldB = fields.find(f => f.name === "b");
           assertEqual("b", fieldB.name);
-          let fieldC = fields.find(f => f.name == "c");
+          let fieldC = fields.find(f => f.name === "c");
           assertEqual("c", fieldC.name);
         } else {
           assertEqual(0, fields.length);
