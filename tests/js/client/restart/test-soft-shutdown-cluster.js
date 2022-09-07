@@ -30,9 +30,10 @@
 
 let jsunity = require('jsunity');
 const internal = require("internal");
-const db = require("internal").db;
+const db = internal.db;
 const time = internal.time;
 const wait = internal.wait;
+const request = require("@arangodb/request");
 const {
   getCtrlCoordinators
 } = require('@arangodb/test-helper');
@@ -41,6 +42,21 @@ function testSuite() {
   let cn = "UnitTestSoftShutdown";
 
   let coordinator;
+
+  let waitForAlive = function (timeout, baseurl, data) {
+    let tries = 0, res;
+    let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" }); 
+    const end = time() + timeout;
+    while (time() < end) {
+      res = request(all);
+      if (res.status === 200 || res.status === 401 || res.status === 403) {
+        break;
+      }
+      console.warn("waiting for server response from url " + baseurl);
+      require('internal').sleep(0.5);
+    }
+    return res.status;
+  };
 
   return {
     setUp : function() {
@@ -63,8 +79,12 @@ function testSuite() {
       // Every test is supposed to initiate a soft shutdown
       // hence, once we tear down the test we expect
       // the coordinator to be gone
+
+      // TODO,hack: At the moment windows isn't playing ball with the shutdown/restart
+      // coordinator.shutdownArangod(false);
       coordinator.waitForInstanceShutdown(30);
       coordinator.restartOneInstance();
+      waitForAlive(30, coordinator.url);
 
       // we might have been connected to the coordinator that
       // has been shut down
