@@ -2120,7 +2120,7 @@
                   }
                   _.each(data.documents[0], function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
-                      attributes += '<span class="nodeAttribute" title="' + arangoHelper.escapeHtml(value) + '">' + arangoHelper.escapeHtml(key) + '</span>';
+                      attributes += '<span class="nodeAttribute" title="' + arangoHelper.escapeHtml(value, false) + '">' + arangoHelper.escapeHtml(key, false) + '</span>';
                     }
                   });
                   var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
