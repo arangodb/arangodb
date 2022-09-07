@@ -39,6 +39,8 @@
 #include "Basics/TimeString.h"
 #include "Cluster/AutoRebalance.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
@@ -56,6 +58,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 #include "Inspection/VPack.h"
 

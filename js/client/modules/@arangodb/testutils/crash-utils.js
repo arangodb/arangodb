@@ -216,8 +216,16 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
 // / We assume the system has core files in /cores/, and we have a lldb.
 // //////////////////////////////////////////////////////////////////////////////
 
-function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
+function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid, generateCoreDump) {
   let lldbOutputFile = fs.getTempFile();
+  let gcore = '';
+  if (generateCoreDump) {
+    if (options.coreDirectory === '') {
+      gcore = ` process save-core core.${instanceInfo.pid}\\n`;
+    } else {
+      gcore = ` process save-core ${options.coreDirectory}/core.${instanceInfo.pid}\\n`;
+    }
+  }
 
   let command;
   command = '(';
@@ -228,13 +236,13 @@ function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
     command += 'frame variable\\n up \\n';
   }
   command += ` thread backtrace all\\n`;
-  command += ` process save-core /cores/core.${pid}\\n`;
+  command += gcore;
   command += ` kill\\n';`;
   command += 'sleep 10;';
   command += 'echo quit;';
   command += 'sleep 2';
   command += ') | lldb ';
-  command += ` --attach-pid ${pid}`;
+  command += ` --attach-pid ${pid} `;
   command += storeArangodPath;
   command += ' > ' + lldbOutputFile + ' 2>&1';
   const args = ['-c', command];
@@ -598,10 +606,22 @@ function aggregateDebugger(instanceInfo, options) {
   GDB_OUTPUT += `
 --------------------------------------------------------------------------------
 Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
-  let thisDump = fs.read(instanceInfo.debuggerInfo.file);
-  GDB_OUTPUT += thisDump;
-  if (options.extremeVerbosity === true && instanceInfo.debuggerInfo.verbosePrint) {
-    print(thisDump);
+  const buf = fs.readBuffer(instanceInfo.debuggerInfo.file);
+  let lineStart = 0;
+  let maxBuffer = buf.length;
+
+  for (let j = 0; j < maxBuffer; j++) {
+    if (buf[j] === 10) { // \n
+      const line = buf.asciiSlice(lineStart, j);
+      lineStart = j + 1;
+      if (line.search('bytes of data for memory region at') !== -1) {
+        continue;
+      }
+      GDB_OUTPUT += line + '\n';
+      if (options.extremeVerbosity === true && instanceInfo.debuggerInfo.verbosePrint) {
+        print(line);
+      }
+    }
   }
   return instanceInfo.debuggerInfo.hint;
 }
