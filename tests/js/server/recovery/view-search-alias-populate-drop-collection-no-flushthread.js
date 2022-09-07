@@ -7,7 +7,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2010-2022 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License")
 /// you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2022, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -37,11 +37,13 @@ function runSetup () {
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
-  db._dropView('UnitTestsRecoveryView');
 
-  var pupa = c.ensureIndex({ type: "inverted", name: "pupa", includeAllFields: true });
-  var meta = { indexes: [ { index: pupa.name, collection: c.name() } ] };
-  db._createView('UnitTestsRecoveryView', 'search-alias', meta);
+  db._dropView('UnitTestsRecoveryView');
+  db._createView('UnitTestsRecoveryView', 'search-alias', {});
+
+  var i1 = c.ensureIndex({ type: "inverted", name: "i1", fields: [ "a", "b", "c" ] });
+  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
+  db._view('UnitTestsRecoveryView').properties(meta);
 
   for (let i = 0; i < 10000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
