@@ -30,6 +30,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -39,6 +40,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/arangod.h"
+#include "VocBase/ticks.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>

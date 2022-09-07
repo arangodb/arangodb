@@ -57,6 +57,7 @@ struct Transaction;
 }
 
 class LogicalCollection;
+class LogicalDataSource;
 class RocksDBTransactionMethods;
 
 /// @brief transaction type
