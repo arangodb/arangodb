@@ -24,7 +24,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Copyright 2023, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2022, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -39,11 +39,12 @@ function runSetup () {
   db._drop('UnitTestsRecoveryDummy2');
 
   var c = db._create('UnitTestsRecoveryDummy');
-  c.ensureIndex({ type: "inverted", name: "pupa", includeAllFields:true });
-  var meta = { indexes: [ { collection: "UnitTestsRecoveryDummy", index: "pupa" } ] };
+  var i1 = c.ensureIndex({ type: "inverted", name: "i1", fields: [ "a", "b", "c" ] });
+  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
 
   db._dropView('UnitTestsRecovery1');
-  var v = db._createView('UnitTestsRecovery1', 'search-alias', meta);
+  var v = db._createView('UnitTestsRecovery1', 'search-alias', {});
+  v.properties(meta);
 
   internal.wal.flush(true, true);
   internal.debugSetFailAt("RocksDBBackgroundThread::run");
@@ -65,7 +66,7 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testIResearchLinkDropCollection: function () {
+    testIResearchLinkDropCollectionNoFlushThread: function () {
       let checkView = function(viewName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
@@ -74,9 +75,6 @@ function recoverySuite () {
         assertEqual(0, indexes.length);
       };
       checkView("UnitTestsRecovery1");
-
-      var result = db._query("FOR doc IN UnitTestsRecovery1 SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(0, result[0]);
     }
   };
 }
