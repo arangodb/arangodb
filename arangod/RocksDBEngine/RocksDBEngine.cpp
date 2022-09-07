@@ -938,6 +938,8 @@ void RocksDBEngine::start() {
                     &cfFamilies](RocksDBColumnFamilyManager::Family family) {
     rocksdb::ColumnFamilyOptions specialized =
         opts.columnFamilyOptions(family, _options, tableOptions);
+    // set TTL for .sst file compaction
+    specialized.ttl = opts._periodicCompactionTtl;
     std::string name = RocksDBColumnFamilyManager::name(family);
     cfFamilies.emplace_back(name, specialized);
   };

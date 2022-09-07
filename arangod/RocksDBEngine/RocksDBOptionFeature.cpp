@@ -159,6 +159,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _level0StopTrigger(256),
       _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
+      // note: this is a default value from RocksDB (db/column_family.cc,
+      // kAdjustedTtl):
+      _periodicCompactionTtl(30 * 24 * 60 * 60),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(
@@ -537,6 +540,13 @@ void RocksDBOptionFeature::collectOptions(
       .setIntroducedIn(30504)
       .setDeprecatedIn(30800);
 
+  options
+      ->addOption("--rocksdb.periodic-compaction-ttl",
+                  "TTL (in seconds) for periodic compaction of .sst files, "
+                  "based on file age (0 = no periodic compaction)",
+                  new UInt64Parameter(&_periodicCompactionTtl))
+      .setIntroducedIn(30903);
+
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
   //////////////////////////////////////////////////////////////////////////////
@@ -698,6 +708,7 @@ void RocksDBOptionFeature::start() {
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
       << ", level0_compaction_trigger: " << _level0CompactionTrigger
       << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
+      << ", periodic_compaction_ttl: " << _periodicCompactionTtl
       << ", enable_pipelined_write: " << _enablePipelinedWrite
       << ", optimize_filters_for_hits: " << std::boolalpha
       << _optimizeFiltersForHits << ", use_direct_reads: " << std::boolalpha

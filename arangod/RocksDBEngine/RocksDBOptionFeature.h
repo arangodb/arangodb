@@ -93,6 +93,7 @@ class RocksDBOptionFeature final
   int64_t _level0StopTrigger;
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
+  uint64_t _periodicCompactionTtl;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
