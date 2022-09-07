@@ -33,6 +33,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "Logger/LogMacros.h"

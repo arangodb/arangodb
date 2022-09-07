@@ -83,6 +83,11 @@ class instanceManager {
     this.tcpdump = null;
     this.JWT = null;
     this.cleanup = options.cleanup && options.server === undefined;
+    if (!options.hasOwnProperty('startupMaxCount')) {
+      this.startupMaxCount = 300;
+    } else {
+      this.startupMaxCount = options.startupMaxCount;
+    }
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
     }
@@ -270,8 +275,8 @@ class instanceManager {
       return false;
     }
   }
-  launchInstance() {
 
+  launchInstance() {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
@@ -281,7 +286,15 @@ class instanceManager {
 
     const startTime = time();
     try {
-      this.arangods.forEach(arangod => arangod.startArango());
+      let count = 0;
+      this.arangods.forEach(arangod => {
+        arangod.startArango();
+        count += 1;
+        if (this.options.agency &&
+            count === this.agencyConfig.agencySize) {
+          this.detectAgencyAlive();
+        }
+      });
       if (this.options.cluster) {
         this.checkClusterAlive();
       } else if (this.options.activefailover) {
@@ -956,13 +969,53 @@ class instanceManager {
     return shutdownSuccess;
   }
 
+  detectAgencyAlive() {
+    let count = 20;
+    while (count > 0) {
+      let haveConfig = 0;
+      let haveLeader = 0;
+      let leaderId = null;
+      for (let agentIndex = 0; agentIndex < this.agencyConfig.agencySize; agentIndex ++) {
+        let reply = this.agencyConfig.agencyInstances[agentIndex].getAgent('/_api/agency/config', 'GET');
+        if (this.options.extremeVerbosity) {
+          print("Response ====> ");
+          print(reply);
+        }
+        if (!reply.error && reply.code === 200) {
+          let res = JSON.parse(reply.body);
+          if (res.hasOwnProperty('lastAcked')){
+            haveLeader += 1;
+          }
+          if (res.hasOwnProperty('leaderId') && res.leaderId !== "") {
+            haveConfig += 1;
+            if (leaderId === null) {
+              leaderId = res.leaderId;
+            } else if (leaderId !== res.leaderId) {
+              haveLeader = 0;
+              haveConfig = 0;
+            }
+          }
+        }
+        if (haveLeader === 1 && haveConfig === this.agencyConfig.agencySize) {
+          print("Agency Up!");
+          return;
+        }
+        if (count === 0) {
+          throw new Error("Agency didn't come alive in time!");
+        }
+        sleep(0.5);
+        count --;
+      }
+    }
+  }
+
   detectCurrentLeader(instanceInfo) {
     let opts = {
       method: 'POST',
       jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
       headers: {'content-type': 'application/json' }
     };
-    let count = 20;
+    let count = 60;
     while (count > 0) {
       let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 
@@ -1242,7 +1295,7 @@ class instanceManager {
               throw new Error('startup failed! bailing out!');
             }
           }
-          if (count === 300) {
+          if (count === this.startupMaxCount) {
             throw new Error('startup timed out! bailing out!');
           }
         }

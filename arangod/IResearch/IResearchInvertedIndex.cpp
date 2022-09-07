@@ -37,6 +37,7 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Transaction/Methods.h"
 
 #include "analysis/token_attributes.hpp"
