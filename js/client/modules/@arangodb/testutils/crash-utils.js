@@ -596,7 +596,22 @@ function aggregateDebugger(instanceInfo, options) {
     return false;
   }
   print("waiting for debugger to terminate: " + JSON.stringify(instanceInfo.debuggerInfo));
-  print(statusExternal(instanceInfo.debuggerInfo.pid.pid, true));
+  let tearDownTimeout = 180; // s
+  while (tearDownTimeout > 0) {
+    let ret = statusExternal(instanceInfo.debuggerInfo.pid.pid, false);
+    if (ret.status === "RUNNING") {
+      sleep(1);
+      tearDownTimeout -= 1;
+      continue;
+    }
+    print(ret);
+    break;
+  }
+  if (tearDownTimeout <= 0) {
+    print(RED+"killing debugger since it did not finish its busines in 180s"+RESET);
+    killExternal(instanceInfo.debuggerInfo.pid.pid, termSignal);
+    print(statusExternal(instanceInfo.debuggerInfo.pid.pid, false));
+  }
   if (!fs.exists(instanceInfo.debuggerInfo.file)) {
     print("Failed to generate the debbugers output file for " +
           JSON.stringify(instanceInfo.getStructure()) + '\n');
