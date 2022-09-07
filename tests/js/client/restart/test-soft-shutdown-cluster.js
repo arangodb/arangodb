@@ -65,7 +65,7 @@ function testSuite() {
       // the coordinator to be gone
       coordinator.waitForInstanceShutdown(30);
       coordinator.restartOneInstance();
-
+      coordinator.checkArangoConnection(10);
       // we might have been connected to the coordinator that
       // has been shut down
       db._drop(cn);
