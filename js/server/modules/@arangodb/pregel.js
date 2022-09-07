@@ -129,7 +129,7 @@ exports.cancel = function (executionID) {
 // disappeared or never existed, but then the execution
 // is not busy.
 exports.isBusy = function (executionID) {
-  let status = db._pregelStatus();
+  let status = internal.db._pregelStatus();
   return status.state === "loading" ||
          status.state === "running" ||
          status.state === "storing";
