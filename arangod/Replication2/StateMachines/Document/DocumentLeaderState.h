@@ -54,6 +54,8 @@ struct DocumentLeaderState
                           OperationType operation, TransactionId transactionId,
                           ReplicationOptions opts) -> futures::Future<LogIndex>;
 
+  std::unordered_set<TransactionId> getActiveTransactions() const;
+
   LoggerContext const loggerContext;
   std::string_view const shardId;
   GlobalLogIdentifier const gid;

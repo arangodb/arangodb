@@ -33,7 +33,7 @@
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
 
-using namespace arangodb::replication2::replicated_state::document;
+namespace arangodb::replication2::replicated_state::document {
 
 DocumentLeaderState::DocumentLeaderState(
     std::unique_ptr<DocumentCore> core,
@@ -94,6 +94,16 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         auto stream = self->getStream();
         stream->insert(doc);
 
+        for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
+          try {
+            self->_transactionManager.abortManagedTrx(tid, self->gid.database);
+          } catch (...) {
+            LOG_CTX("894f1", WARN, self->loggerContext)
+                << "failed to abort active transaction " << self->gid
+                << " during recovery";
+          }
+        }
+
         // TODO Add a tombstone to the TransactionManager
         return {TRI_ERROR_NO_ERROR};
       });
@@ -124,5 +134,12 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
 
   return futures::Future<LogIndex>{idx};
 }
+
+std::unordered_set<TransactionId> DocumentLeaderState::getActiveTransactions()
+    const {
+  return _activeTransactions.getLockedGuard().get();
+}
+
+}  // namespace arangodb::replication2::replicated_state::document
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
