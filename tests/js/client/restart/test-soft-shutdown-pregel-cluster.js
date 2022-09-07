@@ -58,12 +58,6 @@ function testSuitePregel() {
     return pid;
   }
 
-  function testAlgoCheck(pid) {
-    let stats = pregel.status(pid);
-    console.warn("Pregel status:", stats);
-    return stats.state !== "running" && stats.state !== "storing";
-  }
-
   return {
 
     /////////////////////////////////////////////////////////////////////////
@@ -181,7 +175,7 @@ function testSuitePregel() {
       assertTrue(status.softShutdownOngoing, `expect status.softShutdownOngoing == true`);
 
       let startTime = time();
-      while (!testAlgoCheck(pid)) {
+      while (pregel.isBusy(pid)) {
         console.warn("Pregel still running...");
         wait(0.2);
         if (time() - startTime > 120) {
