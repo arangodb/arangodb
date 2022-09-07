@@ -70,13 +70,13 @@ using irs::async_utils::read_write_mutex;
 /// @brief container storing the link state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct LinkTrxState final : public TransactionState::Cookie {
-  irs::index_writer::documents_context _ctx;
   std::unique_lock<ReadMutex> _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
+  irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
   LinkTrxState(std::unique_lock<ReadMutex>&& linkLock,
                irs::index_writer& writer) noexcept
-      : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {
+      : _linkLock(std::move(linkLock)), _ctx(writer.documents()) {
     TRI_ASSERT(_linkLock.owns_lock());
   }
 
