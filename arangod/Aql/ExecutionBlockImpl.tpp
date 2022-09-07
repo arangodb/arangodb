@@ -2307,39 +2307,39 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::injectConstantBlock(
     SharedAqlItemBlockPtr block, SkipResult skipped)
     -> void requires std::same_as<Executor, IdExecutor<ConstFetcher>> {
-  if constexpr (std::same_as<Executor, IdExecutor<ConstFetcher>>) {
-    // reinitialize the DependencyProxy
-    _dependencyProxy.reset();
+  // reinitialize the DependencyProxy
+  _dependencyProxy.reset();
 
-    // destroy and re-create the Fetcher
-    _rowFetcher.~Fetcher();
-    new (&_rowFetcher) Fetcher(_dependencyProxy);
+  // destroy and re-create the Fetcher
+  _rowFetcher.~Fetcher();
+  new (&_rowFetcher) Fetcher(_dependencyProxy);
 
-    TRI_ASSERT(_skipped.nothingSkipped());
+  TRI_ASSERT(_skipped.nothingSkipped());
 
-    // Local skipped is either fresh (depth == 1)
-    // Or exactly of the size handed in
-    TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
-               _skipped.subqueryDepth() == skipped.subqueryDepth());
+  // Local skipped is either fresh (depth == 1)
+  // Or exactly of the size handed in
+  TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
+             _skipped.subqueryDepth() == skipped.subqueryDepth());
 
-    TRI_ASSERT(_state == InternalState::DONE ||
-               _state == InternalState::FETCH_DATA);
+  TRI_ASSERT(_state == InternalState::DONE ||
+             _state == InternalState::FETCH_DATA);
 
-    _state = InternalState::FETCH_DATA;
+  _state = InternalState::FETCH_DATA;
 
-    // Reset state of execute
-    _lastRange = AqlItemBlockInputRange{MainQueryState::HASMORE};
-    _hasUsedDataRangeBlock = false;
-    _upstreamState = ExecutionState::HASMORE;
+  // Reset state of execute
+  _lastRange = AqlItemBlockInputRange{MainQueryState::HASMORE};
+  _hasUsedDataRangeBlock = false;
+  _upstreamState = ExecutionState::HASMORE;
 
-    _rowFetcher.injectBlock(std::move(block), std::move(skipped));
+  _rowFetcher.injectBlock(std::move(block), std::move(skipped));
 
-    resetExecutor();
-  } else {
-    ADB_PROD_ASSERT(false);
-  }
+  resetExecutor();
 }
 
+// FIXME: this might not be used anymore; with the introduction of
+// spliced subqueries we shouldn't have the case in
+// ExecutionEngine::setupEngineRoot. Trying to ADB_PROD_ASSERT
+// this fact leads to instant crash on startup though.
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::getOutputRegisterId() const noexcept
     -> RegisterId requires std::same_as<
