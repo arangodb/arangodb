@@ -25,10 +25,11 @@
 #include "IResearchKludge.h"
 #include "IResearchFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/DownCast.h"
-
+#include "Cluster/ServerState.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Guard.h"
 #include "RestServer/FlushFeature.h"
@@ -52,6 +53,8 @@
 #include <utils/singleton.hpp>
 #include <utils/file_utils.hpp>
 #include <chrono>
+
+#include <absl/strings/str_cat.h>
 
 using namespace std::literals;
 
@@ -515,6 +518,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       // mark as data store not initialized
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
       _collection(collection),
+      _error(DataStoreError::kNoError),
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
@@ -558,6 +562,18 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
   };
 }
 
+IResearchDataStore::~IResearchDataStore() {
+  if (isOutOfSync()) {
+    TRI_ASSERT(_asyncFeature != nullptr);
+    // count down the number of out of sync links
+    _asyncFeature->untrackOutOfSyncLink();
+  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // if triggered  - no unload was called prior to deleting index object
+  TRI_ASSERT(!_dataStore);
+#endif
+}
+
 IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
   auto linkLock = _asyncSelf->lock();
   // '_dataStore' can be asynchronously modified
@@ -568,6 +584,14 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
         << id() << "'";
     return {};  // return an empty reader
   }
+  if (failQueriesOnOutOfSync() && linkLock->isOutOfSync()) {
+    // link has failed, we cannot use it for querying
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+        absl::StrCat("link ", std::to_string(linkLock->id().id()),
+                     " is out of sync and needs to be recreated"));
+  }
+
   auto reader = IResearchDataStore::reader(linkLock);
   return {std::move(linkLock), std::move(reader)};
 }
@@ -658,6 +682,7 @@ Result IResearchDataStore::commit(bool wait /*= true*/) {
 Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
+
   // must be valid if _asyncSelf->lock() is valid
   CommitResult code = CommitResult::UNDEFINED;
   auto result = linkLock->commitUnsafe(wait, &code).result;
@@ -676,6 +701,7 @@ Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
     linkLock->_cleanupIntervalCount = 0;
     std::ignore = linkLock->cleanupUnsafe();
   }
+
   return result;
 }
 
@@ -689,6 +715,29 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
   uint64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - begin)
                         .count();
+
+  TRI_IF_FAILURE("ArangoSearch::FailOnCommit") {
+    // intentionally mark the commit as failed
+    result.reset(TRI_ERROR_DEBUG);
+  }
+
+  if (result.fail() && !isOutOfSync()) {
+    // mark DataStore as out of sync if it wasn't marked like that before.
+
+    if (setOutOfSync()) {
+      // persist "outOfSync" flag in RocksDB once. note: if this fails, it will
+      // throw an exception
+      try {
+        _engine->changeCollection(collection().vocbase(), collection(), true);
+      } catch (std::exception const& ex) {
+        // we couldn't persist the outOfSync flag, but we can't mark the data
+        // store as "not outOfSync" again. not much we can do except logging.
+        LOG_TOPIC("211d2", WARN, iresearch::TOPIC)
+            << "failed to store 'outOfSync' flag for arangosearch link '"
+            << id() << "': " << ex.what();
+      }
+    }
+  }
 
   if (bool ok = result.ok(); !ok && _numFailedCommits != nullptr) {
     _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
@@ -902,6 +951,36 @@ Result IResearchDataStore::deleteDataStore() noexcept {
   return {};
 }
 
+bool IResearchDataStore::failQueriesOnOutOfSync() const noexcept {
+  return _asyncFeature->failQueriesOnOutOfSync();
+}
+
+bool IResearchDataStore::setOutOfSync() noexcept {
+  // should never be called on coordinators, only on DB servers and
+  // single servers
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto error = _error.load(std::memory_order_acquire);
+  if (error == DataStoreError::kNoError) {
+    if (_error.compare_exchange_strong(error, DataStoreError::kOutOfSync,
+                                       std::memory_order_release)) {
+      // increase metric for number of out-of-sync links, only once per link
+      TRI_ASSERT(_asyncFeature != nullptr);
+      _asyncFeature->trackOutOfSyncLink();
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool IResearchDataStore::isOutOfSync() const noexcept {
+  // the out of sync flag is expected to be set either during the
+  // recovery phase, or when a commit goes wrong.
+  return _error.load(std::memory_order_acquire) == DataStoreError::kOutOfSync;
+}
+
 void IResearchDataStore::initAsyncSelf() {
   _asyncSelf->reset();
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
@@ -917,7 +996,7 @@ Result IResearchDataStore::initDataStore(
   _asyncSelf->reset();
   // the data-store is being deallocated, link use is no longer valid
   // (wait for all the view users to finish)
-
+  _hasNestedFields = nested;
   auto& server = _collection.vocbase().server();
   if (!server.hasFeature<DatabasePathFeature>()) {
     return {TRI_ERROR_INTERNAL,
@@ -948,8 +1027,8 @@ Result IResearchDataStore::initDataStore(
 
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 
-  // must manually ensure that the data store directory exists (since not using
-  // a lockfile)
+  // must manually ensure that the data store directory exists (since not
+  // using a lockfile)
   if (!irs::file_utils::exists_directory(pathExists,
                                          _dataStore._path.c_str()) ||
       (!pathExists &&
@@ -984,7 +1063,8 @@ Result IResearchDataStore::initDataStore(
       break;
     }
 
-    case RecoveryState::IN_PROGRESS: {  // link is being created during recovery
+    case RecoveryState::IN_PROGRESS: {  // link is being created during
+                                        // recovery
       _dataStore._inRecovery.store(false, std::memory_order_release);
       _dataStore._recoveryTick = _engine->releasedTick();
       break;
@@ -1149,25 +1229,41 @@ Result IResearchDataStore::initDataStore(
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
   return dbFeature.registerPostRecoveryCallback(  // register callback
-      [asyncSelf = _asyncSelf, &flushFeature]() -> Result {
+      [asyncSelf = _asyncSelf, &flushFeature,
+       asyncFeature = _asyncFeature]() -> Result {
         auto linkLock = asyncSelf->lock();
         // ensure link does not get deallocated before callback finishes
 
         if (!linkLock) {
-          return {};  // link no longer in recovery state, i.e. during recovery
+          return {};  // link no longer in recovery state, i.e. during
+                      // recovery
           // it was created and later dropped
         }
 
         if (!linkLock->_flushSubscription) {
-          return {
-              TRI_ERROR_INTERNAL,
-              "failed to register flush subscription for arangosearch link '" +
-                  std::to_string(linkLock->id().id()) + "'"};
+          return {TRI_ERROR_INTERNAL,
+                  "failed to register flush subscription for arangosearch "
+                  "link '" +
+                      std::to_string(linkLock->id().id()) + "'"};
         }
 
         auto& dataStore = linkLock->_dataStore;
 
-        if (dataStore._recoveryTick > linkLock->_engine->recoveryTick()) {
+        // recovery finished
+        dataStore._inRecovery.store(linkLock->_engine->inRecovery(),
+                                    std::memory_order_release);
+
+        bool outOfSync = false;
+        if (asyncFeature->linkSkippedDuringRecovery(linkLock->id())) {
+          LOG_TOPIC("2721a", WARN, iresearch::TOPIC)
+              << "marking link '" << linkLock->id().id() << "' as out of sync. "
+              << "consider to drop and re-create the link in order to "
+                 "synchronize "
+              << "it.";
+
+          outOfSync = true;
+        } else if (dataStore._recoveryTick >
+                   linkLock->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, iresearch::TOPIC)
               << "arangosearch link '" << linkLock->id()
               << "' is recovered at tick '" << dataStore._recoveryTick
@@ -1177,12 +1273,23 @@ Result IResearchDataStore::initDataStore(
               << "' is out of sync with the underlying collection '"
               << linkLock->collection().name()
               << "', consider to re-create the link in order to synchronize "
-                 "them.";
+                 "it.";
+
+          outOfSync = true;
         }
 
-        // recovery finished
-        dataStore._inRecovery.store(linkLock->_engine->inRecovery(),
-                                    std::memory_order_release);
+        if (outOfSync) {
+          // mark link as out of sync
+          linkLock->setOutOfSync();
+          // persist "failed" flag in RocksDB. note: if this fails, it will
+          // throw an exception and abort the recovery & startup.
+          linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
+                                              linkLock->collection(), true);
+
+          // we cannot return an error from here as this would abort the
+          // entire recovery and fail the startup.
+          return {};
+        }
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
             << "starting sync for arangosearch link '" << linkLock->id() << "'";
@@ -1214,7 +1321,8 @@ Result IResearchDataStore::properties(IResearchDataStoreMeta const& meta) {
   auto linkLock = _asyncSelf->lock();
   // '_dataStore' can be asynchronously modified
   if (!linkLock) {
-    // the current link is no longer valid (checked after ReadLock acquisition)
+    // the current link is no longer valid (checked after ReadLock
+    // acquisition)
     return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
             "failed to lock arangosearch link while modifying properties "
             "of arangosearch link '" +
@@ -1471,7 +1579,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   }
 
   if (!linkLock) {
-    // the current link is no longer valid (checked after ReadLock acquisition)
+    // the current link is no longer valid (checked after ReadLock
+    // acquisition)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
                                    "failed to lock arangosearch link while "
                                    "truncating arangosearch link '" +
