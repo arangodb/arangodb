@@ -25,7 +25,11 @@
 
 #include <Algorithm/Algorithm.h>
 
+#include <Inspection/VPack.h>
+
 #include <variant>
+#include <string>
+#include "Algorithm.h"
 
 namespace arangodb::pregel::algorithms::pagerank {
 
@@ -35,10 +39,20 @@ struct Settings {
 
   std::string resultField;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, Settings& x) {
+  return f.object(x).fields(f.field("epsilon", x.epsilon),
+                            f.field("dampingFactor", x.dampingFactor),
+                            f.field("resultField", x.resultField));
+}
 
 struct VertexProperties {
   double pageRank;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, VertexProperties& x) {
+  return f.object(x).fields(f.field("pageRank", x.pageRank));
+}
 
 struct Global {};
 
@@ -47,7 +61,7 @@ struct Message {
 };
 
 struct Aggregators {
-  MaxAggregator<double> difference;
+  //  MaxAggregator<double> difference;
 };
 
 struct PageRankData {
@@ -65,37 +79,39 @@ struct PageRank : arangodb::pregel::algorithm_sdk::AlgorithmBase<PageRankData> {
   [[nodiscard]] constexpr auto name() const -> std::string_view override {
     return "PageRank";
   }
+  PageRank(Settings const& settings)
+      : algorithm_sdk::AlgorithmBase<PageRankData>(settings) {}
 
-  [[nodiscard]] auto readVertexDocument(VPackSlice const &doc) const
+  [[nodiscard]] auto readVertexDocument(VPackSlice const& doc) const
       -> VertexProperties override {
     // TODO: numberOfVertices needs to be in context
-    return VertexProperties{.pageRank = 1.0 / numberOfVertices()};
+    return VertexProperties{};
   }
-  [[nodiscard]] auto readEdgeDocument(VPackSlice const &doc) const
+  [[nodiscard]] auto readEdgeDocument(VPackSlice const& doc) const
       -> PageRankData::EdgeProperties override {
     return PageRankData::EdgeProperties{};
   }
   // modify the whole document or just a pregel-defined sub-entry
-  [[nodiscard]] auto writeVertexDocument(VertexProperties const &prop,
-                                         VPackSlice const &doc)
+  [[nodiscard]] auto writeVertexDocument(VertexProperties const& prop,
+                                         VPackSlice const& doc)
       -> std::shared_ptr<VPackBuilder> override {
     auto builder = std::make_shared<VPackBuilder>();
-
-    builder.add
-
-        return builder;
+    builder->add("page_rank", VPackValue(prop.pageRank));
+    return builder;
   }
 
-  virtual auto conductorSetup() -> void override {}
-  virtual auto conductorStep(typename AlgorithmData::Global const &state)
-      -> void {}
-  virtual auto vertexStep(typename AlgorithmData::Global const &global,
-                          typename AlgorithmData::VertexProperties &props) const
-      -> void {
-
-    if (gss == 0) {
-    }
+  virtual auto conductorSetup() -> Global override {
+    fmt::print("Conductor setup\n");
+    return Global{};
+  }
+  virtual auto conductorStep(Global const& state) -> void override {
+    fmt::print("Conductor step\n");
+  }
+  virtual auto vertexStep(Global const& global, VertexProperties& props) const
+      -> bool override {
+    fmt::print("Vertex step\n");
+    return false;
   }
 };
 
-} // namespace arangodb::pregel::algorithms::pagerank
+}  // namespace arangodb::pregel::algorithms::pagerank

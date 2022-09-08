@@ -42,9 +42,18 @@ struct EmptyVertexProperties {};
 struct EmptyEdgeProperties {};
 struct EmptyMessage {};
 
+struct VertexComputationContext {
+  size_t iteration{0};
+  size_t numberOfVertices{0};
+  size_t numberOfEdges{0};
+};
+
 template<typename AlgorithmData>
 struct AlgorithmBase {
   [[nodiscard]] virtual constexpr auto name() const -> std::string_view = 0;
+
+  AlgorithmBase(typename AlgorithmData::Settings const& settings)
+      : settings{settings} {}
 
   [[nodiscard]] virtual auto readVertexDocument(VPackSlice const& doc) const ->
       typename AlgorithmData::VertexProperties = 0;
@@ -54,17 +63,19 @@ struct AlgorithmBase {
 
   virtual auto writeVertexDocument(
       typename AlgorithmData::VertexProperties const& prop,
-      VPackSlice const& doc) -> std::shared_ptr<VPackBuilder>;
+      VPackSlice const& doc) -> std::shared_ptr<VPackBuilder> = 0;
 
-  virtual auto conductorSetup() -> void = 0;
+  virtual auto conductorSetup() -> typename AlgorithmData::Global = 0;
   virtual auto conductorStep(typename AlgorithmData::Global const& state)
       -> void = 0;
 
   virtual auto vertexStep(typename AlgorithmData::Global const& global,
                           typename AlgorithmData::VertexProperties& props) const
-      -> void = 0;
+      -> bool = 0;
 
   virtual ~AlgorithmBase() = default;
+
+  typename AlgorithmData::Settings const settings;
 };
 
 }  // namespace arangodb::pregel::algorithm_sdk
