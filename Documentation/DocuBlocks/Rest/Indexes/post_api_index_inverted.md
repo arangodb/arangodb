@@ -352,13 +352,12 @@ Creating an inverted index:
 
 @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewInverted}
     var cn = "products";
-    db._drop(cn);
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
     var body = {
       type: "inverted",
-      fields: [ a, { name: "b", analyzer: "text_en" } ]
+      fields: [ "a", { name: "b", analyzer: "text_en" } ]
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -366,7 +365,7 @@ Creating an inverted index:
     assert(response.code === 201);
 
     logJsonResponse(response);
-  ~ db._drop(cn);
+    db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock

@@ -34,7 +34,7 @@ If a View called *name* already exists, then an *HTTP 409* error is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestViewPostViewArangoSearch}
+@EXAMPLE_ARANGOSH_RUN{RestViewPostViewSearchAlias}
     var url = "/_api/view";
     var body = {
       name: "testViewBasics",

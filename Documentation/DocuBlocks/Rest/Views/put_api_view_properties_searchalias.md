@@ -34,7 +34,7 @@ The name of the View.
 @RESTREPLYBODY{type,string,required,}
 The View type (`"search-alias"`).
 
-@RESTREPLYBODY{indexes,array,put_api_view_searchalias_indexes_reply}
+@RESTREPLYBODY{indexes,array,required,put_api_view_searchalias_indexes_reply}
 The list of inverted indexes that are part of the View.
 
 @RESTSTRUCT{collection,put_api_view_searchalias_indexes_reply,string,required,}
@@ -58,8 +58,8 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
     var indexName2 = "inv_descr";
 
     var coll = db._create("books");
-    coll.ensureIndex({ type: "inverted", name: indexName, fields: ["title"] });
-    coll.ensureIndex({ type: "inverted", name: indexName, fields: ["description"] });
+    coll.ensureIndex({ type: "inverted", name: indexName1, fields: ["title"] });
+    coll.ensureIndex({ type: "inverted", name: indexName2, fields: ["description"] });
 
     var view = db._createView(viewName, viewType, {
       indexes: [ { collection: coll.name(), index: indexName1 } ] });
