@@ -244,16 +244,6 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   _status.updateWorkerStatus(event.senderId, std::move(event.status));
 }
 
-void Conductor::finishedWorkerStartup(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _callbackMutex);
-
-  auto loadedEvent = deserialize<GraphLoaded>(data);
-  LOG_PREGEL("08142", WARN) << fmt::format(
-      "finishedWorkerStartup, got response from {}.", loadedEvent.senderId);
-
-  state->receive(loadedEvent);
-}
-
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
   changeState(conductor::StateType::Canceled);
@@ -344,6 +334,7 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
       workers.emplace(
           server,
           std::make_unique<conductor::ClusterWorkerApi>(
+              _executionNumber,
               Connection::create(server, Utils::baseUrl(Utils::workerPrefix),
                                  _vocbaseGuard.database())));
     }
@@ -422,7 +413,7 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
     b.close();
     b.close();
 
-    auto graph = LoadGraph{.executionNumber = _executionNumber, .details = b};
+    auto graph = LoadGraph{.details = b};
     results.emplace_back(workers[server]->loadGraph(graph));
   }
   return futures::collectAll(results);

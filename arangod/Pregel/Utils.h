@@ -43,13 +43,11 @@ class Utils {
   static std::string const apiPrefix;
   static std::string const conductorPrefix;
   static std::string const workerPrefix;
+  static std::string const modernMessagingPath;
 
   static std::string const edgeShardingKey;
-  static std::string const startExecutionPath;
   static std::string const statusUpdatePath;
   static std::string const finishedStartupPath;
-  static std::string const prepareGSSPath;
-  static std::string const startGSSPath;
   static std::string const finishedWorkerStepPath;
   static std::string const finishedWorkerFinalizationPath;
   static std::string const cancelGSSPath;

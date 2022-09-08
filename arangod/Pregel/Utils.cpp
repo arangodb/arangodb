@@ -35,12 +35,10 @@ using namespace arangodb::pregel;
 std::string const Utils::apiPrefix = "/_api/pregel/";
 std::string const Utils::conductorPrefix = "conductor";
 std::string const Utils::workerPrefix = "worker";
+std::string const Utils::modernMessagingPath = "modern";
 
-std::string const Utils::startExecutionPath = "startExecution";
 std::string const Utils::finishedStartupPath = "finishedStartup";
 std::string const Utils::statusUpdatePath = "statusUpdate";
-std::string const Utils::prepareGSSPath = "prepareGSS";
-std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedWorkerStepPath = "finishedStep";
 std::string const Utils::finishedWorkerFinalizationPath =
     "finishedFinalization";

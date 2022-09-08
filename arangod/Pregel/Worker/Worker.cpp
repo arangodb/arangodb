@@ -51,11 +51,18 @@
 #include "velocypack/Builder.h"
 
 #include "fmt/core.h"
+#include <variant>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
+namespace {
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+}  // namespace
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << "[job " << _config.executionNumber() << "] "
@@ -535,9 +542,8 @@ auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
   VPackBuilder aggregators;
   { VPackObjectBuilder ob(&aggregators); }
   return GlobalSuperStepFinished{
-      ServerState::instance()->getId(), _config.executionNumber(),
-      _config.globalSuperstep(),        std::move(reports),
-      std::move(messageStats),          std::move(aggregators)};
+      ServerState::instance()->getId(), _config.globalSuperstep(),
+      std::move(reports), std::move(messageStats), std::move(aggregators)};
 }
 
 template<typename V, typename E, typename M>
@@ -723,6 +729,30 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
                 .allGssStatus = fullGssStatus.gss.size() > 0
                                     ? std::optional{fullGssStatus}
                                     : std::nullopt};
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::process(MessagePayload const& message)
+    -> ResultT<ModernMessage> {
+  return std::visit(
+      overloaded{
+          [&](LoadGraph const& x) -> ResultT<ModernMessage> {
+            return ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = {loadGraph(x).get()}};
+          },
+          [&](PrepareGlobalSuperStep const& x) -> ResultT<ModernMessage> {
+            return ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = {prepareGlobalSuperStep(x).get()}};
+          },
+          [&](RunGlobalSuperStep const& x) -> ResultT<ModernMessage> {
+            return ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = {runGlobalSuperStep(x).get()}};
+          },
+          [](auto const& x) -> ResultT<ModernMessage> {
+            return Result{TRI_ERROR_INTERNAL,
+                          "Worker: Cannot handle received message"};
+          }},
+      message);
 }
 
 template<typename V, typename E, typename M>
