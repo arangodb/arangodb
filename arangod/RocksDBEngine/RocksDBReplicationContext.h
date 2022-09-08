@@ -300,8 +300,9 @@ class RocksDBReplicationContext {
   /// A context can hold a single revision tree for some collection, if it
   /// is told so. This is used during `SynchronizeShard` to make sure the
   /// leader actually has the revision tree available for the snapshot
-  /// in the context. This happens in `bindCollectionIncremental`.
-  std::string _collectionOfPrefetchedRevisionTree;
+  /// in the context. This happens in `bindCollectionIncremental`. The value
+  /// of the string is a guid, that is a globally unique name of the shard.
+  std::string _collectionGuidOfPrefetchedRevisionTree;
   std::unique_ptr<containers::RevisionTree> _prefetchedRevisionTree;
 };
 

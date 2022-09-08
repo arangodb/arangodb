@@ -301,13 +301,13 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   cIter->documentCountAdjustmentTicket = documentCountAdjustmentTicket;
 
   // Prefetch the revision tree of the collection:
-  _collectionOfPrefetchedRevisionTree.clear();
+  _collectionGuidOfPrefetchedRevisionTree.clear();
   _prefetchedRevisionTree = rcoll->revisionTree(_snapshot->GetSequenceNumber());
   if (_prefetchedRevisionTree != nullptr) {
     LOG_TOPIC("123aa", DEBUG, Logger::ENGINES)
         << "Have successfully prefetched revision tree for collection "
         << logical->guid();
-    _collectionOfPrefetchedRevisionTree = logical->guid();
+    _collectionGuidOfPrefetchedRevisionTree = logical->guid();
   } else {
     LOG_TOPIC("123ab", INFO, Logger::ENGINES)
         << "Could not prefetch revision tree for collection "
@@ -1350,17 +1350,16 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
 
 std::unique_ptr<containers::RevisionTree>
 RocksDBReplicationContext::getPrefetchedRevisionTree(
-    std::string const& collectionName) {
-  if (collectionName == _collectionOfPrefetchedRevisionTree) {
+    std::string const& collectionGuid) {
+  if (collectionGuid == _collectionGuidOfPrefetchedRevisionTree) {
     LOG_TOPIC("456aa", DEBUG, Logger::ENGINES)
         << "Delivering prefetched revision tree for collection "
-        << collectionName;
-    _collectionOfPrefetchedRevisionTree.clear();
+        << collectionGuid;
+    _collectionGuidOfPrefetchedRevisionTree.clear();
     return std::move(_prefetchedRevisionTree);
   }
   LOG_TOPIC("456ab", DEBUG, Logger::ENGINES)
       << "No prefetched revision tree available for collection "
-      << collectionName;
+      << collectionGuid;
   return {nullptr};
 }
-

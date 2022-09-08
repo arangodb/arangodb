@@ -901,8 +901,11 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
       // This might return a nullptr!
     }
     if (tree == nullptr) {  // Still not there, try to get it directly:
-      tree = ctx.collection->getPhysical()->revisionTree(
-          c->snapshot()->GetSequenceNumber());
+      auto* snapshot = c->snapshot();
+      if (snapshot != nullptr) {
+        tree = ctx.collection->getPhysical()->revisionTree(
+            snapshot->GetSequenceNumber());
+      }
     }
     if (c != nullptr) {
       c->removeBlocker(_request->databaseName(), collectionName);
