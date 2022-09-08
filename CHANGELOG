@@ -3,6 +3,9 @@ v3.9.4 (XXXX-XX-XX)
 
 * Fixed BTS-926: UI showing the "create index" form to non-admin users.
 
+* Fixed a rare occuring issue where paths inside a DisjointSmart traversal
+  containing only satellite relevant nodes were not returned properly
+  (ES-1265).
 
 v3.9.3 (2022-09-02)
 -------------------

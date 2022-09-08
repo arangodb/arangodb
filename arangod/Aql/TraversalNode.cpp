@@ -674,6 +674,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     if (isDisjoint()) {
       opts->setDisjoint();
     }
+    if (isClusterOneShardRuleEnabled()) {
+      opts->setClusterOneShardRule();
+    }
     traverser =
         std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
   }

@@ -152,6 +152,10 @@ std::string const StaticStrings::IndexHintMaxProjections("maxProjections");
 std::string const StaticStrings::IndexHintOption("indexHint");
 std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
 
+// query options
+std::string const StaticStrings::ForceOneShardAttributeValue(
+    "forceOneShardAttributeValue");
+
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
 std::string const StaticStrings::AcceptEncoding("accept-encoding");

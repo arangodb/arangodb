@@ -752,6 +752,11 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
   TRI_ASSERT(false);
   return false;
 }
+
+auto TraverserOptions::isClusterOneShardRuleEnabled() const -> bool {
+  return false;
+}
+
 #endif
 
 auto TraverserOptions::getEdgeDestination(
