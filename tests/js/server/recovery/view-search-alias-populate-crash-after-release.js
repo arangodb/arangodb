@@ -73,7 +73,7 @@ function recoverySuite () {
         let indexes = v.properties().indexes;
         assertEqual(1, indexes.length);
         assertEqual(indexName, indexes[0].index);
-        assertEqual("UnitTestsRecoveryView", indexes[0].collection);
+        assertEqual("UnitTestsRecoveryDummy", indexes[0].collection);
       };
       checkView("UnitTestsRecoveryView", "i1");
 
