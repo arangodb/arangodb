@@ -1,8 +1,6 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
-* Best quality spam pushed down to DEBUG
-
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
 
