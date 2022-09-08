@@ -49,16 +49,15 @@ DocumentLeaderState::DocumentLeaderState(
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
-  _activeTransactions.doUnderLock([this](auto& transactions) {
-    for (auto trx : transactions) {
-      try {
-        _transactionManager.abortManagedTrx(trx, gid.database);
-      } catch (...) {
-        LOG_CTX("7341f", WARN, loggerContext)
-            << "failed to abort active transaction " << gid << " during resign";
-      }
+  auto transactions = _activeTransactions.getLockedGuard().get();
+  for (auto trx : transactions) {
+    try {
+      _transactionManager.abortManagedTrx(trx, gid.database);
+    } catch (...) {
+      LOG_CTX("7341f", WARN, loggerContext)
+          << "failed to abort active transaction " << gid << " during resign";
     }
-  });
+  }
 
   return _guardedData.doUnderLock([](auto& data) {
     if (data.didResign()) {
