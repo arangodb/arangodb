@@ -1,6 +1,8 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Disable optimization rule to avoid crash (BTS-951).
+
 * Fixed SEARCH-366: Fixed extracting sub-attributes using projections for the
   `_id` attribute (e.g. `RETURN doc.sub._id`).
 
