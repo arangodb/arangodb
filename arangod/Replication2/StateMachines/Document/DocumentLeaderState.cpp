@@ -49,7 +49,7 @@ DocumentLeaderState::DocumentLeaderState(
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
-  auto transactions = _activeTransactions.getLockedGuard().get();
+  auto transactions = getActiveTransactions();
   for (auto trx : transactions) {
     try {
       _transactionManager.abortManagedTrx(trx, gid.database);
