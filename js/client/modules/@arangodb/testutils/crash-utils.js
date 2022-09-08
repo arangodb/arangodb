@@ -565,6 +565,9 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 }
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
+  if (instanceInfo.hasOwnProperty('debuggerInfo')) {
+    throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));
+  }
   const stats = statisticsExternal(instanceInfo.pid);
   // picking some arbitrary number of a running arangod doubling it
   const generateCoreDump = (
@@ -599,13 +602,13 @@ function aggregateDebugger(instanceInfo, options) {
   let tearDownTimeout = 180; // s
   while (tearDownTimeout > 0) {
     let ret = statusExternal(instanceInfo.debuggerInfo.pid.pid, false);
+    print(ret);
     if (ret.status === "RUNNING") {
       sleep(1);
       tearDownTimeout -= 1;
-      continue;
+    } else {
+      break;
     }
-    print(ret);
-    break;
   }
   if (tearDownTimeout <= 0) {
     print(RED+"killing debugger since it did not finish its busines in 180s"+RESET);
