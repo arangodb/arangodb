@@ -40,6 +40,7 @@
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Algos/WCC.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Algos/ReadWrite.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -77,6 +78,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
+  } else if (algorithm == "readwrite") {
+    return new algos::ReadWrite(server, userParams);
   } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return new algos::accumulators::ProgrammablePregelAlgorithm(server,
                                                                 userParams);
@@ -158,6 +161,9 @@ template<typename V, typename E, typename M>
                         feature);
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body,
+                        feature);
+  } else if (algorithm == "readwrite") {
+    return createWorker(vocbase, new algos::ReadWrite(server, userParams), body,
                         feature);
   } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return createWorker(vocbase,
