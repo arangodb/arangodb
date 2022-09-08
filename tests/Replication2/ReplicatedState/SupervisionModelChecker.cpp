@@ -118,7 +118,6 @@ TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_with_leader) {
                                .replicatedLog = std::nullopt,
                                .health = std::move(health),
                                .logLeaderWriteConcern = std::nullopt};
-;
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{},

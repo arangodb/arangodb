@@ -58,7 +58,7 @@ struct ReplicatedLogSupervisionSimulationTest
   auto makeAgencyState(Log const& log,
                        replicated_log::ParticipantsHealth health)
       -> AgencyState {
-    return AgencyState{.replicatedState = std::nullopt, 
+    return AgencyState{.replicatedState = std::nullopt,
                        .replicatedLog = log,
                        .health = std::move(health),
                        .logLeaderWriteConcern = std::nullopt};
