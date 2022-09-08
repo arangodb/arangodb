@@ -203,7 +203,7 @@ TRI_voc_tick_t ReplicatedRocksDBTransactionState::lastOperationTick()
       });
 }
 
-uint64_t ReplicatedRocksDBTransactionState::numCommits() const {
+uint64_t ReplicatedRocksDBTransactionState::numCommits() const noexcept {
   // TODO
   return std::accumulate(
       _collections.begin(), _collections.end(), (uint64_t)0,
@@ -212,6 +212,24 @@ uint64_t ReplicatedRocksDBTransactionState::numCommits() const {
                static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
                    .numCommits();
       });
+}
+
+uint64_t ReplicatedRocksDBTransactionState::numIntermediateCommits()
+    const noexcept {
+  return std::accumulate(
+      _collections.begin(), _collections.end(), (uint64_t)0,
+      [](auto sum, auto& col) {
+        return sum +
+               static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
+                   .numIntermediateCommits();
+      });
+}
+
+void ReplicatedRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
+  // this is not supposed to be called, ever
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid call to addIntermediateCommits");
 }
 
 bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {
