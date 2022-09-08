@@ -143,13 +143,16 @@ function testSuitePregel() {
       // should just take care of shutting down
       coordinator.waitForInstanceShutdown(30);
       coordinator.restartOneInstance();
+      coordinator.checkArangoConnection(10);
 
       graph_module._drop(graphName, true);
     },
 
     testPageRank: function () {
       // Start a pregel run:
-      let pid = testAlgoStart("pagerank", { threshold: EPS / 1000, resultField: "result", store: true });
+      // NOTE: EPS = 10E-7 might be intentional here to force pregel to run to 500 GSS which takes some
+      // time rather than converging (which takes almost no time.
+      let pid = testAlgoStart("pagerank", { threshold: 0.00000001, resultField: "result", store: true });
 
       console.warn("Started pregel run:", pid);
 
@@ -164,7 +167,7 @@ function testSuitePregel() {
       // It should fail to create a new pregel run:
       let gotException = false;
       try {
-        testAlgoStart("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
+        testAlgoStart("pagerank", { threshold: EPS, resultField: "result", store: true });
       } catch(e) {
         console.warn("Got exception for new run, good!", JSON.stringify(e));
         gotException = true;
