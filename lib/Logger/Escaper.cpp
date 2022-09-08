@@ -48,6 +48,14 @@ void ControlCharsEscaper::writeCharIntoOutputBuffer(uint32_t c,
       output.append("\\t");
       break;
 
+    case '\b':
+      output.append("\\b");
+      break;
+
+    case '\f':
+      output.append("\\f");
+      break;
+
     default: {
       uint8_t n1 = c >> 4;
       uint8_t n2 = c & 0x0F;

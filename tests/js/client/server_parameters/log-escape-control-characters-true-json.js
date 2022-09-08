@@ -37,8 +37,8 @@ if (getOptions === true) {
     'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
+    'log.escape-unicode-chars': 'false',
     'log.escape-control-chars': 'true',
-    'log.escape-unicode-chars': 'true',
     'log.use-json-format': 'true',
   };
 }
@@ -46,15 +46,16 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 
 function EscapeControlTrueSuite() {
+  'use strict';
 
   return {
     testEscapeControlTrue: function() {
-      const escapeCharsLength = 31;
+      const controlCharsLength = 31;
       const request = `require('console').log("testmann: start");
         for (let i = 1; i <= 31; ++i) {
-         let controlChar = '"\\\\u' + i.toString(16).padStart(4, '0') + '"'; 
-         controlChar = JSON.parse(controlChar); 
-         require('console').log("testmann: /testi" + controlChar + " abc123\\\\u00B0\\\\ud83e\\\\uddd9\\\\uf0f9\\\\u9095\\\\uf0f9\\\\u90b6");
+          let controlChar = '"\\\\u' + i.toString(16).padStart(4, '0') + '"';
+          controlChar = JSON.parse(controlChar);
+          require('console').log("/\\"\\\\testmann: testi " + controlChar + " \\u00B0\\ud83e\\uddd9\\uf0f9\\u9095\\uf0f9\\u90b6abc123");
         }
         require('console').log("testmann: done");
         return require('internal').options()["log.output"];`;
@@ -70,31 +71,29 @@ function EscapeControlTrueSuite() {
       let tries = 0;
       let filtered = [];
       while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
+        let content = fs.readFileSync(logfile, 'utf-8');
         let lines = content.split('\n');
 
         filtered = lines.filter((line) => {
           return line.match(/testmann: /);
         });
 
-        if (filtered.length === escapeCharsLength + 2) {
+        if (filtered.length === controlCharsLength + 2) {
           break;
         }
 
         require("internal").sleep(0.5);
       }
-      assertEqual(escapeCharsLength + 2, filtered.length);
 
+      assertEqual(controlCharsLength + 2, filtered.length);
       assertMatch(/testmann: start/, filtered[0]);
-      for (let i = 1; i < escapeCharsLength + 1; ++i) {
+      for (let i = 1; i < controlCharsLength + 1; ++i) {
         const parsedRes = JSON.parse(filtered[i]);
-        const expectedControlChar = String.fromCharCode(i);
-        const matchMsg = "testmann: /testi" + expectedControlChar + " abc123\\u00B0\\ud83e\\uddd9\\uf0f9\\u9095\\uf0f9\\u90b6";
         assertTrue(parsedRes.hasOwnProperty("message"));
-        assertEqual(parsedRes.message, matchMsg);
+        const controlChar = String.fromCharCode(i);
+        assertEqual(parsedRes.message, "/\"\\testmann: testi " + controlChar + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
       }
-      assertMatch(/testmann: done/, filtered[escapeCharsLength + 1]);
-
+      assertMatch(/testmann: done/, filtered[controlCharsLength + 1]);
     },
 
   };

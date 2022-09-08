@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -38,6 +38,7 @@ if (getOptions === true) {
     'log.foreground-tty': 'false',
     'log.level': 'debug',
     'log.escape-unicode-chars': 'false',
+    'log.escape-control-chars': 'false',
     'log.use-json-format': 'true',
   };
 }
@@ -51,15 +52,15 @@ function EscapeUnicodeFalseSuite() {
     testEscapeUnicodeFalse: function() {
       const testValues = ["°", "mötör", "maçã", "犬"];
 
-      const res = arango.POST("/_admin/execute", `
-        require('console').log("testmann: start");
+      const request = `require('console').log("testmann: start");
         const testValues = ["°", "mötör", "maçã", "犬"];
         testValues.forEach(testValue => {
-          require('console').log("testmann: testi "  + testValue + " abc123");
+          require('console').log("testmann: testi \\u0008\\u0009\\u000A\\u000B\\u000C"  + testValue + " \\u00B0\\ud83e\\uddd9\\uf0f9\\u9095\\uf0f9\\u90b6abc123");
         });
         require('console').log("testmann: done");
-        return require('internal').options()["log.output"];
-      `);
+        return require('internal').options()["log.output"];`;
+
+      const res = arango.POST("/_admin/execute", request);
 
       assertTrue(Array.isArray(res));
       assertTrue(res.length > 0);
@@ -83,16 +84,15 @@ function EscapeUnicodeFalseSuite() {
 
         require("internal").sleep(0.5);
       }
+
       assertEqual(testValues.length + 2, filtered.length);
-
-      assertTrue(filtered[0].match(/testmann: start/));
+      assertMatch(/testmann: start/, filtered[0]);
       for (let i = 1; i < testValues.length + 1; ++i) {
-        const msg = JSON.parse(filtered[i]);
-        assertTrue(msg.hasOwnProperty("message"));
-        assertEqual(msg.message, "testmann: testi " + testValues[i - 1] + " abc123");
+        const parsedRes = JSON.parse(filtered[i]);
+        assertTrue(parsedRes.hasOwnProperty("message"));
+        assertEqual(parsedRes.message, "testmann: testi      " + testValues[i - 1] + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
       }
-      assertTrue(filtered[testValues.length + 1].match(/testmann: done/));
-
+      assertMatch(/testmann: done/, filtered[testValues.length + 1]);
     },
 
   };

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -48,7 +48,7 @@ function EscapeUnicodeTrueSuite() {
 
   return {
     testEscapeUnicodeTrue: function() {
-      const testValues = ["°", "mötör", "maçã", "犬"];
+      const testValuesLength = 4;
       const expectedValues = ['\\u00B0', 'm\\u00F6t\\u00F6r', 'ma\\u00E7\\u00E3', '\\u72AC'];
 
       const res = arango.POST("/_admin/execute", `
@@ -77,20 +77,20 @@ function EscapeUnicodeTrueSuite() {
           return line.match(/testmann: /);
         });
 
-        if (filtered.length === testValues.length + 2) {
+        if (filtered.length === testValuesLength + 2) {
           break;
         }
 
         require("internal").sleep(0.5);
       }
-      assertEqual(testValues.length + 2, filtered.length);
+      assertEqual(testValuesLength + 2, filtered.length);
 
-      assertTrue(filtered[0].match(/testmann: start/));
-      for (let i = 1; i < testValues.length + 1; ++i) {
+      assertMatch(/testmann: start/, filtered[0]);
+      for (let i = 1; i < testValuesLength + 1; ++i) {
         const msg = filtered[i];
         assertTrue(msg.endsWith("testmann: testi " + expectedValues[i - 1] + " abc123"));
       }
-      assertTrue(filtered[testValues.length + 1].match(/testmann: done/));
+      assertMatch(/testmann: done/, filtered[testValuesLength + 1]);
 
     },
 
