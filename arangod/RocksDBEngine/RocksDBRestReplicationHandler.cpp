@@ -888,7 +888,7 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
   // smaller and thus improve efficiency)
   bool onlyPopulated = _request->parsedValue("onlyPopulated", false);
 
-  std::string collectionName = _request->value("collection");
+  std::string collectionGuid = _request->value("collection");
 
   std::unique_ptr<containers::RevisionTree> tree;
 
@@ -897,7 +897,7 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
     RocksDBReplicationContextGuard guard(_manager, c);
     if (c != nullptr) {  // we have the RocksDBReplicationContext!
       // See if we can get the revision tree from the context:
-      tree = c->getPrefetchedRevisionTree(collectionName);
+      tree = c->getPrefetchedRevisionTree(collectionGuid);
       // This might return a nullptr!
     }
     if (tree == nullptr) {  // Still not there, try to get it directly:
@@ -908,7 +908,7 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
       }
     }
     if (c != nullptr) {
-      c->removeBlocker(_request->databaseName(), collectionName);
+      c->removeBlocker(_request->databaseName(), collectionGuid);
     }
   }
 
