@@ -14,7 +14,7 @@ description: |
   Number of times a follower shard needed to be completely rebuilt
   because of too many subsequent shard synchronization failures.
   This metric is always zero from version 3.8.8 onwards. In previous
-  releases, a non-zero vlaue indicates that a follower shard could
+  releases, a non-zero value indicates that a follower shard could
   not get in sync with the leader even after many attempts. When
   the metric got increased, the follower shard was dropped and
   completely rebuilt from leader data, in order to increase its
