@@ -52,25 +52,6 @@ const {
     makeTearDown
 } = require("@arangodb/graph/pregel-test-helpers");
 
-
-const computeCloseness = function (graph) {
-    for (let [vKey, v] of graph.vertices) {
-        graph.bfs(vKey, graph.writeDistance, undefined);
-        let sumOfDistances = 0;
-        let count = 0;
-        for (let [, w] of graph.vertices) {
-            if (w.distance === 0 || w.distance === undefined) { // w is not reachable from v
-                continue;
-            }
-            ++count;
-            sumOfDistances += w.distance;
-            w.distance = 0; // reset for the next v
-
-        }
-        v.closenessFromTestAlgorithm = sumOfDistances / count;
-    }
-};
-
 const testReadWriteOnGraph = function (vertices, edges) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
