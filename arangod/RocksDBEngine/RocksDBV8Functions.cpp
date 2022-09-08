@@ -298,11 +298,7 @@ static void JS_CollectionRevisionTreeVerification(
     try {
       auto* physical = toRocksDBCollection(*collection);
       auto batchId = ctx->id();
-      auto* snapshot = ctx->snapshot();
-      if (snapshot == nullptr) {
-        TRI_V8_THROW_EXCEPTION_INTERNAL("Did not find shapshot in batch!");
-      }
-      storedTree = physical->revisionTree(snapshot->GetSequenceNumber());
+      storedTree = physical->revisionTree(ctx->snapshotTick());
       computedTree = physical->computeRevisionTree(batchId);
       ctx->setDeleted();
     } catch (...) {
