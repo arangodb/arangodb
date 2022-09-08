@@ -669,7 +669,7 @@ Collections::create(         // create collection
         events::CreateCollection(vocbase.name(), info.name,
                                  results.errorNumber());
       }
-      return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
+      return results;
     }
     if (results->empty()) {
       // TODO: CHeck if this can really happen after refactoring is completed
@@ -689,6 +689,9 @@ Collections::create(         // create collection
     // collection one by one.
     results = vocbase.createCollections(
         collections, allowEnterpriseCollectionsOnSingleServer);
+    if (results.fail()) {
+      return results;
+    }
   }
 
   // Grant access to the collections.
