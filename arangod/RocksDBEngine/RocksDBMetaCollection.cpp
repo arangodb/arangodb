@@ -403,20 +403,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
-    uint64_t batchId) {
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
-  RocksDBReplicationManager* manager = engine.replicationManager();
-  RocksDBReplicationContext* ctx =
-      batchId == 0 ? nullptr : manager->find(batchId);
-  if (!ctx) {
-    return nullptr;
-  }
-  auto guard =
-      scopeGuard([manager, ctx]() noexcept -> void { manager->release(ctx); });
-  rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
+    rocksdb::SequenceNumber trxSeq) {
   TRI_ASSERT(trxSeq != 0);
 
   return revisionTree(
