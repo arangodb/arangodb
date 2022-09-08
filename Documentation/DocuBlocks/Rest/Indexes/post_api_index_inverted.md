@@ -19,14 +19,16 @@ If omitted, a name is auto-generated so that it is unique with respect to the
 collection, e.g. `idx_832910498`.
 
 @RESTBODYPARAM{fields,array,required,post_api_index_inverted_fields}
-An array of attribute paths to index the fields with the default options, or an
-objects to specify options for the fields.
+An array of attribute paths as strings to index the fields with the default
+options, or objects to specify options for the fields.
 
 @RESTSTRUCT{name,post_api_index_inverted_fields,string,required,}
 An attribute path. The `.` character denotes nested fields.
 
 @RESTSTRUCT{analyzer,post_api_index_inverted_fields,string,optional,}
 The name of an Analyzer to use for this field.
+Default: the value defined by the top-level `analyzer` option, or if not set,
+the default `identity` Analyzer.
 
 @RESTSTRUCT{features,post_api_index_inverted_fields,array,optional,string}
 A list of Analyzer features to use for this field. They define what features are
@@ -36,18 +38,45 @@ enabled for the `analyzer`. Possible features:
 - `"position"`
 - `"offset"`
 
-The default is an empty array.
+Default: the value of the top-level `features` option, or if not set, the
+features defined by the Analyzer itself.
 
 @RESTSTRUCT{includeAllFields,post_api_index_inverted_fields,boolean,optional,}
-If set to `true`, then process all nested attributes of this field. Otherwise, only
-consider attributes mentioned in `fields`. The default `analyzer` and `features`
-are applied to the fields. The default is `false`.
+If set to `true`, then all nested attributes of this field are indexed, excluding
+any nested attributes that are configured separately by other elements in the
+`fields` array. The `analyzer` and `features` properties apply to the nested
+fields.
+
+If set to `false`, then nested attributes are ignored. The default is `false`.
 
 @RESTSTRUCT{searchField,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
 
+You can set the option to `true` to get the same behavior as with `arangosearch`
+Views regarding the indexing of array values for this field. If enabled, both,
+array and primitive values (strings, numbers, etc.) are accepted. Every element
+of an array is indexed according to the `trackListPositions` option.
+
+If set to `false`, it depends on the attribute path. If it explicitly expand an
+array (`[*]`), then the elements are indexed separately. Otherwise, the array is
+indexed as a whole, but only `geopoint` and `aql` Analyzers accept array inputs.
+You cannot use an array expansion if `searchField` is enabled.
+
+Default: the value defined by the top-level `searchField` option.
+
 @RESTSTRUCT{trackListPositions,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
+
+If set to `true`, then track the value position in arrays for array values.
+For example, when querying a document like `{ attr: [ "valueX", "valueY", "valueZ" ] }`,
+you need to specify the array element, e.g. `doc.attr[1] == "valueY"`.
+
+If set to `false`, all values in an array are treated as equal alternatives.
+You don't specify an array element in queries, e.g. `doc.attr == "valueY"`, and
+all elements are searched for a match.
+
+Default: the value defined by the top-level `trackListPositions` option, or
+`false` if not set.
 
 @RESTSTRUCT{nested,post_api_index_inverted_fields,array,optional,post_api_index_inverted_nested}
 Index the specified sub-objects that are stored in an array. Other than with the
@@ -58,11 +87,11 @@ conditions need to be met by a single sub-object instead of across all of them.
 This property is available in the Enterprise Edition only.
 
 @RESTSTRUCT{name,post_api_index_inverted_nested,string,required,}
-An attribute path. The `.` character denotes nested fields. You cannot specify
-a top-level attribute.
+An attribute path. The `.` character denotes nested fields.
 
 @RESTSTRUCT{analyzer,post_api_index_inverted_nested,string,optional,}
 The name of an Analyzer to use for this field.
+Default: the value defined by the top-level `analyzer` option.
 
 @RESTSTRUCT{features,post_api_index_inverted_nested,array,optional,string}
 A list of Analyzer features to use for this field. They define what features are
@@ -72,20 +101,36 @@ enabled for the `analyzer`. Possible features:
 - `"position"`
 - `"offset"`
 
+Default: the value of the top-level `features` option, or if not set, the
+features defined by the Analyzer itself.
+
 @RESTSTRUCT{searchField,post_api_index_inverted_nested,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
+
+You can set the option to `true` to get the same behavior as with `arangosearch`
+Views regarding the indexing of array values for this field. If enabled, both,
+array and primitive values (strings, numbers, etc.) are accepted. Every element
+of an array is indexed according to the `trackListPositions` option.
+
+If set to `false`, it depends on the attribute path. If it explicitly expand an
+array (`[*]`), then the elements are indexed separately. Otherwise, the array is
+indexed as a whole, but only `geopoint` and `aql` Analyzers accept array inputs.
+You cannot use an array expansion if `searchField` is enabled.
+
+Default: the value defined by the top-level `searchField` option.
 
 @RESTBODYPARAM{searchField,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
 
 You can set the option to `true` to get the same behavior as with `arangosearch`
-Views regarding the indexing of array values. If enabled, both, array and
-primitive values (strings, numbers, etc.) are accepted. Every element of an
-array is indexed according to the `trackListPositions` option. If set to `false`,
-it depends on the attribute path. If it explicitly expand an array (`[*]`), then
-the elements are indexed separately. Otherwise, the array is indexed as a whole,
-if the respective Analyzer accepts array inputs. You cannot use an
-array expansion if `searchField` is enabled.
+Views regarding the indexing of array values as the default. If enabled, both,
+array and primitive values (strings, numbers, etc.) are accepted. Every element
+of an array is indexed according to the `trackListPositions` option.
+
+If set to `false`, it depends on the attribute path. If it explicitly expand an
+array (`[*]`), then the elements are indexed separately. Otherwise, the array is
+indexed as a whole, but only `geopoint` and `aql` Analyzers accept array inputs.
+You cannot use an array expansion if `searchField` is enabled.
 
 @RESTBODYPARAM{storedValues,array,optional,post_api_index_inverted_storedvalues}
 The optional `storedValues` attribute can contain an array of paths to additional 
@@ -106,7 +151,6 @@ You can define a primary sort order to enable an AQL optimization. If a query
 iterates over all documents of a collection, wants to sort them by attribute values,
 and the (left-most) fields to sort by, as well as their sorting direction, match
 with the `primarySort` definition, then the `SORT` operation is optimized away.
-This option is immutable.
 
 @RESTSTRUCT{fields,post_api_index_inverted_primarysort,array,required,post_api_index_inverted_primarysort_fields}
 An array of the fields to sort the index by and the direction to sort each field in.
@@ -139,9 +183,11 @@ enabled for the default `analyzer`. Possible features:
 The default is an empty array.
 
 @RESTBODYPARAM{includeAllFields,boolean,optional,}
-If set to `true`, then process all document attributes. Otherwise, only
-consider attributes mentioned in `fields`. The default `analyzer` and `features`
-are applied to the fields. The default is `false`.
+If set to `true`, then all document attributes are indexed, excluding
+any nested attributes that are configured in the `fields` array.
+The `analyzer` and `features` properties apply to the nested fields.
+
+The default is `false`.
 
 {% hint 'warning' %}
 Using `includeAllFields` for a lot of attributes in combination with complex
@@ -150,15 +196,17 @@ Analyzers may significantly slow down the indexing process.
 
 @RESTBODYPARAM{trackListPositions,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
+
 If set to `true`, then track the value position in arrays for array values.
 For example, when querying a document like `{ attr: [ "valueX", "valueY", "valueZ" ] }`,
 you need to specify the array element, e.g. `doc.attr[1] == "valueY"`.
+
 If set to `false`, all values in an array are treated as equal alternatives.
 You don't specify an array element in queries, e.g. `doc.attr == "valueY"`, and
 all elements are searched for a match.
 
 @RESTBODYPARAM{parallelism,integer,optional,}
-The number of threads to use for indexing the fields.
+The number of threads to use for indexing the fields. Default: `2`
 
 @RESTBODYPARAM{inBackground,boolean,optional,}
 This attribute can be set to `true` to create the index
@@ -266,12 +314,12 @@ Sub-properties:
 
 @RESTBODYPARAM{writebufferIdle,integer,optional,int64}
 Maximum number of writers (segments) cached in the pool
-(default: 64, use 0 to disable, immutable)
+(default: 64, use 0 to disable)
 
 @RESTBODYPARAM{writebufferActive,integer,optional,int64}
 Maximum number of concurrent active writers (segments) that perform a
 transaction. Other writers (segments) wait till current active writers
-(segments) finish (default: 0, use 0 to disable, immutable)
+(segments) finish (default: 0, use 0 to disable)
 
 @RESTBODYPARAM{writebufferSizeMax,integer,optional,int64}
 Maximum memory byte size per writer (segment) before a writer (segment) flush
@@ -279,7 +327,7 @@ is triggered. `0` value turns off this limit for any writer (buffer) and data
 will be flushed periodically based on the value defined for the flush thread
 (ArangoDB server startup option). `0` value should be used carefully due to
 high potential memory consumption
-(default: 33554432, use 0 to disable, immutable)
+(default: 33554432, use 0 to disable)
 
 @RESTDESCRIPTION
 Creates an inverted index for the collection `collection-name`, if
