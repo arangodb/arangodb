@@ -75,7 +75,8 @@ TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log) {
                                              .notIsFailed = true});
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = std::nullopt,
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{},
@@ -115,7 +116,9 @@ TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_with_leader) {
                                              .notIsFailed = true});
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = std::nullopt,
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
+;
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{},
@@ -155,7 +158,8 @@ TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_kill_any) {
                                              .notIsFailed = true});
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = std::nullopt,
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, KillAnyServerActor{}, DBServerActor{"A"},
@@ -191,7 +195,8 @@ TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_kill_server) {
                                              .notIsFailed = true});
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = std::nullopt,
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, KillLeaderActor{},  DBServerActor{"A"},
@@ -246,7 +251,8 @@ TEST_F(ReplicatedStateModelCheckerTest, everything_ok_kill_server) {
                                              .notIsFailed = true});
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = log.get(),
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, KillLeaderActor{},  DBServerActor{"A"},
@@ -300,7 +306,8 @@ TEST_F(ReplicatedStateModelCheckerTest, change_leader) {
                                              .notIsFailed = true});
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = log.get(),
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, KillServerActor{"A"}, DBServerActor{"A"},
@@ -352,7 +359,8 @@ TEST_F(ReplicatedStateModelCheckerTest, everything_ok_replace_server) {
                                              .notIsFailed = true});
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = log.get(),
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, ReplaceSpecificServerActor{"B", "C"},
@@ -431,7 +439,8 @@ TEST_F(ReplicatedStateModelCheckerTest, everything_ok_replace_leader) {
 
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = log.get(),
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
 
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, ReplaceSpecificServerActor{"A", "C"},
@@ -499,7 +508,8 @@ TEST_F(ReplicatedStateModelCheckerTest, start_with_nothing_replace_server) {
 
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = std::nullopt,
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, ReplaceSpecificServerActor{"B", "C"},
       DBServerActor{"A"}, DBServerActor{"B"},
@@ -566,7 +576,8 @@ TEST_F(ReplicatedStateModelCheckerTest, start_with_nothing_replace_leader) {
 
   auto initState = AgencyState{.replicatedState = state.get(),
                                .replicatedLog = std::nullopt,
-                               .health = std::move(health)};
+                               .health = std::move(health),
+                               .logLeaderWriteConcern = std::nullopt};
   auto driver = model_checker::ActorDriver{
       SupervisionActor{}, ReplaceSpecificServerActor{"A", "C"},
       DBServerActor{"A"}, DBServerActor{"B"},
