@@ -70,6 +70,7 @@
 #include "IResearch/IResearchFilterFactoryCommon.hpp"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
@@ -1037,7 +1038,7 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
   return byTerm(termFilter, normalized, ctx, filterCtx);
 }
 
-Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
+Result fromRange(irs::boolean_filter* filter, QueryContext const& ctx,
                  FilterContext const& filterCtx, aql::AstNode const& node) {
   TRI_ASSERT(aql::NODE_TYPE_RANGE == node.type);
 
@@ -1051,7 +1052,7 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
 
   // ranges are always true
   if (filter) {
-    filter->add<irs::all>().boost(filterCtx.boost);
+    addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
   }
 
   return {};
@@ -1118,7 +1119,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
       case aql::Quantifier::Type::kAll:
       case aql::Quantifier::Type::kNone:
         if (filter) {
-          filter->add<irs::all>();
+          addAllFilter(*filter, ctx.hasNestedFields);
         }
         break;
       case aql::Quantifier::Type::kAtLeast:
@@ -1126,7 +1127,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           if (atLeastCount > 0) {
             filter->add<irs::empty>();
           } else {
-            filter->add<irs::all>();
+            addAllFilter(*filter, ctx.hasNestedFields);
           }
         }
         break;
@@ -1638,7 +1639,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
         // not in [] means 'all'
-        filter->add<irs::all>().boost(filterCtx.boost);
+        addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
       } else {
         filter->add<irs::empty>();
       }
@@ -1793,8 +1794,8 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
       if (!n) {
         if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
-          filter->add<irs::all>().boost(
-              filterCtx.boost);  // not in [] means 'all'
+          addAllFilter(*filter, ctx.hasNestedFields)
+              .boost(filterCtx.boost);  // not in [] means 'all'
         } else {
           filter->add<irs::empty>();
         }
@@ -4068,6 +4069,16 @@ Result fromExpansion(irs::boolean_filter* filter, QueryContext const& ctx,
 namespace arangodb {
 namespace iresearch {
 
+irs::filter& addAllFilter(irs::boolean_filter& filter, bool hasNestedFields) {
+  if (hasNestedFields) {
+    auto& pkFilter = filter.add<irs::by_column_existence>();
+    *pkFilter.mutable_field() = DocumentPrimaryKey::PK();
+    return pkFilter;
+  } else {
+    return filter.add<irs::all>();
+  }
+}
+
 void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
                       QueryContext const& ctx, FilterContext const& filterCtx) {
   auto& exprFilter = filter.add<ByExpression>();
@@ -4112,7 +4123,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   if (result) {
-    filter->add<irs::all>().boost(filterCtx.boost);
+    addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
   } else {
     filter->add<irs::empty>();
   }

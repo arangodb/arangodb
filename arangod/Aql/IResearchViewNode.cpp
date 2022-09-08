@@ -56,11 +56,13 @@
 #include "IResearch/ViewSnapshot.h"
 #include "RegisterPlan.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "types.h"
 
+#include <absl/strings/str_cat.h>
 #include <frozen/map.h>
 #include <velocypack/Iterator.h>
 
@@ -1760,7 +1762,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     LOG_TOPIC("82af6", TRACE, iresearch::TOPIC)
         << "Start getting snapshot for view '" << viewName << "'";
     ViewSnapshotPtr reader;
-    // we manage snapshot differently in single-server/db server,
+    // we manage snapshots differently in single-server/db server,
     // see description of functions below to learn how
     if (ServerState::instance()->isDBServer()) {
       reader = snapshotDBServer(*this, *trx);
@@ -1769,13 +1771,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     }
     if (!reader) {
       LOG_TOPIC("9bb93", WARN, iresearch::TOPIC)
-          << "failed to get snapshot while creating arangosearch view "
-             "ExecutionBlock for view '"
-          << viewName << "'";
+          << "failed to get snapshot while creating arangosearch view '"
+          << viewName << "' ExecutionBlock";
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "failed to get snapshot while creating "
-                                     "arangosearch view ExecutionBlock");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("failed to get snapshot while creating "
+                       "arangosearch view '",
+                       viewName, "' ExecutionBlock"));
     }
     return reader;
   };

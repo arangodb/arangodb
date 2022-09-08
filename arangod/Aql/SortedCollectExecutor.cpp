@@ -33,6 +33,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ConditionalDeleter.h"
+#include "Basics/Exceptions.h"
 
 #include <velocypack/Buffer.h>
 

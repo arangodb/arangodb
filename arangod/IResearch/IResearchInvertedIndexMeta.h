@@ -44,6 +44,8 @@ using MissingFieldsMap =
 
 class IResearchInvertedIndexSort final : public IResearchSortBase {
  public:
+  IResearchInvertedIndexSort() { _locale.setToBogus(); }
+
   bool operator==(IResearchInvertedIndexSort const& rhs) const noexcept {
     return IResearchSortBase::operator==(rhs) &&
            std::string_view{_locale.getName()} == rhs._locale.getName();
@@ -134,6 +136,9 @@ struct InvertedIndexField {
   bool _overrideValue{false};
   /// @brief if the field is with expansion - calculated value
   bool _hasExpansion{false};
+  /// @brief Field is array/value mix as for arangosearch views.
+  ///        Field is excluded from inverted index optimizations for filter!
+  bool _isSearchField{false};
 };
 
 struct IResearchInvertedIndexMeta;
@@ -150,15 +155,16 @@ struct IResearchInvertedIndexMetaIndexingContext {
   std::array<FieldMeta::Analyzer, 1> const* _analyzers;
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
-  bool _isArray{false};
-  bool _hasNested;
-  bool _includeAllFields;
-  bool _trackListPositions;
   ValueStorage const _storeValues{ValueStorage::ID};
   std::string _collectionName;
   IResearchInvertedIndexSort const& _sort;
   IResearchViewStoredValues const& _storedValues;
   MissingFieldsMap _missingFieldsMap;
+  bool _isArray{false};
+  bool _hasNested;
+  bool _includeAllFields;
+  bool _trackListPositions;
+  bool _isSearchField;
 };
 
 struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,

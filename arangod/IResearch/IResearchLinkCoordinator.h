@@ -92,7 +92,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
       std::underlying_type<arangodb::Index::Serialize>::type flags) const final;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const final {
-    IResearchLink::toVelocyPackStats(builder);
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   IndexType type() const final { return IResearchLink::type(); }

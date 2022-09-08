@@ -758,6 +758,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
+  Cluster/CollectionInfoCurrent.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/DBServerAgencySync.cpp

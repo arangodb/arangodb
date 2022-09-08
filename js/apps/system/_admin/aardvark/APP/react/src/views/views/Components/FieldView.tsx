@@ -33,7 +33,7 @@ const FieldView = ({ disabled, name }: FieldViewProps) => {
     }}>
       <tbody>
       <tr key={fieldName}>
-        <ArangoTD seq={0}>
+        <ArangoTD seq={0} style={{ paddingLeft: 0 }}>
           {
             field
               ? <LinkPropertiesInput
