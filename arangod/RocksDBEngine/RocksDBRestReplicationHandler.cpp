@@ -888,13 +888,27 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
   // smaller and thus improve efficiency)
   bool onlyPopulated = _request->parsedValue("onlyPopulated", false);
 
-  auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
+  std::string collectionGuid = _request->value("collection");
+
+  std::unique_ptr<containers::RevisionTree> tree;
 
   {
     RocksDBReplicationContext* c = _manager->find(ctx.batchId);
     RocksDBReplicationContextGuard guard(_manager, c);
+    if (c != nullptr) {  // we have the RocksDBReplicationContext!
+      // See if we can get the revision tree from the context:
+      tree = c->getPrefetchedRevisionTree(collectionGuid);
+      // This might return a nullptr!
+    }
+    if (tree == nullptr) {  // Still not there, try to get it directly:
+      auto* snapshot = c->snapshot();
+      if (snapshot != nullptr) {
+        tree = ctx.collection->getPhysical()->revisionTree(
+            snapshot->GetSequenceNumber());
+      }
+    }
     if (c != nullptr) {
-      c->removeBlocker(_request->databaseName(), _request->value("collection"));
+      c->removeBlocker(_request->databaseName(), collectionGuid);
     }
   }
 
