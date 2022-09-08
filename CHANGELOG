@@ -1,6 +1,9 @@
 devel
 -----
 
+* APM-517: Add tooltips with values of the displayed properties after
+  clicking a node or an edge in the graph viewer.
+
 * Updated arangosync to v2.12.0-preview-11.
 
 * Added integration tests for `--log.escape-control-chars` and 
