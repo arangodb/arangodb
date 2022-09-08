@@ -103,7 +103,6 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
           }
         }
 
-        // TODO Add a tombstone to the TransactionManager
         return {TRI_ERROR_NO_ERROR};
       });
 }
