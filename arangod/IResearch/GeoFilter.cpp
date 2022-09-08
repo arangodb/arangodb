@@ -162,13 +162,13 @@ class GeoIterator : public irs::doc_iterator {
 
     if (_doc->value != _columnIt->seek(_doc->value) ||
         _storedValue->value.empty()) {
-      LOG_TOPIC("62a62", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("62a62", DEBUG, arangodb::iresearch::TOPIC)
           << "failed to find stored geo value, doc='" << _doc->value << "'";
       return false;
     }
 
     if (!parseShape(slice(_storedValue->value), _shape, false)) {
-      LOG_TOPIC("62a65", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("62a65", DEBUG, arangodb::iresearch::TOPIC)
           << "failed to parse stored geo value, value='" << slice(_storedValue->value).toHex()
           << ", doc='" << _doc->value << "'";
       return false;
