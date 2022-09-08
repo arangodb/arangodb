@@ -48,8 +48,8 @@ function EscapeControlTrueSuite() {
 
   return {
     testEscapeControlTrue: function() {
-      const visibleCharCodes = ['\x0a', '\x0d', '\x09'];
-      const visibleChars = ['\\n', '\\r', '\\t'];
+      const visibleCharCodes = ['\x0a', '\x0d', '\x09', '\x08', '\x0C'];
+      const visibleChars = ['\\n', '\\r', '\\t', '\\b', '\\f'];
       const escapeCharsLength = 31;
       const res = arango.POST("/_admin/execute", `   
         require('console').log("testmann: start");
