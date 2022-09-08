@@ -105,6 +105,23 @@
       });
     },
 
+    refreshGraph:function () {
+      var self = this;
+      console.log("Refreshing graph");
+      console.log("self.algorithm: ", self.algorithm);
+      //self.currentGraph.refresh();
+      if (self.algorithm === 'force') {
+        self.startLayout(true, origin);
+      } else if (self.algorithm === 'fruchtermann') {
+        sigma.layouts.fruchtermanReingold.start(self.currentGraph);
+        self.currentGraph.refresh();
+        self.cameraToNode(origin, 1000);
+      } else if (self.algorithm === 'noverlap') {
+        self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
+      // self.currentGraph.startNoverlap();
+      }
+    },
+
     loadFullGraphModal: function () {
       var buttons = []; var tableContent = [];
 
@@ -613,6 +630,7 @@
         self.setupSigma();
 
         self.fetchStarted = new Date();
+        console.log("AJAXDATA: ", ajaxData);
         $.ajax({
           type: 'GET',
           url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(self.name)),
@@ -1621,6 +1639,7 @@
       }
 
       ajaxData.query = 'FOR v, e, p IN 1..1 ANY ' + JSON.stringify(id) + ' GRAPH ' + JSON.stringify(self.name) + ' RETURN p';
+      console.log("ajaxData in expandNode: ", ajaxData);
 
       $.ajax({
         type: 'GET',
@@ -1628,7 +1647,7 @@
         contentType: 'application/json',
         data: ajaxData,
         success: function (data) {
-          self.checkExpand(data, id);
+          self.checkExpand(data, id, ajaxData);
         },
         error: function (e) {
           arangoHelper.arangoError('Graph', 'Could not expand node: ' + id + '.');
@@ -1638,7 +1657,9 @@
       self.removeHelp();
     },
 
-    checkExpand: function (data, origin) {
+    checkExpand: function (data, origin, ajaxData) {
+      console.log("ajaxData in checkExpand: ", ajaxData);
+      console.log("ajaxData.nodeColorAttribute in checkExpand: ", ajaxData.nodeColorAttribute);
       var self = this;
       var newNodes = data.nodes;
       var newEdges = data.edges;
@@ -1666,19 +1687,30 @@
         });
 
         if (found === false) {
-          if(!self.nodeColorAttributes.some(node => node.name === newNode.nodeColorAttributeValue)) {
-            console.log("The nodeColorAttributeValue #" + newNode.nodeColorAttributeValue + "# doesn not exist yet");
-            const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
-            const nodeColorAttributeObj = {
-              'name': newNode.nodeColorAttributeValue || '',
-              'color': tempNodeColor
-            };
-            console.log("Newly created nodeColorAttribute (nodeColorAttributeObj) in checkExpand: ", nodeColorAttributeObj);
-            self.nodeColorAttributes.push(nodeColorAttributeObj);
-          }
+          //if(graph.settings.nodeColorAttribute !== undefined && graph.settings.nodeColorAttribute !== '') {
+          if(ajaxData.nodeColorAttribute !== undefined && ajaxData.nodeColorAttribute !== '') {
+            console.log("I expand a node because ajaxData.nodeColorAttribute is set");
+            if(!self.nodeColorAttributes.some(node => node.name === newNode.nodeColorAttributeValue)) {
+              console.log("The nodeColorAttributeValue #" + newNode.nodeColorAttributeValue + "# doesn not exist yet");
+              const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+              const nodeColorAttributeObj = {
+                'name': newNode.nodeColorAttributeValue || '',
+                'color': tempNodeColor
+              };
+              console.log("Newly created nodeColorAttribute (nodeColorAttributeObj) in checkExpand: ", nodeColorAttributeObj);
+              self.nodeColorAttributes.push(nodeColorAttributeObj);
+            }
 
-          const categoryColor = self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue).color : '#00f';
-          newNode.color = categoryColor;
+            const categoryColor = self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue).color : '#00f';
+            //if(self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue)) {
+              newNode.color = categoryColor;
+            //}
+          }
+          /*
+          else {
+            console.log("No ajaxData.nodeColorAttribute set. Therefore I don't color the node after expansion!");
+          }
+          */
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
         }
@@ -1696,18 +1728,24 @@
       $('#edgesCount').text(parseInt($('#edgesCount').text(), 10) + newEdgeCounter);
 
       // rerender graph
+      console.log("Current nodes before relayouting: ", this.currentGraph.graph.nodes());
       if (newNodeCounter > 0 || newEdgeCounter > 0) {
-        console.log("RERENDER Graph in checkExpand");
+        console.log("RERENDER Graph in checkExpand with algorithm: ", self.algorithm);
         if (self.algorithm === 'force') {
+          console.log("Relayout with force");
           self.startLayout(true, origin);
         } else if (self.algorithm === 'fruchtermann') {
+          console.log("Relayout with fruchtermann");
           sigma.layouts.fruchtermanReingold.start(self.currentGraph);
           self.currentGraph.refresh();
           self.cameraToNode(origin, 1000);
         } else if (self.algorithm === 'noverlap') {
+          console.log("Relayout with noverlap (which is not possible)");
           self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
           // self.currentGraph.startNoverlap();
         }
+        //console.log("refreshGraph a second time!");
+        //self.refreshGraph();
       }
     },
 
@@ -2511,6 +2549,9 @@
     },
 
     startLayout: function (kill, origin) {
+      console.log("In startLayout:---------");
+      console.log("kill: ", kill);
+      console.log("origin: ", origin);
       var self = this;
       this.currentGraph.settings('drawLabels', false);
       this.currentGraph.settings('drawEdgeLabels', false);
@@ -2523,6 +2564,7 @@
           self.stopLayout();
 
           if (origin) {
+            console.log("In origin part as origin is set!!!!!!!!!!!!");
             self.currentGraph.refresh({ skipIndexation: true });
             // self.cameraToNode(origin, 1000);
           }
@@ -2533,10 +2575,12 @@
       $('#toggleForce span').html('Stop layout');
       this.layouting = true;
       if (this.aqlMode) {
+        console.log("this.aqlMode is true");
         this.currentGraph.startForceAtlas2({
           worker: true
         });
       } else {
+        console.log("In else part as this.aqlMode is false");
         this.currentGraph.startForceAtlas2({
           worker: true
         });
