@@ -1,5 +1,10 @@
 devel
 -----
+
+* Fixed a rare occuring issue where paths inside a DisjointSmart traversal
+  containing only satellite relevant nodes were not returned properly 
+  (ES-1265).
+
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
 * Fix for the Pregel's HITS algorithm using a fixed value instead of the
