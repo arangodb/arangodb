@@ -77,13 +77,18 @@ const testReadWriteOnGraph = function (vertices, edges) {
     }
 };
 
+const setConsecutiveValuesFrom0 = function (vertices) {
+    let i = 0;
+    for (let v of vertices) {
+        v.input = i++;
+    }
+};
+
 function makeReadWriteTestSuite(isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
 
     return function () {
-        'use strict';
-
         return {
 
             setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
@@ -93,7 +98,8 @@ function makeReadWriteTestSuite(isSmart, smartAttribute, numberOfShards) {
             testReadWritePath: function () {
                 const length = 143;
                 const kind = "bidirected";
-                const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length, kind);
+                let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makePath(length, kind);
+                setConsecutiveValuesFrom0(vertices);
                 testReadWriteOnGraph(vertices, edges);
 
             },
@@ -101,19 +107,22 @@ function makeReadWriteTestSuite(isSmart, smartAttribute, numberOfShards) {
                 const length = 3;
                 const subgraph01 = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
                 const subgraph02 = graphGenerator(verticesEdgesGenerator(vColl, "v1")).makeDirectedCycle(length);
-                const {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                let {vertices, edges} = unionGraph([subgraph01, subgraph02]);
+                setConsecutiveValuesFrom0(vertices);
                 testReadWriteOnGraph(vertices, edges);
             },
             testReadWriteOnClique: function () {
                 const size = 10;
                 const kind = "bidirected";
                 let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeClique(size, kind);
+                setConsecutiveValuesFrom0(vertices);
                 testReadWriteOnGraph(vertices, edges);
             },
             testReadWriteOnStar: function () {
                 const numLeaves = 10;
                 const kind = "bidirected";
                 let {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v")).makeStar(numLeaves, kind);
+                setConsecutiveValuesFrom0(vertices);
                 testReadWriteOnGraph(vertices, edges);
             }
         };

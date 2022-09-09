@@ -37,12 +37,12 @@ var console = require("console");
 let pregel = require("@arangodb/pregel");
 let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 // const pregelTestEffectiveClosenessHelpers = require("@arangodb/graph/pregel-test-effective-closeness-helpers");
+const pregelTestReadWriteHelpers = require("@arangodb/graph/pregel-test-read-write-helpers");
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function componentsTestSuite() {
-    'use strict';
 
     const numComponents = 20; // components
     const n = 200; // vertices
@@ -260,7 +260,6 @@ function componentsTestSuite() {
 }
 
 function wccRegressionTestSuite() {
-    'use strict';
 
     const makeEdge = (from, to) => {
         return {_from: `${vColl}/${from}`, _to: `${vColl}/${to}`, vertex: `${from}`};
@@ -418,6 +417,8 @@ const hitsTestSuite = pregelTestHelpers.makeHITSTestSuite(false, "", 4);
 
 // const effectiveClosenessTestSuite = pregelTestEffectiveClosenessHelpers.makeEffectiveClosenessTestSuite(false, ", 4");
 
+const readWriteTestSuite = pregelTestReadWriteHelpers.makeReadWriteTestSuite(false, "", 4);
+
 jsunity.run(componentsTestSuite);
 jsunity.run(wccRegressionTestSuite);
 jsunity.run(wccTestSuite);
@@ -428,4 +429,5 @@ jsunity.run(seededPagerankTestSuite);
 jsunity.run(ssspTestSuite);
 jsunity.run(hitsTestSuite);
 // jsunity.run(effectiveClosenessTestSuite);
+jsunity.run(readWriteTestSuite);
 return jsunity.done();
