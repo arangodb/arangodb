@@ -104,6 +104,21 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 std::string const edgeUrl = "/_internal/traverser/edge/";
 std::string const vertexUrl = "/_internal/traverser/vertex/";
+
+ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
+persistCollectionsInAgency(ClusterFeature&,
+                           std::vector<arangodb::PlanCollection>& collections,
+                           bool ignoreDistributeShardsLikeErrors,
+                           bool waitForSyncReplication,
+                           bool enforceReplicationFactor, bool isNewDatabase) {
+  TRI_ASSERT(!collections.empty());
+  if (collections.empty()) {
+    return Result{
+        TRI_ERROR_INTERNAL,
+        "Trying to create an empty list of collections on coordinator."};
+  }
+}
+
 }  // namespace
 
 // Timeout for write operations, note that these are used for communication
