@@ -96,7 +96,7 @@ auto doNothingVisitor = [](AstNode const*) {};
   // TODO: if we get rid of vsprintf in FillExceptionString, we don't
   // need to pass a raw C-style string into it
   std::string temp(details);
-  std::string msg = basics::FillExceptionString(code, temp.c_str());
+  std::string msg = basics::Exception::FillExceptionString(code, temp.c_str());
   query.warnings().registerError(code, msg);
 }
 

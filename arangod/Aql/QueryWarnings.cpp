@@ -42,6 +42,9 @@ QueryWarnings::QueryWarnings()
 void QueryWarnings::registerError(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
+  if (details.empty()) {
+    THROW_ARANGO_EXCEPTION(code);
+  }
   THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
 }
 
