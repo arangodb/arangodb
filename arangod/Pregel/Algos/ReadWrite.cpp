@@ -42,13 +42,12 @@ struct ReadWriteWorkerContext : public WorkerContext {
 };
 
 ReadWrite::ReadWrite(application_features::ApplicationServer& server,
-                   VPackSlice const& userParams)
+                     VPackSlice const& userParams)
     : SimpleAlgorithm(server, "readwrite", userParams) {}
 
 struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
   ReadWriteGraphFormat(application_features::ApplicationServer& server,
-                      std::string  sourceFieldName,
-                      std::string  resultFieldName)
+                       std::string sourceFieldName, std::string resultFieldName)
       : GraphFormat(server),
         sourceFieldName{std::move(sourceFieldName)},
         resultFieldName{std::move(resultFieldName)} {}
@@ -56,12 +55,23 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
   std::string const resultFieldName;
 
   void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& documentId,
-                      arangodb::velocypack::Slice document, V& targetPtr,
-                      uint64_t& /*vertexIdRange*/) override {
-    arangodb::velocypack::Slice val = document.get(sourceFieldName);
-    targetPtr = val.isNumber() ? val.getNumber<V>() : 1.0;
-
+                      std::string const& documentId, VPackSlice document,
+                      V& targetPtr, uint64_t& /*vertexIdRange*/) override {
+    if (!document.hasKey(sourceFieldName)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "Vertex with ID " + documentId +
+                                         " has no property " + sourceFieldName +
+                                         ".");
+    } else {
+      VPackSlice val = document.get(sourceFieldName);
+      if (!val.isNumber()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "Vertex with ID " + documentId +
+                                           " has property " + sourceFieldName +
+                                           ", whose type is not a number.");
+      }
+      targetPtr = static_cast<V>(val.getNumber<V>());
+    }
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
@@ -72,13 +82,14 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
 };
 
 GraphFormat<V, E>* ReadWrite::inputFormat() const {
-    return new ReadWriteGraphFormat(_server, _sourceField, _resultField);
+  return new ReadWriteGraphFormat(_server, _sourceField, _resultField);
 }
 
 struct ReadWriteComputation : public VertexComputation<V, E, V> {
   ReadWriteComputation() = default;
   void compute(MessageIterator<float> const& messages) override {
-    V sum;
+    V sum{};
+    sum++;
     for (const float* msg : messages) {
       sum += *msg;
     }
