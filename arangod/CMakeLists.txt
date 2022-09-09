@@ -283,7 +283,6 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/ShortestPath.cpp
   Pregel/Algos/WCC.cpp
-  Pregel/Algos/ReadWrite.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
@@ -300,6 +299,12 @@ set(LIB_ARANGO_PREGEL_SOURCES
   RestHandler/RestControlPregelHandler.cpp
   RestHandler/RestPregelHandler.cpp
 )
+
+if (USE_MAINTAINER_MODE)
+  set(LIB_ARANGO_PREGEL_SOURCES ${LIB_ARANGO_PREGEL_SOURCES}
+    Pregel/Algos/ReadWrite.cpp
+  )
+endif()
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
