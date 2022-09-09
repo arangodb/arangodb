@@ -42,6 +42,7 @@ const pregel = require("@arangodb/pregel");
 function testSuitePregel() {
   'use strict';
   let oldLogLevel;
+  let oldLogLevelRequests;
   let coordinator;
 
   // beware, pregel only uses float for pagerank,
@@ -66,7 +67,8 @@ function testSuitePregel() {
 
     setUpAll : function() {
       oldLogLevel = arango.GET("/_admin/log/level").general;
-      arango.PUT("/_admin/log/level", { general: "info" });
+      oldLogLevelRequests = arango.GET("/_admin/log/level").requests;
+      arango.PUT("/_admin/log/level", { general: "info", requests: "debug" });
 
       let coordinators = getCtrlCoordinators();
       assertTrue(coordinators.length > 0);
@@ -75,7 +77,7 @@ function testSuitePregel() {
 
     tearDownAll : function () {
       // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", { general: oldLogLevel });
+      arango.PUT("/_admin/log/level", { general: oldLogLevel, requests: oldLogLevelRequests });
     },
 
     setUp: function () {
