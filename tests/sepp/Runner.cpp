@@ -39,12 +39,14 @@
 #include "Workloads/InsertDocuments.h"
 #include "Workloads/IterateDocuments.h"
 #include "velocypack/Collection.h"
+#include "velocypack/Parser.h"
 
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
 namespace {
