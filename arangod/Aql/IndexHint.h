@@ -46,24 +46,26 @@ class IndexHint {
   enum HintType : uint8_t { Illegal, None, Simple, Disabled };
 
  public:
-  explicit IndexHint();
+  IndexHint() = default;
   explicit IndexHint(QueryContext& query, AstNode const* node);
-  explicit IndexHint(arangodb::velocypack::Slice slice);
+  explicit IndexHint(velocypack::Slice slice);
 
-  HintType type() const noexcept;
-  bool isForced() const noexcept;
+  HintType type() const noexcept { return _type; }
+  bool isForced() const noexcept { return _forced; }
   std::vector<std::string> const& hint() const noexcept;
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  std::string typeName() const;
+  void toVelocyPack(velocypack::Builder& builder) const;
+  std::string_view typeName() const;
   std::string toString() const;
 
   size_t getLookahead() const noexcept { return _lookahead; }
+  bool waitForSync() const noexcept { return _waitForSync; }
 
  private:
-  HintType _type;
-  bool _forced;
-  size_t _lookahead = 1;
+  HintType _type{None};
+  size_t _lookahead{1};
+  bool _forced{false};
+  bool _waitForSync{false};
 
   // actual hint is a recursive structure, with the data type determined by the
   // _type above; in the case of a nested IndexHint, the value of isForced() is
