@@ -631,6 +631,10 @@ Collections::create(         // create collection
     // but that is a cleanup for later.
     auto res = col.validateDatabaseConfiguration(config);
     if (res.fail()) {
+      for (auto const& reportCollection : collections) {
+        events::CreateCollection(vocbase.name(), reportCollection.name,
+                                 res.errorNumber());
+      }
       return res;
     }
 
