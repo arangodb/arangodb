@@ -23,7 +23,7 @@ An array of attribute paths as strings to index the fields with the default
 options, or objects to specify options for the fields.
 
 @RESTSTRUCT{name,post_api_index_inverted_fields,string,required,}
-An attribute path. The `.` character denotes nested fields.
+An attribute path. The `.` character denotes sub-attributes.
 
 @RESTSTRUCT{analyzer,post_api_index_inverted_fields,string,optional,}
 The name of an Analyzer to use for this field.
@@ -42,12 +42,14 @@ Default: the value of the top-level `features` option, or if not set, the
 features defined by the Analyzer itself.
 
 @RESTSTRUCT{includeAllFields,post_api_index_inverted_fields,boolean,optional,}
-If set to `true`, then all nested attributes of this field are indexed, excluding
-any nested attributes that are configured separately by other elements in the
-`fields` array. The `analyzer` and `features` properties apply to the nested
-fields.
+This option only applies if you use the inverted index in a `search-alias` Views.
 
-If set to `false`, then nested attributes are ignored. The default is `false`.
+If set to `true`, then all sub-attributes of this field are indexed, excluding
+any sub-attributes that are configured separately by other elements in the
+`fields` array (and their sub-attributes). The `analyzer` and `features`
+properties apply to the sub-attributes.
+
+If set to `false`, then sub-attributes are ignored. The default is `false`.
 
 @RESTSTRUCT{searchField,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -87,7 +89,7 @@ conditions need to be met by a single sub-object instead of across all of them.
 This property is available in the Enterprise Edition only.
 
 @RESTSTRUCT{name,post_api_index_inverted_nested,string,required,}
-An attribute path. The `.` character denotes nested fields.
+An attribute path. The `.` character denotes sub-attributes.
 
 @RESTSTRUCT{analyzer,post_api_index_inverted_nested,string,optional,}
 The name of an Analyzer to use for this field.
@@ -139,7 +141,7 @@ index lookups or for sorting, but they can be used for projections. This allows 
 index to fully cover more queries and avoid extra document lookups.
 
 @RESTSTRUCT{fields,post_api_index_inverted_storedvalues,array,required,string}
-A list of attribute paths. The `.` character denotes nested fields.
+A list of attribute paths. The `.` character denotes sub-attributes.
 
 @RESTSTRUCT{compression,post_api_index_inverted_storedvalues,string,optional,}
 Defines how to compress the attribute values. Possible values:
@@ -156,7 +158,7 @@ with the `primarySort` definition, then the `SORT` operation is optimized away.
 An array of the fields to sort the index by and the direction to sort each field in.
 
 @RESTSTRUCT{field,post_api_index_inverted_primarysort_fields,string,required,}
-An attribute path. The `.` character denotes nested fields.
+An attribute path. The `.` character denotes sub-attributes.
 
 @RESTSTRUCT{direction,post_api_index_inverted_primarysort_fields,string,required,}
 The sorting direction. Possible values:
@@ -183,9 +185,11 @@ enabled for the default `analyzer`. Possible features:
 The default is an empty array.
 
 @RESTBODYPARAM{includeAllFields,boolean,optional,}
-If set to `true`, then all document attributes are indexed, excluding
-any nested attributes that are configured in the `fields` array.
-The `analyzer` and `features` properties apply to the nested fields.
+This option only applies if you use the inverted index in a `search-alias` Views.
+
+If set to `true`, then all document attributes are indexed, excluding any
+sub-attributes that are configured in the `fields` array (and their sub-attributes).
+The `analyzer` and `features` properties apply to the sub-attributes.
 
 The default is `false`.
 
