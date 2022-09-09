@@ -154,10 +154,10 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
   transaction::StandaloneContext ctx(coll->vocbase());
 
-  SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
-                                      std::shared_ptr<transaction::Context>(),
-                                      &ctx),  // aliasing ctor
-                                  *coll, arangodb::AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+          std::shared_ptr<transaction::Context>(), &ctx),
+      *coll, AccessMode::Type::WRITE);
 
   Result res = trx.begin();
 
@@ -171,13 +171,11 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       _skippedIndexes.emplace(link.first->id());
     } else {
       // link participates in recovery
-      if (link.first->type() ==
-          arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+      if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
         basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first))
             .insert(trx, nullptr, docId, doc, {}, false);
       } else {
-        TRI_ASSERT(link.first->type() ==
-                   arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK);
+        TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
         basics::downCast<IResearchRocksDBLink>(*(link.first))
             .insert(trx, nullptr, docId, doc, {}, false);
       }
@@ -229,10 +227,10 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
   transaction::StandaloneContext ctx(coll->vocbase());
 
-  SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
-                                      std::shared_ptr<transaction::Context>(),
-                                      &ctx),  // aliasing ctor
-                                  *coll, arangodb::AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+          std::shared_ptr<transaction::Context>(), &ctx),
+      *coll, AccessMode::Type::WRITE);
 
   Result res = trx.begin();
 
@@ -246,14 +244,12 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
       _skippedIndexes.emplace(link.first->id());
     } else {
       // link participates in recovery
-      if (link.first->type() ==
-          arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+      if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
         IResearchRocksDBInvertedIndex& impl =
             basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
         impl.remove(trx, nullptr, docId, VPackSlice::emptyObjectSlice());
       } else {
-        TRI_ASSERT(link.first->type() ==
-                   arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK);
+        TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
         IResearchLink& impl =
             basics::downCast<IResearchRocksDBLink>(*(link.first));
         impl.remove(trx, docId, false);
@@ -312,7 +308,7 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob,
 }
 
 bool IResearchRocksDBRecoveryHelper::lookupLinks(
-    LinkContainer& result, arangodb::LogicalCollection& coll) const {
+    LinkContainer& result, LogicalCollection& coll) const {
   TRI_ASSERT(result.empty());
 
   bool mustReplay = false;
@@ -321,12 +317,9 @@ bool IResearchRocksDBRecoveryHelper::lookupLinks(
 
   // filter out non iresearch links
   const auto it = std::remove_if(
-      indexes.begin(), indexes.end(),
-      [](std::shared_ptr<arangodb::Index> const& idx) {
-        return idx->type() !=
-                   arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK &&
-               idx->type() !=
-                   arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX;
+      indexes.begin(), indexes.end(), [](std::shared_ptr<Index> const& idx) {
+        return idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK &&
+               idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX;
       });
   indexes.erase(it, indexes.end());
 
