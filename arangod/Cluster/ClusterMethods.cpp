@@ -105,6 +105,7 @@ namespace {
 std::string const edgeUrl = "/_internal/traverser/edge/";
 std::string const vertexUrl = "/_internal/traverser/vertex/";
 
+/*
 ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
 persistCollectionsInAgency(ClusterFeature&,
                            std::vector<arangodb::PlanCollection>& collections,
@@ -118,6 +119,7 @@ persistCollectionsInAgency(ClusterFeature&,
         "Trying to create an empty list of collections on coordinator."};
   }
 }
+*/
 
 }  // namespace
 

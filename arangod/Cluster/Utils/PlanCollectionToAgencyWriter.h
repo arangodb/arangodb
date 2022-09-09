@@ -20,4 +20,22 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PlanCollectionToAgencyWriter.h"
+#pragma once
+#include "VocBase/Properties/PlanCollection.h"
+
+namespace arangodb {
+
+class AgencyOperation;
+
+struct PlanCollectionToAgencyWriter {
+  explicit PlanCollectionToAgencyWriter(PlanCollection col);
+
+  [[nodiscard]] AgencyOperation prepareOperation(
+      std::string const& databaseName) const;
+
+ private:
+  // Information required for the collection to write
+  PlanCollection _collection;
+};
+
+}  // namespace arangodb

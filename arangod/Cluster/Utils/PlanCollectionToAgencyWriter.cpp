@@ -20,17 +20,27 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "PlanCollectionToAgencyWriter.h"
+#include "Agency/AgencyComm.h"
+#include "Agency/AgencyPaths.h"
 #include "VocBase/Properties/PlanCollection.h"
 
-namespace arangodb {
+using namespace arangodb;
 
-struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col);
+PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(PlanCollection col)
+    : _collection{std::move(col)} {}
 
- private:
-  // Information required for the collection to write
-  PlanCollection _collection;
-};
-
-}  // namespace arangodb
+[[nodiscard]] AgencyOperation PlanCollectionToAgencyWriter::prepareOperation(
+    std::string const& databaseName) const {
+  auto const collectionPath = cluster::paths::root()
+                                  ->arango()
+                                  ->plan()
+                                  ->collections()
+                                  ->database(databaseName)
+                                  ->collection(_collection.id);
+  auto builder = std::make_shared<VPackBuilder>();
+  // Add all Collection properties
+  velocypack::serialize(*builder, _collection);
+  return AgencyOperation{collectionPath, AgencyValueOperationType::SET,
+                         std::move(builder)};
+}
