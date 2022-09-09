@@ -499,9 +499,11 @@ bool InvertedIndexField::json(
     builder.add(kNameFieldName, VPackValue(toString()));
   }
 
-  builder.add(kIsSearchField, VPackValue(_isSearchField));
+  if (rootMode || parent._isSearchField != _isSearchField) {
+    builder.add(kIsSearchField, VPackValue(_isSearchField));
+  }
 
-  if (!_fields.empty()) {
+  if (!_fields.empty() || rootMode) {
     auto fieldsAttributeName =
         rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
     VPackArrayBuilder nestedArray(&builder, fieldsAttributeName);
