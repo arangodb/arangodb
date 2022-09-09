@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -41,7 +40,6 @@ const {
     loadGraphGenerators,
     unionGraph,
     graphGenerator,
-    Graph
 } = require("@arangodb/graph/graphs-generation");
 
 const {
@@ -69,9 +67,9 @@ const testReadWriteOnGraph = function (vertices, edges) {
         const doThrow = false;
         assertAlmostEquals(resultV.input, resultV.output, epsilon,
             `Different input an output values for vertex ${vKey}`,
-            "Input was",
-            "Output was",
-            "",
+            "Input",
+            "Output",
+            `For vertex ${resultV._key}`,
             doThrow
         );
     }
