@@ -36,7 +36,6 @@ function backgroundIndexSuite() {
   const tasks = require("@arangodb/tasks");
   const tasksCompleted = () => {
     return tasks.get().filter((task) => {
-      //print(task)
       return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/));
     }).length;
   };
