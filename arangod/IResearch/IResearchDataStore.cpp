@@ -1316,9 +1316,11 @@ Result IResearchDataStore::initDataStore(
           linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
                                               linkLock->collection(), true);
 
-          // we cannot return an error from here as this would abort the
-          // entire recovery and fail the startup.
-          return {};
+          if (asyncFeature->failQueriesOnOutOfSync()) {
+            // we cannot return an error from here as this would abort the
+            // entire recovery and fail the startup.
+            return {};
+          }
         }
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
@@ -1410,6 +1412,10 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
     return {};
   }
 
+  if (_asyncFeature->failQueriesOnOutOfSync() && isOutOfSync()) {
+    return {};
+  }
+
   auto* key = this;
   // TODO FIXME find a better way to look up a ViewState
   auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
@@ -1447,7 +1453,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   }
 
   // ...........................................................................
-  // if an exception occurs below than the transaction is droped including all
+  // if an exception occurs below than the transaction is dropped including all
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
@@ -1491,6 +1497,10 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
         << "skipping 'insert', operation tick '" << _engine->recoveryTick()
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
+    return {};
+  }
+
+  if (_asyncFeature->failQueriesOnOutOfSync() && isOutOfSync()) {
     return {};
   }
 
@@ -1647,6 +1657,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
 
   try {
     _dataStore._writer->clear(tick);
+
     //_lastCommittedTick now updated and data is written to storage
     recoverCommittedTick = false;
 
