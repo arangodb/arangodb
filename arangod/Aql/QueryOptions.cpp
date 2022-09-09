@@ -221,7 +221,8 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
 
-  if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
+  if (value = slice.get(StaticStrings::ForceOneShardAttributeValue);
+      value.isString()) {
     forceOneShardAttributeValue = value.copyString();
   }
 
@@ -294,7 +295,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   if (!forceOneShardAttributeValue.empty()) {
-    builder.add("forceOneShardAttributeValue",
+    builder.add(StaticStrings::ForceOneShardAttributeValue,
                 VPackValue(forceOneShardAttributeValue));
   }
 
