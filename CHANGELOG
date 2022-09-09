@@ -1,12 +1,12 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* Implement prefetch for revision trees, in case a batch is created with
-  a distinguished collection as for `SynchronizeShard`. This ensures that
-  the revision tree for the batch will be available when needed, even though
-  the revision tree for the collection might already have advanced beyond
-  the sequence number of the snapshot in the batch. This ensures that
-  shards can get in sync more reliably and more quickly.
+* Implement prefetch for revision trees, in case a batch is created with a
+  distinguished collection as for `SynchronizeShard`. This ensures that the
+  revision tree for the batch will be available when needed, even though the
+  revision tree for the collection might already have advanced beyond the
+  sequence number of the snapshot in the batch. This ensures that shards can get
+  in sync more reliably and more quickly.
 
 * Added startup option `--rocksdb.periodic-compaction-ttl`.
   This option controls the TTL (in seconds) for periodic compaction of .sst
