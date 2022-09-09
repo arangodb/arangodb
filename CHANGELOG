@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed a rare occuring issue where paths inside a DisjointSmart traversal
+  containing only satellite relevant nodes were not returned properly (ES-1265).
+
 * Added startup option `--rocksdb.periodic-compaction-ttl`.
   This option controls the TTL (in seconds) for periodic compaction of .sst
   files in RocksDB, based on the .sst file age. The default value from RocksDB
@@ -20,10 +23,6 @@ v3.10.0 (XXXX-XX-XX)
 * Fixed SEARCH-334 Added searchField option for inverted index.
 
 * Fixed SEARCH-376 Assertion fixed for non-array value in array comparison.
-
-* Fixed a rare occuring issue where paths inside a DisjointSmart traversal
-  containing only satellite relevant nodes were not returned properly 
-  (ES-1265).
 
 * Fixed BTS-926: UI showing the "create index" form to non-admin users.
 
