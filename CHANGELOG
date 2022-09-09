@@ -1,6 +1,9 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed a rare occuring issue where paths inside a DisjointSmart traversal
+  containing only satellite relevant nodes were not returned properly (ES-1265).
+
 * Implement prefetch for revision trees, in case a batch is created with a
   distinguished collection as for `SynchronizeShard`. This ensures that the
   revision tree for the batch will be available when needed, even though the

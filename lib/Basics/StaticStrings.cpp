@@ -165,6 +165,8 @@ std::string const StaticStrings::ProducesResult("producesResult");
 std::string const StaticStrings::ReadOwnWrites("readOwnWrites");
 std::string const StaticStrings::UseCache("useCache");
 std::string const StaticStrings::Parallelism("parallelism");
+std::string const StaticStrings::ForceOneShardAttributeValue(
+    "forceOneShardAttributeValue");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
