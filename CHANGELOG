@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to 0.15.5-preview-3.
+
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
   containing only satellite relevant nodes were not returned properly (ES-1265).
 
@@ -130,8 +132,6 @@ v3.10.0 (XXXX-XX-XX)
 
 * Fixed SEARCH-346. If index creation is aborted due to existing same index new
   index is properly dropped if it was already instantiated.
-
-* Updated ArangoDB Starter to 0.15.5-preview-2.
 
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
