@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.12.0-preview-12.
+
 * Added "intermediateCommits" statistics return value for AQL queries, to
   relay the number of intermediate commits back that a write query performed.
 
