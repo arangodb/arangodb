@@ -25,9 +25,7 @@ auto Storing::run() -> void {
   LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
 
   auto startCleanupCommand =
-      StartCleanup{.executionNumber = conductor._executionNumber,
-                   .gss = conductor._globalSuperstep,
-                   .withStoring = true};
+      StartCleanup{.gss = conductor._globalSuperstep, .withStoring = true};
   auto response = conductor._sendToAllDBServers(startCleanupCommand);
   if (response.fail()) {
     LOG_PREGEL_CONDUCTOR("f382d", ERR) << "Cleanup could not be started";

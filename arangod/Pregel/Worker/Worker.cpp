@@ -63,6 +63,7 @@ struct overloaded : Ts... {
   using Ts::operator()...;
 };
 }  // namespace
+
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << "[job " << _config.executionNumber() << "] "
@@ -80,12 +81,14 @@ std::function<void()> Worker<V, E, M>::_makeStatusCallback() {
   return [self = shared_from_this(), this] {
     auto statusUpdatedEvent =
         StatusUpdated{.senderId = ServerState::instance()->getId(),
-                      .executionNumer = _config.executionNumber(),
                       .status = _observeStatus()};
+    auto modernMessage =
+        ModernMessage{.executionNumber = _config.executionNumber(),
+                      .payload = statusUpdatedEvent};
     VPackBuilder event;
-    serialize(event, statusUpdatedEvent);
+    serialize(event, modernMessage);
 
-    _callConductor(Utils::statusUpdatePath, event);
+    _callConductor(event);
   };
 }
 
@@ -565,9 +568,11 @@ auto Worker<V, E, M>::finalizeExecution(StartCleanup const& command)
     }
 
     auto event = _cleanupFinishedEvent();
+    auto modernMessage = ModernMessage{
+        .executionNumber = _config.executionNumber(), .payload = event};
     VPackBuilder message;
-    serialize(message, event);
-    _callConductor(Utils::finishedWorkerFinalizationPath, message);
+    serialize(message, modernMessage);
+    _callConductor(message);
     _reports.clear();
     _feature.cleanupWorker(_config.executionNumber());
   };
@@ -595,8 +600,7 @@ auto Worker<V, E, M>::_cleanupFinishedEvent() const -> CleanupFinished {
     reports.add(VPackValue(Utils::reportsKey));
     _reports.intoBuilder(reports);
   }
-  return CleanupFinished{ServerState::instance()->getId(),
-                         _config.executionNumber(), std::move(reports)};
+  return CleanupFinished{ServerState::instance()->getId(), std::move(reports)};
 }
 
 template<typename V, typename E, typename M>
@@ -650,17 +654,17 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductor(std::string const& path,
-                                     VPackBuilder const& message) {
+void Worker<V, E, M>::_callConductor(VPackBuilder const& message) {
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestLane::INTERNAL_LOW,
-                     [this, self = shared_from_this(), path, message] {
-                       VPackBuilder response;
-                       _feature.handleConductorRequest(
-                           *_config.vocbase(), path, message.slice(), response);
-                     });
+    scheduler->queue(
+        RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), message] {
+          VPackBuilder response;
+          _feature.handleConductorRequest(*_config.vocbase(),
+                                          Utils::modernMessagingPath,
+                                          message.slice(), response);
+        });
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
 
@@ -674,9 +678,9 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
 
-    network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
-                              fuerte::RestVerb::Post, baseUrl + path,
-                              std::move(buffer), reqOpts);
+    network::sendRequestRetry(
+        pool, "server:" + _config.coordinatorId(), fuerte::RestVerb::Post,
+        baseUrl + Utils::modernMessagingPath, std::move(buffer), reqOpts);
   }
 }
 

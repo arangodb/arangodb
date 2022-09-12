@@ -24,8 +24,7 @@ auto FatalError::receive(Message const& message) -> void {
 }
 
 auto FatalError::getResults(bool withId) -> PregelResults {
-  auto collectPregelResultsCommand = CollectPregelResults{
-      .executionNumber = conductor._executionNumber, .withId = withId};
+  auto collectPregelResultsCommand = CollectPregelResults{.withId = withId};
   auto response = conductor._sendToAllDBServers(collectPregelResultsCommand);
   if (response.fail()) {
     THROW_ARANGO_EXCEPTION(response.errorNumber());
