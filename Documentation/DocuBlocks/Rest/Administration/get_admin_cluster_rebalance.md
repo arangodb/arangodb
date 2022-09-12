@@ -1,10 +1,10 @@
 @startDocuBlock get_admin_cluster_rebalance
-@brief Calculates the current cluster imbalance.
+@brief Computes the current cluster imbalance.
 
-@RESTHEADER{GET /_admin/cluster/rebalance, Calculates the current cluster imbalance}
+@RESTHEADER{GET /_admin/cluster/rebalance, Compute the current cluster imbalance}
 
 @RESTDESCRIPTION
-Calculates the current cluster imbalance and returns the result. 
+Computes the current cluster imbalance and returns the result. 
 It additionally shows the amount of ongoing and pending move shard operations.
 
 @RESTRETURNCODES

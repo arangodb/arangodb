@@ -1,13 +1,13 @@
 
 @startDocuBlock post_admin_cluster_rebalance_execute
-@brief Execute the given set of move shard operations.
+@brief Executes the given set of move shard operations.
 
-@RESTHEADER{POST /_admin/cluster/rebalance/execute, Execute the given set of move shard operations}
+@RESTHEADER{POST /_admin/cluster/rebalance/execute, Execute a set of move shard operations}
 
 @RESTDESCRIPTION
 Execute the given set of move shard operations. You can use the
-`/_admin/cluster/rebalance` endpoint to calculate these operations to improve
-the balance of shards, shard leaders, and shard followers.
+`POST /_admin/cluster/rebalance` endpoint to calculate these operations to improve
+the balance of shards, leader shards, and follower shards.
 
 @RESTBODYPARAM{version,number,required,}
 Must be set to `1`.
