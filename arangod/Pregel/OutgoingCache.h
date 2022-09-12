@@ -105,6 +105,9 @@ class ArrayOutCache : public OutCache<M> {
       _shardMap;
 
   void _removeContainedMessages() override;
+  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
+                           messagesForVertices)
+      -> std::tuple<size_t, VPackBuilder>;
 
  public:
   ArrayOutCache(WorkerConfig* state, MessageFormat<M> const* format)
@@ -124,6 +127,9 @@ class CombiningOutCache : public OutCache<M> {
   std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
       _shardMap;
   void _removeContainedMessages() override;
+  auto messagesToVPack(
+      std::unordered_map<std::string_view, M> const& messagesForVertices)
+      -> VPackBuilder;
 
  public:
   CombiningOutCache(WorkerConfig* state, MessageFormat<M> const* format,

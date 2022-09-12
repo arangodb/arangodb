@@ -9,8 +9,10 @@
 namespace arangodb::pregel::conductor {
 
 struct ClusterWorkerApi : NewIWorker {
-  ClusterWorkerApi(ExecutionNumber executionNumber, Connection network)
-      : _executionNumber{std::move(executionNumber)},
+  ClusterWorkerApi(ServerID server, ExecutionNumber executionNumber,
+                   Connection network)
+      : _server{std::move(server)},
+        _executionNumber{std::move(executionNumber)},
         _connection{std::move(network)} {}
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
       -> futures::Future<ResultT<GraphLoaded>> override;
@@ -20,6 +22,7 @@ struct ClusterWorkerApi : NewIWorker {
       -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
 
  private:
+  ServerID _server;
   ExecutionNumber _executionNumber;
   Connection _connection;
 
