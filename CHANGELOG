@@ -1,6 +1,8 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed SEARCH-374: Fixed ArangoSearch seek iteration over documents in sparse bitset
+
 * Fixed BTS-926: UI showing the "create index" form to non-admin users.
 
 
