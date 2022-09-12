@@ -327,7 +327,7 @@ function OneShardPropertiesSuite () {
         if (isCluster) {
           try {
             // We set distributeShardsLike to an illegal value
-            db._create("oneshardcol", {distributeShardsLike: ""});
+            db._create("overrideOneShardCollection", {distributeShardsLike: ""});
             fail();
           } catch (err) {
             assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);

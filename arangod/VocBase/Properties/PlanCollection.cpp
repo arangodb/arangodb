@@ -35,6 +35,58 @@
 
 using namespace arangodb;
 
+namespace {
+PlanCollection initWithDefaults(
+    PlanCollection::DatabaseConfiguration const& config,
+    std::string const& name) {
+  PlanCollection res;
+  // Inject certain default values.
+  res.name = name;
+
+  // This will make sure the default configuration for Sharding attributes are
+  // applied
+  res.numberOfShards = config.defaultNumberOfShards;
+  res.replicationFactor = config.defaultReplicationFactor;
+  res.writeConcern = config.defaultWriteConcern;
+  res.distributeShardsLike = config.defaultDistributeShardsLike;
+
+  return res;
+}
+
+ResultT<PlanCollection> parseAndValidate(
+    PlanCollection::DatabaseConfiguration const& config, VPackSlice input,
+    std::string const& defaultName,
+    std::function<void(PlanCollection&)> applyOnSuccess) {
+  try {
+    PlanCollection res = initWithDefaults(config, defaultName);
+    auto status = velocypack::deserializeWithStatus(input, res);
+    if (status.ok()) {
+      // TODO: We can actually call validateDatabaseConfiguration
+      // here, to make sure everything is correct from the very beginning
+      applyOnSuccess(res);
+      return res;
+    }
+    if (status.path() == "name") {
+      // Special handling to be backwards compatible error reporting
+      // on "name"
+      return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+    }
+    if (status.path() == StaticStrings::SmartJoinAttribute) {
+      return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
+    }
+    return Result{
+        TRI_ERROR_BAD_PARAMETER,
+        status.error() +
+            (status.path().empty() ? "" : " on path " + status.path())};
+  } catch (basics::Exception const& e) {
+    return Result{e.code(), e.message()};
+  } catch (std::exception const& e) {
+    return Result{TRI_ERROR_INTERNAL, e.what()};
+  }
+}
+
+}  // namespace
+
 PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
     TRI_vocbase_t const& vocbase) {
   auto& server = vocbase.server();
@@ -68,36 +120,27 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  try {
-    PlanCollection res;
-    // Inject certain default values.
-    // This will make sure the default configuration for Sharding attributes are
-    // applied
-    res.numberOfShards = config.defaultNumberOfShards;
-    res.replicationFactor = config.defaultReplicationFactor;
-    res.writeConcern = config.defaultWriteConcern;
-    res.distributeShardsLike = config.defaultDistributeShardsLike;
+  return ::parseAndValidate(config, input, StaticStrings::Empty,
+                            [](PlanCollection&) {});
+}
 
-    auto status = velocypack::deserializeWithStatus(input, res);
-    if (status.ok()) {
-      // TODO: We can actually call validateDatabaseConfiguration
-      // here, to make sure everything is correct from the very beginning
-      return res;
-    }
-    if (status.path() == "name") {
-      // Special handling to be backwards compatible error reporting
-      // on "name"
-      return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
-    }
-    return Result{
-        TRI_ERROR_BAD_PARAMETER,
-        status.error() +
-            (status.path().empty() ? "" : " on path " + status.path())};
-  } catch (basics::Exception const& e) {
-    return Result{e.code(), e.message()};
-  } catch (std::exception const& e) {
-    return Result{TRI_ERROR_INTERNAL, e.what()};
+ResultT<PlanCollection> PlanCollection::fromCreateAPIV8(
+    VPackSlice properties, std::string const& name, TRI_col_type_e type,
+    DatabaseConfiguration config) {
+  if (name.empty()) {
+    // Special handling to be backwards compatible error reporting
+    // on "name"
+    return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
+  return ::parseAndValidate(config, properties, name,
+                            [&name, &type](PlanCollection& col) {
+                              // If we have given a type, it always wins.
+                              // As we hand in an enum the type has to be valid.
+                              // TODO: Should we silently do this?
+                              // or should we throw an illegal use error?
+                              col.type = type;
+                              col.name = name;
+                            });
 }
 
 arangodb::velocypack::Builder PlanCollection::toCreateCollectionProperties(
@@ -115,6 +158,14 @@ arangodb::velocypack::Builder PlanCollection::toCreateCollectionProperties(
 auto PlanCollection::Invariants::isNonEmpty(std::string const& value)
     -> inspection::Status {
   if (value.empty()) {
+    return {"Value cannot be empty."};
+  }
+  return inspection::Status::Success{};
+}
+
+auto PlanCollection::Invariants::isNonEmptyIfPresent(
+    std::optional<std::string> const& value) -> inspection::Status {
+  if (value.has_value() && value.value().empty()) {
     return {"Value cannot be empty."};
   }
   return inspection::Status::Success{};
@@ -254,12 +305,12 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
   if (config.isOneShardDB) {
     if (numberOfShards != 1) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Collection  in a 'oneShardDatabase' must have 1 shard"};
+              "Collection in a 'oneShardDatabase' must have 1 shard"};
     }
 
     if (distributeShardsLike != config.defaultDistributeShardsLike) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Collection  in a 'oneShardDatabase' cannot define "
+              "Collection in a 'oneShardDatabase' cannot define "
               "'distributeShardsLike'"};
     }
   }

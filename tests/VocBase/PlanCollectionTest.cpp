@@ -138,6 +138,27 @@ namespace arangodb::tests {
     GenerateFailsOnObject(attributeName);                                      \
   }
 
+#define GenerateOptionalStringAttributeTest(attributeName)                     \
+  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
+                                   std::string const& expected) {              \
+      auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});       \
+      ASSERT_TRUE(testee->attributeName.has_value())                           \
+          << "Parsing error in " << body.toJson();                             \
+      EXPECT_EQ(testee->attributeName.value(), expected)                       \
+          << "Parsing error in " << body.toJson();                             \
+    };                                                                         \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
+                        "test");                                               \
+    shouldBeEvaluatedTo(                                                       \
+        createMinimumBodyWithOneValue(#attributeName, "unknown"), "unknown");  \
+    GenerateFailsOnBool(attributeName);                                        \
+    GenerateFailsOnInteger(attributeName);                                     \
+    GenerateFailsOnDouble(attributeName);                                      \
+    GenerateFailsOnArray(attributeName);                                       \
+    GenerateFailsOnObject(attributeName);                                      \
+  }
+
 /**********************
  * TEST SECTION
  *********************/
@@ -208,7 +229,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_EQ(testee->writeConcern, 1);
 
   EXPECT_EQ(testee->distributeShardsLike, "");
-  EXPECT_EQ(testee->smartJoinAttribute, "");
+  EXPECT_FALSE(testee->smartJoinAttribute.has_value());
   EXPECT_EQ(testee->globallyUniqueId, "");
   EXPECT_EQ(testee->shardingStrategy, "");
 
@@ -229,6 +250,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_FALSE(testee->isDisjoint);
   EXPECT_EQ(testee->id, "");
   EXPECT_EQ(testee->smartGraphAttribute, "");
+  EXPECT_TRUE(testee->avoidServers.empty());
 }
 
 TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
@@ -588,8 +610,7 @@ TEST_F(PlanCollectionUserAPITest, test_oneShard_forcesDistributeShardsLike) {
 }
 
 TEST_F(PlanCollectionUserAPITest, test_oneShard_moreShards) {
-  // We do not need any special configuration
-  // default is good enough
+  // Configure oneShardDB properly
   std::string defaultShardBy = "_graphs";
   PlanCollection::DatabaseConfiguration config{};
   config.defaultDistributeShardsLike = defaultShardBy;
@@ -606,6 +627,17 @@ TEST_F(PlanCollectionUserAPITest, test_oneShard_moreShards) {
   EXPECT_FALSE(res.ok()) << "Number of Shards violates oneShard database";
 }
 
+TEST_F(PlanCollectionUserAPITest, test_smartJoinAttribute_cannot_be_empty) {
+  PlanCollection::DatabaseConfiguration config{};
+
+  // Specific shardKey is disallowed
+  auto body =
+      createMinimumBodyWithOneValue(StaticStrings::SmartJoinAttribute, "");
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
+  // This could already fail, as soon as we have a context
+  EXPECT_FALSE(testee.ok()) << "Let an empty smartJoinAttribute through";
+}
+
 // Tests for generic attributes without special needs
 GenerateBoolAttributeTest(waitForSync);
 GenerateBoolAttributeTest(doCompact);
@@ -618,7 +650,7 @@ GeneratePositiveIntegerAttributeTest(replicationFactor);
 GeneratePositiveIntegerAttributeTest(writeConcern);
 
 GenerateStringAttributeTest(distributeShardsLike);
-GenerateStringAttributeTest(smartJoinAttribute);
+GenerateOptionalStringAttributeTest(smartJoinAttribute);
 GenerateStringAttributeTest(globallyUniqueId);
 
 // Covers a non-documented API

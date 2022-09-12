@@ -51,6 +51,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/Properties/PlanCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -271,35 +272,41 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         isolate, obj, "enforceReplicationFactor", enforceReplicationFactor);
   }
 
-  VPackBuilder filtered = methods::Collections::filterInput(propSlice, false);
-  propSlice = filtered.slice();
+  auto planCollection = PlanCollection::fromCreateAPIV8(
+      propSlice, name, collectionType,
+      PlanCollection::DatabaseConfiguration{vocbase});
 
-  bool allowSystem = VelocyPackHelper::getBooleanValue(
-      propSlice, StaticStrings::DataSourceSystem, false);
+  if (planCollection.fail()) {
+    events::CreateCollection(vocbase.name(), name,
+                             planCollection.errorNumber());
+    TRI_V8_THROW_EXCEPTION(planCollection.result());
+  }
 
-  std::shared_ptr<LogicalCollection> coll;
+  std::vector<PlanCollection> collections{std::move(planCollection.get())};
+
   OperationOptions options(ExecContext::current());
-  auto res = methods::Collections::create(
+  std::shared_ptr<LogicalCollection> coll;
+  auto result = methods::Collections::create(
       vocbase,  // collection vocbase
-      options,
-      name,                           // collection name
-      collectionType,                 // collection type
-      propSlice,                      // collection properties
+      options, collections,
       createWaitsForSyncReplication,  // replication wait flag
-      enforceReplicationFactor,
-      /*isNewDatabase*/ false,  // here always false
-      coll, allowSystem);
+      enforceReplicationFactor,       // replication factor flag
+      /*isNewDatabase*/ false         // here always false
+  );
 
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION(result.result());
+  } else {
+    TRI_ASSERT(result.get().size() == 1);
+    coll = result.get().at(0);
   }
 
-  v8::Handle<v8::Value> result;
+  v8::Handle<v8::Value> v8Result;
   if (coll) {
-    result = WrapCollection(isolate, coll);
+    v8Result = WrapCollection(isolate, coll);
   }
 
-  TRI_V8_RETURN(result);
+  TRI_V8_RETURN(v8Result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -367,10 +367,8 @@ void RestCollectionHandler::handleCommandPost() {
     return;
   }
   std::vector<PlanCollection> collections{std::move(planCollection.get())};
-  auto parameters = planCollection->toCollectionsCreate();
 
   OperationOptions options(_context);
-  std::shared_ptr<LogicalCollection> coll;
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
       options, collections,
@@ -379,6 +377,7 @@ void RestCollectionHandler::handleCommandPost() {
       /*isNewDatabase*/ false    // here always false
   );
 
+  std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
   Result res{TRI_ERROR_NO_ERROR};
   if (result.fail()) {
