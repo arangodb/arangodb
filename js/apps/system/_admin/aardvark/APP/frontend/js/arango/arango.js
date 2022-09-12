@@ -50,7 +50,7 @@
       if (v.toLowerCase().indexOf('devel') !== -1 || v.toLowerCase().indexOf('rc') >= 0) {
         version = 'devel';
       } else {
-        version = version.replace(/^(\d+\.\d+).*$/, '$1');
+        version = v.replace(/^(\d+\.\d+).*$/, '$1');
       }
       return version;
     }
