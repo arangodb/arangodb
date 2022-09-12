@@ -524,22 +524,23 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
 }
 
 // currently: returns immediate - blocking - messages
-template<typename OutType, typename InType>
-auto Conductor::_sendToAllDBServers(std::string const& path,
-                                    InType const& message)
-    -> ResultT<std::vector<OutType>> {
+template<typename InType>
+auto Conductor::_sendToAllDBServers(InType const& message)
+    -> ResultT<std::vector<ModernMessage>> {
   _respondedServers.clear();
 
+  auto modernMessage =
+      ModernMessage{.executionNumber = _executionNumber, .payload = message};
   VPackBuilder in;
-  serialize(in, message);
+  serialize(in, modernMessage);
 
   // to support the single server case, we handle it without optimizing it
   if (!ServerState::instance()->isRunningInCluster()) {
     // blocking at the moment
     VPackBuilder out;
-    _feature.handleWorkerRequest(_vocbaseGuard.database(), path, in.slice(),
-                                 out);
-    auto result = deserialize<OutType>(out.slice());
+    _feature.handleWorkerRequest(_vocbaseGuard.database(),
+                                 Utils::modernMessagingPath, in.slice(), out);
+    auto result = deserialize<ModernMessage>(out.slice());
     return {{result}};
   }
 
@@ -565,18 +566,18 @@ auto Conductor::_sendToAllDBServers(std::string const& path,
 
   for (auto const& server : _dbServers) {
     responses.emplace_back(network::sendRequestRetry(
-        pool, "server:" + server, fuerte::RestVerb::Post, base + path, buffer,
-        reqOpts));
+        pool, "server:" + server, fuerte::RestVerb::Post,
+        base + Utils::modernMessagingPath, buffer, reqOpts));
   }
 
-  std::vector<OutType> workerResponses;
+  std::vector<ModernMessage> workerResponses;
   futures::collectAll(responses)
       .thenValue([&](auto results) {
         for (auto const& tryRes : results) {
           network::Response const& res = tryRes.get();
           if (res.ok() && res.statusCode() < 400) {
             try {
-              auto response = deserialize<OutType>(res.slice());
+              auto response = deserialize<ModernMessage>(res.slice());
               workerResponses.emplace_back(response);
             } catch (Exception& e) {
               LOG_PREGEL("56187", ERR)
@@ -655,15 +656,7 @@ auto Conductor::changeState(conductor::StateType name) -> void {
 }
 
 template auto Conductor::_sendToAllDBServers(
-    std::string const& path, PrepareGlobalSuperStep const& message)
-    -> ResultT<std::vector<GlobalSuperStepPrepared>>;
-template auto Conductor::_sendToAllDBServers(
-    std::string const& path, CollectPregelResults const& message)
-    -> ResultT<std::vector<PregelResults>>;
+    CollectPregelResults const& message) -> ResultT<std::vector<ModernMessage>>;
 
-template auto Conductor::_sendToAllDBServers(std::string const& path,
-                                             StartCleanup const& message)
-    -> ResultT<std::vector<CleanupStarted>>;
-template auto Conductor::_sendToAllDBServers(std::string const& path,
-                                             CancelGss const& message)
-    -> ResultT<std::vector<GssCanceled>>;
+template auto Conductor::_sendToAllDBServers(StartCleanup const& message)
+    -> ResultT<std::vector<ModernMessage>>;

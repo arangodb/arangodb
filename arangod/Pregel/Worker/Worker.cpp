@@ -547,21 +547,19 @@ auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void()> cb) {
+auto Worker<V, E, M>::finalizeExecution(StartCleanup const& command)
+    -> CleanupStarted {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
     LOG_PREGEL("4067a", DEBUG) << "removing worker";
-    cb();
-    return;
+    _feature.cleanupWorker(_config.executionNumber());
+    return CleanupStarted{};
   }
 
-  auto const command = deserialize<StartCleanup>(body);
-
   auto const doStore = command.withStoring;
-  auto cleanup = [self = shared_from_this(), this, doStore, cb] {
+  auto cleanup = [self = shared_from_this(), this, doStore] {
     if (doStore) {
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
@@ -571,7 +569,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     serialize(message, event);
     _callConductor(Utils::finishedWorkerFinalizationPath, message);
     _reports.clear();
-    cb();
+    _feature.cleanupWorker(_config.executionNumber());
   };
 
   _state = WorkerState::DONE;
@@ -586,6 +584,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
   }
+  return CleanupStarted{};
 }
 
 template<typename V, typename E, typename M>
@@ -747,6 +746,14 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
           [&](RunGlobalSuperStep const& x) -> ResultT<ModernMessage> {
             return ModernMessage{.executionNumber = _config.executionNumber(),
                                  .payload = {runGlobalSuperStep(x).get()}};
+          },
+          [&](StartCleanup const& x) -> ResultT<ModernMessage> {
+            return ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = finalizeExecution(x)};
+          },
+          [&](CollectPregelResults const& x) -> ResultT<ModernMessage> {
+            return ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = aqlResult(x.withId)};
           },
           [](auto const& x) -> ResultT<ModernMessage> {
             return Result{TRI_ERROR_INTERNAL,

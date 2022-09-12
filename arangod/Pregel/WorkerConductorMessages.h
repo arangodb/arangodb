@@ -171,12 +171,6 @@ auto inspect(Inspector& f, CleanupStarted& x) {
   return f.object(x).fields();
 }
 
-struct GssCanceled {};
-template<typename Inspector>
-auto inspect(Inspector& f, GssCanceled& x) {
-  return f.object(x).fields();
-}
-
 // ------ commands sent from conductor to worker -------
 
 struct LoadGraph {
@@ -262,7 +256,8 @@ auto inspect(Inspector& f, CollectPregelResults& x) {
 using MessagePayload =
     std::variant<LoadGraph, ResultT<GraphLoaded>, PrepareGlobalSuperStep,
                  ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
-                 ResultT<GlobalSuperStepFinished>>;
+                 ResultT<GlobalSuperStepFinished>, CollectPregelResults,
+                 PregelResults, StartCleanup, CleanupStarted>;
 
 struct MessagePayloadSerializer : MessagePayload {};
 template<class Inspector>
@@ -276,7 +271,11 @@ auto inspect(Inspector& f, MessagePayloadSerializer& x) {
           "globalSuperStepPrepared"),
       arangodb::inspection::type<RunGlobalSuperStep>("runGlobalSuperStep"),
       arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
-          "globalSuperStepFinished"));
+          "globalSuperStepFinished"),
+      arangodb::inspection::type<CollectPregelResults>("collectPregelResults"),
+      arangodb::inspection::type<PregelResults>("pregelResults"),
+      arangodb::inspection::type<StartCleanup>("startCleanup"),
+      arangodb::inspection::type<CleanupStarted>("cleanupStarted"));
 }
 template<typename Inspector>
 auto inspect(Inspector& f, MessagePayload& x) {

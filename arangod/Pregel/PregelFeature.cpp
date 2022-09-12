@@ -685,10 +685,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
                                         std::string const& path,
                                         VPackSlice const& body,
                                         VPackBuilder& outBuilder) {
-  if (isStopping() && path != Utils::finalizeExecutionPath) {
-    return;  // shutdown ongoing
-  }
-
   if (path == Utils::modernMessagingPath) {
     auto message = deserialize<ModernMessage>(body);
     if (std::holds_alternative<LoadGraph>(message.payload)) {
@@ -699,6 +695,20 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           message.executionNumber);
     }
     auto w = worker(message.executionNumber);
+    if (std::holds_alternative<StartCleanup>(message.payload)) {
+      if (isStopping()) {
+        return;  // shutdown ongoing
+      }
+      if (!w) {
+        // except this is a cleanup call, and cleanup has already happened
+        // because of garbage collection
+        auto response =
+            ModernMessage{.executionNumber = message.executionNumber,
+                          .payload = {CleanupStarted{}}};
+        serialize(outBuilder, response);
+        return;
+      }
+    }
     if (!w) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CURSOR_NOT_FOUND,
@@ -728,13 +738,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   std::shared_ptr<IWorker> w = worker(exeNum);
 
   if (!w) {
-    if (path == Utils::finalizeExecutionPath) {
-      // except this is a cleanup call, and cleanup has already happened
-      // because of garbage collection
-      auto response = CleanupStarted{};
-      serialize(outBuilder, response);
-      return;
-    }
     LOG_TOPIC("41788", WARN, Logger::PREGEL)
         << "Handling " << path << ", worker " << exeNum << " does not exist";
     THROW_ARANGO_EXCEPTION_FORMAT(
@@ -745,14 +748,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
 
   if (path == Utils::messagesPath) {
     w->receivedMessages(body);
-  } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
-    auto response = CleanupStarted{};
-    serialize(outBuilder, response);
-  } else if (path == Utils::aqlResultsPath) {
-    auto command = deserialize<CollectPregelResults>(body);
-    auto results = w->aqlResult(command.withId);
-    serialize(outBuilder, results);
   }
 }
 

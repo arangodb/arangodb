@@ -56,8 +56,7 @@ auto Done::receive(Message const& message) -> void {
 auto Done::getResults(bool withId) -> PregelResults {
   auto collectPregelResultsCommand = CollectPregelResults{
       .executionNumber = conductor._executionNumber, .withId = withId};
-  auto response = conductor._sendToAllDBServers<PregelResults>(
-      Utils::aqlResultsPath, collectPregelResultsCommand);
+  auto response = conductor._sendToAllDBServers(collectPregelResultsCommand);
   if (response.fail()) {
     THROW_ARANGO_EXCEPTION(response.errorNumber());
   }
@@ -65,8 +64,14 @@ auto Done::getResults(bool withId) -> PregelResults {
   {
     VPackArrayBuilder ab(&results);
     for (auto const& message : response.get()) {
-      if (message.results.slice().isArray()) {
-        results.add(VPackArrayIterator(message.results.slice()));
+      if (!std::holds_alternative<PregelResults>(message.payload)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Message from worker does not include "
+                                       "the expected PregelResults type");
+      }
+      auto payload = std::get<PregelResults>(message.payload);
+      if (payload.results.slice().isArray()) {
+        results.add(VPackArrayIterator(payload.results.slice()));
       }
     }
   }
