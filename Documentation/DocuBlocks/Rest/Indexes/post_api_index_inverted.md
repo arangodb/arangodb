@@ -193,10 +193,8 @@ The `analyzer` and `features` properties apply to the sub-attributes.
 
 The default is `false`.
 
-{% hint 'warning' %}
-Using `includeAllFields` for a lot of attributes in combination with complex
-Analyzers may significantly slow down the indexing process.
-{% endhint %}
+**Warning**: Using `includeAllFields` for a lot of attributes in combination
+with complex Analyzers may significantly slow down the indexing process.
 
 @RESTBODYPARAM{trackListPositions,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
