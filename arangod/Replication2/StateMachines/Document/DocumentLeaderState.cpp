@@ -112,8 +112,11 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                              TransactionId transactionId,
                                              ReplicationOptions opts)
     -> futures::Future<LogIndex> {
-  auto entry = DocumentLogEntry{std::string(shardId), operation,
-                                std::move(payload), transactionId};
+  // we replicate operations using follower trx ids, but locally we track the
+  // actual trx ids
+  auto entry =
+      DocumentLogEntry{std::string(shardId), operation, std::move(payload),
+                       transactionId.asFollowerTransactionId()};
 
   TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
   if (operation == OperationType::kCommit ||

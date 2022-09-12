@@ -53,6 +53,10 @@ class TransactionId : public basics::Identifier {
   /// follower)
   TransactionId child();
 
+  TransactionId asCoordinatorTransactionId() const noexcept;
+  TransactionId asLeaderTransactionId() const noexcept;
+  TransactionId asFollowerTransactionId() const noexcept;
+
  public:
   /// @brief create a not-set document id
   static constexpr TransactionId none() { return TransactionId(0); }
