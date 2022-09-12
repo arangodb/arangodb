@@ -639,12 +639,13 @@ void SimpleHttpClient::setRequest(
   }
 
   if (method != rest::RequestType::GET) {
-    _writeBuffer.appendText(std::string_view("Content-Length: "));
-    _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
-    _writeBuffer.appendText(std::string_view("\r\n\r\n"));
-  } else {
-    _writeBuffer.appendText(std::string_view("\r\n"));
+    if (_params._addContentLength) {
+      _writeBuffer.appendText(std::string_view("Content-Length: "));
+      _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
+      _writeBuffer.appendText(std::string_view("\r\n"));
+    }
   }
+  _writeBuffer.appendText(std::string_view("\r\n"));
 
   if (body != nullptr) {
     _writeBuffer.appendText(body, bodyLength);

@@ -64,6 +64,7 @@ constexpr std::string_view kStoredValuesFieldName = "storedValues";
 constexpr std::string_view kConsistencyFieldName = "consistency";
 constexpr std::string_view kAnalyzerDefinitionsFieldName =
     "analyzerDefinitions";
+constexpr std::string_view kIsSearchField = "searchField";
 
 #ifdef USE_ENTERPRISE
 void gatherNestedNulls(std::string_view parent,
@@ -396,11 +397,12 @@ bool IResearchInvertedIndexMeta::json(
     }
   }
 
-  for (auto const& it : consistencyTypeMap) {
-    if (it.second == _consistency) {
-      builder.add(kConsistencyFieldName, VPackValue(it.first));
-    }
-  }
+  // FIXME: Uncomment once support is done
+  // for (auto const& it : consistencyTypeMap) {
+  //  if (it.second == _consistency) {
+  //    builder.add(kConsistencyFieldName, VPackValue(it.first));
+  //  }
+  //}
 
   builder.add(kVersionFieldName, VPackValue(static_cast<uint32_t>(_version)));
 
@@ -409,46 +411,17 @@ bool IResearchInvertedIndexMeta::json(
 
 bool IResearchInvertedIndexMeta::operator==(
     IResearchInvertedIndexMeta const& other) const noexcept {
-  if (*static_cast<IResearchDataStoreMeta const*>(this) !=
-      static_cast<IResearchDataStoreMeta const&>(other)) {
-    return false;
-  }
-
-  if (_sort != other._sort) {
-    return false;
-  }
-
-  if (_consistency != other._consistency) {
-    return false;
-  }
-
-  if (_storedValues != other._storedValues) {
-    return false;
-  }
-
-  if (_version != other._version) {
-    return false;
-  }
-
-  if (_fields.size() != other._fields.size()) {
-    return false;
-  }
-
-  size_t matched{0};
-  for (auto const& thisField : _fields) {
-    for (auto const& otherField : _fields) {
-      if (thisField.namesMatch(otherField)) {
-        matched++;
-        break;
-      }
-    }
-  }
-  return matched == _fields.size();
+  return _consistency == other._consistency && _version == other._version &&
+         (static_cast<IResearchDataStoreMeta const&>(*this) ==
+          static_cast<IResearchDataStoreMeta const&>(other)) &&
+         (static_cast<InvertedIndexField const&>(*this) ==
+          static_cast<InvertedIndexField const&>(other)) &&
+         _sort == other._sort && _storedValues == other._storedValues;
 }
 
-bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
+bool IResearchInvertedIndexMeta::matchesDefinition(
     IResearchInvertedIndexMeta const& meta, VPackSlice other,
-    LogicalCollection const& collection) {
+    TRI_vocbase_t const& vocbase) {
   auto value = other.get(arangodb::StaticStrings::IndexFields);
 
   if (!value.isArray()) {
@@ -462,7 +435,6 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
   }
 
   IResearchInvertedIndexMeta otherMeta;
-  auto& vocbase = collection.vocbase();
   std::string errorField;
   return otherMeta.init(vocbase.server(), other, true, errorField,
                         vocbase.name()) &&
@@ -473,26 +445,29 @@ bool InvertedIndexField::json(
     arangodb::ArangodServer& server, VPackBuilder& builder,
     InvertedIndexField const& parent, bool rootMode,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
-  if (rootMode || parent._isArray != _isArray) {
-    builder.add(kIsArrayFieldName, VPackValue(_isArray));
-  }
+  // FIXME: uncomment once parameter is supported
+  // if (rootMode || parent._isArray != _isArray) {
+  //  builder.add(kIsArrayFieldName, VPackValue(_isArray));
+  //}
   if (rootMode || parent._trackListPositions != _trackListPositions) {
     builder.add(kTrackListPositionsFieldName, VPackValue(_trackListPositions));
   }
   if (rootMode || parent._includeAllFields != _includeAllFields) {
     builder.add(kIncludeAllFieldsFieldName, VPackValue(_includeAllFields));
   }
-  if (rootMode || parent._overrideValue != _overrideValue) {
-    builder.add(kOverrideFieldName, VPackValue(_overrideValue));
-  }
+  // FIXME: uncomment once parameter is supported
+  // if (rootMode || parent._overrideValue != _overrideValue) {
+  //  builder.add(kOverrideFieldName, VPackValue(_overrideValue));
+  //}
   if (rootMode || parent._features != _features) {
     VPackBuilder tmp;
     _features.toVelocyPack(tmp);
     builder.add(kFeaturesFieldName, tmp.slice());
   }
-  if (parent._expression != _expression) {
-    builder.add(kExpressionFieldName, VPackValue(_expression));
-  }
+  // FIXME: uncomment once parameter is supported
+  // if (parent._expression != _expression) {
+  //  builder.add(kExpressionFieldName, VPackValue(_expression));
+  //}
 
   if (rootMode || _analyzers.size() != parent._analyzers.size() ||
       _analyzers[0]._pool->name() != parent._analyzers[0]._pool->name()) {
@@ -524,7 +499,11 @@ bool InvertedIndexField::json(
     builder.add(kNameFieldName, VPackValue(toString()));
   }
 
-  if (!_fields.empty()) {
+  if (rootMode || parent._isSearchField != _isSearchField) {
+    builder.add(kIsSearchField, VPackValue(_isSearchField));
+  }
+
+  if (!_fields.empty() || rootMode) {
     auto fieldsAttributeName =
         rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
     VPackArrayBuilder nestedArray(&builder, fieldsAttributeName);
@@ -553,6 +532,7 @@ bool InvertedIndexField::init(
     _isArray = parent._isArray;
     _overrideValue = parent._overrideValue;
     _expression = parent._expression;
+    _isSearchField = parent._isSearchField;
   }
   std::vector<basics::AttributeName> fieldParts;
   if (slice.isString()) {
@@ -560,7 +540,7 @@ bool InvertedIndexField::init(
     try {
       TRI_ASSERT(!parent._analyzers.empty());
       _analyzers[0] = parent.analyzer();
-      TRI_ParseAttributeString(slice.stringView(), fieldParts, true);
+      TRI_ParseAttributeString(slice.stringView(), fieldParts, !_isSearchField);
       TRI_ASSERT(!fieldParts.empty());
     } catch (arangodb::basics::Exception const& err) {
       LOG_TOPIC("1d04c", ERR, arangodb::iresearch::TOPIC)
@@ -569,6 +549,17 @@ bool InvertedIndexField::init(
       return false;
     }
   } else if (slice.isObject()) {
+    if (slice.hasKey(kIsSearchField)) {
+      auto value = slice.get(kIsSearchField);
+      if (value.isBoolean()) {
+        _isSearchField = value.getBoolean();
+      } else {
+        LOG_TOPIC("1d04d", ERR, arangodb::iresearch::TOPIC)
+            << "Error parsing attribute: " << kIsSearchField;
+        errorField = kIsSearchField;
+        return false;
+      }
+    }
     if (!rootMode) {
       // name attribute
       auto nameSlice = slice.get(kNameFieldName);
@@ -577,7 +568,8 @@ bool InvertedIndexField::init(
         return false;
       }
       try {
-        TRI_ParseAttributeString(nameSlice.stringView(), fieldParts, true);
+        TRI_ParseAttributeString(nameSlice.stringView(), fieldParts,
+                                 !_isSearchField);
         TRI_ASSERT(!fieldParts.empty());
       } catch (arangodb::basics::Exception const& err) {
         LOG_TOPIC("84c20", ERR, arangodb::iresearch::TOPIC)
@@ -831,29 +823,26 @@ std::string_view InvertedIndexField::attributeString() const {
 
 std::string_view InvertedIndexField::path() const noexcept { return _path; }
 
-bool InvertedIndexField::namesMatch(
+bool InvertedIndexField::operator==(
     InvertedIndexField const& other) const noexcept {
-  return analyzerName() == other.analyzerName() &&
-         basics::AttributeName::namesMatch(_attribute, other._attribute);
-}
-
-bool InvertedIndexField::isIdentical(
-    std::vector<basics::AttributeName> const& path,
-    irs::string_ref analyzerName) const noexcept {
-  if (_analyzers.front()._shortName == analyzerName &&
-      path.size() == _attribute.size()) {
-    auto it = path.begin();
-    auto atr = _attribute.begin();
-    while (it != path.end() && atr != _attribute.end()) {
-      if (it->name != atr->name || it->shouldExpand != atr->shouldExpand) {
-        return false;
-      }
-      ++atr;
-      ++it;
-    }
-    return true;
+  if (!(analyzerName() == other.analyzerName() &&
+        basics::AttributeName::namesMatch(_attribute, other._attribute) &&
+        _includeAllFields == other._includeAllFields &&
+        _trackListPositions == other._trackListPositions &&
+        _features == other._features && _isArray == other._isArray &&
+        _overrideValue == other._overrideValue &&
+        _expression == other._expression &&
+        _isSearchField == other._isSearchField &&
+        _fields.size() == other._fields.size())) {
+    return false;
   }
-  return false;
+  for (auto const& otherField : other._fields) {
+    if (std::end(_fields) ==
+        std::find(std::begin(_fields), std::end(_fields), otherField)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool IResearchInvertedIndexSort::toVelocyPack(
@@ -873,9 +862,10 @@ bool IResearchInvertedIndexSort::toVelocyPack(
     addStringRef(builder, kCompressionFieldName, compression);
   }
 
-  if (!_locale.isBogus()) {
-    builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
-  }
+  // FIXME: Uncomment once support is done
+  // if (!_locale.isBogus()) {
+  //  builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
+  //}
   return true;
 }
 
@@ -933,11 +923,12 @@ IResearchInvertedIndexMetaIndexingContext::
     : _analyzers(&field->_analyzers),
       _primitiveOffset(field->_primitiveOffset),
       _meta(field),
+      _sort(field->_sort),
+      _storedValues(field->_storedValues),
       _hasNested(field->_hasNested),
       _includeAllFields(field->_includeAllFields),
       _trackListPositions(field->_trackListPositions),
-      _sort(field->_sort),
-      _storedValues(field->_storedValues) {
+      _isSearchField(field->_isSearchField) {
   if (add) {
     addField(*field);
   }
@@ -965,6 +956,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         current->_primitiveOffset = f._primitiveOffset;
         current->_includeAllFields = f._includeAllFields;
         current->_trackListPositions = f._trackListPositions;
+        current->_isSearchField = f._isSearchField;
       }
     }
 #ifdef USE_ENTERPRISE

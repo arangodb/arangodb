@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
@@ -327,7 +328,6 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   }
 
   // we are actually going to attempt a commit
-
   ++_numCommits;
   uint64_t numOperations = this->numOperations();
 
@@ -349,7 +349,8 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
           << " numInserts: " << _numInserts << ", numRemoves: " << _numRemoves
           << ", numUpdates: " << _numUpdates << ", numLogdata: " << _numLogdata
           << ", numRollbacks: " << _numRollbacks
-          << ", numCommits: " << _numCommits;
+          << ", numCommits: " << _numCommits
+          << ", numIntermediateCommits: " << _numIntermediateCommits;
     }
     // begin transaction + commit transaction + n doc removes
     TRI_ASSERT(_numLogdata == (2 + _numRemoves));

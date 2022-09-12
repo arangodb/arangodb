@@ -674,7 +674,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   PathValidatorOptions validatorOptions{
       opts->tmpVar(), opts->getExpressionCtx(), isDisjointIsSat.first,
-      isDisjointIsSat.second};
+      isDisjointIsSat.second, isClusterOneShardRuleEnabled()};
 
   // Prune Section
   if (pruneExpression() != nullptr) {

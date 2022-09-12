@@ -56,11 +56,13 @@
 #include "IResearch/ViewSnapshot.h"
 #include "RegisterPlan.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "types.h"
 
+#include <absl/strings/str_cat.h>
 #include <frozen/map.h>
 #include <velocypack/Iterator.h>
 
@@ -791,6 +793,7 @@ void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
     for (auto const& [name, field] : meta.fieldToAnalyzer) {
       node.add(velocypack::Value{name});
       node.add(velocypack::Value{field.analyzer});
+      node.add(velocypack::Value{field.includeAllFields});
     }
   }
 }
@@ -816,28 +819,38 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
   checkError(NODE_VIEW_META_STORED);
 
   slice = node.get(NODE_VIEW_META_FIELDS);
-  if (!slice.isArray() || slice.length() % 2 != 0) {
-    error = "should be even array";
+  if (!slice.isArray() || slice.length() % 3 != 0) {
+    error = "should be an array and its length must be a multiple of 3";
     checkError(NODE_VIEW_META_FIELDS);
   }
   velocypack::Slice value;
-  auto checkValue = [&] {
-    if (!value.isString()) {
-      error = "should be array of string";
-      checkError(NODE_VIEW_META_FIELDS);
-    }
-  };
   for (velocypack::ArrayIterator it{slice}; it.valid();) {
     value = it.value();
-    checkValue();
+    if (!value.isString()) {
+      error = "field name must be a string";
+      checkError(NODE_VIEW_META_FIELDS);
+    }
     auto field = value.stringView();
     ++it;
+
     value = it.value();
-    checkValue();
+    if (!value.isString()) {
+      error = "analyzer name must be a string";
+      checkError(NODE_VIEW_META_FIELDS);
+    }
     auto analyzer = value.stringView();
     ++it;
+
+    value = it.value();
+    if (!value.isBool()) {
+      error = "includeAllFields must be a boolean value";
+      checkError(NODE_VIEW_META_FIELDS);
+    }
+    auto includeAllFields = value.getBool();
+    ++it;
+
     meta.fieldToAnalyzer.emplace(
-        field, SearchMeta::Field{std::string{analyzer}, false});
+        field, SearchMeta::Field{std::string{analyzer}, includeAllFields});
   }
 }
 
@@ -1087,8 +1100,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       viewNameSlice.isNone() ? "" : viewNameSlice.stringView();
   auto const viewIdSlice = base.get(NODE_VIEW_ID_PARAM);
   if (viewIdSlice.isNone()) {  // handle search-alias view
-    auto meta = std::make_shared<SearchMeta>();
+    auto meta = SearchMeta::make();
     fromVelocyPack(base, *meta);
+    meta->createFst();
     _meta = std::move(meta);
   } else if (!viewIdSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1748,7 +1762,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     LOG_TOPIC("82af6", TRACE, iresearch::TOPIC)
         << "Start getting snapshot for view '" << viewName << "'";
     ViewSnapshotPtr reader;
-    // we manage snapshot differently in single-server/db server,
+    // we manage snapshots differently in single-server/db server,
     // see description of functions below to learn how
     if (ServerState::instance()->isDBServer()) {
       reader = snapshotDBServer(*this, *trx);
@@ -1757,13 +1771,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     }
     if (!reader) {
       LOG_TOPIC("9bb93", WARN, iresearch::TOPIC)
-          << "failed to get snapshot while creating arangosearch view "
-             "ExecutionBlock for view '"
-          << viewName << "'";
+          << "failed to get snapshot while creating arangosearch view '"
+          << viewName << "' ExecutionBlock";
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "failed to get snapshot while creating "
-                                     "arangosearch view ExecutionBlock");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("failed to get snapshot while creating "
+                       "arangosearch view '",
+                       viewName, "' ExecutionBlock"));
     }
     return reader;
   };

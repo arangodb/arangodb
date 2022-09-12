@@ -39,6 +39,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"

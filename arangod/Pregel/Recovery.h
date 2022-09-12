@@ -30,6 +30,9 @@
 #include "Cluster/ClusterInfo.h"
 
 namespace arangodb {
+
+class AgencyCallback;
+
 namespace pregel {
 
 template<typename V, typename E>

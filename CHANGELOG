@@ -5,6 +5,109 @@ devel
   should be optimized into the traversal, and some that are not valid should not be optimized
   anymore. Fixes #16589.
 
+* Added "intermediateCommits" statistics return value for AQL queries, to
+  relay the number of intermediate commits back that a write query performed.
+
+* Updated ArangoDB Starter to 0.15.5-preview-3.
+
+* Fixed a rare occuring issue where paths inside a DisjointSmart traversal
+  containing only satellite relevant nodes were not returned properly 
+  (ES-1265).
+
+* Fixed BTS-926: UI showing the "create index" form to non-admin users.
+
+* Updated Views UI with all changes necessary for the 3.10.0 launch.
+
+* Fix for the Pregel's HITS algorithm using a fixed value instead of the
+  passed "threshold" parameter. The same applied to the new HITSKleinberg.
+
+* Do not drop follower shard after too many failed shard synchronization
+  attempts.
+
+* Added startup option `--arangosearch.skip-recovery` to skip the recovery 
+  of arangosearch view links or inverted indexes.
+  The startup option can be specified multiple times and is expected to either
+  contain the string `all` (will skip the recovery for all view links and 
+  inverted indexes) or a collection name + link id/name pair (e.g. 
+  `testCollection/123456`, where `123456` is a link/index id or an index name). 
+  This new startup option is an emergency means to speed up lengthy recovery 
+  procedures when there is a large WAL backlog to replay. The normal recovery 
+  will still take place even with the option set, but recovery data for 
+  links/indexes can be skipped. This can improve the recovery speed and reduce 
+  memory usage during the recovery process.
+  All links or inverted indexes that are marked as to-be-skipped via the 
+  option, but for which there is recovery data, will be marked as "out of sync"
+  at the end of the recovery. 
+  The recovery procedure will also print a list of links/indexes which it has 
+  marked as out-of-sync.
+  Additionally, if committing data for a link/index fails for whatever reason,
+  the link/index is also marked as being out-of-sync.
+
+  If an out-of-sync link or index can be used in queries depends on another new
+  startup option `--arangosearch.fail-queries-on-out-of-sync`. It defaults to
+  `false`, meaning that out-of-sync links/indexes can still be queries. It the
+  option is set to `true`, queries on such links/indexes will fail with error
+  "collection/view is out of sync" (error code 1481).
+
+  Links/indexes that are marked out-of-sync will keep the out-of-sync flag
+  until they are dropped. To get rid of an out-of-sync link/index it is 
+  recommended to manually drop and recreate it. As recreating a link/index may
+  cause high load, this is not done automatically but requires explicit user
+  opt-in.
+
+  The number of out-of-sync links/indexes is also observable via a new metric
+  `arangodb_search_num_out_of_sync_links`.
+
+* Added startup option `--rocksdb.periodic-compaction-ttl`.
+  This option controls the TTL (in seconds) for periodic compaction of 
+  .sst files in RocksDB, based on the .sst file age. The default value
+  from RocksDB is ~30 days. To avoid periodic auto-compaction, the option
+  can be set to 0.
+
+* Now the Pregel API returns `{... algorithm: "pagerank", ...}` instead of
+`{... algorithm: "PageRank", ...}` when the Page Rank algorithm is run
+(in accordance to the documentation).
+
+* Updated arangosync to v2.12.0-preview-11.
+
+* Added integration tests for `--log.escape-control-chars` and
+ `--log.escape-unicode-chars`.
+
+* Fix SEARCH-350: Crash during consolidation.
+
+* SEARCH-357: Added SUBSTRING_BYTES function.
+
+* A new Pregel algorithm: the version of Hypertext-Induced Topic Search (HITS)
+  as described in the original paper.
+
+* Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
+
+* Disable optimization rule to avoid crash (BTS-951).
+
+* Fix comparison of JSON schemas on DB servers after there was a schema change
+  via a coordinator: the schema comparison previously did not take into account
+  that some ArangoDB versions store an internal `{"type":"json"}` attribute in
+  the schema, and some don't. Thus two identical schemas could compare 
+  differently.
+  The correct schema version was always applied and used, and validation of
+  documents against the schema was also not affected. However, because two
+  schemas could compare unequal, this could have caused unnecessary repeated
+  work for background maintenance threads.
+
+* Removed transitive node dependencies.
+
+* Web UI: Now correctly handles the server error response when an error occurred
+  during the modification of a document or an edge (BTS-934).
+
+* Make graph search case-insensitive (fixes BTS-882).
+
+* BTS-428: Added function DATE_ISOWEEKYEAR that retrieves the number of the
+  week counting from when the year started in ISO calendar and also the year
+  it's in.
+
+* Added handling of requests with Transfer-Encodign chunked, which is 
+  not implemented, so returns code HTTP code 501.
+
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
 

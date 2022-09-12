@@ -38,11 +38,12 @@
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 namespace arangodb {
 
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
@@ -63,7 +64,12 @@ namespace transaction {
 class Methods;
 }
 
-namespace replication2::replicated_state {
+namespace replication {
+enum class Version;
+}
+namespace replication2 {
+class LogId;
+namespace replicated_state {
 template<typename S>
 struct ReplicatedState;
 namespace document {
@@ -71,7 +77,8 @@ struct DocumentState;
 struct DocumentLeaderState;
 struct DocumentFollowerState;
 }  // namespace document
-}  // namespace replication2::replicated_state
+}  // namespace replicated_state
+}  // namespace replication2
 
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
@@ -384,7 +391,8 @@ class LogicalCollection : public LogicalDataSource {
   uint64_t getInternalValidatorTypes() const noexcept;
 
  private:
-  void initializeSmartAttributes(velocypack::Slice info);
+  void initializeSmartAttributesBefore(velocypack::Slice info);
+  void initializeSmartAttributesAfter(velocypack::Slice info);
 
   void prepareIndexes(velocypack::Slice indexesSlice);
 

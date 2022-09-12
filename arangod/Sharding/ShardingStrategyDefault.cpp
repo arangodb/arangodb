@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"

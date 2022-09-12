@@ -210,7 +210,6 @@ unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb EXCLUDE_FROM_ALL)
-set(ARANGO_ROCKSDB_VERSION "${rocksdb_VERSION}" PARENT_SCOPE)
 add_library(rocksdb_interface INTERFACE)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/include)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb)

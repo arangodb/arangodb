@@ -25,6 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
+#include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 
 #include "Graph/Providers/ClusterProvider.h"
