@@ -47,7 +47,8 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
     case OperationType::kInsert:
     case OperationType::kUpdate:
     case OperationType::kReplace:
-      return _methods->replace(entry.shardId, entry.data.slice(), opOptions);
+      opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
+      return _methods->insert(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kRemove:
       return _methods->remove(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kTruncate:

@@ -95,7 +95,11 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
         for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
           try {
-            self->_transactionManager.abortManagedTrx(tid, self->gid.database);
+            // the log entries contain follower ids, which is fine since during
+            // recovery we apply the entries like a follower, but we have to
+            // register tombstones in the trx managers for the leader trx id.
+            self->_transactionManager.abortManagedTrx(
+                tid.asLeaderTransactionId(), self->gid.database);
           } catch (...) {
             LOG_CTX("894f1", WARN, self->loggerContext)
                 << "failed to abort active transaction " << self->gid
