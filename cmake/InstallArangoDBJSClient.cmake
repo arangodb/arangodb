@@ -37,6 +37,7 @@ install(
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX "^.*/eslint"                                       EXCLUDE
   REGEX "^.*/node-netstat"                                 EXCLUDE
+  REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
   REGEX "^.*/.*-no-eslint"                                 EXCLUDE
