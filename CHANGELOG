@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.5-preview-3.
+
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
   containing only satellite relevant nodes were not returned properly 
   (ES-1265).

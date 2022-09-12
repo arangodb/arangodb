@@ -296,14 +296,50 @@ const replicatedLogSuite = function () {
       // now resume, followers[1] has to become leader, because it's the only server with log entry 1 available
       continueServer(followers[0]);
       waitFor(
-          replicatedLogIsReady(
+          replicatedLogLeaderEstablished(
               database,
               logId,
               term + 2,
-              [followers[0], followers[1]],
-              followers[1]
+              [followers[0], followers[1]]
           )
       );
+
+     {
+        const {current} = readReplicatedLogAgency(database, logId);
+        const {localStatus, leader} = current;
+        const {serverId} = leader;
+        assertTrue([followers[0], followers[1]].find(f => f === serverId) !== undefined,
+          `Leader has to be one of ${JSON.stringify([followers[0], followers[1]])}, but is ${serverId}`);
+
+        const expectedTerm = term + 2;
+        // We expect to be at Index 4 because of:
+        // 1 := Initial commit
+        // 2 := First Document write
+        // 3 := Second Document write (test of quorum here)
+        // 4 := Successful leader election after reboot of Follower[1]
+        const expectedIndex = 4;
+
+        {
+          // The new leader has to be at latest entry
+          const {term, index} = localStatus[serverId].spearhead;
+          assertEqual(term, expectedTerm, `Leader does not have highest term!`);
+          assertEqual(index, expectedIndex, `Leader does not have highest index!`);
+        }
+
+        {
+          // Follower[1] has witnessed everything and therefore has to be at latest entry
+          // NOTE: Follower[1] is most likely new leader, so this check just happens twice
+          const {term, index} = localStatus[followers[1]].spearhead;
+          assertEqual(term, expectedTerm, `Leader does not have highest term!`);
+          assertEqual(index, expectedIndex, `Leader does not have highest index!`);
+        }
+      }
+      {
+        // Now that we have a new leader, we need to be able to write again
+        let quorum = log.insert({foo: "bar"});
+        // But the old leader cannot be part of the quorum (it still sleeps)
+        assertTrue(quorum.result.quorum.quorum.indexOf(leader) === -1);
+      }
 
       replicatedLogDeleteTarget(database, logId);
 
