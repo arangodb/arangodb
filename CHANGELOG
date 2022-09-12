@@ -8,6 +8,8 @@ devel
   the sequence number of the snapshot in the batch. This ensures that
   shards can get in sync more reliably and more quickly.
 
+* Updated ArangoDB Starter to 0.15.5-preview-3.
+
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
   containing only satellite relevant nodes were not returned properly 
   (ES-1265).
