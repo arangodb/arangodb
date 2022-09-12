@@ -111,7 +111,7 @@ Collection ID of the collection the shard belongs to.
 @RESTSTRUCT{isLeader,move_shard_operation,boolean,required,}
 True if this is a leader move shard operation.
 
-@RESSTRUCT{code,rebalance_moves,number,required,}
+@RESTSTRUCT{code,rebalance_moves,number,required,}
 The status code.
 
 @RESTSTRUCT{error,rebalance_moves,boolean,required,}
