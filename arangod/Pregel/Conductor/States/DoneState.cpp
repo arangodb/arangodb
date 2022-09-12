@@ -54,8 +54,7 @@ auto Done::receive(Message const& message) -> void {
 }
 
 auto Done::getResults(bool withId) -> PregelResults {
-  auto collectPregelResultsCommand = CollectPregelResults{
-      .executionNumber = conductor._executionNumber, .withId = withId};
+  auto collectPregelResultsCommand = CollectPregelResults{.withId = withId};
   auto response = conductor._sendToAllDBServers(collectPregelResultsCommand);
   if (response.fail()) {
     THROW_ARANGO_EXCEPTION(response.errorNumber());

@@ -651,34 +651,32 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
     return;  // shutdown ongoing
   }
 
-  VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
-  if (!sExecutionNum.isInteger() && !sExecutionNum.isString()) {
-    LOG_TOPIC("8410a", ERR, Logger::PREGEL) << "Invalid execution number";
+  if (path != Utils::modernMessagingPath) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_CURSOR_NOT_FOUND,
+        fmt::format("Conductor path not found: {}", path));
   }
-  auto exeNum = ExecutionNumber{0};
-  if (sExecutionNum.isInteger()) {
-    exeNum = ExecutionNumber(sExecutionNum.getUInt());
-  } else if (sExecutionNum.isString()) {
-    exeNum = ExecutionNumber(
-        basics::StringUtils::uint64(sExecutionNum.copyString()));
+
+  auto message = deserialize<ModernMessage>(body);
+  auto c = conductor(message.executionNumber);
+  if (!c && std::holds_alternative<CleanupFinished>(message.payload)) {
+    // conductor not found, but potentially already garbage-collected
+    return;
   }
-  std::shared_ptr<Conductor> co = conductor(exeNum);
-  if (!co) {
-    if (path == Utils::finishedWorkerFinalizationPath) {
-      // conductor not found, but potentially already garbage-collected
-      return;
-    }
+  if (!c) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND,
         fmt::format("Conductor not found, invalid execution number: {}",
-                    exeNum));
+                    message.executionNumber));
   }
-
-  if (path == Utils::statusUpdatePath) {
-    co->workerStatusUpdate(body);
-  } else if (path == Utils::finishedWorkerFinalizationPath) {
-    co->finishedWorkerFinalize(body);
+  auto response = c->process(message.payload);
+  if (response.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_CURSOR_NOT_FOUND,
+        fmt::format("Execution {}: {}: {}", message.executionNumber,
+                    response.errorMessage(), body.toJson()));
   }
+  return;
 }
 
 void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
@@ -724,6 +722,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
                       response.errorMessage(), body.toJson()));
     }
     serialize(outBuilder, response.get());
+    return;
   }
 
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
