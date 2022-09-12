@@ -212,6 +212,10 @@ class GraphNode : public ExecutionNode {
 
   void setIsDisjoint(bool target) { _isDisjoint = target; }
 #endif
+
+  void enableClusterOneShardRule(bool enable);
+  bool isClusterOneShardRuleEnabled() const;
+
  protected:
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
@@ -278,6 +282,10 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
+
+  /// @brief flag, if the graph being used inside the clusterOneShardRule
+  /// optimization (Enterprise Edition only!)
+  bool _enabledClusterOneShardRule;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;

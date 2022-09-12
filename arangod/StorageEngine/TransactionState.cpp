@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/overload.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"

@@ -47,6 +47,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"

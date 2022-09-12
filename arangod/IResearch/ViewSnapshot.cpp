@@ -48,7 +48,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
 
   void clear() noexcept;
 
-  bool compute(bool sync, std::string_view name);
+  void compute(bool sync, std::string_view name);
 
  private:
   [[nodiscard]] irs::sub_reader const& operator[](
@@ -85,14 +85,10 @@ void ViewSnapshotCookie::clear() noexcept {
   _readers.clear();
 }
 
-bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
+void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
   size_t segments = 0;
   for (auto& link : _links) {
-    if (!link) {
-      LOG_TOPIC("fffff", WARN, TOPIC)
-          << "failed to lock a link for view '" << name << "'";
-      return false;
-    }
+    TRI_ASSERT(link);
     if (sync) {
       auto r = IResearchDataStore::commit(link, true);
       if (!r.ok()) {
@@ -116,7 +112,6 @@ bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
     _docs_count += reader.docs_count();
     _hasNestedFields |= _links[i]->hasNestedFields();
   }
-  return true;
 }
 
 }  // namespace
@@ -164,7 +159,7 @@ FilterCookie& ensureFilterCookie(transaction::Methods& trx, void const* key) {
 void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
   auto& ctx = basics::downCast<ViewSnapshotCookie>(snapshot);
   ctx.clear();
-  TRI_ASSERT(ctx.compute(true, name));
+  ctx.compute(true, name);
 }
 
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
@@ -176,7 +171,7 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
 
   for (auto const& link : links) {
     if (!link) {
-      LOG_TOPIC("b054e", WARN, TOPIC)
+      LOG_TOPIC("fffff", WARN, TOPIC)
           << "failed to lock a link for view '" << name << "'";
       return nullptr;
     }
@@ -192,11 +187,9 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
 
   auto cookie = std::make_unique<ViewSnapshotCookie>(std::move(links));
   auto& ctx = *cookie;
-  if (ctx.compute(sync, name)) {
-    state.cookie(key, std::move(cookie));
-    return &ctx;
-  }
-  return nullptr;
+  ctx.compute(sync, name);
+  state.cookie(key, std::move(cookie));
+  return &ctx;
 }
 
 }  // namespace arangodb::iresearch

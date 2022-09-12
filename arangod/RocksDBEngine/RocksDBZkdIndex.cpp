@@ -35,6 +35,7 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 #include "Zkd/ZkdHelper.h"
 
 using namespace arangodb;

@@ -35,6 +35,7 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
