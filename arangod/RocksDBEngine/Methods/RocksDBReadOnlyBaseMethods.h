@@ -46,6 +46,8 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
 
   uint64_t numCommits() const noexcept override { return 0; }
 
+  uint64_t numIntermediateCommits() const noexcept override { return 0; }
+
   bool hasOperations() const noexcept override { return false; }
 
   uint64_t numOperations() const noexcept override { return 0; }
