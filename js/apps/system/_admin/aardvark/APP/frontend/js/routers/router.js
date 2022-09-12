@@ -645,16 +645,16 @@
         if (this.loggerView) {
           this.loggerView.remove();
         }
-
-        const co = new window.ArangoLogs({
-          upto: true,
-          loglevel: 4
-        });
-        this.loggerView = new window.LoggerView({
-          collection: co,
-          database: this.arangoDatabase
-        });
-        this.loggerView.render(true);
+        if (this.currentDB.get('name') === '_system') {
+          const co = new window.ArangoLogs({
+            upto: true,
+            loglevel: 4
+          });
+          this.loggerView = new window.LoggerView({
+            collection: co
+          });
+          this.loggerView.render(true);
+        }
       });
     },
 

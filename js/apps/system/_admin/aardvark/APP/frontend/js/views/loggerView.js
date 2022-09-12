@@ -2,7 +2,7 @@
 /* jshint unused: false */
 /* global Backbone, arangoHelper, $, _, window, templateEngine */
 
-(function() {
+(function () {
   'use strict';
 
   window.LoggerView = Backbone.View.extend({
@@ -17,7 +17,7 @@
     logTopics: {},
     logLevels: [],
 
-    initialize: function(options) {
+    initialize: function (options) {
       var self = this;
 
       if (options) {
@@ -46,10 +46,10 @@
           url: url,
           contentType: 'application/json',
           processData: false,
-          success: function(data) {
+          success: function (data) {
             self.logTopics = data;
 
-            _.each(['fatal', 'error', 'warning', 'info', 'debug'], function(level) {
+            _.each(['fatal', 'error', 'warning', 'info', 'debug'], function (level) {
               self.logLevels.push(level);
             });
 
@@ -59,7 +59,7 @@
       }
     },
 
-    remove: function() {
+    remove: function () {
       this.$el.empty().off(); /* off to unbind the events */
       this.stopListening();
       this.unbind();
@@ -81,7 +81,7 @@
     template: templateEngine.createTemplate('loggerView.ejs'),
     templateEntries: templateEngine.createTemplate('loggerViewEntries.ejs'),
 
-    renderLogTopic: function(e) {
+    renderLogTopic: function (e) {
       var self = this;
 
       if (!this.logTopicOptions) {
@@ -89,7 +89,7 @@
       }
 
       var active;
-      _.each(this.logTopics, function(topic, name) {
+      _.each(this.logTopics, function (topic, name) {
         if (self.logTopicOptions[name]) {
           active = self.logTopicOptions[name].active;
         }
@@ -112,7 +112,7 @@
       this.logTopicView.render();
     },
 
-    downloadEntries: function() {
+    downloadEntries: function () {
       // sort entries (primary by date, then by lid)
       this.fetchedEntries.sort(function compare(a, b) {
         let dateA = new Date(a.date);
@@ -125,33 +125,33 @@
       arangoHelper.downloadLocalBlob(JSON.stringify(this.fetchedEntries, null, 2), 'json', fileName);
     },
 
-    loadMoreEntries: function() {
+    loadMoreEntries: function () {
       this.convertModelToJSON();
     },
 
-    logTopicCallbackFunction: function(options) {
+    logTopicCallbackFunction: function (options) {
       this.logTopicOptions = options;
       this.applyFilter();
     },
 
-    logLevelCallbackFunction: function(options) {
+    logLevelCallbackFunction: function (options) {
       this.logLevelOptions = options;
       this.applyFilter();
     },
 
-    resetFilters: function() {
-      _.each(this.logTopicOptions, function(option) {
+    resetFilters: function () {
+      _.each(this.logTopicOptions, function (option) {
         option.active = false;
       });
-      _.each(this.logLevelOptions, function(option) {
+      _.each(this.logLevelOptions, function (option) {
         option.active = false;
       });
       this.applyFilter();
     },
 
-    isFilterActive: function(filterobj) {
+    isFilterActive: function (filterobj) {
       var active = false;
-      _.each(filterobj, function(obj) {
+      _.each(filterobj, function (obj) {
         if (obj.active) {
           active = true;
         }
@@ -159,7 +159,7 @@
       return active;
     },
 
-    changeButton: function(btn) {
+    changeButton: function (btn) {
       if (!btn) {
         $('#logTopicSelection').addClass('button-default').removeClass('button-success');
         $('#logLevelSelection').addClass('button-default').removeClass('button-success');
@@ -183,14 +183,14 @@
       }
     },
 
-    applyFilter: function() {
+    applyFilter: function () {
       var self = this;
       var isLevel = this.isFilterActive(this.logLevelOptions);
       var isTopic = this.isFilterActive(this.logTopicOptions);
 
       if (isLevel && isTopic) {
         // both filters active
-        _.each($('#logEntries').children(), function(entry) {
+        _.each($('#logEntries').children(), function (entry) {
           if (self.logLevelOptions[$(entry).attr('level')].active === false || self.logTopicOptions[$(entry).attr('topic')].active === false) {
             $(entry).hide();
           } else if (self.logLevelOptions[$(entry).attr('level')].active && self.logTopicOptions[$(entry).attr('topic')].active) {
@@ -200,7 +200,7 @@
         this.changeButton('both');
       } else if (isLevel && !isTopic) {
         // only level filter active
-        _.each($('#logEntries').children(), function(entry) {
+        _.each($('#logEntries').children(), function (entry) {
           if (self.logLevelOptions[$(entry).attr('level')].active === false) {
             $(entry).hide();
           } else {
@@ -210,7 +210,7 @@
         this.changeButton('level');
       } else if (!isLevel && isTopic) {
         // only topic filter active
-        _.each($('#logEntries').children(), function(entry) {
+        _.each($('#logEntries').children(), function (entry) {
           if (self.logTopicOptions[$(entry).attr('topic')].active === false) {
             $(entry).hide();
           } else {
@@ -219,14 +219,14 @@
         });
         this.changeButton('topic');
       } else if (!isLevel && !isTopic) {
-        _.each($('#logEntries').children(), function(entry) {
+        _.each($('#logEntries').children(), function (entry) {
           $(entry).show();
         });
         this.changeButton();
       }
 
       var count = 0;
-      _.each($('#logEntries').children(), function(elem) {
+      _.each($('#logEntries').children(), function (elem) {
         if ($(elem).css('display') === 'flex') {
           $(elem).css('display', 'block');
         }
@@ -245,7 +245,7 @@
       }
     },
 
-    renderLogLevel: function(e) {
+    renderLogLevel: function (e) {
       var self = this;
 
       if (!this.logLevelOptions) {
@@ -253,7 +253,7 @@
       }
 
       var active;
-      _.each(this.logLevels, function(name) {
+      _.each(this.logLevels, function (name) {
         if (self.logLevelOptions[name]) {
           active = self.logLevelOptions[name].active;
         }
@@ -282,24 +282,24 @@
       this.logLevelView.render();
     },
 
-    setActiveLoglevel: function(e) {
+    setActiveLoglevel: function (e) {
 
     },
 
-    initTotalAmount: function() {
+    initTotalAmount: function () {
       var self = this;
       this.collection.fetch({
         data: $.param(
           {test: true}
         ),
-        success: function() {
+        success: function () {
           self.convertModelToJSON();
         }
       });
       this.fetchedAmount = true;
     },
 
-    invertArray: function(array) {
+    invertArray: function (array) {
       var rtnArr = [];
       var counter = 0;
       var i;
@@ -311,7 +311,7 @@
       return rtnArr;
     },
 
-    convertModelToJSON: function() {
+    convertModelToJSON: function () {
       if (!this.fetchedAmount) {
         this.initTotalAmount();
         return;
@@ -325,8 +325,8 @@
       var entriesToAppend = [];
 
       this.collection.fetch({
-        success: function(settings) {
-          self.collection.each(function(model) {
+        success: function (settings) {
+          self.collection.each(function (model) {
             date = new Date(model.get('timestamp') * 1000);
             let entry = {
               status: model.getLogStatus(),
@@ -346,58 +346,29 @@
       });
     },
 
-    render: function(initialRender) {
-      var ommitLogFunction = function(isUnauthorized) {
-        $(this.el).html('');
-        const msgContainer = $("#subNavigationBar").find(".subMenuEntries.bottom");
-        msgContainer.html('');
-        const commonMsg = " You can switch to \'_system\' to see the logs.";
-        let warnMsg = "";
-        if (isUnauthorized) {
-          warnMsg = " You do not have permission to view this page.";
-        }
-        msgContainer.append(
-          `<div style="padding: 15px 35px 15px 14px; color: red">${warnMsg} ${commonMsg}</div>`
-        );
-      }.bind(this);
-
-      var handleAccessFunction = function(error, authorized) {
-        if (!error) {
-          if (!authorized) {
-            ommitLogFunction(true);
-          } else {
-            ommitLogFunction(false);
-          }
-        }
-      }.bind(this);
-
-      if (window.App.currentDB.get('name') !== '_system') {
-        // check if user has _system permission
-        this.options.database.hasSystemAccess(handleAccessFunction);
-      } else {
-        var self = this;
-        if (initialRender) {
-          this.currentPage = 0;
-          this.fetchedEntries = [];
-        }
-
-        if (this.initDone) {
-          // render static content
-          $(this.el).html(this.template.render({}));
-
-          // fetch dyn. content
-          this.convertModelToJSON();
-        } else {
-          window.setTimeout(function() {
-            self.render(false);
-          }, 100);
-        }
-        return this;
+    render: function (initialRender) {
+      var self = this;
+      if (initialRender) {
+        this.currentPage = 0;
+        this.fetchedEntries = [];
       }
+
+      if (this.initDone) {
+        // render static content
+        $(this.el).html(this.template.render({}));
+
+        // fetch dyn. content
+        this.convertModelToJSON();
+      } else {
+        window.setTimeout(function () {
+          self.render(false);
+        }, 100);
+      }
+      return this;
     },
 
-    renderLogs: function(entries, offset) {
-      _.each(entries, function(entry) {
+    renderLogs: function (entries, offset) {
+      _.each(entries, function (entry) {
         if (entry.msg.indexOf('{' + entry.topic + '}') > -1) {
           entry.msg = entry.msg.replace('{' + entry.topic + '}', '');
         }
@@ -424,5 +395,6 @@
       arangoHelper.createTooltips();
       this.applyFilter();
     }
+
   });
 }());
