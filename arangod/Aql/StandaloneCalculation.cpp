@@ -98,10 +98,22 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
 
-  [[nodiscard]] bool hasFailedOperations() const override { return false; }
+  [[nodiscard]] bool hasFailedOperations() const noexcept override {
+    return false;
+  }
 
   /// @brief number of commits, including intermediate commits
-  [[nodiscard]] uint64_t numCommits() const override { return 0; }
+  [[nodiscard]] uint64_t numCommits() const noexcept override { return 0; }
+
+  /// @brief number of intermediate commits
+  [[nodiscard]] uint64_t numIntermediateCommits() const noexcept override {
+    return 0;
+  }
+
+  void addIntermediateCommits(uint64_t /*value*/) override {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override {
     return 0;

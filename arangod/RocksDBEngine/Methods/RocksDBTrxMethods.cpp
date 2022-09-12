@@ -201,7 +201,7 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
 
   TRI_ASSERT(!_state->isSingleOperation());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
+  LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "executing intermediate commit";
 #endif
 
   Result res = doCommit();
@@ -210,13 +210,13 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
     return res;
   }
 
+  ++_numIntermediateCommits;
   ++_state->statistics()._intermediateCommits;
 
   TRI_IF_FAILURE("logAfterIntermediateCommit") {
-    LOG_DEVEL << "_numInserts = " << _numInserts
-              << " _numUpdates = " << _numUpdates
-              << " _numRemoves = " << _numRemoves
-              << " _numLogdata = " << _numLogdata;
+    LOG_TOPIC("e7d51", ERR, Logger::ENGINES)
+        << "_numInserts = " << _numInserts << " _numUpdates = " << _numUpdates
+        << " _numRemoves = " << _numRemoves << " _numLogdata = " << _numLogdata;
   }
 
   // reset counters for DML operations, but intentionally don't reset
