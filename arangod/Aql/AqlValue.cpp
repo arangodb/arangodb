@@ -1291,10 +1291,13 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
       if (rightType >= VPACK_INLINE_INT48 && rightType <= VPACK_INLINE_DOUBLE) {
         double l = left.toDouble();
         double r = right.toDouble();
-        if (l == r) {
+        if (l < r) {
+          return -1;
+        } else if (l > r) {
+          return 1;
+        } else {
           return 0;
         }
-        return (l < r ? -1 : 1);
       }
       [[fallthrough]];
     case VPACK_INLINE:
