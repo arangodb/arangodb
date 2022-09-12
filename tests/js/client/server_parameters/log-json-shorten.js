@@ -103,7 +103,7 @@ return require('internal').options()["log.output"];
         assertFalse(parsedRes.hasOwnProperty("role"), parsedRes);
         assertFalse(parsedRes.hasOwnProperty("tid"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("file"), parsedRes);
-        assertNotMatch(/.*[\\\/].*/, parsedRes.file);
+        assertFalse(parsedRes.file.includes("/") || parsedRes.file.includes("\\"), parsedRes.file)
         assertMatch(/^[a-f0-9]{5}/, parsedRes.id, parsedRes);
         assertTrue(parsedRes.hasOwnProperty("message"), parsedRes);
         assertEqual("testmann: testi" + (i - 1), parsedRes.message, parsedRes);
