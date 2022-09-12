@@ -267,6 +267,7 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
     'filtered',
     'httpRequests',
     'peakMemoryUsage',
+    'intermediateCommits',
     'executionTime',
   ];
 

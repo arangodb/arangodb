@@ -52,7 +52,12 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const override;
+  uint64_t numCommits() const noexcept override;
+
+  /// @brief number of intermediate commits
+  uint64_t numIntermediateCommits() const noexcept override;
+
+  void addIntermediateCommits(uint64_t value) override;
 
   bool hasOperations() const noexcept override;
 
