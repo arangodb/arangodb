@@ -30,6 +30,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Pregel/WorkerConductorMessages.h"
 
 #include <velocypack/Iterator.h>
 
@@ -44,18 +45,13 @@ InCache<M>::InCache(MessageFormat<M> const* format)
     : _containedMessageCount(0), _format(format) {}
 
 template<typename M>
-void InCache<M>::parseMessages(VPackSlice const& incomingData) {
-  // every packet contains one shard
-  VPackSlice shardSlice = incomingData.get(Utils::shardIdKey);
-  VPackSlice messages = incomingData.get(Utils::messagesKey);
-
+void InCache<M>::parseMessages(PregelMessage const& message) {
   // temporary variables
   VPackValueLength i = 0;
   std::string_view key;
-  PregelShard shard = (PregelShard)shardSlice.getUInt();
-  std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
+  std::lock_guard<std::mutex> guard(this->_bucketLocker[message.shard]);
 
-  for (VPackSlice current : VPackArrayIterator(messages)) {
+  for (VPackSlice current : VPackArrayIterator(message.messages.slice())) {
     if (i % 2 == 0) {  // TODO support multiple recipients
       key = current.stringView();
     } else {
@@ -65,14 +61,14 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
         for (VPackSlice val : VPackArrayIterator(current)) {
           M newValue;
           _format->unwrapValue(val, newValue);
-          _set(shard, key, newValue);
+          _set(message.shard, key, newValue);
           c++;
         }
         this->_containedMessageCount += c;
       } else {
         M newValue;
         _format->unwrapValue(current, newValue);
-        _set(shard, key, newValue);
+        _set(message.shard, key, newValue);
         this->_containedMessageCount++;
       }
     }

@@ -245,23 +245,17 @@ auto Worker<V, E, M>::prepareGlobalSuperStep(
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  uint64_t gss = gssSlice.getUInt();
-  if (gss == _config._globalSuperstep) {
-    {  // make sure the pointer is not changed while
-      // parsing messages
-      MY_READ_LOCKER(guard, _cacheRWLock);
-      // handles locking for us
-      _writeCache->parseMessages(data);
-    }
-  } else {
-    // Trigger the processing of vertices
+void Worker<V, E, M>::receivedMessages(PregelMessage const& message) {
+  if (message.gss != _config._globalSuperstep) {
     LOG_PREGEL("ecd34", ERR)
-        << "Expected: " << _config._globalSuperstep << "Got: " << gss;
+        << "Expected: " << _config._globalSuperstep << "Got: " << message.gss;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
   }
+  // make sure the pointer is not changed while parsing messages
+  MY_READ_LOCKER(guard, _cacheRWLock);
+  // handles locking for us
+  _writeCache->parseMessages(message);
 }
 
 template<typename V, typename E, typename M>
@@ -758,6 +752,10 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
           [&](CollectPregelResults const& x) -> ResultT<ModernMessage> {
             return ModernMessage{.executionNumber = _config.executionNumber(),
                                  .payload = aqlResult(x.withId)};
+          },
+          [&](PregelMessage const& x) -> ResultT<ModernMessage> {
+            receivedMessages(x);
+            return ModernMessage{};
           },
           [](auto const& x) -> ResultT<ModernMessage> {
             return Result{TRI_ERROR_INTERNAL,
