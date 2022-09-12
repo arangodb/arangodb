@@ -35,7 +35,9 @@
 #include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "VocBase/LogicalCollection.h"
+#include "velocypack/Builder.h"
 
 #include <velocypack/Iterator.h>
 
@@ -100,50 +102,51 @@ void ArrayOutCache<M>::flushMessages() {
   auto& server = this->_config->vocbase()->server();
   auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-
   network::RequestOptions reqOpts;
   reqOpts.database = this->_config->database();
   reqOpts.skipScheduler = true;
 
   std::vector<futures::Future<network::Response>> responses;
-  for (auto const& it : _shardMap) {
-    PregelShard shard = it.first;
-    std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap =
-        it.second;
+  for (auto const& [shard, vertexMessageMap] : _shardMap) {
     if (vertexMessageMap.size() == 0) {
       continue;
     }
 
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder data(buffer, &options);
-    data.openObject();
-    data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    data.add(Utils::executionNumberKey,
-             VPackValue(this->_config->executionNumber().value));
-    data.add(Utils::globalSuperstepKey, VPackValue(gss));
-    data.add(Utils::shardIdKey, VPackValue(shard));
-    data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
-    for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValue(vertexMessagePair.first));      // key
-      data.add(VPackValue(VPackValueType::Array, true));  // message array
-      for (M const& val : vertexMessagePair.second) {
-        this->_format->addValue(data, val);
-        if (this->_sendToNextGSS) {
-          this->_sendCountNextGSS++;
-        } else {
-          this->_sendCount++;
+    VPackBuilder messagesVPack(&options);
+    {
+      VPackArrayBuilder ab(&messagesVPack);
+      for (auto const& [vertex, messages] : vertexMessageMap) {
+        messagesVPack.add(VPackValue(vertex));  // key
+        {
+          VPackArrayBuilder ab2(&messagesVPack);
+          for (M const& message : messages) {
+            this->_format->addValue(messagesVPack, message);
+            if (this->_sendToNextGSS) {
+              this->_sendCountNextGSS++;
+            } else {
+              this->_sendCount++;
+            }
+          }
         }
       }
-      data.close();
     }
-    data.close();
-    data.close();
+    auto message = ModernMessage{
+        .executionNumber = this->_config->executionNumber(),
+        .payload = PregelMessage{.senderId = ServerState::instance()->getId(),
+                                 .gss = gss,
+                                 .shard = shard,
+                                 .messages = messagesVPack}};
+
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
 
-    responses.emplace_back(network::sendRequest(
-        pool, "shard:" + shardId, fuerte::RestVerb::Post,
-        this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder data(buffer, &options);
+    serialize(data, message);
+    responses.emplace_back(
+        network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
+                             this->_baseUrl + Utils::modernMessagingPath,
+                             std::move(buffer), reqOpts));
   }
 
   futures::collectAll(responses).wait();
@@ -213,49 +216,49 @@ void CombiningOutCache<M>::flushMessages() {
   auto& server = this->_config->vocbase()->server();
   auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
+  network::RequestOptions reqOpts;
+  reqOpts.database = this->_config->database();
+  reqOpts.timeout = network::Timeout(180);
+  reqOpts.skipScheduler = true;
 
   std::vector<futures::Future<network::Response>> responses;
-  for (auto const& it : _shardMap) {
-    PregelShard shard = it.first;
-    std::unordered_map<std::string_view, M> const& vertexMessageMap = it.second;
+  for (auto const& [shard, vertexMessageMap] : _shardMap) {
     if (vertexMessageMap.size() == 0) {
       continue;
     }
 
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder data(buffer, &options);
-    data.openObject();
-    data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    data.add(Utils::executionNumberKey,
-             VPackValue(this->_config->executionNumber().value));
-    data.add(Utils::globalSuperstepKey, VPackValue(gss));
-    data.add(Utils::shardIdKey, VPackValue(shard));
-    data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
-    for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValuePair(vertexMessagePair.first.data(),
-                              vertexMessagePair.first.size(),
-                              VPackValueType::String));         // key
-      this->_format->addValue(data, vertexMessagePair.second);  // value
+    VPackBuilder messagesVPack(&options);
+    {
+      VPackArrayBuilder ab(&messagesVPack);
+      for (auto const& [vertex, message] : vertexMessageMap) {
+        messagesVPack.add(VPackValuePair(vertex.data(), vertex.size(),
+                                         VPackValueType::String));  // key
+        this->_format->addValue(messagesVPack, message);            // value
 
-      if (this->_sendToNextGSS) {
-        this->_sendCountNextGSS++;
-      } else {
-        this->_sendCount++;
+        if (this->_sendToNextGSS) {
+          this->_sendCountNextGSS++;
+        } else {
+          this->_sendCount++;
+        }
       }
     }
-    data.close();
-    data.close();
+    auto message = ModernMessage{
+        .executionNumber = this->_config->executionNumber(),
+        .payload = PregelMessage{.senderId = ServerState::instance()->getId(),
+                                 .gss = gss,
+                                 .shard = shard,
+                                 .messages = messagesVPack}};
+
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
 
-    network::RequestOptions reqOpts;
-    reqOpts.database = this->_config->database();
-    reqOpts.timeout = network::Timeout(180);
-    reqOpts.skipScheduler = true;
-
-    responses.emplace_back(network::sendRequest(
-        pool, "shard:" + shardId, fuerte::RestVerb::Post,
-        this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder data(buffer, &options);
+    serialize(data, message);
+    responses.emplace_back(
+        network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
+                             this->_baseUrl + Utils::modernMessagingPath,
+                             std::move(buffer), reqOpts));
   }
 
   futures::collectAll(responses).wait();

@@ -25,6 +25,7 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/Graph.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "VocBase/Methods/Tasks.h"
@@ -204,18 +205,6 @@ auto inspect(Inspector& f, RunGlobalSuperStep& x) {
       f.field("aggregators", x.aggregators));
 }
 
-struct CancelGss {
-  ExecutionNumber executionNumber;
-  uint64_t gss;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, CancelGss& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field(Utils::globalSuperstepKey, x.gss));
-}
-
 struct StartCleanup {
   uint64_t gss;
   bool withStoring;
@@ -236,6 +225,22 @@ auto inspect(Inspector& f, CollectPregelResults& x) {
   return f.object(x).fields(f.field("withId", x.withId).fallback(false));
 }
 
+// or PregelShardMessage
+struct PregelMessage {
+  std::string senderId;
+  uint64_t gss;
+  PregelShard shard;
+  VPackBuilder messages;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, PregelMessage& x) {
+  return f.object(x).fields(f.field(Utils::senderKey, x.senderId),
+                            f.field(Utils::globalSuperstepKey, x.gss),
+                            f.field("shard", x.shard),
+                            f.field("messages", x.messages));
+}
+
 // ---------------------- modern message ----------------------
 
 using MessagePayload =
@@ -243,7 +248,7 @@ using MessagePayload =
                  ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
                  ResultT<GlobalSuperStepFinished>, CollectPregelResults,
                  PregelResults, StartCleanup, CleanupStarted, StatusUpdated,
-                 CleanupFinished>;
+                 CleanupFinished, PregelMessage>;
 
 struct MessagePayloadSerializer : MessagePayload {};
 template<class Inspector>
@@ -263,6 +268,7 @@ auto inspect(Inspector& f, MessagePayloadSerializer& x) {
       arangodb::inspection::type<StartCleanup>("startCleanup"),
       arangodb::inspection::type<CleanupStarted>("cleanupStarted"),
       arangodb::inspection::type<CleanupFinished>("cleanupFinished"),
+      arangodb::inspection::type<PregelMessage>("pregelMessage"),
       arangodb::inspection::type<StatusUpdated>("statusUpdated"));
 }
 template<typename Inspector>
