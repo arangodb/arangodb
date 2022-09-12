@@ -45,9 +45,7 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
 
   switch (entry.operation) {
     case OperationType::kInsert:
-      return _methods->insert(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kUpdate:
-      return _methods->update(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kReplace:
       return _methods->replace(entry.shardId, entry.data.slice(), opOptions);
     case OperationType::kRemove:
