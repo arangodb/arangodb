@@ -159,9 +159,9 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
       -> PostGlobalSuperStepResult;
   auto _preGlobalSuperStep() -> bool;
   auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
-  template<typename OutType, typename InType>
-  auto _sendToAllDBServers(std::string const& path, InType const& message)
-      -> ResultT<std::vector<OutType>>;
+  template<typename InType>
+  auto _sendToAllDBServers(InType const& message)
+      -> ResultT<std::vector<ModernMessage>>;
   void _ensureUniqueResponse(std::string const& body);
 
   // === REST callbacks ===

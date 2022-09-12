@@ -30,8 +30,7 @@ auto Canceled::run() -> void {
             StartCleanup{.executionNumber = conductor._executionNumber,
                          .gss = conductor._globalSuperstep,
                          .withStoring = false};
-        auto response = conductor._sendToAllDBServers<CleanupStarted>(
-            Utils::finalizeExecutionPath, startCleanupCommand);
+        auto response = conductor._sendToAllDBServers(startCleanupCommand);
         return response.ok();
       },
       Logger::PREGEL, "cancel worker execution");
