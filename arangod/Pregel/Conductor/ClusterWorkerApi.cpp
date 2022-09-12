@@ -13,7 +13,9 @@ using namespace arangodb::pregel::conductor;
 template<typename Out, typename In>
 auto ClusterWorkerApi::execute(In const& in) -> futures::Future<ResultT<Out>> {
   return _connection
-      .post(ModernMessage{.executionNumber = _executionNumber, .payload = {in}})
+      .sendWithRetry(
+          Destination{Destination::Type::server, _server},
+          ModernMessage{.executionNumber = _executionNumber, .payload = {in}})
       .thenValue([](auto&& response) -> futures::Future<ResultT<Out>> {
         if (response.fail()) {
           return Result{response.errorNumber(), response.errorMessage()};

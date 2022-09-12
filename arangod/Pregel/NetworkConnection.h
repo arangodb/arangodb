@@ -34,22 +34,32 @@
 
 namespace arangodb::pregel {
 
-template<typename T>
-concept RestMessage = requires(T a) {
-  { a.path } -> std::convertible_to<std::string>;
+struct Destination {
+  enum Type { server, shard };
+
+ private:
+  Type _type;
+  ServerID _id;
+  const char* typeString[2] = {"server", "shard"};
+
+ public:
+  Destination(Type type, ServerID id) : _type{type}, _id{std::move(id)} {}
+  auto toString() const -> std::string;
 };
 
 struct Connection {
  public:
-  static auto create(ServerID const& destinationId, std::string const& baseUrl,
-                     TRI_vocbase_t& vocbase) -> Connection;
-  Connection(ServerID destinationId, std::string baseUrl,
-             network::RequestOptions requestOptions,
+  static auto create(std::string const& baseUrl,
+                     network::RequestOptions&& options, TRI_vocbase_t& vocbase)
+      -> Connection;
+  Connection(std::string baseUrl, network::RequestOptions requestOptions,
              network::ConnectionPool* connectionPool);
-  auto post(ModernMessage&& message) -> futures::Future<ResultT<ModernMessage>>;
+  auto sendWithRetry(Destination const& destination, ModernMessage&& message)
+      -> futures::Future<ResultT<ModernMessage>>;
+  auto send(Destination const& destination, ModernMessage&& message)
+      -> futures::Future<Result>;
 
  private:
-  ServerID _destinationId;
   std::string _baseUrl;
   network::RequestOptions _requestOptions;
   network::ConnectionPool* _connectionPool;

@@ -357,12 +357,15 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
   } else {
     for (auto const& [server, _] : vertexMap) {
       _dbServers.push_back(server);
+      network::RequestOptions reqOpts;
+      reqOpts.timeout = network::Timeout(5.0 * 60.0);
+      reqOpts.database = _vocbaseGuard.database().name();
       workers.emplace(
-          server,
-          std::make_unique<conductor::ClusterWorkerApi>(
-              _executionNumber,
-              Connection::create(server, Utils::baseUrl(Utils::workerPrefix),
-                                 _vocbaseGuard.database())));
+          server, std::make_unique<conductor::ClusterWorkerApi>(
+                      server, _executionNumber,
+                      Connection::create(Utils::baseUrl(Utils::workerPrefix),
+                                         std::move(reqOpts),
+                                         _vocbaseGuard.database())));
     }
   }
   _status = ConductorStatus::forWorkers(_dbServers);

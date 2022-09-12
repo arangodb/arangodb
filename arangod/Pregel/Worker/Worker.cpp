@@ -250,7 +250,7 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(PregelMessage const& message) {
   if (message.gss != _config._globalSuperstep) {
     LOG_PREGEL("ecd34", ERR)
-        << "Expected: " << _config._globalSuperstep << "Got: " << message.gss;
+        << "Expected: " << _config._globalSuperstep << " Got: " << message.gss;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
   }
