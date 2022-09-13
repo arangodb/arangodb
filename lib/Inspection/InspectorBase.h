@@ -30,6 +30,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <ucontext.h>
 #include <variant>
 
 #include <velocypack/Iterator.h>
@@ -198,7 +199,9 @@ struct InspectorBase : detail::ContextContainer<Context> {
   template<class T>
   struct FieldsResult {
     template<class Invariant>
-    Status invariant(Invariant&& func) {
+    auto invariant(Invariant&& func) {
+      //return self.objectInvariant(std::forward<Invariant>(func), std::move(result), object);
+
       if constexpr (Derived::isLoading) {
         if (!result.ok()) {
           return std::move(result);
@@ -209,6 +212,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
         return std::move(result);
       }
     }
+    
     operator Status() && { return std::move(result); }
 
     static constexpr const char InvariantFailedError[] =
@@ -217,10 +221,11 @@ struct InspectorBase : detail::ContextContainer<Context> {
    private:
     template<class TT>
     friend struct Object;
-    FieldsResult(Status&& res, T& object)
-        : result(std::move(res)), object(object) {}
+    FieldsResult(Status&& res, T& object, Derived& inspector)
+        : result(std::move(res)), object(object), inspector(inspector) {}
     Status result;
     T& object;
+    Derived& inspector;
   };
 
   template<class T>
@@ -233,7 +238,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
           | [&]() { return i.applyFields(std::forward<Args>(args)...); }  //
           | [&]() { return i.endObject(); };                              //
 
-      return {std::move(res), object};
+      return {std::move(res), object, inspector};
     }
 
    private:
@@ -338,10 +343,10 @@ struct EmbeddedFields : Fields<Inspector> {
   std::tuple<Ts...> fields;
 };
 
-template<class Parent>
+template<class Parent, class Context>
 struct EmbeddedFieldInspector
-    : InspectorBase<EmbeddedFieldInspector<Parent>, Parent> {
-  using Base = InspectorBase<EmbeddedFieldInspector<Parent>, Parent>;
+    : InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent> {
+  using Base = InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent>;
 
   static constexpr bool isLoading = Parent::isLoading;
 
@@ -405,10 +410,16 @@ struct EmbeddedFieldInspector
 
 }  // namespace detail
 
-template<class Derived, class TargetInspector>
+template<class Derived, class Context, class TargetInspector>
 template<class T>
-auto InspectorBase<Derived, TargetInspector>::embedFields(T& value) const {
-  detail::EmbeddedFieldInspector<Derived> insp;
+auto InspectorBase<Derived, Context, TargetInspector>::embedFields(T& value) const {
+  auto insp = [this]() {
+    if constexpr(InspectorBase::hasContext) {
+      return detail::EmbeddedFieldInspector<Derived, Context>(this->getContext());
+    } else {
+      return detail::EmbeddedFieldInspector<Derived, Context>();
+    }
+  }();
   auto res = insp.apply(value);
   TRI_ASSERT(res.ok());
   return std::move(insp.fields);
