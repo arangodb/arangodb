@@ -750,13 +750,21 @@ bool InvertedIndexField::init(
     _path += tmp;
   }
 
-  auto fieldsAttributeName =
-      rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
 #ifndef USE_ENTERPRISE
   if (!rootMode) {
+    if (slice.isObject() && slice.hasKey(kNestedFieldsFieldName)) {
+      errorField =
+          absl::StrCat(kNestedFieldsFieldName,
+                       " is supported in ArangoDB Enterprise Edition only.");
+      return false;
+    }
+
     return true;
   }
 #endif
+  auto const fieldsAttributeName =
+      rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
+
   if (slice.isObject() && slice.hasKey(fieldsAttributeName)) {
     auto nestedSlice = slice.get(fieldsAttributeName);
     if (!nestedSlice.isArray()) {
