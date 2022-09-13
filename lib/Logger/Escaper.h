@@ -50,15 +50,6 @@ struct UnicodeCharsEscaper {  //\u +4 digits
   static void writeCharHelper(uint16_t c, std::string& output);
 };
 
-class GeneralEscaper {
- public:
-  virtual ~GeneralEscaper() = default;
-  virtual size_t determineOutputBufferSize(
-      std::string const& message) const = 0;
-  virtual void writeIntoOutputBuffer(std::string const& message,
-                                     std::string& buffer) = 0;
-};
-
 template<typename ControlCharHandler, typename UnicodeCharHandler>
 class Escaper {
  public:
