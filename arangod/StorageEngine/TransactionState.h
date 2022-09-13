@@ -213,9 +213,13 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// for cluster transactions on coordinator, this either returns 0 or 1.
   /// for leader, follower or single-server transactions, this can include any
   /// number, because it will also include intermediate commits.
-  virtual uint64_t numCommits() const = 0;
+  virtual uint64_t numCommits() const noexcept = 0;
 
-  virtual bool hasFailedOperations() const = 0;
+  virtual uint64_t numIntermediateCommits() const noexcept = 0;
+
+  virtual void addIntermediateCommits(uint64_t value) = 0;
+
+  virtual bool hasFailedOperations() const noexcept = 0;
 
   virtual void beginQuery(bool /*isModificationQuery*/) {}
   virtual void endQuery(bool /*isModificationQuery*/) noexcept {}

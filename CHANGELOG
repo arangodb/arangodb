@@ -8,6 +8,11 @@ devel
   the sequence number of the snapshot in the batch. This ensures that
   shards can get in sync more reliably and more quickly.
 
+* Updated arangosync to v2.12.0-preview-12.
+
+* Added "intermediateCommits" statistics return value for AQL queries, to
+  relay the number of intermediate commits back that a write query performed.
+
 * Updated ArangoDB Starter to 0.15.5-preview-3.
 
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
