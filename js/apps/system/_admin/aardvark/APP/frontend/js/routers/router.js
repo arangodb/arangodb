@@ -642,10 +642,20 @@
       this.checkUser();
 
       this.init.then(() => {
-        if (this.loggerView) {
-          this.loggerView.remove();
-        }
-        if (this.currentDB.get('name') === '_system') {
+
+        const redirectCallback = function() {
+          this.routes[''] = 'collections';
+          this.navigate('#collections', {trigger: true});
+        }.bind(this);
+
+
+        const loggerCallback = function() {
+          console.log("Entered callback");
+
+          if (this.loggerView) {
+            this.loggerView.remove();
+          }
+
           const co = new window.ArangoLogs({
             upto: true,
             loglevel: 4
@@ -654,6 +664,15 @@
             collection: co
           });
           this.loggerView.render(true);
+        }.bind(this);
+        if (!this.isCluster) {
+          if (this.currentDB.get('name') === '_system') {
+            arangoHelper.checkDatabasePermissions(redirectCallback, loggerCallback);
+          } else {
+            redirectCallback();
+          }
+        } else {
+          redirectCallback();
         }
       });
     },
