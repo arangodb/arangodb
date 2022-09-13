@@ -722,11 +722,6 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
                                           TRI_vocbase_t const* defaultVocbase,
                                           velocypack::Builder& builder,
                                           bool forPersistence) const {
-  if (!_dataStore._meta.json(builder, nullptr, nullptr)) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_INTERNAL,
-        std::string{"Failed to generate inverted index store definition"}));
-  }
   if (!_meta.json(server, builder, forPersistence, defaultVocbase)) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
