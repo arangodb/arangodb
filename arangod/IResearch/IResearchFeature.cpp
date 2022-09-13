@@ -1150,11 +1150,11 @@ void IResearchFeature::reportRecoveryProgress(arangodb::IndexId id,
 
   if (id != _progressState.lastReportId ||
       now - _progressState.lastReportTime >= std::chrono::minutes(1)) {
-    // report progress only when link id changes or one minute has passed
+    // report progress only when index/link id changes or one minute has passed
 
     auto progress = static_cast<size_t>(100.0 * current / total);
     LOG_TOPIC("d1f18", INFO, TOPIC)
-        << "recovering arangosearch link " << id << ", " << phase
+        << "recovering arangosearch index " << id << ", " << phase
         << ": operation " << (current + 1) << "/" << total << " (" << progress
         << "%)...";
 
