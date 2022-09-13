@@ -51,11 +51,12 @@ const dbservers = (function () {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function MovingShardsSuite ({useData}) {
+function MovingShardsSuite ({useData, replVersion}) {
   if (typeof useData !== 'boolean') {
     throw new Error('MovingShardsSuite expects its parameter `useData` to be set and a boolean!');
   }
-  var cn = "UnitTestMovingShards";
+  const cn = "UnitTestMovingShards";
+  const dbn = "UnitTestMovingShards_V" + replVersion;
   var count = 0;
   var c = [];
 
@@ -213,19 +214,19 @@ function MovingShardsSuite ({useData}) {
     }
     for (var i = fromCollNr; i <= toCollNr; ++i) {
       global.ArangoClusterInfo.flush();
-      var servers = findCollectionServers("_system", c[i].name());
+      var servers = findCollectionServers(dbn, c[i].name());
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
         return false;
       }
 
       // Now check current as well:
       var collInfo =
-          global.ArangoClusterInfo.getCollectionInfo("_system", c[i].name());
+          global.ArangoClusterInfo.getCollectionInfo(dbn, c[i].name());
       var shards = collInfo.shards;
       var collInfoCurr =
           Object.keys(shards).map(
             s => global.ArangoClusterInfo.getCollectionInfoCurrent(
-              "_system", c[i].name(), s).servers);
+              dbn, c[i].name(), s).servers);
       // quick hack here, if the list of servers has length one, we map it to -1
       // thus the check below will not return false in the case replFact === 1
       var idxs = collInfoCurr.map(l => (l.length > 1) ? l.indexOf(id) : -1);
@@ -283,16 +284,16 @@ function MovingShardsSuite ({useData}) {
         while (--count > 0) {
           wait(1.0);
           global.ArangoClusterInfo.flush();
-          var servers = findCollectionServers("_system", c[i].name());
+          var servers = findCollectionServers(dbn, c[i].name());
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
             var collInfo =
-                global.ArangoClusterInfo.getCollectionInfo("_system", c[i].name());
+                global.ArangoClusterInfo.getCollectionInfo(dbn, c[i].name());
             var shards = collInfo.shards;
             var collInfoCurr =
                 Object.keys(shards).map(
                   s => global.ArangoClusterInfo.getCollectionInfoCurrent(
-                    "_system", c[i].name(), s).servers);
+                    dbn, c[i].name(), s).servers);
             var idxs = collInfoCurr.map(l => l.indexOf(id));
             ok = true;
             for (var j = 0; j < idxs.length; j++) {
@@ -573,7 +574,7 @@ function MovingShardsSuite ({useData}) {
 
   function createSomeCollections(n, nrShards, replFactor, useData, otherNumDocuments = 0) {
     assertEqual('boolean', typeof useData);
-    var systemCollServers = findCollectionServers("_system", "_graphs");
+    var systemCollServers = findCollectionServers(dbn, "_graphs");
     console.info("System collections use servers:", systemCollServers);
     for (var i = 0; i < n; ++i) {
       ++count;
@@ -590,7 +591,7 @@ function MovingShardsSuite ({useData}) {
           coll.insert(_.range(0, nd).map(v => ({ value: v, x: "someString" + v })));
         }
 
-        var servers = findCollectionServers("_system", name);
+        var servers = findCollectionServers(dbn, name);
         console.info("Test collection uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           c.push(coll);
@@ -598,7 +599,7 @@ function MovingShardsSuite ({useData}) {
         }
         console.info("Need to recreate collection to avoid system collection servers.");
         c.push(coll);
-        waitForSynchronousReplication("_system");
+        waitForSynchronousReplication(dbn);
         c.pop();
         console.info("Synchronous replication has settled, now dropping again.");
       }
@@ -663,6 +664,16 @@ function MovingShardsSuite ({useData}) {
 
   return {
 
+    setUpAll: function () {
+      db._createDatabase(dbn, {replicationVersion: replVersion});
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
@@ -690,7 +701,7 @@ function MovingShardsSuite ({useData}) {
     testSetup : function () {
       for (var count = 0; count < 120; ++count) {
         if (dbservers.length === 5) {
-          assertTrue(waitForSynchronousReplication("_system"));
+          assertTrue(waitForSynchronousReplication(dbn));
           checkCollectionContents();
 
           return;
@@ -706,7 +717,7 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShrinkNoReplication : function() {
-      assertTrue(waitForSynchronousReplication("_system"));
+      assertTrue(waitForSynchronousReplication(dbn));
       var _dbservers = _.clone(dbservers);
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
@@ -726,14 +737,14 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollower : function() {
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[0].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[0].name());
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[0].name());
+          dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -744,14 +755,14 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromLeader : function() {
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[0].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[0].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[0].name());
+          dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -763,14 +774,14 @@ function MovingShardsSuite ({useData}) {
 
     testMoveShardFromLeaderNoReplication : function() {
       createSomeCollections(1, 1, 1, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
+          dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -782,14 +793,14 @@ function MovingShardsSuite ({useData}) {
 
     testMoveShardFromFollowerRepl3_1 : function() {
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
+          dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -801,14 +812,14 @@ function MovingShardsSuite ({useData}) {
 
     testMoveShardFromRepl3_2 : function() {
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[2];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
+          dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -820,14 +831,14 @@ function MovingShardsSuite ({useData}) {
 
     testMoveShardFromLeaderRepl : function() {
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
+          dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -839,14 +850,14 @@ function MovingShardsSuite ({useData}) {
 
     testMoveShardFromLeaderToFollower : function() {
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = servers[1];
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
+          dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
       assertTrue(testServerNoLeader(fromServer, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -858,8 +869,8 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testResignLeadership : function() {
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[0].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[0].name());
       var toResign = servers[1];
       assertTrue(resignLeadership(toResign));
       assertTrue(testServerNoLeader(toResign));
@@ -873,8 +884,8 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCleanOutFollower : function() {
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[0].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[0].name());
       var toClean = servers[1];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -887,8 +898,8 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCleanOutLeader : function() {
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[0].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[0].name());
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -902,8 +913,8 @@ function MovingShardsSuite ({useData}) {
 
     testCleanOutMultipleCollections : function() {
       createSomeCollections(10, 1, 2, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -917,8 +928,8 @@ function MovingShardsSuite ({useData}) {
 
     testCleanOut3Replicas : function() {
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -932,8 +943,8 @@ function MovingShardsSuite ({useData}) {
 
     testCleanOutMultipleShards : function() {
       createSomeCollections(1, 10, 2, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var toClean = servers[1];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -947,8 +958,8 @@ function MovingShardsSuite ({useData}) {
 
     testCleanOutNoReplication : function() {
       createSomeCollections(1, 1, 1, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -962,15 +973,15 @@ function MovingShardsSuite ({useData}) {
 
     testMaintenanceMode : function() {
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
+          dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, true, "Finished"));
+      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, true, "Finished"));
       var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
           arango.Supervision.State, state;
       var waitUntil = new Date().getTime() + 30.0*1000;
@@ -1002,8 +1013,8 @@ function MovingShardsSuite ({useData}) {
         return;
       }
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var leader = servers[0];
       var fromServer = servers[1];
       var leaderUrl = getUrlById(leader);
@@ -1016,19 +1027,19 @@ function MovingShardsSuite ({useData}) {
 
         var toServer = findServerNotOnList(servers);
         var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-            "_system", c[1].name());
+            dbn, c[1].name());
         var shard = Object.keys(cinfo.shards)[0];
-        assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false, "Finished"));
-        assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+        assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+        assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         wait(5);   // After 5 seconds the situation should be unchanged!
-        assertTrue(waitForIncompleteMoveShard("_system", c[1].name(), 3));
+        assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         // Now we know that the old follower is not in the plan but is in
         // failoverCandidates (and indeed in Current/servers). Let's now
         // try to move the shard back, this ought to be denied:
-        assertTrue(moveShard("_system", c[1]._id, shard, toServer, fromServer, false, "Failed"));
+        assertTrue(moveShard(dbn, c[1]._id, shard, toServer, fromServer, false, "Failed"));
         debugClearFailAt(leaderUrl);
         // Now we should go back to only 3 servers in Current.
-        assertTrue(waitForSynchronousReplication("_system"));
+        assertTrue(waitForSynchronousReplication(dbn));
         assertTrue(testServerEmpty(fromServer, false, 1, 1));
         assertTrue(waitForSupervision());
         checkCollectionContents();
@@ -1044,15 +1055,15 @@ function MovingShardsSuite ({useData}) {
 
     testCancelToDoMoveShard : function() {
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
+          dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
-      let result = moveShard("_system", c[1]._id, shard, fromServer, toServer, true, "Finished");
+      let result = moveShard(dbn, c[1]._id, shard, fromServer, toServer, true, "Finished");
       assertEqual(result.statusCode, 202);
       let id = JSON.parse(result.body).id;
       assertTrue(cancelAgencyJob(id));
@@ -1076,14 +1087,14 @@ function MovingShardsSuite ({useData}) {
         c = [];
         let otherNumDocuments = 100000;
         createSomeCollections(1, 1, 3, useData, otherNumDocuments);
-        assertTrue(waitForSynchronousReplication("_system"));
-        var servers = findCollectionServers("_system", c[0].name());
+        assertTrue(waitForSynchronousReplication(dbn));
+        var servers = findCollectionServers(dbn, c[0].name());
         var fromServer = servers[0];
         var toServer = findServerNotOnList(servers);
         var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[0].name());
+          dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
-        let result = moveShard("_system", c[0]._id, shard, fromServer, toServer, true, "Finished");
+        let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
         assertEqual(result.statusCode, 202);
         let id = JSON.parse(result.body).id;
         while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
@@ -1107,11 +1118,11 @@ function MovingShardsSuite ({useData}) {
 
     testCancelToDoCleanOutServer : function() {
       createSomeCollections(1, 1, 3, useData);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[1].name());
       var fromServer = servers[0];
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
+          dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
       let result = cleanOutServer(servers[0], true);
@@ -1138,11 +1149,11 @@ function MovingShardsSuite ({useData}) {
         c = [];
         let otherNumDocuments = 100000;
         createSomeCollections(1, 1, 3, useData, otherNumDocuments);
-        assertTrue(waitForSynchronousReplication("_system"));
-        var servers = findCollectionServers("_system", c[0].name());
+        assertTrue(waitForSynchronousReplication(dbn));
+        var servers = findCollectionServers(dbn, c[0].name());
         var fromServer = servers[0];
         var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[0].name());
+          dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
         let result = cleanOutServer(fromServer, true);
         assertEqual(result.statusCode, 202);
@@ -1171,13 +1182,19 @@ function MovingShardsSuite ({useData}) {
 
 jsunity.run(function MovingShardsSuite_nodata() {
   let derivedSuite = {};
-  deriveTestSuite(MovingShardsSuite({ useData: false }), derivedSuite, "_nodata");
+  deriveTestSuite(MovingShardsSuite({ useData: false, replVersion: "1" }), derivedSuite, "_nodata_R1");
   return derivedSuite;
 });
 
 jsunity.run(function MovingShardsSuite_data() {
   let derivedSuite = {};
-  deriveTestSuite(MovingShardsSuite({ useData: true }), derivedSuite, "_data");
+  deriveTestSuite(MovingShardsSuite({ useData: true, replVersion: "1" }), derivedSuite, "_data_R1");
+  return derivedSuite;
+});
+
+jsunity.run(function MovingShardsSuite_data() {
+  let derivedSuite = {};
+  deriveTestSuite(MovingShardsSuite({ useData: true, replVersion: "2" }), derivedSuite, "_data_R2");
   return derivedSuite;
 });
 
