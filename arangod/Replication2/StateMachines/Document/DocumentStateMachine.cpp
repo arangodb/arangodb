@@ -26,6 +26,7 @@
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "Transaction/Manager.h"
 
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
@@ -40,8 +41,10 @@ auto DocumentCoreParameters::toSharedSlice() const -> velocypack::SharedSlice {
 }
 
 DocumentFactory::DocumentFactory(
-    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
-    : _handlersFactory(std::move(handlersFactory)){};
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+    transaction::IManager& transactionManager)
+    : _handlersFactory(std::move(handlersFactory)),
+      _transactionManager(transactionManager){};
 
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentFollowerState> {
@@ -51,8 +54,8 @@ auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
 
 auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentLeaderState> {
-  return std::make_shared<DocumentLeaderState>(std::move(core),
-                                               _handlersFactory);
+  return std::make_shared<DocumentLeaderState>(
+      std::move(core), _handlersFactory, _transactionManager);
 }
 
 auto DocumentFactory::constructCore(GlobalLogIdentifier gid,

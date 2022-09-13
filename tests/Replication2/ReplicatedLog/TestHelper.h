@@ -51,6 +51,26 @@ namespace arangodb::replication2::test {
 
 using namespace replicated_log;
 
+template<typename I>
+struct SimpleIterator : PersistedLogIterator {
+  SimpleIterator(I begin, I end) : current(begin), end(end) {}
+  ~SimpleIterator() override = default;
+
+  auto next() -> std::optional<PersistingLogEntry> override {
+    if (current == end) {
+      return std::nullopt;
+    }
+
+    return *(current++);
+  }
+
+  I current, end;
+};
+template<typename C, typename Iter = typename C::const_iterator>
+auto make_iterator(C const& c) -> std::shared_ptr<SimpleIterator<Iter>> {
+  return std::make_shared<SimpleIterator<Iter>>(c.begin(), c.end());
+}
+
 struct ReplicatedLogTest : ::testing::Test {
   template<typename MockLogT = MockLog>
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {

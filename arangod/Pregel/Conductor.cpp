@@ -417,7 +417,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   if (_asyncMode == false) {  // in async mode we wait for all responded
     _ensureUniqueResponse(data);
     ServerID sender = data.get(Utils::senderKey).copyString();
-    LOG_PREGEL("08142", WARN)
+    LOG_PREGEL("faeb0", WARN)
         << fmt::format("finishedWorkerStep, got response from {}.", sender);
 
     // wait for the last worker to respond
@@ -865,7 +865,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   }
 
   ServerID sender = data.get(Utils::senderKey).copyString();
-  LOG_PREGEL("08142", WARN)
+  LOG_PREGEL("60f0c", WARN)
       << fmt::format("finishedWorkerFinalize, got response from {}.", sender);
 
   _ensureUniqueResponse(data);

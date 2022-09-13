@@ -480,7 +480,9 @@ ViewSnapshot::Links Search::getLinks() const {
   indexes.reserve(_indexes.size());
   for (auto const& [_, handles] : _indexes) {
     for (auto const& handle : handles) {
-      indexes.push_back(handle->lock());
+      if (auto index = handle->lock(); index) {
+        indexes.push_back(std::move(index));
+      }
     }
   }
   return indexes;

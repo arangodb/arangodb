@@ -27,39 +27,40 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "Basics/ResultT.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/AgencyCallback.h"
-#include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
-#include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
-#include "Metrics/ClusterMetricsFeature.h"
 #include "Replication2/AgencyCollectionSpecification.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/VocbaseInfo.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
+#include "Replication2/Version.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
+
+namespace futures {
+template<typename T>
+class Future;
+template<typename T>
+class Promise;
+}  // namespace futures
+
+class Result;
+template<typename T>
+class ResultT;
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -67,239 +68,23 @@ class Slice;
 
 namespace replication2 {
 class LogId;
+namespace agency {
+struct LogPlanSpecification;
+}  // namespace agency
+namespace replicated_state::agency {
+struct Target;
+}  // namespace replicated_state::agency
 }  // namespace replication2
 
-namespace replication2::agency {
-struct LogPlanSpecification;
-struct CollectionGroupId;
-struct CollectionGroup;
-}  // namespace replication2::agency
-
-namespace replication2::replicated_state::agency {
-struct Target;
-}  // namespace replication2::replicated_state::agency
-
-class ClusterInfo;
-class LogicalCollection;
+class AgencyCallbackRegistry;
 struct ClusterCollectionCreationInfo;
-
-// make sure a collection is still in Plan
-// we are only going from *assuming* that it is present
-// to it being changed to not present.
-class CollectionWatcher
-    : public std::enable_shared_from_this<CollectionWatcher> {
- public:
-  CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry,
-                    LogicalCollection const& collection);
-  ~CollectionWatcher();
-
-  bool isPresent() {
-    // Make sure we did not miss a callback
-    _agencyCallback->refetchAndUpdate(true, false);
-    return _present.load();
-  }
-
- private:
-  AgencyCallbackRegistry* _agencyCallbackRegistry;
-  std::shared_ptr<AgencyCallback> _agencyCallback;
-
-  // TODO: this does not really need to be atomic: We only write to it
-  //       in the callback, and we only read it in `isPresent`; it does
-  //       not actually matter whether this value is "correct".
-  std::atomic<bool> _present;
-};
-
-class CollectionInfoCurrent {
-  friend class ClusterInfo;
-
- public:
-  explicit CollectionInfoCurrent(uint64_t currentVersion);
-
-  CollectionInfoCurrent(CollectionInfoCurrent const&) = delete;
-
-  CollectionInfoCurrent(CollectionInfoCurrent&&) = delete;
-
-  CollectionInfoCurrent& operator=(CollectionInfoCurrent const&) = delete;
-
-  CollectionInfoCurrent& operator=(CollectionInfoCurrent&&) = delete;
-
-  virtual ~CollectionInfoCurrent();
-
- public:
-  bool add(std::string_view shardID, VPackSlice slice) {
-    auto it = _vpacks.find(shardID);
-    if (it == _vpacks.end()) {
-      _vpacks.emplace(shardID, std::make_shared<VPackBuilder>(slice));
-      return true;
-    }
-    return false;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the indexes
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] VPackSlice getIndexes(std::string_view shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      return slice.get("indexes");
-    }
-    return VPackSlice::noneSlice();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the error flag for a shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] bool error(std::string_view shardID) const {
-    return getFlag(StaticStrings::Error, shardID);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the error flag for all shardIDs
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] containers::FlatHashMap<ShardID, bool> error() const {
-    return getFlag(StaticStrings::Error);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorNum for one shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] int errorNum(std::string_view shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          slice, StaticStrings::ErrorNum, 0);
-    }
-    return 0;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorNum for all shardIDs
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] containers::FlatHashMap<ShardID, int> errorNum() const {
-    containers::FlatHashMap<ShardID, int> m;
-
-    for (auto const& it : _vpacks) {
-      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          it.second->slice(), StaticStrings::ErrorNum, 0);
-      m.insert(std::make_pair(it.first, s));
-    }
-    return m;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the current leader and followers for a shard
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] TEST_VIRTUAL std::vector<ServerID> servers(
-      std::string_view shardID) const {
-    std::vector<ServerID> v;
-
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-
-      VPackSlice servers = slice.get("servers");
-      if (servers.isArray()) {
-        for (VPackSlice server : VPackArrayIterator(servers)) {
-          if (server.isString()) {
-            v.push_back(server.copyString());
-          }
-        }
-      }
-    }
-    return v;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the current failover candidates for the given shard
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] TEST_VIRTUAL std::vector<ServerID> failoverCandidates(
-      std::string_view shardID) const {
-    std::vector<ServerID> v;
-
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-
-      VPackSlice servers = slice.get(StaticStrings::FailoverCandidates);
-      if (servers.isArray()) {
-        for (VPackSlice server : VPackArrayIterator(servers)) {
-          TRI_ASSERT(server.isString());
-          if (server.isString()) {
-            v.emplace_back(server.copyString());
-          }
-        }
-      }
-    }
-    return v;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorMessage entry for one shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] std::string errorMessage(std::string_view shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      if (slice.isObject() && slice.hasKey(StaticStrings::ErrorMessage)) {
-        return slice.get(StaticStrings::ErrorMessage).copyString();
-      }
-    }
-    return std::string();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get version that underlies this info in Current in the agency
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] uint64_t getCurrentVersion() const { return _currentVersion; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief local helper to return boolean flags
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
-  [[nodiscard]] bool getFlag(std::string_view name,
-                             std::string_view shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      return arangodb::basics::VelocyPackHelper::getBooleanValue(
-          it->second->slice(), name, false);
-    }
-    return false;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief local helper to return a map to boolean
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] containers::FlatHashMap<ShardID, bool> getFlag(
-      std::string_view name) const {
-    containers::FlatHashMap<ShardID, bool> m;
-    for (auto const& it : _vpacks) {
-      auto vpack = it.second;
-      bool b = arangodb::basics::VelocyPackHelper::getBooleanValue(
-          vpack->slice(), name, false);
-      m.emplace(it.first, b);
-    }
-    return m;
-  }
-
-  containers::FlatHashMap<ShardID, std::shared_ptr<VPackBuilder>> _vpacks;
-
-  uint64_t _currentVersion;  // Version of Current in the agency that
-                             // underpins the data presented in this object
-};
+class ClusterInfo;
+class CollectionInfoCurrent;
+class CreateDatabaseInfo;
+class IndexId;
+class LogicalDataSource;
+class LogicalCollection;
+class LogicalView;
 
 class AnalyzerModificationTransaction {
  public:
@@ -379,26 +164,7 @@ class ClusterInfo final {
       containers::FlatHashMap<ViewID, std::shared_ptr<LogicalView>>;
   using AllViews = containers::FlatHashMap<DatabaseID, DatabaseViews>;
 
-  class SyncerThread final : public arangodb::ServerThread<ArangodServer> {
-   public:
-    explicit SyncerThread(Server&, std::string const& section,
-                          std::function<void()> const&,
-                          AgencyCallbackRegistry*);
-    ~SyncerThread() override;
-    void beginShutdown() override;
-    void run() override;
-    bool start();
-    bool notify();
-
-   private:
-    std::mutex _m;
-    std::condition_variable _cv;
-    bool _news;
-    std::string _section;
-    std::function<void()> _f;
-    AgencyCallbackRegistry* _cr;
-    std::shared_ptr<AgencyCallback> _acb;
-  };
+  class SyncerThread;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library

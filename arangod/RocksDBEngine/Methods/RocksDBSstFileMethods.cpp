@@ -25,9 +25,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/RocksDBUtils.h"
-#include "Basics/files.h"
+#include "Basics/Thread.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TemporaryStorageFeature.h"
