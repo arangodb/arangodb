@@ -57,20 +57,20 @@ struct ReadWriteGraphFormat final : public GraphFormat<V, E> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId, VPackSlice document,
                       V& targetPtr, uint64_t& /*vertexIdRange*/) override {
-    if (!document.hasKey(sourceFieldName)) {
+    auto value = document.get(sourceFieldName);
+    if (value.isNone()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "Vertex with ID " + documentId +
                                          " has no property " + sourceFieldName +
                                          ".");
     } else {
-      VPackSlice val = document.get(sourceFieldName);
-      if (!val.isNumber()) {
+      if (!value.isNumber()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "Vertex with ID " + documentId +
                                            " has property " + sourceFieldName +
                                            ", whose type is not a number.");
       }
-      targetPtr = static_cast<V>(val.getNumber<V>());
+      targetPtr = static_cast<V>(value.getNumber<V>());
     }
   }
 
@@ -110,8 +110,9 @@ WorkerContext* ReadWrite::workerContext(VPackSlice userParams) const {
 struct ReadWriteMasterContext : public MasterContext {
   size_t maxGss;
   explicit ReadWriteMasterContext(VPackSlice userParams) {
-    if (userParams.hasKey(Utils::maxGSS)) {
-      maxGss = userParams.get(Utils::maxGSS).getInt();
+    auto value = userParams.get(Utils::maxGSS);
+    if (not value.isNone()) {
+      maxGss = value.getInt();
     }
   }
 
