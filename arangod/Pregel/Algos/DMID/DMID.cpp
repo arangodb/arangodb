@@ -29,7 +29,6 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Algos/DMID/DMIDMessageFormat.h"
 #include "Pregel/Algos/DMID/VertexSumAggregator.h"
-#include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
