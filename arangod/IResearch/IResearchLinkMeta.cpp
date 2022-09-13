@@ -79,6 +79,22 @@ bool equalAnalyzers(std::vector<FieldMeta::Analyzer> const& lhs,
   return true;
 }
 
+bool equalFields(IResearchLinkMeta::Fields const& lhs,
+                 IResearchLinkMeta::Fields const& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+
+  for (auto const notFoundField = rhs.end(); auto& entry : lhs) {
+    auto rhsField = rhs.find(entry.key());
+    if (rhsField == notFoundField || rhsField.value() != entry.value()) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 constexpr frozen::map<std::string_view, ValueStorage, 3> kNameToPolicy = {
     {"none", ValueStorage::NONE},
     {"id", ValueStorage::ID},
@@ -106,33 +122,34 @@ namespace iresearch {
 
 bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   if (!equalAnalyzers(_analyzers, rhs._analyzers)) {
-    return false;  // values do not match
+    return false;
   }
 
-  if (_fields.size() != rhs._fields.size()) {
-    return false;  // values do not match
-  }
-
-  auto const notFoundField = rhs._fields.end();
-
-  for (auto& entry : _fields) {
-    auto rhsField = rhs._fields.find(entry.key());
-    if (rhsField == notFoundField || rhsField.value() != entry.value()) {
-      return false;
-    }
+  if (!equalFields(_fields, rhs._fields)) {
+    return false;
   }
 
   if (_includeAllFields != rhs._includeAllFields) {
-    return false;  // values do not match
+    return false;
   }
 
   if (_trackListPositions != rhs._trackListPositions) {
-    return false;  // values do not match
+    return false;
   }
 
   if (_storeValues != rhs._storeValues) {
-    return false;  // values do not match
+    return false;
   }
+
+#ifdef USE_ENTERPRISE
+  if (_hasNested != rhs._hasNested) {
+    return false;
+  }
+
+  if (!equalFields(_nested, rhs._nested)) {
+    return false;
+  }
+#endif
 
   return true;
 }
@@ -402,56 +419,53 @@ bool FieldMeta::init(
     // optional string map<name, overrides>
     constexpr std::string_view kFieldName{"nested"};
 
-    auto field = slice.get(kFieldName);
-
-    if (!field.isNone()) {
-#ifdef USE_ENTERPRISE
+    if (auto const field = slice.get(kFieldName); !field.isNone()) {
+#ifndef USE_ENTERPRISE
+      errorField =
+          absl::StrCat("'", kFieldName,
+                       "' is supported in ArangoDB Enterprise Edition only.");
+      return false;
+#else
       if (!field.isObject()) {
         errorField = kFieldName;
 
         return false;
       }
-#else
-      errorField =
-          absl::StrCat("'", kFieldName,
-                       "' is supported in ArangoDB Enterprise Edition only.");
-      return false;
+
+      auto subDefaults = *this;
+
+      _nested.clear();  // reset to match either defaults or read values exactly
+
+      for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+        auto key = itr.key();
+        auto value = itr.value();
+
+        if (!key.isString()) {
+          errorField = std::string{kFieldName} + "[" +
+                       basics::StringUtils::itoa(itr.index()) + "]";
+
+          return false;
+        }
+
+        auto name = key.stringView();
+
+        if (!value.isObject()) {
+          errorField = absl::StrCat(kFieldName, ".", name);
+          return false;
+        }
+
+        std::string childErrorField;
+
+        if (!_nested[name]->init(server, value, childErrorField, defaultVocbase,
+                                 version, subDefaults, referencedAnalyzers,
+                                 nullptr)) {
+          errorField =
+              absl::StrCat(kFieldName, ".", name, ".", childErrorField);
+          return false;
+        }
+      }
 #endif
     }
-
-#ifdef USE_ENTERPRISE
-    auto subDefaults = *this;
-
-    _nested.clear();  // reset to match either defaults or read values exactly
-
-    for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
-      auto key = itr.key();
-      auto value = itr.value();
-
-      if (!key.isString()) {
-        errorField = std::string{kFieldName} + "[" +
-                     basics::StringUtils::itoa(itr.index()) + "]";
-
-        return false;
-      }
-
-      auto name = key.stringView();
-
-      if (!value.isObject()) {
-        errorField = absl::StrCat(kFieldName, ".", name);
-        return false;
-      }
-
-      std::string childErrorField;
-
-      if (!_nested[name]->init(server, value, childErrorField, defaultVocbase,
-                               version, subDefaults, referencedAnalyzers,
-                               nullptr)) {
-        errorField = absl::StrCat(kFieldName, ".", name, ".", childErrorField);
-        return false;
-      }
-    }
-#endif
   }
 
 #ifdef USE_ENTERPRISE
