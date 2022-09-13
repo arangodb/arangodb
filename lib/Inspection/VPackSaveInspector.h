@@ -39,11 +39,22 @@
 
 namespace arangodb::inspection {
 
-struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
+template<class Context = NoContext>
+struct VPackSaveInspector
+    : InspectorBase<VPackSaveInspector<Context>, Context> {
+ protected:
+  using Base = InspectorBase<VPackSaveInspector, Context>;
+
+ public:
   static constexpr bool isLoading = false;
 
-  explicit VPackSaveInspector(velocypack::Builder& builder)
+  explicit VPackSaveInspector(velocypack::Builder& builder) requires(
+      !Base::hasContext)
       : _builder(builder) {}
+
+  explicit VPackSaveInspector(velocypack::Builder& builder,
+                              Context const& context)
+      : Base(context), _builder(builder) {}
 
   template<class T>
   [[nodiscard]] Status apply(T const& x) {
@@ -124,7 +135,7 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
 
   template<class Arg, class... Args>
   auto applyFields(Arg&& arg, Args&&... args) {
-    auto res = self().applyField(std::forward<Arg>(arg));
+    auto res = applyField(std::forward<Arg>(arg));
     if constexpr (sizeof...(args) == 0) {
       return res;
     } else {
@@ -134,12 +145,14 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
   }
 
   template<class... Ts, class... Args>
-  auto processVariant(UnqualifiedVariant<Ts...>& variant, Args&&... args) {
+  auto processVariant(
+      typename Base::template UnqualifiedVariant<Ts...>& variant,
+      Args&&... args) {
     return beginObject()  //
            |
            [&]() {
              return std::visit(overload{[this, &args](typename Args::Type& v) {
-                                 return applyFields(field(args.tag, v));
+                                 return applyFields(this->field(args.tag, v));
                                }...},
                                variant.value);
            }  //
@@ -147,14 +160,15 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
   }
 
   template<class... Ts, class... Args>
-  auto processVariant(QualifiedVariant<Ts...>& variant, Args&&... args) {
+  auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
+                      Args&&... args) {
     return beginObject()  //
            |
            [&]() {
              return std::visit(
                  overload{[this, &variant, &args](typename Args::Type& v) {
-                   return applyFields(field(variant.typeField, args.tag),
-                                      field(variant.valueField, v));
+                   return applyFields(this->field(variant.typeField, args.tag),
+                                      this->field(variant.valueField, v));
                  }...},
                  variant.value);
            }  //
@@ -167,25 +181,29 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
   struct FallbackContainer {
     explicit FallbackContainer(U&&) {}
   };
-  template<class T>
+  template<class Fn>
+  struct FallbackFactoryContainer {
+    explicit FallbackFactoryContainer(Fn&&) {}
+  };
+  template<class Fn>
   struct InvariantContainer {
-    explicit InvariantContainer(T&&) {}
+    explicit InvariantContainer(Fn&&) {}
   };
 
  private:
   template<class T>
   [[nodiscard]] auto applyField(T const& field) {
-    if constexpr (std::is_same_v<IgnoreField, T>) {
+    if constexpr (std::is_same_v<typename Base::IgnoreField, T>) {
       return Status::Success{};
     } else {
-      auto name = getFieldName(field);
-      auto& value = getFieldValue(field);
+      auto name = Base::getFieldName(field);
+      auto& value = Base::getFieldValue(field);
       constexpr bool hasFallback =
-          !std::is_void_v<decltype(getFallbackField(field))>;
+          !std::is_void_v<decltype(Base::getFallbackField(field))>;
       auto res = [&]() {
-        if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
+        if constexpr (!std::is_void_v<decltype(Base::getTransformer(field))>) {
           return saveTransformedField(*this, name, hasFallback, value,
-                                      getTransformer(field));
+                                      Base::getTransformer(field));
         } else {
           return saveField(*this, name, hasFallback, value);
         }
