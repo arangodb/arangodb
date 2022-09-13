@@ -625,6 +625,7 @@ Collections::create(         // create collection
   TRI_ASSERT(!vocbase.isDangling());
 
   PlanCollection::DatabaseConfiguration config(vocbase);
+  config.enforceReplicationFactor = enforceReplicationFactor;
 
   ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   for (auto const& col : collections) {
