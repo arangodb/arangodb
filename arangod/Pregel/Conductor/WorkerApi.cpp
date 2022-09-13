@@ -46,3 +46,8 @@ auto WorkerApi::runGlobalSuperStep(RunGlobalSuperStep const& data)
     -> futures::Future<ResultT<GlobalSuperStepFinished>> {
   return execute<GlobalSuperStepFinished>(data);
 }
+
+auto WorkerApi::store(Store const& message)
+    -> futures::Future<ResultT<Stored>> {
+  return execute<Stored>(message);
+}

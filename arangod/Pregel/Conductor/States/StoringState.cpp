@@ -2,6 +2,7 @@
 
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
+#include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/WorkerConductorMessages.h"
@@ -19,17 +20,39 @@ Storing::~Storing() {
   conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
 }
 
+auto Storing::_store() -> StoredFuture {
+  auto store = Store{};
+  auto results = std::vector<futures::Future<ResultT<Stored>>>{};
+  for (auto&& [_, worker] : conductor.workers) {
+    results.emplace_back(worker.store(store));
+  }
+  return futures::collectAll(results);
+}
+
 auto Storing::run() -> void {
   conductor.cleanup();
 
   LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
 
-  auto startCleanupCommand =
-      StartCleanup{.gss = conductor._globalSuperstep, .withStoring = true};
-  auto response = conductor._sendToAllDBServers(startCleanupCommand);
-  if (response.fail()) {
-    LOG_PREGEL_CONDUCTOR("f382d", ERR) << "Cleanup could not be started";
-  }
+  _store()
+      .thenValue([&](auto results) {
+        for (auto const& result : results) {
+          if (result.get().fail()) {
+            LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
+                "Got unsuccessful response from worker while storing graph: {}",
+                result.get().errorMessage());
+            conductor.changeState(StateType::InError);
+            return;
+          }
+        }
+        auto startCleanupCommand = StartCleanup{
+            .gss = conductor._globalSuperstep, .withStoring = true};
+        auto response = conductor._sendToAllDBServers(startCleanupCommand);
+        if (response.fail()) {
+          LOG_PREGEL_CONDUCTOR("f382d", ERR) << "Cleanup could not be started";
+        }
+      })
+      .wait();
 }
 
 auto Storing::receive(Message const& message) -> void {

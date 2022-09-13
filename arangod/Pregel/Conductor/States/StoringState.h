@@ -42,6 +42,11 @@ struct Storing : State {
       -> std::optional<std::chrono::system_clock::time_point> override {
     return std::nullopt;
   }
+
+ private:
+  using StoredFuture = futures::Future<
+      std::vector<futures::Try<arangodb::ResultT<arangodb::pregel::Stored>>>>;
+  auto _store() -> StoredFuture;
 };
 
 }  // namespace conductor

@@ -116,6 +116,12 @@ auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
                             f.field("aggregators", x.aggregators));
 }
 
+struct Stored {};
+template<typename Inspector>
+auto inspect(Inspector& f, Stored& x) {
+  return f.object(x).fields();
+}
+
 struct CleanupFinished : Message {
   std::string senderId;
   VPackBuilder reports;
@@ -205,6 +211,12 @@ auto inspect(Inspector& f, RunGlobalSuperStep& x) {
       f.field("aggregators", x.aggregators));
 }
 
+struct Store {};
+template<typename Inspector>
+auto inspect(Inspector& f, Store& x) {
+  return f.object(x).fields();
+}
+
 struct StartCleanup {
   uint64_t gss;
   bool withStoring;
@@ -246,9 +258,9 @@ auto inspect(Inspector& f, PregelMessage& x) {
 using MessagePayload =
     std::variant<LoadGraph, ResultT<GraphLoaded>, PrepareGlobalSuperStep,
                  ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
-                 ResultT<GlobalSuperStepFinished>, CollectPregelResults,
-                 PregelResults, StartCleanup, CleanupStarted, StatusUpdated,
-                 CleanupFinished, PregelMessage>;
+                 ResultT<GlobalSuperStepFinished>, Store, ResultT<Stored>,
+                 CollectPregelResults, PregelResults, StartCleanup,
+                 CleanupStarted, StatusUpdated, CleanupFinished, PregelMessage>;
 
 struct MessagePayloadSerializer : MessagePayload {};
 template<class Inspector>
@@ -263,6 +275,8 @@ auto inspect(Inspector& f, MessagePayloadSerializer& x) {
       arangodb::inspection::type<RunGlobalSuperStep>("runGlobalSuperStep"),
       arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
           "globalSuperStepFinished"),
+      arangodb::inspection::type<Store>("store"),
+      arangodb::inspection::type<ResultT<Stored>>("stored"),
       arangodb::inspection::type<CollectPregelResults>("collectPregelResults"),
       arangodb::inspection::type<PregelResults>("pregelResults"),
       arangodb::inspection::type<StartCleanup>("startCleanup"),

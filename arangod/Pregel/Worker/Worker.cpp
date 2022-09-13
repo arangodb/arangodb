@@ -331,13 +331,6 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
       });
 }
 
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _commandMutex);
-  _state = WorkerState::DONE;
-  _workHandle.reset();
-}
-
 /// WARNING only call this while holding the _commandMutex
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_processVerticesInThreads() -> VerticesProcessedFuture {
@@ -543,6 +536,27 @@ auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
 }
 
 template<typename V, typename E, typename M>
+auto Worker<V, E, M>::store(Store const& message)
+    -> futures::Future<ResultT<Stored>> {
+  _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+  LOG_PREGEL("91264", DEBUG) << "Storing results";
+  // tell graphstore to remove read locks
+  _graphStore->_reports = &this->_reports;
+  return _graphStore->storeResults(&_config, _makeStatusCallback())
+      .thenValue([&](auto result) {
+        _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+        return result;
+      });
+}
+
+template<typename V, typename E, typename M>
+void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
+  MUTEX_LOCKER(guard, _commandMutex);
+  _state = WorkerState::DONE;
+  _workHandle.reset();
+}
+
+template<typename V, typename E, typename M>
 auto Worker<V, E, M>::finalizeExecution(StartCleanup const& command)
     -> CleanupStarted {
   // Only expect serial calls from the conductor.
@@ -554,34 +568,16 @@ auto Worker<V, E, M>::finalizeExecution(StartCleanup const& command)
     return CleanupStarted{};
   }
 
-  auto const doStore = command.withStoring;
-  auto cleanup = [self = shared_from_this(), this, doStore] {
-    if (doStore) {
-      _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
-    }
-
-    auto event = _cleanupFinishedEvent();
-    auto modernMessage = ModernMessage{
-        .executionNumber = _config.executionNumber(), .payload = event};
-    VPackBuilder message;
-    serialize(message, modernMessage);
-    _callConductor(message);
-    _reports.clear();
-    _feature.cleanupWorker(_config.executionNumber());
-  };
-
   _state = WorkerState::DONE;
-  if (doStore) {
-    LOG_PREGEL("91264", DEBUG) << "Storing results";
-    // tell graphstore to remove read locks
-    _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup),
-                              _makeStatusCallback());
-    _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-  } else {
-    LOG_PREGEL("b3f35", WARN) << "Discarding results";
-    cleanup();
-  }
+  LOG_PREGEL("b3f35", WARN) << "Discarding results";
+  auto event = _cleanupFinishedEvent();
+  auto modernMessage = ModernMessage{
+      .executionNumber = _config.executionNumber(), .payload = event};
+  VPackBuilder message;
+  serialize(message, modernMessage);
+  _callConductor(message);
+  _reports.clear();
+  _feature.cleanupWorker(_config.executionNumber());
   return CleanupStarted{};
 }
 
@@ -752,6 +748,14 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
           [&](RunGlobalSuperStep const& x)
               -> futures::Future<ResultT<ModernMessage>> {
             return runGlobalSuperStep(x).thenValue(
+                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
+                  return ModernMessage{
+                      .executionNumber = _config.executionNumber(),
+                      .payload = {result}};
+                });
+          },
+          [&](Store const& x) -> futures::Future<ResultT<ModernMessage>> {
+            return store(x).thenValue(
                 [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
                   return ModernMessage{
                       .executionNumber = _config.executionNumber(),

@@ -146,8 +146,9 @@ class GraphStore final {
   RangeIterator<Edge<E>> edgeIterator(Vertex<V, E> const* entry);
 
   /// Write results to database
-  void storeResults(WorkerConfig* config, std::function<void()>,
-                    std::function<void()> const& statusUpdateCallback);
+  auto storeResults(WorkerConfig* config,
+                    std::function<void()> const& statusUpdateCallback)
+      -> futures::Future<ResultT<Stored>>;
 
   ReportManager* _reports;
 
@@ -160,9 +161,10 @@ class GraphStore final {
                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
 
-  void storeVertices(std::vector<ShardID> const& globalShards,
-                     RangeIterator<Vertex<V, E>>& it, size_t threadNumber,
-                     std::function<void()> const& statusUpdateCallback);
+  auto storeVertices(
+    std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
+    size_t threadNumber, std::function<void()> const& statusUpdateCallback)
+    -> ResultT<Stored>;
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
 
   constexpr size_t vertexSegmentSize() const {

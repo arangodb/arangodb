@@ -180,7 +180,7 @@ auto GraphStore<V, E>::loadShards(
     if (numShards == SIZE_MAX) {
       numShards = vertexShards.size();
     } else if (numShards != vertexShards.size()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
+      return Result{TRI_ERROR_BAD_PARAMETER, shardError};
     }
 
     for (size_t i = 0; i < vertexShards.size(); i++) {
@@ -195,7 +195,7 @@ auto GraphStore<V, E>::loadShards(
       for (auto const& pair2 : edgeCollMap) {
         std::vector<ShardID> const& edgeShards = pair2.second;
         if (vertexShards.size() != edgeShards.size()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
+          return Result{TRI_ERROR_BAD_PARAMETER, shardError};
         }
 
         // optionally restrict edge collections to a positive list
@@ -578,9 +578,10 @@ uint64_t GraphStore<V, E>::determineVertexIdRangeStart(uint64_t numVertices) {
 /// Loops over the array starting a new transaction for different shards
 /// Should not dead-lock unless we have to wait really long for other threads
 template<typename V, typename E>
-void GraphStore<V, E>::storeVertices(
+auto GraphStore<V, E>::storeVertices(
     std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
-    size_t threadNumber, std::function<void()> const& statusUpdateCallback) {
+    size_t threadNumber, std::function<void()> const& statusUpdateCallback)
+    -> ResultT<Stored> {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -596,7 +597,7 @@ void GraphStore<V, E>::storeVertices(
   uint64_t numDocs = 0;
   double lastLogStamp = TRI_microtime();
 
-  auto commitTransaction = [&]() {
+  auto commitTransaction = [&]() -> Result {
     if (trx) {
       builder.close();
 
@@ -604,8 +605,7 @@ void GraphStore<V, E>::storeVertices(
       if (!opRes.countErrorCodes.empty()) {
         auto code = ErrorCode{opRes.countErrorCodes.begin()->first};
         if (opRes.countErrorCodes.size() > 1) {
-          // more than a single error code. let's just fail this
-          THROW_ARANGO_EXCEPTION(code);
+          return Result{code, "Saw more than a single error code"};
         }
         // got only a single error code. now let's use it, whatever it is.
         opRes.result.reset(code);
@@ -613,7 +613,7 @@ void GraphStore<V, E>::storeVertices(
 
       if (opRes.fail() && opRes.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
           opRes.isNot(TRI_ERROR_ARANGO_CONFLICT)) {
-        THROW_ARANGO_EXCEPTION(opRes.result);
+        return Result{opRes.result.errorNumber(), opRes.result.errorMessage()};
       }
       if (opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
         LOG_PREGEL("4e632", WARN)
@@ -622,12 +622,12 @@ void GraphStore<V, E>::storeVertices(
 
       res = trx->finish(res);
       if (!res.ok()) {
-        THROW_ARANGO_EXCEPTION(res);
+        return Result{res.errorNumber(), res.errorMessage()};
       }
 
       if (_vocbaseGuard.database().server().isStopping()) {
-        LOG_PREGEL("73ec2", WARN) << "Storing data was canceled prematurely";
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+        return Result{TRI_ERROR_SHUTTING_DOWN,
+                      "Storing data was canceled prematurely"};
       }
 
       numDocs = 0;
@@ -643,6 +643,7 @@ void GraphStore<V, E>::storeVertices(
 
     builder.clear();
     builder.openArray(true);
+    return Result{};
   };
 
   // loop over vertices
@@ -651,7 +652,10 @@ void GraphStore<V, E>::storeVertices(
   // or there are no more vertices for to store (or the buffer is full)
   for (; it.hasMore(); ++it) {
     if (it->shard() != currentShard || numDocs >= 1000) {
-      commitTransaction();
+      auto result = commitTransaction();
+      if (result.fail()){
+        return result;
+      }
 
       currentShard = it->shard();
       shard = globalShards[currentShard];
@@ -664,7 +668,7 @@ void GraphStore<V, E>::storeVertices(
 
       res = trx->begin();
       if (!res.ok()) {
-        THROW_ARANGO_EXCEPTION(res);
+        return Result{res.errorNumber(), res.errorMessage()};
       }
     }
 
@@ -685,25 +689,26 @@ void GraphStore<V, E>::storeVertices(
     ++numDocs;
     ++_observables.verticesStored;
     if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
-      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         statusUpdateCallback);
+      statusUpdateCallback();
     }
   }
+  statusUpdateCallback();
 
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                     statusUpdateCallback);
   // commit the remainders in our buffer
   // will throw if it fails
-  commitTransaction();
+  auto result = commitTransaction();
+  if (result.fail()){
+    return result;
+  }
+  return Stored{};
 }
 
 template<typename V, typename E>
-void GraphStore<V, E>::storeResults(
-    WorkerConfig* config, std::function<void()> cb,
-    std::function<void()> const& statusUpdateCallback) {
+auto GraphStore<V, E>::storeResults(
+    WorkerConfig* config, std::function<void()> const& statusUpdateCallback)
+    -> futures::Future<ResultT<Stored>> {
   _config = config;
   double now = TRI_microtime();
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   size_t const numSegments = _vertices.size();
 
@@ -720,33 +725,36 @@ void GraphStore<V, E>::storeResults(
   LOG_PREGEL("f3fd9", DEBUG) << "Storing vertex data (" << numSegments
                              << " vertices) using " << numT << " threads";
 
+  auto storedVertices = std::vector<futures::Future<ResultT<Stored>>>{};
   for (size_t i = 0; i < numT; ++i) {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=, this] {
-      size_t startI = i * (numSegments / numT);
-      size_t endI = (i + 1) * (numSegments / numT);
-      TRI_ASSERT(endI <= numSegments);
+    size_t startI = i * (numSegments / numT);
+    size_t endI = (i + 1) * (numSegments / numT);
+    TRI_ASSERT(endI <= numSegments);
 
-      try {
-        RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
-        storeVertices(_config->globalShardIDs(), it, i, statusUpdateCallback);
-        // TODO can't just write edges with SmartGraphs
-      } catch (std::exception const& e) {
-        LOG_PREGEL("e22c8", ERR) << "Storing vertex data failed: " << e.what();
-      } catch (...) {
-        LOG_PREGEL("51b87", ERR) << "Storing vertex data failed";
-      }
-
-      uint32_t numRunning =
-          _runningThreads.fetch_sub(1, std::memory_order_relaxed);
-      _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
-      TRI_ASSERT(numRunning > 0);
-      if (numRunning - 1 == 0) {
-        LOG_PREGEL("b5a21", DEBUG)
-            << "Storing data took " << (TRI_microtime() - now) << "s";
-        cb();
-      }
-    });
+    RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
+    storedVertices.emplace_back(futures::makeFutureWith([&]() {
+      return storeVertices(_config->globalShardIDs(), it, i,
+                            statusUpdateCallback);
+    }));
+    // TODO can't just write edges with SmartGraphs
   }
+
+  return futures::collectAll(storedVertices).thenValue([&](auto results) -> ResultT<Stored> {
+    for (auto&& result : results){
+      if (result.hasException()) {
+        return Result{TRI_ERROR_INTERNAL,
+          "Storing vertex data failed"};
+      }
+      if (result.get().fail()) {
+        return Result{result.get().errorNumber(),
+                      fmt::format("Vertices could not be stored: {}",
+                                  result.get().errorMessage())};
+      }
+    }
+    LOG_PREGEL("b5a21", DEBUG)
+        << "Storing data took " << (TRI_microtime() - now) << "s";
+    return Stored{};
+  });
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;
