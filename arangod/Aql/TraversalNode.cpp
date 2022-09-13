@@ -649,9 +649,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         checkPruneAvailability,
     std::function<void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
         checkPostFilterAvailability,
-    const std::unordered_map<
-        TraversalExecutorInfosHelper::OutputName, RegisterId,
-        TraversalExecutorInfosHelper::OutputNameHash>& outputRegisterMapping,
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                       TraversalExecutorInfosHelper::OutputNameHash> const&
+        outputRegisterMapping,
     RegisterId inputRegister, RegisterInfos registerInfos,
     std::unordered_map<ServerID, aql::EngineId> const* engines,
     bool isSmart) const {
