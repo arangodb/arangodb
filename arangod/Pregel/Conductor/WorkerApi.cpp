@@ -1,8 +1,8 @@
-#include "ClusterWorkerApi.h"
+#include "WorkerApi.h"
 #include <variant>
 
 #include "Pregel/WorkerConductorMessages.h"
-#include "Pregel/NetworkConnection.h"
+#include "Pregel/Connection/Connection.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -11,9 +11,9 @@ using namespace arangodb::pregel::conductor;
 // Out defines the expected response type:
 // The function returns an error if this expectation is not fulfilled
 template<typename Out, typename In>
-auto ClusterWorkerApi::execute(In const& in) -> futures::Future<ResultT<Out>> {
+auto WorkerApi::execute(In const& in) -> futures::Future<ResultT<Out>> {
   return _connection
-      .sendWithRetry(
+      ->send(
           Destination{Destination::Type::server, _server},
           ModernMessage{.executionNumber = _executionNumber, .payload = {in}})
       .thenValue([](auto&& response) -> futures::Future<ResultT<Out>> {
@@ -32,18 +32,17 @@ auto ClusterWorkerApi::execute(In const& in) -> futures::Future<ResultT<Out>> {
       });
 }
 
-auto ClusterWorkerApi::loadGraph(LoadGraph const& graph)
+auto WorkerApi::loadGraph(LoadGraph const& graph)
     -> futures::Future<ResultT<GraphLoaded>> {
   return execute<GraphLoaded>(graph);
 }
 
-auto ClusterWorkerApi::prepareGlobalSuperStep(
-    PrepareGlobalSuperStep const& data)
+auto WorkerApi::prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
     -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
   return execute<GlobalSuperStepPrepared>(data);
 }
 
-auto ClusterWorkerApi::runGlobalSuperStep(RunGlobalSuperStep const& data)
+auto WorkerApi::runGlobalSuperStep(RunGlobalSuperStep const& data)
     -> futures::Future<ResultT<GlobalSuperStepFinished>> {
   return execute<GlobalSuperStepFinished>(data);
 }

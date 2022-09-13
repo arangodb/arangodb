@@ -22,18 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <cstdint>
-#include <string_view>
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
-#include "Network/ConnectionPool.h"
 #include "Pregel/WorkerConductorMessages.h"
-#include "velocypack/Builder.h"
-#include "Network/Methods.h"
 
 namespace arangodb::pregel {
 
+// This struct wraps the destination ServerID and the type of destination
+// both properties are needed in a REST call
 struct Destination {
   enum Type { server, shard };
 
@@ -48,21 +45,8 @@ struct Destination {
 };
 
 struct Connection {
- public:
-  static auto create(std::string const& baseUrl,
-                     network::RequestOptions&& options, TRI_vocbase_t& vocbase)
-      -> Connection;
-  Connection(std::string baseUrl, network::RequestOptions requestOptions,
-             network::ConnectionPool* connectionPool);
-  auto sendWithRetry(Destination const& destination, ModernMessage&& message)
-      -> futures::Future<ResultT<ModernMessage>>;
-  auto send(Destination const& destination, ModernMessage&& message)
-      -> futures::Future<Result>;
-
- private:
-  std::string _baseUrl;
-  network::RequestOptions _requestOptions;
-  network::ConnectionPool* _connectionPool;
+  virtual auto send(Destination const& destination, ModernMessage&& message)
+      -> futures::Future<ResultT<ModernMessage>> = 0;
+  virtual ~Connection() = default;
 };
-
 }  // namespace arangodb::pregel

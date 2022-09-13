@@ -41,8 +41,8 @@ auto Computing::_prepareGlobalSuperStep() -> GlobalSuperStepPreparedFuture {
                              .edgeCount = conductor._totalEdgesCount};
   auto results =
       std::vector<futures::Future<ResultT<GlobalSuperStepPrepared>>>{};
-  for (auto const& [_, worker] : conductor.workers) {
-    results.emplace_back(worker->prepareGlobalSuperStep(prepareGssCommand));
+  for (auto&& [_, worker] : conductor.workers) {
+    results.emplace_back(worker.prepareGlobalSuperStep(prepareGssCommand));
   }
   return futures::collectAll(results);
 }
@@ -78,8 +78,8 @@ auto Computing::_runGlobalSuperStep(bool activateAll)
 
   auto results =
       std::vector<futures::Future<ResultT<GlobalSuperStepFinished>>>{};
-  for (auto const& [_, worker] : conductor.workers) {
-    results.emplace_back(worker->runGlobalSuperStep(startGssCommand));
+  for (auto&& [_, worker] : conductor.workers) {
+    results.emplace_back(worker.runGlobalSuperStep(startGssCommand));
   }
   LOG_PREGEL_CONDUCTOR("411a5", DEBUG)
       << "Conductor started new gss " << conductor._globalSuperstep;

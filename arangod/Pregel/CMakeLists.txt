@@ -10,8 +10,7 @@ add_library(arango_pregel STATIC
   PregelMetrics.cpp
   Reports.cpp
   Reports.h
-  Utils.cpp
-  NetworkConnection.cpp)
+  Utils.cpp)
 
 target_link_libraries(arango_pregel
 	arango
@@ -39,3 +38,4 @@ add_subdirectory(REST)
 add_subdirectory(Algos)
 add_subdirectory(Conductor)
 add_subdirectory(Worker)
+add_subdirectory(Connection)

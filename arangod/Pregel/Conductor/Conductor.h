@@ -47,7 +47,7 @@
 #include "Pregel/Conductor/States/StoringState.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
-#include "Pregel/WorkerInterface.h"
+#include "Pregel/Conductor/WorkerApi.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
@@ -192,7 +192,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ExecutionNumber executionNumber() const { return _executionNumber; }
 
  private:
-  std::unordered_map<ServerID, std::unique_ptr<NewIWorker>> workers;
+  std::unordered_map<ServerID, conductor::WorkerApi> workers;
   void updateState(ExecutionState state);
   void cleanup();
 
