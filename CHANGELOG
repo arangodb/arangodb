@@ -4,6 +4,9 @@ devel
 * Added authenticate header to the HTTP response when status code is 401 
   for HTTP/2.
 
+* Fixed log with json format not respecting the value of parameter 
+  `--log.shorten-filenames`.
+
 * Updated arangosync to v2.12.0-preview-12.
 
 * Added "intermediateCommits" statistics return value for AQL queries, to
