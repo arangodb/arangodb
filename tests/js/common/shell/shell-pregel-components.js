@@ -419,15 +419,15 @@ const hitsTestSuite = pregelTestHelpers.makeHITSTestSuite(false, "", 4);
 
 const readWriteTestSuite = pregelTestReadWriteHelpers.makeReadWriteTestSuite(false, "", 4);
 
-// jsunity.run(componentsTestSuite);
-// jsunity.run(wccRegressionTestSuite);
-// jsunity.run(wccTestSuite);
-// jsunity.run(sccTestSuite);
-// jsunity.run(labelPropagationTestSuite);
-// jsunity.run(pagerankTestSuite);
-// jsunity.run(seededPagerankTestSuite);
-// jsunity.run(ssspTestSuite);
-// jsunity.run(hitsTestSuite);
+jsunity.run(componentsTestSuite);
+jsunity.run(wccRegressionTestSuite);
+jsunity.run(wccTestSuite);
+jsunity.run(sccTestSuite);
+jsunity.run(labelPropagationTestSuite);
+jsunity.run(pagerankTestSuite);
+jsunity.run(seededPagerankTestSuite);
+jsunity.run(ssspTestSuite);
+jsunity.run(hitsTestSuite);
 // jsunity.run(effectiveClosenessTestSuite);
 if (require('internal').db._version(true)['maintainer-mode'] === 'true') {
     jsunity.run(readWriteTestSuite);
