@@ -35,6 +35,43 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
+const helper = require('@arangodb/test-helper');
+const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
+const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
+const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
+
+/**
+ * TODO this function is here temporarily and is will be removed once we have a better solution.
+ * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
+ * This is needed because we're using the list of participants from two places.
+ */
+const syncShardsWithLogs = function(dbn) {
+  const coordinator = replicatedLogsHelper.coordinators[0];
+  let logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
+  let collections = replicatedLogsHelper.readAgencyValueAt(`Plan/Collections/${dbn}`);
+  for (const [colId, colInfo] of Object.entries(collections)) {
+    for (const shardId of Object.keys(colInfo.shards)) {
+      const logId = shardId.slice(1);
+      if (logId in logs) {
+        helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
+      }
+    }
+  }
+
+  const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
+  helper.agency.increaseVersion(`Plan/Version`);
+
+  replicatedLogsHelper.waitFor(() => {
+    const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
+    if (currentVersion > waitForCurrent) {
+      return true;
+    }
+    return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
+  }, 30, (e) => {
+    // We ignore this and continue. Most probably current was increased before we could observe it.
+    print(e.message);
+  });
+};
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -144,6 +181,19 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function failLeader() {
+    let shardId = shards[0];
+    let logId = shardId.slice(1);
+    const coordinator = replicatedLogsHelper.coordinators[0];
+    const logs = replicatedLogsHttpHelper.listLogs(coordinator, '_system').result;
+    const participants = logs[logId];
+    const followers = participants.slice(1);
+    let term = replicatedLogsHelper.readReplicatedLogAgency('_system', logId).plan.currentTerm.term;
+    let newTerm = term + 2;
+
+    // We unset the leader here so that once the old leader node is resumed we
+    // do not move leadership back to that node.
+    replicatedLogsHelper.unsetLeader("_system", logId);
+
     var leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceManager:
@@ -152,6 +202,11 @@ function SynchronousReplicationSuite () {
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
     console.info("Have failed leader", leader);
+
+    replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
+      "_system", logId, newTerm, followers));
+
+    syncShardsWithLogs("_system");
     return leader;
   }
 
@@ -168,6 +223,7 @@ function SynchronousReplicationSuite () {
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
     console.info("Have healed leader", leader);
+    syncShardsWithLogs("_system");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
