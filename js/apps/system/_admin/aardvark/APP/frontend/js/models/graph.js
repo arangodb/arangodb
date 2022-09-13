@@ -79,6 +79,7 @@
     },
 
     deleteVertexCollection: function (vertexCollectionName) {
+      let errJSON = "";
       $.ajax(
         {
           async: false,
@@ -86,9 +87,14 @@
           url: this.urlRoot + '/' + encodeURIComponent(this.get('_key')) + '/vertex/' + encodeURIComponent(vertexCollectionName),
           error: function (err) {
             arangoHelper.arangoError(err.responseJSON.errorMessage);
+            console.log("err: ", err);
+            console.log("err.responseJSON: ", err.responseJSON);
+            errJSON = err.responseJSON;
+            console.log("err.responseJSON.errorMessage: ", err.responseJSON.errorMessage);
           }
         }
       );
+      return errJSON;
     },
 
     defaults: {

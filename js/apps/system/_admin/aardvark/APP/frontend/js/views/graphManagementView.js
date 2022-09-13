@@ -754,19 +754,33 @@
       var graph = this.collection.findWhere({_key: name});
       var currentEdgeDefinitions = graph.get('edgeDefinitions');
       var currentOrphanage = graph.get('orphanCollections');
+      console.log("currentOrphanage: ", currentOrphanage);
       var currentCollections = [];
+
+      console.log("editedVertexCollections (1): ", editedVertexCollections);
 
       // delete removed orphans
       currentOrphanage.forEach(
         function (oC) {
+          console.log("editedVertexCollections (in currentOrphanage.forEach): ", editedVertexCollections);
+          console.log("oC (1): ", oC);
           if (editedVertexCollections.indexOf(oC) === -1) {
-            graph.deleteVertexCollection(oC);
+            console.log("editedVertexCollections (inside): ", editedVertexCollections);
+            console.log("oC (2): ", oC);
+            //graph.deleteVertexCollection(oC);
+            var result = graph.deleteVertexCollection(oC);
+            console.log("result (should be VIKING): ", result);
+            if(result.code === 404) {
+              console.log("The orphan collection '" + oC + "' does not exist anymore");
+              // remove already deleted orphan collection from currentOrphanage array
+            }
           }
         }
       );
       // add new orphans
       editedVertexCollections.forEach(
         function (vC) {
+          console.log("editedVertexCollections (2): ", editedVertexCollections);
           if (currentOrphanage.indexOf(vC) === -1) {
             graph.addVertexCollection(vC);
           }
