@@ -717,7 +717,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
             "Handling request {} but worker for execution {} does not exist",
             body.toJson(), message.executionNumber));
   }
-  auto response = w->process(message.payload);
+  auto response = w->process(message.payload).get();
   if (response.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND,

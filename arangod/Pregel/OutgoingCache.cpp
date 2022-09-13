@@ -26,7 +26,7 @@
 #include "Pregel/CommonFormats.h"
 #include "Pregel/Graph.h"
 #include "Pregel/IncomingCache.h"
-#include "Pregel/NetworkConnection.h"
+#include "Pregel/Connection/NetworkConnection.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/WorkerConfig.h"
 
@@ -123,8 +123,8 @@ void ArrayOutCache<M>::flushMessages() {
   network::RequestOptions reqOpts;
   reqOpts.database = this->_config->database();
   reqOpts.skipScheduler = true;
-  auto connection = Connection::create(this->_baseUrl, std::move(reqOpts),
-                                       *this->_config->vocbase());
+  auto connection =
+      NetworkConnection{this->_baseUrl, reqOpts, *this->_config->vocbase()};
 
   std::vector<futures::Future<Result>> responses;
   for (auto const& [shard, vertexMessageMap] : _shardMap) {
@@ -133,7 +133,7 @@ void ArrayOutCache<M>::flushMessages() {
     }
 
     auto [shardMessageCount, messageVPack] = messagesToVPack(vertexMessageMap);
-    responses.emplace_back(connection.send(
+    responses.emplace_back(connection.sendWithoutRetry(
         Destination{Destination::Type::shard,
                     this->_config->globalShardIDs()[shard]},
         ModernMessage{.executionNumber = this->_config->executionNumber(),
@@ -230,8 +230,8 @@ void CombiningOutCache<M>::flushMessages() {
   reqOpts.database = this->_config->database();
   reqOpts.timeout = network::Timeout(180);
   reqOpts.skipScheduler = true;
-  auto connection = Connection::create(this->_baseUrl, std::move(reqOpts),
-                                       *this->_config->vocbase());
+  auto connection =
+      NetworkConnection{this->_baseUrl, reqOpts, *this->_config->vocbase()};
 
   std::vector<futures::Future<Result>> responses;
   for (auto const& [shard, vertexMessageMap] : _shardMap) {
@@ -239,7 +239,7 @@ void CombiningOutCache<M>::flushMessages() {
       continue;
     }
 
-    responses.emplace_back(connection.send(
+    responses.emplace_back(connection.sendWithoutRetry(
         Destination{Destination::Type::shard,
                     this->_config->globalShardIDs()[shard]},
         ModernMessage{.executionNumber = this->_config->executionNumber(),

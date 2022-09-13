@@ -730,34 +730,51 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::process(MessagePayload const& message)
-    -> ResultT<ModernMessage> {
+    -> futures::Future<ResultT<ModernMessage>> {
   return std::visit(
       overloaded{
-          [&](LoadGraph const& x) -> ResultT<ModernMessage> {
-            return ModernMessage{.executionNumber = _config.executionNumber(),
-                                 .payload = {loadGraph(x).get()}};
+          [&](LoadGraph const& x) -> futures::Future<ResultT<ModernMessage>> {
+            return loadGraph(x).thenValue(
+                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
+                  return ModernMessage{
+                      .executionNumber = _config.executionNumber(),
+                      .payload = {result}};
+                });
           },
-          [&](PrepareGlobalSuperStep const& x) -> ResultT<ModernMessage> {
-            return ModernMessage{.executionNumber = _config.executionNumber(),
-                                 .payload = {prepareGlobalSuperStep(x).get()}};
+          [&](PrepareGlobalSuperStep const& x)
+              -> futures::Future<ResultT<ModernMessage>> {
+            return prepareGlobalSuperStep(x).thenValue(
+                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
+                  return ModernMessage{
+                      .executionNumber = _config.executionNumber(),
+                      .payload = {result}};
+                });
           },
-          [&](RunGlobalSuperStep const& x) -> ResultT<ModernMessage> {
-            return ModernMessage{.executionNumber = _config.executionNumber(),
-                                 .payload = {runGlobalSuperStep(x).get()}};
+          [&](RunGlobalSuperStep const& x)
+              -> futures::Future<ResultT<ModernMessage>> {
+            return runGlobalSuperStep(x).thenValue(
+                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
+                  return ModernMessage{
+                      .executionNumber = _config.executionNumber(),
+                      .payload = {result}};
+                });
           },
-          [&](StartCleanup const& x) -> ResultT<ModernMessage> {
-            return ModernMessage{.executionNumber = _config.executionNumber(),
-                                 .payload = finalizeExecution(x)};
+          [&](StartCleanup const& x)
+              -> futures::Future<ResultT<ModernMessage>> {
+            return {ModernMessage{.executionNumber = _config.executionNumber(),
+                                  .payload = finalizeExecution(x)}};
           },
-          [&](CollectPregelResults const& x) -> ResultT<ModernMessage> {
-            return ModernMessage{.executionNumber = _config.executionNumber(),
-                                 .payload = aqlResult(x.withId)};
+          [&](CollectPregelResults const& x)
+              -> futures::Future<ResultT<ModernMessage>> {
+            return {ModernMessage{.executionNumber = _config.executionNumber(),
+                                  .payload = aqlResult(x.withId)}};
           },
-          [&](PregelMessage const& x) -> ResultT<ModernMessage> {
+          [&](PregelMessage const& x)
+              -> futures::Future<ResultT<ModernMessage>> {
             receivedMessages(x);
-            return ModernMessage{};
+            return {ModernMessage{}};
           },
-          [](auto const& x) -> ResultT<ModernMessage> {
+          [](auto const& x) -> futures::Future<ResultT<ModernMessage>> {
             return Result{TRI_ERROR_INTERNAL,
                           "Worker: Cannot handle received message"};
           }},
