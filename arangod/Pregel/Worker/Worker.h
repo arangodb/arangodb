@@ -154,9 +154,9 @@ class Worker : public IWorker {
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   auto _preGlobalSuperStep(RunGlobalSuperStep const& message) -> Result;
   auto _processVerticesInThreads() -> VerticesProcessedFuture;
-  auto _processVertices(size_t threadId,
-                        RangeIterator<Vertex<V, E>>& vertexIterator)
-      -> futures::Future<ResultT<VerticesProcessed>>;
+  [[nodiscard]] auto _processVertices(
+      size_t threadId, RangeIterator<Vertex<V, E>>& vertexIterator)
+      -> ResultT<VerticesProcessed>;
   auto _finishProcessing() -> ResultT<GlobalSuperStepFinished>;
   void _callConductor(VPackBuilder const& message);
   void _callConductorWithResponse(std::string const& path,
@@ -172,6 +172,10 @@ class Worker : public IWorker {
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
          VPackSlice params, PregelFeature& feature);
   ~Worker();
+
+  // futures helper function
+  [[nodiscard]] auto prepareGlobalSuperStepFct(
+      PrepareGlobalSuperStep const& data) -> ResultT<GlobalSuperStepPrepared>;
 
   // ====== called by rest handler =====
   auto process(MessagePayload const& message)
