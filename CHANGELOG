@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.12.0-preview-12.
+
 * Updated ArangoDB Starter to 0.15.5-preview-3.
 
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
@@ -80,8 +82,6 @@ v3.10.0 (XXXX-XX-XX)
   attempts.
 
 * Disable optimization rule to avoid crash (BTS-951).
-
-* Updated arangosync to v2.12.0-preview-11.
 
 * Fixed SEARCH-369: add a compatibility check to the search-alias view for
   indexes from the same collection.
