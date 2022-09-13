@@ -899,11 +899,10 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
       // See if we can get the revision tree from the context:
       tree = c->getPrefetchedRevisionTree(collectionGuid);
       // This might return a nullptr!
-    }
-    if (tree == nullptr) {  // Still not there, try to get it directly:
-      tree = ctx.collection->getPhysical()->revisionTree(c->snapshotTick());
-    }
-    if (c != nullptr) {
+
+      if (tree == nullptr) {  // Still not there, try to get it directly:
+        tree = ctx.collection->getPhysical()->revisionTree(c->snapshotTick());
+      }
       c->removeBlocker(_request->databaseName(), collectionGuid);
     }
   }
