@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -48,7 +50,7 @@ using namespace arangodb;
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {
+    : TransactionState(vocbase, tid, options), _numIntermediateCommits(0) {
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
   // transaction is started and during validateAndOptimize some simple
@@ -176,10 +178,19 @@ Result ClusterTransactionState::performIntermediateCommitIfRequired(
 }
 
 /// @brief return number of commits
-uint64_t ClusterTransactionState::numCommits() const {
+uint64_t ClusterTransactionState::numCommits() const noexcept {
   // there are no intermediate commits for a cluster transaction, so we can
   // return 1 for a committed transaction and 0 otherwise
   return _status == transaction::Status::COMMITTED ? 1 : 0;
+}
+
+uint64_t ClusterTransactionState::numIntermediateCommits() const noexcept {
+  // the return value here is hard-coded to 0, so never rely on it.
+  // the only place that currently reports the number of intermediate commits
+  // is the statistics gathering part of an AQL query. that will however
+  // collect the individual numIntermediateCommits results from DB servers,
+  // and not from here.
+  return _numIntermediateCommits;
 }
 
 TRI_voc_tick_t ClusterTransactionState::lastOperationTick() const noexcept {

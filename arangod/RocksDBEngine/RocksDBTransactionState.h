@@ -57,6 +57,7 @@ struct Transaction;
 }
 
 class LogicalCollection;
+class LogicalDataSource;
 class RocksDBTransactionMethods;
 
 /// @brief transaction type
@@ -82,7 +83,7 @@ class RocksDBTransactionState : public TransactionState {
 
   [[nodiscard]] virtual uint64_t numOperations() const noexcept = 0;
 
-  [[nodiscard]] bool hasFailedOperations() const override;
+  [[nodiscard]] bool hasFailedOperations() const noexcept override;
 
   [[nodiscard]] bool iteratorMustCheckBounds(DataSourceId cid,
                                              ReadOwnWrites readOwnWrites) const;

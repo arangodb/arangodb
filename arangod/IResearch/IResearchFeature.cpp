@@ -949,21 +949,22 @@ void IResearchFeature::collectOptions(
           "the pseudo-entry 'all' will disable recovery for all view "
           "links/inverted indexes. "
           "all links/inverted indexes skipped during recovery will be marked "
-          "as failed when "
+          "as out of sync when "
           "the recovery is completed. these links/indexes will need to be "
           "recreated manually "
           "afterwards (note: using this option will cause data of affected "
-          "links/inverted indexes to become unavailable for querying until "
+          "links/inverted indexes to become incomplete or more incomplete "
+          "until "
           "they have been manually recreated)",
           new options::VectorParameter<options::StringParameter>(
               &_skipRecoveryItems))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30904);
   options
       ->addOption(FAIL_ON_OUT_OF_SYNC,
                   "whether or not retrieval queries on out of sync "
                   "links/indexes should fail",
                   new options::BooleanParameter(&_failQueriesOnOutOfSync))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30904);
 }
 
 void IResearchFeature::validateOptions(
@@ -1230,7 +1231,7 @@ void IResearchFeature::registerRecoveryHelper() {
         << SKIP_RECOVERY << "' startup option for the following links/indexes: "
         << _skipRecoveryItems
         << ". all affected links/indexes that are touched during "
-           "recovery will be marked as failed and will need to be recreated "
+           "recovery will be marked as out of sync and should be recreated "
            "manually when the recovery is finished.";
   }
 
