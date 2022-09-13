@@ -83,7 +83,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .AlwaysDo([warnings](ErrorCode c, char const*) {
+        .AlwaysDo([warnings](ErrorCode c, std::string_view) {
           if (warnings) {
             warnings->insert(static_cast<int>(c));
           }

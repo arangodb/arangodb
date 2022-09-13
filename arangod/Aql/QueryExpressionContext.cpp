@@ -32,25 +32,23 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 void QueryExpressionContext::registerWarning(ErrorCode errorCode,
-                                             char const* msg) {
+                                             std::string_view msg) {
   _query.warnings().registerWarning(errorCode, msg);
 }
 
 void QueryExpressionContext::registerError(ErrorCode errorCode,
-                                           char const* msg) {
+                                           std::string_view msg) {
   _query.warnings().registerError(errorCode, msg);
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
-                                                      caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
-                                                     caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
@@ -61,7 +59,7 @@ icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
 }
 
 arangodb::ValidatorBase* QueryExpressionContext::buildValidator(
-    arangodb::velocypack::Slice const& params) {
+    arangodb::velocypack::Slice params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
