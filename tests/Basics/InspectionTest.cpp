@@ -477,6 +477,17 @@ template<class Inspector>
 auto inspect(Inspector& f, Struct2& x) {
   return f.object(x).fields(f.field("v", x.v));
 }
+
+struct Embedded {
+  int x;
+  Dummy dummy;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Embedded& v) {
+  return f.object(v).fields(f.field("x", v.x), f.embedFields(v.dummy));
+}
+
 }  // namespace
 
 namespace {
@@ -876,6 +887,22 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 
   EXPECT_EQ(1, slice["e"].length());
   EXPECT_TRUE(slice["e"]["nil"].isEmptyObject());
+}
+
+TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
+  Embedded const f{.x = 1,
+                   .dummy = {.i = 42, .d = 123.456, .b = true, .s = "foobar"}};
+  auto result = inspector.apply(f);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  std::cout << slice.toString() << std::endl;
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(f.x, slice["x"].getInt());
+  EXPECT_EQ(f.dummy.i, slice["i"].getInt());
+  EXPECT_EQ(f.dummy.d, slice["d"].getDouble());
+  EXPECT_EQ(f.dummy.b, slice["b"].getBool());
+  EXPECT_EQ(f.dummy.s, slice["s"].copyString());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {

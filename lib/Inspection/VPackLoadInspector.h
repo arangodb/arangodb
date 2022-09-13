@@ -445,7 +445,7 @@ struct VPackLoadInspectorImpl
 
   template<class T>
   auto checkInvariant(T& field) {
-    if constexpr (!Base::template IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (!detail::IsRawField<std::remove_cvref_t<T>>::value) {
       return checkInvariant(field.inner);
     } else {
       return Status::Success{};

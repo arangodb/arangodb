@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <tuple>
@@ -132,6 +133,13 @@ struct VPackSaveInspector
   }
 
   auto applyFields() { return Status::Success{}; }
+
+  template<class... Args>
+  auto applyFields(std::unique_ptr<detail::Fields<VPackSaveInspector>>&& fields,
+                   Args&&... args) {
+    // TODO
+    return fields->apply(*this);
+  }
 
   template<class Arg, class... Args>
   auto applyFields(Arg&& arg, Args&&... args) {
