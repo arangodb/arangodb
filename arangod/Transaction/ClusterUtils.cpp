@@ -31,6 +31,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 namespace transaction {

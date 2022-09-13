@@ -187,6 +187,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   transaction::Methods& trxForOptimization() override;
 
+  void addIntermediateCommits(uint64_t value);
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   ExecutionPlan* plan() const {
     if (_plans.size() == 1) {

@@ -39,6 +39,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"

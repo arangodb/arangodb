@@ -72,26 +72,16 @@ function optimizerRuleInvertedIndexTestSuite() {
         }
       }
       col.insert(data);
-      // wait for index to be in sync
-      sleep(1);
-      let syncWait = 100;
-      const syncQuery = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
-          FILTER STARTS_WITH(d.data_field, 'value') COLLECT WITH COUNT INTO c  RETURN c`;
-      let count  = db._query(syncQuery).toArray()[0];
-      while (count < docs && (--syncWait) > 0) {
-        sleep(1);
-        count  = db._query(syncQuery).toArray()[0];
-      }
-      syncWait = 100;
-      const syncQuerySorted = aql`
-        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
-          FILTER STARTS_WITH(d.data_field, 'value') COLLECT WITH COUNT INTO c  RETURN c`;
-      count  = db._query(syncQuerySorted).toArray()[0];
-      while (count < docs && (--syncWait) > 0) {
-        sleep(1);
-        count  = db._query(syncQuerySorted).toArray()[0];
-      }
+
+      let syncIndex = function(indexName) {
+        const syncQuery = aql`
+          FOR d IN ${col} OPTIONS {indexHint: ${indexName}, waitForSync:true, forceIndexHint:true}
+            FILTER STARTS_WITH(d.data_field, 'value') COLLECT WITH COUNT INTO c RETURN c`;
+        db._query(syncQuery);
+      };
+
+      syncIndex("InvertedIndexSorted");
+      syncIndex("InvertedIndexUnsorted");
     },
     tearDownAll: function () {
       col.drop();

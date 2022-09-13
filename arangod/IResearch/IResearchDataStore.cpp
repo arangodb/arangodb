@@ -20,6 +20,7 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "IResearchDataStore.h"
 #include "IResearchDocument.h"
 #include "IResearchKludge.h"
@@ -29,7 +30,9 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/DownCast.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Guard.h"
 #include "RestServer/FlushFeature.h"

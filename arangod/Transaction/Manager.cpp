@@ -50,6 +50,7 @@
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/LogicalCollection.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
