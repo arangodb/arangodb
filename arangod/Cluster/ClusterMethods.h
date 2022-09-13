@@ -43,6 +43,9 @@
 
 namespace arangodb {
 
+template<typename T>
+class ResultT;
+
 namespace graph {
 class ClusterTraverserCache;
 }
