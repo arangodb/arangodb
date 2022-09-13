@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -206,9 +207,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesBefore(info);
+
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
-  initializeSmartAttributes(info);
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesAfter(info);
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -241,7 +246,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
+void LogicalCollection::initializeSmartAttributesBefore(
+    velocypack::Slice info) {
+  // nothing to do in community edition
+}
+void LogicalCollection::initializeSmartAttributesAfter(velocypack::Slice info) {
   // nothing to do in community edition
 }
 #endif

@@ -52,6 +52,7 @@
 #include "Graph/Graph.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"

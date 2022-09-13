@@ -273,6 +273,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
   Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
   Pregel/Algos/HITS.cpp
+  Pregel/Algos/HITSKleinberg.cpp
   Pregel/Algos/LabelPropagation.cpp
   Pregel/Algos/LineRank.cpp
   Pregel/Algos/PageRank.cpp
@@ -509,6 +510,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
+  VocBase/Properties/PlanCollection.cpp
   VocBase/Validators.cpp
   VocBase/VocbaseInfo.cpp
   VocBase/ticks.cpp
@@ -760,6 +762,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
+  Cluster/CollectionInfoCurrent.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/DBServerAgencySync.cpp
@@ -960,7 +963,6 @@ add_library(arango_restart_action STATIC
 
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
-  ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
 )
 
 add_library(arango_pregel STATIC
@@ -979,7 +981,6 @@ add_library(arango_health STATIC
 
 add_library(arango_vocbase STATIC
   ${LIB_ARANGO_VOCBASE_SOURCES}
-  ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
 )
 
 add_library(arango_v8server STATIC
@@ -1026,7 +1027,6 @@ add_library(arango_agency STATIC
 
 add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
-  ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
 )
 
 add_library(arango_network STATIC
@@ -1035,7 +1035,6 @@ add_library(arango_network STATIC
 
 add_library(arango_rocksdb STATIC
   ${ROCKSDB_SOURCES}
-  ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
 target_link_libraries(arango_rocksdb arango_zkd)
 target_link_libraries(arango_rocksdb snappy)
@@ -1059,7 +1058,6 @@ add_library(arango_common_rest_handler STATIC
 
 add_library(arango_cluster_methods STATIC
   ${LIB_ARANGO_CLUSTER_METHODS_SOURCES}
-  ${ADDITIONAL_LIB_ARANGO_CLUSTER_METHODS_SOURCES}
 )
 
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
@@ -1235,29 +1233,7 @@ if (MSVC)
 endif()
 
 if (USE_ENTERPRISE)
-  add_library(arango_rclone STATIC
-    ${LIB_RCLONE_SOURCES}
-  )
-
-  target_link_libraries(arango_rclone arango)
-
   target_link_libraries(arango_rocksdb arango_rclone)
-endif()
-
-if (USE_ENTERPRISE)
-  add_definitions(-DUSE_ENTERPRISE=1)
-
-  if (MSVC)
-    target_link_libraries(arangoserver
-      Wldap32.lib
-    )
-  else()
-    target_link_libraries(arangoserver
-      ${LDAP_LIB}
-      ${LBER_LIB}
-      ${OPENSSL_LIBRARIES}
-    )
-  endif()
 endif()
 
 add_executable(${BIN_ARANGOD}

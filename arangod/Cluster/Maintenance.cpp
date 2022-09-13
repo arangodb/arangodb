@@ -51,9 +51,11 @@
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/Validators.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Compare.h>
@@ -100,7 +102,7 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
-  static std::array<std::string, 6> const compareProperties{
+  std::array<std::string_view, 6> const compareProperties{
       StaticStrings::WaitForSyncString,
       StaticStrings::Schema,
       StaticStrings::CacheEnabled,
@@ -112,9 +114,25 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackObjectBuilder b(result.get());
     for (auto const& property : compareProperties) {
       auto const& planned = first.get(property);
-      if (!basics::VelocyPackHelper::equal(planned, second.get(property),
-                                           false) &&
-          !planned.isNone()) {  // Register any change
+      if (planned.isNone()) {
+        continue;
+      }
+
+      bool isSame = true;
+      // Register any change
+      if (property == StaticStrings::Schema) {
+        // special handling for schemas is required here, because the
+        // format for schemas seems to have changed, and we need to
+        // compare them in a more fuzzy way
+        if (!ValidatorBase::isSame(planned, second.get(property))) {
+          isSame = false;
+        }
+      } else if (!basics::VelocyPackHelper::equal(planned, second.get(property),
+                                                  false)) {
+        isSame = false;
+      }
+
+      if (!isSame) {
         result->add(property, planned);
       }
     }
@@ -783,6 +801,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       TRI_ASSERT(version.ok());
       replicationVersion.emplace(dbname, version.get());
     } else {
+      // if the "replicationVersion" field is missing this has to be an old
+      // DB which defaults to version ONE.
       replicationVersion.emplace(dbname, replication::Version::ONE);
     }
 
@@ -1327,7 +1347,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     DatabaseFeature& df, VPackSlice const& info, VPackSlice const& planServers,
     std::string const& database, std::string const& shard,
     std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors,
-    replication::Version replicationVersion = replication::Version::ONE) {
+    replication::Version replicationVersion) {
   VPackBuilder ret;
 
   try {
@@ -1848,6 +1868,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           auto result = replication::parseVersion(rv);
           TRI_ASSERT(result.ok());
           replicationVersion = std::move(result.get());
+        } else {
+          // if "replicationVersion" field is not found this must be an old DB
+          // which defaults to version ONE.
         }
       }
 

@@ -34,6 +34,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -41,7 +42,6 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
-#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -61,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -5083,7 +5082,8 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::REMOTE, true);
+  plan->findNodesOfType(nodes, EN::REMOTE,
+                        false /* do not go into Subqueries */);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 

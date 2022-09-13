@@ -2114,11 +2114,20 @@ arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(
   return arangodb::Result();
 }
 
-uint64_t TransactionStateMock::numCommits() const {
+uint64_t TransactionStateMock::numCommits() const noexcept {
   return commitTransactionCount;
 }
 
-bool TransactionStateMock::hasFailedOperations() const {
+uint64_t TransactionStateMock::numIntermediateCommits() const noexcept {
+  return 0;
+}
+
+void TransactionStateMock::addIntermediateCommits(uint64_t /*value*/) {
+  // should never be called during testing
+  TRI_ASSERT(false);
+}
+
+bool TransactionStateMock::hasFailedOperations() const noexcept {
   return false;  // assume no failed operations
 }
 

@@ -30,6 +30,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+
 namespace arangodb {
 
 template<typename T>

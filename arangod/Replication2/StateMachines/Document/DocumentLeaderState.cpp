@@ -24,27 +24,41 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Transaction/Manager.h"
 
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
 
-using namespace arangodb::replication2::replicated_state::document;
+namespace arangodb::replication2::replicated_state::document {
 
 DocumentLeaderState::DocumentLeaderState(
     std::unique_ptr<DocumentCore> core,
-    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+    transaction::IManager& transactionManager)
     : loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
       shardId(core->getShardId()),
       gid(core->getGid()),
       _handlersFactory(std::move(handlersFactory)),
-      _guardedData(std::move(core)) {}
+      _guardedData(std::move(core)),
+      _transactionManager(transactionManager) {}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
+  auto transactions = getActiveTransactions();
+  for (auto trx : transactions) {
+    try {
+      _transactionManager.abortManagedTrx(trx, gid.database);
+    } catch (...) {
+      LOG_CTX("7341f", WARN, loggerContext)
+          << "failed to abort active transaction " << gid << " during resign";
+    }
+  }
+
   return _guardedData.doUnderLock([](auto& data) {
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
@@ -55,25 +69,42 @@ auto DocumentLeaderState::resign() && noexcept
 
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
-  auto transactionHandler = _handlersFactory->createTransactionHandler(gid);
+  return _guardedData.doUnderLock(
+      [self = shared_from_this(),
+       ptr = std::move(ptr)](auto& data) -> futures::Future<Result> {
+        if (data.didResign()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+        }
 
-  while (auto entry = ptr->next()) {
-    auto doc = entry->second;
-    auto res = transactionHandler->applyEntry(doc);
-    if (res.fail()) {
-      return res;
-    }
-  }
+        auto transactionHandler =
+            self->_handlersFactory->createTransactionHandler(self->gid);
+        while (auto entry = ptr->next()) {
+          auto doc = entry->second;
+          auto res = transactionHandler->applyEntry(doc);
+          if (res.fail()) {
+            return res;
+          }
+        }
 
-  auto doc = DocumentLogEntry{std::string(shardId),
-                              OperationType::kAbortAllOngoingTrx,
-                              {},
-                              TransactionId{0}};
-  auto stream = getStream();
-  stream->insert(doc);
+        auto doc = DocumentLogEntry{std::string(self->shardId),
+                                    OperationType::kAbortAllOngoingTrx,
+                                    {},
+                                    TransactionId{0}};
+        auto stream = self->getStream();
+        stream->insert(doc);
 
-  // TODO Add a tombstone to the TransactionManager
-  return {TRI_ERROR_NO_ERROR};
+        for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
+          try {
+            self->_transactionManager.abortManagedTrx(tid, self->gid.database);
+          } catch (...) {
+            LOG_CTX("894f1", WARN, self->loggerContext)
+                << "failed to abort active transaction " << self->gid
+                << " during recovery";
+          }
+        }
+
+        return {TRI_ERROR_NO_ERROR};
+      });
 }
 
 auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
@@ -83,6 +114,14 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
     -> futures::Future<LogIndex> {
   auto entry = DocumentLogEntry{std::string(shardId), operation,
                                 std::move(payload), transactionId};
+
+  TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
+  if (operation == OperationType::kCommit ||
+      operation == OperationType::kAbort) {
+    _activeTransactions.getLockedGuard()->erase(transactionId);
+  } else {
+    _activeTransactions.getLockedGuard()->emplace(transactionId);
+  }
   auto stream = getStream();
   auto idx = stream->insert(entry);
 
@@ -93,5 +132,12 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
 
   return futures::Future<LogIndex>{idx};
 }
+
+std::unordered_set<TransactionId> DocumentLeaderState::getActiveTransactions()
+    const {
+  return _activeTransactions.getLockedGuard().get();
+}
+
+}  // namespace arangodb::replication2::replicated_state::document
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

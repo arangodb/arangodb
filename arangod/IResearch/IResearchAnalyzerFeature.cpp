@@ -44,6 +44,7 @@
 #include "utils/object_pool.hpp"
 #include "index/norm.hpp"
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExpressionContext.h"
@@ -55,6 +56,7 @@
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"

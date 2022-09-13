@@ -28,6 +28,10 @@
 
 #include <memory>
 
+namespace arangodb::transaction {
+struct IManager;
+}
+
 namespace arangodb::replication2::replicated_state {
 /**
  * The Document State Machine is used as a middle-man between a shard and a
@@ -70,12 +74,13 @@ struct DocumentCoreParameters {
                               f.field("databaseName", p.databaseName));
   }
 
-  auto toSharedSlice() -> velocypack::SharedSlice;
+  [[nodiscard]] auto toSharedSlice() const -> velocypack::SharedSlice;
 };
 
 struct DocumentFactory {
   explicit DocumentFactory(
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+      transaction::IManager& transactionManager);
 
   auto constructFollower(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentFollowerState>;
@@ -88,6 +93,7 @@ struct DocumentFactory {
 
  private:
   std::shared_ptr<IDocumentStateHandlersFactory> const _handlersFactory;
+  transaction::IManager& _transactionManager;
 };
 }  // namespace document
 
