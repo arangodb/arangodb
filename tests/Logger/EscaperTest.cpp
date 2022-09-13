@@ -61,7 +61,6 @@ void verifyExpectedValues(
     std::function<void(std::string const&, std::string&)> const& writerFn) {
   std::string output;
   writerFn(inputString, output);
-  EXPECT_EQ(output.compare(expectedOutput), 0);
   EXPECT_EQ(output, expectedOutput);
 }
 
