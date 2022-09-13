@@ -480,12 +480,12 @@ auto inspect(Inspector& f, Struct2& x) {
 
 struct Embedded {
   int x;
-  Dummy dummy;
+  InvariantAndFallback inner;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Embedded& v) {
-  return f.object(v).fields(f.field("x", v.x), f.embedFields(v.dummy));
+  return f.object(v).fields(f.field("x", v.x), f.embedFields(v.inner));
 }
 
 }  // namespace
@@ -890,8 +890,7 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 }
 
 TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
-  Embedded const f{.x = 1,
-                   .dummy = {.i = 42, .d = 123.456, .b = true, .s = "foobar"}};
+  Embedded const f{.x = 1, .inner = {.i = 42, .s = "foobar"}};
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
 
@@ -899,10 +898,8 @@ TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
   std::cout << slice.toString() << std::endl;
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ(f.x, slice["x"].getInt());
-  EXPECT_EQ(f.dummy.i, slice["i"].getInt());
-  EXPECT_EQ(f.dummy.d, slice["d"].getDouble());
-  EXPECT_EQ(f.dummy.b, slice["b"].getBool());
-  EXPECT_EQ(f.dummy.s, slice["s"].copyString());
+  EXPECT_EQ(f.inner.i, slice["i"].getInt());
+  EXPECT_EQ(f.inner.s, slice["s"].copyString());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -2011,6 +2008,35 @@ TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
   EXPECT_EQ(builder.slice()["slice"].start(), u.slice.start());
   EXPECT_EQ(builder.slice()["hashed"].stringView(), u.hashed.stringView());
   EXPECT_EQ(builder.slice()["hashed"].stringView().data(), u.hashed.data());
+}
+
+TEST_F(VPackLoadInspectorTest, load_embedded_object) {
+  builder.openObject();
+  builder.add("x", 1);
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Embedded o;
+  auto result = inspector.apply(o);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(1, o.x);
+  EXPECT_EQ(42, o.inner.i);
+  EXPECT_EQ("foobar", o.inner.s);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_embedded_object_with_invariant_not_fulfilled) {
+  builder.openObject();
+  builder.add("x", 1);
+  builder.add("i", 0);
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  Embedded o;
+  auto result = inspector.apply(o);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Field invariant failed", result.error());
+  EXPECT_EQ("i", result.path());
 }
 
 struct VPackInspectionTest : public ::testing::Test {};

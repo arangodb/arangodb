@@ -320,7 +320,7 @@ namespace detail {
 template<class Inspector>
 struct Fields {
   virtual ~Fields() = default;
-  virtual Status apply(Inspector&) = 0;
+  virtual Status apply(Inspector&, typename Inspector::EmbeddedParam&) = 0;
 };
 
 template<class Inspector, class... Ts>
@@ -329,11 +329,11 @@ struct EmbeddedFields : Fields<Inspector> {
   explicit EmbeddedFields(Args&&... args)
       : fields(std::forward<Args>(args)...) {}
 
-  Status apply(Inspector& inspector) override {
-    return [&inspector, this]<std::size_t... I>(std::index_sequence<I...>) {
-      return inspector.applyFields(std::get<I>(fields)...);
-    }
-    (std::make_index_sequence<sizeof...(Ts)>{});
+  Status apply(Inspector& inspector,
+               typename Inspector::EmbeddedParam& param) override {
+    return [&inspector, &param, this]<std::size_t... I>(std::index_sequence<I...>) {
+      return inspector.processEmbeddedFields(param, std::get<I>(fields)...);
+    }(std::make_index_sequence<sizeof...(Ts)>{});
   }
   std::tuple<Ts...> fields;
 };
@@ -372,11 +372,6 @@ struct EmbeddedFieldInspector
   auto tuple(T& data) {
     return fail();
   }
-
-  template<class U>
-  using FallbackContainer = typename Parent::template FallbackContainer<U>;
-  template<class Func>
-  using InvariantContainer = typename Parent::template InvariantContainer<Func>;
 
   template<class... Args>
   Status applyFields(Args&&... args) {

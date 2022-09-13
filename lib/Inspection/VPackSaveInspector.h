@@ -137,8 +137,8 @@ struct VPackSaveInspector
   template<class... Args>
   auto applyFields(std::unique_ptr<detail::Fields<VPackSaveInspector>>&& fields,
                    Args&&... args) {
-    // TODO
-    return fields->apply(*this);
+    EmbeddedParam param;
+    return fields->apply(*this, param);
   }
 
   template<class Arg, class... Args>
@@ -199,6 +199,18 @@ struct VPackSaveInspector
   };
 
  private:
+  template<class>
+  friend struct detail::Fields;
+  template<class, class...>
+  friend struct detail::EmbeddedFields;
+
+  using EmbeddedParam = std::monostate;
+
+  template<class... Args>
+  auto processEmbeddedFields(EmbeddedParam&, Args&&... args) {
+    return applyFields(std::forward<Args>(args)...);
+  }
+
   template<class T>
   [[nodiscard]] auto applyField(T const& field) {
     if constexpr (std::is_same_v<typename Base::IgnoreField, T>) {
