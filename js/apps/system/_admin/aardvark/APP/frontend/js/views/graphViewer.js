@@ -76,7 +76,9 @@
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
       'click #toggleForce': 'toggleLayout',
-      'click #selectNodes': 'toggleLasso'
+      'click #selectNodes': 'toggleLasso',
+      'click #refreshGraph': 'refreshGraph',
+      'click #currentGraphData': 'currentGraphData',
     },
 
     cursorX: 0,
@@ -93,6 +95,11 @@
     graphConfig: null,
     graphSettings: null,
 
+    currentGraphData: function() {
+      console.log("nodes: ", this.currentGraph.graph.nodes());
+      console.log("edges: ", this.currentGraph.graph.edges());
+    },
+
     downloadPNG: function () {
       var size = parseInt($('#graph-container').width(), 10);
       sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
@@ -107,8 +114,15 @@
 
     refreshGraph:function () {
       var self = this;
-      console.log("Refreshing graph");
-      console.log("self.algorithm: ", self.algorithm);
+      console.log("refreshGraph: Refreshing graph");
+      console.log("refreshGraph (self.algorithm): ", self.algorithm);
+      if (self.algorithm === 'force') {
+        console.log("refreshGraph: in 'force'");
+        console.log("refreshGraph (self.currentGraph): ", self.currentGraph);
+        //self.currentGraph.refresh({ skipIndexation: true });
+        self.startLayout(true, origin);
+      }
+      /*
       //self.currentGraph.refresh();
       if (self.algorithm === 'force') {
         self.startLayout(true, origin);
@@ -120,6 +134,7 @@
         self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
       // self.currentGraph.startNoverlap();
       }
+      */
     },
 
     loadFullGraphModal: function () {
@@ -1744,6 +1759,15 @@
           self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
           // self.currentGraph.startNoverlap();
         }
+        // To avoid that a node is not drawn ('force'-layout) trigger the drawing again
+        /*
+        if (self.algorithm === 'force') {
+          console.log("###############################################");
+          console.log("Additional rerendering to avoid non-drawn nodes");
+          console.log("###############################################");
+          self.currentGraph.refresh({ skipIndexation: true });
+        }
+        */
         //console.log("refreshGraph a second time!");
         //self.refreshGraph();
       }
@@ -2556,19 +2580,82 @@
       this.currentGraph.settings('drawLabels', false);
       this.currentGraph.settings('drawEdgeLabels', false);
       sigma.plugins.killDragNodes(this.currentGraph);
+      let rerendered = false;
+
+      /*
+      // Idea:
+      // 1) Refresh the graph with the new added nodes first
+      // 2) Start the force algorithm
+          // launch force-atlas for 5sec
+          s.startForceAtlas2();
+      //window.setTimeout(function() {s.killForceAtlas2()}, 10000);
+      // 3) Stop the force algorithm as it won't stop by itself
+      */
+
+      /*
+      // 1)
+      this.currentGraph.refresh();
+
+      // 2)
+      this.currentGraph.startForceAtlas2({
+        worker: true
+      });
+
+      // 3)
+      window.setTimeout(
+        function() {
+          self.stopLayout();
+          //self.currentGraph.killForceAtlas2()
+        },
+        500
+      );
+      // launch force-atlas for 5sec
+      //s.startForceAtlas2();
+      //window.setTimeout(function() {s.killForceAtlas2()}, 10000);
+      */
 
       if (kill === true) {
+        console.log("1 #############################self.currentGraph.isForceAtlas2Running(): ", self.currentGraph.isForceAtlas2Running());
         this.currentGraph.killForceAtlas2();
+
 
         window.setTimeout(function () {
           self.stopLayout();
 
           if (origin) {
             console.log("In origin part as origin is set!!!!!!!!!!!!");
+            console.log("2 #############################self.currentGraph.isForceAtlas2Running(): ", self.currentGraph.isForceAtlas2Running());
             self.currentGraph.refresh({ skipIndexation: true });
             // self.cameraToNode(origin, 1000);
           }
+            // in case of 'force' layout render the graph a second time to prevent non-drawn nodes
+            if (self.algorithm === 'force') {
+              self.currentGraph.killForceAtlas2();
+              console.log("3333333 #############################self.currentGraph.isForceAtlas2Running(): ", self.currentGraph.isForceAtlas2Running());
+
+              window.setTimeout(function () {
+                self.stopLayout();
+
+                if (origin) {
+                  console.log("+++++  REEEEEEERENDER  +++++");
+                  console.log("44444444 #############################self.currentGraph.isForceAtlas2Running(): ", self.currentGraph.isForceAtlas2Running());
+                  self.currentGraph.refresh();
+                  // self.cameraToNode(origin, 1000);
+                }
+              }, 500);
+            }
         }, 500);
+
+      }
+
+      if (self.algorithm === 'force' && !rerendered) {
+        console.log("++++++++++++++++++++++++++++++++++++++++++++++++++");
+        console.log("As the layout is '" + self.algorithm + "', it shall rerender to avoid non-drawn nodes after expanding a node");
+        console.log("--------------------------------------------------");
+        //self.refreshGraph();
+        //self.startLayout(true, origin);
+        //self.currentGraph.refresh({ skipIndexation: true });
+        rerendered = true;
       }
 
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
