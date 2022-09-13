@@ -30,6 +30,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/BootstrapFeature.h"
 #include "Utils/Events.h"
+#include "VocBase/vocbase.h"
 
 namespace {
 

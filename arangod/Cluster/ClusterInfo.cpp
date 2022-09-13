@@ -38,6 +38,7 @@
 #include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -45,10 +46,12 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
@@ -268,6 +271,33 @@ inline arangodb::AgencyOperation CreateCollectionSuccess(
                                    info};
 }
 
+// make sure a collection is still in Plan
+// we are only going from *assuming* that it is present
+// to it being changed to not present.
+class CollectionWatcher
+    : public std::enable_shared_from_this<CollectionWatcher> {
+ public:
+  CollectionWatcher(CollectionWatcher const&) = delete;
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry,
+                    LogicalCollection const& collection);
+  ~CollectionWatcher();
+
+  bool isPresent() {
+    // Make sure we did not miss a callback
+    _agencyCallback->refetchAndUpdate(true, false);
+    return _present.load();
+  }
+
+ private:
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
+  std::shared_ptr<AgencyCallback> _agencyCallback;
+
+  // TODO: this does not really need to be atomic: We only write to it
+  //       in the callback, and we only read it in `isPresent`; it does
+  //       not actually matter whether this value is "correct".
+  std::atomic<bool> _present;
+};
+
 }  // namespace
 }  // namespace arangodb
 
@@ -381,18 +411,26 @@ static std::string extractErrorMessage(std::string_view shardId,
   return msg;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an empty collection info object
-////////////////////////////////////////////////////////////////////////////////
+class ClusterInfo::SyncerThread final
+    : public arangodb::ServerThread<ArangodServer> {
+ public:
+  explicit SyncerThread(Server&, std::string const& section,
+                        std::function<void()> const&, AgencyCallbackRegistry*);
+  ~SyncerThread() override;
+  void beginShutdown() override;
+  void run() override;
+  bool start();
+  bool notify();
 
-CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
-    : _currentVersion(currentVersion) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a collection info object
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfoCurrent::~CollectionInfoCurrent() = default;
+ private:
+  std::mutex _m;
+  std::condition_variable _cv;
+  bool _news;
+  std::string _section;
+  std::function<void()> _f;
+  AgencyCallbackRegistry* _cr;
+  std::shared_ptr<AgencyCallback> _acb;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cluster info object
@@ -1536,7 +1574,7 @@ void ClusterInfo::loadPlan() {
         }
 
         auto shardIDs = newCollection->shardIds();
-        auto shards = std::make_shared<std::vector<std::string>>();
+        auto shards = std::make_shared<std::vector<ServerID>>();
         shards->reserve(shardIDs->size());
         newShardToName.reserve(shardIDs->size());
 

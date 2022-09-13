@@ -37,6 +37,7 @@
 #include <velocypack/velocypack-memory.h>
 
 #include "Inspection/Access.h"
+#include "Inspection/ValidateInspector.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
@@ -235,6 +236,16 @@ auto inspect(Inspector& f, ObjectInvariant& x) {
   return f.object(x)
       .fields(f.field("i", x.i), f.field("s", x.s))
       .invariant([](ObjectInvariant& o) { return o.i != 0 && !o.s.empty(); });
+}
+
+struct NestedInvariant {
+  Invariant i;
+  ObjectInvariant o;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, NestedInvariant& x) {
+  return f.object(x).fields(f.field("i", x.i), f.field("o", x.o));
 }
 
 struct FallbackReference {
@@ -2090,6 +2101,139 @@ TEST_F(VPackInspectionTest, StructIncludingVPackBuilder) {
 
     ASSERT_TRUE(deserializedMyStruct.builder.slice().binaryEquals(
         myStruct.builder.slice()));
+  }
+}
+
+TEST_F(VPackInspectionTest, Result) {
+  arangodb::Result result = {TRI_ERROR_INTERNAL, "some error message"};
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add("number", TRI_ERROR_INTERNAL);
+    expectedSerlized.add("message", "some error message");
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::Result>(slice);
+  EXPECT_EQ(result, deserialized);
+}
+
+TEST_F(VPackInspectionTest, ResultTWithResultInside) {
+  arangodb::ResultT<uint64_t> result =
+      arangodb::Result{TRI_ERROR_INTERNAL, "some error message"};
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add(VPackValue("error"));
+    {
+      VPackObjectBuilder ob2(&expectedSerlized);
+      expectedSerlized.add("number", TRI_ERROR_INTERNAL);
+      expectedSerlized.add("message", "some error message");
+    }
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
+  EXPECT_EQ(result, deserialized);
+}
+
+TEST_F(VPackInspectionTest, ResultTWithTInside) {
+  arangodb::ResultT<uint64_t> result = 45;
+  VPackBuilder expectedSerlized;
+  {
+    VPackObjectBuilder ob(&expectedSerlized);
+    expectedSerlized.add("value", 45);
+  }
+
+  VPackBuilder serialized;
+  arangodb::velocypack::serialize(serialized, result);
+  auto slice = serialized.slice();
+  EXPECT_EQ(expectedSerlized.toJson(), serialized.toJson());
+
+  auto deserialized =
+      arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
+  EXPECT_EQ(result, deserialized);
+}
+
+struct ValidateInspectorTest : public ::testing::Test {
+  arangodb::inspection::ValidateInspector inspector;
+};
+
+TEST_F(ValidateInspectorTest, validate_object_with_invariant_fulfilled) {
+  Invariant i{.i = 42, .s = "foobar"};
+  auto result = inspector.apply(i);
+  ASSERT_TRUE(result.ok());
+}
+
+TEST_F(ValidateInspectorTest, validate_object_with_invariant_not_fulfilled) {
+  {
+    Invariant i{.i = 0, .s = "foobar"};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i", result.path());
+  }
+
+  {
+    Invariant i{.i = 42, .s = ""};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("s", result.path());
+  }
+}
+
+TEST_F(ValidateInspectorTest,
+       validate_object_with_invariant_Result_not_fulfilled) {
+  {
+    InvariantWithResult i{.i = 0};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Must not be zero", result.error());
+    EXPECT_EQ("i", result.path());
+  }
+
+  {
+    Invariant i{.i = 42, .s = ""};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("s", result.path());
+  }
+}
+
+TEST_F(ValidateInspectorTest, validate_object_with_object_invariant) {
+  ObjectInvariant o{.i = 42, .s = ""};
+  auto result = inspector.apply(o);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
+}
+
+TEST_F(ValidateInspectorTest, validate_object_with_nested_invariant) {
+  {
+    NestedInvariant n{.i = {.i = 0, .s = "x"}, .o = {.i = 42, .s = "x"}};
+    auto result = inspector.apply(n);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i.i", result.path());
+  }
+
+  {
+    NestedInvariant n{.i = {.i = 42, .s = "x"}, .o = {.i = 0, .s = "x"}};
+    auto result = inspector.apply(n);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Object invariant failed", result.error());
+    EXPECT_EQ("o", result.path());
   }
 }
 

@@ -30,6 +30,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"

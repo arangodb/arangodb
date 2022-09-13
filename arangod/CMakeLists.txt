@@ -273,6 +273,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
   Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
   Pregel/Algos/HITS.cpp
+  Pregel/Algos/HITSKleinberg.cpp
   Pregel/Algos/LabelPropagation.cpp
   Pregel/Algos/LineRank.cpp
   Pregel/Algos/PageRank.cpp
@@ -757,6 +758,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
+  Cluster/CollectionInfoCurrent.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
   Cluster/DBServerAgencySync.cpp

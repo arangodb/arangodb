@@ -70,6 +70,15 @@ class ClusterMetricsFeature final : public ArangodFeature {
     Values values;
 
     void toVelocyPack(VPackBuilder& builder) const;
+
+    template<typename T>
+    T get(std::string_view key, std::string_view labels) const {
+      auto it = values.find(MetricKeyView{key, labels});
+      if (it != values.end()) {
+        return std::get<T>(it->second);
+      }
+      return {};
+    }
   };
 
   struct Data final {

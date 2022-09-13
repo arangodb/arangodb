@@ -947,15 +947,26 @@ function IResearchFeatureDDLTestSuite() {
         consolidationIntervalMsec: 0, // disable consolidation
         cleanupIntervalStep: 0        // disable cleanup
       });
-      view.properties({ links: { [colName]: { includeAllFields: true } } });
+      view.properties({links: {[colName]: {includeAllFields: true}}});
+
+      const idx = col.ensureIndex({
+        name: "TestIndex",
+        type: "inverted",
+        includeAllFields: true,
+        commitIntervalMsec: 1,
+        consolidationIntervalMsec: 0, // disable consolidation
+        cleanupIntervalStep: 0        // disable cleanup
+      });
+
+      const types = ["arangosearch", "inverted"];
 
       triggerMetrics();
 
       // check link stats
-      {
+      for (const type of types) {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
+          .find(e => e.type === type)
+          .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
         assertEqual(5, Object.keys(figures).length);
@@ -967,15 +978,14 @@ function IResearchFeatureDDLTestSuite() {
       }
 
       // insert documents
-      col.save({ foo: 'bar' });
-      col.save({ foo: 'baz' });
+      col.save([{foo: 'bar'}, {foo: 'baz'}]);
 
       triggerMetrics();
 
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
+          .find(e => e.type === "arangosearch")
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
@@ -987,19 +997,26 @@ function IResearchFeatureDDLTestSuite() {
         assertEqual(0, figures.numSegments);
       }
 
+      let syncIndex = function (expected) {
+        const syncQuery = `FOR d IN TestCollection OPTIONS {indexHint: "TestIndex", waitForSync:true}
+                            FILTER d.foo != "unknown" COLLECT WITH COUNT INTO c RETURN c`;
+        let count = db._query(syncQuery).toArray()[0];
+        assertEqual(expected, count);
+      };
       // ensure data is synchronized
       var res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(2, res.length);
       assertEqual('bar', res[0].foo);
       assertEqual('baz', res[1].foo);
+      syncIndex(2);
 
       triggerMetrics();
 
       // check link stats
-      {
+      for (const type of types) {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
+          .find(e => e.type === type)
+          .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
         assertEqual(5, Object.keys(figures).length);
@@ -1017,14 +1034,15 @@ function IResearchFeatureDDLTestSuite() {
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(1, res.length);
       assertEqual('baz', res[0].foo);
+      syncIndex(1);
 
       triggerMetrics();
 
       // check link stats
-      {
+      for (const type of types) {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
+          .find(e => e.type === type)
+          .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
         assertEqual(5, Object.keys(figures).length);
@@ -1041,14 +1059,15 @@ function IResearchFeatureDDLTestSuite() {
       // ensure data is synchronized
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(0, res.length);
+      syncIndex(0);
 
       triggerMetrics();
 
       // check link stats
-      {
+      for (const type of types) {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
+          .find(e => e.type === type)
+          .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
         assertEqual(5, Object.keys(figures).length);
