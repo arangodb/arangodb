@@ -42,6 +42,7 @@
 #include "Basics/voc-errors.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/Escaper.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogContext.h"
@@ -136,6 +137,7 @@ char Logger::_role('\0');
 std::atomic<TRI_pid_t> Logger::_cachedPid(0);
 std::string Logger::_outputPrefix;
 std::string Logger::_hostname;
+std::function<void(std::string const&, std::string&)> Logger::_writerFn;
 
 std::atomic<std::size_t> Logger::_loggingThreadRefs(0);
 std::atomic<LogThread*> Logger::_loggingThread(nullptr);
@@ -384,6 +386,31 @@ void Logger::setUseUnicodeEscaped(bool value) {
         TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
   _useUnicodeEscaped = value;
+}
+
+// alerts that startup parameters for escaping have already been assigned
+void Logger::alertDefinedEscaping() {
+  if (_active) {
+    _writerFn = &Escaper<ControlCharsEscaper,
+                         UnicodeCharsRetainer>::writeIntoOutputBuffer;
+  }
+  if (_useControlEscaped) {
+    if (_useUnicodeEscaped) {
+      _writerFn = &Escaper<ControlCharsEscaper,
+                           UnicodeCharsEscaper>::writeIntoOutputBuffer;
+    } else {
+      _writerFn = &Escaper<ControlCharsEscaper,
+                           UnicodeCharsRetainer>::writeIntoOutputBuffer;
+    }
+  } else {
+    if (_useUnicodeEscaped) {
+      _writerFn = &Escaper<ControlCharsSuppressor,
+                           UnicodeCharsEscaper>::writeIntoOutputBuffer;
+    } else {
+      _writerFn = &Escaper<ControlCharsSuppressor,
+                           UnicodeCharsRetainer>::writeIntoOutputBuffer;
+    }
+  }
 }
 
 // NOTE: this function should not be called if the logging is active.
@@ -666,25 +693,6 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     TRI_ASSERT(offset == 0);
   } else {
-    std::unique_ptr<GeneralEscaper> escaper;
-    if (_useControlEscaped) {
-      if (_useUnicodeEscaped) {
-        escaper = std::make_unique<
-            Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
-      } else {
-        escaper = std::make_unique<
-            Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
-      }
-    } else {
-      if (_useUnicodeEscaped) {
-        escaper = std::make_unique<
-            Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
-      } else {
-        escaper = std::make_unique<
-            Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
-      }
-    }
-
     // hostname
     if (!_hostname.empty()) {
       out.append(_hostname);
@@ -783,7 +791,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
     {
       READ_LOCKER(guard, _structuredParamsLock);
       //  meta data from log
-      LogContext::OverloadVisitor visitor([&out, &escaper](
+      LogContext::OverloadVisitor visitor([&out, &_writerFn = _writerFn](
                                               std::string_view const& key,
                                               auto&& value) {
         if (!_structuredLogParams.contains({key.data(), key.size()})) {
@@ -801,7 +809,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
           newValue = std::move(std::to_string(value));
         }
 
-        escaper->writeIntoOutputBuffer(newValue, out);
+        _writerFn(newValue, out);
         out.append("] ", 2);
       });
       logContext.visit(visitor);
@@ -809,7 +817,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     // json format uses internal options for escaping control and unicode chars,
     // in this case, we use the Escaper class
-    escaper->writeIntoOutputBuffer(message, out);
+    _writerFn(message, out);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);

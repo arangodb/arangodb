@@ -29,21 +29,25 @@
 namespace arangodb {
 
 struct ControlCharsSuppressor {  // control chars that will not be escaped
-  size_t maxCharLength() const { return 1; }
-  void writeCharIntoOutputBuffer(uint32_t c, std::string& output, int numBytes);
+  static size_t maxCharLength() { return 1; }
+  static void writeCharIntoOutputBuffer(uint32_t c, std::string& output,
+                                        int numBytes);
 };
 struct ControlCharsEscaper {  //\x07 worst case
-  size_t maxCharLength() const { return 4; }
-  void writeCharIntoOutputBuffer(uint32_t c, std::string& output, int numBytes);
+  static size_t maxCharLength() { return 4; }
+  static void writeCharIntoOutputBuffer(uint32_t c, std::string& output,
+                                        int numBytes);
 };
 struct UnicodeCharsRetainer {  // worst case 4 digits
-  size_t maxCharLength() const { return 4; }
-  void writeCharIntoOutputBuffer(uint32_t c, std::string& output, int numBytes);
+  static size_t maxCharLength() { return 4; }
+  static void writeCharIntoOutputBuffer(uint32_t c, std::string& output,
+                                        int numBytes);
 };
 struct UnicodeCharsEscaper {  //\u +4 digits
-  size_t maxCharLength() const { return 6; }
-  void writeCharIntoOutputBuffer(uint32_t c, std::string& output, int numBytes);
-  void writeCharHelper(uint16_t c, std::string& output);
+  static size_t maxCharLength() { return 6; }
+  static void writeCharIntoOutputBuffer(uint32_t c, std::string& output,
+                                        int numBytes);
+  static void writeCharHelper(uint16_t c, std::string& output);
 };
 
 class GeneralEscaper {
@@ -56,16 +60,13 @@ class GeneralEscaper {
 };
 
 template<typename ControlCharHandler, typename UnicodeCharHandler>
-class Escaper : public GeneralEscaper {
- private:
-  ControlCharHandler _controlHandler;
-  UnicodeCharHandler _unicodeHandler;
-
+class Escaper {
  public:
-  size_t determineOutputBufferSize(std::string const& message) const override;
+  ~Escaper() = default;
+  static size_t determineOutputBufferSize(std::string const& message);
 
-  void writeIntoOutputBuffer(std::string const& message,
-                             std::string& buffer) override;
+  static void writeIntoOutputBuffer(std::string const& message,
+                                    std::string& buffer);
 };
 
 }  // namespace arangodb

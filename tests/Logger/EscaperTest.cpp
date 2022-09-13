@@ -56,132 +56,138 @@ class EscaperTest : public ::testing::Test {
   }
 };
 
-template<typename EscaperType>
-void verifyExpectedValues(std::string const& inputString,
-                          std::string const& expectedOutput,
-                          EscaperType& escaper) {
+void verifyExpectedValues(
+    std::string const& inputString, std::string const& expectedOutput,
+    std::function<void(std::string const&, std::string&)> const& writerFn) {
   std::string output;
-  escaper.writeIntoOutputBuffer(inputString, output);
+  writerFn(inputString, output);
   EXPECT_EQ(output.compare(expectedOutput), 0);
   EXPECT_EQ(output, expectedOutput);
 }
 
 TEST_F(EscaperTest, test_suppress_control_retain_unicode) {
-  Escaper<ControlCharsSuppressor, UnicodeCharsRetainer> escaper;
-  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, escaper);
-  verifyExpectedValues(bigString, bigString, escaper);
+  std::function<void(std::string const&, std::string&)> writerFn =
+      &Escaper<ControlCharsSuppressor,
+               UnicodeCharsRetainer>::writeIntoOutputBuffer;
+  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, writerFn);
+  verifyExpectedValues(bigString, bigString, writerFn);
   verifyExpectedValues(controlChars, "                                ",
-                       escaper);
-  verifyExpectedValues("€", "€", escaper);
-  verifyExpectedValues(" €  ", " €  ", escaper);
-  verifyExpectedValues("mötör", "mötör", escaper);
-  verifyExpectedValues("\t mötör", "  mötör", escaper);
-  verifyExpectedValues("maçã", "maçã", escaper);
-  verifyExpectedValues("\nmaçã", " maçã", escaper);
-  verifyExpectedValues("犬", "犬", escaper);
-  verifyExpectedValues("犬\r", "犬 ", escaper);
-  verifyExpectedValues("", "", escaper);
-  verifyExpectedValues("a", "a", escaper);
-  verifyExpectedValues("𐍈", "𐍈", escaper);    //\uD800\uDF48
-  verifyExpectedValues("𐍈 ", "𐍈 ", escaper);  //\uD800\uDF48
+                       writerFn);
+  verifyExpectedValues("€", "€", writerFn);
+  verifyExpectedValues(" €  ", " €  ", writerFn);
+  verifyExpectedValues("mötör", "mötör", writerFn);
+  verifyExpectedValues("\t mötör", "  mötör", writerFn);
+  verifyExpectedValues("maçã", "maçã", writerFn);
+  verifyExpectedValues("\nmaçã", " maçã", writerFn);
+  verifyExpectedValues("犬", "犬", writerFn);
+  verifyExpectedValues("犬\r", "犬 ", writerFn);
+  verifyExpectedValues("", "", writerFn);
+  verifyExpectedValues("a", "a", writerFn);
+  verifyExpectedValues("𐍈", "𐍈", writerFn);    //\uD800\uDF48
+  verifyExpectedValues("𐍈 ", "𐍈 ", writerFn);  //\uD800\uDF48
   std::string validUnicode = "€";
-  verifyExpectedValues(validUnicode.substr(0, 1), "?", escaper);
-  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", escaper);
-  verifyExpectedValues("\x07", " ", escaper);
-  verifyExpectedValues(std::string("\0", 1), " ", escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", writerFn);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", writerFn);
+  verifyExpectedValues("\x07", " ", writerFn);
+  verifyExpectedValues(std::string("\0", 1), " ", writerFn);
   validUnicode = "𐍈";
-  verifyExpectedValues(validUnicode.substr(0, 1), "?", escaper);
-  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", writerFn);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", writerFn);
 }
 
 TEST_F(EscaperTest, test_suppress_control_escape_unicode) {
-  Escaper<ControlCharsSuppressor, UnicodeCharsEscaper> escaper;
-  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, escaper);
-  verifyExpectedValues(bigString, bigString, escaper);
+  std::function<void(std::string const&, std::string&)> writerFn =
+      &Escaper<ControlCharsSuppressor,
+               UnicodeCharsEscaper>::writeIntoOutputBuffer;
+  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, writerFn);
+  verifyExpectedValues(bigString, bigString, writerFn);
   verifyExpectedValues(controlChars, "                                ",
-                       escaper);
-  verifyExpectedValues("€", "\\u20AC", escaper);
-  verifyExpectedValues(" €  ", " \\u20AC  ", escaper);
-  verifyExpectedValues("mötör", "m\\u00F6t\\u00F6r", escaper);
-  verifyExpectedValues("\tmötör", " m\\u00F6t\\u00F6r", escaper);
-  verifyExpectedValues("maçã", "ma\\u00E7\\u00E3", escaper);
-  verifyExpectedValues("\nmaçã", " ma\\u00E7\\u00E3", escaper);
-  verifyExpectedValues("犬", "\\u72AC", escaper);
-  verifyExpectedValues("犬\r", "\\u72AC ", escaper);
-  verifyExpectedValues("", "", escaper);
-  verifyExpectedValues("a", "a", escaper);
-  verifyExpectedValues("𐍈", "\\uD800\\uDF48", escaper);    //\uD800\uDF48
-  verifyExpectedValues("𐍈 ", "\\uD800\\uDF48 ", escaper);  //\uD800\uDF48
+                       writerFn);
+  verifyExpectedValues("€", "\\u20AC", writerFn);
+  verifyExpectedValues(" €  ", " \\u20AC  ", writerFn);
+  verifyExpectedValues("mötör", "m\\u00F6t\\u00F6r", writerFn);
+  verifyExpectedValues("\tmötör", " m\\u00F6t\\u00F6r", writerFn);
+  verifyExpectedValues("maçã", "ma\\u00E7\\u00E3", writerFn);
+  verifyExpectedValues("\nmaçã", " ma\\u00E7\\u00E3", writerFn);
+  verifyExpectedValues("犬", "\\u72AC", writerFn);
+  verifyExpectedValues("犬\r", "\\u72AC ", writerFn);
+  verifyExpectedValues("", "", writerFn);
+  verifyExpectedValues("a", "a", writerFn);
+  verifyExpectedValues("𐍈", "\\uD800\\uDF48", writerFn);    //\uD800\uDF48
+  verifyExpectedValues("𐍈 ", "\\uD800\\uDF48 ", writerFn);  //\uD800\uDF48
   std::string validUnicode = "€";
-  verifyExpectedValues(validUnicode.substr(0, 1), "?", escaper);
-  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", writerFn);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", writerFn);
   validUnicode = "𐍈";
-  verifyExpectedValues(validUnicode.substr(0, 1), "?", escaper);
-  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", escaper);
-  verifyExpectedValues("\x07", " ", escaper);
-  verifyExpectedValues(std::string("\0", 1), " ", escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", writerFn);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "? ", writerFn);
+  verifyExpectedValues("\x07", " ", writerFn);
+  verifyExpectedValues(std::string("\0", 1), " ", writerFn);
 }
 
 TEST_F(EscaperTest, test_escape_control_retain_unicode) {
-  Escaper<ControlCharsEscaper, UnicodeCharsRetainer> escaper;
-  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, escaper);
-  verifyExpectedValues(bigString, bigString, escaper);
+  std::function<void(std::string const&, std::string&)> writerFn =
+      &Escaper<ControlCharsEscaper,
+               UnicodeCharsRetainer>::writeIntoOutputBuffer;
+  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, writerFn);
+  verifyExpectedValues(bigString, bigString, writerFn);
   verifyExpectedValues(
       controlChars,
       "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\b\\t\\n\\x0B\\f\\r"
       "\\x0E\\x0F\\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17\\x18\\x19\\x1A\\x1B\\"
       "x1C\\x1D\\x1E\\x1F",
-      escaper);
-  verifyExpectedValues("€", "€", escaper);
-  verifyExpectedValues(" €  ", " €  ", escaper);
-  verifyExpectedValues("mötör", "mötör", escaper);
-  verifyExpectedValues("\tmötör", "\\tmötör", escaper);
-  verifyExpectedValues("maçã", "maçã", escaper);
-  verifyExpectedValues("\nmaçã", "\\nmaçã", escaper);
-  verifyExpectedValues("犬", "犬", escaper);
-  verifyExpectedValues("犬\r", "犬\\r", escaper);
-  verifyExpectedValues("", "", escaper);
-  verifyExpectedValues("a", "a", escaper);
-  verifyExpectedValues("𐍈", "𐍈", escaper);    //\uD800\uDF48
-  verifyExpectedValues("𐍈 ", "𐍈 ", escaper);  //\uD800\uDF48
+      writerFn);
+  verifyExpectedValues("€", "€", writerFn);
+  verifyExpectedValues(" €  ", " €  ", writerFn);
+  verifyExpectedValues("mötör", "mötör", writerFn);
+  verifyExpectedValues("\tmötör", "\\tmötör", writerFn);
+  verifyExpectedValues("maçã", "maçã", writerFn);
+  verifyExpectedValues("\nmaçã", "\\nmaçã", writerFn);
+  verifyExpectedValues("犬", "犬", writerFn);
+  verifyExpectedValues("犬\r", "犬\\r", writerFn);
+  verifyExpectedValues("", "", writerFn);
+  verifyExpectedValues("a", "a", writerFn);
+  verifyExpectedValues("𐍈", "𐍈", writerFn);    //\uD800\uDF48
+  verifyExpectedValues("𐍈 ", "𐍈 ", writerFn);  //\uD800\uDF48
   std::string validUnicode = "€";
-  verifyExpectedValues(validUnicode.substr(0, 1), "?", escaper);
-  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", writerFn);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", writerFn);
   validUnicode = "𐍈";
-  verifyExpectedValues(validUnicode.substr(0, 1), "?", escaper);
-  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", escaper);
-  verifyExpectedValues("\x07", "\\x07", escaper);
-  verifyExpectedValues(std::string("\0", 1), "\\x00", escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", writerFn);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", writerFn);
+  verifyExpectedValues("\x07", "\\x07", writerFn);
+  verifyExpectedValues(std::string("\0", 1), "\\x00", writerFn);
 }
 
 TEST_F(EscaperTest, test_escape_control_escape_unicode) {
-  Escaper<ControlCharsEscaper, UnicodeCharsEscaper> escaper;
-  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, escaper);
-  verifyExpectedValues(bigString, bigString, escaper);
+  std::function<void(std::string const&, std::string&)> writerFn =
+      &Escaper<ControlCharsEscaper, UnicodeCharsEscaper>::writeIntoOutputBuffer;
+  verifyExpectedValues(asciiVisibleChars, asciiVisibleChars, writerFn);
+  verifyExpectedValues(bigString, bigString, writerFn);
   verifyExpectedValues(
       controlChars,
       "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\b\\t\\n\\x0B\\f\\r"
       "\\x0E\\x0F\\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17\\x18\\x19\\x1A\\x1B\\"
       "x1C\\x1D\\x1E\\x1F",
-      escaper);
-  verifyExpectedValues("€", "\\u20AC", escaper);
-  verifyExpectedValues(" €  ", " \\u20AC  ", escaper);
-  verifyExpectedValues("mötör", "m\\u00F6t\\u00F6r", escaper);
-  verifyExpectedValues("\tmötör", "\\tm\\u00F6t\\u00F6r", escaper);
-  verifyExpectedValues("maçã", "ma\\u00E7\\u00E3", escaper);
-  verifyExpectedValues("\nmaçã", "\\nma\\u00E7\\u00E3", escaper);
-  verifyExpectedValues("犬", "\\u72AC", escaper);
-  verifyExpectedValues("犬\r", "\\u72AC\\r", escaper);
-  verifyExpectedValues("", "", escaper);
-  verifyExpectedValues("a", "a", escaper);
-  verifyExpectedValues("𐍈", "\\uD800\\uDF48", escaper);    //\uD800\uDF48
-  verifyExpectedValues("𐍈 ", "\\uD800\\uDF48 ", escaper);  //\uD800\uDF48
+      writerFn);
+  verifyExpectedValues("€", "\\u20AC", writerFn);
+  verifyExpectedValues(" €  ", " \\u20AC  ", writerFn);
+  verifyExpectedValues("mötör", "m\\u00F6t\\u00F6r", writerFn);
+  verifyExpectedValues("\tmötör", "\\tm\\u00F6t\\u00F6r", writerFn);
+  verifyExpectedValues("maçã", "ma\\u00E7\\u00E3", writerFn);
+  verifyExpectedValues("\nmaçã", "\\nma\\u00E7\\u00E3", writerFn);
+  verifyExpectedValues("犬", "\\u72AC", writerFn);
+  verifyExpectedValues("犬\r", "\\u72AC\\r", writerFn);
+  verifyExpectedValues("", "", writerFn);
+  verifyExpectedValues("a", "a", writerFn);
+  verifyExpectedValues("𐍈", "\\uD800\\uDF48", writerFn);    //\uD800\uDF48
+  verifyExpectedValues("𐍈 ", "\\uD800\\uDF48 ", writerFn);  //\uD800\uDF48
   std::string validUnicode = "€";
-  verifyExpectedValues(validUnicode.substr(0, 1), "?", escaper);
-  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", writerFn);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", writerFn);
   validUnicode = "𐍈";
-  verifyExpectedValues(validUnicode.substr(0, 1), "?", escaper);
-  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", escaper);
-  verifyExpectedValues("\x07", "\\x07", escaper);
-  verifyExpectedValues(std::string("\0", 1), "\\x00", escaper);
+  verifyExpectedValues(validUnicode.substr(0, 1), "?", writerFn);
+  verifyExpectedValues(validUnicode.substr(0, 1) + "\n", "?\\n", writerFn);
+  verifyExpectedValues("\x07", "\\x07", writerFn);
+  verifyExpectedValues(std::string("\0", 1), "\\x00", writerFn);
 }

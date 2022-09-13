@@ -121,9 +121,9 @@ void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c,
 template<typename ControlCharHandler, typename UnicodeCharHandler>
 size_t
 Escaper<ControlCharHandler, UnicodeCharHandler>::determineOutputBufferSize(
-    std::string const& message) const {
-  return message.size() * std::max(this->_controlHandler.maxCharLength(),
-                                   this->_unicodeHandler.maxCharLength());
+    std::string const& message) {
+  return message.size() * std::max(ControlCharHandler::maxCharLength(),
+                                   UnicodeCharHandler::maxCharLength());
 }
 
 template<typename ControlCharHandler, typename UnicodeCharHandler>
@@ -139,7 +139,7 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
           c ==
               0x7f) {  // the character is either control, which comprises codes
                        // until 32, or is DEL, which is not a visible character
-        this->_controlHandler.writeCharIntoOutputBuffer(
+        ControlCharHandler::writeCharIntoOutputBuffer(
             c, buffer, 1);  // retain or escape the control character
       } else {              // is a visible ascii character
         buffer.push_back(c);
@@ -155,7 +155,7 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
       uint8_t d = (uint8_t) * (p + 1);
       if ((d & 0xC0) == 0x80) {  // is within the rules for representing unicode
                                  // characters for the second byte
-        this->_unicodeHandler.writeCharIntoOutputBuffer(
+        UnicodeCharHandler::writeCharIntoOutputBuffer(
             ((c & 0x1F) << 6) | (d & 0x3F), buffer,
             2);  // retain or escape the unicode character represented by 2
                  // bytes
@@ -181,7 +181,7 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
                                    // representing a unicode character that
                                    // requires 3 bytes for representation
           ++p;
-          this->_unicodeHandler.writeCharIntoOutputBuffer(
+          UnicodeCharHandler::writeCharIntoOutputBuffer(
               ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F), buffer,
               3);  // retain or escape the unicode character represented by 3
                    // bytes
@@ -216,7 +216,7 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
                                      // representing a unicode character that
                                      // requires 3 bytes for representation
             p++;
-            this->_unicodeHandler.writeCharIntoOutputBuffer(
+            UnicodeCharHandler::writeCharIntoOutputBuffer(
                 ((c & 0x07) << 18) | ((d & 0x3F) << 12) | ((e & 0x3F) << 6) |
                     (f & 0x3F),
                 buffer, 4);  // retain or escape the unicode character

@@ -32,7 +32,6 @@
 
 #include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
-#include "Logger/Escaper.h"
 
 namespace arangodb {
 struct LogMessage;

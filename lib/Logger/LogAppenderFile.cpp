@@ -57,13 +57,26 @@ LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
     : LogAppender(), _bufferSize(0), _fd(fd), _useColors(false) {}
 
 size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
-  std::string formattedMsg = message + '\n';
   char* output = _buffer.get();
+  // char const* p = message.data();
+  // char const* end = p + message.length();
+  for (size_t i = 0; i < message.size(); ++i) {
+    //   std::cout << "Will append " << message.at(i) << '\n';
+    //   auto curChar = output;
+    *output++ = std::move(message.at(i));
+    //   std::cout << "Appended " << *(curChar) << '\n';
+  }
+  /*
+  while (p < end) {
+    *output++ = *p;
+    std::cout << "Will append " << *p << '\n';
+  }
+  */
+  *output++ = '\n';
+  // std::cout << "Appended \\n \n";
+  *output = '\0';
 
-  strncpy(output, formattedMsg.data(), formattedMsg.size());
-  output[formattedMsg.size()] = '\0';
-
-  return (output + strlen(output) - _buffer.get());
+  return (output - _buffer.get());
 }
 
 void LogAppenderStream::logMessage(LogMessage const& message) {

@@ -285,6 +285,7 @@ class Logger {
   static bool getUseColor() { return _useColor; };
   static void setUseControlEscaped(bool);
   static void setUseUnicodeEscaped(bool);
+  static void alertDefinedEscaping();
   static bool getUseControlEscaped() { return _useControlEscaped; };
   static bool getUseUnicodeEscaped() { return _useUnicodeEscaped; };
   static bool getUseLocalTime() {
@@ -357,6 +358,7 @@ class Logger {
   static std::atomic<TRI_pid_t> _cachedPid;
   static std::string _outputPrefix;
   static std::string _hostname;
+  static std::function<void(std::string const&, std::string&)> _writerFn;
 
   struct ThreadRef {
     ThreadRef();
