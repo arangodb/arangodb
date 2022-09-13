@@ -459,6 +459,10 @@ function killRemainingProcesses(results) {
   results.status = results.status && (running.length === 0);
   let i = 0;
   for (i = 0; i < running.length; i++) {
+    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    if (timeoutReached) {
+      print(RED + Date() + ' external deadline reached!' + RESET);
+    }
     let status = internal.statusExternal(running[i].pid, false);
     if (status.status === "TERMINATED") {
       print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
