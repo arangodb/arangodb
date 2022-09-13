@@ -1,8 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
-* Fixed SEARCH-374 and SEARCH-358 Fixed a rare case of wrong seek
-  operation in the sparse_bitset during query ArangoSearch execution 
+* Fixed SEARCH-374 and SEARCH-358 Fixed a rare case of wrong seek operation in
+  the sparse_bitset during query ArangoSearch execution.
 
 * Updated arangosync to v2.12.0-preview-12.
 
