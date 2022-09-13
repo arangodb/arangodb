@@ -49,7 +49,8 @@ any sub-attributes that are configured separately by other elements in the
 `fields` array (and their sub-attributes). The `analyzer` and `features`
 properties apply to the sub-attributes.
 
-If set to `false`, then sub-attributes are ignored. The default is `false`.
+If set to `false`, then sub-attributes are ignored. The default value is defined
+by the top-level `includeAllFields` option, or `false` if not set.
 
 @RESTSTRUCT{searchField,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -64,7 +65,8 @@ array (`[*]`), then the elements are indexed separately. Otherwise, the array is
 indexed as a whole, but only `geopoint` and `aql` Analyzers accept array inputs.
 You cannot use an array expansion if `searchField` is enabled.
 
-Default: the value defined by the top-level `searchField` option.
+Default: the value defined by the top-level `searchField` option, or `false` if
+not set.
 
 @RESTSTRUCT{trackListPositions,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -273,7 +275,7 @@ _Background:_
   compaction operations are governed by 'consolidationIntervalMsec' and the
   candidates for compaction are selected via 'consolidationPolicy'.
 
-@RESTBODYPARAM{consolidationPolicy,object,optional,}
+@RESTBODYPARAM{consolidationPolicy,object,optional,post_api_index_inverted_policy}
 The consolidation policy to apply for selecting which segments should be merged
 (default: {}).
 
@@ -289,30 +291,32 @@ _Background:_
   search algorithm to perform more optimally and for extra file handles to be
   released once old segments are no longer used.
 
-Sub-properties:
-  - `type` (string, _optional_):
-    The segment candidates for the "consolidation" operation are selected based
-    upon several possible configurable formulas as defined by their types.
-    The currently supported types are:
-    - `"tier"` (default): consolidate based on segment byte size and live
-      document count as dictated by the customization attributes. If this type
-      is used, then below `segments*` and `minScore` properties are available.
-    - `"bytes_accum"`: consolidate if and only if
-      `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
-      i.e. the sum of all candidate segment byte size is less than the total
-      segment byte size multiplied by the `{threshold}`. If this type is used,
-      then below `threshold` property is available.
-  - `threshold` (number, _optional_): value in the range `[0.0, 1.0]`
-  - `segmentsBytesFloor` (number, _optional_): Defines the value (in bytes) to
-    treat all smaller segments as equal for consolidation selection
-    (default: 2097152)
-  - `segmentsBytesMax` (number, _optional_): Maximum allowed size of all
-    consolidated segments in bytes (default: 5368709120)
-  - `segmentsMax` (number, _optional_): The maximum number of segments that will
-    be evaluated as candidates for consolidation (default: 10)
-  - `segmentsMin` (number, _optional_): The minimum number of segments that will
-    be evaluated as candidates for consolidation (default: 1)
-  - `minScore` (number, _optional_): (default: 0)
+@RESTSTRUCT{type,post_api_index_inverted_policy,string,optional,}
+The segment candidates for the "consolidation" operation are selected based
+upon several possible configurable formulas as defined by their types.
+The supported types are:
+
+- `"tier"` (default): consolidate based on segment byte size and live
+  document count as dictated by the customization attributes.
+
+@RESTSTRUCT{segmentsBytesFloor,post_api_index_inverted_policy,integer,optional,}
+Defines the value (in bytes) to treat all smaller segments as equal for
+consolidation selection. Default: `2097152`
+
+@RESTSTRUCT{segmentsBytesMax,post_api_index_inverted_policy,integer,optional,}
+The maximum allowed size of all consolidated segments in bytes.
+Default: `5368709120`
+
+@RESTSTRUCT{segmentsMax,post_api_index_inverted_policy,integer,optional,}
+The maximum number of segments that are evaluated as candidates for
+consolidation. Default: `10`
+
+@RESTSTRUCT{segmentsMin,post_api_index_inverted_policy,integer,optional,}
+The minimum number of segments that are evaluated as candidates for
+consolidation. Default: `1`
+
+@RESTSTRUCT{minScore,post_api_index_inverted_policy,integer,optional,}
+Filter out consolidation candidates with a score less than this. Default: `0`
 
 @RESTBODYPARAM{writebufferIdle,integer,optional,int64}
 Maximum number of writers (segments) cached in the pool
